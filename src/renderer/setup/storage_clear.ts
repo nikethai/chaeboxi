@@ -49,6 +49,11 @@ export async function tickStorageTask() {
           needDeletedSet.delete(part.storageKey)
         }
       }
+      for (const link of msg.links || []) {
+        if (link.storageKey) {
+          needDeletedSet.delete(link.storageKey)
+        }
+      }
       if (needDeletedSet.size === 0) {
         return
       }

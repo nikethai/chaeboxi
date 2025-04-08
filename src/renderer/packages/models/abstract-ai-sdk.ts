@@ -130,7 +130,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       rawMessages = injectModelSystemPrompt(model.modelId, rawMessages)
     }
     if (!this.isSupportSystemMessage()) {
-      rawMessages = rawMessages.filter((m) => m.role !== 'system')
+      rawMessages = rawMessages.map((m) => ({ ...m, role: m.role === 'system' ? 'user' : m.role }))
     }
 
     const messages = sequenceMessages(rawMessages)

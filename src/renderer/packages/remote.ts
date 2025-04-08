@@ -7,13 +7,13 @@ import {
   Settings,
   ModelProvider,
   ModelOptionGroup,
+  Message,
 } from '../../shared/types'
 import { ofetch } from 'ofetch'
 import { afetch, uploadFile } from './request'
 import * as cache from './cache'
 import { uniq } from 'lodash'
 import platform from '@/platform'
-import { ChatboxAIMessage } from './models/chatboxai'
 
 // ========== API ORIGIN 根据可用性维护 ==========
 
@@ -30,8 +30,8 @@ async function testApiOrigins() {
   let pool = await cache.store.getItem<string[] | null>('api_origins').catch(() => null)
   if (!pool) {
     pool = [
-      'https://chatboxai.app',
       'https://api.chatboxai.app',
+      'https://chatboxai.app',
       'https://api.ai-chatbox.com',
       'https://api.chatboxapp.xyz',
     ]
@@ -226,10 +226,16 @@ export async function generateUploadUrl(params: { licenseKey: string; filename: 
   return json['data']
 }
 
-export async function createUserFile(params: { licenseKey: string; filename: string; filetype: string }) {
+export async function createUserFile<T extends boolean>(params: {
+  licenseKey: string
+  filename: string
+  filetype: string
+  returnContent: T
+}) {
   type Response = {
     data: {
       uuid: string
+      content: T extends true ? string : undefined
     }
   }
   const res = await afetch(
@@ -258,8 +264,12 @@ export async function uploadAndCreateUserFile(licenseKey: string, file: File) {
     licenseKey,
     filename,
     filetype: file.type,
+    returnContent: true,
   })
-  return result.uuid
+  const storageKey = `parseFile-${file.name}_${result.uuid}.${file.type.split('/')[1]}.txt`
+
+  await platform.setStoreBlob(storageKey, result.content)
+  return storageKey
 }
 
 export async function parseUserLinkPro(params: { licenseKey: string; url: string }) {
@@ -267,6 +277,7 @@ export async function parseUserLinkPro(params: { licenseKey: string; url: string
     data: {
       uuid: string
       title: string
+      content: string
     }
   }
   const res = await afetch(
@@ -277,7 +288,10 @@ export async function parseUserLinkPro(params: { licenseKey: string; url: string
         Authorization: params.licenseKey,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(params),
+      body: JSON.stringify({
+        ...params,
+        returnContent: true,
+      }),
     },
     {
       parseChatboxRemoteError: true,
@@ -285,7 +299,15 @@ export async function parseUserLinkPro(params: { licenseKey: string; url: string
     }
   )
   const json: Response = await res.json()
-  return json['data']
+  const storageKey = `parseUrl-${params.url}_${json['data']['uuid']}.txt`
+  if (json['data']['content']) {
+    await platform.setStoreBlob(storageKey, json['data']['content'])
+  }
+  return {
+    key: json['data']['uuid'],
+    title: json['data']['title'],
+    storageKey,
+  }
 }
 
 export async function parseUserLinkFree(params: { url: string }) {
@@ -306,7 +328,7 @@ export async function parseUserLinkFree(params: { url: string }) {
   return json
 }
 
-export async function webBrowsing(params: { licenseKey: string; messages: ChatboxAIMessage[] }) {
+export async function webBrowsing(params: { licenseKey: string; messages: Message[] }) {
   type Response = {
     data: {
       uuid?: string
@@ -441,12 +463,12 @@ export async function getModelConfigsWithCache(params: {
   }
   type ModelConfig = Awaited<ReturnType<typeof getModelConfigs>>
   const remoteOptionGroups = await cache.cache<ModelConfig>(
-    `model-options:${params.aiProvider}:${params.licenseKey}:${params.language}`,
+    `model-options:${params.aiProvider}:${params.licenseKey}:${params.language}1`,
     async () => {
       return await getModelConfigs(params)
     },
     {
-      ttl: 1000 * 60 * 60,
+      ttl: USE_LOCAL_API ? 1000 * 5 : 1000 * 60 * 10,
       refreshFallbackToCache: true,
     }
   )

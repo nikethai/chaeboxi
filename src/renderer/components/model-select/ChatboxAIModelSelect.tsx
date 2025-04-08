@@ -72,7 +72,7 @@ export default function ChatboxAIModelSelect({ settingsEdit, ...props }: ModelSe
       <InputLabel>{t('model')}</InputLabel>
       <Select
         label={t('model')}
-        value={settingsEdit.chatboxAIModel || 'chatboxai-3.5'}
+        value={settingsEdit.chatboxAIModel}
         MenuProps={
           horizontal
             ? {

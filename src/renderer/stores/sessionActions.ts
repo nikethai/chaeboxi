@@ -554,17 +554,17 @@ export async function submitNewUserMessage(params: {
 
     // 如果本次发送消息携带了附件，应该在这次发送中上传文件并构造文件信息(file uuid)
     if (attachments && attachments.length > 0) {
-      if (settings.aiProvider === ModelProvider.ChatboxAI) {
+      if (isChatboxAI) {
         // Chatbox AI 方案
         const licenseKey = settingActions.getLicenseKey()
         const newFiles: MessageFile[] = []
         for (const attachment of attachments || []) {
-          const fileUUID = await remote.uploadAndCreateUserFile(licenseKey || '', attachment)
+          const storageKey = await remote.uploadAndCreateUserFile(licenseKey || '', attachment)
           newFiles.push({
-            id: fileUUID,
+            id: storageKey,
             name: attachment.name,
             fileType: attachment.type,
-            chatboxAIFileUUID: fileUUID,
+            storageKey,
           })
         }
         modifyMessage(currentSessionId, { ...newUserMsg, files: newFiles }, false)
@@ -602,10 +602,10 @@ export async function submitNewUserMessage(params: {
           links.map(async (l) => {
             const parsed = await remote.parseUserLinkPro({ licenseKey: licenseKey || '', url: l.url })
             return {
-              id: parsed.uuid,
+              id: parsed.key,
               url: l.url,
               title: parsed.title,
-              chatboxAILinkUUID: parsed.uuid,
+              storageKey: parsed.storageKey,
             }
           })
         )

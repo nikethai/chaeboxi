@@ -31,7 +31,6 @@ export default class ChatboxAISettingUtil extends BaseConfig implements ModelSet
     if (sessionType === 'picture') {
       return `Chatbox AI (DALL-E-3)`
     } else {
-      // const model = settings.chatboxAIModel || 'chatboxai-3.5'
       let model = await this.getCurrentModelOptionLabel(settings)
       if (!model.toLowerCase().includes('chatbox')) {
         model = `Chatbox AI (${model})`
@@ -42,7 +41,7 @@ export default class ChatboxAISettingUtil extends BaseConfig implements ModelSet
   }
 
   getCurrentModelOptionValue(settings: Settings) {
-    return settings.chatboxAIModel || 'chatboxai-3.5'
+    return settings.chatboxAIModel
   }
 
   public getLocalOptionGroups(settings: ModelSettings) {
@@ -81,10 +80,10 @@ export default class ChatboxAISettingUtil extends BaseConfig implements ModelSet
   }
 
   public isCurrentModelSupportImageInput(settings: ModelSettings) {
-    return ChatboxAI.helpers.isModelSupportVision(settings.chatboxAIModel || chatboxAIModels[0])
+    return ChatboxAI.helpers.isModelSupportVision(settings.chatboxAIModel)
   }
 
   public isCurrentModelSupportToolUse(settings: ModelSettings) {
-    return ChatboxAI.helpers.isModelSupportToolUse(settings.chatboxAIModel || chatboxAIModels[0])
+    return ChatboxAI.helpers.isModelSupportToolUse(settings.chatboxAIModel)
   }
 }

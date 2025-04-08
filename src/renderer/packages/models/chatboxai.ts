@@ -1,26 +1,24 @@
-import { parseJsonOrEmpty } from '@/lib/utils'
-import storage from '@/storage'
-import { apiRequest } from '@/utils/request'
-import { handleSSE } from '@/utils/stream'
-import { ChatboxAILicenseDetail, ChatboxAIModel, Message, MessageRole, StreamTextResult } from 'src/shared/types'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
+import { ChatboxAILicenseDetail, ChatboxAIModel } from 'src/shared/types'
 import * as remote from '../remote'
-import Base, { CallChatCompletionOptions, ModelHelpers } from './base'
-import { ApiError, BaseError, ChatboxAIAPIError, NetworkError } from './errors'
-import { getMessageText } from '@/utils/message'
+import AbstractAISDKModel, { CallSettings } from './abstract-ai-sdk'
+import { CallChatCompletionOptions, ModelHelpers, ModelInterface } from './base'
+
 export const chatboxAIModels: ChatboxAIModel[] = ['chatboxai-3.5', 'chatboxai-4']
 
 const helpers: ModelHelpers = {
   isModelSupportVision: (model: string) => {
-    return true
+    return !['gpt-3.5-turbo', 'o1-mini', 'o1-preview', 'DeepSeek-R1', 'DeepSeek-V3'].includes(model)
   },
   isModelSupportToolUse: (model: string) => {
-    return true
+    return !['o1-mini', 'o1-preview', 'gemini-2.0-flash-exp', 'gemini-2.0-flash-exp-image-generation'].includes(model)
   },
 }
 
 interface Options {
   licenseKey?: string
-  chatboxAIModel?: ChatboxAIModel
+  chatboxAIModel: ChatboxAIModel
   licenseInstances?: {
     [key: string]: string
   }
@@ -34,7 +32,7 @@ interface Config {
   uuid: string
 }
 
-export default class ChatboxAI extends Base {
+export default class ChatboxAI extends AbstractAISDKModel implements ModelInterface {
   public name = 'ChatboxAI'
   public static helpers = helpers
 
@@ -42,281 +40,48 @@ export default class ChatboxAI extends Base {
     super()
   }
 
-  isSupportToolUse() {
-    return helpers.isModelSupportToolUse(this.options.chatboxAIModel || chatboxAIModels[0])
-  }
-
-  async callImageGeneration(prompt: string, signal?: AbortSignal): Promise<string> {
-    const res = await apiRequest.post(
-      `${remote.API_ORIGIN}/api/ai/paint`,
-      this.getHeaders(),
-      {
-        prompt,
-        response_format: 'b64_json',
-        style: this.options.dalleStyle,
-        uuid: this.config.uuid,
-        language: this.options.language,
-      },
-      { signal }
-    )
-    const json = await res.json()
-    return json['data'][0]['b64_json']
-  }
-
-  protected async callChatCompletion(
-    rawMessages: Message[],
-    options: CallChatCompletionOptions
-  ): Promise<StreamTextResult> {
-    const messages = await populateChatboxAIMessage(rawMessages)
-
-    let webBrowsingResult: Awaited<ReturnType<typeof remote.webBrowsing>> | undefined = undefined
-    if (options?.webBrowsing) {
-      webBrowsingResult = await remote.webBrowsing({
-        licenseKey: this.options.licenseKey || '',
-        messages,
-      })
-      if (webBrowsingResult.uuid) {
-        messages.push({
-          role: 'user',
-          content: '',
-          web_browsing: {
-            uuid: webBrowsingResult.uuid,
-          },
-        }) // 临时地将搜索结果添加到上下文中，方便根据搜索结果生成回答
-      }
-    }
-
-    const response = await this.post(
-      `${remote.API_ORIGIN}/api/ai/chat`,
-      this.getHeaders(),
-      {
-        uuid: this.config.uuid,
-        model: this.options.chatboxAIModel || 'chatboxai-3.5',
-        messages,
-        // max_tokens: maxTokensNumber,
-        temperature: this.options.temperature,
-        language: this.options.language,
-        stream: true,
-      },
-      { signal: options.signal }
-    )
-    let result = ''
-    let reasoningContent: string | undefined = undefined
-    await handleSSE(response, (message) => {
-      if (message === '[DONE]') {
-        return
-      }
-      const data = JSON.parse(message)
-      if (data.error) {
-        throw new ApiError(`Error from Chatbox AI: ${JSON.stringify(data)}`)
-      }
-      const word = data.choices[0]?.delta?.content
-      const reasoningContentPart = data.choices[0]?.delta?.reasoning_content
-      if (reasoningContentPart !== undefined) {
-        if (!reasoningContent) {
-          reasoningContent = ''
-        }
-        reasoningContent += reasoningContentPart
-        options.onResultChange?.({ reasoningContent })
-      }
-      if (word !== undefined) {
-        result += word
-        options.onResultChange?.({ contentParts: [{ type: 'text', text: result }], reasoningContent })
-      }
-    })
-
-    // 如果开启了 webBrowsing，则将 webBrowsing 的结果添加到生成的助手消息中
-    // 后续聊天中，服务端会根据 uuid 填充搜索结果
-    if (webBrowsingResult) {
-      options.onResultChange?.({
-        contentParts: [{ type: 'text', text: result }],
-        webBrowsing: {
-          chatboxAIWebBrowsingUUID: webBrowsingResult.uuid,
-          query: webBrowsingResult.query,
-          links: webBrowsingResult.links,
-        },
-      })
-    }
-
-    return {
-      contentParts: [{ type: 'text', text: result }],
-      reasoningContent,
-    }
-  }
-
-  getHeaders() {
+  getChatModel(options: CallChatCompletionOptions) {
     const license = this.options.licenseKey || ''
     const instanceId = (this.options.licenseInstances ? this.options.licenseInstances[license] : '') || ''
-    const headers: Record<string, string> = {
-      Authorization: license,
-      'Instance-Id': instanceId,
-      'Content-Type': 'application/json',
-    }
-    return headers
-  }
-
-  async post(
-    url: string,
-    headers: Record<string, string>,
-    body: Record<string, any>,
-    options?: {
-      signal?: AbortSignal
-      retry?: number
-      useProxy?: boolean
-    }
-  ) {
-    const { signal, retry = 3, useProxy = false } = options || {}
-    let requestError: BaseError | null = null
-    for (let i = 0; i < retry + 1; i++) {
-      try {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(body),
-          signal,
-        })
-        // 状态码不在 200～299 之间，一般是接口报错了，这里也需要抛错后重试
-        if (!res.ok) {
-          const response = await res.text().catch((e) => '')
-          const errorCodeName = parseJsonOrEmpty(response)?.error?.code
-          const chatboxAIError = ChatboxAIAPIError.fromCodeName(response, errorCodeName)
-          if (chatboxAIError) {
-            throw chatboxAIError
-          }
-          throw new ApiError(`Status Code ${res.status}, ${response}`)
-        }
-        return res
-      } catch (e) {
-        if (e instanceof BaseError) {
-          requestError = e
-        } else {
-          const err = e as Error
-          const origin = new URL(url).origin
-          requestError = new NetworkError(err.message, origin)
-        }
-        await new Promise((resolve) => setTimeout(resolve, 500))
-      }
-    }
-    if (requestError) {
-      throw requestError
+    if (this.options.chatboxAIModel.startsWith('gemini')) {
+      const provider = createGoogleGenerativeAI({
+        apiKey: this.options.licenseKey || '',
+        baseURL: `${remote.API_ORIGIN}/gateway/google-ai-studio/v1beta`,
+        headers: {
+          'Instance-Id': instanceId,
+          Authorization: `Bearer ${this.options.licenseKey || ''}`,
+        },
+      })
+      return provider.chat(this.options.chatboxAIModel, {
+        structuredOutputs: false,
+      })
     } else {
-      throw new Error('Unknown error')
+      const provider = createOpenAICompatible({
+        name: 'ChatboxAI',
+        apiKey: this.options.licenseKey || '',
+        baseURL: `${remote.API_ORIGIN}/gateway/openai/v1`,
+        headers: {
+          'Instance-Id': instanceId,
+        },
+      })
+      return provider.languageModel(this.options.chatboxAIModel)
     }
   }
 
-  async get(
-    url: string,
-    headers: Record<string, string>,
-    options?: {
-      signal?: AbortSignal
-      retry?: number
-    }
-  ) {
-    const { signal, retry = 3 } = options || {}
-    let requestError: BaseError | null = null
-    for (let i = 0; i < retry + 1; i++) {
-      try {
-        const res = await fetch(url, {
-          method: 'GET',
-          headers,
-          signal,
-        })
-        // 状态码不在 200～299 之间，一般是接口报错了，这里也需要抛错后重试
-        if (!res.ok) {
-          const response = await res.text().catch((e) => '')
-          const errorCodeName = parseJsonOrEmpty(response)?.error?.code
-          const chatboxAIError = ChatboxAIAPIError.fromCodeName(response, errorCodeName)
-          if (chatboxAIError) {
-            throw chatboxAIError
-          }
-          throw new ApiError(`Status Code ${res.status}, ${response}`)
-        }
-        return res
-      } catch (e) {
-        if (e instanceof BaseError) {
-          requestError = e
-        } else {
-          const err = e as Error
-          const origin = new URL(url).origin
-          requestError = new NetworkError(err.message, origin)
-        }
-      }
-    }
-    if (requestError) {
-      throw requestError
-    } else {
-      throw new Error('Unknown error')
-    }
+  isSupportSystemMessage() {
+    return ![
+      'o1-mini',
+      'gemini-2.0-flash-exp',
+      'gemini-2.0-flash-thinking-exp',
+      'gemini-2.0-flash-exp-image-generation',
+    ].includes(this.options.chatboxAIModel)
   }
-}
 
-// Chatbox AI 服务接收的消息格式
-export interface ChatboxAIMessage {
-  role: MessageRole
-  content: string
-  pictures?: {
-    base64?: string
-  }[]
-  files?: {
-    uuid: string
-  }[]
-  links?: {
-    uuid: string
-    url: string
-  }[]
-  web_browsing?: {
-    uuid: string
+  isSupportVision() {
+    return helpers.isModelSupportVision(this.options.chatboxAIModel)
   }
-}
 
-export async function populateChatboxAIMessage(rawMessages: Message[]): Promise<ChatboxAIMessage[]> {
-  // 将 Message 转换为 OpenAIMessage，清理掉会报错的多余的字段
-  const messages: ChatboxAIMessage[] = []
-  for (const raw of rawMessages) {
-    const newMessage: ChatboxAIMessage = {
-      role: raw.role,
-      content: getMessageText(raw),
-    }
-    for (const p of raw.contentParts) {
-      if (p.type === 'image') {
-        if (!p.storageKey) {
-          continue
-        }
-        const base64 = await storage.getBlob(p.storageKey)
-        if (!base64) {
-          continue
-        }
-        if (!newMessage.pictures) {
-          newMessage.pictures = []
-        }
-        newMessage.pictures.push({ base64 })
-      }
-    }
-
-    for (const file of raw.files || []) {
-      if (!file.chatboxAIFileUUID) {
-        continue
-      }
-      if (!newMessage.files) {
-        newMessage.files = []
-      }
-      newMessage.files.push({ uuid: file.chatboxAIFileUUID })
-    }
-    for (const link of raw.links || []) {
-      if (!link.chatboxAILinkUUID || !link.url) {
-        continue
-      }
-      if (!newMessage.links) {
-        newMessage.links = []
-      }
-      newMessage.links.push({ uuid: link.chatboxAILinkUUID, url: link.url })
-    }
-    if (raw.webBrowsing && raw.webBrowsing.chatboxAIWebBrowsingUUID) {
-      newMessage.web_browsing = {
-        uuid: raw.webBrowsing.chatboxAIWebBrowsingUUID,
-      }
-    }
-    messages.push(newMessage)
+  isSupportToolUse() {
+    return helpers.isModelSupportToolUse(this.options.chatboxAIModel)
   }
-  return messages
 }

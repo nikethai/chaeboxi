@@ -1,5 +1,5 @@
 import { countWord } from '@/packages/word-count'
-import { assign, cloneDeep } from 'lodash'
+import { assign, cloneDeep, isEmpty } from 'lodash'
 import type { Message, MessageContentParts, MessagePicture } from 'src/shared/types'
 import i18n from '../i18n'
 
@@ -52,7 +52,7 @@ export function cloneMessage(message: Message): Message {
 }
 
 export function isEmptyMessage(message: Message): boolean {
-  return getMessageText(message).length === 0
+  return getMessageText(message).length === 0 && isEmpty(message.toolCalls)
 }
 
 export function countMessageWords(message: Message): number {

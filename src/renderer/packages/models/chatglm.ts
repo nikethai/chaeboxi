@@ -1,5 +1,5 @@
 import { ModelMeta } from 'src/shared/types'
-import { ModelHelpers } from './base'
+import { ModelHelpers } from './types'
 import OpenAICompatible from './openai-compatible'
 
 const modelConfig: ModelMeta = {

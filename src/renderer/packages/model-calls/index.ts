@@ -1,5 +1,5 @@
 import { Message } from '../../../shared/types'
-import { ModelInterface } from '../models/base'
+import { ModelInterface } from '../models/types'
 
 export { streamText } from './stream-text'
 

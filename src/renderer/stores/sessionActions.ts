@@ -6,7 +6,7 @@ import * as localParser from '@/packages/local-parser'
 import { generateImage, generateText, streamText } from '@/packages/model-calls'
 import { getModelDisplayName, isModelSupportToolUse } from '@/packages/model-setting-utils'
 import { getModel } from '@/packages/models'
-import type { onResultChangeWithCancel } from '@/packages/models/base'
+import type { onResultChangeWithCancel } from '@/packages/models/types'
 import {
   AIProviderNoImplementedPaintError,
   ApiError,

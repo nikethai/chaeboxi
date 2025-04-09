@@ -1,7 +1,7 @@
 import { createPerplexity } from '@ai-sdk/perplexity'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
 import AbstractAISDKModel from './abstract-ai-sdk'
-import { ModelHelpers } from './base'
+import { ModelHelpers } from './types'
 
 const helpers: ModelHelpers = {
   isModelSupportVision: (model: string) => {

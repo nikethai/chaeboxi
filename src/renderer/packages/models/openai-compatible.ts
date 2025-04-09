@@ -1,7 +1,7 @@
 import { apiRequest, fetchWithProxy } from '@/utils/request'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import AbstractAISDKModel from './abstract-ai-sdk'
-import { ModelInterface } from './base'
+import { ModelInterface } from './types'
 import { ApiError } from './errors'
 
 interface OpenAICompatibleSettings {

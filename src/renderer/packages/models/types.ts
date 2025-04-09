@@ -1,5 +1,4 @@
 import { Message, MessageContentParts, MessageToolCalls, MessageWebBrowsing } from 'src/shared/types'
-import { AIProviderNoImplementedPaintError } from './errors'
 import { StreamTextResult } from 'src/shared/types'
 
 export interface ModelHelpers {
@@ -19,48 +18,6 @@ export interface CallChatCompletionOptions {
   signal?: AbortSignal
   onResultChange?: onResultChange
   webBrowsing?: boolean
-}
-
-export default abstract class Base implements ModelInterface {
-  public name = 'Unknown'
-  public static helpers: ModelHelpers
-
-  public abstract isSupportToolUse(): boolean
-  public isSupportSystemMessage() {
-    return true
-  }
-  protected abstract callChatCompletion(
-    messages: Message[],
-    options: CallChatCompletionOptions
-  ): Promise<StreamTextResult>
-
-  protected async callImageGeneration(prompt: string, signal?: AbortSignal): Promise<string> {
-    throw new AIProviderNoImplementedPaintError(this.name)
-  }
-
-  public async chat(messages: Message[], options: CallChatCompletionOptions): Promise<StreamTextResult> {
-    return this.callChatCompletion(messages, options)
-  }
-
-  public async paint(
-    prompt: string,
-    num: number,
-    callback?: (picBase64: string) => any,
-    signal?: AbortSignal
-  ): Promise<string[]> {
-    const concurrence: Promise<string>[] = []
-    for (let i = 0; i < num; i++) {
-      concurrence.push(
-        this.callImageGeneration(prompt, signal).then((picBase64) => {
-          if (callback) {
-            callback(picBase64)
-          }
-          return picBase64
-        })
-      )
-    }
-    return await Promise.all(concurrence)
-  }
 }
 
 export interface ResultChange {

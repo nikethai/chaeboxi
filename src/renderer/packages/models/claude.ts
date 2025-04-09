@@ -2,7 +2,7 @@ import { apiRequest } from '@/utils/request'
 import { createAnthropic } from '@ai-sdk/anthropic'
 import { ModelMeta } from 'src/shared/types'
 import AbstractAISDKModel from './abstract-ai-sdk'
-import { ModelHelpers } from './base'
+import { ModelHelpers } from './types'
 import { ApiError } from './errors'
 
 // https://docs.anthropic.com/claude/docs/models-overview

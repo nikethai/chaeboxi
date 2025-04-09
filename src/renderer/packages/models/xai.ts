@@ -1,5 +1,5 @@
 import { ContextWindowSize } from 'src/shared/constants'
-import { ModelHelpers } from './base'
+import { ModelHelpers } from './types'
 import OpenAICompatible from './openai-compatible'
 
 // https://x.ai/api#pricing

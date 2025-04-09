@@ -1,7 +1,7 @@
 import * as promptFormat from '@/packages/prompts'
 import * as settingActions from '@/stores/settingActions'
 import { last } from 'lodash'
-import { ModelInterface } from '../models/base'
+import { ModelInterface } from '../models/types'
 import { webSearchExecutor } from '../web-search'
 import { sequenceMessages, getMessageText } from '@/utils/message'
 import { Message } from 'src/shared/types'

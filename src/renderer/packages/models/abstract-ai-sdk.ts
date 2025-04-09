@@ -33,7 +33,7 @@ import {
   StreamTextResult,
 } from 'src/shared/types'
 import { webSearchTool as rawWebSearchTool } from '../web-search'
-import { CallChatCompletionOptions, ModelInterface } from './base'
+import { CallChatCompletionOptions, ModelInterface } from './types'
 import { ApiError, ChatboxAIAPIError } from './errors'
 
 const webSearchTool = tool({

@@ -3,7 +3,7 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { ChatboxAILicenseDetail, ChatboxAIModel } from 'src/shared/types'
 import * as remote from '../remote'
 import AbstractAISDKModel, { CallSettings } from './abstract-ai-sdk'
-import { CallChatCompletionOptions, ModelHelpers, ModelInterface } from './base'
+import { CallChatCompletionOptions, ModelHelpers, ModelInterface } from './types'
 
 export const chatboxAIModels: ChatboxAIModel[] = ['chatboxai-3.5', 'chatboxai-4']
 

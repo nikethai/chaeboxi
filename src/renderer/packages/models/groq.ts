@@ -1,4 +1,4 @@
-import { ModelHelpers } from './base'
+import { ModelHelpers } from './types'
 import OpenAICompatible from './openai-compatible'
 
 const helpers: ModelHelpers = {

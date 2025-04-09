@@ -1,6 +1,6 @@
 import { isEmpty } from 'lodash'
 import { Message, MessageToolCalls, StreamTextResult } from '../../../shared/types'
-import { ModelInterface, OnResultChange, onResultChangeWithCancel } from '../models/base'
+import { ModelInterface, OnResultChange, onResultChangeWithCancel } from '../models/types'
 import { callTool, constructMessagesWithSearchResults, searchByPromptEngineering } from './tools'
 import { ChatboxAIAPIError } from '../models/errors'
 

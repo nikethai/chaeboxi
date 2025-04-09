@@ -1,6 +1,6 @@
 import { createAzure } from '@ai-sdk/azure'
 import AbstractAISDKModel from './abstract-ai-sdk'
-import { ModelHelpers } from './base'
+import { ModelHelpers } from './types'
 
 const helpers: ModelHelpers = {
   isModelSupportVision: (model: string) => {

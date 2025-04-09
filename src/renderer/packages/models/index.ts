@@ -12,7 +12,7 @@ import DeepSeek from './deepseek'
 import SiliconFlow from './siliconflow'
 import Perplexity from './perplexity'
 import XAI from './xai'
-import type { ModelInterface } from './base'
+import type { ModelInterface } from './types'
 import CustomOpenAI from './custom-openai'
 
 export function getModel(setting: Settings, config: Config): ModelInterface {

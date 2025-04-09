@@ -1,23 +1,6 @@
-import { Message, StreamTextResult } from 'src/shared/types'
-import Base, { CallChatCompletionOptions } from './base'
-import { sequenceMessages } from '@/utils/message'
-import { migrateMessage } from '@/utils/message'
-class MockModel extends Base {
-  public name = 'MockModel'
+import { Message } from 'src/shared/types'
+import { sequenceMessages } from './message'
 
-  isSupportToolUse() {
-    return false
-  }
-
-  protected async callChatCompletion(
-    messages: Message[],
-    options: CallChatCompletionOptions
-  ): Promise<StreamTextResult> {
-    return { contentParts: [{ type: 'text', text: 'mock' }] }
-  }
-}
-
-// Define your tests
 describe('SequenceMessages', () => {
   // Each test case
   const cases: {
@@ -223,7 +206,6 @@ L3
   ]
   cases.forEach(({ name, input, expected }) => {
     test(name, () => {
-      const model = new MockModel()
       const got = sequenceMessages(input)
 
       expect(got.length).toBe(expected.length)

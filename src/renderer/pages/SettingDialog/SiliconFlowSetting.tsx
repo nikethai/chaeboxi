@@ -1,60 +1,50 @@
-import { Typography, Box } from '@mui/material'
-import { ModelSettings } from '../../../shared/types'
+import MaxContextMessageCountSlider, {
+  toBeRemoved_getContextMessageCount,
+} from '@/components/MaxContextMessageCountSlider'
+import { SiliconflowModelSelect } from '@/components/model-select/SiliconflowModelSelect'
+import PasswordTextField from '@/components/PasswordTextField'
+import TemperatureSlider from '@/components/TemperatureSlider'
+import { Stack, Typography } from '@mui/material'
 import { useTranslation } from 'react-i18next'
-import { Accordion, AccordionSummary, AccordionDetails } from '../../components/Accordion'
-import TemperatureSlider from '../../components/TemperatureSlider'
-import TopPSlider from '../../components/TopPSlider'
-import PasswordTextField from '../../components/PasswordTextField'
-import MaxContextMessageCountSlider from '../../components/MaxContextMessageCountSlider'
-import SiliconFlowModelSelect from '../../components/SiliconFlowModelSelect'
+import { ModelSettings } from '@/../shared/types'
+import { Accordion, AccordionDetails, AccordionSummary } from '@/components/Accordion'
 
 interface ModelConfigProps {
-    settingsEdit: ModelSettings
-    setSettingsEdit: (settings: ModelSettings) => void
+  settingsEdit: ModelSettings
+  setSettingsEdit: (settings: ModelSettings) => void
 }
 
-export default function SiliconFlowSetting(props: ModelConfigProps) {
-    const { settingsEdit, setSettingsEdit } = props
-    const { t } = useTranslation()
-    return (
-        <Box>
-            <PasswordTextField
-                label={t('api key')}
-                value={settingsEdit.siliconCloudKey}
-                setValue={(value) => {
-                    setSettingsEdit({ ...settingsEdit, siliconCloudKey: value })
-                }}
-                placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
-            />
-            <Accordion>
-                <AccordionSummary aria-controls="panel1a-content">
-                    <Typography>
-                        {t('model')} & {t('token')}{' '}
-                    </Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                    <SiliconFlowModelSelect
-                        model={settingsEdit.siliconCloudModel}
-                        siliconflowCustomModel={settingsEdit.openaiCustomModel}
-                        onChange={(siliconCloudModel, openaiCustomModel) =>
-                            setSettingsEdit({ ...settingsEdit, siliconCloudModel, openaiCustomModel })
-                        }
-                    />
-
-                    <TemperatureSlider
-                        value={settingsEdit.temperature}
-                        onChange={(value) => setSettingsEdit({ ...settingsEdit, temperature: value })}
-                    />
-                    <TopPSlider
-                        topP={settingsEdit.topP}
-                        setTopP={(v) => setSettingsEdit({ ...settingsEdit, topP: v })}
-                    />
-                    <MaxContextMessageCountSlider
-                        value={settingsEdit.openaiMaxContextMessageCount}
-                        onChange={(v) => setSettingsEdit({ ...settingsEdit, openaiMaxContextMessageCount: v })}
-                    />
-                </AccordionDetails>
-            </Accordion>
-        </Box>
-    )
+export default function SiliconflowSetting(props: ModelConfigProps) {
+  const { settingsEdit, setSettingsEdit } = props
+  const { t } = useTranslation()
+  return (
+    <Stack spacing={2}>
+      <PasswordTextField
+        label={t('api key')}
+        value={settingsEdit.siliconCloudKey}
+        setValue={(value) => {
+          setSettingsEdit({ ...settingsEdit, siliconCloudKey: value })
+        }}
+      />
+      <SiliconflowModelSelect settingsEdit={settingsEdit} setSettingsEdit={setSettingsEdit} />
+      <Accordion>
+        <AccordionSummary aria-controls="panel1a-content">
+          <Typography>{t('Advanced')}</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <MaxContextMessageCountSlider
+            value={toBeRemoved_getContextMessageCount(
+              settingsEdit.openaiMaxContextMessageCount,
+              settingsEdit.maxContextMessageCount
+            )}
+            onChange={(v) => setSettingsEdit({ ...settingsEdit, maxContextMessageCount: v })}
+          />
+          <TemperatureSlider
+            value={settingsEdit.temperature}
+            onChange={(v) => setSettingsEdit({ ...settingsEdit, temperature: v })}
+          />
+        </AccordionDetails>
+      </Accordion>
+    </Stack>
+  )
 }

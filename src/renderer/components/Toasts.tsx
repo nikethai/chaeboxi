@@ -5,21 +5,22 @@ import * as atoms from '../stores/atoms'
 import { useAtomValue } from 'jotai'
 
 function Toasts() {
-    const toasts = useAtomValue(atoms.toastsAtom)
-    return (
-        <>
-            {toasts.map((toast) => (
-                <Snackbar
-                    className='Snackbar'
-                    key={toast.id}
-                    open
-                    onClose={() => toastActions.remove(toast.id)}
-                    message={toast.content}
-                    anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
-                />
-            ))}
-        </>
-    )
+  const toasts = useAtomValue(atoms.toastsAtom)
+  return (
+    <>
+      {toasts.map((toast) => (
+        <Snackbar
+          className="Snackbar"
+          key={toast.id}
+          open
+          onClose={() => toastActions.remove(toast.id)}
+          message={toast.content}
+          anchorOrigin={{ vertical: 'top', horizontal: 'right' }}
+          autoHideDuration={5000}
+        />
+      ))}
+    </>
+  )
 }
 
 export default Toasts

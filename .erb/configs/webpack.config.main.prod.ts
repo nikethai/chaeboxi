@@ -11,6 +11,7 @@ import baseConfig from './webpack.config.base'
 import webpackPaths from './webpack.paths'
 import checkNodeEnv from '../scripts/check-node-env'
 import deleteSourceMaps from '../scripts/delete-source-maps'
+import JavaScriptObfuscator from 'webpack-obfuscator'
 
 checkNodeEnv('production')
 deleteSourceMaps()
@@ -68,6 +69,12 @@ const configuration: webpack.Configuration = {
             'process.type': '"browser"',
         }),
 
+        new JavaScriptObfuscator({
+            target: 'node',
+            optionsPreset: 'default',
+            // 默认的变量名混淆，可能被误报为恶意代码
+            identifierNamesGenerator: 'mangled-shuffled',
+        }),
     ],
 
     /**

@@ -1,78 +1,77 @@
-import { Message } from 'src/shared/types'
-import Base, { onResultChange } from './base'
-import { ApiError } from './errors'
-import { log } from 'console'
+import type { ModelHelpers } from './base'
+import OpenAICompatible from './openai-compatible'
 
-// import ollama from 'ollama/browser'
-
-interface Options {
-    ollamaHost: string
-    ollamaModel: string
-    temperature: number
+const helpers: ModelHelpers = {
+  isModelSupportVision: (model: string) => {
+    return [
+      'gemma3',
+      'llava',
+      'llama3.2-vision',
+      'llava-llama3',
+      'moondream',
+      'bakllava',
+      'llava-phi3',
+      'granite3.2-vision',
+    ].some((m) => model.startsWith(m))
+  },
+  isModelSupportToolUse: (model: string) => {
+    return [
+      'qwq',
+      'llama3.3',
+      'llama3.2',
+      'llama3.1',
+      'mistral',
+      'qwen2.5',
+      'qwen2.5-coder',
+      'qwen2',
+      'mistral-nemo',
+      'mixtral',
+      'smollm2',
+      'mistral-small',
+      'command-r',
+      'hermes3',
+      'mistral-large',
+    ].some((m) => model.startsWith(m))
+  },
 }
 
-export default class Ollama extends Base {
-    public name = 'Ollama'
+interface Options {
+  ollamaHost: string
+  ollamaModel: string
+  temperature: number
+}
 
-    public options: Options
-    constructor(options: Options) {
-        super()
-        this.options = options
-    }
+export default class Ollama extends OpenAICompatible {
+  public name = 'Ollama'
+  public static helpers = helpers
 
-    getHost(): string {
-        let host = this.options.ollamaHost.trim()
-        if (host.endsWith('/')) {
-            host = host.slice(0, -1)
-        }
-        if (!host.startsWith('http')) {
-            host = 'http://' + host
-        }
-        if (host === 'http://localhost:11434') {
-            host = 'http://127.0.0.1:11434'
-        }
-        return host
-    }
+  constructor(public options: Options) {
+    super({
+      apiKey: 'ollama',
+      apiHost: normalizeApiHost(options.ollamaHost),
+      model: options.ollamaModel,
+      temperature: options.temperature,
+    })
+  }
 
-    async callChatCompletion(rawMessages: Message[], signal?: AbortSignal, onResultChange?: onResultChange): Promise<string> {
-        const messages = rawMessages.map(m => ({ role: m.role, content: m.content }))
-        const res = await this.post(
-            `${this.getHost()}/api/chat`,
-            { 'Content-Type': 'application/json' },
-            {
-                model: this.options.ollamaModel,
-                messages,
-                stream: true,
-                options: {
-                    temperature: this.options.temperature,
-                }
-            },
-            signal,
-        )
-        let result = ''
-        await this.handleNdjson(res, (message) => {
-            const data = JSON.parse(message)
-            if (data['done']) {
-                return
-            }
-            const word = data['message']?.['content']
-            if (! word) {
-                throw new ApiError(JSON.stringify(data))
-            }
-            result += word
-            if (onResultChange) {
-                onResultChange(result)
-            }
-        })
-        return result
-    }
+  isSupportToolUse(): boolean {
+    return helpers.isModelSupportToolUse(this.options.ollamaModel)
+  }
+}
 
-    async listModels(): Promise<string[]> {
-        const res = await this.get(`${this.getHost()}/api/tags`, {})
-        const json = await res.json()
-        if (! json['models']) {
-            throw new ApiError(JSON.stringify(json))
-        }
-        return json['models'].map((m: any) => m['name'])
-    }
+function normalizeApiHost(apiHost: string) {
+  let host = apiHost.trim()
+  if (host.endsWith('/')) {
+    host = host.slice(0, -1)
+  }
+  if (!host.startsWith('http')) {
+    host = 'http://' + host
+  }
+  if (host === 'http://localhost:11434') {
+    host = 'http://127.0.0.1:11434' // 让其在浏览器中也能访问
+  }
+  if (!host.endsWith('/v1')) {
+    host += '/v1'
+  }
+  return host
 }

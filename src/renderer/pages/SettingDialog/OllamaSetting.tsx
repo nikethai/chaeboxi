@@ -1,88 +1,105 @@
-import { Alert, FormControl, InputLabel, MenuItem, Select } from '@mui/material'
-import { ModelSettings } from '../../../shared/types'
-import { Trans, useTranslation } from 'react-i18next'
+import MaxContextMessageCountSlider, {
+  toBeRemoved_getContextMessageCount,
+} from '@/components/MaxContextMessageCountSlider'
+import { OllamaModelSelect } from '@/components/model-select/OllamaModelSelect'
+import TemperatureSlider from '@/components/TemperatureSlider'
 import TextFieldReset from '@/components/TextFieldReset'
-import { useEffect, useState } from 'react'
-import Ollama from '@/packages/models/ollama'
-import platform from '@/packages/platform'
-import { useAtomValue } from 'jotai'
+import platform from '@/platform'
 import { languageAtom } from '@/stores/atoms'
+import { Alert, Stack, Typography } from '@mui/material'
+import { useAtomValue } from 'jotai'
+import { Trans, useTranslation } from 'react-i18next'
+import { ModelSettings } from '@/../shared/types'
+import { Accordion, AccordionDetails, AccordionSummary } from '@/components/Accordion'
 
 export function OllamaHostInput(props: {
-    ollamaHost: string
-    setOllamaHost: (host: string) => void
-    className?: string
+  ollamaHost: string
+  setOllamaHost: (host: string) => void
+  className?: string
 }) {
-    const { t } = useTranslation()
-    const language = useAtomValue(languageAtom)
-    return (
-        <>
-            <TextFieldReset
-                label={t('api host')}
-                value={props.ollamaHost}
-                defaultValue='http://localhost:11434'
-                onValueChange={props.setOllamaHost}
-                fullWidth
-                className={props.className}
+  const { t } = useTranslation()
+  const language = useAtomValue(languageAtom)
+  return (
+    <>
+      <TextFieldReset
+        label={t('api host')}
+        value={props.ollamaHost}
+        defaultValue="http://localhost:11434"
+        onValueChange={props.setOllamaHost}
+        fullWidth
+        className={props.className}
+      />
+      <Alert icon={false} severity="info" className="my-4">
+        {platform.type === 'web' && (
+          <p>
+            <Trans
+              i18nKey="Get better connectivity and stability with the Chatbox desktop application. <a>Download now</a>."
+              components={{
+                a: (
+                  <a
+                    className="cursor-pointer font-bold"
+                    onClick={() => {
+                      platform.openLink(`https://chatboxai.app`)
+                    }}
+                  ></a>
+                ),
+              }}
             />
-            {
-                props.ollamaHost
-                && props.ollamaHost.length > 16
-                && !props.ollamaHost.includes('localhost')
-                && !props.ollamaHost.includes('127.0.0.1') && (
-                    <Alert icon={false} severity='info' className='my-4'>
-                        <Trans i18nKey='Please ensure that the Remote Ollama Service is able to connect remotely. For more details, refer to <a>this tutorial</a>.'
-                            components={{
-                                a: <a className='cursor-pointer font-bold' onClick={() => {
-                                    platform.openLink(`https://chatboxai.app/redirect_app/ollama_guide/${language}`)
-                                }}></a>,
-                            }}
-                        />
-                    </Alert>
-                )
-            }
-        </>
-    )
+          </p>
+        )}
+        <p>
+          <Trans
+            i18nKey="Please ensure that the Remote Ollama Service is able to connect remotely. For more details, refer to <a>this tutorial</a>."
+            components={{
+              a: (
+                <a
+                  className="cursor-pointer font-bold"
+                  onClick={() => {
+                    platform.openLink(`https://chatboxai.app/redirect_app/ollama_guide/${language}`)
+                  }}
+                ></a>
+              ),
+            }}
+          />
+        </p>
+      </Alert>
+    </>
+  )
 }
 
-export function OllamaModelSelect(props: {
-    ollamaModel: ModelSettings['ollamaModel']
-    setOlamaModel: (model: ModelSettings['ollamaModel']) => void
-    ollamaHost: string
-    className?: string
-}) {
-    const { t } = useTranslation()
-    const [models, setModels] = useState<string[]>([])
-    useEffect(() => {
-        const model = new Ollama({
-            ollamaHost: props.ollamaHost,
-            ollamaModel: props.ollamaModel,
-            temperature: 0.5,
-        })
-        model.listModels().then((models) => {
-            setModels(models)
-        })
-        if (props.ollamaModel && models.length > 0 && !models.includes(props.ollamaModel)) {
-            props.setOlamaModel(models[0])
-        }
-    }, [props.ollamaHost])
-    return (
-        <FormControl fullWidth variant="outlined" margin="dense" className={props.className}>
-            <InputLabel htmlFor="ollama-model-select">{t('model')}</InputLabel>
-            <Select
-                label={t('model')}
-                id="ollama-model-select"
-                value={props.ollamaModel}
-                onChange={(e) =>
-                    props.setOlamaModel(e.target.value)
-                }
-            >
-                {models.map((model) => (
-                    <MenuItem key={model} value={model}>
-                        {model}
-                    </MenuItem>
-                ))}
-            </Select>
-        </FormControl>
-    )
+interface ModelConfigProps {
+  settingsEdit: ModelSettings
+  setSettingsEdit: (settings: ModelSettings) => void
+}
+
+export default function OllamaSetting(props: ModelConfigProps) {
+  const { settingsEdit, setSettingsEdit } = props
+  const { t } = useTranslation()
+  return (
+    <Stack spacing={2}>
+      <OllamaHostInput
+        ollamaHost={settingsEdit.ollamaHost}
+        setOllamaHost={(v) => setSettingsEdit({ ...settingsEdit, ollamaHost: v })}
+      />
+      <OllamaModelSelect settingsEdit={settingsEdit} setSettingsEdit={setSettingsEdit} />
+      <Accordion>
+        <AccordionSummary aria-controls="panel1a-content">
+          <Typography>{t('Advanced')}</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <MaxContextMessageCountSlider
+            value={toBeRemoved_getContextMessageCount(
+              settingsEdit.openaiMaxContextMessageCount,
+              settingsEdit.maxContextMessageCount
+            )}
+            onChange={(v) => setSettingsEdit({ ...settingsEdit, maxContextMessageCount: v })}
+          />
+          <TemperatureSlider
+            value={settingsEdit.temperature}
+            onChange={(v) => setSettingsEdit({ ...settingsEdit, temperature: v })}
+          />
+        </AccordionDetails>
+      </Accordion>
+    </Stack>
+  )
 }

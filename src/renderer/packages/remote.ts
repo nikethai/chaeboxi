@@ -328,19 +328,20 @@ export async function parseUserLinkFree(params: { url: string }) {
   return json
 }
 
-export async function webBrowsing(params: { licenseKey: string; messages: Message[] }) {
+export async function webBrowsing(params: { licenseKey: string; query: string }) {
   type Response = {
     data: {
       uuid?: string
-      query: string[]
+      query: string
       links: {
         title: string
         url: string
+        content: string
       }[]
     }
   }
   const res = await afetch(
-    `${API_ORIGIN}/api/web-browsing/search`,
+    `${API_ORIGIN}/api/tool/web-search`,
     {
       method: 'POST',
       headers: {

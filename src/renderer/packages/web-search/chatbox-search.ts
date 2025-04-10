@@ -13,19 +13,14 @@ export class ChatboxSearch extends WebSearch {
     if (this.licenseKey) {
       const res = await webBrowsing({
         licenseKey: this.licenseKey,
-        messages: [
-          {
-            role: 'user',
-            content: query,
-          },
-        ],
+        query,
       })
 
       return {
         items: res.links.map((link) => ({
           title: link.title,
           link: link.url,
-          abstract: link.title,
+          abstract: link.content,
         })),
       }
     } else {

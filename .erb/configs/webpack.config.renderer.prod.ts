@@ -16,7 +16,6 @@ import checkNodeEnv from '../scripts/check-node-env'
 import deleteSourceMaps from '../scripts/delete-source-maps'
 import JavaScriptObfuscator from 'webpack-obfuscator'
 import { TanStackRouterWebpack } from '@tanstack/router-plugin/webpack'
-import { sentryWebpackPlugin } from '@sentry/webpack-plugin'
 
 checkNodeEnv('production')
 
@@ -176,12 +175,6 @@ const configuration: webpack.Configuration = {
       // domainLock: ['localhost', ".chatboxai.app", ".chatboxai.com", ".chatboxapp.xyz", "chatbox-pro.pages.dev"],
       // domainLockRedirectUrl: 'https://chatboxai.app',
       sourceMap: enableSourceMap,
-    }),
-    sentryWebpackPlugin({
-      authToken: process.env.SENTRY_AUTH_TOKEN,
-      org: 'sentry',
-      project: 'chatbox',
-      url: 'https://sentry.midway.run/',
     }),
   ],
 }

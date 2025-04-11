@@ -172,7 +172,6 @@
     "@mui/material": "^5.11.11",
     "@radix-ui/react-dialog": "^1.0.5",
     "@sentry/react": "^7.73.0",
-    "@sentry/webpack-plugin": "^3.2.4",
     "@tanstack/react-router": "^1.114.23",
     "@tanstack/router-devtools": "^1.114.23",
     "@testing-library/jest-dom": "^5.16.5",

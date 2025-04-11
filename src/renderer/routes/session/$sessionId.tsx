@@ -19,14 +19,6 @@ function RouteComponent() {
   const navigate = useNavigate()
   const { sessionId: currentSessionId } = Route.useParams()
   const currentSession = useAtomValue(atoms.currentSessionAtom)
-  const disableSubmit = useMemo(() => {
-    if (currentSession?.messages.length) {
-      if (currentSession.messages[currentSession.messages.length - 1].generating) {
-        return true
-      }
-    }
-    return false
-  }, [currentSession])
 
   useEffect(() => {
     setTimeout(() => {
@@ -56,7 +48,7 @@ function RouteComponent() {
       <MessageList key={currentSessionId} currentSession={currentSession} />
 
       <ScrollButtons />
-      <InputBox disableSubmit={disableSubmit} />
+      <InputBox />
       <ThreadHistoryDrawer />
     </div>
   ) : null

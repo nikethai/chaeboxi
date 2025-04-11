@@ -151,7 +151,7 @@ export default function MessageErrTips(props: { msg: Message }) {
     )
   }
   return (
-    <Alert icon={false} severity="error">
+    <Alert icon={false} severity="error" className="message-error-tips">
       {tips.map((tip, i) => (
         <b key={i}>{tip}</b>
       ))}

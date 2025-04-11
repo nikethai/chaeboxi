@@ -9,7 +9,7 @@ import * as sessionActions from '../stores/sessionActions'
 import * as dom from '../hooks/dom'
 import { Keys } from './Shortcut'
 import { useInputBoxHeight, useIsSmallScreen } from '@/hooks/useScreenChange'
-import { Image, FolderClosed, Link, Undo2, SendHorizontal, Eraser, Settings2, Globe } from 'lucide-react'
+import { Image, FolderClosed, Link, Undo2, SendHorizontal, Eraser, Settings2, Globe, CircleStop } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { scrollToMessage } from '@/stores/scrollActions'
 import icon from '../static/icon.png'
@@ -26,8 +26,9 @@ import * as picUtils from '@/packages/pic_utils'
 import NiceModal from '@ebay/nice-modal-react'
 import { getMessageText } from '@/utils/message'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
+import StopIcon from '@mui/icons-material/Stop'
 
-export default function InputBox(props: { disableSubmit?: boolean }) {
+export default function InputBox() {
   const theme = useTheme()
   const [quote, setQuote] = useAtom(atoms.quoteAtom)
   const currentSessionId = useAtomValue(atoms.currentSessionIdAtom)
@@ -68,8 +69,20 @@ export default function InputBox(props: { disableSubmit?: boolean }) {
     setWebBrowsingMode(false)
   }, [currentSessionId])
 
+  const currentSession = useAtomValue(atoms.currentSessionAtom)
+  const lastMessage = currentSession.messages.length
+    ? currentSession.messages[currentSession.messages.length - 1]
+    : null
+
+  const handleStop = () => {
+    if (lastMessage?.generating) {
+      lastMessage?.cancel?.()
+      sessionActions.modifyMessage(currentSession.id, { ...lastMessage, generating: false }, true)
+    }
+  }
+
   const handleSubmit = (needGenerating = true) => {
-    if (props.disableSubmit) {
+    if (lastMessage?.generating) {
       return
     }
     setPreviousMessageQuickInputMark('')
@@ -486,20 +499,20 @@ export default function InputBox(props: { disableSubmit?: boolean }) {
                         />
                     </MiniButton> */}
             <MiniButton
-              disabled={props.disableSubmit}
-              className="w-8 ml-2"
+              className="w-8 ml-2 rounded-full flex items-center justify-center"
               style={{
                 color: theme.palette.getContrastText(theme.palette.primary.main),
-                backgroundColor: props.disableSubmit
-                  ? theme.palette.grey[500]
-                  : currentSessionType === 'picture'
-                  ? theme.palette.secondary.main
-                  : theme.palette.primary.main,
+                backgroundColor:
+                  currentSessionType === 'picture' ? theme.palette.secondary.main : theme.palette.primary.main,
               }}
               tooltipPlacement="top"
-              onClick={() => handleSubmit()}
+              onClick={lastMessage?.generating ? handleStop : () => handleSubmit()}
             >
-              <SendHorizontal size="22" strokeWidth={1} />
+              {lastMessage?.generating ? (
+                <StopIcon className="!w-6 !h-6" />
+              ) : (
+                <SendHorizontal size="18" strokeWidth={1} className=" ml-0.5" />
+              )}
             </MiniButton>
           </div>
         </div>

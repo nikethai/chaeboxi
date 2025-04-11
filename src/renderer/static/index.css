@@ -68,6 +68,10 @@ html[data-theme='dark'] {
   a {
     color: #fff;
   }
+  /* 错误消息中的链接强制成蓝色 */
+  .message-error-tips a {
+    color: #2563eb !important;
+  }
 }
 
 html[data-theme='light'] {
@@ -115,6 +119,10 @@ html[data-theme='light'] {
 
   a {
     color: #333;
+  }
+  /* 错误消息中的链接强制成蓝色 */
+  .message-error-tips a {
+    color: #2563eb !important;
   }
 }
 

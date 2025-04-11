@@ -148,8 +148,8 @@ function _Message(props: Props) {
   }
 
   const handleStop = () => {
-    sessionActions.modifyMessage(props.sessionId, { ...msg, generating: false }, true)
     msg?.cancel?.()
+    sessionActions.modifyMessage(props.sessionId, { ...msg, generating: false }, true)
   }
 
   const handleRefresh = () => {

@@ -1,7 +1,7 @@
 import { ModelSettings, Session, SessionType, Settings } from 'src/shared/types'
 import { ModelSettingUtil } from './interface'
 import BaseConfig from './base-config'
-import XAI from '../models/xai'
+import XAI, { xAIModels } from '../models/xai'
 
 export default class XAISettingUtil extends BaseConfig implements ModelSettingUtil {
   async getCurrentModelDisplayName(settings: Settings, sessionType: SessionType): Promise<string> {
@@ -13,7 +13,16 @@ export default class XAISettingUtil extends BaseConfig implements ModelSettingUt
   }
 
   public getLocalOptionGroups(settings: ModelSettings) {
-    return []
+    return [
+      {
+        options: xAIModels.map((value) => {
+          return {
+            label: value,
+            value: value,
+          }
+        }),
+      },
+    ]
   }
 
   protected async listProviderModels(settings: ModelSettings) {

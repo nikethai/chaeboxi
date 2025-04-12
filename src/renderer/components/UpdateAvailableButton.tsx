@@ -37,7 +37,7 @@ const UpdateAvailableButton = (props: any) => {
   return (
     <YellowBorderButton onClick={handleUpdateInstall} type="button" variant="outlined" {...props}>
       <RefreshIcon />
-      <span className="w-16 whitespace-nowrap">{t('Update Available')}</span>
+      <span className="ml-1 min-w-16 whitespace-nowrap">{t('Update Available')}</span>
     </YellowBorderButton>
   )
 }

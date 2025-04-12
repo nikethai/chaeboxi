@@ -36,6 +36,9 @@ export default class WebPlatform implements Platform {
   public onWindowShow(callback: () => void): () => void {
     return () => null
   }
+  public onUpdateDownloaded(callback: () => void): () => void {
+    return () => null
+  }
   public async openLink(url: string): Promise<void> {
     window.open(url)
   }
@@ -174,5 +177,9 @@ export default class WebPlatform implements Platform {
 
   public async setFullscreen(enabled: boolean): Promise<void> {
     return
+  }
+  
+  installUpdate(): Promise<void> {
+    throw new Error('Method not implemented.')
   }
 }

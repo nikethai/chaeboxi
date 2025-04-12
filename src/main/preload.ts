@@ -34,6 +34,10 @@ const electronHandler: ElectronIPC = {
     ipcRenderer.on('window-show', callback)
     return () => ipcRenderer.off('window-show', callback)
   },
+  onUpdateDownloaded: (callback: () => void) => {
+    ipcRenderer.on('update-downloaded', callback)
+    return () => ipcRenderer.off('update-downloaded', callback)
+  },
 }
 
 contextBridge.exposeInMainWorld('electronAPI', electronHandler)

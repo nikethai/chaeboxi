@@ -9,7 +9,7 @@ import * as atoms from '../stores/atoms'
 import { useTranslation } from 'react-i18next'
 import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
 import StyledMenu from './StyledMenu'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MenuItem } from '@mui/material'
 import CleaningServicesIcon from '@mui/icons-material/CleaningServices'
 import WidthNormalIcon from '@mui/icons-material/WidthNormal'
@@ -19,6 +19,9 @@ import * as sessionActions from '@/stores/sessionActions'
 import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
 import NiceModal from '@ebay/nice-modal-react'
 import { removeSession } from '@/stores/session-store'
+import UpdateAvailableButton from './UpdateAvailableButton'
+import platform from '@/platform'
+
 /**
  * 顶部标题工具栏（右侧）
  * @returns
@@ -29,6 +32,7 @@ export default function Toolbar() {
   const isLargeScreen = useIsLargeScreen()
 
   const currentSession = useAtomValue(atoms.currentSessionAtom)
+  const [showUpdateNotification, setShowUpdateNotification] = useState(false)
 
   const setOpenSearchDialog = useSetAtom(atoms.openSearchDialogAtom)
   const setThreadHistoryDrawerOpen = useSetAtom(atoms.showThreadHistoryDrawerAtom)
@@ -36,6 +40,15 @@ export default function Toolbar() {
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const open = Boolean(anchorEl)
+
+  useEffect(() => {
+    const offUpdateDownloaded = platform.onUpdateDownloaded(() => {
+      setShowUpdateNotification(true)
+    })
+    return () => {
+      offUpdateDownloaded()
+    }
+  }, [setShowUpdateNotification])
 
   const handleMoreMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation()
@@ -60,6 +73,7 @@ export default function Toolbar() {
 
   return (
     <Box>
+      {showUpdateNotification && <UpdateAvailableButton sx={{ mr: 2 }} />}
       {isSmallScreen ? (
         <IconButton
           edge="start"

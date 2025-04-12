@@ -14,6 +14,7 @@ export interface Platform {
   shouldUseDarkColors(): Promise<boolean>
   onSystemThemeChange(callback: () => void): () => void
   onWindowShow(callback: () => void): () => void
+  onUpdateDownloaded(callback: () => void): () => void
   openLink(url: string): Promise<void>
   getInstanceName(): Promise<string>
   getLocale(): Promise<Language>
@@ -57,6 +58,7 @@ export interface Platform {
 
   isFullscreen(): Promise<boolean>
   setFullscreen(enabled: boolean): Promise<void>
+  installUpdate(): Promise<void>
 }
 
 export interface Exporter {

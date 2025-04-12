@@ -234,12 +234,10 @@ function SidebarButtons(props: { sessionListRef: React.RefObject<HTMLDivElement>
           </IconButton>
         </ListItemIcon>
         <ListItemText>
-          <Badge color="primary" variant="dot" invisible={!versionHook.needCheckUpdate} sx={{ paddingRight: '8px' }}>
-            <Typography sx={{ opacity: 0.5 }}>
-              {t('About')}
-              {/\d/.test(versionHook.version) ? `(${versionHook.version})` : ''}
-            </Typography>
-          </Badge>
+          <Typography sx={{ opacity: 0.5 }}>
+            {t('About')}
+            {/\d/.test(versionHook.version) ? `(${versionHook.version})` : ''}
+          </Typography>
         </ListItemText>
       </MenuItem>
     </MenuList>

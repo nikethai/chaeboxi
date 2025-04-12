@@ -33,6 +33,9 @@ export default class DesktopPlatform implements Platform {
   public onWindowShow(callback: () => void): () => void {
     return this.ipc.onWindowShow(callback)
   }
+  public onUpdateDownloaded(callback: () => void): () => void {
+    return this.ipc.onUpdateDownloaded(callback)
+  }
   public async openLink(url: string): Promise<void> {
     return this.ipc.invoke('openLink', url)
   }
@@ -153,5 +156,9 @@ export default class DesktopPlatform implements Platform {
 
   public async setFullscreen(enabled: boolean) {
     return this.ipc.invoke('setFullscreen', enabled)
+  }
+
+  public async installUpdate() {
+    return this.ipc.invoke('install-update')
   }
 }

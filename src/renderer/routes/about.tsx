@@ -1,33 +1,27 @@
-import { createFileRoute } from '@tanstack/react-router'
-import {
-  Button,
-  Paper,
-  Badge,
-  Box,
-  Dialog,
-  DialogContent,
-  DialogActions,
-  DialogTitle,
-  useTheme,
-  Popover,
-  Alert,
-} from '@mui/material'
-import iconPNG from '../static/icon.png'
-import { useTranslation } from 'react-i18next'
-import platform from '../platform'
-import * as i18n from '../i18n'
-import useVersion from '../hooks/useVersion'
-import * as atoms from '../stores/atoms'
-import { useAtom, useAtomValue } from 'jotai'
-import Markdown from '@/components/Markdown'
 import LinkTargetBlank from '@/components/Link'
+import Markdown from '@/components/Markdown'
 import Page from '@/components/Page'
-import LogoX from '@/components/icons/LogoX'
 import LogoWechat from '@/components/icons/LogoWechat'
+import LogoX from '@/components/icons/LogoX'
 import LogoXHS from '@/components/icons/LogoXHS'
-import { MouseEvent, useState } from 'react'
 import IMG_WECHAT_QRCODE from '@/static/wechat_qrcode.png'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
+import {
+  Alert,
+  Box,
+  Button,
+  Popover,
+  useTheme
+} from '@mui/material'
+import { createFileRoute } from '@tanstack/react-router'
+import { useAtom, useAtomValue } from 'jotai'
+import { MouseEvent, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import useVersion from '../hooks/useVersion'
+import * as i18n from '../i18n'
+import platform from '../platform'
+import iconPNG from '../static/icon.png'
+import * as atoms from '../stores/atoms'
 
 export const Route = createFileRoute('/about')({
   component: About,
@@ -101,14 +95,12 @@ function About() {
           }}
           className="mt-1 mb-4"
         >
-          <Badge color="primary" variant="dot" invisible={!versionHook.needCheckUpdate} sx={{ margin: '4px' }}>
-            <Button
-              variant="outlined"
-              onClick={() => platform.openLink(`https://chatboxai.app/redirect_app/check_update/${language}`)}
+          <Button
+            variant="outlined"
+            onClick={() => platform.openLink(`https://chatboxai.app/redirect_app/check_update/${language}`)}
             >
               {t('Check Update')}
-            </Button>
-          </Badge>
+          </Button>
           <Button
             variant="outlined"
             sx={{ margin: '4px' }}

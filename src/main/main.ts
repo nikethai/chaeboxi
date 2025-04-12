@@ -546,3 +546,7 @@ ipcMain.handle('setFullscreen', (event, enable: boolean) => {
     mainWindow.hide()
   }
 })
+
+ipcMain.handle('install-update', () => {
+  autoUpdater.quitAndInstall()
+})

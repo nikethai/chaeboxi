@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/react'
 import platform from '../platform'
-import { CHATBOX_BUILD_TARGET, CHATBOX_BUILD_PLATFORM } from '@/variables'
+import { CHATBOX_BUILD_TARGET, CHATBOX_BUILD_PLATFORM, NODE_ENV } from '@/variables'
 ;(async () => {
   const settings = await platform.getSettings()
   if (!settings.allowReportingAndTracking) {
@@ -17,6 +17,7 @@ import { CHATBOX_BUILD_TARGET, CHATBOX_BUILD_PLATFORM } from '@/variables'
       }),
       new Sentry.Replay(),
     ],
+    environment: NODE_ENV,
     // Performance Monitoring
     sampleRate: 0.1,
     tracesSampleRate: 0.1, // Capture 100% of the transactions, reduce in production!

@@ -3,6 +3,8 @@ import * as settingActions from '@/stores/settingActions'
 import { saveImage } from '@/utils/image'
 import { cloneMessage, getMessageText, sequenceMessages } from '@/utils/message'
 import { GoogleGenerativeAIProviderMetadata } from '@ai-sdk/google'
+import * as Sentry from '@sentry/react'
+
 import {
   CoreMessage,
   CoreSystemMessage,
@@ -82,6 +84,14 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
           throw ChatboxAIAPIError.fromCodeName('model_not_support_image', 'model_not_support_image_2')
         }
       }
+
+      // 添加请求信息到 Sentry
+      Sentry.withScope((scope) => {
+        scope.setTag('provider_name', this.name)
+        scope.setExtra('messages', JSON.stringify(messages))
+        scope.setExtra('options', JSON.stringify(options))
+        Sentry.captureException(e)
+      })
       throw e
     }
   }

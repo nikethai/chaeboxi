@@ -841,7 +841,7 @@ export async function generateMoreInNewFork(sessionId: string, msgId: string) {
   await generateMore(sessionId, msgId)
 }
 
-export async function regenerateInNewFork(sessionId: string, msg: Message) {
+export async function regenerateInNewFork(sessionId: string, msg: Message, options?: { webBrowsing?: boolean }) {
   const messageList = getCurrentMessages()
   const messageIndex = messageList.findIndex((m) => m.id === msg.id)
   const previousMessageIndex = messageIndex - 1
@@ -852,7 +852,7 @@ export async function regenerateInNewFork(sessionId: string, msg: Message) {
   }
   const forkMessage = messageList[previousMessageIndex]
   await createNewFork(forkMessage.id)
-  return generateMore(sessionId, forkMessage.id, { webBrowsing: !!msg.webBrowsing })
+  return generateMore(sessionId, forkMessage.id, { webBrowsing: options?.webBrowsing })
 }
 
 async function _generateName(sessionId: string, modifyName: (sessionId: string, name: string) => void) {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo, MouseEventHandler } from 'react'
+import React, { useEffect, useState, useRef, useMemo, MouseEventHandler, memo, FC } from 'react'
 import Box from '@mui/material/Box'
 import Avatar from '@mui/material/Avatar'
 import MenuItem from '@mui/material/MenuItem'
@@ -34,6 +34,7 @@ import {
   autoPreviewArtifactsAtom,
   autoCollapseCodeBlockAtom,
   showFirstTokenLatencyAtom,
+  inputBoxWebBrowsingModeAtom,
 } from '../stores/atoms'
 import { currentSessionPicUrlAtom, showTokenUsedAtom } from '../stores/atoms'
 import * as sessionActions from '../stores/sessionActions'
@@ -67,7 +68,7 @@ import { getMessageText } from '@/utils/message'
 import { isEmpty } from 'lodash'
 import { ToolCallPartUI } from './message-parts/ToolCallPartUI'
 
-export interface Props {
+interface Props {
   id?: string
   sessionId: string
   sessionType: SessionType
@@ -79,7 +80,7 @@ export interface Props {
   preferCollapsedCodeBlock?: boolean
 }
 
-function _Message(props: Props) {
+const Message: FC<Props> = (props) => {
   const { msg, className, collapseThreshold, hiddenButtonGroup, small, preferCollapsedCodeBlock } = props
 
   const navigate = useNavigate()
@@ -104,6 +105,7 @@ function _Message(props: Props) {
   const widthFull = useAtomValue(widthFullAtom)
   const autoPreviewArtifacts = useAtomValue(autoPreviewArtifactsAtom)
   const autoCollapseCodeBlock = useAtomValue(autoCollapseCodeBlockAtom)
+  const webBrowsingMode = useAtomValue(inputBoxWebBrowsingModeAtom)
 
   const [previewArtifact, setPreviewArtifact] = useState(autoPreviewArtifacts)
   const contentLength = useMemo(() => {
@@ -154,7 +156,7 @@ function _Message(props: Props) {
 
   const handleRefresh = () => {
     handleStop()
-    sessionActions.regenerateInNewFork(props.sessionId, msg)
+    sessionActions.regenerateInNewFork(props.sessionId, msg, { webBrowsing: webBrowsingMode })
     // sessionActions.generate(props.sessionId, msg)
   }
 
@@ -794,8 +796,4 @@ function _Message(props: Props) {
   )
 }
 
-export default function Message(props: Props) {
-  return useMemo(() => {
-    return <_Message {...props} />
-  }, [props.msg])
-}
+export default memo(Message)

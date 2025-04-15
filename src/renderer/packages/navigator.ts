@@ -35,7 +35,7 @@ export const getBrowser = (): 'Opera' | 'Chrome' | 'Firefox' | 'Safari' | 'IE' |
   if (ua.indexOf('Trident') > -1) {
     return 'IE'
   }
-  if (ua.indexOf('Edge' || 'Chrome') > -1) {
+  if (ua.indexOf('Edge') > -1) {
     return 'Edge'
   }
   return 'Unknown'

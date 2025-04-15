@@ -1,4 +1,13 @@
 const changelog = `
+### v1.11.10 - 2025.04.15
+
+1. Improved update checking experience
+2. Fixed auto update downgrade issue
+3. Fixed model vision ability check issue
+4. Fixed issue where new session was not selected after creating from a copilot
+5. Submit button changed to be stop button when generating message
+6. Improved error message display for API errors
+
 ### v1.11.8 - 2025.04.05
 
 1. Fixed an issue with custom Gemini API host

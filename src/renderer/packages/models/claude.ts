@@ -55,8 +55,12 @@ export default class Claude extends AbstractAISDKModel {
   }
 
   protected getChatModel() {
+    let host = this.options.claudeApiHost
+    if (host === 'https://api.anthropic.com') {
+      host = `${host}/v1`
+    }
     const provider = createAnthropic({
-      baseURL: this.options.claudeApiHost,
+      baseURL: host,
       apiKey: this.options.claudeApiKey,
       headers: {
         'anthropic-dangerous-direct-browser-access': 'true',

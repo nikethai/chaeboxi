@@ -32,7 +32,7 @@ export function settings(): Settings {
     // maxTokens: "2048",
 
     claudeApiKey: '',
-    claudeApiHost: 'https://api.anthropic.com',
+    claudeApiHost: 'https://api.anthropic.com/v1',
     claudeModel: 'claude-3-5-sonnet-20241022',
 
     chatboxAIModel: 'chatboxai-3.5',

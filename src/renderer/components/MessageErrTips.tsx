@@ -20,6 +20,17 @@ export default function MessageErrTips(props: { msg: Message }) {
   if (!msg.error) {
     return null
   }
+  const errorMessage = msg.errorExtra?.responseBody
+    ? (() => {
+        try {
+          const json = JSON.parse(msg.errorExtra.responseBody)
+          return JSON.stringify(json, null, 2)
+        } catch (e) {
+          return msg.errorExtra.responseBody
+        }
+      })()
+    : msg.error
+
   const tips: React.ReactNode[] = []
   let onlyShowTips = false // 是否只显示提示，不显示错误信息详情
   if (msg.error.startsWith('API Error')) {
@@ -161,7 +172,7 @@ export default function MessageErrTips(props: { msg: Message }) {
         <>
           <br />
           <br />
-          {msg.error}
+          <div className="text-sm whitespace-pre-wrap p-2 rounded-md bg-red-50 dark:bg-red-900/20">{errorMessage}</div>
         </>
       )}
     </Alert>

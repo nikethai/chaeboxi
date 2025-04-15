@@ -10,7 +10,7 @@ export async function afetch(
     parseChatboxRemoteError?: boolean
   } = {}
 ) {
-  let requestError: ApiError | NetworkError | null = null
+  let requestError: BaseError | null = null
   const retry = options.retry || 0
   for (let i = 0; i < retry + 1; i++) {
     try {

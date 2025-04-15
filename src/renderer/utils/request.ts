@@ -41,7 +41,7 @@ async function doRequest(
     url = 'https://cors-proxy.chatboxai.app/proxy-api/completions'
   }
 
-  let requestError: ApiError | NetworkError | null = null
+  let requestError: BaseError | null = null
   for (let i = 0; i < retry + 1; i++) {
     try {
       const res = await fetch(url, { method, headers, body, signal })

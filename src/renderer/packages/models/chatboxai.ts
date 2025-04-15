@@ -166,7 +166,7 @@ export default class ChatboxAI extends Base {
     }
   ) {
     const { signal, retry = 3, useProxy = false } = options || {}
-    let requestError: ApiError | NetworkError | null = null
+    let requestError: BaseError | null = null
     for (let i = 0; i < retry + 1; i++) {
       try {
         const res = await fetch(url, {
@@ -213,7 +213,7 @@ export default class ChatboxAI extends Base {
     }
   ) {
     const { signal, retry = 3 } = options || {}
-    let requestError: ApiError | NetworkError | null = null
+    let requestError: BaseError | null = null
     for (let i = 0; i < retry + 1; i++) {
       try {
         const res = await fetch(url, {

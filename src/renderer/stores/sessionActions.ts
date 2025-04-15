@@ -819,6 +819,7 @@ export async function generate(sessionId: string, targetMsg: Message, options?: 
       errorExtra: {
         aiProvider: settings.aiProvider,
         host: err['host'],
+        responseBody: err.responseBody,
       },
       status: [],
     }

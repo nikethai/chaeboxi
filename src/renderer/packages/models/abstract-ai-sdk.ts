@@ -6,6 +6,7 @@ import { GoogleGenerativeAIProviderMetadata } from '@ai-sdk/google'
 import * as Sentry from '@sentry/react'
 
 import {
+  APICallError,
   CoreMessage,
   CoreSystemMessage,
   FilePart,
@@ -177,6 +178,10 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
           contentParts.push(image)
         }
       } else if (chunk.type === 'error') {
+        const error = chunk.error
+        if (APICallError.isInstance(error)) {
+          throw new ApiError(`Error from ${this.name}`, error.responseBody)
+        }
         throw new ApiError(`Error from ${this.name}: ${chunk.error}`)
       } else {
         continue

@@ -1,15 +1,23 @@
 import * as promptFormat from '@/packages/prompts'
 import * as settingActions from '@/stores/settingActions'
+import { getMessageText, sequenceMessages } from '@/utils/message'
+import { tool } from 'ai'
 import { last } from 'lodash'
+import { Message } from 'src/shared/types'
+import { z } from 'zod'
 import { ModelInterface } from '../models/types'
 import { webSearchExecutor } from '../web-search'
-import { sequenceMessages, getMessageText } from '@/utils/message'
-import { Message } from 'src/shared/types'
-export async function callTool(name: string, args: any, { signal }: { signal?: AbortSignal }) {
-  if (name === 'web_search') {
-    return webSearchExecutor(args, { abortSignal: signal })
-  }
-}
+
+export const webSearchTool = tool({
+  description:
+    'a search engine. useful for when you need to answer questions about current events. input should be a search query. prefer English query. query should be short and concise',
+  parameters: z.object({
+    query: z.string().describe('the search query'),
+  }),
+  execute: async (args, { abortSignal }) => {
+    return webSearchExecutor({ query: args.query }, { abortSignal })
+  },
+})
 
 export async function searchByPromptEngineering(model: ModelInterface, messages: Message[], signal?: AbortSignal) {
   const language = settingActions.getLanguage()
@@ -39,7 +47,7 @@ export async function searchByPromptEngineering(model: ModelInterface, messages:
       }
       if (jsonObject.action === 'search') {
         const { searchResults } = await webSearchExecutor({ query: jsonObject.query }, { abortSignal: signal })
-        return { query: jsonObject.query?.toString(), searchResults }
+        return { query: jsonObject.query, searchResults }
       }
     }
   }

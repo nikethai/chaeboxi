@@ -1,4 +1,3 @@
-import { ofetch } from 'ofetch'
 import WebSearch, { SearchResult } from './base'
 
 export class BingNewsSearch extends WebSearch {
@@ -27,8 +26,8 @@ export class BingNewsSearch extends WebSearch {
         const link = nodeA.getAttribute('href')!
         const title = nodeA.textContent || ''
         const nodeAbstract = node.querySelector('.snippet')
-        const abstract = nodeAbstract?.textContent || ''
-        return { title, link, abstract }
+        const snippet = nodeAbstract?.textContent || ''
+        return { title, link, snippet }
       })
   }
 }

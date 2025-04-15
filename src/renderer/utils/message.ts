@@ -1,7 +1,8 @@
 import { countWord } from '@/packages/word-count'
-import { assign, cloneDeep, isEmpty } from 'lodash'
+import { assign, cloneDeep, omit } from 'lodash'
 import type { Message, MessageContentParts, MessagePicture } from 'src/shared/types'
 import i18n from '../i18n'
+import { type SearchResultItem } from '@/packages/web-search'
 
 export function getMessageText(message: Message, includeImagePlaceHolder = true): string {
   if (message.contentParts && message.contentParts.length > 0) {
@@ -21,7 +22,7 @@ export function getMessageText(message: Message, includeImagePlaceHolder = true)
   return ''
 }
 
-// 只有这里可以访问 message 的 content 字段，迁移到 contentParts 字段
+// 只有这里可以访问 message 的 content / webBrowsing 字段，迁移到 contentParts 字段
 export function migrateMessage(
   message: Omit<Message, 'contentParts'> & { contentParts?: MessageContentParts }
 ): Message {
@@ -30,9 +31,8 @@ export function migrateMessage(
     role: message.role || 'user',
     contentParts: message.contentParts || [],
   }
-  // assign(result, omit(message, 'content'))
-  // 还是保留原始 content 字段
-  assign(result, message)
+  // 还是保留原始content字段，删除webBrowsing字段
+  assign(result, omit(message, 'webBrowsing'))
 
   // 如果 contentParts 不存在，或者 contentParts 为空，或者 contentParts 的内容为 '...'(placeholder)，则使用 content 的值
   if (
@@ -44,6 +44,31 @@ export function migrateMessage(
       .map((pic) => ({ type: 'image' as const, storageKey: pic.storageKey!, url: pic.url }))
     result.contentParts = [{ type: 'text', text: String(message.content ?? '') }, ...(imageParts || [])]
   }
+
+  if ('webBrowsing' in message) {
+    const webBrowsing = message.webBrowsing as {
+      query: string[]
+      links: { title: string; url: string }[]
+    }
+    result.contentParts.unshift({
+      type: 'tool-call',
+      state: 'result',
+      toolCallId: `web_search_${message.id}`,
+      toolName: 'web_search',
+      args: {
+        query: webBrowsing.query.join(', '),
+      },
+      result: {
+        query: webBrowsing.query.join(', '),
+        searchResults: webBrowsing.links.map((link) => ({
+          title: link.title,
+          link: link.url,
+          snippet: link.title,
+        })) satisfies SearchResultItem[],
+      },
+    })
+  }
+
   return result
 }
 
@@ -52,7 +77,7 @@ export function cloneMessage(message: Message): Message {
 }
 
 export function isEmptyMessage(message: Message): boolean {
-  return getMessageText(message).length === 0 && isEmpty(message.toolCalls)
+  return getMessageText(message).length === 0
 }
 
 export function countMessageWords(message: Message): number {

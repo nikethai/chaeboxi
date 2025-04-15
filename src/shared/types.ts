@@ -27,25 +27,6 @@ export interface MessagePicture {
   loading?: boolean
 }
 
-export interface MessageWebBrowsing {
-  chatboxAIWebBrowsingUUID?: string
-  query: string[]
-  links: {
-    title: string
-    url: string
-  }[]
-}
-
-export type MessageToolCalls = { [key: string]: MessageToolCall }
-
-export type MessageToolCall = {
-  id: string
-  function: {
-    name: string
-    arguments: string
-  }
-}
-
 export const MessageRoleEnum = {
   System: 'system',
   User: 'user',
@@ -57,13 +38,22 @@ export type MessageRole = (typeof MessageRoleEnum)[keyof typeof MessageRoleEnum]
 
 export type MessageTextPart = { type: 'text'; text: string }
 export type MessageImagePart = { type: 'image'; storageKey: string }
-export type MessageToolCallPart = { type: 'tool-call'; toolCallId: string; toolName: string; args: unknown }
+export type MessageToolCallPart<Args = unknown, Result = unknown> = {
+  type: 'tool-call'
+  state: 'call' | 'result'
+  toolCallId: string
+  toolName: string
+  args: Args
+  result?: Result
+}
+
 export type MessageContentParts = (MessageTextPart | MessageImagePart | MessageToolCallPart)[]
 export type StreamTextResult = {
   contentParts: MessageContentParts
   reasoningContent?: string
   usage?: LanguageModelUsage
 }
+
 // Chatbox 应用的消息类型
 export interface Message {
   id: string // 当role为tool时，id为toolCallId
@@ -84,10 +74,11 @@ export interface Message {
 
   files?: MessageFile[] // chatboxai 专用
   links?: MessageLink[] // chatboxai 专用
-  webBrowsing?: MessageWebBrowsing // chatboxai 专用
+
+  // webBrowsing?: MessageWebBrowsing // chatboxai 专用, （已废弃）
+  // toolCalls?: MessageToolCalls // 已废弃，使用contentParts代替
 
   reasoningContent?: string
-  toolCalls?: MessageToolCalls
   contentParts: MessageContentParts
 
   errorCode?: number
@@ -103,9 +94,6 @@ export interface Message {
     | {
         type: 'loading_webpage'
         mode?: 'local' | 'advanced'
-      }
-    | {
-        type: 'web_browsing'
       }
   )[]
 

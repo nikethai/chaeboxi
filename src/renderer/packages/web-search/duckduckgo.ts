@@ -1,4 +1,3 @@
-import { ofetch } from 'ofetch'
 import WebSearch, { SearchResult } from './base'
 
 export class DuckDuckGoSearch extends WebSearch {
@@ -28,8 +27,8 @@ export class DuckDuckGoSearch extends WebSearch {
         const link = nodeA.getAttribute('href')!
         const title = nodeA.textContent || ''
         const nodeAbstract = node.querySelector('.result__snippet')
-        const abstract = nodeAbstract?.textContent || ''
-        return { title, link, abstract }
+        const snippet = nodeAbstract?.textContent || ''
+        return { title, link, snippet }
       })
   }
 }

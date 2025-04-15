@@ -29,7 +29,7 @@ export class TavilySearch extends WebSearch {
       const items = (response.results || []).map((result: any) => ({
         title: result.title,
         link: result.url,
-        abstract: result.content,
+        snippet: result.content,
       }))
 
       return { items }

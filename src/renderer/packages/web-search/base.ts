@@ -4,8 +4,8 @@ import { FetchOptions, ofetch } from 'ofetch'
 
 export interface SearchResultItem {
   title: string
-  abstract: string
   link: string
+  snippet: string
 }
 
 export interface SearchResult {

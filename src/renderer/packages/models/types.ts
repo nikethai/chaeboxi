@@ -1,5 +1,5 @@
-import { Message, MessageContentParts, MessageToolCalls, MessageWebBrowsing } from 'src/shared/types'
-import { StreamTextResult } from 'src/shared/types'
+import { ToolSet } from 'ai'
+import { Message, MessageContentParts, StreamTextResult } from 'src/shared/types'
 
 export interface ModelHelpers {
   isModelSupportVision(model: string): boolean
@@ -14,16 +14,16 @@ export interface ModelInterface {
   paint: (prompt: string, num: number, callback?: (picBase64: string) => any, signal?: AbortSignal) => Promise<string[]>
 }
 
-export interface CallChatCompletionOptions {
+export interface CallChatCompletionOptions<Tools extends ToolSet = ToolSet> {
   signal?: AbortSignal
   onResultChange?: onResultChange
-  webBrowsing?: boolean
+  tools?: Tools
 }
 
 export interface ResultChange {
-  webBrowsing?: MessageWebBrowsing
+  // webBrowsing?: MessageWebBrowsing
   reasoningContent?: string
-  toolCalls?: MessageToolCalls
+  // toolCalls?: MessageToolCalls
   contentParts?: MessageContentParts
   tokenCount?: number // 当前消息的 token 数量
   tokensUsed?: number // 生成当前消息的 token 使用量

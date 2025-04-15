@@ -699,9 +699,6 @@ export async function generate(sessionId: string, targetMsg: Message, options?: 
     status: [],
     firstTokenLatency: undefined,
   }
-  if (options?.webBrowsing) {
-    targetMsg.status?.push({ type: 'web_browsing' })
-  }
 
   modifyMessage(sessionId, targetMsg)
   setTimeout(() => {

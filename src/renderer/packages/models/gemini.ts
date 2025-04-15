@@ -88,7 +88,6 @@ export default class Gemeni extends AbstractAISDKModel {
     })
 
     return provider.chat(this.options.geminiModel, {
-      useSearchGrounding: options.webBrowsing,
       structuredOutputs: false,
       safetySettings: [
         { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },

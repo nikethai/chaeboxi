@@ -81,24 +81,10 @@ function MessageStatus(props: { status: NonNullable<Message['status']>[number] }
       </div>
     )
   }
-  if (status.type === 'web_browsing') {
-    return (
-      <div>
-        <LoadingBubble>
-          <span className="flex flex-col">
-            <span>{t('Web Browsing...')}</span>
-            <span className="text-[10px] opacity-70 font-normal">
-              {t('Browsing and retrieving information from the internet.')}
-            </span>
-          </span>
-        </LoadingBubble>
-      </div>
-    )
-  }
   return null
 }
 
-function LoadingBubble(props: { children: React.ReactNode }) {
+export function LoadingBubble(props: { children: React.ReactNode }) {
   const { children } = props
   return (
     <div className="flex flex-row items-start justify-start overflow-x-auto overflow-y-hidden">

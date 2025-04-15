@@ -72,7 +72,7 @@ To achieve this, you must first analyze the user's latest input and determine th
 2. "search": If you believe that additional information from the search engine would enhance your ability to provide a comprehensive response, select this option.
 
 JSON schema:
-{"type":"object","properties":{"action":{"type":"string","enum":["search","proceed"]},"query":{"type":"string","description":"The search queries to look up on the web, at least one, up to 10, choose wisely based on the user's question in ${language}"}},"required":["action"],"additionalProperties":true,"$schema":"http://json-schema.org/draft-07/schema#"}
+{"type":"object","properties":{"action":{"type":"string","enum":["search","proceed"]},"query":{"type":"string","description":"The search queries to look up on the web, choose wisely based on the user's question in ${language}"}},"required":["action"],"additionalProperties":true,"$schema":"http://json-schema.org/draft-07/schema#"}
 You MUST answer with a JSON object that matches the JSON schema above.
 `.trim()
 }

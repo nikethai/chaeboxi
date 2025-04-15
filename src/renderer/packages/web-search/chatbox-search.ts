@@ -20,7 +20,7 @@ export class ChatboxSearch extends WebSearch {
         items: res.links.map((link) => ({
           title: link.title,
           link: link.url,
-          abstract: link.content,
+          snippet: link.content,
         })),
       }
     } else {

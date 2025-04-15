@@ -87,31 +87,12 @@ async function _searchRelatedResults(query: string, signal?: AbortSignal) {
 
   return items.map((item) => ({
     title: item.title,
-    snippet: truncate(item.abstract, { length: 150 }),
+    snippet: truncate(item.snippet, { length: 150 }),
     link: item.link,
   }))
 }
 
 const cache = new Map()
-
-export const webSearchTool = {
-  type: 'function',
-  function: {
-    name: 'web_search',
-    description:
-      'a search engine. useful for when you need to answer questions about current events. input should be a search query. prefer English query. query should be short and concise',
-    parameters: {
-      type: 'object',
-      properties: {
-        query: {
-          type: 'string',
-          description: 'the search query',
-        },
-      },
-      required: ['query'],
-    },
-  },
-}
 
 export const webSearchExecutor = async (
   { query }: { query: string },

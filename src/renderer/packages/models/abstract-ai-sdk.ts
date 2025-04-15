@@ -2,51 +2,39 @@ import storage from '@/storage'
 import * as settingActions from '@/stores/settingActions'
 import { saveImage } from '@/utils/image'
 import { cloneMessage, getMessageText, sequenceMessages } from '@/utils/message'
-import { GoogleGenerativeAIProviderMetadata } from '@ai-sdk/google'
 import * as Sentry from '@sentry/react'
 
 import {
   APICallError,
   CoreMessage,
   CoreSystemMessage,
-  FilePart,
   experimental_generateImage as generateImage,
+  FilePart,
   ImageModel,
   ImagePart,
-  jsonSchema,
   LanguageModelV1,
   streamText,
   TextPart,
-  tool,
-  ToolCallPart,
   ToolSet,
 } from 'ai'
 import dayjs from 'dayjs'
-import { compact, isEmpty } from 'lodash'
+import { compact } from 'lodash'
 import {
   Message,
   MessageContentParts,
   MessageImagePart,
   MessageTextPart,
-  MessageToolCalls,
-  MessageWebBrowsing,
+  MessageToolCallPart,
   StreamTextResult,
 } from 'src/shared/types'
-import { webSearchTool as rawWebSearchTool } from '../web-search'
-import { CallChatCompletionOptions, ModelInterface } from './types'
 import { ApiError, ChatboxAIAPIError } from './errors'
-
-const webSearchTool = tool({
-  description: rawWebSearchTool.function.description,
-  parameters: jsonSchema(rawWebSearchTool.function.parameters as any),
-})
+import { CallChatCompletionOptions, ModelInterface } from './types'
 
 // ai sdk CallSettings类型的子集
 export interface CallSettings {
   temperature?: number
   topP?: number
   providerOptions?: CoreSystemMessage['providerOptions']
-  tools?: ToolSet
 }
 
 export default abstract class AbstractAISDKModel implements ModelInterface {
@@ -120,9 +108,9 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     return dataUrls
   }
 
-  private async _callChatCompletion(
+  private async _callChatCompletion<T extends ToolSet>(
     rawMessages: Message[],
-    options: CallChatCompletionOptions
+    options: CallChatCompletionOptions<T>
   ): Promise<StreamTextResult> {
     const model = this.getChatModel(options)
 
@@ -135,48 +123,51 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
 
     const messages = sequenceMessages(rawMessages)
     const coreMessages = await convertToCoreMessages(messages)
+
     const result = streamText({
       model,
-      maxSteps: 1,
       messages: coreMessages,
-      tools: options?.webBrowsing ? { web_search: webSearchTool } : undefined,
+      maxSteps: Number.MAX_SAFE_INTEGER,
+      tools: options.tools,
       abortSignal: options.signal,
       ...this.getCallSettings(options),
     })
 
-    let blockIndex = 0
     let contentParts: MessageContentParts = []
+    let currentTextPart: MessageTextPart | undefined = undefined
     let reasoningContent = ''
-    const toolCalls: MessageToolCalls = {}
 
     for await (const chunk of result.fullStream) {
       console.debug('stream chunk', chunk)
       if (chunk.type === 'text-delta') {
-        if (!contentParts[blockIndex]) {
-          contentParts[blockIndex] = { type: 'text', text: '' }
-        } else if (contentParts[blockIndex].type === 'image') {
-          contentParts[++blockIndex] = { type: 'text', text: '' }
+        if (!currentTextPart) {
+          currentTextPart = { type: 'text', text: '' }
+          contentParts.push(currentTextPart)
         }
-
-        ;(contentParts[blockIndex] as MessageTextPart).text += chunk.textDelta
+        currentTextPart.text += chunk.textDelta
       } else if (chunk.type === 'reasoning') {
         reasoningContent += chunk.textDelta
       } else if (chunk.type === 'tool-call') {
-        toolCalls[chunk.toolCallId] = {
-          id: chunk.toolCallId,
-          function: {
-            name: chunk.toolName,
-            arguments: JSON.stringify(chunk.args),
-          },
+        currentTextPart = undefined
+        contentParts.push({
+          type: 'tool-call',
+          state: 'call',
+          toolCallId: chunk.toolCallId,
+          toolName: chunk.toolName,
+          args: chunk.args,
+        })
+      } else if (chunk.type === 'tool-result') {
+        const part = contentParts.find((p) => p.type === 'tool-call' && p.toolCallId === chunk.toolCallId) as
+          | MessageToolCallPart
+          | undefined
+        if (part) {
+          part.state = 'result'
+          part.result = chunk.result
         }
       } else if (chunk.type === 'file' && chunk.mimeType.startsWith('image/')) {
+        currentTextPart = undefined
         const storageKey = await saveImage('response', `data:${chunk.mimeType};base64,${chunk.base64}`)
-        let image = { type: 'image', storageKey } as MessageImagePart
-        if (blockIndex < contentParts.length) {
-          contentParts[++blockIndex] = image
-        } else {
-          contentParts.push(image)
-        }
+        contentParts.push({ type: 'image', storageKey })
       } else if (chunk.type === 'error') {
         const error = chunk.error
         if (APICallError.isInstance(error)) {
@@ -186,31 +177,13 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       } else {
         continue
       }
-      options.onResultChange?.({ reasoningContent, toolCalls, contentParts })
+      options.onResultChange?.({ reasoningContent, contentParts })
     }
 
-    const [sources, usage, providerMetadata] = await Promise.all([
-      result.sources, // Known to be returned by Perplexity and Gemini, others may follow
-      result.usage,
-      result.providerMetadata,
-    ])
-    const metadata = providerMetadata?.google as GoogleGenerativeAIProviderMetadata | undefined
-    const groundingMetadata = metadata?.groundingMetadata
-    let webBrowsing: MessageWebBrowsing | undefined
-    if (sources && sources.length > 0) {
-      webBrowsing = {
-        query: groundingMetadata?.webSearchQueries || [],
-        links: sources.map((source) => ({
-          title: source.title || source.url,
-          url: source.url,
-        })),
-      }
-    }
+    const usage = await result.usage
     options.onResultChange?.({
       contentParts,
       reasoningContent,
-      toolCalls,
-      webBrowsing,
       tokenCount: usage?.completionTokens,
       tokensUsed: usage?.totalTokens,
     })
@@ -219,7 +192,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
   }
 }
 
-async function convertContentParts<T extends TextPart | ImagePart | FilePart | ToolCallPart>(
+async function convertContentParts<T extends TextPart | ImagePart | FilePart>(
   contentParts: MessageContentParts,
   imageType: 'image' | 'file'
 ): Promise<T[]> {
@@ -234,13 +207,6 @@ async function convertContentParts<T extends TextPart | ImagePart | FilePart | T
             type: imageType,
             ...(imageType === 'image' ? { image: imageData } : { data: imageData }),
             mimeType: 'image/png',
-          } as T
-        } else if (c.type === 'tool-call') {
-          return {
-            type: 'tool-call',
-            toolCallId: c.toolCallId,
-            toolName: c.toolName,
-            args: c.args,
           } as T
         }
         return null
@@ -258,52 +224,37 @@ async function convertAssistantContentParts(contentParts: MessageContentParts): 
 }
 
 async function convertToCoreMessages(messages: Message[]): Promise<CoreMessage[]> {
-  return Promise.all(
-    messages.map(async (m) => {
-      switch (m.role) {
-        case 'system':
-          return { role: 'system', content: getMessageText(m) }
-        case 'user': {
-          const contentParts = await convertUserContentParts(m.contentParts || [])
-          return {
-            role: 'user',
-            content: contentParts,
-          }
-        }
-        case 'assistant': {
-          const contentParts = m.contentParts || []
-          if (!isEmpty(m.toolCalls)) {
-            for (const toolCall of Object.values(m.toolCalls)) {
-              contentParts.push({
-                type: 'tool-call',
-                toolCallId: toolCall.id,
-                toolName: toolCall.function.name,
-                args: toolCall.function.arguments,
-              })
+  return compact(
+    await Promise.all(
+      messages.map(async (m) => {
+        switch (m.role) {
+          case 'system':
+            return {
+              role: 'system' as const,
+              content: getMessageText(m),
+            }
+          case 'user': {
+            const contentParts = await convertUserContentParts(m.contentParts || [])
+            return {
+              role: 'user' as const,
+              content: contentParts,
             }
           }
-          return {
-            role: 'assistant',
-            content: await convertAssistantContentParts(contentParts),
+          case 'assistant': {
+            const contentParts = m.contentParts || []
+            return {
+              role: 'assistant' as const,
+              content: await convertAssistantContentParts(contentParts),
+            }
           }
+          case 'tool':
+            return null
+          default:
+            const _exhaustiveCheck: never = m.role
+            throw new Error(`Unkown role: ${_exhaustiveCheck}`)
         }
-        case 'tool':
-          return {
-            role: 'tool',
-            content: [
-              {
-                type: 'tool-result',
-                toolCallId: m.id,
-                toolName: m.name!,
-                result: getMessageText(m),
-              },
-            ],
-          }
-        default:
-          const _exhaustiveCheck: never = m.role
-          throw new Error(`Unkown role: ${_exhaustiveCheck}`)
-      }
-    })
+      })
+    )
   )
 }
 

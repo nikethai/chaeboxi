@@ -1,6 +1,4 @@
-import { ofetch } from 'ofetch'
 import WebSearch, { SearchResult } from './base'
-import { CapacitorHttp } from '@capacitor/core'
 
 export class BingSearch extends WebSearch {
   async search(query: string, signal?: AbortSignal): Promise<SearchResult> {
@@ -29,8 +27,8 @@ export class BingSearch extends WebSearch {
         const link = nodeA.getAttribute('href')!
         const title = nodeA.textContent || ''
         const nodeAbstract = node.querySelector('p[class^="b_lineclamp"]')
-        const abstract = nodeAbstract?.textContent || ''
-        return { title, link, abstract }
+        const snippet = nodeAbstract?.textContent || ''
+        return { title, link, snippet }
       })
   }
 }

@@ -61,7 +61,7 @@ function Root() {
           return
         }
         // 是否需要弹出关于窗口（更新后首次启动）
-        // 目前仅在桌面版本更新后首次启动、且网络环境为“外网”的情况下才自动弹窗
+        // 目前仅在桌面版本更新后首次启动、且网络环境为"外网"的情况下才自动弹窗
         const shouldShowAboutDialogWhenStartUp = await platform.shouldShowAboutDialogWhenStartUp()
         if (shouldShowAboutDialogWhenStartUp && remoteConfig.setting_chatboxai_first) {
           setOpenAboutDialog(true)

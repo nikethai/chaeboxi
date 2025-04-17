@@ -1,10 +1,10 @@
 import { fetchWithProxy } from '@/utils/request'
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
+import { createOpenAICompatible, OpenAICompatibleImageModel } from '@ai-sdk/openai-compatible'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
 import AbstractAISDKModel from './abstract-ai-sdk'
-import { ModelHelpers } from './types'
 import { normalizeOpenAIApiHostAndPath } from './llm_utils'
 import { OpenAIModel, openaiModelConfigs } from './openai'
+import { ModelHelpers } from './types'
 
 const helpers: ModelHelpers = {
   isModelSupportVision: (model: string) => {
@@ -27,6 +27,8 @@ interface Options {
   topP?: number
 }
 
+type FetchFunction = typeof globalThis.fetch
+
 export default class CustomOpenAI extends AbstractAISDKModel {
   public name = 'Custom'
   public static helpers = helpers
@@ -45,15 +47,12 @@ export default class CustomOpenAI extends AbstractAISDKModel {
     }
   }
 
-  private getProvider() {
-    const fetcher = this.options.useProxy ? fetchWithProxy : fetch
+  private getProvider(fetchFunction?: FetchFunction) {
     return createOpenAICompatible({
       name: this.name,
       apiKey: this.options.apiKey,
       baseURL: this.options.apiHost,
-      fetch: async (_input, init) => {
-        return fetcher(`${this.options.apiHost}${this.options.apiPath}`, init)
-      },
+      fetch: fetchFunction,
       headers: this.options.apiHost.includes('openrouter.ai')
         ? {
             'HTTP-Referer': 'https://chatboxai.app',
@@ -64,10 +63,21 @@ export default class CustomOpenAI extends AbstractAISDKModel {
   }
 
   protected getChatModel() {
-    const provider = this.getProvider()
+    const fetcher = this.options.useProxy ? fetchWithProxy : fetch
+    const provider = this.getProvider(async (_input, init) => {
+      return fetcher(`${this.options.apiHost}${this.options.apiPath}`, init)
+    })
     return wrapLanguageModel({
       model: provider.chatModel(this.options.model),
       middleware: extractReasoningMiddleware({ tagName: 'think' }),
+    })
+  }
+
+  protected getImageModel() {
+    const fetcher = this.options.useProxy ? fetchWithProxy : fetch
+    const provider = this.getProvider(fetcher)
+    return provider.imageModel('dall-e-3', {
+      maxImagesPerCall: 1,
     })
   }
 

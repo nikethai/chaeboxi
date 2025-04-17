@@ -1,8 +1,9 @@
+import { apiRequest } from '@/utils/request'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { ChatboxAILicenseDetail, ChatboxAIModel } from 'src/shared/types'
 import * as remote from '../remote'
-import AbstractAISDKModel, { CallSettings } from './abstract-ai-sdk'
+import AbstractAISDKModel from './abstract-ai-sdk'
 import { CallChatCompletionOptions, ModelHelpers, ModelInterface } from './types'
 
 export const chatboxAIModels: ChatboxAIModel[] = ['chatboxai-3.5', 'chatboxai-4']
@@ -66,6 +67,49 @@ export default class ChatboxAI extends AbstractAISDKModel implements ModelInterf
       })
       return provider.languageModel(this.options.chatboxAIModel)
     }
+  }
+
+  public async paint(
+    prompt: string,
+    num: number,
+    callback?: (picBase64: string) => any,
+    signal?: AbortSignal
+  ): Promise<string[]> {
+    const concurrence: Promise<string>[] = []
+    for (let i = 0; i < num; i++) {
+      concurrence.push(
+        this.callImageGeneration(prompt, signal).then((picBase64) => {
+          if (callback) {
+            callback(picBase64)
+          }
+          return picBase64
+        })
+      )
+    }
+    return await Promise.all(concurrence)
+  }
+
+  private async callImageGeneration(prompt: string, signal?: AbortSignal): Promise<string> {
+    const license = this.options.licenseKey || ''
+    const instanceId = (this.options.licenseInstances ? this.options.licenseInstances[license] : '') || ''
+    const res = await apiRequest.post(
+      `${remote.API_ORIGIN}/api/ai/paint`,
+      {
+        Authorization: `Bearer ${license}`,
+        'Instance-Id': instanceId,
+        'Content-Type': 'application/json',
+      },
+      {
+        prompt,
+        response_format: 'b64_json',
+        style: this.options.dalleStyle,
+        uuid: this.config.uuid,
+        language: this.options.language,
+      },
+      { signal }
+    )
+    const json = await res.json()
+    return json['data'][0]['b64_json']
   }
 
   isSupportSystemMessage() {

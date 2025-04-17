@@ -1019,3 +1019,6 @@ mindmap
   threadName: '图表',
   threads: [],
 }
+
+defaultSessionsForCN.unshift(imageCreatorSessionForCN, artifactSessionCN, mermaidSessionCN)
+defaultSessionsForEN.unshift(imageCreatorSessionForEN, artifactSessionEN, mermaidSessionEN)

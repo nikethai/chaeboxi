@@ -1,28 +1,32 @@
+import { useNavigate } from '@tanstack/react-router'
+import { getDefaultStore } from 'jotai'
 import { useEffect } from 'react'
 import platform from '../platform'
-import * as dom from './dom'
 import * as atoms from '../stores/atoms'
 import * as sessionActions from '../stores/sessionActions'
-import { getDefaultStore } from 'jotai'
+import * as dom from './dom'
 import { useIsSmallScreen } from './useScreenChange'
-import { useNavigate } from '@tanstack/react-router'
 
 type NavigationCallback = (path: string) => void
 
 export default function useShortcut() {
   const isSmallScreen = useIsSmallScreen()
   const navigate = useNavigate()
+
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      keyboardShortcut(e, (path) => navigate({ to: path }))
+    }
     const cancel = platform.onWindowShow(() => {
       // 大屏幕下，窗口显示时自动聚焦输入框
       if (!isSmallScreen) {
         dom.focusMessageInput()
       }
     })
-    window.addEventListener('keydown', (e) => keyboardShortcut(e, (path) => navigate({ to: path })))
+    window.addEventListener('keydown', handleKeyDown)
     return () => {
       cancel()
-      window.removeEventListener('keydown', (e) => keyboardShortcut(e, (path) => navigate({ to: path })))
+      window.removeEventListener('keydown', handleKeyDown)
     }
   }, [isSmallScreen, navigate])
 }

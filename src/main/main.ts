@@ -354,7 +354,7 @@ if (!gotTheLock) {
       createWindow()
       ensureTray()
       // Remove this if your app does not use auto updates
-      // eslint-disable-next-line      
+      // eslint-disable-next-line
       app.on('activate', () => {
         // On macOS it's common to re-create a window in the app when the
         // dock icon is clicked and there are no other windows open.
@@ -547,6 +547,3 @@ ipcMain.handle('setFullscreen', (event, enable: boolean) => {
   }
 })
 
-ipcMain.handle('install-update', () => {
-  autoUpdater.quitAndInstall()
-})

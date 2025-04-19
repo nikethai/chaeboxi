@@ -78,7 +78,7 @@ export default function Toolbar() {
   }
 
   return (
-    <Box>
+    <Box className="controls">
       {showUpdateNotification && <UpdateAvailableButton sx={{ mr: 2 }} />}
       {isSmallScreen ? (
         <IconButton

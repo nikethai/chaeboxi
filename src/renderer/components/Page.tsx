@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { Box, IconButton, Typography, useTheme } from '@mui/material'
 import { PanelRightClose } from 'lucide-react'
+import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
 
 export type PageProps = {
   children?: React.ReactNode
@@ -15,11 +16,15 @@ export const Page: FC<PageProps> = ({ children, title }) => {
   const [showSidebar, setShowSidebar] = useAtom(atoms.showSidebarAtom)
   const isSmallScreen = useIsSmallScreen()
   const theme = useTheme()
-
+  const { needRoomForMacWindowControls } = useNeedRoomForWinControls()
   return (
     <div className="flex flex-col h-full">
       <div
-        className={cn('flex flex-row', isSmallScreen ? '' : showSidebar ? 'sm:pl-3 sm:pr-2' : 'pr-2')}
+        className={cn(
+          'flex flex-row items-center',
+          isSmallScreen ? '' : showSidebar ? 'sm:pl-3 sm:pr-2' : 'pr-2',
+          (!showSidebar || isSmallScreen) && needRoomForMacWindowControls ? 'pl-20' : 'pl-3'
+        )}
         style={{
           borderBottomWidth: '1px',
           borderBottomStyle: 'solid',
@@ -27,7 +32,7 @@ export const Page: FC<PageProps> = ({ children, title }) => {
         }}
       >
         {(!showSidebar || isSmallScreen) && (
-          <Box className={cn('px-1', 'pt-3 pb-2')} onClick={() => setShowSidebar(!showSidebar)}>
+          <Box onClick={() => setShowSidebar(!showSidebar)}>
             <IconButton
               sx={
                 isSmallScreen
@@ -43,8 +48,8 @@ export const Page: FC<PageProps> = ({ children, title }) => {
             </IconButton>
           </Box>
         )}
-
-        <div className={cn('w-full mx-auto flex flex-row', 'pt-3 pb-2')}>
+        {/* 固定高度，和 Windows 的 win controls bar 高度一致 */}
+        <div className={cn('title-bar w-full mx-auto flex flex-row', 'pt-3 pb-2 h-12')}>
           {typeof title === 'string' ? (
             <Typography
               variant="h6"

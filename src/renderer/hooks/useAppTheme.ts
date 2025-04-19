@@ -5,14 +5,19 @@ import { createTheme } from '@mui/material/styles'
 import { ThemeOptions } from '@mui/material/styles'
 import { Theme, Language } from '../../shared/types'
 import platform from '../platform'
+import DesktopPlatform from '../platform/desktop_platform'
 
 export const switchTheme = async (theme: Theme) => {
   const store = getDefaultStore()
+  let finalTheme = 'light' as 'light' | 'dark'
   if (theme === Theme.System) {
-    const isDark = await platform.shouldUseDarkColors()
-    store.set(realThemeAtom, isDark ? 'dark' : 'light')
+    finalTheme = (await platform.shouldUseDarkColors()) ? 'dark' : 'light'
   } else {
-    store.set(realThemeAtom, theme === Theme.Dark ? 'dark' : 'light')
+    finalTheme = theme === Theme.Dark ? 'dark' : 'light'
+  }
+  store.set(realThemeAtom, finalTheme)
+  if (platform instanceof DesktopPlatform) {
+    await platform.switchTheme(finalTheme)
   }
 }
 

@@ -226,6 +226,20 @@ async function createWindow() {
 
   mainWindow = new BrowserWindow({
     show: false,
+    // remove the default titlebar
+    titleBarStyle: 'hidden',
+    // expose window controlls in Windows/Linux
+    ...(process.platform !== 'darwin'
+      ? {
+          titleBarOverlay: {
+            color: nativeTheme.shouldUseDarkColors ? '#282828' : 'white',
+            symbolColor: nativeTheme.shouldUseDarkColors ? 'white' : 'black',
+            height: 47,
+          },
+        }
+      : {}),
+    trafficLightPosition: { x: 10, y: 16 },
+
     width: state.width,
     height: state.height,
     x: state.x,
@@ -547,3 +561,16 @@ ipcMain.handle('setFullscreen', (event, enable: boolean) => {
   }
 })
 
+ipcMain.handle('install-update', () => {
+  autoUpdater.quitAndInstall()
+})
+
+ipcMain.handle('switch-theme', (event, theme: 'dark' | 'light') => {
+  if (!mainWindow || typeof mainWindow.setTitleBarOverlay !== 'function') {
+    return
+  }
+  mainWindow.setTitleBarOverlay({
+    color: theme === 'dark' ? '#282828' : 'white',
+    symbolColor: theme === 'dark' ? 'white' : 'black',
+  })
+})

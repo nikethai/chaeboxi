@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useMemo, useState } from 'react'
 import SwipeableDrawer from '@mui/material/SwipeableDrawer'
 import {
   Box,
@@ -30,6 +30,8 @@ import { useIsSmallScreen, useSidebarWidth } from './hooks/useScreenChange'
 import { trackingEvent } from './packages/event'
 import { PanelLeftClose } from 'lucide-react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
+import { cn } from './lib/utils'
+import useNeedRoomForMacWinControls from './hooks/useNeedRoomForWinControls'
 
 export default function Sidebar(props: {}) {
   const language = useAtomValue(atoms.languageAtom)
@@ -49,6 +51,8 @@ export default function Sidebar(props: {}) {
   }, [isSmallScreen, routerState.location.pathname])
 
   const theme = useTheme()
+
+  const { needRoomForMacWindowControls, needRoomForWindowsWindowControls } = useNeedRoomForMacWinControls()
 
   return (
     <div>
@@ -72,12 +76,18 @@ export default function Sidebar(props: {}) {
       >
         <div className="ToolBar h-full">
           <Stack
-            className="pt-3 pl-2 pr-1"
+            // 在 Mac 上给窗口控制按钮留出空间, 更完善的话切换到全屏时不需要留空间，但需要监听全屏状态变化，暂时不考虑
+            className={cn('pl-2 pr-1', needRoomForMacWindowControls ? 'pt-12' : 'pt-3')}
             sx={{
               height: '100%',
             }}
           >
-            <Box className="flex justify-between items-center p-0 m-0 mx-2 mb-2">
+            <Box
+              className={cn(
+                'flex justify-between items-center p-0 m-0 mx-2 mb-2',
+                'controls cursor-pointer'
+              )}
+            >
               <Box>
                 <a href="https://chatboxai.app" target="_blank">
                   <img src={icon} className="w-6 h-6 mr-2 align-middle inline-block" />

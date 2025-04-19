@@ -2,6 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
+.title-bar {
+  app-region: drag
+}
+
+.title-bar .controls {
+  app-region: no-drag;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans',

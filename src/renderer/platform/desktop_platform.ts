@@ -161,4 +161,8 @@ export default class DesktopPlatform implements Platform {
   public async installUpdate() {
     return this.ipc.invoke('install-update')
   }
+
+  public async switchTheme(theme: 'dark' | 'light') {
+    return this.ipc.invoke('switch-theme', theme)
+  }
 }

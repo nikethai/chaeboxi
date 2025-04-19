@@ -1,18 +1,19 @@
-import { useEffect } from 'react'
-import { Box, IconButton, Typography, Chip, Tooltip, useTheme } from '@mui/material'
-import { isChatSession, isPictureSession } from '../../shared/types'
-import { useTranslation } from 'react-i18next'
-import * as atoms from '../stores/atoms'
-import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import * as sessionActions from '../stores/sessionActions'
-import ImageIcon from '@mui/icons-material/Image'
-import Toolbar from './Toolbar'
-import { useIsSmallScreen } from '../hooks/useScreenChange'
-import { PanelRightClose } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import EditIcon from '@mui/icons-material/Edit'
-import * as settingActions from '../stores/settingActions'
 import NiceModal from '@ebay/nice-modal-react'
+import EditIcon from '@mui/icons-material/Edit'
+import ImageIcon from '@mui/icons-material/Image'
+import { Box, Chip, IconButton, Tooltip, Typography, useTheme } from '@mui/material'
+import { useAtom, useAtomValue } from 'jotai'
+import { PanelRightClose } from 'lucide-react'
+import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import { isChatSession, isPictureSession } from '../../shared/types'
+import useNeedRoomForWinControls from '../hooks/useNeedRoomForWinControls'
+import { useIsSmallScreen } from '../hooks/useScreenChange'
+import * as atoms from '../stores/atoms'
+import * as sessionActions from '../stores/sessionActions'
+import * as settingActions from '../stores/settingActions'
+import Toolbar from './Toolbar'
 
 interface Props {}
 
@@ -23,6 +24,8 @@ export default function Header(props: Props) {
   const [showSidebar, setShowSidebar] = useAtom(atoms.showSidebarAtom)
 
   const isSmallScreen = useIsSmallScreen()
+
+  const { needRoomForMacWindowControls, needRoomForWindowsWindowControls } = useNeedRoomForWinControls()
 
   // 会话名称自动生成
   useEffect(() => {
@@ -82,7 +85,12 @@ export default function Header(props: Props) {
 
   return (
     <div
-      className={cn('flex flex-row', isSmallScreen ? '' : showSidebar ? 'sm:pl-3 sm:pr-2' : 'pr-2')}
+      className={cn(
+        // 固定高度，和 Windows 的 win controls bar 高度一致
+        'title-bar flex flex-row h-12 items-center',
+        isSmallScreen ? '' : showSidebar ? 'sm:pl-3 sm:pr-2' : 'pr-2',
+        (!showSidebar || isSmallScreen) && needRoomForMacWindowControls ? 'pl-20' : 'pl-3'
+      )}
       style={{
         borderBottomWidth: '1px',
         borderBottomStyle: 'solid',
@@ -90,7 +98,7 @@ export default function Header(props: Props) {
       }}
     >
       {(!showSidebar || isSmallScreen) && (
-        <Box className={cn('px-1', 'pt-3 pb-2')} onClick={() => setShowSidebar(!showSidebar)}>
+        <Box className={cn('controls cursor-pointer')} onClick={() => setShowSidebar(!showSidebar)}>
           <IconButton
             sx={
               isSmallScreen
@@ -106,7 +114,7 @@ export default function Header(props: Props) {
           </IconButton>
         </Box>
       )}
-      <div className={cn('w-full mx-auto flex flex-row', 'pt-3 pb-2')}>
+      <div className={cn('w-full mx-auto flex flex-row', 'pt-2 pb-2')}>
         <Typography
           variant="h6"
           color="inherit"
@@ -117,10 +125,7 @@ export default function Header(props: Props) {
             overflow: 'hidden',
             textOverflow: 'ellipsis',
           }}
-          className="flex items-center cursor-pointer"
-          onClick={() => {
-            editCurrentSession()
-          }}
+          className="flex items-center"
         >
           <div className={cn('controls flex flex-row cursor-pointer')}>
             {
@@ -135,7 +140,7 @@ export default function Header(props: Props) {
                   editCurrentSession()
                 }}
               >
-                {currentSession?.name}
+                {currentSession.name}
               </Typography>
             }
             <div
@@ -147,11 +152,9 @@ export default function Header(props: Props) {
             </div>
           </div>
         </Typography>
-        {/* {
-                    // 大屏幕的广告UI
-                    !isSmallScreen && <SponsorChip />
-                } */}
-        <Toolbar />
+        <div className={needRoomForWindowsWindowControls ? 'mr-36' : ''}>
+          <Toolbar />
+        </div>
       </div>
     </div>
   )

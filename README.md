@@ -3,7 +3,11 @@
   <a href="./doc/README-CN.md">简体中文</a>
 </p>
 
-This is the repository for the Chatbox Community Edition, open-sourced under the GPLv3 license. For most users, I recommend using the Chatbox Official Edition (closed-source). It's still completely free, easy to install, and supports more of the latest features. You can get it below:
+This is the repository for the Chatbox Community Edition, open-sourced under the GPLv3 license.
+
+[Chatbox is going open-source Again!](https://github.com/chatboxai/chatbox/issues/2266)
+
+We regularly sync code from the pro repo to this repo, and vice versa.
 
 ### Download for Desktop
 
@@ -238,18 +242,13 @@ npm run package
 npm run package:all
 ```
 
-## Buy Me a Coffee
-
-[!["Buy Me A Coffee"](https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png)](https://buymeacoffee.com/benn)
-
-
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Bin-Huang/chatbox&type=Date)](https://star-history.com/#Bin-Huang/chatbox&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=chatboxai/chatbox&type=Date)](https://star-history.com/#chatboxai/chatbox&Date)
 
 ## Contact
 
-[Twitter](https://twitter.com/benn_huang) | [Email](mailto:tohuangbin@gmail.com) | [Blog](https://bennhuang.com)
+[Twitter](https://x.com/ChatboxAI_HQ) | [Email](mailto:hi@chatboxai.com)
 
 ## License
 

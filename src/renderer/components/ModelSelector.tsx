@@ -1,7 +1,7 @@
 import useModelConfig from '@/hooks/useModelConfig'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { getModelSettingUtil } from '@/packages/model-setting-utils'
-import { getSession, saveSession } from '@/stores/session-store'
+import { getSession, saveSession } from '@/stores/sessionStorageMutations'
 import { Box, Drawer, Typography, useTheme } from '@mui/material'
 import Divider from '@mui/material/Divider'
 import MenuItem from '@mui/material/MenuItem'

@@ -26,6 +26,9 @@ export default function Header(props: Props) {
 
   // 会话名称自动生成
   useEffect(() => {
+    if (!currentSession) {
+      return
+    }
     const autoGenerateTitle = settingActions.getAutoGenerateTitle()
     if (!autoGenerateTitle) {
       return
@@ -37,14 +40,17 @@ export default function Header(props: Props) {
     if (!currentSession.threadName && currentSession.messages.length >= 2) {
       sessionActions.generateThreadName(currentSession.id)
     }
-  }, [currentSession.messages.length])
+  }, [currentSession?.messages.length])
 
   const editCurrentSession = () => {
+    if (!currentSession) {
+      return
+    }
     NiceModal.show('session-settings', { chatConfigDialogSessionId: currentSession.id })
   }
 
   let EditButton: React.ReactNode | null = null
-  if (isChatSession(currentSession) && currentSession.settings) {
+  if (currentSession && isChatSession(currentSession) && currentSession.settings) {
     EditButton = (
       <Tooltip title={t('Current conversation configured with specific model settings')} className="cursor-pointer">
         <EditIcon
@@ -54,7 +60,7 @@ export default function Header(props: Props) {
         />
       </Tooltip>
     )
-  } else if (isPictureSession(currentSession)) {
+  } else if (currentSession && isPictureSession(currentSession)) {
     EditButton = (
       <Tooltip
         title={t('The Image Creator plugin has been activated for the current conversation')}
@@ -116,19 +122,30 @@ export default function Header(props: Props) {
             editCurrentSession()
           }}
         >
-          {
-            <Typography
-              variant="h6"
-              noWrap
-              className={cn(showSidebar ? 'ml-3' : 'ml-1')}
-              sx={{
-                maxWidth: isSmallScreen ? '12rem' : '18rem',
+          <div className={cn('controls flex flex-row cursor-pointer')}>
+            {
+              <Typography
+                variant="h6"
+                noWrap
+                className={cn(showSidebar ? 'ml-3' : 'ml-1')}
+                sx={{
+                  maxWidth: isSmallScreen ? '12rem' : '18rem',
+                }}
+                onClick={() => {
+                  editCurrentSession()
+                }}
+              >
+                {currentSession?.name}
+              </Typography>
+            }
+            <div
+              onClick={() => {
+                editCurrentSession()
               }}
             >
-              {currentSession.name}
-            </Typography>
-          }
-          {EditButton}
+              {EditButton}
+            </div>
+          </div>
         </Typography>
         {/* {
                     // 大屏幕的广告UI

@@ -36,7 +36,7 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuidv4 } from 'uuid'
 import { CopilotDetail, Message } from '../../shared/types'
-import { createSession } from '@/stores/session-store'
+import { createSession } from '@/stores/sessionStorageMutations'
 
 export const Route = createFileRoute('/copilots')({
   component: Copilots,

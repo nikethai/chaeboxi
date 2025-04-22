@@ -156,6 +156,8 @@ export interface Session {
   > // 消息 ID 对应的分叉数据
 }
 
+export type SessionMeta = Pick<Session, 'id' | 'name' | 'starred' | 'assistantAvatarKey' | 'picUrl' | 'type'>
+
 // 话题
 export interface SessionThread {
   id: string

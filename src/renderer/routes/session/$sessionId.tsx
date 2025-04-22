@@ -1,16 +1,15 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useMemo } from 'react'
-import { Box, IconButton, ButtonGroup } from '@mui/material'
-import ArrowCircleUpIcon from '@mui/icons-material/ArrowCircleUp'
-import ArrowCircleDownIcon from '@mui/icons-material/ArrowCircleDown'
-import * as atoms from '@/stores/atoms'
-import { useAtomValue } from 'jotai'
+import Header from '@/components/Header'
 import InputBox from '@/components/InputBox'
 import MessageList from '@/components/MessageList'
-import * as scrollActions from '@/stores/scrollActions'
-import Header from '@/components/Header'
 import ThreadHistoryDrawer from '@/components/ThreadHistoryDrawer'
-import { getSession } from '@/stores/session-store'
+import * as atoms from '@/stores/atoms'
+import * as scrollActions from '@/stores/scrollActions'
+import ArrowCircleDownIcon from '@mui/icons-material/ArrowCircleDown'
+import ArrowCircleUpIcon from '@mui/icons-material/ArrowCircleUp'
+import { Box, ButtonGroup, IconButton } from '@mui/material'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useAtomValue } from 'jotai'
+import { useEffect } from 'react'
 export const Route = createFileRoute('/session/$sessionId')({
   component: RouteComponent,
 })
@@ -26,11 +25,6 @@ function RouteComponent() {
     }, 200)
   }, [])
 
-  useEffect(() => {
-    if (!currentSession) {
-      navigate({ to: '/', replace: true })
-    }
-  }, [currentSession])
 
   return currentSession ? (
     <div className="flex flex-col h-full">

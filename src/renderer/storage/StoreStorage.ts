@@ -1,8 +1,6 @@
-import BaseStorage from './BaseStorage'
-import { defaultSessionsForEN, defaultSessionsForCN } from '../packages/initial_data'
-import platform from '@/platform'
 import { debounce } from 'lodash'
 import { v4 as uuidv4 } from 'uuid'
+import BaseStorage from './BaseStorage'
 
 export enum StorageKey {
   ChatSessions = 'chat-sessions',
@@ -15,6 +13,9 @@ export enum StorageKey {
 }
 
 export const StorageKeyGenerator = {
+  session(id: string) {
+    return `session:${id}`
+  },
   picture(category: string) {
     return `picture:${category}:${uuidv4()}`
   },

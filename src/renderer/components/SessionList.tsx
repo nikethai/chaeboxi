@@ -23,7 +23,7 @@ import { useAtomValue } from 'jotai'
 import { MutableRefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import * as atoms from '../stores/atoms'
-import { reorderSessions } from '../stores/session-store'
+import { reorderSessions } from '../stores/sessionStorageMutations'
 import SessionItem from './SessionItem'
 
 export interface Props {
@@ -31,7 +31,7 @@ export interface Props {
 }
 
 export default function SessionList(props: Props) {
-  const sortedSessions = useAtomValue(atoms.sortedSessionsAtom)
+  const sortedSessions = useAtomValue(atoms.sortedSessionsListAtom)
   const sensors = useSensors(
     useSensor(TouchSensor, {
       activationConstraint: {

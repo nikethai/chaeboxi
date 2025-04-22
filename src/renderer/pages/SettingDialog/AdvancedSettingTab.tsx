@@ -21,6 +21,8 @@ import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { useAtom } from 'jotai'
 import * as atoms from '../../stores/atoms'
 import { ShortcutConfig } from '../../components/Shortcut'
+import { migrateOnData } from '@/stores/migration'
+import { uniq, uniqBy } from 'lodash'
 
 interface Props {
   settingsEdit: Settings
@@ -175,6 +177,12 @@ function ExportAndImport(props: { onCancel: () => void }) {
     }
     if (!exportItems.includes(ExportDataItem.Conversations)) {
       delete data[StorageKey.ChatSessions]
+      delete data[StorageKey.ChatSessionsList]
+      Object.keys(data).forEach((key) => {
+        if (key.startsWith('session:')) {
+          delete data[key]
+        }
+      })
     }
     if (!exportItems.includes(ExportDataItem.Copilot)) {
       delete data[StorageKey.MyCopilots]
@@ -201,13 +209,28 @@ function ExportAndImport(props: { onCancel: () => void }) {
             throw new Error('FileReader result is not string')
           }
           const importData = JSON.parse(result)
-          // 如果导入数据中包含了老的版本号，会导致重复执行migration，所以这里删除
-          delete importData.configVersion
+          // 如果导入数据中包含了老的版本号，应该仅仅针对老的版本号进行迁移
+          await migrateOnData(
+            {
+              getData: async (key, defaultValue) => {
+                return importData[key] || defaultValue
+              },
+              setData: async (key, value) => {
+                importData[key] = value
+              },
+            },
+            false
+          )
+
           const previousData = await storage.getAll()
           // FIXME: 这里缺少了数据校验
           await storage.setAll({
             ...previousData, // 有时候 importData 在导出时没有包含一些数据，这些数据应该保持原样
             ...importData,
+            [StorageKey.ChatSessionsList]: uniqBy([
+              ...(previousData[StorageKey.ChatSessionsList] || []),
+              ...(importData[StorageKey.ChatSessionsList] || []),
+            ], 'id'),
           })
           props.onCancel() // 导出成功后立即关闭设置窗口，防止用户点击保存、导致设置数据被覆盖
           platform.relaunch() // 重启应用以生效

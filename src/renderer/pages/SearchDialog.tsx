@@ -5,27 +5,30 @@ import * as sessionAction from '../stores/sessionActions'
 import * as scrollActions from '../stores/scrollActions'
 import { ScanSearch, Loader2 } from 'lucide-react'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
-import { Message as MessageType, Session } from 'src/shared/types'
+import { Message as MessageType, Session, SessionMeta } from 'src/shared/types'
 import { cn } from '@/lib/utils'
-import { useAtom } from 'jotai'
+import { useAtom, useAtomValue } from 'jotai'
 import * as atoms from '@/stores/atoms'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import Message from '@/components/Message'
 import Mark from '@/components/Mark'
 import { getMessageText } from '@/utils/message'
+import { searchSessions } from '@/stores/sessionStorageMutations'
 interface Props {}
 
 export default function SearchDialog(props: Props) {
   const isSmallScreen = useIsSmallScreen()
   const [open, setOpen] = useAtom(atoms.openSearchDialogAtom)
   const [mode, setMode] = useState<'command' | 'search-result'>('command')
-  const [loading, setLoading] = useState<number | null>(null)
+  const [loading, setLoading] = useState<boolean>(false)
   const [searchInput, _setSearchInput] = useState('')
   const [searchResult, setSearchResult] = useState<Session[]>([])
   const [searchResultMarks, setSearchResultMarks] = useState<string[]>([])
   const theme = useTheme()
   const { t } = useTranslation()
   const ref = useRef<HTMLInputElement>(null)
+  const currentSession = useAtomValue(atoms.currentSessionAtom)
+
   useEffect(() => {
     if (open) {
       setTimeout(() => {
@@ -41,50 +44,17 @@ export default function SearchDialog(props: Props) {
   }
   const onSearchClick = (flag: 'current-session' | 'global') => {
     setMode('search-result')
-    setLoading(Math.random())
-    const needSearchSessions: Session[] =
-      flag === 'current-session' ? [sessionAction.getCurrentSession()] : sessionAction.getSortedSessions()
-
-    // TODO: 这里值得优化：多关键词搜索、性能优化
-    const safeInput = searchInput.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
-    const regexp = new RegExp(safeInput, 'i')
-    const result: Session[] = []
-    let matchedMessageTotal = 0
-    for (const session of needSearchSessions) {
-      // 搜索会话的当前主题
-      const matchedMessages: MessageType[] = []
-      for (let i = session.messages.length - 1; i >= 0; i--) {
-        const message = session.messages[i]
-        if (regexp.test(getMessageText(message))) {
-          matchedMessages.push(message)
-        }
-      }
-      // 搜索会话的历史主题
-      if (session.threads) {
-        for (let i = session.threads.length - 1; i >= 0; i--) {
-          const thread = session.threads[i]
-          for (let j = thread.messages.length - 1; j >= 0; j--) {
-            const message = thread.messages[j]
-            if (regexp.test(getMessageText(message))) {
-              matchedMessages.push(message)
-            }
-          }
-        }
-      }
-      if (matchedMessages.length > 0) {
-        result.push({ ...session, messages: matchedMessages })
-        matchedMessageTotal += matchedMessages.length
-      }
-      if (matchedMessageTotal >= 100) {
-        break
-      }
+    setSearchResult([])
+    setLoading(true)
+    if (!currentSession) {
+      setLoading(false)
+      return
     }
-    // result = result.sort((a, b) => {
-    //     return b.messages.length - a.messages.length
-    // })
-    setSearchResult(result)
+    searchSessions(searchInput, flag === 'current-session' ? currentSession.id : undefined, (batches) => {
+      setSearchResult((prev) => [...prev, ...batches])
+    })
     setSearchResultMarks([searchInput])
-    setLoading(null)
+    setLoading(false)
     ref.current?.select() // 搜索后全选输入框，方便删除回退
   }
   return (

@@ -70,11 +70,14 @@ export default function InputBox() {
   }, [currentSessionId])
 
   const currentSession = useAtomValue(atoms.currentSessionAtom)
-  const lastMessage = currentSession.messages.length
+  const lastMessage = currentSession?.messages.length
     ? currentSession.messages[currentSession.messages.length - 1]
     : null
 
   const handleStop = () => {
+    if (!currentSession) {
+      return
+    }
     if (lastMessage?.generating) {
       lastMessage?.cancel?.()
       sessionActions.modifyMessage(currentSession.id, { ...lastMessage, generating: false }, true)
@@ -472,11 +475,14 @@ export default function InputBox() {
             <MiniButton
               className="mr-1 sm:mr-2"
               style={{ color: theme.palette.text.primary }}
-              onClick={() =>
+              onClick={() => {
+                if (!currentSession) {
+                  return
+                }
                 NiceModal.show('session-settings', {
-                  chatConfigDialogSessionId: sessionActions.getCurrentSession().id,
+                  chatConfigDialogSessionId: currentSession.id,
                 })
-              }
+              }}
               tooltipTitle={
                 <div className="text-center inline-block">
                   <span>{t('Customize settings for the current conversation')}</span>

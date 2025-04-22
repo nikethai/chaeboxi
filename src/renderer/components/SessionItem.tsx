@@ -1,28 +1,25 @@
-import React, { useMemo } from 'react'
-import { useSetAtom } from 'jotai'
-import { ListItemText, MenuItem, Avatar, IconButton, Typography, ListItemIcon, useTheme } from '@mui/material'
-import { Session } from '../../shared/types'
+import { ImageInStorage } from '@/components/Image'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { cn } from '@/lib/utils'
+import { removeSession, saveSession } from '@/stores/sessionStorageMutations'
+import NiceModal from '@ebay/nice-modal-react'
+import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import CopyIcon from '@mui/icons-material/CopyAll'
 import EditIcon from '@mui/icons-material/Edit'
-import ChatBubbleOutlineOutlinedIcon from '@mui/icons-material/ChatBubbleOutlineOutlined'
 import MoreHorizOutlinedIcon from '@mui/icons-material/MoreHorizOutlined'
-import StyledMenu from './StyledMenu'
-import { useTranslation } from 'react-i18next'
 import StarIcon from '@mui/icons-material/Star'
 import StarOutlineIcon from '@mui/icons-material/StarOutline'
-import * as sessionActions from '../stores/sessionActions'
-import * as atoms from '@/stores/atoms'
-import { cn } from '@/lib/utils'
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import VrpanoIcon from '@mui/icons-material/Vrpano'
-import { ImageInStorage } from '@/components/Image'
+import { Avatar, IconButton, ListItemIcon, ListItemText, MenuItem, Typography, useTheme } from '@mui/material'
+import React, { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { SessionMeta } from '../../shared/types'
+import * as sessionActions from '../stores/sessionActions'
 import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
-import { useNavigate } from '@tanstack/react-router'
-import NiceModal from '@ebay/nice-modal-react'
-import { saveSession, removeSession } from '@/stores/session-store'
+import StyledMenu from './StyledMenu'
 
 export interface Props {
-  session: Session
+  session: SessionMeta
   selected: boolean
 }
 

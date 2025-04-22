@@ -2,7 +2,8 @@ import storage from '../storage'
 import { getDefaultStore } from 'jotai'
 import * as atoms from '../stores/atoms'
 import platform from '../platform'
-import { Message } from 'src/shared/types'
+import { Message, Session } from 'src/shared/types'
+import { StorageKeyGenerator } from '@/storage/StoreStorage'
 
 // 启动时执行消息图片清理
 // 只有网页版本需要清理，桌面版本存在本地、空间足够大无需清理
@@ -15,10 +16,8 @@ if (platform.type !== 'desktop') {
 
 export async function tickStorageTask() {
   const allBlobKeys = await storage.getBlobKeys()
-  const storageKeys = [
-    ...allBlobKeys.filter((key) => key.startsWith('picture:')),
-    ...allBlobKeys.filter((key) => key.startsWith('file:')),
-  ]
+  const prefixes = ['picture:', 'file:', 'parseUrl-', 'parseFile-']
+  const storageKeys = allBlobKeys.filter((key) => prefixes.some((prefix) => key.startsWith(prefix)))
   if (storageKeys.length === 0) {
     return
   }
@@ -27,8 +26,13 @@ export async function tickStorageTask() {
   const store = getDefaultStore()
 
   // 会话中还存在的图片、文件不需要删除
-  const sessions = store.get(atoms.sessionsAtom)
-  for (const session of sessions) {
+  const sessions = store.get(atoms.sessionsListAtom)
+  for (const sessionMeta of sessions) {
+    // 不从 atom 中获取，避免水合状态
+    const session = await storage.getItem<Session | null>(StorageKeyGenerator.session(sessionMeta.id), null)
+    if (!session) {
+      continue
+    }
     for (const msg of session.messages) {
       for (const pic of (msg as Message & { pictures: { storageKey: string }[] }).pictures || []) {
         if (pic.storageKey) {

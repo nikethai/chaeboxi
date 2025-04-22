@@ -1,5 +1,5 @@
 import { mapValues } from 'lodash'
-import { Session } from 'src/shared/types'
+import { Session, SessionMeta } from 'src/shared/types'
 import { migrateMessage } from './message'
 
 export function migrateSession(session: Session): Session {
@@ -18,4 +18,17 @@ export function migrateSession(session: Session): Session {
       })),
     })),
   }
+}
+
+export function sortSessions(sessions: SessionMeta[]): SessionMeta[] {
+  let reversed: SessionMeta[] = []
+  let pinned: SessionMeta[] = []
+  for (const sess of sessions) {
+    if (sess.starred) {
+      pinned.push(sess)
+      continue
+    }
+    reversed.unshift(sess)
+  }
+  return pinned.concat(reversed)
 }

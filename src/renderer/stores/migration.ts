@@ -1,5 +1,3 @@
-import { getDefaultStore } from 'jotai'
-import { settingsAtom, sessionsAtom } from './atoms'
 import * as defaults from '../../shared/defaults'
 import {
   mermaidSessionCN,
@@ -13,83 +11,108 @@ import platform from '@/platform'
 import WebPlatform from '@/platform/web_platform'
 import storage, { StorageKey } from '@/storage'
 import oldStore from 'store'
+import { getSessionMeta } from './sessionStorageMutations'
+import { StorageKeyGenerator } from '@/storage/StoreStorage'
+import pMap from 'p-map'
 
-export function migrate() {
-  // 通过定时器延迟启动，防止处理状态底层存储的异步加载前错误的初始数据（水合阶段）
-  setTimeout(_migrate, 2000)
+export async function migrate() {
+  await migrateOnData(
+    {
+      getData: storage.getItem.bind(storage),
+      setData: storage.setItemNow.bind(storage),
+      setBlob: storage.setBlob.bind(storage),
+    },
+    true
+  )
 }
 
-async function _migrate() {
-  let configVersion = await storage.getItem(StorageKey.ConfigVersion, 0)
+type MigrateStore = {
+  getData: <T>(key: StorageKey, defaultValue: T) => Promise<T>
+  setData: <T>(key: StorageKey | string, value: T) => Promise<void>
+  setBlob?: (key: string, value: string) => Promise<void>
+}
+
+export const CurrentVersion = 8
+
+export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true) {
+  let needRelaunch = false
+  let configVersion = await dataStore.getData(StorageKey.ConfigVersion, 0)
   if (configVersion < 1) {
-    await migrate_0_to_1()
+    await migrate_0_to_1(dataStore)
     configVersion = 1
-    await storage.setItemNow(StorageKey.ConfigVersion, configVersion)
+    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
   }
   if (configVersion < 2) {
-    await migrate_1_to_2()
+    await migrate_1_to_2(dataStore)
     configVersion = 2
-    await storage.setItemNow(StorageKey.ConfigVersion, configVersion)
+    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
   }
   if (configVersion < 3) {
-    await migrate_2_to_3()
+    await migrate_2_to_3(dataStore)
     configVersion = 3
-    await storage.setItemNow(StorageKey.ConfigVersion, configVersion)
+    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
   }
   if (configVersion < 4) {
-    await migrate_3_to_4()
+    await migrate_3_to_4(dataStore)
     configVersion = 4
-    await storage.setItemNow(StorageKey.ConfigVersion, configVersion)
+    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
   }
   if (configVersion < 5) {
-    const needRelaunch = await migrate_4_to_5()
+    needRelaunch ||= await migrate_4_to_5(dataStore)
     configVersion = 5
-    await storage.setItemNow(StorageKey.ConfigVersion, configVersion)
-    if (needRelaunch) {
-      await platform.relaunch()
-    }
+    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
   }
   if (configVersion < 6) {
-    await migrate_5_to_6()
+    await migrate_5_to_6(dataStore)
     configVersion = 6
-    await storage.setItemNow(StorageKey.ConfigVersion, configVersion)
+    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
   }
   if (configVersion < 7) {
-    const needRelaunch = await migrate_6_to_7()
+    needRelaunch ||= await migrate_6_to_7(dataStore)
     configVersion = 7
-    await storage.setItemNow(StorageKey.ConfigVersion, configVersion)
-    if (needRelaunch) {
-      await platform.relaunch()
-    }
+    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
+  }
+  if (configVersion < 8) {
+    needRelaunch ||= await migrate_7_to_8(dataStore)
+    configVersion = 8
+    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
+  }
+
+  // 如果需要重启，则重启应用
+  if (needRelaunch && canRelaunch) {
+    await platform.relaunch()
   }
 }
 
-async function migrate_0_to_1() {
-  const settings = await storage.getItem(StorageKey.Settings, defaults.settings())
+async function migrate_0_to_1(dataStore: MigrateStore) {
+  const settings = await dataStore.getData(StorageKey.Settings, defaults.settings())
   // 如果历史版本的用户开启了消息的token计数展示，那么也帮他们开启token消耗展示
   if (settings.showTokenCount) {
-    getDefaultStore().set(settingsAtom, (settings) => ({ ...settings, showTokenUsed: true }))
+    await dataStore.setData(StorageKey.Settings, { ...settings, showTokenUsed: true })
   }
 }
 
-async function migrate_1_to_2() {
-  const sessions = await storage.getItem(StorageKey.ChatSessions, defaults.sessions())
+async function migrate_1_to_2(dataStore: MigrateStore) {
+  const sessions = await dataStore.getData(StorageKey.ChatSessions, defaults.sessions())
   const lang = await platform.getLocale()
   if (lang.startsWith('zh')) {
     if (sessions.find((session) => session.id === imageCreatorSessionForCN.id)) {
       return
     }
-    getDefaultStore().set(sessionsAtom, (sessions) => [...sessions, imageCreatorSessionForCN])
+    await dataStore.setData(StorageKey.ChatSessions, [...sessions, imageCreatorSessionForCN])
   } else {
     if (sessions.find((session) => session.id === imageCreatorSessionForEN.id)) {
       return
     }
-    getDefaultStore().set(sessionsAtom, (sessions) => [...sessions, imageCreatorSessionForEN])
+    await dataStore.setData(StorageKey.ChatSessions, [...sessions, imageCreatorSessionForEN])
   }
 }
 
-async function migrate_2_to_3() {
+async function migrate_2_to_3(dataStore: MigrateStore) {
   // 原来 Electron 应用存储图片 base64 数据到 IndexedDB，现在改成本地文件存储
+  if (!dataStore.setBlob) {
+    return
+  }
   if (platform.type !== 'desktop') {
     return
   }
@@ -100,22 +123,22 @@ async function migrate_2_to_3() {
     if (!value) {
       continue
     }
-    await storage.setBlob(key, value)
+    await dataStore.setBlob(key, value)
     await ws.delStoreBlob(key)
   }
 }
 
-async function migrate_3_to_4() {
-  const sessions = await storage.getItem(StorageKey.ChatSessions, defaults.sessions())
+async function migrate_3_to_4(dataStore: MigrateStore) {
+  const sessions = await dataStore.getData(StorageKey.ChatSessions, defaults.sessions())
   const lang = await platform.getLocale()
   const targetSession = lang.startsWith('zh') ? artifactSessionCN : artifactSessionEN
   if (sessions.find((session) => session.id === targetSession.id)) {
     return
   }
-  getDefaultStore().set(sessionsAtom, (sessions) => [...sessions, targetSession])
+  await dataStore.setData(StorageKey.ChatSessions, [...sessions, targetSession])
 }
 
-async function migrate_4_to_5(): Promise<boolean> {
+async function migrate_4_to_5(dataStore: MigrateStore): Promise<boolean> {
   if (platform.type !== 'web') {
     return false
   }
@@ -129,22 +152,24 @@ async function migrate_4_to_5(): Promise<boolean> {
     return false
   }
   for (const key of keys) {
-    await storage.setItemNow(key, oldStore.get(key))
+    await dataStore.setData(key, oldStore.get(key))
   }
   return true
 }
 
-async function migrate_5_to_6() {
-  const sessions = await storage.getItem(StorageKey.ChatSessions, defaults.sessions())
+async function migrate_5_to_6(dataStore: MigrateStore) {
+  const sessions = await dataStore.getData(StorageKey.ChatSessions, defaults.sessions())
   const lang = await platform.getLocale()
   const targetSession = lang.startsWith('zh') ? mermaidSessionCN : mermaidSessionEN
   if (sessions.find((session) => session.id === targetSession.id)) {
     return
   }
-  getDefaultStore().set(sessionsAtom, (sessions) => [...sessions, targetSession])
+  await dataStore.setData(StorageKey.ChatSessions, [...sessions, targetSession])
 }
 
-async function migrate_6_to_7(): Promise<boolean> {
+// 针对 mobile 端，从 store 迁移至 sqlite
+// 解决容量不够用的问题
+async function migrate_6_to_7(dataStore: MigrateStore): Promise<boolean> {
   if (platform.type !== 'mobile') {
     return false
   }
@@ -158,7 +183,21 @@ async function migrate_6_to_7(): Promise<boolean> {
     return false
   }
   for (const key of keys) {
-    await storage.setItemNow(key, oldStore.get(key))
+    await dataStore.setData(key, oldStore.get(key))
   }
+  return true
+}
+
+// 从所有 sessions 保存在一个 key 迁移到每个 session 保存在一个 key，增加 session 列表的读取性能
+async function migrate_7_to_8(dataStore: MigrateStore): Promise<boolean> {
+  const sessions = await dataStore.getData(StorageKey.ChatSessions, defaults.sessions())
+  if (sessions.length === 0) {
+    return false
+  }
+  const sessionList = sessions.map((session) => getSessionMeta(session))
+  await dataStore.setData(StorageKey.ChatSessionsList, sessionList)
+  await pMap(sessions, (session) => dataStore.setData(StorageKeyGenerator.session(session.id), session), {
+    concurrency: 5,
+  })
   return true
 }

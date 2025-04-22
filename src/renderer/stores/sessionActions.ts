@@ -4,7 +4,7 @@ import { formatChatAsHtml, formatChatAsMarkdown, formatChatAsTxt } from '@/lib/f
 import * as appleAppStore from '@/packages/apple_app_store'
 import * as localParser from '@/packages/local-parser'
 import { generateImage, generateText, streamText } from '@/packages/model-calls'
-import { getModelDisplayName, isModelSupportImageInput, isModelSupportToolUse } from '@/packages/model-setting-utils'
+import { getModelDisplayName, isModelSupportToolUse } from '@/packages/model-setting-utils'
 import { getModel } from '@/packages/models'
 import type { onResultChangeWithCancel } from '@/packages/models/base'
 import {
@@ -33,6 +33,7 @@ import {
   ModelProvider,
   ModelSettings,
   Session,
+  SessionMeta,
   SessionThread,
   Settings,
   createMessage,
@@ -45,7 +46,7 @@ import platform from '../platform'
 import storage from '../storage'
 import * as atoms from './atoms'
 import * as scrollActions from './scrollActions'
-import { createSession, getSession, saveSession, copySession } from './session-store'
+import { createSession, getSession, saveSession, copySession, clearConversations } from './sessionStorageMutations'
 import { cloneMessage, countMessageWords, getMessageText, mergeMessages } from '../utils/message'
 import * as settingActions from './settingActions'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
@@ -128,7 +129,7 @@ export function switchCurrentSession(sessionId: string) {
  */
 export function switchToIndex(index: number) {
   const store = getDefaultStore()
-  const sessions = store.get(atoms.sortedSessionsAtom)
+  const sessions = store.get(atoms.sortedSessionsListAtom)
   const target = sessions[index]
   if (!target) {
     return
@@ -143,7 +144,7 @@ export function switchToIndex(index: number) {
  */
 export function switchToNext(reversed?: boolean) {
   const store = getDefaultStore()
-  const sessions = store.get(atoms.sortedSessionsAtom)
+  const sessions = store.get(atoms.sortedSessionsListAtom)
   const currentSessionId = store.get(atoms.currentSessionIdAtom)
   const currentIndex = sessions.findIndex((s) => s.id === currentSessionId)
   if (currentIndex < 0) {
@@ -205,7 +206,7 @@ export function clear(sessionId: string) {
  * 复制会话
  * @param source
  */
-export async function copy(source: Session) {
+export async function copy(source: SessionMeta) {
   const newSession = copySession(source)
   switchCurrentSession(newSession.id)
 }
@@ -903,12 +904,7 @@ export async function generateThreadName(sessionId: string) {
  * @param keepNum 保留的会话数量（顶部顺序）
  */
 export function clearConversationList(keepNum: number) {
-  const store = getDefaultStore()
-  const keepSessionIds = store
-    .get(atoms.sortedSessionsAtom)
-    .slice(0, keepNum)
-    .map((s) => s.id) // 这里必须用 id，因为使用写入 sorted 版本会改变顺序
-  store.set(atoms.sessionsAtom, (sessions) => sessions.filter((s) => keepSessionIds.includes(s.id)))
+  clearConversations(keepNum)
 }
 
 /**
@@ -1022,12 +1018,12 @@ export function initEmptyPictureSession(): Omit<Session, 'id'> {
 
 export function getSessions() {
   const store = getDefaultStore()
-  return store.get(atoms.sessionsAtom)
+  return store.get(atoms.sessionsListAtom)
 }
 
 export function getSortedSessions() {
   const store = getDefaultStore()
-  return store.get(atoms.sortedSessionsAtom)
+  return store.get(atoms.sortedSessionsListAtom)
 }
 
 export function getCurrentSession() {
@@ -1119,7 +1115,7 @@ export function getCurrentSessionMergedSettings() {
   const store = getDefaultStore()
   const globalSettings = store.get(atoms.settingsAtom)
   const session = store.get(atoms.currentSessionAtom)
-  if (!session.settings) {
+  if (!session || !session.settings) {
     return globalSettings
   }
   return mergeSettings(globalSettings, session.settings, session.type)
@@ -1149,13 +1145,19 @@ export async function exportChat(session: Session, scope: ExportChatScope, forma
 export async function exportCurrentSessionChat(content: ExportChatScope, format: ExportChatFormat) {
   const store = getDefaultStore()
   const currentSession = store.get(atoms.currentSessionAtom)
+  if (!currentSession) {
+    return
+  }
   await exportChat(currentSession, content, format)
 }
 
 export async function createNewFork(forkMessageId: string) {
   const store = getDefaultStore()
   const currentSession = store.get(atoms.currentSessionAtom)
-  const messageForksHash = currentSession.messageForksHash || {}
+  if (!currentSession || !currentSession.messageForksHash) {
+    return
+  }
+  const messageForksHash = currentSession.messageForksHash
 
   const updateFn = (data: Message[]): { data: Message[]; updated: boolean } => {
     const forkMessageIndex = data.findIndex((m) => m.id === forkMessageId)
@@ -1231,7 +1233,7 @@ export async function createNewFork(forkMessageId: string) {
 export async function switchFork(forkMessageId: string, direction: 'next' | 'prev') {
   const store = getDefaultStore()
   const currentSession = store.get(atoms.currentSessionAtom)
-  if (!currentSession.messageForksHash) {
+  if (!currentSession || !currentSession.messageForksHash) {
     return
   }
   const messageForksHash = currentSession.messageForksHash
@@ -1293,7 +1295,7 @@ export async function switchFork(forkMessageId: string, direction: 'next' | 'pre
 export async function deleteFork(forkMessageId: string) {
   const store = getDefaultStore()
   const currentSession = store.get(atoms.currentSessionAtom)
-  if (!currentSession.messageForksHash) {
+  if (!currentSession || !currentSession.messageForksHash) {
     return
   }
   const messageForksHash = currentSession.messageForksHash
@@ -1355,7 +1357,7 @@ export async function deleteFork(forkMessageId: string) {
 export async function expandFork(forkMessageId: string) {
   const store = getDefaultStore()
   const currentSession = store.get(atoms.currentSessionAtom)
-  if (!currentSession.messageForksHash) {
+  if (!currentSession || !currentSession.messageForksHash) {
     return
   }
   const messageForksHash = currentSession.messageForksHash

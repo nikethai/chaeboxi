@@ -1,18 +1,10 @@
+import LogoXHS from '@/components/icons/LogoXHS'
 import LinkTargetBlank from '@/components/Link'
 import Markdown from '@/components/Markdown'
 import Page from '@/components/Page'
-import LogoWechat from '@/components/icons/LogoWechat'
-import LogoX from '@/components/icons/LogoX'
-import LogoXHS from '@/components/icons/LogoXHS'
-import IMG_WECHAT_QRCODE from '@/static/wechat_qrcode.png'
+import EmailOutlinedIcon from '@mui/icons-material/EmailOutlined'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
-import {
-  Alert,
-  Box,
-  Button,
-  Popover,
-  useTheme
-} from '@mui/material'
+import { Alert, Box, Button, useTheme } from '@mui/material'
 import { createFileRoute } from '@tanstack/react-router'
 import { useAtom, useAtomValue } from 'jotai'
 import { MouseEvent, useState } from 'react'
@@ -98,8 +90,8 @@ function About() {
           <Button
             variant="outlined"
             onClick={() => platform.openLink(`https://chatboxai.app/redirect_app/check_update/${language}`)}
-            >
-              {t('Check Update')}
+          >
+            {t('Check Update')}
           </Button>
           <Button
             variant="outlined"
@@ -126,41 +118,13 @@ function About() {
           >
             {t('FAQs')}
           </Button>
-          <Button
-            variant="outlined"
-            sx={{ margin: '4px' }}
-            onClick={() => platform.openLink(`mailto://hi@chatboxai.com`)}
-          >
-            {t('Email Us')}
-          </Button>
         </Box>
         <Box className="flex flex-row gap-4 justify-center items-center mb-6">
-          <a href="https://x.com/ChatboxAI_HQ" target="_blank">
-            <LogoX className="w-6 h-6" />
-          </a>
-          <a className="cursor-pointer" onMouseEnter={handleWechatPopoverOpen} onMouseLeave={handleWechatPopoverClose}>
-            <LogoWechat className="w-6 h-6" />
-          </a>
-          <Popover
-            id="mouse-over-popover"
-            sx={{ pointerEvents: 'none' }}
-            open={wechatPopoverOpen}
-            anchorEl={wechatPopoverAnchorEl}
-            anchorOrigin={{
-              vertical: 'bottom',
-              horizontal: 'left',
-            }}
-            transformOrigin={{
-              vertical: 'top',
-              horizontal: 'left',
-            }}
-            onClose={handleWechatPopoverClose}
-            disableRestoreFocus
-          >
-            <img src={IMG_WECHAT_QRCODE} alt="wechat qrcode" className="block w-32 h-32" />
-          </Popover>
           <a href="https://www.xiaohongshu.com/user/profile/67b581b6000000000e01d11f" target="_blank">
             <LogoXHS className="w-6 h-6" />
+          </a>
+          <a href="#" onClick={() => platform.openLink(`mailto://hi@chatboxai.com`)}>
+            <EmailOutlinedIcon className="w-6 h-6 text-[#666666]" />
           </a>
         </Box>
         {_i18n.language === 'zh-Hans' ? (

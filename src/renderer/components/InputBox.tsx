@@ -1,32 +1,31 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { v4 as uuidv4 } from 'uuid'
-import { useTheme } from '@mui/material'
-import { createMessage, ShortcutSendValue } from '../../shared/types'
-import { useTranslation } from 'react-i18next'
-import * as atoms from '../stores/atoms'
-import { useAtom, useAtomValue } from 'jotai'
-import * as sessionActions from '../stores/sessionActions'
-import * as dom from '../hooks/dom'
-import { Keys } from './Shortcut'
 import { useInputBoxHeight, useIsSmallScreen } from '@/hooks/useScreenChange'
-import { Image, FolderClosed, Link, Undo2, SendHorizontal, Eraser, Settings2, Globe, CircleStop } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { scrollToMessage } from '@/stores/scrollActions'
-import icon from '../static/icon.png'
 import { trackingEvent } from '@/packages/event'
+import * as picUtils from '@/packages/pic_utils'
+import platform from '@/platform'
 import storage from '@/storage'
+import { StorageKeyGenerator } from '@/storage/StoreStorage'
+import { scrollToMessage } from '@/stores/scrollActions'
+import { getMessageText } from '@/utils/message'
+import NiceModal from '@ebay/nice-modal-react'
+import StopIcon from '@mui/icons-material/Stop'
+import { useTheme } from '@mui/material'
+import autosize from 'autosize'
+import { useAtom, useAtomValue } from 'jotai'
+import _ from 'lodash'
+import { FilePen, FolderClosed, Globe, Image, Link, SendHorizontal, Settings2, Undo2 } from 'lucide-react'
+import React, { useEffect, useRef, useState } from 'react'
+import { useDropzone } from 'react-dropzone'
+import { useTranslation } from 'react-i18next'
+import { createMessage, ShortcutSendValue } from '../../shared/types'
+import * as dom from '../hooks/dom'
+import icon from '../static/icon.png'
+import * as atoms from '../stores/atoms'
+import * as sessionActions from '../stores/sessionActions'
 import { FileMiniCard, ImageMiniCard, LinkMiniCard } from './Attachments'
 import MiniButton from './MiniButton'
-import _ from 'lodash'
 import { ChatModelSelector } from './ModelSelector'
-import autosize from 'autosize'
-import platform from '@/platform'
-import { useDropzone } from 'react-dropzone'
-import * as picUtils from '@/packages/pic_utils'
-import NiceModal from '@ebay/nice-modal-react'
-import { getMessageText } from '@/utils/message'
-import { StorageKeyGenerator } from '@/storage/StoreStorage'
-import StopIcon from '@mui/icons-material/Stop'
+import { Keys } from './Shortcut'
 
 export default function InputBox() {
   const theme = useTheme()
@@ -382,7 +381,7 @@ export default function InputBox() {
                 style={{ color: theme.palette.text.primary }}
                 tooltipTitle={
                   <div className="text-center inline-block">
-                    <span>{t('Refresh Context, Start a New Thread')}</span>
+                    <span>{t('Start a New Thread')}</span>
                     <br />
                     <Keys keys={shortcuts.messageListRefreshContext.split('+')} size="small" opacity={0.7} />
                   </div>
@@ -390,7 +389,7 @@ export default function InputBox() {
                 tooltipPlacement="top"
                 onClick={startNewThread}
               >
-                <Eraser size="22" strokeWidth={1} />
+                <FilePen size="22" strokeWidth={1} />
               </MiniButton>
             )}
 

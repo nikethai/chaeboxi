@@ -175,7 +175,7 @@ export function ShortcutConfig(props: {
       keys: 'mod+1-9',
     },
     {
-      label: t('Refresh Context, Start a New Thread'),
+      label: t('Start a New Thread'),
       name: 'messageListRefreshContext',
       keys: shortcuts.messageListRefreshContext,
     },

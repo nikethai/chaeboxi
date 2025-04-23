@@ -1,6 +1,6 @@
-/* eslint import/prefer-default-export: off */
-import { URL } from 'url'
+import log from 'electron-log/main'
 import path from 'path'
+import { URL } from 'url'
 
 export function resolveHtmlPath(htmlFileName: string) {
   if (process.env.NODE_ENV === 'development') {
@@ -23,4 +23,11 @@ export function sliceTextWithEllipsis(text: string, maxLength: number) {
   const tail = text.slice(-tailLength)
 
   return head + tail
+}
+
+export function getLogger(logId: string) {
+  const logger = log.create({ logId })
+  logger.transports.console.format = '{h}:{i}:{s}.{ms} › [{logId}] › {text}'
+  logger.transports.file.format = '[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [{level}] [{logId}] {text}'
+  return logger
 }

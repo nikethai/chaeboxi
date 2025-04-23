@@ -1,5 +1,5 @@
 import * as fs from 'fs-extra'
-import log from 'electron-log'
+import log from 'electron-log/main'
 import officeParser from 'officeparser'
 import { isOfficeFilePath } from '../shared/file-extensions'
 

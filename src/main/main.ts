@@ -11,7 +11,7 @@
 import os from 'os'
 import path from 'path'
 import { app, BrowserWindow, globalShortcut, shell, ipcMain, nativeTheme, session, Tray, Menu } from 'electron'
-import log from 'electron-log'
+import log from 'electron-log/main'
 import MenuBuilder from './menu'
 import { resolveHtmlPath } from './util'
 import Locale from './locales'

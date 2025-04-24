@@ -1,5 +1,5 @@
 const changelog = `
-### v1.12.0-alpha.1 - 2025.04.19
+### v1.12.0 - 2025.04.24
 
 1. Chatbox AI supports Gemini multimodal output
 2. Fixed issue where the web browsing switch was not synchronized when regenerating messages

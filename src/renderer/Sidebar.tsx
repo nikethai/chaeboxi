@@ -83,12 +83,10 @@ export default function Sidebar(props: {}) {
             }}
           >
             <Box className={cn('flex title-bar items-center', needRoomForMacWindowControls ? 'pt-12' : 'pt-3')}></Box>
-            <Box className={cn('flex justify-between items-center p-0 m-0 mx-2 mb-2', 'controls cursor-pointer')}>
-              <Box>
-                <a href="https://chatboxai.app" target="_blank">
-                  <img src={icon} className="w-6 h-6 mr-2 align-middle inline-block" />
-                  <span className="text-xl font-semibold align-middle inline-block opacity-75">Chatbox</span>
-                </a>
+            <Box className={cn('flex justify-between items-center p-0 m-0 mx-2 mb-2')}>
+              <Box className="title-bar">
+                <img src={icon} className="w-6 h-6 mr-2 align-middle inline-block" />
+                <span className="text-xl font-semibold align-middle inline-block opacity-75">Chatbox</span>
               </Box>
               <Box onClick={() => setShowSidebar(!showSidebar)}>
                 <IconButton

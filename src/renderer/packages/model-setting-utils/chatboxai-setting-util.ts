@@ -29,7 +29,7 @@ export default class ChatboxAISettingUtil extends BaseConfig implements ModelSet
 
   async getCurrentModelDisplayName(settings: Settings, sessionType: SessionType): Promise<string> {
     if (sessionType === 'picture') {
-      return `Chatbox AI (DALL-E-3)`
+      return `Chatbox AI`
     } else {
       let model = await this.getCurrentModelOptionLabel(settings)
       if (!model.toLowerCase().includes('chatbox')) {

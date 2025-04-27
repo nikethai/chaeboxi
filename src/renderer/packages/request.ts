@@ -3,8 +3,8 @@ import { ApiError, BaseError, ChatboxAIAPIError, NetworkError } from './models/e
 
 // TODO: 尽可能在其他地方（llm）中复用这个函数
 export async function afetch(
-  url: string,
-  init: RequestInit,
+  url: RequestInfo | URL,
+  init?: RequestInit,
   options: {
     retry?: number
     parseChatboxRemoteError?: boolean
@@ -33,7 +33,12 @@ export async function afetch(
         requestError = e
       } else {
         const err = e as Error
-        const origin = new URL(url).origin
+        let origin: string
+        if (url instanceof Request) {
+          origin = new URL(url.url).origin
+        } else {
+          origin = new URL(url).origin
+        }
         requestError = new NetworkError(err.message, origin)
       }
       await new Promise((resolve) => setTimeout(resolve, 500))

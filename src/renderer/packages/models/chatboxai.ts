@@ -1,8 +1,8 @@
-import { apiRequest } from '@/utils/request'
 import { createGoogleGenerativeAI } from '@ai-sdk/google'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { ChatboxAILicenseDetail, ChatboxAIModel } from 'src/shared/types'
 import * as remote from '../remote'
+import { afetch } from '../request'
 import AbstractAISDKModel from './abstract-ai-sdk'
 import { CallChatCompletionOptions, ModelHelpers, ModelInterface } from './types'
 
@@ -33,6 +33,12 @@ interface Config {
   uuid: string
 }
 
+async function chatboxAIFetch(url: RequestInfo | URL, options?: RequestInit) {
+  return afetch(url, options, {
+    parseChatboxRemoteError: true,
+  })
+}
+
 export default class ChatboxAI extends AbstractAISDKModel implements ModelInterface {
   public name = 'ChatboxAI'
   public static helpers = helpers
@@ -52,6 +58,7 @@ export default class ChatboxAI extends AbstractAISDKModel implements ModelInterf
           'Instance-Id': instanceId,
           Authorization: `Bearer ${this.options.licenseKey || ''}`,
         },
+        fetch: chatboxAIFetch,
       })
       return provider.chat(this.options.chatboxAIModel, {
         structuredOutputs: false,
@@ -64,6 +71,7 @@ export default class ChatboxAI extends AbstractAISDKModel implements ModelInterf
         headers: {
           'Instance-Id': instanceId,
         },
+        fetch: chatboxAIFetch,
       })
       return provider.languageModel(this.options.chatboxAIModel)
     }
@@ -92,22 +100,22 @@ export default class ChatboxAI extends AbstractAISDKModel implements ModelInterf
   private async callImageGeneration(prompt: string, signal?: AbortSignal): Promise<string> {
     const license = this.options.licenseKey || ''
     const instanceId = (this.options.licenseInstances ? this.options.licenseInstances[license] : '') || ''
-    const res = await apiRequest.post(
-      `${remote.API_ORIGIN}/api/ai/paint`,
-      {
+    const res = await chatboxAIFetch(`${remote.API_ORIGIN}/api/ai/paint`, {
+      headers: {
         Authorization: `Bearer ${license}`,
         'Instance-Id': instanceId,
         'Content-Type': 'application/json',
       },
-      {
+      method: 'POST',
+      body: JSON.stringify({
         prompt,
         response_format: 'b64_json',
         style: this.options.dalleStyle,
         uuid: this.config.uuid,
         language: this.options.language,
-      },
-      { signal }
-    )
+      }),
+      signal,
+    })
     const json = await res.json()
     return json['data'][0]['b64_json']
   }

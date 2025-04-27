@@ -60,6 +60,9 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     try {
       return await this._callChatCompletion(messages, options)
     } catch (e) {
+      if (e instanceof ChatboxAIAPIError) {
+        throw e
+      }
       // 如果当前模型不支持图片输入，抛出对应的错误
       if (
         e instanceof ApiError &&
@@ -172,6 +175,9 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
         const error = chunk.error
         if (APICallError.isInstance(error)) {
           throw new ApiError(`Error from ${this.name}`, error.responseBody)
+        }
+        if (error instanceof ChatboxAIAPIError) {
+          throw error
         }
         throw new ApiError(`Error from ${this.name}: ${chunk.error}`)
       } else {

@@ -144,7 +144,7 @@ function SidebarButtons(props: { sessionListRef: React.RefObject<HTMLDivElement>
   return (
     <MenuList>
       <Box className="flex flex-col m-1 mb-2 gap-2">
-        <Button variant="contained" className="w-full gap-2" size="large" onClick={handleCreateNewSession}>
+        <Button variant="outlined" className="w-full gap-2" size="large" onClick={handleCreateNewSession}>
           <AddIcon fontSize="small" />
           <span className="flex flex-col normal-case">
             <span>{t('new chat')}</span>

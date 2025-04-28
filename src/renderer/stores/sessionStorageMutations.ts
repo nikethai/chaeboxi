@@ -13,6 +13,10 @@ import pMap from 'p-map'
 import { createSessionAtom } from './atoms'
 import { getMessageText } from '@/utils/message'
 import { CurrentVersion } from './migration'
+import { getLogger } from '@/lib/utils'
+
+const log = getLogger('sessionStorageMutations')
+
 // session 的读写都放到这里，统一管理
 
 export function getSession(sessionId: string) {
@@ -98,13 +102,22 @@ export function getSessionMeta(session: SessionMeta) {
 
 async function initPresetSessions() {
   const lang = await platform.getLocale().catch((e) => 'en')
+  log.info(`initPresetSessions, lang: ${lang}`)
+
   const defaultSessions = lang.startsWith('zh') ? defaultSessionsForCN : defaultSessionsForEN
+  log.info(`initPresetSessions, defaultSessions: ${defaultSessions.length}`)
 
   await pMap(defaultSessions, (session) => storage.setItemNow(StorageKeyGenerator.session(session.id), session), {
     concurrency: 5,
   })
+  log.info(`initPresetSessions, set sessions done`)
+
   const sessionList = defaultSessions.map(getSessionMeta)
+  log.info(`initPresetSessions, sessionList: ${sessionList.length}`)
+
   await storage.setItemNow(StorageKey.ChatSessionsList, sessionList)
+  log.info(`initPresetSessions, set sessionList done`)
+
   return sessionList
 }
 

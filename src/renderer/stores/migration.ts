@@ -14,6 +14,10 @@ import oldStore from 'store'
 import { getSessionMeta } from './sessionStorageMutations'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import pMap from 'p-map'
+import { getLogger } from '../lib/utils'
+import * as Sentry from '@sentry/react'
+
+const log = getLogger('migration')
 
 export async function migrate() {
   await migrateOnData(
@@ -37,49 +41,66 @@ export const CurrentVersion = 8
 export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true) {
   let needRelaunch = false
   let configVersion = await dataStore.getData(StorageKey.ConfigVersion, 0)
+  if (configVersion >= CurrentVersion) {
+    return
+  }
+
+  const scope = Sentry.getCurrentScope()
+  scope.setTag('configVersion', configVersion)
+  log.info(`migrateOnData: ${configVersion}, canRelaunch: ${canRelaunch}`)
+
   if (configVersion < 1) {
     await migrate_0_to_1(dataStore)
     configVersion = 1
     await dataStore.setData(StorageKey.ConfigVersion, configVersion)
+    log.info(`migrate_0_to_1`)
   }
   if (configVersion < 2) {
     await migrate_1_to_2(dataStore)
     configVersion = 2
     await dataStore.setData(StorageKey.ConfigVersion, configVersion)
+    log.info(`migrate_1_to_2`)
   }
   if (configVersion < 3) {
     await migrate_2_to_3(dataStore)
     configVersion = 3
     await dataStore.setData(StorageKey.ConfigVersion, configVersion)
+    log.info(`migrate_2_to_3`)
   }
   if (configVersion < 4) {
     await migrate_3_to_4(dataStore)
     configVersion = 4
     await dataStore.setData(StorageKey.ConfigVersion, configVersion)
+    log.info(`migrate_3_to_4`)
   }
   if (configVersion < 5) {
     needRelaunch ||= await migrate_4_to_5(dataStore)
     configVersion = 5
     await dataStore.setData(StorageKey.ConfigVersion, configVersion)
+    log.info(`migrate_4_to_5, needRelaunch: ${needRelaunch}`)
   }
   if (configVersion < 6) {
     await migrate_5_to_6(dataStore)
     configVersion = 6
     await dataStore.setData(StorageKey.ConfigVersion, configVersion)
+    log.info(`migrate_5_to_6`)
   }
   if (configVersion < 7) {
     needRelaunch ||= await migrate_6_to_7(dataStore)
     configVersion = 7
     await dataStore.setData(StorageKey.ConfigVersion, configVersion)
+    log.info(`migrate_6_to_7, needRelaunch: ${needRelaunch}`)
   }
   if (configVersion < 8) {
     needRelaunch ||= await migrate_7_to_8(dataStore)
     configVersion = 8
     await dataStore.setData(StorageKey.ConfigVersion, configVersion)
+    log.info(`migrate_7_to_8, needRelaunch: ${needRelaunch}`)
   }
 
   // 如果需要重启，则重启应用
   if (needRelaunch && canRelaunch) {
+    log.info(`migrate: relaunch`)
     await platform.relaunch()
   }
 }
@@ -194,10 +215,13 @@ async function migrate_7_to_8(dataStore: MigrateStore): Promise<boolean> {
   if (sessions.length === 0) {
     return false
   }
+  log.info(`migrate_7_to_8, sessions: ${sessions.length}`)
   const sessionList = sessions.map((session) => getSessionMeta(session))
   await dataStore.setData(StorageKey.ChatSessionsList, sessionList)
+  log.info(`migrate_7_to_8, sessionList: ${sessionList.length}`)
   await pMap(sessions, (session) => dataStore.setData(StorageKeyGenerator.session(session.id), session), {
     concurrency: 5,
   })
+  log.info(`migrate_7_to_8, done`)
   return true
 }

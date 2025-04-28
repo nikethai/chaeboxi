@@ -1,21 +1,23 @@
-import * as defaults from '../../shared/defaults'
+import { Session } from '@/../shared/types'
 import {
-  mermaidSessionCN,
-  mermaidSessionEN,
   artifactSessionCN,
   artifactSessionEN,
   imageCreatorSessionForCN,
   imageCreatorSessionForEN,
+  mermaidSessionCN,
+  mermaidSessionEN,
 } from '@/packages/initial_data'
 import platform from '@/platform'
 import WebPlatform from '@/platform/web_platform'
 import storage, { StorageKey } from '@/storage'
-import oldStore from 'store'
-import { getSessionMeta } from './sessionStorageMutations'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
-import pMap from 'p-map'
-import { getLogger } from '../lib/utils'
 import * as Sentry from '@sentry/react'
+import { getDefaultStore } from 'jotai'
+import oldStore from 'store'
+import * as defaults from '../../shared/defaults'
+import { getLogger } from '../lib/utils'
+import { migrationProcessAtom } from './atoms/utilAtoms'
+import { getSessionMeta } from './sessionStorageMutations'
 
 const log = getLogger('migration')
 
@@ -50,13 +52,13 @@ export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true)
   log.info(`migrateOnData: ${configVersion}, canRelaunch: ${canRelaunch}`)
 
   if (configVersion < 1) {
-    await migrate_0_to_1(dataStore)
+    // await migrate_0_to_1(dataStore)
     configVersion = 1
     await dataStore.setData(StorageKey.ConfigVersion, configVersion)
     log.info(`migrate_0_to_1`)
   }
   if (configVersion < 2) {
-    await migrate_1_to_2(dataStore)
+    // await migrate_1_to_2(dataStore)
     configVersion = 2
     await dataStore.setData(StorageKey.ConfigVersion, configVersion)
     log.info(`migrate_1_to_2`)
@@ -68,7 +70,7 @@ export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true)
     log.info(`migrate_2_to_3`)
   }
   if (configVersion < 4) {
-    await migrate_3_to_4(dataStore)
+    // await migrate_3_to_4(dataStore)
     configVersion = 4
     await dataStore.setData(StorageKey.ConfigVersion, configVersion)
     log.info(`migrate_3_to_4`)
@@ -80,7 +82,7 @@ export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true)
     log.info(`migrate_4_to_5, needRelaunch: ${needRelaunch}`)
   }
   if (configVersion < 6) {
-    await migrate_5_to_6(dataStore)
+    // await migrate_5_to_6(dataStore)
     configVersion = 6
     await dataStore.setData(StorageKey.ConfigVersion, configVersion)
     log.info(`migrate_5_to_6`)
@@ -114,7 +116,7 @@ async function migrate_0_to_1(dataStore: MigrateStore) {
 }
 
 async function migrate_1_to_2(dataStore: MigrateStore) {
-  const sessions = await dataStore.getData(StorageKey.ChatSessions, defaults.sessions())
+  const sessions = await dataStore.getData<Session[]>(StorageKey.ChatSessions, [])
   const lang = await platform.getLocale()
   if (lang.startsWith('zh')) {
     if (sessions.find((session) => session.id === imageCreatorSessionForCN.id)) {
@@ -150,7 +152,7 @@ async function migrate_2_to_3(dataStore: MigrateStore) {
 }
 
 async function migrate_3_to_4(dataStore: MigrateStore) {
-  const sessions = await dataStore.getData(StorageKey.ChatSessions, defaults.sessions())
+  const sessions = await dataStore.getData<Session[]>(StorageKey.ChatSessions, [])
   const lang = await platform.getLocale()
   const targetSession = lang.startsWith('zh') ? artifactSessionCN : artifactSessionEN
   if (sessions.find((session) => session.id === targetSession.id)) {
@@ -179,7 +181,7 @@ async function migrate_4_to_5(dataStore: MigrateStore): Promise<boolean> {
 }
 
 async function migrate_5_to_6(dataStore: MigrateStore) {
-  const sessions = await dataStore.getData(StorageKey.ChatSessions, defaults.sessions())
+  const sessions = await dataStore.getData<Session[]>(StorageKey.ChatSessions, [])
   const lang = await platform.getLocale()
   const targetSession = lang.startsWith('zh') ? mermaidSessionCN : mermaidSessionEN
   if (sessions.find((session) => session.id === targetSession.id)) {
@@ -211,7 +213,7 @@ async function migrate_6_to_7(dataStore: MigrateStore): Promise<boolean> {
 
 // 从所有 sessions 保存在一个 key 迁移到每个 session 保存在一个 key，增加 session 列表的读取性能
 async function migrate_7_to_8(dataStore: MigrateStore): Promise<boolean> {
-  const sessions = await dataStore.getData(StorageKey.ChatSessions, defaults.sessions())
+  const sessions = await dataStore.getData<Session[]>(StorageKey.ChatSessions, [])
   if (sessions.length === 0) {
     return false
   }
@@ -219,9 +221,17 @@ async function migrate_7_to_8(dataStore: MigrateStore): Promise<boolean> {
   const sessionList = sessions.map((session) => getSessionMeta(session))
   await dataStore.setData(StorageKey.ChatSessionsList, sessionList)
   log.info(`migrate_7_to_8, sessionList: ${sessionList.length}`)
-  await pMap(sessions, (session) => dataStore.setData(StorageKeyGenerator.session(session.id), session), {
-    concurrency: 5,
-  })
+  // 改为顺序写，conf 库不支持并发写
+  for (let i = 0; i < sessions.length; i++) {
+    const session = sessions[i]
+    await dataStore.setData(StorageKeyGenerator.session(session.id), session)
+    setInitProcess(`${i + 1} / ${sessions.length}`)
+  }
   log.info(`migrate_7_to_8, done`)
   return true
+}
+
+function setInitProcess(process: string) {
+  const store = getDefaultStore()
+  store.set(migrationProcessAtom, process)
 }

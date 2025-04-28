@@ -1,7 +1,9 @@
+import { getLogger } from '@/lib/utils'
 import { defaultSessionsForCN, defaultSessionsForEN } from '@/packages/initial_data'
 import platform from '@/platform'
 import storage from '@/storage'
 import { StorageKey, StorageKeyGenerator } from '@/storage/StoreStorage'
+import { getMessageText } from '@/utils/message'
 import { arrayMove } from '@dnd-kit/sortable'
 import { getDefaultStore } from 'jotai'
 import { omit, pick } from 'lodash'
@@ -9,11 +11,7 @@ import { copyMessage, copyThreads, Message, Session, SessionMeta } from 'src/sha
 import { v4 as uuidv4 } from 'uuid'
 import { migrateSession, sortSessions } from '../utils/session-utils'
 import * as atoms from './atoms'
-import pMap from 'p-map'
 import { createSessionAtom } from './atoms'
-import { getMessageText } from '@/utils/message'
-import { CurrentVersion } from './migration'
-import { getLogger } from '@/lib/utils'
 
 const log = getLogger('sessionStorageMutations')
 
@@ -108,9 +106,9 @@ async function initPresetSessions() {
   const defaultSessions = lang.startsWith('zh') ? defaultSessionsForCN : defaultSessionsForEN
   log.info(`initPresetSessions, defaultSessions: ${defaultSessions.length}`)
 
-  await pMap(defaultSessions, (session) => storage.setItemNow(StorageKeyGenerator.session(session.id), session), {
-    concurrency: 5,
-  })
+  for (const session of defaultSessions) {
+    await storage.setItemNow(StorageKeyGenerator.session(session.id), session)
+  }
   log.info(`initPresetSessions, set sessions done`)
 
   const sessionList = defaultSessions.map(getSessionMeta)
@@ -123,17 +121,13 @@ async function initPresetSessions() {
 }
 
 export async function initSessionsIfNeeded() {
+  // 已经做过 migration，只需要检查是否存在 sessionList
   const sessionList = await storage.getItem(StorageKey.ChatSessionsList, [])
   if (sessionList.length > 0) {
     return
   }
-  const sessions = await storage.getItem(StorageKey.ChatSessions, [])
-  if (sessions.length > 0) {
-    return
-  }
+
   const newSessionList = await initPresetSessions()
-  // 初始化之后，立即写入版本号，防止后续执行 migration
-  await storage.setItemNow(StorageKey.ConfigVersion, CurrentVersion)
 
   // 同时写入 atom，避免后续被覆盖
   const store = getDefaultStore()
@@ -147,9 +141,9 @@ export function clearConversations(keepNum: number) {
     .slice(keepNum)
     .map((s) => s.id) // 这里必须用 id，因为使用写入 sorted 版本会改变顺序
   store.set(atoms.sessionsListAtom, (sessions) => sessions.filter((s) => !removeSessionIds.includes(s.id)))
-  return pMap(removeSessionIds, (sessionId) => storage.removeItem(StorageKeyGenerator.session(sessionId)), {
-    concurrency: 5,
-  })
+  for (const sessionId of removeSessionIds) {
+    storage.removeItem(StorageKeyGenerator.session(sessionId))
+  }
 }
 
 function _searchSessions(regexp: RegExp, session: Session) {

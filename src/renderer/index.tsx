@@ -8,7 +8,7 @@ import reportWebVitals from './reportWebVitals'
 import { initData } from './setup/init_data'
 import './static/globals.css'
 import './static/index.css'
-import { initLogAtom } from './stores/atoms/utilAtoms'
+import { initLogAtom, migrationProcessAtom } from './stores/atoms/utilAtoms'
 import * as migration from './stores/migration'
 import { CHATBOX_BUILD_PLATFORM, CHATBOX_BUILD_TARGET } from './variables'
 import { router } from './router'
@@ -16,46 +16,45 @@ import { RouterProvider } from '@tanstack/react-router'
 
 const log = getLogger('index')
 
+// 按需加载 polyfill
+import './setup/load_polyfill'
+
+// Sentry 初始化
+import './setup/sentry_init'
+
+// GA4 初始化
+import './setup/ga_init'
+
+// 引入保护代码
+import './setup/protect'
+
+// 引入移动端安全区域代码，主要为了解决异形屏幕的问题
+if (CHATBOX_BUILD_TARGET === 'mobile_app' && CHATBOX_BUILD_PLATFORM === 'ios') {
+  import('./setup/mobile_safe_area')
+}
+// 解决移动端浏览器地址栏导致高度计算问题
+import './setup/mobile_browser_viewport_height'
+
 // ==========执行初始化==============
 async function initializeApp() {
   log.info('initializeApp')
-  // 按需加载 polyfill
-  await import('./setup/load_polyfill')
-  log.info('load_polyfill done')
-
-  // Sentry 初始化
-  await import('./setup/sentry_init')
-  log.info('sentry_init done')
-
-  // GA4 初始化
-  await import('./setup/ga_init')
-  log.info('ga_init done')
-
-  // 引入保护代码
-  await import('./setup/protect')
-  log.info('protect done')
-
-  // 引入移动端安全区域代码，主要为了解决异形屏幕的问题
-  if (CHATBOX_BUILD_TARGET === 'mobile_app' && CHATBOX_BUILD_PLATFORM === 'ios') {
-    await import('./setup/mobile_safe_area')
-    log.info('mobile_safe_area done')
-  }
-
-  // 解决移动端浏览器地址栏导致高度计算问题
-  await import('./setup/mobile_browser_viewport_height')
-  log.info('mobile_browser_viewport_height done')
-
-  // 初始化数据
-  await initData()
-  log.info('initData done')
-
-  // 数据迁移
 
   try {
+    // 数据迁移
     await migration.migrate()
     log.info('migrate done')
   } catch (e) {
     log.error('migrate error', e)
+    Sentry.captureException(e as Error)
+  }
+
+  try {
+    // migration 中没有写入 Demo session了，可以在 migration 之后初始化
+    // 初始化数据
+    await initData()
+    log.info('init data done')
+  } catch (e) {
+    log.error('init data error', e)
     Sentry.captureException(e as Error)
   }
 
@@ -68,11 +67,14 @@ async function initializeApp() {
 function InitPage() {
   const log = useAtomValue(initLogAtom)
   const [showLoadingLog, setShowLoadingLog] = useState(false)
+  const migrationProcess = useAtomValue(migrationProcessAtom)
   return (
     <div className={cn('flex flex-col justify-center items-center', showLoadingLog ? 'pt-3' : 'h-80')}>
       <div className={cn('flex flex-col items-center', showLoadingLog ? 'hidden' : '')}>
         <h1 className="font-roboto font-bold text-3xl text-gray-800 m-0">Chatbox</h1>
-        <p className="font-roboto font-normal text-gray-400 opacity-40">loading...</p>
+        <p className="font-roboto font-normal text-gray-400 opacity-40">
+          {migrationProcess ? `Migrating...(${migrationProcess})` : 'loading...'}
+        </p>
       </div>
       <div className="mt-4">
         <div
@@ -104,24 +106,19 @@ root.render(
 )
 
 // 等待初始化完成后再渲染
-initializeApp()
-  .then(() => {
-    root.render(
-      <StrictMode>
-        <RouterProvider router={router} />
-      </StrictMode>
-    )
-  })
-  .catch((e) => {
-    root.render(
-      <StrictMode>
-        <div className="pt-12 pl-3">
-          <div>Error: {e.message}</div>
-          <pre>{e.stack}</pre>
-        </div>
-      </StrictMode>
-    )
-  })
+initializeApp().catch((e) => {
+  // 初始化中的各个步骤已经捕获了错误，这里防止未来添加未捕获的逻辑
+  Sentry.captureException(e)
+  log.error('initializeApp error', e)
+})
+.finally(() => {
+  // 初始化完成，可以开始渲染
+  root.render(
+    <StrictMode>
+      <RouterProvider router={router} />
+    </StrictMode>
+  )
+})
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))

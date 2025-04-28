@@ -129,6 +129,3 @@ export function getDefaultPrompt() {
   return 'You are a helpful assistant.'
 }
 
-export function sessions(): Session[] {
-  return [{ id: uuidv4(), name: 'Untitled', messages: [], type: 'chat' }]
-}

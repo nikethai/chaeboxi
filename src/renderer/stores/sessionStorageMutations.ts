@@ -29,12 +29,13 @@ export function getSession(sessionId: string) {
   return migrateSession(session)
 }
 
-export function createSession(session: Omit<Session, 'id'>, previousId?: string) {
+export async function createSession(session: Omit<Session, 'id'>, previousId?: string) {
   const s = { ...session, id: uuidv4() }
   const sMeta = getSessionMeta(s)
   const store = getDefaultStore()
   // 直接写入 storage, 因为动态创建的 atom 无法立即写入
-  storage.setItemNow(StorageKeyGenerator.session(s.id), s)
+  await storage.setItemNow(StorageKeyGenerator.session(s.id), s)
+
   store.set(atoms.sessionsListAtom, (sessions) => {
     if (previousId) {
       let previouseSessionIndex = sessions.findIndex((s) => s.id === previousId)
@@ -76,14 +77,14 @@ export function reorderSessions(oldIndex: number, newIndex: number) {
   })
 }
 
-export function copySession(
+export async function copySession(
   sourceMeta: SessionMeta & {
     name?: Session['name']
     messages?: Session['messages']
     threads?: Session['threads']
     threadName?: Session['threadName']
   }
-): Session {
+) {
   const source = getSession(sourceMeta.id)!
   const newSession = {
     ...omit(source, 'id', 'messages', 'threads', 'messageForksHash'),
@@ -93,7 +94,7 @@ export function copySession(
     messageForksHash: undefined, // 不复制分叉数据
     ...(sourceMeta.threadName ? { threadName: sourceMeta.threadName } : {}),
   }
-  return createSession(newSession, source.id)
+  return await createSession(newSession, source.id)
 }
 
 export function getSessionMeta(session: SessionMeta) {

@@ -52,7 +52,7 @@ function Copilots() {
   const store = useMyCopilots()
   const remoteStore = useRemoteCopilots(language, true)
 
-  const createChatSessionWithCopilot = (copilot: CopilotDetail) => {
+  const createChatSessionWithCopilot = async (copilot: CopilotDetail) => {
     const msgs: Message[] = []
     msgs.push({ id: uuidv4(), role: 'system', contentParts: [{ type: 'text', text: copilot.prompt }] })
     if (copilot.demoQuestion) {
@@ -69,7 +69,7 @@ function Copilots() {
         contentParts: [{ type: 'text', text: copilot.demoAnswer }],
       })
     }
-    const newSession = createSession({
+    const newSession = await createSession({
       name: copilot.name,
       type: 'chat',
       picUrl: copilot.picUrl,

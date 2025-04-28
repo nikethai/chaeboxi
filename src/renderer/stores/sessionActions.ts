@@ -56,8 +56,8 @@ import { toBeRemoved_getContextMessageCount } from '@/components/MaxContextMessa
  * 创建一个新的会话
  * @param newSession
  */
-function create(newSession: Omit<Session, 'id'>) {
-  const session = createSession(newSession)
+async function create(newSession: Omit<Session, 'id'>) {
+  const session = await createSession(newSession)
   switchCurrentSession(session.id)
   return session
 }
@@ -79,14 +79,14 @@ export function modifyThreadName(sessionId: string, threadName: string) {
 /**
  * 创建一个空的会话
  */
-export function createEmpty(type: 'chat' | 'picture') {
+export async function createEmpty(type: 'chat' | 'picture') {
   let newSession: Session
   switch (type) {
     case 'chat':
-      newSession = create(initEmptyChatSession())
+      newSession = await create(initEmptyChatSession())
       break
     case 'picture':
-      newSession = create(initEmptyPictureSession())
+      newSession = await create(initEmptyPictureSession())
       break
     default:
       throw new Error(`Unknown session type: ${type}`)
@@ -207,7 +207,7 @@ export function clear(sessionId: string) {
  * @param source
  */
 export async function copy(source: SessionMeta) {
-  const newSession = copySession(source)
+  const newSession = await copySession(source)
   switchCurrentSession(newSession.id)
 }
 
@@ -309,7 +309,7 @@ export function removeCurrentThread(sessionId: string) {
   saveSession(updatedSession)
 }
 
-export function moveThreadToConversations(sessionId: string, threadId: string) {
+export async function moveThreadToConversations(sessionId: string, threadId: string) {
   if (sessionId === threadId) {
     moveCurrentThreadToConversations(sessionId)
     return
@@ -322,7 +322,7 @@ export function moveThreadToConversations(sessionId: string, threadId: string) {
   if (!targetThread) {
     return
   }
-  const newSession = copySession({
+  const newSession = await copySession({
     ...session,
     name: targetThread.name,
     messages: targetThread.messages,
@@ -333,12 +333,12 @@ export function moveThreadToConversations(sessionId: string, threadId: string) {
   switchCurrentSession(newSession.id)
 }
 
-export function moveCurrentThreadToConversations(sessionId: string) {
+export async function moveCurrentThreadToConversations(sessionId: string) {
   const session = getSession(sessionId)
   if (!session) {
     return
   }
-  const newSession = copySession({
+  const newSession = await copySession({
     ...session,
     name: session.threadName || session.name,
     messages: session.messages,

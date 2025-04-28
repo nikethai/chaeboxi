@@ -1,4 +1,11 @@
 const changelog = `
+### v1.12.1 - 2025.04.28
+
+1. Fixed Latex rendering issue
+2. Fixed left sidebar top drag issue
+3. Fixed ChatboxAI error message display
+4. Added initialization process log display
+
 ### v1.12.0 - 2025.04.24
 
 1. Chatbox AI supports Gemini multimodal output

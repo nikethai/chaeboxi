@@ -1,4 +1,8 @@
 const changelog = `
+### v1.12.2 - 2025.04.29
+
+1. Fixed initialization data migration performance issue
+
 ### v1.12.1 - 2025.04.28
 
 1. Fixed Latex rendering issue

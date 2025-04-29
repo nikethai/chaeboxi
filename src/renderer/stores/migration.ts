@@ -18,6 +18,7 @@ import * as defaults from '../../shared/defaults'
 import { getLogger } from '../lib/utils'
 import { migrationProcessAtom } from './atoms/utilAtoms'
 import { getSessionMeta } from './sessionStorageMutations'
+import { keyBy } from 'lodash'
 
 const log = getLogger('migration')
 
@@ -26,6 +27,7 @@ export async function migrate() {
     {
       getData: storage.getItem.bind(storage),
       setData: storage.setItemNow.bind(storage),
+      setAll: storage.setAll.bind(storage),
       setBlob: storage.setBlob.bind(storage),
     },
     true
@@ -35,6 +37,7 @@ export async function migrate() {
 type MigrateStore = {
   getData: <T>(key: StorageKey, defaultValue: T) => Promise<T>
   setData: <T>(key: StorageKey | string, value: T) => Promise<void>
+  setAll: (data: { [key: string]: any }) => Promise<void>
   setBlob?: (key: string, value: string) => Promise<void>
 }
 
@@ -221,12 +224,10 @@ async function migrate_7_to_8(dataStore: MigrateStore): Promise<boolean> {
   const sessionList = sessions.map((session) => getSessionMeta(session))
   await dataStore.setData(StorageKey.ChatSessionsList, sessionList)
   log.info(`migrate_7_to_8, sessionList: ${sessionList.length}`)
-  // 改为顺序写，conf 库不支持并发写
-  for (let i = 0; i < sessions.length; i++) {
-    const session = sessions[i]
-    await dataStore.setData(StorageKeyGenerator.session(session.id), session)
-    setInitProcess(`${i + 1} / ${sessions.length}`)
-  }
+
+  // 一次写入所有 session， 提升性能
+  const sessionMap = keyBy(sessions, (session) => StorageKeyGenerator.session(session.id))
+  await dataStore.setAll(sessionMap)
   log.info(`migrate_7_to_8, done`)
   return true
 }

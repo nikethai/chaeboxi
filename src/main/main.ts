@@ -430,7 +430,7 @@ ipcMain.handle('getAllStoreValues', (event) => {
 })
 ipcMain.handle('setAllStoreValues', (event, dataJson) => {
   const data = JSON.parse(dataJson)
-  store.store = data
+  store.store = { ...store.store, ...data }
 })
 
 ipcMain.handle('getStoreBlob', async (event, key) => {

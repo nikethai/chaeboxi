@@ -21,6 +21,9 @@ import platform from '@/platform'
 
 export let API_ORIGIN = 'https://api.chatboxai.app'
 
+export function isChatboxAPI(url: RequestInfo | URL) {
+  return url.toString().startsWith(API_ORIGIN)
+}
 /**
  * 按顺序测试 API 的可用性，只要有一个 API 域名可用，就终止测试并切换所有流量到该域名。
  * 在测试过程中，会根据服务器返回添加新的 API 域名，并缓存到本地

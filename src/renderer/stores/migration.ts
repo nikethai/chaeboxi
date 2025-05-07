@@ -1,4 +1,4 @@
-import { Session } from '@/../shared/types'
+import { Session, SessionMeta } from '@/../shared/types'
 import {
   artifactSessionCN,
   artifactSessionEN,
@@ -41,7 +41,7 @@ type MigrateStore = {
   setBlob?: (key: string, value: string) => Promise<void>
 }
 
-export const CurrentVersion = 8
+export const CurrentVersion = 9
 
 export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true) {
   let needRelaunch = false
@@ -98,6 +98,7 @@ export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true)
     await dataStore.setData(StorageKey.ConfigVersion, configVersion)
     log.info(`migrate_6_to_7, needRelaunch: ${needRelaunch}`)
   }
+  let migrate_7_to_8_executed = false
   if (configVersion < 8) {
     // 必须这么写，如果写在一行， 编译优化会导致 migrate 不执行
     const _needRelaunch = await migrate_7_to_8(dataStore)
@@ -105,6 +106,18 @@ export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true)
     configVersion = 8
     await dataStore.setData(StorageKey.ConfigVersion, configVersion)
     log.info(`migrate_7_to_8, needRelaunch: ${needRelaunch}`)
+    migrate_7_to_8_executed = true
+  }
+
+  if (configVersion < 9) {
+    if (!migrate_7_to_8_executed) {
+      // 如果 migrate_7_to_8 执行了，就没有必要执行 migrate_8_to_9 找回数据了
+      const _needRelaunch = await migrate_8_to_9(dataStore)
+      needRelaunch ||= _needRelaunch
+    }
+    configVersion = 9
+    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
+    log.info(`migrate_8_to_9, needRelaunch: ${needRelaunch}`)
   }
 
   // 如果需要重启，则重启应用
@@ -221,10 +234,11 @@ async function migrate_6_to_7(dataStore: MigrateStore): Promise<boolean> {
 // 从所有 sessions 保存在一个 key 迁移到每个 session 保存在一个 key，增加 session 列表的读取性能
 async function migrate_7_to_8(dataStore: MigrateStore): Promise<boolean> {
   const sessions = await dataStore.getData<Session[]>(StorageKey.ChatSessions, [])
+  log.info(`migrate_7_to_8, sessions: ${sessions.length}`)
   if (sessions.length === 0) {
     return false
   }
-  log.info(`migrate_7_to_8, sessions: ${sessions.length}`)
+
   const sessionList = sessions.map((session) => getSessionMeta(session))
   await dataStore.setData(StorageKey.ChatSessionsList, sessionList)
   log.info(`migrate_7_to_8, sessionList: ${sessionList.length}`)
@@ -233,6 +247,35 @@ async function migrate_7_to_8(dataStore: MigrateStore): Promise<boolean> {
   const sessionMap = keyBy(sessions, (session) => StorageKeyGenerator.session(session.id))
   await dataStore.setAll(sessionMap)
   log.info(`migrate_7_to_8, done`)
+  return true
+}
+
+// 修复之前从 7 以下升级，会导致 7_8 不执行的问题，从 chat-sessions 里找到 chat-sessions-list 中不存在的 session，然后迁移
+async function migrate_8_to_9(dataStore: MigrateStore): Promise<boolean> {
+  if (platform.type !== 'mobile') {
+    return false
+  }
+
+  const sessions = await dataStore.getData<Session[]>(StorageKey.ChatSessions, [])
+  log.info(`migrate_8_to_9, old sessions: ${sessions.length}`)
+  if (sessions.length === 0) {
+    return false
+  }
+
+  const sessionList = await dataStore.getData<SessionMeta[]>(StorageKey.ChatSessionsList, [])
+  const existedSessionIds = new Set(sessionList.map((session) => session.id))
+
+  // 找到 chat-sessions 里不存在于 chat-sessions-list 的 session
+  const missedSessions = sessions.filter((session) => !existedSessionIds.has(session.id))
+  const missedSessionList = missedSessions.map((session) => getSessionMeta(session))
+  log.info(`migrate_8_to_9, missedSessions: ${missedSessions.length}`)
+
+  // 写入 chat-sessions-list
+  await dataStore.setData(StorageKey.ChatSessionsList, [...sessionList, ...missedSessionList])
+  const missedSessionMap = keyBy(missedSessions, (session) => StorageKeyGenerator.session(session.id))
+  await dataStore.setAll(missedSessionMap)
+  log.info(`migrate_8_to_9 done`)
+
   return true
 }
 

@@ -79,7 +79,8 @@ export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true)
     log.info(`migrate_3_to_4`)
   }
   if (configVersion < 5) {
-    needRelaunch ||= await migrate_4_to_5(dataStore)
+    const _needRelaunch = await migrate_4_to_5(dataStore)
+    needRelaunch ||= _needRelaunch
     configVersion = 5
     await dataStore.setData(StorageKey.ConfigVersion, configVersion)
     log.info(`migrate_4_to_5, needRelaunch: ${needRelaunch}`)
@@ -91,13 +92,16 @@ export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true)
     log.info(`migrate_5_to_6`)
   }
   if (configVersion < 7) {
-    needRelaunch ||= await migrate_6_to_7(dataStore)
+    const _needRelaunch = await migrate_6_to_7(dataStore)
+    needRelaunch ||= _needRelaunch
     configVersion = 7
     await dataStore.setData(StorageKey.ConfigVersion, configVersion)
     log.info(`migrate_6_to_7, needRelaunch: ${needRelaunch}`)
   }
   if (configVersion < 8) {
-    needRelaunch ||= await migrate_7_to_8(dataStore)
+    // 必须这么写，如果写在一行， 编译优化会导致 migrate 不执行
+    const _needRelaunch = await migrate_7_to_8(dataStore)
+    needRelaunch ||= _needRelaunch
     configVersion = 8
     await dataStore.setData(StorageKey.ConfigVersion, configVersion)
     log.info(`migrate_7_to_8, needRelaunch: ${needRelaunch}`)

@@ -1,4 +1,9 @@
 const changelog = `
+### v1.12.3 - 2025.05.08
+
+1. Fixed issue where data was lost when upgrading from 1.9.x version on mobile
+2. Mac: Use Command key instead of Ctrl key for shortcut functions
+
 ### v1.12.2 - 2025.04.29
 
 1. Fixed initialization data migration performance issue

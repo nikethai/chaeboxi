@@ -2,6 +2,8 @@ import { Session, SessionMeta } from '@/../shared/types'
 import {
   artifactSessionCN,
   artifactSessionEN,
+  defaultSessionsForCN,
+  defaultSessionsForEN,
   imageCreatorSessionForCN,
   imageCreatorSessionForEN,
   mermaidSessionCN,
@@ -18,7 +20,7 @@ import * as defaults from '../../shared/defaults'
 import { getLogger } from '../lib/utils'
 import { migrationProcessAtom } from './atoms/utilAtoms'
 import { getSessionMeta } from './sessionStorageMutations'
-import { keyBy } from 'lodash'
+import { difference, intersection, keyBy, uniq } from 'lodash'
 
 const log = getLogger('migration')
 
@@ -256,17 +258,33 @@ async function migrate_8_to_9(dataStore: MigrateStore): Promise<boolean> {
     return false
   }
 
-  const sessions = await dataStore.getData<Session[]>(StorageKey.ChatSessions, [])
-  log.info(`migrate_8_to_9, old sessions: ${sessions.length}`)
-  if (sessions.length === 0) {
+  const oldSessions = await dataStore.getData<Session[]>(StorageKey.ChatSessions, [])
+  log.info(`migrate_8_to_9, old sessions: ${oldSessions.length}`)
+  if (oldSessions.length === 0) {
     return false
   }
 
   const sessionList = await dataStore.getData<SessionMeta[]>(StorageKey.ChatSessionsList, [])
-  const existedSessionIds = new Set(sessionList.map((session) => session.id))
+  const existedSessionIds = sessionList.map((session) => session.id)
+
+  // 如果 排除掉 预置的 session， chat-sessions 和 chat-sessions-list 里的 session id 全都不一致，说明之前漏了 7-8 的 migration，需要执行数据找回，否则跳过找回步骤
+  const intersectSessionIds = intersection(
+    existedSessionIds,
+    oldSessions.map((session) => session.id)
+  )
+
+  const defaultSessionIds = uniq([
+    ...defaultSessionsForEN.map((session) => session.id),
+    ...defaultSessionsForCN.map((session) => session.id),
+  ])
+
+  // 如果 intersectSessionIds 里还有值，说明之前成功执行过 7-8 的 migration，跳过找回步骤
+  if (difference(intersectSessionIds, defaultSessionIds).length !== 0) {
+    return false
+  }
 
   // 找到 chat-sessions 里不存在于 chat-sessions-list 的 session
-  const missedSessions = sessions.filter((session) => !existedSessionIds.has(session.id))
+  const missedSessions = oldSessions.filter((session) => !existedSessionIds.includes(session.id))
   const missedSessionList = missedSessions.map((session) => getSessionMeta(session))
   log.info(`migrate_8_to_9, missedSessions: ${missedSessions.length}`)
 

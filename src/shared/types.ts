@@ -4,6 +4,16 @@ import pick from 'lodash/pick'
 import { v4 as uuidv4 } from 'uuid'
 import { OpenAIModel } from '../renderer/packages/models/openai'
 
+export interface SearchResultItem {
+  title: string
+  link: string
+  snippet: string
+}
+
+export interface SearchResult {
+  items: SearchResultItem[]
+}
+
 export interface MessageFile {
   id: string
   name: string

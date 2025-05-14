@@ -324,8 +324,9 @@ export function moveThreadToConversations(sessionId: string, threadId: string) {
   }
   const newSession = copySession({
     ...session,
+    name: targetThread.name,
     messages: targetThread.messages,
-    threads: undefined,
+    threads: [],
     threadName: undefined,
   })
   removeThread(sessionId, threadId)
@@ -339,8 +340,9 @@ export function moveCurrentThreadToConversations(sessionId: string) {
   }
   const newSession = copySession({
     ...session,
+    name: session.threadName || session.name,
     messages: session.messages,
-    threads: undefined,
+    threads: [],
     threadName: undefined,
   })
   removeCurrentThread(sessionId)

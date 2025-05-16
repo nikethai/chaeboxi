@@ -1,38 +1,35 @@
-import { ModelSettings, Session, SessionType, Settings } from 'src/shared/types'
+import { ModelProvider, ProviderSettings, Session, SessionType, Settings } from 'src/shared/types'
 import { ModelSettingUtil } from './interface'
 import BaseConfig from './base-config'
 import LMStudio from '../models/lmstudio'
 
 export default class LMStudioSettingUtil extends BaseConfig implements ModelSettingUtil {
-  async getCurrentModelDisplayName(settings: Settings, sessionType: SessionType): Promise<string> {
-    return `LM Studio (${settings.lmStudioModel})`
+  public provider: ModelProvider = ModelProvider.LMStudio
+  async getCurrentModelDisplayName(
+    model: string,
+    sessionType: SessionType,
+    providerSettings?: ProviderSettings
+  ): Promise<string> {
+    return `LM Studio (${providerSettings?.models?.find((m) => m.modelId === model)?.nickname || model})`
   }
 
-  getCurrentModelOptionValue(settings: Settings) {
-    return settings.lmStudioModel
-  }
-
-  public getLocalOptionGroups(settings: ModelSettings) {
+  public getLocalOptionGroups() {
     return []
   }
 
-  protected async listProviderModels(settings: ModelSettings) {
-    const lmStudio = new LMStudio(settings)
+  protected async listProviderModels(settings: ProviderSettings) {
+    const lmStudio = new LMStudio({
+      lmStudioHost: settings.apiHost!,
+      lmStudioModel: '',
+    })
     return lmStudio.listModels()
   }
 
-  selectSessionModel(settings: Session['settings'], selected: string): Session['settings'] {
-    return {
-      ...settings,
-      lmStudioModel: selected,
-    }
+  isCurrentModelSupportImageInput(model: string): boolean {
+    return LMStudio.helpers.isModelSupportVision(model)
   }
 
-  isCurrentModelSupportImageInput(settings: ModelSettings): boolean {
-    return LMStudio.helpers.isModelSupportVision(settings.lmStudioModel)
-  }
-
-  isCurrentModelSupportToolUse(settings: ModelSettings): boolean {
-    return LMStudio.helpers.isModelSupportToolUse(settings.lmStudioModel)
+  isCurrentModelSupportToolUse(model: string): boolean {
+    return LMStudio.helpers.isModelSupportToolUse(model)
   }
 }

@@ -1,74 +1,31 @@
-import { ModelSettings, Session, SessionType, Settings } from 'src/shared/types'
+import { ModelProvider, ProviderSettings, SessionType } from 'src/shared/types'
 import { ModelSettingUtil } from './interface'
-import * as settingActions from '../../stores/settingActions'
 import BaseConfig from './base-config'
 
+// TODO: 重新实现
 export default class CustomModelSettingUtil extends BaseConfig implements ModelSettingUtil {
-  async getCurrentModelDisplayName(settings: Settings, sessionType: SessionType): Promise<string> {
-    const customProvider = settings.customProviders?.find(
-      (provider) => provider.id === settings.selectedCustomProviderId
-    )
-    if (!customProvider) {
-      return 'unknown'
-    }
-    return `${customProvider.name}(${customProvider.model})`
+  public provider: ModelProvider = ModelProvider.Custom
+  async getCurrentModelDisplayName(
+    model: string,
+    sessionType: SessionType,
+    providerSettings?: ProviderSettings
+  ): Promise<string> {
+    return `Custom API (${providerSettings?.models?.find((m) => m.modelId === model)?.nickname || model})`
   }
 
-  getCurrentModelOptionValue(settings: Settings) {
-    const customProvider = settings.customProviders?.find(
-      (provider) => provider.id === settings.selectedCustomProviderId
-    )
-    if (!customProvider) {
-      return 'unknown'
-    }
-    return customProvider.model
-  }
-
-  public getLocalOptionGroups(settings: ModelSettings) {
-    const customProvider = settings.customProviders?.find(
-      (provider) => provider.id === settings.selectedCustomProviderId
-    )
-    if (!customProvider) {
-      return []
-    }
-    const models = customProvider.modelOptions || []
-    if (!models.includes(customProvider.model)) {
-      models.push(customProvider.model)
-    }
-    return [
-      {
-        options: models.map((model) => ({
-          label: model,
-          value: model,
-        })),
-      },
-    ]
-  }
-
-  protected async listProviderModels(settings: ModelSettings) {
+  public getLocalOptionGroups() {
     return []
   }
 
-  selectSessionModel(settings: Session['settings'], selected: string): Session['settings'] {
-    const globalSettings = settingActions.getSettings()
-    const selectedCustomProviderId = settings?.selectedCustomProviderId || globalSettings.selectedCustomProviderId
-    const customProviders = globalSettings.customProviders.map((provider) => {
-      if (provider.id === selectedCustomProviderId) {
-        return { ...provider, model: selected }
-      }
-      return provider
-    })
-    return {
-      ...settings,
-      customProviders,
-    }
+  protected async listProviderModels(settings: ProviderSettings) {
+    return []
   }
 
-  isCurrentModelSupportImageInput(settings: ModelSettings) {
+  isCurrentModelSupportImageInput(model: string): boolean {
     return true
   }
 
-  isCurrentModelSupportToolUse(settings: ModelSettings) {
+  isCurrentModelSupportToolUse(model: string): boolean {
     return false
   }
 }

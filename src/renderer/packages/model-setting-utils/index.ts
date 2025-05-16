@@ -1,4 +1,4 @@
-import { ModelProvider, ModelSettings, SessionType, Settings } from 'src/shared/types'
+import { ModelProvider, SessionType, Settings } from 'src/shared/types'
 import { ModelSettingUtil } from './interface'
 import AzureSettingUtil from './azure-setting-util'
 import ChatGLMSettingUtil from './chatglm-setting-util'
@@ -32,21 +32,21 @@ export function getModelSettingUtil(aiProvider: ModelProvider): ModelSettingUtil
     [ModelProvider.XAI]: XAISettingUtil,
     [ModelProvider.Custom]: CustomModelSettingUtil,
   }
-  const Class = hash[aiProvider]
+  const Class = hash[aiProvider] || CustomModelSettingUtil
   return new Class()
 }
 
-export async function getModelDisplayName(settings: Settings, sessionType: SessionType) {
-  const util = getModelSettingUtil(settings.aiProvider)
-  return await util.getCurrentModelDisplayName(settings, sessionType)
+export async function getModelDisplayName(
+  provider: ModelProvider,
+  model: string,
+  providers: Settings['providers'],
+  sessionType: SessionType
+) {
+  const util = getModelSettingUtil(provider)
+  return util.getCurrentModelDisplayName(model, sessionType, providers?.[provider])
 }
 
-export function isModelSupportImageInput(settings: ModelSettings): boolean {
-  const util = getModelSettingUtil(settings.aiProvider)
-  return util.isCurrentModelSupportImageInput(settings)
-}
-
-export function isModelSupportToolUse(settings: ModelSettings): boolean {
-  const util = getModelSettingUtil(settings.aiProvider)
-  return util.isCurrentModelSupportToolUse(settings)
+export function isModelSupportToolUse(provider: ModelProvider, model: string): boolean {
+  const util = getModelSettingUtil(provider)
+  return util.isCurrentModelSupportToolUse(model)
 }

@@ -1,18 +1,19 @@
-import { ModelSettings, Session, SessionType, Settings } from 'src/shared/types'
+import { ModelProvider, ProviderSettings, Session, SessionType, Settings } from 'src/shared/types'
 import Claude, { claudeModels } from '../models/claude'
 import BaseConfig from './base-config'
 import { ModelSettingUtil } from './interface'
 
 export default class ClaudeSettingUtil extends BaseConfig implements ModelSettingUtil {
-  async getCurrentModelDisplayName(settings: Settings, sessionType: SessionType) {
-    return `Claude API (${settings.claudeModel || 'unknown'})`
+  public provider: ModelProvider = ModelProvider.Claude
+  async getCurrentModelDisplayName(
+    model: string,
+    sessionType: SessionType,
+    providerSettings?: ProviderSettings
+  ): Promise<string> {
+    return `Claude API (${providerSettings?.models?.find((m) => m.modelId === model)?.nickname || model})`
   }
 
-  getCurrentModelOptionValue(settings: Settings): string {
-    return settings.claudeModel
-  }
-
-  public getLocalOptionGroups(settings: ModelSettings) {
+  public getLocalOptionGroups() {
     return [
       {
         options: claudeModels.map((value) => ({
@@ -23,23 +24,20 @@ export default class ClaudeSettingUtil extends BaseConfig implements ModelSettin
     ]
   }
 
-  protected async listProviderModels(settings: ModelSettings) {
-    const claude = new Claude(settings)
+  protected async listProviderModels(settings: ProviderSettings) {
+    const claude = new Claude({
+      claudeApiHost: settings.apiHost!,
+      claudeApiKey: settings.apiKey!,
+      claudeModel: '',
+    })
     return claude.listModels()
   }
 
-  selectSessionModel(settings: Session['settings'], selected: string): Session['settings'] {
-    return {
-      ...settings,
-      claudeModel: selected,
-    }
+  public isCurrentModelSupportImageInput(model: string) {
+    return Claude.helpers.isModelSupportVision(model)
   }
 
-  public isCurrentModelSupportImageInput(settings: ModelSettings) {
-    return Claude.helpers.isModelSupportVision(settings.claudeModel)
-  }
-
-  public isCurrentModelSupportToolUse(settings: ModelSettings) {
-    return Claude.helpers.isModelSupportToolUse(settings.claudeModel)
+  public isCurrentModelSupportToolUse(model: string) {
+    return Claude.helpers.isModelSupportToolUse(model)
   }
 }

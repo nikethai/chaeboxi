@@ -8,7 +8,7 @@ import ArrowCircleDownIcon from '@mui/icons-material/ArrowCircleDown'
 import ArrowCircleUpIcon from '@mui/icons-material/ArrowCircleUp'
 import { Box, ButtonGroup, IconButton } from '@mui/material'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect } from 'react'
 export const Route = createFileRoute('/session/$sessionId')({
   component: RouteComponent,
@@ -18,6 +18,8 @@ function RouteComponent() {
   const navigate = useNavigate()
   const { sessionId: currentSessionId } = Route.useParams()
   const currentSession = useAtomValue(atoms.currentSessionAtom)
+  const setChatSessionSettings = useSetAtom(atoms.chatSessionSettingsAtom)
+  const setPictureSessionSettings = useSetAtom(atoms.pictureSessionSettingsAtom)
 
   useEffect(() => {
     setTimeout(() => {
@@ -25,6 +27,19 @@ function RouteComponent() {
     }, 200)
   }, [])
 
+  // currentSession变化时（包括session settings变化），存下当前的settings作为新Session的默认值
+  useEffect(() => {
+    if (currentSession) {
+      if (currentSession.type === 'chat' && currentSession.settings) {
+        const { provider, modelId } = currentSession.settings
+        setChatSessionSettings({ provider, modelId })
+      }
+      if (currentSession.type === 'picture' && currentSession.settings) {
+        const { provider, modelId } = currentSession.settings
+        setPictureSessionSettings({ provider, modelId })
+      }
+    }
+  }, [currentSession])
 
   return currentSession ? (
     <div className="flex flex-col h-full">

@@ -1,6 +1,7 @@
 import { createAzure } from '@ai-sdk/azure'
 import AbstractAISDKModel from './abstract-ai-sdk'
 import { ModelHelpers } from './types'
+import { normalizeAzureEndpoint } from './llm_utils'
 
 const helpers: ModelHelpers = {
   isModelSupportVision: (model: string) => {
@@ -37,11 +38,10 @@ export default class AzureOpenAI extends AbstractAISDKModel {
   }
 
   private getProvider() {
-    const origin = new URL(this.options.azureEndpoint.trim()).origin
     return createAzure({
       apiKey: this.options.azureApikey,
       apiVersion: this.options.azureApiVersion,
-      baseURL: origin + '/openai/deployments',
+      baseURL: normalizeAzureEndpoint(this.options.azureEndpoint).endpoint,
     })
   }
 

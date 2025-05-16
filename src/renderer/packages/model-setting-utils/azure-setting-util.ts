@@ -1,55 +1,36 @@
-import { ModelSettings, Session, SessionType, Settings } from 'src/shared/types'
+import { ModelProvider, ProviderSettings, SessionType } from 'src/shared/types'
 import { ModelSettingUtil } from './interface'
 import AzureOpenAI from '../models/azure'
 import BaseConfig from './base-config'
 
 export default class AzureSettingUtil extends BaseConfig implements ModelSettingUtil {
-  async getCurrentModelDisplayName(settings: Settings, sessionType: SessionType): Promise<string> {
+  public provider: ModelProvider = ModelProvider.Azure
+  async getCurrentModelDisplayName(
+    model: string,
+    sessionType: SessionType,
+    providerSettings?: ProviderSettings
+  ): Promise<string> {
     if (sessionType === 'picture') {
-      return `Azure OpenAI API (${settings.azureDalleDeploymentName})`
+      return `Azure OpenAI API (${model})`
     } else {
-      return `Azure OpenAI API (${settings.azureDeploymentName})`
+      return `Azure OpenAI API (${providerSettings?.models?.find((m) => m.modelId === model)?.nickname || model})`
     }
   }
 
-  getCurrentModelOptionValue(settings: Settings) {
-    return settings.azureDeploymentName
-  }
-
-  public getLocalOptionGroups(settings: ModelSettings) {
-    const options = settings.azureDeploymentNameOptions.map((option) => ({
-      label: option,
-      value: option,
-    }))
-    if (!options.some((option) => option.value === settings.azureDeploymentName)) {
-      options.push({
-        label: settings.azureDeploymentName,
-        value: settings.azureDeploymentName,
-      })
-    }
-    return [
-      {
-        options,
-      },
-    ]
-  }
-
-  protected async listProviderModels(settings: ModelSettings) {
+  public getLocalOptionGroups() {
+    // FIXME:
     return []
   }
 
-  selectSessionModel(settings: Session['settings'], selected: string): Session['settings'] {
-    return {
-      ...settings,
-      azureDeploymentName: selected,
-    }
+  protected async listProviderModels() {
+    return []
   }
 
-  public isCurrentModelSupportImageInput(settings: ModelSettings) {
-    return AzureOpenAI.helpers.isModelSupportVision(settings.azureDeploymentName)
+  public isCurrentModelSupportImageInput(model: string) {
+    return AzureOpenAI.helpers.isModelSupportVision(model)
   }
 
-  public isCurrentModelSupportToolUse(settings: ModelSettings) {
-    return AzureOpenAI.helpers.isModelSupportToolUse(settings.azureDeploymentName)
+  public isCurrentModelSupportToolUse(model: string) {
+    return AzureOpenAI.helpers.isModelSupportToolUse(model)
   }
 }

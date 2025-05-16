@@ -14,18 +14,23 @@ import autosize from 'autosize'
 import { useAtom, useAtomValue } from 'jotai'
 import _ from 'lodash'
 import { FilePen, FolderClosed, Globe, Image, Link, SendHorizontal, Settings2, Undo2 } from 'lucide-react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
-import { createMessage, ShortcutSendValue } from '../../shared/types'
+import { createMessage, ModelProvider, ShortcutSendValue } from '../../shared/types'
 import * as dom from '../hooks/dom'
 import icon from '../static/icon.png'
 import * as atoms from '../stores/atoms'
 import * as sessionActions from '../stores/sessionActions'
 import { FileMiniCard, ImageMiniCard, LinkMiniCard } from './Attachments'
 import MiniButton from './MiniButton'
-import { ChatModelSelector } from './ModelSelector'
 import { Keys } from './Shortcut'
+import ModelSelector from './ModelSelectorNew'
+import { IconSelector } from '@tabler/icons-react'
+import { getSession, saveSession } from '@/stores/sessionStorageMutations'
+import { useProviders } from '@/hooks/useProviders'
+import ImageModelSelect from './ImageModelSelect'
+import { Box, Tooltip } from '@mantine/core'
 
 export default function InputBox() {
   const theme = useTheme()
@@ -88,9 +93,21 @@ export default function InputBox() {
       return
     }
     setPreviousMessageQuickInputMark('')
+
     if (messageInput.trim() === '' && links.length === 0 && attachments.length === 0 && pictureKeys.length === 0) {
       return
     }
+
+    if (!currentSession?.settings?.provider || !currentSession?.settings?.modelId) {
+      setShowSelectModelErrorTip(true)
+      const clickEventListener = () => {
+        setShowSelectModelErrorTip(false)
+        document.removeEventListener('click', clickEventListener)
+      }
+      document.addEventListener('click', clickEventListener)
+      return
+    }
+
     const newMessage = createMessage('user', messageInput)
     if (pictureKeys.length > 0) {
       newMessage.contentParts.push(...pictureKeys.map((k) => ({ type: 'image' as const, storageKey: k })))
@@ -338,6 +355,35 @@ export default function InputBox() {
     noKeyboard: true,
   })
 
+  const { providers } = useProviders()
+  const modelSelectorDisplayText = useMemo(() => {
+    if (!currentSession?.settings?.provider || !currentSession.settings.modelId) {
+      return t('Select Model')
+    }
+    const providerInfo = providers.find((p) => p.id === currentSession?.settings?.provider)
+
+    const modelInfo = (providerInfo?.models || providerInfo?.defaultSettings?.models)?.find(
+      (m) => m.modelId === currentSession?.settings?.modelId
+    )
+    return `${modelInfo?.nickname || currentSession?.settings?.modelId} (${
+      providerInfo?.name || currentSession?.settings?.provider
+    })`
+  }, [providers, currentSession])
+  const [showSelectModelErrorTip, setShowSelectModelErrorTip] = useState(false)
+  const handleSelectModel = (provider: ModelProvider, modelId: string) => {
+    if (!currentSession) {
+      return
+    }
+    saveSession({
+      id: currentSession.id,
+      settings: {
+        ...(currentSession.settings || {}),
+        provider,
+        modelId,
+      },
+    })
+  }
+
   return (
     <div
       className="pl-1 pr-2 sm:pl-2 sm:pr-4"
@@ -493,7 +539,34 @@ export default function InputBox() {
             </MiniButton>
           </div>
           <div className="flex flex-row items-center">
-            {currentSessionType === 'chat' && <ChatModelSelector />}
+            <Tooltip
+              label={t('Please select a model')}
+              color="chatbox-error"
+              opened={showSelectModelErrorTip}
+              withArrow
+            >
+              <Box>
+                {currentSessionType === 'chat' && (
+                  <ModelSelector onSelect={handleSelectModel}>
+                    <span className="flex items-center text-sm opacity-70 cursor-pointer bg-transparent hover:bg-slate-400/25 rounded h-8 p-1">
+                      {modelSelectorDisplayText}
+                      <IconSelector size={16} className="opacity-50" />
+                    </span>
+                  </ModelSelector>
+                )}
+                {currentSessionType === 'picture' && (
+                  <ImageModelSelect onSelect={handleSelectModel}>
+                    <span className="flex items-center text-sm opacity-70 cursor-pointer bg-transparent hover:bg-slate-400/25 rounded h-8 p-1">
+                      {providers.find((p) => p.id === currentSession?.settings?.provider)?.name ||
+                        currentSession?.settings?.provider ||
+                        t('Select Model')}
+                      <IconSelector size={16} className="opacity-50" />
+                    </span>
+                  </ImageModelSelect>
+                )}
+              </Box>
+            </Tooltip>
+
             {/* <MiniButton className='mr-2 w-auto flex items-center opacity-70'>
                         <span className='text-sm' style={{ color: theme.palette.text.primary }}>
                             严谨(0.7)

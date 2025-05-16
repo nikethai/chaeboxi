@@ -1,4 +1,4 @@
-import { ChatboxAIModel, ModelSettings, Session, SessionType, Settings } from 'src/shared/types'
+import { ChatboxAIModel, ModelProvider, ProviderSettings, Session, SessionType, Settings } from 'src/shared/types'
 import { ModelSettingUtil } from './interface'
 import { chatboxAIModels } from '../models/chatboxai'
 import BaseConfig from './base-config'
@@ -15,36 +15,39 @@ function formatModelLabel(value: string): string {
 }
 
 export default class ChatboxAISettingUtil extends BaseConfig implements ModelSettingUtil {
-  private async getCurrentModelOptionLabel(settings: Settings): Promise<string> {
-    const currentValue = this.getCurrentModelOptionValue(settings)
-    const optionGroups = await this.getMergeOptionGroups(settings)
-    for (const optionGroup of optionGroups) {
-      const option = optionGroup.options.find((option) => option.value === currentValue)
-      if (option) {
-        return option.label
-      }
-    }
-    return currentValue
-  }
+  public provider: ModelProvider = ModelProvider.ChatboxAI
 
-  async getCurrentModelDisplayName(settings: Settings, sessionType: SessionType): Promise<string> {
+  // private async getCurrentModelOptionLabel(settings: Settings): Promise<string> {
+  //   const currentValue = this.getCurrentModelOptionValue(settings)
+  //   const optionGroups = await this.getMergeOptionGroups(settings)
+  //   for (const optionGroup of optionGroups) {
+  //     const option = optionGroup.options.find((option) => option.value === currentValue)
+  //     if (option) {
+  //       return option.label
+  //     }
+  //   }
+  //   return currentValue
+  // }
+
+  async getCurrentModelDisplayName(
+    model: string,
+    sessionType: SessionType,
+    providerSettings?: ProviderSettings
+  ): Promise<string> {
     if (sessionType === 'picture') {
       return `Chatbox AI`
     } else {
-      let model = await this.getCurrentModelOptionLabel(settings)
-      if (!model.toLowerCase().includes('chatbox')) {
-        model = `Chatbox AI (${model})`
-      }
-      model = model.replace('chatboxai-', 'Chatbox AI ')
-      return model
+      // let model = await this.getCurrentModelOptionLabel(settings)
+      // if (!model.toLowerCase().includes('chatbox')) {
+      //   model = `Chatbox AI (${model})`
+      // }
+      // model = model.replace('chatboxai-', 'Chatbox AI ')
+      // return model
+      return `Chatbox AI (${providerSettings?.models?.find((m) => m.modelId === model)?.nickname || model})`
     }
   }
 
-  getCurrentModelOptionValue(settings: Settings) {
-    return settings.chatboxAIModel
-  }
-
-  public getLocalOptionGroups(settings: ModelSettings) {
+  public getLocalOptionGroups() {
     return [
       {
         options: chatboxAIModels.map((value) => ({
@@ -55,7 +58,7 @@ export default class ChatboxAISettingUtil extends BaseConfig implements ModelSet
     ]
   }
 
-  protected async listProviderModels(settings: ModelSettings) {
+  protected async listProviderModels() {
     return []
   }
 
@@ -72,18 +75,11 @@ export default class ChatboxAISettingUtil extends BaseConfig implements ModelSet
     return ret.filter((group) => group.options.length > 0)
   }
 
-  selectSessionModel(settings: Session['settings'], selected: string): Session['settings'] {
-    return {
-      ...settings,
-      chatboxAIModel: selected as ChatboxAIModel,
-    }
+  public isCurrentModelSupportImageInput(model: string) {
+    return ChatboxAI.helpers.isModelSupportVision(model)
   }
 
-  public isCurrentModelSupportImageInput(settings: ModelSettings) {
-    return ChatboxAI.helpers.isModelSupportVision(settings.chatboxAIModel)
-  }
-
-  public isCurrentModelSupportToolUse(settings: ModelSettings) {
-    return ChatboxAI.helpers.isModelSupportToolUse(settings.chatboxAIModel)
+  public isCurrentModelSupportToolUse(model: string) {
+    return ChatboxAI.helpers.isModelSupportToolUse(model)
   }
 }

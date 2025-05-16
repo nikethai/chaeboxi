@@ -98,7 +98,7 @@ export default function MessageList(props: { className?: string; currentSession:
                 {index !== 0 && currentThreadHash[msg.id] && (
                   <div className="text-center pb-4 pt-8" key={'divider-' + msg.id}>
                     <span
-                      className="cursor-pointer font-bold border-solid border rounded-2xl py-2 px-3 border-slate-400/25"
+                      className="cursor-pointer font-bold border-solid border rounded-xxl py-2 px-3 border-slate-400/25"
                       onClick={(event) => openThreadMenu(event, currentThreadHash[msg.id].id)}
                     >
                       <span className="pr-1 opacity-60">#</span>

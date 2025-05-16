@@ -9,6 +9,7 @@ import ExportChat from './ExportChat'
 import MessageEdit from './MessageEdit'
 import AttachLink from './AttachLink'
 import ReportContent from './ReportContent'
+import ModelEdit from './ModelEdit'
 
 NiceModal.register('welcome', Welcome)
 NiceModal.register('provider-selector', ProviderSelector)
@@ -20,3 +21,4 @@ NiceModal.register('export-chat', ExportChat)
 NiceModal.register('message-edit', MessageEdit)
 NiceModal.register('attach-link', AttachLink)
 NiceModal.register('report-content', ReportContent)
+NiceModal.register('model-edit', ModelEdit)

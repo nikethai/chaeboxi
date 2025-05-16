@@ -10,11 +10,6 @@ const ProviderSelector = NiceModal.create(() => {
   const modal = useModal()
 
   const onSetup = (provider: ModelProvider) => {
-    if (provider === ModelProvider.Custom) {
-      settingActions.createCustomProvider()
-    } else {
-      settingActions.setModelProvider(provider)
-    }
     modal.resolve(provider)
     modal.hide()
   }

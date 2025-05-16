@@ -1,5 +1,5 @@
 import OpenAI from './openai'
-import { Settings, Config, ModelProvider } from '../../../shared/types'
+import { Settings, Config, ModelProvider } from '@/../shared/types'
 import ChatboxAI from './chatboxai'
 import AzureOpenAI from './azure'
 import ChatGLM from './chatglm'
@@ -14,62 +14,149 @@ import Perplexity from './perplexity'
 import XAI from './xai'
 import type { ModelInterface } from './types'
 import CustomOpenAI from './custom-openai'
+import { SystemProviders } from 'src/shared/defaults'
 
 export function getModel(setting: Settings, config: Config): ModelInterface {
-  switch (setting.aiProvider) {
+  const provider = setting.provider
+  if (!provider) {
+    throw new Error('Model provider must not be empty.')
+  }
+  const providerBaseInfo = [...SystemProviders, ...(setting.customProviders || [])].find((p) => p.id === provider)
+  if (!providerBaseInfo) {
+    throw new Error('Cannot find model with provider: ' + setting.provider)
+  }
+  const providerSetting = setting.providers?.[setting.provider!] || {}
+
+  const formattedApiHost = (providerSetting.apiHost || providerBaseInfo.defaultSettings?.apiHost || '').trim()
+
+  switch (provider) {
     case ModelProvider.ChatboxAI:
-      return new ChatboxAI(setting, config)
+      return new ChatboxAI(
+        {
+          licenseKey: setting.licenseKey,
+          chatboxAIModel: setting.modelId!,
+          licenseInstances: setting.licenseInstances,
+          licenseDetail: setting.licenseDetail,
+          language: setting.language,
+          dalleStyle: setting.dalleStyle || 'vivid',
+          temperature: setting.temperature!,
+        },
+        config
+      )
     case ModelProvider.OpenAI:
       return new OpenAI({
-        apiKey: setting.openaiKey,
-        apiHost: setting.apiHost,
-        model: (setting.model === 'custom-model' && setting.openaiCustomModel) || setting.model,
-        dalleStyle: setting.dalleStyle,
-        temperature: setting.temperature,
+        apiKey: providerSetting.apiKey || '',
+        apiHost: formattedApiHost,
+        model: setting.modelId!,
+        dalleStyle: setting.dalleStyle || 'vivid',
+        temperature: setting.temperature!,
         topP: setting.topP,
         injectDefaultMetadata: setting.injectDefaultMetadata,
-        useProxy: setting.openaiUseProxy,
+        useProxy: false, // 之前的openaiUseProxy已经没有在使用，直接写死false
       })
+
     case ModelProvider.Azure:
-      return new AzureOpenAI(setting)
+      return new AzureOpenAI({
+        azureEndpoint: providerSetting.endpoint || providerBaseInfo.defaultSettings?.endpoint || '',
+        azureDeploymentName: setting.modelId || '',
+        azureDalleDeploymentName: providerSetting.dalleDeploymentName || '',
+        azureApikey: providerSetting.apiKey || '',
+        azureApiVersion: providerSetting.apiVersion || providerBaseInfo.defaultSettings?.apiVersion || '',
+        temperature: setting.temperature!,
+        topP: setting.topP || 0,
+        dalleStyle: setting.dalleStyle || 'vivid',
+        imageGenerateNum: setting.imageGenerateNum || 1,
+        injectDefaultMetadata: setting.injectDefaultMetadata,
+      })
+
     case ModelProvider.ChatGLM6B:
-      return new ChatGLM(setting)
+      return new ChatGLM({
+        chatglmApiKey: providerSetting.apiKey || '',
+        chatglmModel: setting.modelId || '',
+      })
+
     case ModelProvider.Claude:
-      return new Claude(setting)
+      return new Claude({
+        claudeApiKey: providerSetting.apiKey || '',
+        claudeApiHost: formattedApiHost,
+        claudeModel: setting.modelId || '',
+      })
+
     case ModelProvider.Gemini:
-      return new Gemini(setting)
+      return new Gemini({
+        geminiAPIKey: providerSetting.apiKey || '',
+        geminiAPIHost: formattedApiHost,
+        geminiModel: setting.modelId || ('' as any),
+        temperature: setting.temperature!,
+      })
+
     case ModelProvider.Ollama:
-      return new Ollama(setting)
+      return new Ollama({
+        ollamaHost: formattedApiHost,
+        ollamaModel: setting.modelId || '',
+        temperature: setting.temperature!,
+      })
+
     case ModelProvider.Groq:
-      return new Groq(setting)
+      return new Groq({
+        groqAPIKey: providerSetting.apiKey || '',
+        groqModel: setting.modelId || '',
+        temperature: setting.temperature!,
+      })
+
     case ModelProvider.DeepSeek:
-      return new DeepSeek(setting)
-    case ModelProvider.SiliconFlow:
-      return new SiliconFlow(setting)
-    case ModelProvider.LMStudio:
-      return new LMStudio(setting)
-    case ModelProvider.Perplexity:
-      return new Perplexity(setting)
-    case ModelProvider.XAI:
-      return new XAI(setting)
-    case ModelProvider.Custom:
-      const customProvider = setting.customProviders.find(
-        (provider) => provider.id === setting.selectedCustomProviderId
-      )
-      if (!customProvider) {
-        throw new Error('Cannot find the custom provider')
-      }
-      return new CustomOpenAI({
-        apiKey: customProvider.key,
-        apiHost: customProvider.host,
-        apiPath: customProvider.path,
-        model: customProvider.model,
+      return new DeepSeek({
+        deepseekAPIKey: providerSetting.apiKey || '',
+        deepseekModel: setting.modelId || '',
         temperature: setting.temperature,
         topP: setting.topP,
-        useProxy: customProvider.useProxy,
+      })
+
+    case ModelProvider.SiliconFlow:
+      return new SiliconFlow({
+        siliconCloudKey: providerSetting.apiKey || '',
+        siliconCloudModel: setting.modelId || '',
+        temperature: setting.temperature,
+        topP: setting.topP,
+      })
+
+    case ModelProvider.LMStudio:
+      return new LMStudio({
+        lmStudioHost: formattedApiHost,
+        lmStudioModel: setting.modelId || '',
+        temperature: setting.temperature,
+        topP: setting.topP,
+      })
+
+    case ModelProvider.Perplexity:
+      return new Perplexity({
+        perplexityApiKey: providerSetting.apiKey || '',
+        perplexityModel: setting.modelId || '',
+        temperature: setting.temperature,
+        topP: setting.topP,
+      })
+
+    case ModelProvider.XAI:
+      return new XAI({
+        xAIKey: providerSetting.apiKey || '',
+        xAIModel: setting.modelId || '',
+        temperature: setting.temperature,
+        topP: setting.topP,
       })
     default:
-      throw new Error('Cannot find model with provider: ' + setting.aiProvider)
+      if (providerBaseInfo.isCustom) {
+        return new CustomOpenAI({
+          apiKey: providerSetting.apiKey || '',
+          apiHost: formattedApiHost,
+          apiPath: providerSetting.apiPath || '',
+          model: setting.modelId || '',
+          temperature: setting.temperature,
+          topP: setting.topP,
+          useProxy: providerSetting.useProxy,
+        })
+      } else {
+        throw new Error('Cannot find model with provider: ' + setting.provider)
+      }
   }
 }
 

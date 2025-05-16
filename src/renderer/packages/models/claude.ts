@@ -4,6 +4,7 @@ import { ModelMeta } from 'src/shared/types'
 import AbstractAISDKModel from './abstract-ai-sdk'
 import { ModelHelpers } from './types'
 import { ApiError } from './errors'
+import { normalizeClaudeHost } from './llm_utils'
 
 // https://docs.anthropic.com/en/docs/about-claude/models/overview
 const modelConfig: ModelMeta = {
@@ -69,12 +70,8 @@ export default class Claude extends AbstractAISDKModel {
   }
 
   protected getChatModel() {
-    let host = this.options.claudeApiHost
-    if (host === 'https://api.anthropic.com') {
-      host = `${host}/v1`
-    }
     const provider = createAnthropic({
-      baseURL: host,
+      baseURL: normalizeClaudeHost(this.options.claudeApiHost).apiHost,
       apiKey: this.options.claudeApiKey,
       headers: {
         'anthropic-dangerous-direct-browser-access': 'true',

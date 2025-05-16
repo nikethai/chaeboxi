@@ -10,6 +10,8 @@ export enum StorageKey {
   ConfigVersion = 'configVersion',
   RemoteConfig = 'remoteConfig',
   ChatSessionsList = 'chat-sessions-list',
+  ChatSessionSettings = 'chat-session-settings',
+  PictureSessionSettings = 'picture-session-settings',
 }
 
 export const StorageKeyGenerator = {

@@ -31,14 +31,12 @@ import {
   MessageLink,
   MessagePicture,
   ModelProvider,
-  ModelSettings,
   Session,
   SessionMeta,
+  SessionSettings,
   SessionThread,
   Settings,
   createMessage,
-  pickPictureSettings,
-  settings2SessionSettings,
 } from '../../shared/types'
 import i18n from '../i18n'
 import * as promptFormat from '../packages/prompts'
@@ -515,7 +513,7 @@ export async function submitNewUserMessage(params: {
   insertMessage(currentSessionId, newUserMsg)
 
   const settings = getCurrentSessionMergedSettings()
-  const isChatboxAI = settings.aiProvider === ModelProvider.ChatboxAI
+  const isChatboxAI = settings.provider === ModelProvider.ChatboxAI
   const remoteConfig = settingActions.getRemoteConfig()
 
   // 根据需要，插入空白的回复消息
@@ -546,7 +544,7 @@ export async function submitNewUserMessage(params: {
   try {
     // 如果本次消息开启了联网问答，需要检查当前模型是否支持
     // 桌面版&手机端总是支持联网问答，不再需要检查模型是否支持
-    if (webBrowsing && platform.type === 'web' && !isModelSupportToolUse(settings)) {
+    if (webBrowsing && platform.type === 'web' && !isModelSupportToolUse(settings.provider!, settings.modelId!)) {
       if (remoteConfig.setting_chatboxai_first) {
         throw ChatboxAIAPIError.fromCodeName('model_not_support_web_browsing', 'model_not_support_web_browsing')
       } else {
@@ -649,7 +647,7 @@ export async function submitNewUserMessage(params: {
       ...newAssistantMsg,
       generating: false,
       cancel: undefined,
-      model: await getModelDisplayName(settings, 'chat'),
+      model: await getModelDisplayName(settings.provider!, settings.modelId!, settings.providers, 'chat'),
       contentParts: [{ type: 'text', text: '' }],
       errorCode,
       error: `${err.message}`, // 这么写是为了避免类型问题
@@ -691,8 +689,8 @@ export async function generate(sessionId: string, targetMsg: Message, options?: 
     // FIXME: 图片消息生成时，需要展示 placeholder
     // pictures: session.type === 'picture' ? createLoadingPictures(settings.imageGenerateNum) : targetMsg.pictures,
     cancel: undefined,
-    aiProvider: settings.aiProvider,
-    model: await getModelDisplayName(settings, session.type || 'chat'),
+    aiProvider: settings.provider,
+    model: await getModelDisplayName(settings.provider!, settings.modelId!, settings.providers, session.type || 'chat'),
     style: session.type === 'picture' ? settings.dalleStyle : undefined,
     generating: true,
     errorCode: undefined,
@@ -779,7 +777,7 @@ export async function generate(sessionId: string, targetMsg: Message, options?: 
         }
         await generateImage(model, {
           prompt,
-          num: settings.imageGenerateNum,
+          num: settings.imageGenerateNum!,
           callback: async (picBase64) => {
             const storageKey = StorageKeyGenerator.picture(`${sessionId}:${targetMsg.id}`)
             // 图片需要存储到 indexedDB，如果直接使用 OpenAI 返回的图片链接，图片链接将随着时间而失效
@@ -817,7 +815,7 @@ export async function generate(sessionId: string, targetMsg: Message, options?: 
       errorCode,
       error: `${err.message}`, // 这么写是为了避免类型问题
       errorExtra: {
-        aiProvider: settings.aiProvider,
+        aiProvider: settings.provider,
         host: err['host'],
         responseBody: err.responseBody,
       },
@@ -864,7 +862,22 @@ async function _generateName(sessionId: string, modifyName: (sessionId: string, 
   if (!session) {
     return
   }
-  const settings = session.settings ? mergeSettings(globalSettings, session.settings, session.type) : globalSettings
+  const settings = {
+    ...globalSettings,
+    ...session.settings,
+    // 图片会话使用gpt-4o-mini模型，否则会使用DALL-E-3
+    ...(session.type === 'picture'
+      ? {
+          modelId: 'gpt-4o-mini',
+        }
+      : {}),
+    ...(globalSettings.threadNamingModel
+      ? {
+          provider: globalSettings.threadNamingModel.provider as ModelProvider,
+          modelId: globalSettings.threadNamingModel.model,
+        }
+      : {}),
+  }
   const configs = await platform.getConfig()
   try {
     const model = getModel(settings, configs)
@@ -912,7 +925,6 @@ export function clearConversationList(keepNum: number) {
 async function genMessageContext(settings: Settings, msgs: Message[]) {
   const {
     // openaiMaxContextTokens,
-    openaiMaxContextMessageCount,
     maxContextMessageCount,
   } = settings
   if (msgs.length === 0) {
@@ -932,15 +944,14 @@ async function genMessageContext(settings: Settings, msgs: Message[]) {
     }
     const size = estimateTokensFromMessages([msg]) + 20 // 20 作为预估的误差补偿
     // 只有 OpenAI 才支持上下文 tokens 数量限制
-    if (settings.aiProvider === 'openai') {
+    if (settings.provider === 'openai') {
       // if (size + totalLen > openaiMaxContextTokens) {
       //     break
       // }
     }
     if (
-      toBeRemoved_getContextMessageCount(openaiMaxContextMessageCount, maxContextMessageCount) <
-        Number.MAX_SAFE_INTEGER &&
-      prompts.length >= toBeRemoved_getContextMessageCount(openaiMaxContextMessageCount, maxContextMessageCount) + 1 // +1是为了保留用户最后一条输入消息
+      maxContextMessageCount! < Number.MAX_SAFE_INTEGER &&
+      prompts.length >= maxContextMessageCount! + 1 // +1是为了保留用户最后一条输入消息
     ) {
       break
     }
@@ -996,10 +1007,14 @@ async function genMessageContext(settings: Settings, msgs: Message[]) {
 export function initEmptyChatSession(): Omit<Session, 'id'> {
   const store = getDefaultStore()
   const settings = store.get(atoms.settingsAtom)
+  const chatSessionSettings = store.get(atoms.chatSessionSettingsAtom)
   const newSession: Omit<Session, 'id'> = {
     name: 'Untitled',
     type: 'chat',
     messages: [],
+    settings: {
+      ...chatSessionSettings,
+    },
   }
   if (settings.defaultPrompt) {
     newSession.messages.push(createMessage('system', settings.defaultPrompt || defaults.getDefaultPrompt()))
@@ -1008,10 +1023,15 @@ export function initEmptyChatSession(): Omit<Session, 'id'> {
 }
 
 export function initEmptyPictureSession(): Omit<Session, 'id'> {
+  const store = getDefaultStore()
+  const pictureSessionSettings = store.get(atoms.pictureSessionSettingsAtom)
   return {
     name: 'Untitled',
     type: 'picture',
     messages: [createMessage('system', i18n.t('Image Creator Intro') || '')],
+    settings: {
+      ...pictureSessionSettings,
+    },
   }
 }
 
@@ -1060,44 +1080,63 @@ export function getMessageThreadContext(sessionId: string, messageId: string): M
   return []
 }
 
+// export function mergeSettings(
+//   globalSettings: Settings,
+//   sessionSetting: SessionSettings,
+//   sessionType?: 'picture' | 'chat'
+// ): Settings {
+//   let specialSettings = sessionSetting
+//   // 过滤掉会话专属设置中不应该存在的设置项，为了兼容旧版本数据和防止疏漏
+//   switch (sessionType) {
+//     case 'picture':
+//       specialSettings = pickPictureSettings(specialSettings as Settings)
+//       break
+//     case undefined:
+//     case 'chat':
+//     default:
+//       specialSettings = settings2SessionSettings(specialSettings as Settings)
+//       break
+//   }
+//   specialSettings = omit(specialSettings) // 需要 omit 来去除 undefined，否则会覆盖掉全局配置
+//   const ret = {
+//     ...globalSettings,
+//     ...specialSettings, // 会话配置优先级高于全局配置
+//   }
+//   // 对于自定义模型提供方，只有模型 model 可以被会话配置覆盖
+//   if (ret.customProviders) {
+//     ret.customProviders = globalSettings.customProviders.map((provider) => {
+//       if (specialSettings.customProviders) {
+//         const specialProvider = specialSettings.customProviders.find((p) => p.id === provider.id)
+//         if (specialProvider) {
+//           return {
+//             ...provider,
+//             model: specialProvider.model, // model 字段的会话配置优先级高于全局配置
+//           }
+//         }
+//       }
+//       return provider
+//     })
+//   }
+//   return ret
+// }
+
 export function mergeSettings(
   globalSettings: Settings,
-  sessionSetting: Partial<ModelSettings>,
+  sessionSetting: SessionSettings,
   sessionType?: 'picture' | 'chat'
 ): Settings {
-  let specialSettings = sessionSetting
-  // 过滤掉会话专属设置中不应该存在的设置项，为了兼容旧版本数据和防止疏漏
-  switch (sessionType) {
-    case 'picture':
-      specialSettings = pickPictureSettings(specialSettings as Settings)
-      break
-    case undefined:
-    case 'chat':
-    default:
-      specialSettings = settings2SessionSettings(specialSettings as Settings)
-      break
-  }
-  specialSettings = omit(specialSettings) // 需要 omit 来去除 undefined，否则会覆盖掉全局配置
-  const ret = {
+  return {
     ...globalSettings,
-    ...specialSettings, // 会话配置优先级高于全局配置
-  }
-  // 对于自定义模型提供方，只有模型 model 可以被会话配置覆盖
-  if (ret.customProviders) {
-    ret.customProviders = globalSettings.customProviders.map((provider) => {
-      if (specialSettings.customProviders) {
-        const specialProvider = specialSettings.customProviders.find((p) => p.id === provider.id)
-        if (specialProvider) {
-          return {
-            ...provider,
-            model: specialProvider.model, // model 字段的会话配置优先级高于全局配置
-          }
+    ...(sessionType === 'picture'
+      ? {
+          imageGenerateNum: defaults.pictureSessionSettings().imageGenerateNum,
+          dalleStyle: defaults.pictureSessionSettings().dalleStyle,
         }
-      }
-      return provider
-    })
+      : {
+          maxContextMessageCount: defaults.chatSessionSettings().maxContextMessageCount,
+        }),
+    ...sessionSetting,
   }
-  return ret
 }
 
 function omit(obj: any) {

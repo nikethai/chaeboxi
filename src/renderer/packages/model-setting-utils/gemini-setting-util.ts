@@ -1,18 +1,19 @@
-import { ModelSettings, Session, SessionType, Settings } from 'src/shared/types'
+import { ModelProvider, ProviderSettings, Session, SessionType, Settings } from 'src/shared/types'
 import { ModelSettingUtil } from './interface'
 import Gemini, { GeminiModel, geminiModels } from '../models/gemini'
 import BaseConfig from './base-config'
 
 export default class GeminiSettingUtil extends BaseConfig implements ModelSettingUtil {
-  async getCurrentModelDisplayName(settings: Settings, sessionType: SessionType): Promise<string> {
-    return `Gemini API (${settings.geminiModel})`
+  public provider: ModelProvider = ModelProvider.Gemini
+  async getCurrentModelDisplayName(
+    model: string,
+    sessionType: SessionType,
+    providerSettings?: ProviderSettings
+  ): Promise<string> {
+    return `Gemini API (${providerSettings?.models?.find((m) => m.modelId === model)?.nickname || model})`
   }
 
-  getCurrentModelOptionValue(settings: Settings) {
-    return settings.geminiModel
-  }
-
-  public getLocalOptionGroups(settings: ModelSettings) {
+  public getLocalOptionGroups() {
     return [
       {
         options: geminiModels.map((value) => {
@@ -25,23 +26,21 @@ export default class GeminiSettingUtil extends BaseConfig implements ModelSettin
     ]
   }
 
-  protected async listProviderModels(settings: ModelSettings) {
-    const gemini = new Gemini(settings)
+  protected async listProviderModels(settings: ProviderSettings) {
+    const gemini = new Gemini({
+      geminiAPIHost: settings.apiHost!,
+      geminiAPIKey: settings.apiKey!,
+      geminiModel: 'gemini-pro',
+      temperature: 0,
+    })
     return gemini.listModels()
   }
 
-  selectSessionModel(settings: Session['settings'], selected: string): Session['settings'] {
-    return {
-      ...settings,
-      geminiModel: selected as GeminiModel,
-    }
+  public isCurrentModelSupportImageInput(model: string) {
+    return Gemini.helpers.isModelSupportVision(model)
   }
 
-  public isCurrentModelSupportImageInput(settings: ModelSettings) {
-    return Gemini.helpers.isModelSupportVision(settings.geminiModel)
-  }
-
-  public isCurrentModelSupportToolUse(settings: ModelSettings) {
-    return Gemini.helpers.isModelSupportToolUse(settings.geminiModel)
+  public isCurrentModelSupportToolUse(model: string) {
+    return Gemini.helpers.isModelSupportToolUse(model)
   }
 }

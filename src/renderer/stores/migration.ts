@@ -1,4 +1,4 @@
-import { Session, SessionMeta } from '@/../shared/types'
+import { ModelProvider, ModelProviderType, Session, SessionMeta, SessionSettings, Settings } from '@/../shared/types'
 import {
   artifactSessionCN,
   artifactSessionEN,
@@ -20,7 +20,8 @@ import * as defaults from '../../shared/defaults'
 import { getLogger } from '../lib/utils'
 import { migrationProcessAtom } from './atoms/utilAtoms'
 import { getSessionMeta } from './sessionStorageMutations'
-import { difference, intersection, keyBy, uniq } from 'lodash'
+import { difference, intersection, keyBy, uniq, uniqBy } from 'lodash'
+import { v4 as uuidv4 } from 'uuid'
 
 const log = getLogger('migration')
 
@@ -43,11 +44,12 @@ type MigrateStore = {
   setBlob?: (key: string, value: string) => Promise<void>
 }
 
-export const CurrentVersion = 9
+export const CurrentVersion = 10
 
 export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true) {
   let needRelaunch = false
   let configVersion = await dataStore.getData(StorageKey.ConfigVersion, 0)
+
   if (configVersion >= CurrentVersion) {
     return
   }
@@ -120,6 +122,14 @@ export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true)
     configVersion = 9
     await dataStore.setData(StorageKey.ConfigVersion, configVersion)
     log.info(`migrate_8_to_9, needRelaunch: ${needRelaunch}`)
+  }
+
+  if (configVersion < 10) {
+    const _needRelaunch = await migrate_9_to_10(dataStore)
+    needRelaunch ||= _needRelaunch
+    configVersion = 10
+    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
+    log.info(`migrate_9_to_10, needRelaunch: ${needRelaunch}`)
   }
 
   // 如果需要重启，则重启应用
@@ -300,4 +310,256 @@ async function migrate_8_to_9(dataStore: MigrateStore): Promise<boolean> {
 function setInitProcess(process: string) {
   const store = getDefaultStore()
   store.set(migrationProcessAtom, process)
+}
+
+// 迁移provider settings，session settings
+async function migrate_9_to_10(dataStore: MigrateStore): Promise<boolean> {
+  const oldSettings = (await dataStore.getData(StorageKey.Settings, defaults.settings())) as any
+  const {
+    aiProvider,
+    // openai
+    openaiKey,
+    apiHost,
+    model,
+    openaiCustomModel, // OpenAI 自定义模型的 ID
+    openaiCustomModelOptions,
+    openaiUseProxy, // deprecated
+
+    dalleStyle,
+    imageGenerateNum,
+
+    // azure
+    azureEndpoint,
+    azureDeploymentName,
+    azureDeploymentNameOptions,
+    azureDalleDeploymentName, // dall-e-3 的部署名称
+    azureApikey,
+    azureApiVersion,
+
+    // chatglm
+    chatglm6bUrl, // deprecated
+    chatglmApiKey,
+    chatglmModel,
+
+    // chatbox-ai
+    chatboxAIModel,
+
+    // claude
+    claudeApiKey,
+    claudeApiHost,
+    claudeModel,
+
+    // google gemini
+    geminiAPIKey,
+    geminiAPIHost,
+    geminiModel,
+
+    // ollama
+    ollamaHost,
+    ollamaModel,
+
+    // groq
+    groqAPIKey,
+    groqModel,
+
+    // deepseek
+    deepseekAPIKey,
+    deepseekModel,
+
+    // siliconflow
+    siliconCloudKey,
+    siliconCloudModel,
+
+    // LMStudio
+    lmStudioHost,
+    lmStudioModel,
+
+    // perplexity
+    perplexityApiKey,
+    perplexityModel,
+
+    // xai
+    xAIKey,
+    xAIModel,
+
+    // custom provider
+    selectedCustomProviderId, // 选中的自定义提供者 ID，仅当 aiProvider 为 custom 时有效
+    customProviders: oldCustomProviders,
+
+    temperature, // 0-2
+    topP, // 0-1
+    openaiMaxContextMessageCount, // 聊天消息上下文的消息数量限制。超过20表示不限制
+    maxContextMessageCount,
+  } = oldSettings
+
+  // 迁移provider相关的配置
+  const providers: Settings['providers'] = {}
+  const customProviders: Settings['customProviders'] = []
+  if (openaiKey || apiHost) {
+    providers[ModelProvider.OpenAI] = {
+      apiHost,
+      apiKey: openaiKey,
+      // 将openaiCustomModelOptions和openaiCustomModel迁移过来
+      models:
+        openaiCustomModel || openaiCustomModelOptions
+          ? uniqBy(
+              [
+                ...(defaults.SystemProviders.find((p) => p.id === ModelProvider.OpenAI)?.defaultSettings?.models || []),
+                ...(openaiCustomModel ? [{ modelId: openaiCustomModel }] : []),
+                ...(openaiCustomModelOptions || []).map((o: string) => ({ modelId: o })),
+              ],
+              'modelId'
+            )
+          : undefined,
+    }
+  }
+  if (claudeApiKey || claudeApiHost) {
+    providers[ModelProvider.Claude] = {
+      apiKey: claudeApiKey,
+      apiHost: claudeApiHost,
+    }
+  }
+  if (geminiAPIKey || geminiAPIHost) {
+    providers[ModelProvider.Gemini] = {
+      apiKey: geminiAPIKey,
+      apiHost: geminiAPIHost,
+    }
+  }
+  if (deepseekAPIKey) {
+    providers[ModelProvider.DeepSeek] = {
+      apiKey: deepseekAPIKey,
+    }
+  }
+  if (siliconCloudKey) {
+    providers[ModelProvider.SiliconFlow] = {
+      apiKey: siliconCloudKey,
+    }
+  }
+  if (azureEndpoint || azureDeploymentNameOptions || azureDalleDeploymentName || azureApikey || azureApiVersion) {
+    providers[ModelProvider.Azure] = {
+      apiKey: azureApikey,
+      endpoint: azureEndpoint,
+      dalleDeploymentName: azureDalleDeploymentName,
+      apiVersion: azureApiVersion,
+      models: azureDeploymentNameOptions?.map((op: string) => ({
+        modelId: op,
+      })),
+    }
+  }
+  if (xAIKey) {
+    providers[ModelProvider.XAI] = {
+      apiKey: xAIKey,
+    }
+  }
+  if (ollamaHost) {
+    providers[ModelProvider.Ollama] = {
+      apiHost: ollamaHost,
+    }
+  }
+  if (lmStudioHost) {
+    providers[ModelProvider.LMStudio] = {
+      apiHost: lmStudioHost,
+    }
+  }
+  if (perplexityApiKey) {
+    providers[ModelProvider.Perplexity] = {
+      apiKey: perplexityApiKey,
+    }
+  }
+  if (groqAPIKey) {
+    providers[ModelProvider.Groq] = {
+      apiKey: groqAPIKey,
+    }
+  }
+  if (chatglmApiKey) {
+    providers[ModelProvider.ChatGLM6B] = {
+      apiKey: chatglmApiKey,
+    }
+  }
+  if (oldCustomProviders) {
+    oldCustomProviders.forEach((cp: any) => {
+      const pid = 'custom-provider-' + uuidv4()
+      customProviders.push({
+        id: pid,
+        name: cp.name,
+        isCustom: true,
+        type: ModelProviderType.OpenAI,
+      })
+      providers[pid] = {
+        apiKey: cp.key,
+        apiHost: cp.host,
+        apiPath: cp.path,
+        useProxy: cp.useProxy,
+        models: uniq([...(cp.modelOptions || []), cp.model || ''])
+          .filter((op) => !!op)
+          .map((op: any) => ({
+            modelId: op,
+          })),
+      }
+    })
+  }
+
+  // 之前mui的字号有问题，比如设置14时实际显示的大约是16号字
+  let fontSize: number = oldSettings.fontSize
+  if (fontSize && fontSize <= 20) {
+    fontSize += 2
+  } else {
+    fontSize = fontSize || 14
+  }
+
+  await dataStore.setData(StorageKey.Settings, { ...oldSettings, providers, customProviders, fontSize } as Settings)
+
+  // 迁移session settings
+  const chatSessionList = await dataStore.getData<SessionMeta[]>(StorageKey.ChatSessionsList, [])
+  const sessionMap: { [key: string]: Session } = {}
+  for (const sessionMeta of chatSessionList) {
+    const session: Session = await dataStore.getData(StorageKeyGenerator.session(sessionMeta.id) as any, {} as any)
+
+    if (session.id) {
+      const oldSessionSettings = (session.settings || {}) as any
+      const sessionProvider: ModelProvider = oldSessionSettings.aiProvider ?? oldSettings.aiProvider
+      const modelKey = {
+        [ModelProvider.ChatboxAI]: 'chatboxAIModel',
+        [ModelProvider.OpenAI]: 'model',
+        [ModelProvider.Claude]: 'claudeModel',
+        [ModelProvider.Gemini]: 'geminiModel',
+        [ModelProvider.Ollama]: 'ollamaModel',
+        [ModelProvider.LMStudio]: 'lmStudioModel',
+        [ModelProvider.DeepSeek]: 'deepseekModel',
+        [ModelProvider.SiliconFlow]: 'siliconCloudModel',
+        [ModelProvider.Azure]: 'azureDeploymentName',
+        [ModelProvider.XAI]: 'xAIModel',
+        [ModelProvider.Perplexity]: 'perplexityModel',
+        [ModelProvider.Groq]: 'groqModel',
+        [ModelProvider.ChatGLM6B]: 'chatglmModel',
+        [ModelProvider.Custom]: 'model',
+      }[sessionProvider]
+      const modelId: string = oldSessionSettings[modelKey] ?? oldSettings[modelKey]
+      session.settings =
+        session.type === 'chat'
+          ? {
+              provider: sessionProvider,
+              modelId,
+              maxContextMessageCount: oldSessionSettings.maxContextMessageCount ?? oldSettings.maxContextMessageCount,
+              temperature: oldSessionSettings.temperature ?? oldSettings.temperature,
+              topP: oldSessionSettings.topP ?? oldSettings.topP,
+            }
+          : {
+              provider: [ModelProvider.ChatboxAI, ModelProvider.OpenAI, ModelProvider.Azure].includes(
+                oldSettings.aiProvider
+              )
+                ? oldSettings.aiProvider
+                : ModelProvider.ChatboxAI,
+              modelId: 'DALL-E-3',
+              imageGenerateNum: oldSessionSettings.imageGenerateNum ?? 3,
+              dalleStyle: oldSessionSettings.dalleStyle ?? 'vivid',
+            }
+
+      sessionMap[StorageKeyGenerator.session(session.id)] = session
+    }
+  }
+  await dataStore.setAll(sessionMap)
+
+  log.info(`migrate_9_to_10, done`)
+  return true
 }

@@ -1,8 +1,5 @@
-import { GeminiModel } from '@/packages/models/gemini'
 import { LanguageModelUsage } from 'ai'
-import pick from 'lodash/pick'
 import { v4 as uuidv4 } from 'uuid'
-import { OpenAIModel } from '../renderer/packages/models/openai'
 
 export interface SearchResultItem {
   title: string
@@ -129,6 +126,16 @@ export function isPictureSession(session: Session) {
   return session.type === 'picture'
 }
 
+export type SessionSettings = Partial<{
+  provider: ModelProvider
+  modelId: string
+  maxContextMessageCount: number
+  temperature: number
+  topP: number
+  dalleStyle: 'vivid' | 'natural'
+  imageGenerateNum: number // 生成图片的数量
+}>
+
 export interface Session {
   id: string
   type?: SessionType // undefined 为了兼容老版本 chat
@@ -138,7 +145,7 @@ export interface Session {
   starred?: boolean
   copilotId?: string
   assistantAvatarKey?: string // 助手头像的 key
-  settings?: Partial<ReturnType<typeof settings2SessionSettings>>
+  settings?: SessionSettings // 会话设置
   threads?: SessionThread[] // 历史话题列表
   threadName?: string // 当前话题名称
   messageForksHash?: Record<
@@ -173,56 +180,6 @@ export interface SessionThreadBrief {
   messageCount: number
 }
 
-export function settings2SessionSettings(settings: ModelSettings) {
-  return pick(settings, [
-    'aiProvider',
-
-    'chatboxAIModel',
-    'openaiMaxContextMessageCount',
-    'maxContextMessageCount',
-    'temperature',
-    'topP',
-    'dalleStyle',
-    'imageGenerateNum',
-
-    'model',
-    'openaiCustomModel',
-    // 'openaiMaxContextTokens',
-    // 'openaiMaxTokens',
-
-    'azureDeploymentName',
-    'azureDalleDeploymentName',
-
-    'chatglmModel',
-
-    'claudeModel',
-
-    'ollamaHost',
-    'ollamaModel',
-
-    'geminiModel',
-
-    'groqModel',
-
-    'deepseekModel',
-
-    'siliconCloudModel',
-
-    'lmStudioModel',
-
-    'perplexityModel',
-
-    'xAIModel',
-
-    'selectedCustomProviderId',
-    'customProviders',
-  ])
-}
-
-export function pickPictureSettings(settings: ModelSettings) {
-  return pick(settings, ['dalleStyle', 'imageGenerateNum'])
-}
-
 export function createMessage(role: MessageRole = MessageRoleEnum.User, content: string = ''): Message {
   return {
     id: uuidv4(),
@@ -249,91 +206,54 @@ export enum ModelProvider {
   Custom = 'custom',
 }
 
-export interface ModelSettings {
-  aiProvider: ModelProvider // 当前应用中使用的provider（虽然可以配很多，但实际同时只能使用一个）
+export type ProviderModelInfo = {
+  modelId: string
+  nickname?: string
+  labels?: string[]
+  capabilities?: ('vision' | 'reasoning' | 'tool_use')[]
+  contextWindow?: number
+}
 
-  // openai
-  openaiKey: string
-  apiHost: string
-  model: OpenAIModel | 'custom-model'
-  openaiCustomModel?: string // OpenAI 自定义模型的 ID
-  openaiCustomModelOptions: string[]
-  openaiUseProxy: boolean
-
-  dalleStyle: 'vivid' | 'natural'
-  imageGenerateNum: number // 生成图片的数量
-
-  // azure
-  azureEndpoint: string
-  azureDeploymentName: string
-  azureDeploymentNameOptions: string[]
-  azureDalleDeploymentName: string // dall-e-3 的部署名称
-  azureApikey: string
-  azureApiVersion: string
-
-  // chatglm
-  chatglm6bUrl: string // deprecated
-  chatglmApiKey: string
-  chatglmModel: string
-
-  // chatbox-ai
-  licenseKey?: string
-  chatboxAIModel: ChatboxAIModel
-  licenseInstances?: {
-    [key: string]: string
+export type ProviderBaseInfo = {
+  id: ModelProvider
+  name: string
+  type: ModelProviderType
+  isCustom?: false
+  urls?: {
+    website?: string
+    apiKey?: string
+    docs?: string
+    models?: string
   }
-  licenseDetail?: ChatboxAILicenseDetail
+  defaultSettings?: ProviderSettings
+}
 
-  // claude
-  claudeApiKey: string
-  claudeApiHost: string
-  claudeModel: string
+export type CustomProviderBaseInfo = Omit<ProviderBaseInfo, 'id' | 'isCustom'> & {
+  id: string
+  isCustom: true
+}
 
-  // google gemini
-  geminiAPIKey: string
-  geminiAPIHost: string
-  geminiModel: GeminiModel
+export type ProviderSettings = Partial<{
+  apiHost: string
+  apiPath: string
+  apiKey: string
+  models: ProviderModelInfo[]
+  baseDefaultModels: ProviderModelInfo[]
+  excludedModels: string[] // chatbox ai记录被移除的模型id
+  // azure
+  endpoint: string
+  deploymentName: string
+  dalleDeploymentName: string // dall-e-3 的部署名称
+  apiVersion: string
+  useProxy: boolean // 目前只有custom provider会使用这个字段
+}>
 
-  // ollama
-  ollamaHost: string
-  ollamaModel: string
+export type ProviderInfo = (ProviderBaseInfo | CustomProviderBaseInfo) & ProviderSettings
 
-  // groq
-  groqAPIKey: string
-  groqModel: string
-
-  // deepseek
-  deepseekAPIKey: string
-  deepseekModel: string
-
-  // siliconflow
-  siliconCloudKey: string
-  siliconCloudModel: string
-
-  // LMStudio
-  lmStudioHost: string
-  lmStudioModel: string
-
-  // perplexity
-  perplexityApiKey: string
-  perplexityModel: string
-
-  // xai
-  xAIKey: string
-  xAIModel: string
-
-  // custom provider
-  selectedCustomProviderId?: string // 选中的自定义提供者 ID，仅当 aiProvider 为 custom 时有效
-  customProviders: CustomProvider[]
-
-  temperature: number // 0-2
-  topP: number // 0-1
-  // openaiMaxTokens: number // 生成消息的最大限制，是传入 OpenAI 接口的参数。0 代表不限制（不传递）
-  // openaiMaxContextTokens: number // 聊天消息上下文的tokens限制。
-  openaiMaxContextMessageCount: number // 聊天消息上下文的消息数量限制。超过20表示不限制
-  maxContextMessageCount?: number
-  // maxContextSize: string 弃用，字段名永远不在使用，避免老版本报错
-  // maxTokens: string 弃用，字段名永远不在使用，避免老版本报错
+export enum ModelProviderType {
+  ChatboxAI = 'chatbox-ai',
+  OpenAI = 'openai',
+  Gemini = 'gemini',
 }
 
 export type ModelMeta = {
@@ -365,7 +285,30 @@ export interface ExtensionSettings {
   }
 }
 
-export interface Settings extends ModelSettings {
+export interface Settings extends SessionSettings {
+  providers?: {
+    [key: string]: ProviderSettings
+  }
+
+  customProviders?: CustomProviderBaseInfo[]
+
+  // default models
+  threadNamingModel?: {
+    provider: ModelProvider | string
+    model: string
+  }
+  searchTermConstructionModel?: {
+    provider: ModelProvider | string
+    model: string
+  }
+
+  // chatboxai
+  licenseKey?: string
+  licenseInstances?: {
+    [key: string]: string
+  }
+  licenseDetail?: ChatboxAILicenseDetail
+
   showWordCount?: boolean
   showTokenCount?: boolean
   showTokenUsed?: boolean

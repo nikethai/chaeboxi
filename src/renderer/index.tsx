@@ -13,6 +13,7 @@ import * as migration from './stores/migration'
 import { CHATBOX_BUILD_PLATFORM, CHATBOX_BUILD_TARGET } from './variables'
 import { router } from './router'
 import { RouterProvider } from '@tanstack/react-router'
+import '@mantine/core/styles.css'
 
 const log = getLogger('index')
 
@@ -104,19 +105,20 @@ root.render(
 )
 
 // 等待初始化完成后再渲染
-initializeApp().catch((e) => {
-  // 初始化中的各个步骤已经捕获了错误，这里防止未来添加未捕获的逻辑
-  Sentry.captureException(e)
-  log.error('initializeApp error', e)
-})
-.finally(() => {
-  // 初始化完成，可以开始渲染
-  root.render(
-    <StrictMode>
-      <RouterProvider router={router} />
-    </StrictMode>
-  )
-})
+initializeApp()
+  .catch((e) => {
+    // 初始化中的各个步骤已经捕获了错误，这里防止未来添加未捕获的逻辑
+    Sentry.captureException(e)
+    log.error('initializeApp error', e)
+  })
+  .finally(() => {
+    // 初始化完成，可以开始渲染
+    root.render(
+      <StrictMode>
+        <RouterProvider router={router} />
+      </StrictMode>
+    )
+  })
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))

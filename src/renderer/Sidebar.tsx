@@ -205,11 +205,13 @@ function SidebarButtons(props: { sessionListRef: React.RefObject<HTMLDivElement>
       <MenuItem
         onClick={() => {
           // setOpenSettingDialog('ai')
-          navigate({
-            to: '/settings',
-          })
+          if (!routerState.location.pathname.startsWith('/settings')) {
+            navigate({
+              to: '/settings',
+            })
+          }
         }}
-        selected={routerState.location.pathname === '/settings'}
+        selected={routerState.location.pathname.startsWith('/settings')}
         sx={{ padding: '0.2rem 0.1rem', margin: '0.1rem' }}
       >
         <ListItemIcon>

@@ -1,4 +1,4 @@
-import { Session } from '../../shared/types'
+import { ModelProvider, Session } from '../../shared/types'
 import { migrateMessage } from '@/utils/message'
 
 export const defaultSessionsForEN: Session[] = [
@@ -301,6 +301,11 @@ export const imageCreatorSessionForCN: Session = {
   name: 'Image Creator (Example)',
   type: 'picture',
   starred: true,
+  settings: {
+    dalleStyle: 'vivid',
+    provider: ModelProvider.ChatboxAI,
+    modelId: 'DALL-E-3',
+  },
   messages: [
     {
       id: 'chatbox-chat-demo-image-creator-message-id-1',
@@ -409,6 +414,11 @@ export const imageCreatorSessionForEN: Session = {
   name: 'Image Creator (Example)',
   type: 'picture',
   starred: true,
+  settings: {
+    dalleStyle: 'vivid',
+    provider: ModelProvider.ChatboxAI,
+    modelId: 'DALL-E-3',
+  },
   messages: [
     {
       id: 'chatbox-chat-demo-image-creator-message-id-1',

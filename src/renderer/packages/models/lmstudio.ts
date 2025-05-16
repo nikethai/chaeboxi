@@ -1,5 +1,6 @@
 import { ModelHelpers } from './types'
 import OpenAICompatible from './openai-compatible'
+import { normalizeOpenAIApiHostAndPath } from './llm_utils'
 
 const helpers: ModelHelpers = {
   isModelSupportVision: (model: string) => {
@@ -25,7 +26,7 @@ export default class LMStudio extends OpenAICompatible {
   constructor(public options: Options) {
     super({
       apiKey: '',
-      apiHost: normalizeApiHost(options.lmStudioHost),
+      apiHost: normalizeOpenAIApiHostAndPath({ apiHost: options.lmStudioHost }).apiHost,
       model: options.lmStudioModel,
       temperature: options.temperature,
       topP: options.topP,
@@ -35,20 +36,4 @@ export default class LMStudio extends OpenAICompatible {
   isSupportToolUse() {
     return helpers.isModelSupportToolUse(this.options.lmStudioModel)
   }
-}
-
-function normalizeApiHost(apiHost: string) {
-  if (apiHost) {
-    apiHost = apiHost.trim()
-  }
-  if (!apiHost.startsWith('http')) {
-    apiHost = 'http://' + apiHost
-  }
-  if (apiHost.endsWith('/')) {
-    apiHost = apiHost.slice(0, -1)
-  }
-  if (!apiHost.endsWith('/v1')) {
-    apiHost += '/v1'
-  }
-  return apiHost
 }

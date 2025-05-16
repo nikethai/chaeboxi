@@ -1,18 +1,19 @@
-import { ModelSettings, Session, SessionType, Settings } from 'src/shared/types'
+import { ModelProvider, ProviderSettings, SessionType } from 'src/shared/types'
 import { ModelSettingUtil } from './interface'
 import BaseConfig from './base-config'
 import XAI, { xAIModels } from '../models/xai'
 
 export default class XAISettingUtil extends BaseConfig implements ModelSettingUtil {
-  async getCurrentModelDisplayName(settings: Settings, sessionType: SessionType): Promise<string> {
-    return `xAI API (${settings.xAIModel})`
+  public provider: ModelProvider = ModelProvider.XAI
+  async getCurrentModelDisplayName(
+    model: string,
+    sessionType: SessionType,
+    providerSettings?: ProviderSettings
+  ): Promise<string> {
+    return `xAI API (${providerSettings?.models?.find((m) => m.modelId === model)?.nickname || model})`
   }
 
-  getCurrentModelOptionValue(settings: Settings) {
-    return settings.xAIModel
-  }
-
-  public getLocalOptionGroups(settings: ModelSettings) {
+  public getLocalOptionGroups() {
     return [
       {
         options: xAIModels.map((value) => {
@@ -25,23 +26,16 @@ export default class XAISettingUtil extends BaseConfig implements ModelSettingUt
     ]
   }
 
-  protected async listProviderModels(settings: ModelSettings) {
-    const xai = new XAI(settings)
+  protected async listProviderModels(settings: ProviderSettings) {
+    const xai = new XAI({ xAIKey: settings.apiKey!, xAIModel: '' })
     return xai.listModels()
   }
 
-  selectSessionModel(settings: Session['settings'], selected: string): Session['settings'] {
-    return {
-      ...settings,
-      xAIModel: selected,
-    }
+  isCurrentModelSupportImageInput(model: string): boolean {
+    return XAI.helpers.isModelSupportVision(model)
   }
 
-  isCurrentModelSupportImageInput(settings: ModelSettings): boolean {
-    return XAI.helpers.isModelSupportVision(settings.xAIModel)
-  }
-
-  isCurrentModelSupportToolUse(settings: ModelSettings): boolean {
-    return XAI.helpers.isModelSupportToolUse(settings.xAIModel)
+  isCurrentModelSupportToolUse(model: string): boolean {
+    return XAI.helpers.isModelSupportToolUse(model)
   }
 }

@@ -109,7 +109,6 @@ export async function activate(licenseKey: string) {
   store.set(settingsAtom, (settings) => {
     const newSettings: Settings = {
       ...settings,
-      aiProvider: ModelProvider.ChatboxAI,
       licenseKey,
       licenseInstances: {
         ...(settings.licenseInstances || {}),
@@ -119,9 +118,6 @@ export async function activate(licenseKey: string) {
     }
     if (licenseDetail) {
       newSettings.licenseDetail = licenseDetail
-      if (!newSettings.chatboxAIModel) {
-        newSettings.chatboxAIModel = licenseDetail.defaultModel
-      }
     }
     return newSettings
   })

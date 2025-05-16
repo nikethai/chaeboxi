@@ -4,6 +4,7 @@ import { LanguageModelV1 } from 'ai'
 import AbstractAISDKModel, { CallSettings } from './abstract-ai-sdk'
 import { CallChatCompletionOptions, ModelHelpers } from './types'
 import { ApiError } from './errors'
+import { normalizeGeminiHost } from './llm_utils'
 
 export type GeminiModel = keyof typeof modelConfig
 
@@ -84,7 +85,7 @@ export default class Gemeni extends AbstractAISDKModel {
   protected getChatModel(options: CallChatCompletionOptions): LanguageModelV1 {
     const provider = createGoogleGenerativeAI({
       apiKey: this.options.geminiAPIKey,
-      baseURL: `${this.options.geminiAPIHost}/v1beta` || undefined,
+      baseURL: normalizeGeminiHost(this.options.geminiAPIHost).apiHost,
     })
 
     return provider.chat(this.options.geminiModel, {

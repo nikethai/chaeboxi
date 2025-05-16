@@ -457,6 +457,39 @@ export async function getModelConfigs(params: { aiProvider: ModelProvider; licen
   return json['data']
 }
 
+export async function getModelManifest(params: { aiProvider: ModelProvider; licenseKey?: string; language?: string }) {
+  type Response = {
+    data: {
+      groupName: string
+      models: {
+        modelId: string
+        modelName: string
+        labels: string[]
+      }[]
+    }
+  }
+  const res = await afetch(
+    `${API_ORIGIN}/api/model_manifest`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        aiProvider: params.aiProvider,
+        licenseKey: params.licenseKey,
+        language: params.language,
+      }),
+    },
+    {
+      parseChatboxRemoteError: true,
+      retry: 2,
+    }
+  )
+  const json: Response = await res.json()
+  return json['data']
+}
+
 export async function getModelConfigsWithCache(params: {
   aiProvider: ModelProvider
   licenseKey?: string

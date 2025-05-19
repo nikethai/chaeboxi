@@ -3,7 +3,7 @@ import { defaultSessionsForCN, defaultSessionsForEN } from '@/packages/initial_d
 import platform from '@/platform'
 import storage from '@/storage'
 import { StorageKey, StorageKeyGenerator } from '@/storage/StoreStorage'
-import { getMessageText } from '@/utils/message'
+import { getMessageText, migrateMessage } from '@/utils/message'
 import { arrayMove } from '@dnd-kit/sortable'
 import { getDefaultStore } from 'jotai'
 import { omit, pick } from 'lodash'
@@ -175,7 +175,7 @@ function _searchSessions(regexp: RegExp, session: Session) {
       }
     }
   }
-  return matchedMessages
+  return matchedMessages.map((m) => migrateMessage(m))
 }
 
 export async function searchSessions(searchInput: string, sessionId?: string, onResult?: (result: Session[]) => void) {

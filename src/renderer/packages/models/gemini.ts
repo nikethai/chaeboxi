@@ -10,32 +10,29 @@ export type GeminiModel = keyof typeof modelConfig
 
 // https://ai.google.dev/models/gemini?hl=zh-cn
 export const modelConfig = {
-  'gemini-2.0-flash-exp': {
+  'gemini-2.5-flash-preview-04-17': {
+    visision: true,
+  },
+  'gemini-2.5-pro-preview-05-06': {
     vision: true,
   },
-  'gemini-2.0-flash-thinking-exp': {
+  'gemini-2.0-flash': {
     vision: true,
   },
-  'gemini-2.0-flash-thinking-exp-1219': {
+  'gemini-2.0-flash-lite': {
     vision: true,
   },
-  'gemini-1.5-pro-latest': {
+  'gemini-2.0-flash-preview-image-generation': {
     vision: true,
   },
-  'gemini-1.5-flash-latest': {
+  'gemini-1.5-pro': {
     vision: true,
   },
-  'gemini-1.5-pro-exp-0827': {
+  'gemini-1.5-flash': {
     vision: true,
   },
-  'gemini-1.5-flash-exp-0827': {
+  'gemini-1.5-flash-8b': {
     vision: true,
-  },
-  'gemini-1.5-flash-8b-exp-0924': {
-    vision: true,
-  },
-  'gemini-pro': {
-    vision: false,
   },
 }
 

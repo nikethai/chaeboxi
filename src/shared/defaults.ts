@@ -324,6 +324,14 @@ export const SystemProviders: ProviderBaseInfo[] = [
       apiHost: 'https://generativelanguage.googleapis.com',
       models: [
         {
+          modelId: 'gemini-2.5-flash-preview-05-20',
+          capabilities: ['vision'],
+        },
+        {
+          modelId: 'gemini-2.5-pro-preview-05-06',
+          capabilities: ['vision'],
+        },
+        {
           modelId: 'gemini-2.0-flash-exp',
           capabilities: ['vision'],
         },

@@ -82,10 +82,8 @@ export default function Toolbar() {
       {showUpdateNotification && <UpdateAvailableButton sx={{ mr: 2 }} />}
       {isSmallScreen ? (
         <IconButton
-          edge="start"
           color="inherit"
           aria-label="menu"
-          sx={{ mr: 2 }}
           onClick={() => setOpenSearchDialog(true)}
         >
           <SearchIcon />
@@ -96,7 +94,7 @@ export default function Toolbar() {
           variant="outlined"
           color="inherit"
           startIcon={<SearchIcon />}
-          sx={{ mr: 3 }}
+          sx={{ ml:1, mr: 1 }}
           onClick={() => setOpenSearchDialog(true)}
           size="small"
           className="transform-none opacity-30"
@@ -111,25 +109,21 @@ export default function Toolbar() {
       )}
       {isLargeScreen && (
         <IconButton
-          edge="start"
           color="inherit"
           aria-label="width-full-button"
-          sx={{ mr: 2 }}
           onClick={() => setWidthFull(!widthFull)}
         >
           {widthFull ? <WidthWideIcon /> : <WidthNormalIcon />}
         </IconButton>
       )}
       <IconButton
-        edge="start"
         color="inherit"
         aria-label="thread-history-drawer-button"
-        sx={{ mr: 2 }}
         onClick={() => setThreadHistoryDrawerOpen(true)}
       >
         <HistoryIcon />
       </IconButton>
-      <IconButton edge="start" color="inherit" aria-label="more-menu-button" sx={{}} onClick={handleMoreMenuOpen}>
+      <IconButton color="inherit" aria-label="more-menu-button" onClick={handleMoreMenuOpen}>
         <MoreHorizIcon />
       </IconButton>
       <StyledMenu anchorEl={anchorEl} open={open} onClose={handleMoreMenuClose}>

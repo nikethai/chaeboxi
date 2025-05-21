@@ -86,8 +86,8 @@ function Root() {
             flexGrow: 1,
             ...(showSidebar
               ? language === 'ar'
-                ? { marginRight: { sm: `${sidebarWidth}px` } }
-                : { marginLeft: { sm: `${sidebarWidth}px` } }
+                ? { paddingRight: { sm: `${sidebarWidth}px` } }
+                : { paddingLeft: { sm: `${sidebarWidth}px` } }
               : {}),
           }}
         >

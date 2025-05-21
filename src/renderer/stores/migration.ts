@@ -395,24 +395,31 @@ async function migrate_9_to_10(dataStore: MigrateStore): Promise<boolean> {
   // 迁移provider相关的配置
   const providers: Settings['providers'] = {}
   const customProviders: Settings['customProviders'] = []
-  if (openaiKey || apiHost) {
-    providers[ModelProvider.OpenAI] = {
-      apiHost,
-      apiKey: openaiKey,
-      // 将openaiCustomModelOptions和openaiCustomModel迁移过来
-      models:
-        openaiCustomModel || openaiCustomModelOptions
-          ? uniqBy(
-              [
-                ...(defaults.SystemProviders.find((p) => p.id === ModelProvider.OpenAI)?.defaultSettings?.models || []),
-                ...(openaiCustomModel ? [{ modelId: openaiCustomModel }] : []),
-                ...(openaiCustomModelOptions || []).map((o: string) => ({ modelId: o })),
-              ],
-              'modelId'
-            )
-          : undefined,
+
+  try {
+    if (openaiKey || apiHost) {
+      providers[ModelProvider.OpenAI] = {
+        apiHost,
+        apiKey: openaiKey,
+        // 将openaiCustomModelOptions和openaiCustomModel迁移过来
+        models:
+          openaiCustomModel || openaiCustomModelOptions
+            ? uniqBy(
+                [
+                  ...(defaults.SystemProviders.find((p) => p.id === ModelProvider.OpenAI)?.defaultSettings?.models ||
+                    []),
+                  ...(openaiCustomModel ? [{ modelId: openaiCustomModel }] : []),
+                  ...(openaiCustomModelOptions || []).map((o: string) => ({ modelId: o })),
+                ],
+                'modelId'
+              )
+            : undefined,
+      }
     }
+  } catch (e) {
+    log.info('migrate openai settings failed.')
   }
+
   if (claudeApiKey || claudeApiHost) {
     providers[ModelProvider.Claude] = {
       apiKey: claudeApiKey,
@@ -476,27 +483,32 @@ async function migrate_9_to_10(dataStore: MigrateStore): Promise<boolean> {
       apiKey: chatglmApiKey,
     }
   }
-  if (oldCustomProviders) {
-    oldCustomProviders.forEach((cp: any) => {
-      const pid = 'custom-provider-' + uuidv4()
-      customProviders.push({
-        id: pid,
-        name: cp.name,
-        isCustom: true,
-        type: ModelProviderType.OpenAI,
+
+  try {
+    if (oldCustomProviders) {
+      oldCustomProviders.forEach((cp: any) => {
+        const pid = 'custom-provider-' + uuidv4()
+        customProviders.push({
+          id: pid,
+          name: cp.name,
+          isCustom: true,
+          type: ModelProviderType.OpenAI,
+        })
+        providers[pid] = {
+          apiKey: cp.key,
+          apiHost: cp.host,
+          apiPath: cp.path,
+          useProxy: cp.useProxy,
+          models: uniq([...(cp.modelOptions || []), cp.model || ''])
+            .filter((op) => !!op)
+            .map((op: any) => ({
+              modelId: op,
+            })),
+        }
       })
-      providers[pid] = {
-        apiKey: cp.key,
-        apiHost: cp.host,
-        apiPath: cp.path,
-        useProxy: cp.useProxy,
-        models: uniq([...(cp.modelOptions || []), cp.model || ''])
-          .filter((op) => !!op)
-          .map((op: any) => ({
-            modelId: op,
-          })),
-      }
-    })
+    }
+  } catch (e) {
+    log.info('migrate custom provider settings failed.')
   }
 
   // 之前mui的字号有问题，比如设置14时实际显示的大约是16号字
@@ -507,58 +519,71 @@ async function migrate_9_to_10(dataStore: MigrateStore): Promise<boolean> {
     fontSize = fontSize || 14
   }
 
-  await dataStore.setData(StorageKey.Settings, { ...oldSettings, providers, customProviders, fontSize } as Settings)
+  try {
+    await dataStore.setData(StorageKey.Settings, { ...oldSettings, providers, customProviders, fontSize } as Settings)
+  } catch (e) {
+    log.info('save new settings to store failed.')
+  }
 
   // 迁移session settings
   const chatSessionList = await dataStore.getData<SessionMeta[]>(StorageKey.ChatSessionsList, [])
   const sessionMap: { [key: string]: Session } = {}
   for (const sessionMeta of chatSessionList) {
-    const session: Session = await dataStore.getData(StorageKeyGenerator.session(sessionMeta.id) as any, {} as any)
+    try {
+      const session: Session = await dataStore.getData(StorageKeyGenerator.session(sessionMeta.id) as any, {} as any)
 
-    if (session.id) {
-      const oldSessionSettings = (session.settings || {}) as any
-      const sessionProvider: ModelProvider = oldSessionSettings.aiProvider ?? oldSettings.aiProvider
-      const modelKey = {
-        [ModelProvider.ChatboxAI]: 'chatboxAIModel',
-        [ModelProvider.OpenAI]: 'model',
-        [ModelProvider.Claude]: 'claudeModel',
-        [ModelProvider.Gemini]: 'geminiModel',
-        [ModelProvider.Ollama]: 'ollamaModel',
-        [ModelProvider.LMStudio]: 'lmStudioModel',
-        [ModelProvider.DeepSeek]: 'deepseekModel',
-        [ModelProvider.SiliconFlow]: 'siliconCloudModel',
-        [ModelProvider.Azure]: 'azureDeploymentName',
-        [ModelProvider.XAI]: 'xAIModel',
-        [ModelProvider.Perplexity]: 'perplexityModel',
-        [ModelProvider.Groq]: 'groqModel',
-        [ModelProvider.ChatGLM6B]: 'chatglmModel',
-        [ModelProvider.Custom]: 'model',
-      }[sessionProvider]
-      const modelId: string = oldSessionSettings[modelKey] ?? oldSettings[modelKey]
-      session.settings =
-        session.type === 'chat'
-          ? {
-              provider: sessionProvider,
-              modelId,
-              maxContextMessageCount: oldSessionSettings.maxContextMessageCount ?? oldSettings.maxContextMessageCount,
-              temperature: oldSessionSettings.temperature ?? oldSettings.temperature,
-              topP: oldSessionSettings.topP ?? oldSettings.topP,
-            }
-          : {
-              provider: [ModelProvider.ChatboxAI, ModelProvider.OpenAI, ModelProvider.Azure].includes(
-                oldSettings.aiProvider
-              )
-                ? oldSettings.aiProvider
-                : ModelProvider.ChatboxAI,
-              modelId: 'DALL-E-3',
-              imageGenerateNum: oldSessionSettings.imageGenerateNum ?? 3,
-              dalleStyle: oldSessionSettings.dalleStyle ?? 'vivid',
-            }
+      if (session.id) {
+        const oldSessionSettings = (session.settings || {}) as any
+        const sessionProvider: ModelProvider = oldSessionSettings.aiProvider ?? oldSettings.aiProvider
+        const modelKey = {
+          [ModelProvider.ChatboxAI]: 'chatboxAIModel',
+          [ModelProvider.OpenAI]: 'model',
+          [ModelProvider.Claude]: 'claudeModel',
+          [ModelProvider.Gemini]: 'geminiModel',
+          [ModelProvider.Ollama]: 'ollamaModel',
+          [ModelProvider.LMStudio]: 'lmStudioModel',
+          [ModelProvider.DeepSeek]: 'deepseekModel',
+          [ModelProvider.SiliconFlow]: 'siliconCloudModel',
+          [ModelProvider.Azure]: 'azureDeploymentName',
+          [ModelProvider.XAI]: 'xAIModel',
+          [ModelProvider.Perplexity]: 'perplexityModel',
+          [ModelProvider.Groq]: 'groqModel',
+          [ModelProvider.ChatGLM6B]: 'chatglmModel',
+          [ModelProvider.Custom]: 'model',
+        }[sessionProvider]
+        const modelId: string = oldSessionSettings[modelKey] ?? oldSettings[modelKey]
+        session.settings =
+          session.type === 'chat'
+            ? {
+                provider: sessionProvider,
+                modelId,
+                maxContextMessageCount: oldSessionSettings.maxContextMessageCount ?? oldSettings.maxContextMessageCount,
+                temperature: oldSessionSettings.temperature ?? oldSettings.temperature,
+                topP: oldSessionSettings.topP ?? oldSettings.topP,
+              }
+            : {
+                provider: [ModelProvider.ChatboxAI, ModelProvider.OpenAI, ModelProvider.Azure].includes(
+                  oldSettings.aiProvider
+                )
+                  ? oldSettings.aiProvider
+                  : ModelProvider.ChatboxAI,
+                modelId: 'DALL-E-3',
+                imageGenerateNum: oldSessionSettings.imageGenerateNum ?? 3,
+                dalleStyle: oldSessionSettings.dalleStyle ?? 'vivid',
+              }
 
-      sessionMap[StorageKeyGenerator.session(session.id)] = session
+        sessionMap[StorageKeyGenerator.session(session.id)] = session
+      }
+    } catch (e) {
+      log.info(`migrate session [${sessionMeta.id}] settings failed.'`)
     }
   }
-  await dataStore.setAll(sessionMap)
+
+  try {
+    await dataStore.setAll(sessionMap)
+  } catch (e) {
+    log.info('save sessions settings to store failed.')
+  }
 
   log.info(`migrate_9_to_10, done`)
   return true

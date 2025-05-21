@@ -406,5 +406,7 @@
   "Search models": "모델 검색",
   "Not set": "설정되지 않음",
   "Regulate the volume of historical messages sent to the AI, striking a harmonious balance between depth of comprehension and the efficiency of responses.": "AI에 전송되는 역사적 메시지의 양을 조정하고, 이해의 깊이와 응답의 효율성 간의 조화로운 균형을 찾습니다.",
-  "Modify the creativity of AI responses; the higher the value, the more random and intriguing the answers become, while a lower value ensures greater stability and reliability.": "AI 응답의 창의성을 수정하십시오. 값이 높을수록 답변이 더 무작위하고 매력적으로 변하며, 값이 낮을수록 더 큰 안정성과 신뢰성을 보장합니다."
+  "Modify the creativity of AI responses; the higher the value, the more random and intriguing the answers become, while a lower value ensures greater stability and reliability.": "AI 응답의 창의성을 수정하십시오. 값이 높을수록 답변이 더 무작위하고 매력적으로 변하며, 값이 낮을수록 더 큰 안정성과 신뢰성을 보장합니다.",
+  "Survey": "설문 조사",
+  "Failed to fetch models": "모델을 가져오는 데 실패했습니다"
 }

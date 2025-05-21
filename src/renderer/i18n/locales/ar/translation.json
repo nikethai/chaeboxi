@@ -404,5 +404,7 @@
   "Search models": "بحث عن النماذج",
   "Not set": "غير مُعين",
   "Regulate the volume of historical messages sent to the AI, striking a harmonious balance between depth of comprehension and the efficiency of responses.": "تنظيم حجم الرسائل التاريخية المرسلة إلى الذكاء الاصطناعي، مع تحقيق توازن متناغم بين عمق الفهم وكفاءة الردود.",
-  "Modify the creativity of AI responses; the higher the value, the more random and intriguing the answers become, while a lower value ensures greater stability and reliability.": "قم بتعديل إبداع استجابات الذكاء الاصطناعي؛ فكلما زادت القيمة، أصبحت الإجابات أكثر عشوائية وجاذبية، بينما تضمن القيمة المنخفضة مزيدًا من الاستقرار والموثوقية."
+  "Modify the creativity of AI responses; the higher the value, the more random and intriguing the answers become, while a lower value ensures greater stability and reliability.": "قم بتعديل إبداع استجابات الذكاء الاصطناعي؛ فكلما زادت القيمة، أصبحت الإجابات أكثر عشوائية وجاذبية، بينما تضمن القيمة المنخفضة مزيدًا من الاستقرار والموثوقية.",
+  "Survey": "استطلاع",
+  "Failed to fetch models": "فشل في استرداد النماذج"
 }

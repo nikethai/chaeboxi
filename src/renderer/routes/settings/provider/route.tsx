@@ -1,9 +1,11 @@
 import CustomProviderIcon from '@/components/CustomProviderIcon'
 import { useProviders } from '@/hooks/useProviders'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { useSettings } from '@/hooks/useSettings'
 import { Box, Flex, Stack, Text, Image, Button, Modal, TextInput, Select, Indicator } from '@mantine/core'
-import { IconPlus } from '@tabler/icons-react'
+import { IconChevronRight, IconPlus } from '@tabler/icons-react'
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
+import clsx from 'clsx'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SystemProviders } from 'src/shared/defaults'
@@ -23,6 +25,7 @@ export const Route = createFileRoute('/settings/provider')({
 function RouteComponent() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const isSmallScreen = useIsSmallScreen()
   const routerState = useRouterState()
   const providerId = routerState.location.pathname.split('/')[3]
   const { settings, setSettings } = useSettings()
@@ -43,61 +46,87 @@ function RouteComponent() {
 
   return (
     <Flex h="100%">
-      <Stack
-        className="border-solid border-0 border-r border-[var(--mantine-color-chatbox-border-primary-outline)] "
-        gap={0}
-      >
-        <Stack p="xs" gap="xs" flex={1} className="overflow-auto">
-          {providers.map((provider) => (
-            <Link
-              key={provider.id}
-              to={`/settings/provider/$providerId`}
-              params={{ providerId: provider.id }}
-              className="no-underline"
-            >
-              <Flex
-                component="span"
-                align="center"
-                gap="xs"
-                p="md"
-                c={provider.id === providerId ? 'chatbox-brand' : 'chatbox-secondary'}
-                bg={provider.id === providerId ? 'var(--mantine-color-chatbox-brand-light)' : 'transparent'}
-                className="cursor-pointer select-none rounded-md hover:!bg-[var(--mantine-color-chatbox-brand-outline-hover)]"
-              >
-                {provider.isCustom ? (
-                  <CustomProviderIcon providerId={provider.id} providerName={provider.name} size={36} />
-                ) : (
-                  <Image w={36} h={36} src={icons.find((icon) => icon.name === provider.id)?.src} />
-                )}
-
-                <Text span size="sm" w={132} className="!text-inherit">
-                  {provider.name}
-                </Text>
-
-                <Indicator
-                  size={8}
-                  ml={12}
-                  color="chatbox-success"
-                  className="ml-auto"
-                  disabled={!availableProviders.find((p) => p.id === provider.id)}
-                />
-              </Flex>
-            </Link>
-          ))}
-        </Stack>
-        <Button
-          variant="outline"
-          leftSection={<IconPlus size={16} />}
-          mx="md"
-          my="sm"
-          onClick={() => setNewProviderModalOpened(true)}
+      {(!isSmallScreen || routerState.location.pathname === '/settings/provider') && (
+        <Stack
+          className={clsx(
+            'border-solid border-0 border-r border-[var(--mantine-color-chatbox-border-primary-outline)] ',
+            isSmallScreen ? 'w-full border-r-0' : ''
+          )}
+          gap={0}
         >
-          {t('Add')}
-        </Button>
-      </Stack>
-      <Box flex={1} p="md" className="overflow-auto">
-        <Outlet />
-      </Box>
+          <Stack p={isSmallScreen ? 0 : 'xs'} gap={isSmallScreen ? 0 : 'xs'} flex={1} className="overflow-auto">
+            {providers.map((provider) => (
+              <Link
+                key={provider.id}
+                to={`/settings/provider/$providerId`}
+                params={{ providerId: provider.id }}
+                className={clsx(
+                  'no-underline',
+                  isSmallScreen
+                    ? 'border-solid border-0 border-b border-[var(--mantine-color-chatbox-border-primary-outline)]'
+                    : ''
+                )}
+              >
+                <Flex
+                  component="span"
+                  align="center"
+                  gap="xs"
+                  p="md"
+                  py={isSmallScreen ? 'sm' : undefined}
+                  c={provider.id === providerId ? 'chatbox-brand' : 'chatbox-secondary'}
+                  bg={provider.id === providerId ? 'var(--mantine-color-chatbox-brand-light)' : 'transparent'}
+                  className="cursor-pointer select-none rounded-md hover:!bg-[var(--mantine-color-chatbox-brand-outline-hover)]"
+                >
+                  {provider.isCustom ? (
+                    <CustomProviderIcon providerId={provider.id} providerName={provider.name} size={36} />
+                  ) : (
+                    <Image w={36} h={36} src={icons.find((icon) => icon.name === provider.id)?.src} />
+                  )}
+
+                  <Text
+                    span
+                    size="sm"
+                    w={isSmallScreen ? undefined : 132}
+                    flex={isSmallScreen ? 1 : undefined}
+                    className="!text-inherit"
+                  >
+                    {provider.name}
+                  </Text>
+
+                  <Indicator
+                    size={8}
+                    ml={12}
+                    color="chatbox-success"
+                    className="ml-auto"
+                    disabled={!availableProviders.find((p) => p.id === provider.id)}
+                  />
+
+                  {isSmallScreen && (
+                    <IconChevronRight
+                      size={20}
+                      className="!text-[var(--mantine-color-chatbox-tertiary-outline)] ml-2"
+                    />
+                  )}
+                </Flex>
+              </Link>
+            ))}
+          </Stack>
+          <Button
+            variant="outline"
+            leftSection={<IconPlus size={16} />}
+            mx="md"
+            my="sm"
+            onClick={() => setNewProviderModalOpened(true)}
+          >
+            {t('Add')}
+          </Button>
+        </Stack>
+      )}
+      {!(isSmallScreen && routerState.location.pathname === '/settings/provider') && (
+        <Box flex={1} p="md" className="overflow-auto">
+          <Outlet />
+        </Box>
+      )}
 
       <Modal
         size="sm"

@@ -405,5 +405,7 @@
   "Search models": "Cerca modelli",
   "Not set": "Non impostato",
   "Regulate the volume of historical messages sent to the AI, striking a harmonious balance between depth of comprehension and the efficiency of responses.": "Regola il volume dei messaggi storici inviati all'IA, trovando un equilibrio armonioso tra la profondità di comprensione e l'efficienza delle risposte.",
-  "Modify the creativity of AI responses; the higher the value, the more random and intriguing the answers become, while a lower value ensures greater stability and reliability.": "Modifica la creatività delle risposte dell'IA; più alto è il valore, più le risposte diventano casuali e intriganti, mentre un valore più basso garantisce maggiore stabilità e affidabilità."
+  "Modify the creativity of AI responses; the higher the value, the more random and intriguing the answers become, while a lower value ensures greater stability and reliability.": "Modifica la creatività delle risposte dell'IA; più alto è il valore, più le risposte diventano casuali e intriganti, mentre un valore più basso garantisce maggiore stabilità e affidabilità.",
+  "Survey": "Sondaggio",
+  "Failed to fetch models": "Impossibile recuperare i modelli"
 }

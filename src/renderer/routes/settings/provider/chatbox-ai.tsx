@@ -367,7 +367,7 @@ function RouteComponent() {
           <Stack
             gap={0}
             p="xxs"
-            className="border-solid border rounded-sm min-h-[100px] max-h-[500px] overflow-auto border-[var(--mantine-color-chatbox-border-primary-outline)]"
+            className="border-solid border rounded-sm min-h-[100px] border-[var(--mantine-color-chatbox-border-primary-outline)]"
           >
             {chatboxAIModels.map((model) => (
               <Flex

@@ -406,5 +406,7 @@
   "Search models": "Поиск моделей",
   "Not set": "Не задано",
   "Regulate the volume of historical messages sent to the AI, striking a harmonious balance between depth of comprehension and the efficiency of responses.": "Регулируйте объем исторических сообщений, отправляемых ИИ, достигая гармоничного баланса между глубиной понимания и эффективностью ответов.",
-  "Modify the creativity of AI responses; the higher the value, the more random and intriguing the answers become, while a lower value ensures greater stability and reliability.": "Измените креативность ответов ИИ; чем выше значение, тем более случайными и интригующими становятся ответы, в то время как более низкое значение обеспечивает большую стабильность и надежность."
+  "Modify the creativity of AI responses; the higher the value, the more random and intriguing the answers become, while a lower value ensures greater stability and reliability.": "Измените креативность ответов ИИ; чем выше значение, тем более случайными и интригующими становятся ответы, в то время как более низкое значение обеспечивает большую стабильность и надежность.",
+  "Survey": "Опрос",
+  "Failed to fetch models": "Не удалось получить модели"
 }

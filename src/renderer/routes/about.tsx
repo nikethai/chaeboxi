@@ -10,6 +10,7 @@ import BrandRedNote from '@/components/icons/BrandRedNote'
 import {
   IconAlertTriangle,
   IconChevronRight,
+  IconClipboard,
   IconFileText,
   IconHome,
   IconMail,
@@ -23,6 +24,7 @@ import { useAtomValue } from 'jotai'
 import { languageAtom } from '@/stores/atoms'
 import platform from '@/platform'
 import Page from '@/components/Page'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
 
 export const Route = createFileRoute('/about')({
   component: RouteComponent,
@@ -32,20 +34,28 @@ function RouteComponent() {
   const { t, i18n: _i18n } = useTranslation()
   const version = useVersion()
   const language = useAtomValue(languageAtom)
+  const isSmallScreen = useIsSmallScreen()
 
   return (
     <Page title={t('About')}>
-      <Container size="md">
-        <Stack gap="xxl" p="md">
+      <Container size="md" p={0}>
+        <Stack gap="xxl" px={isSmallScreen ? 'sm' : 'md'} py={isSmallScreen ? 'xl' : 'md'}>
           <Flex gap="xxl" p="md" className="rounded-lg bg-[var(--mantine-color-chatbox-background-secondary-text)]">
-            <Image h={100} w={100} src={iconPNG} />
+            <Image h={100} w={100} mah={'20vw'} maw={'20vw'} src={iconPNG} />
             <Stack flex={1} gap="xxs">
               <Flex justify="space-between" align="center">
                 <Title order={5} lh={1.5}>
                   Chatbox {/\d/.test(version.version) ? `(v${version.version})` : ''}
                 </Title>
 
-                <Button size="xs">{t('Check Update')}</Button>
+                {!isSmallScreen && (
+                  <Button
+                    size="xs"
+                    onClick={() => platform.openLink(`https://chatboxai.app/redirect_app/check_update/${language}`)}
+                  >
+                    {t('Check Update')}
+                  </Button>
+                )}
               </Flex>
               <Text>{t('about-slogan')}</Text>
               <Text c="chatbox-tertiary">{t('about-introduction')}</Text>
@@ -94,12 +104,12 @@ function RouteComponent() {
               link="https://github.com/chatboxai/chatbox"
               value="chatbox"
             />
-            <ListItem
+            {/* <ListItem
               icon={<BrandX className="w-full h-full" />}
               title={t('X(Twitter)')}
               link="https://x.com/ChatboxAI_HQ"
               value="@ChatboxAI_HQ"
-            />
+            /> */}
             <ListItem
               icon={<BrandRedNote className="w-full h-full" />}
               title={t('RedNote')}
@@ -116,6 +126,11 @@ function RouteComponent() {
               link={`https://chatboxai.app/redirect_app/homepage/${language}`}
             />
             <ListItem
+              icon={<IconClipboard className="w-full h-full" />}
+              title={t('Survey')}
+              link={_i18n.language === 'zh-Hans' ? 'https://jsj.top/f/fcMYEa' : 'https://jsj.top/f/RUMbvY'}
+            />
+            <ListItem
               icon={<IconPencil className="w-full h-full" />}
               title={t('Feedback')}
               link={`https://chatboxai.app/redirect_app/feedback/${language}`}
@@ -128,7 +143,7 @@ function RouteComponent() {
             <ListItem
               icon={<IconMail className="w-full h-full" />}
               title={t('E-mail')}
-              link={`mailto://hi@chatboxai.com`}
+              link={`mailto:hi@chatboxai.com`}
               value="hi@chatboxai.com"
             />
             <ListItem

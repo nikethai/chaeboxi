@@ -9,6 +9,7 @@ import {
   normalizeOpenAIApiHostAndPath,
 } from '@/packages/models/llm_utils'
 import platform from '@/platform'
+import { add, add as addToast } from '@/stores/toastActions'
 import NiceModal from '@ebay/nice-modal-react'
 import {
   Button,
@@ -92,7 +93,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
     }
 
     if (displayModels?.find((m) => m.modelId === newModel.modelId)) {
-      alert('already existed')
+      addToast(t('already existed'))
       return
     }
 
@@ -126,7 +127,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
 
   const [fetchingModels, setFetchingModels] = useState(false)
   const [fetchedModels, setFetchedModels] = useState<ProviderModelInfo[]>()
-  console.log('fetchedModels', fetchedModels)
+
   const handleFetchModels = async () => {
     if (baseInfo?.isCustom === true) {
       return
@@ -141,11 +142,15 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         ...providerSettings,
       })
 
-      setFetchedModels(
-        modelList
-          .reduce((pre, cur) => [...pre, ...cur.options], [] as ModelOptionGroup['options'])
-          .map((option) => ({ modelId: option.value } as ProviderModelInfo))
-      )
+      if (modelList.length) {
+        setFetchedModels(
+          modelList
+            .reduce((pre, cur) => [...pre, ...cur.options], [] as ModelOptionGroup['options'])
+            .map((option) => ({ modelId: option.value } as ProviderModelInfo))
+        )
+      } else {
+        add(t('Failed to fetch models'))
+      }
       setFetchingModels(false)
     } catch (error) {
       setFetchedModels(undefined)
@@ -509,7 +514,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
 
           <Stack
             gap={0}
-            p="xxs"
+            px="xxs"
             className=" border-solid border rounded-sm min-h-[100px] border-[var(--mantine-color-chatbox-border-primary-outline)]"
           >
             {displayModels.map((model, index, list) => (
@@ -517,7 +522,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 key={model.modelId}
                 gap="xs"
                 align="center"
-                p="sm"
+                py="sm"
                 px="xs"
                 className="border-solid border-0 border-b last:border-b-0 border-[var(--mantine-color-chatbox-border-primary-outline)]"
               >

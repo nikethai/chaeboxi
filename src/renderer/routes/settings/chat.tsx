@@ -8,6 +8,9 @@ import SmartToyIcon from '@mui/icons-material/SmartToy'
 import EditableAvatar from '@/components/EditableAvatar'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import { getDefaultPrompt } from 'src/shared/defaults'
+import { add as addToast } from '@/stores/toastActions'
+
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
 
 export const Route = createFileRoute('/settings/chat')({
   component: RouteComponent,
@@ -51,6 +54,10 @@ function RouteComponent() {
             <FileButton
               onChange={(file) => {
                 if (file) {
+                  if (file.size > MAX_IMAGE_SIZE) {
+                    addToast(t('Support jpg or png file smaller than 5MB'))
+                    return
+                  }
                   const key = StorageKeyGenerator.picture('user-avatar')
                   handleImageInputAndSave(file, key, () => setSettings({ userAvatarKey: key }))
                 }
@@ -92,6 +99,10 @@ function RouteComponent() {
             <FileButton
               onChange={(file) => {
                 if (file) {
+                  if (file.size > MAX_IMAGE_SIZE) {
+                    addToast(t('Support jpg or png file smaller than 5MB'))
+                    return
+                  }
                   const key = StorageKeyGenerator.picture('default-assistant-avatar')
                   handleImageInputAndSave(file, key, () => setSettings({ defaultAssistantAvatarKey: key }))
                 }

@@ -1,13 +1,19 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useEffect } from 'react'
 
 export const Route = createFileRoute('/settings/provider/')({
   component: RouteComponent,
-  beforeLoad: ({ navigate }) => {
-    navigate({ to: '/settings/provider/chatbox-ai', replace: true })
-    return null
-  },
 })
 
 function RouteComponent() {
+  const isSmallScreen = useIsSmallScreen()
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (!isSmallScreen) {
+      navigate({ to: '/settings/provider/chatbox-ai', replace: true })
+    }
+  }, [isSmallScreen])
+
   return null
 }

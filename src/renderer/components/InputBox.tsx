@@ -31,6 +31,7 @@ import { getSession, saveSession } from '@/stores/sessionStorageMutations'
 import { useProviders } from '@/hooks/useProviders'
 import ImageModelSelect from './ImageModelSelect'
 import { Box, Tooltip } from '@mantine/core'
+import { clsx } from 'clsx'
 
 export default function InputBox() {
   const theme = useTheme()
@@ -384,6 +385,27 @@ export default function InputBox() {
     })
   }
 
+  const sendOrStopButton = (
+    <MiniButton
+      className={clsx(
+        'w-8 ml-2 rounded-full flex items-center justify-center',
+        isSmallScreen ? 'absolute bottom-3 right-1' : ''
+      )}
+      style={{
+        color: theme.palette.getContrastText(theme.palette.primary.main),
+        backgroundColor: currentSessionType === 'picture' ? theme.palette.secondary.main : theme.palette.primary.main,
+      }}
+      tooltipPlacement="top"
+      onClick={lastMessage?.generating ? handleStop : () => handleSubmit()}
+    >
+      {lastMessage?.generating ? (
+        <StopIcon className="!w-6 !h-6" />
+      ) : (
+        <SendHorizontal size="18" strokeWidth={1} className=" ml-0.5" />
+      )}
+    </MiniButton>
+  )
+
   return (
     <div
       className="pl-1 pr-2 sm:pl-2 sm:pr-4"
@@ -395,8 +417,8 @@ export default function InputBox() {
       }}
     >
       <div className={'w-full mx-auto flex flex-col'}>
-        <div className="flex flex-row flex-nowrap justify-between py-1">
-          <div className="flex flex-row items-center overflow-x-auto scrollbar-none">
+        <div className="flex flex-row flex-nowrap justify-between py-1 ">
+          <div className="flex flex-shrink-0 flex-row items-center overflow-x-auto scrollbar-none">
             <MiniButton
               className="mr-1 sm:mr-2 hover:bg-transparent"
               style={{ color: theme.palette.text.primary }}
@@ -548,7 +570,12 @@ export default function InputBox() {
               <Box>
                 {currentSessionType === 'chat' && (
                   <ModelSelector onSelect={handleSelectModel}>
-                    <span className="flex items-center text-sm opacity-70 cursor-pointer bg-transparent hover:bg-slate-400/25 rounded h-8 p-1">
+                    <span
+                      className={clsx(
+                        'flex items-center opacity-70 cursor-pointer bg-transparent hover:bg-slate-400/25 rounded h-8 p-1',
+                        isSmallScreen ? 'text-xs' : 'text-sm'
+                      )}
+                    >
                       {modelSelectorDisplayText}
                       <IconSelector size={16} className="opacity-50" />
                     </span>
@@ -576,50 +603,38 @@ export default function InputBox() {
                             className='opacity-50'
                         />
                     </MiniButton> */}
-            <MiniButton
-              className="w-8 ml-2 rounded-full flex items-center justify-center"
-              style={{
-                color: theme.palette.getContrastText(theme.palette.primary.main),
-                backgroundColor:
-                  currentSessionType === 'picture' ? theme.palette.secondary.main : theme.palette.primary.main,
-              }}
-              tooltipPlacement="top"
-              onClick={lastMessage?.generating ? handleStop : () => handleSubmit()}
-            >
-              {lastMessage?.generating ? (
-                <StopIcon className="!w-6 !h-6" />
-              ) : (
-                <SendHorizontal size="18" strokeWidth={1} className=" ml-0.5" />
-              )}
-            </MiniButton>
+            {!isSmallScreen && sendOrStopButton}
           </div>
         </div>
         <div className="w-full pl-1 pb-2" {...getRootProps()}>
           <input {...getInputProps()} />
-          <textarea
-            id={dom.messageInputID}
-            className={cn(
-              `w-full`,
-              'overflow-y resize-none border-none outline-none',
-              'bg-slate-300/25 rounded-lg p-2',
-              'sm:bg-transparent sm:p-1'
-            )}
-            value={messageInput}
-            onChange={onMessageInput}
-            onKeyDown={onKeyDown}
-            ref={inputRef}
-            autoFocus={!isSmallScreen}
-            style={{
-              minHeight: minTextareaHeight + 'px',
-              maxHeight: maxTextareaHeight + 'px',
-              color: theme.palette.text.primary,
-              fontFamily: theme.typography.fontFamily,
-              fontSize: theme.typography.body1.fontSize,
-            }}
-            placeholder={t('Type your question here...') || ''}
-            onPaste={onPaste}
-            // {...{ enterKeyHint: 'send' } as any}
-          />
+          <div className="relative">
+            <textarea
+              id={dom.messageInputID}
+              className={cn(
+                `w-full`,
+                'overflow-y resize-none border-none outline-none',
+                'bg-slate-300/25 rounded-lg p-2',
+                'sm:bg-transparent sm:p-1'
+              )}
+              value={messageInput}
+              onChange={onMessageInput}
+              onKeyDown={onKeyDown}
+              ref={inputRef}
+              autoFocus={!isSmallScreen}
+              style={{
+                minHeight: minTextareaHeight + 'px',
+                maxHeight: maxTextareaHeight + 'px',
+                color: theme.palette.text.primary,
+                fontFamily: theme.typography.fontFamily,
+                fontSize: theme.typography.body1.fontSize,
+              }}
+              placeholder={t('Type your question here...') || ''}
+              onPaste={onPaste}
+              // {...{ enterKeyHint: 'send' } as any}
+            />
+            {isSmallScreen && sendOrStopButton}
+          </div>
           <div className="flex flex-row items-center" onClick={() => dom.focusMessageInput()}>
             {pictureKeys.map((picKey, ix) => (
               <ImageMiniCard key={ix} storageKey={picKey} onDelete={() => onImageDeleteClick(picKey)} />

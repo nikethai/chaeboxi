@@ -85,6 +85,9 @@ export default function Toolbar() {
           color="inherit"
           aria-label="menu"
           onClick={() => setOpenSearchDialog(true)}
+          sx={{
+            mr: 0.5
+          }}
         >
           <SearchIcon />
         </IconButton>
@@ -94,7 +97,7 @@ export default function Toolbar() {
           variant="outlined"
           color="inherit"
           startIcon={<SearchIcon />}
-          sx={{ ml:1, mr: 1 }}
+          sx={{ mr: 1 }}
           onClick={() => setOpenSearchDialog(true)}
           size="small"
           className="transform-none opacity-30"
@@ -112,6 +115,9 @@ export default function Toolbar() {
           color="inherit"
           aria-label="width-full-button"
           onClick={() => setWidthFull(!widthFull)}
+          sx={{
+            mr: 0.5
+          }}
         >
           {widthFull ? <WidthWideIcon /> : <WidthNormalIcon />}
         </IconButton>
@@ -119,6 +125,9 @@ export default function Toolbar() {
       <IconButton
         color="inherit"
         aria-label="thread-history-drawer-button"
+        sx={{
+          mr: 0.5
+        }}
         onClick={() => setThreadHistoryDrawerOpen(true)}
       >
         <HistoryIcon />

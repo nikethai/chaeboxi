@@ -32,8 +32,6 @@ import './setup/protect'
 if (CHATBOX_BUILD_TARGET === 'mobile_app' && CHATBOX_BUILD_PLATFORM === 'ios') {
   import('./setup/mobile_safe_area')
 }
-// 解决移动端浏览器地址栏导致高度计算问题
-import './setup/mobile_browser_viewport_height'
 
 // ==========执行初始化==============
 async function initializeApp() {

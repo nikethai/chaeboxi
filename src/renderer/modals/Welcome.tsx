@@ -20,6 +20,7 @@ const Welcome = NiceModal.create(() => {
         modal.hide()
       }}
       maxWidth="xs"
+      fullWidth
     >
       <DialogContent>
         <Box sx={{ textAlign: 'center', padding: '12px 24px' }}>

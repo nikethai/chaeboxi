@@ -269,7 +269,7 @@ function ChatConfig({
   const { t } = useTranslation()
 
   return (
-    <>
+    <Stack gap="md">
       <MaxContextMessageCountSlider
         value={settings?.maxContextMessageCount ?? chatSessionSettings().maxContextMessageCount!}
         onChange={(v) => onSettingsChange({ maxContextMessageCount: v })}
@@ -288,7 +288,7 @@ function ChatConfig({
             className="!whitespace-normal"
             zIndex={3000}
           >
-            <IconInfoCircle size={16} />
+            <IconInfoCircle size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
           </Tooltip>
         </Flex>
 
@@ -302,7 +302,7 @@ function ChatConfig({
 
         <SliderWithInput value={settings?.topP ?? 0} onChange={(v) => onSettingsChange({ topP: v })} />
       </Stack> */}
-    </>
+    </Stack>
   )
 }
 
@@ -320,7 +320,7 @@ function PictureConfig(props: { dataEdit: Session; setDataEdit: (data: Session) 
     })
   }
   return (
-    <div className="mt-8">
+    <Stack gap="md" className="mt-8">
       <ImageStyleSelect
         value={sessionSettings.dalleStyle || pictureSessionSettings().dalleStyle!}
         onChange={(v) => updateSettingsEdit({ dalleStyle: v })}
@@ -331,6 +331,6 @@ function PictureConfig(props: { dataEdit: Session; setDataEdit: (data: Session) 
         onChange={(v) => updateSettingsEdit({ imageGenerateNum: v })}
         className={sessionSettings.imageGenerateNum === undefined ? 'opacity-50' : ''}
       />
-    </div>
+    </Stack>
   )
 }

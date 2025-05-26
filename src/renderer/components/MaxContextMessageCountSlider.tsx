@@ -92,7 +92,7 @@ export default function MaxContextMessageCountSlider({ value, onChange, classNam
           className="!whitespace-normal"
           zIndex={3000}
         >
-          <IconInfoCircle size={16} />
+          <IconInfoCircle size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
         </Tooltip>
       </Flex>
       <Flex gap="sm" align="center" className={className}>

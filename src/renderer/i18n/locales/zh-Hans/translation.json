@@ -411,5 +411,6 @@
   "Regulate the volume of historical messages sent to the AI, striking a harmonious balance between depth of comprehension and the efficiency of responses.": "调整发送给AI的历史消息的数量，在理解深度和响应效率之间找到和谐的平衡。",
   "Modify the creativity of AI responses; the higher the value, the more random and intriguing the answers become, while a lower value ensures greater stability and reliability.": "修改AI回复的创造力；值越高，回复变得越随机和有趣，而较低的值则确保更大的稳定性和可靠性。",
   "Survey": "调查问卷",
-  "Failed to fetch models": "获取模型失败"
+  "Failed to fetch models": "获取模型失败",
+  "Favorite": "收藏"
 }

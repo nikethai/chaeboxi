@@ -407,5 +407,6 @@
   "Regulate the volume of historical messages sent to the AI, striking a harmonious balance between depth of comprehension and the efficiency of responses.": "Reglera volymen av historiska meddelanden som skickas till AI, och skapa en harmonisk balans mellan djupet av förståelse och effektiviteten av svaren.",
   "Modify the creativity of AI responses; the higher the value, the more random and intriguing the answers become, while a lower value ensures greater stability and reliability.": "Ändra kreativiteten i AI:s svar; ju högre värde, desto mer slumpmässiga och fascinerande blir svaren, medan ett lägre värde säkerställer större stabilitet och tillförlitlighet.",
   "Survey": "Undersökning",
-  "Failed to fetch models": "Misslyckades med att hämta modeller"
+  "Failed to fetch models": "Misslyckades med att hämta modeller",
+  "Favorite": "Favorit"
 }

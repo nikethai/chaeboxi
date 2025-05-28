@@ -200,12 +200,12 @@ function RouteComponent() {
                     [
                       [
                         t('Chatbox AI Standard Model Quota'),
-                        licenseDetail.remaining_quota_35 * 100,
+                        100 - licenseDetail.remaining_quota_35 * 100,
                         `${(licenseDetail.remaining_quota_35 * 100).toFixed(2)}%`,
                       ],
                       [
                         t('Chatbox AI Advanced Model Quota'),
-                        licenseDetail.remaining_quota_4 * 100,
+                        100 - licenseDetail.remaining_quota_4 * 100,
                         `${(licenseDetail.remaining_quota_4 * 100).toFixed(2)}%`,
                       ],
                       [

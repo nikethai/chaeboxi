@@ -8,7 +8,7 @@ import { useProviderSettings } from './useSettings'
 
 const useChatboxAIModels = () => {
   const language = useAtomValue(languageAtom)
-  const { providerSettings: chatboxAISettings } = useProviderSettings(ModelProvider.ChatboxAI)
+  const { providerSettings: chatboxAISettings, setProviderSettings } = useProviderSettings(ModelProvider.ChatboxAI)
 
   const { data, ...others } = useQuery({
     queryKey: ['chatbox-ai-models', language],
@@ -16,6 +16,15 @@ const useChatboxAIModels = () => {
       const res = await getModelManifest({
         aiProvider: ModelProvider.ChatboxAI,
         language,
+      })
+
+      // ChatboxAI的设置中实际存的是excludedModels, models实际为空，这导致生成消息时无法拿到model的nickName，所以这里每次获取chatbox ai models之后就存在settings中
+      setProviderSettings({
+        models: res.models.map((m) => ({
+          modelId: m.modelId,
+          nickname: m.modelName,
+          labels: m.labels,
+        })),
       })
 
       return res.models

@@ -4,7 +4,7 @@ import EditIcon from '@mui/icons-material/Edit'
 import ImageIcon from '@mui/icons-material/Image'
 import { Box, Chip, IconButton, Tooltip, Typography, useTheme } from '@mui/material'
 import { useAtom, useAtomValue } from 'jotai'
-import { PanelRightClose } from 'lucide-react'
+import { PanelRightClose, Settings2 } from 'lucide-react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isChatSession, isPictureSession } from '../../shared/types'
@@ -14,6 +14,7 @@ import * as atoms from '../stores/atoms'
 import * as sessionActions from '../stores/sessionActions'
 import * as settingActions from '../stores/settingActions'
 import Toolbar from './Toolbar'
+import MiniButton from './MiniButton'
 
 interface Props {}
 
@@ -128,29 +129,43 @@ export default function Header(props: Props) {
           }}
           className="flex items-center w-0"
         >
-          <div className={cn('controls flex flex-row cursor-pointer shrink w-full')}>
-            {
-              <Typography
-                variant="h6"
-                noWrap
-                className={cn(showSidebar ? 'ml-3' : 'ml-1')}
-                sx={{
-                  maxWidth: isSmallScreen ? '12rem' : '18rem',
+          <div className={cn('controls flex flex-row items-center shrink w-full')}>
+            <Typography
+              variant="h6"
+              noWrap
+              className={cn(showSidebar ? 'ml-3' : 'ml-1')}
+              sx={{
+                maxWidth: isSmallScreen ? '12rem' : '18rem',
+              }}
+            >
+              {currentSession?.name}
+            </Typography>
+
+            {isSmallScreen ? (
+              <MiniButton
+                className="ml-1 sm:ml-2"
+                style={{ color: theme.palette.text.secondary }}
+                onClick={() => {
+                  editCurrentSession()
                 }}
+                tooltipTitle={
+                  <div className="text-center inline-block">
+                    <span>{t('Customize settings for the current conversation')}</span>
+                  </div>
+                }
+                tooltipPlacement="top"
+              >
+                <Settings2 size="16" strokeWidth={1} />
+              </MiniButton>
+            ) : (
+              <a
                 onClick={() => {
                   editCurrentSession()
                 }}
               >
-                {currentSession.name}
-              </Typography>
-            }
-            <div
-              onClick={() => {
-                editCurrentSession()
-              }}
-            >
-              {EditButton}
-            </div>
+                {EditButton}
+              </a>
+            )}
           </div>
         </Typography>
         <div className={needRoomForWindowsWindowControls ? 'mr-36' : ''}>

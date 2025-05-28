@@ -30,7 +30,7 @@ import { IconSelector } from '@tabler/icons-react'
 import { getSession, saveSession } from '@/stores/sessionStorageMutations'
 import { useProviders } from '@/hooks/useProviders'
 import ImageModelSelect from './ImageModelSelect'
-import { Box, Tooltip } from '@mantine/core'
+import { Box, Text, Tooltip } from '@mantine/core'
 import { clsx } from 'clsx'
 
 export default function InputBox() {
@@ -418,17 +418,19 @@ export default function InputBox() {
     >
       <div className={'w-full mx-auto flex flex-col'}>
         <div className="flex flex-row flex-nowrap justify-between py-1 ">
-          <div className="flex flex-shrink-0 flex-row items-center overflow-x-auto scrollbar-none">
-            <MiniButton
-              className="mr-1 sm:mr-2 hover:bg-transparent"
-              style={{ color: theme.palette.text.primary }}
-              onClick={() => {
-                setEasterEgg(true)
-                setTimeout(() => setEasterEgg(false), 1000)
-              }}
-            >
-              <img className={cn('w-5 h-5', easterEgg ? 'animate-spin' : '')} src={icon} />
-            </MiniButton>
+          <div className="flex flex-1 flex-row items-center overflow-x-auto scrollbar-none">
+            {!isSmallScreen && (
+              <MiniButton
+                className="mr-1 sm:mr-2 hover:bg-transparent"
+                style={{ color: theme.palette.text.primary }}
+                onClick={() => {
+                  setEasterEgg(true)
+                  setTimeout(() => setEasterEgg(false), 1000)
+                }}
+              >
+                <img className={cn('w-5 h-5', easterEgg ? 'animate-spin' : '')} src={icon} />
+              </MiniButton>
+            )}
             {showRollbackThreadButton ? (
               <MiniButton
                 className="mr-1 sm:mr-2"
@@ -539,28 +541,30 @@ export default function InputBox() {
                 className={cn(webBrowsingMode && 'text-blue-500')}
               />
             </MiniButton>
-            <MiniButton
-              className="mr-1 sm:mr-2"
-              style={{ color: theme.palette.text.primary }}
-              onClick={() => {
-                if (!currentSession) {
-                  return
+            {!isSmallScreen && (
+              <MiniButton
+                className="mr-1 sm:mr-2"
+                style={{ color: theme.palette.text.primary }}
+                onClick={() => {
+                  if (!currentSession) {
+                    return
+                  }
+                  NiceModal.show('session-settings', {
+                    chatConfigDialogSessionId: currentSession.id,
+                  })
+                }}
+                tooltipTitle={
+                  <div className="text-center inline-block">
+                    <span>{t('Customize settings for the current conversation')}</span>
+                  </div>
                 }
-                NiceModal.show('session-settings', {
-                  chatConfigDialogSessionId: currentSession.id,
-                })
-              }}
-              tooltipTitle={
-                <div className="text-center inline-block">
-                  <span>{t('Customize settings for the current conversation')}</span>
-                </div>
-              }
-              tooltipPlacement="top"
-            >
-              <Settings2 size="22" strokeWidth={1} />
-            </MiniButton>
+                tooltipPlacement="top"
+              >
+                <Settings2 size="22" strokeWidth={1} />
+              </MiniButton>
+            )}
           </div>
-          <div className="flex flex-row items-center">
+          <div className="flex flex-row items-center flex-grow-0 flex-shrink-0 max-w-[50%] sm:max-w-[30%]">
             <Tooltip
               label={t('Please select a model')}
               color="chatbox-error"
@@ -570,15 +574,16 @@ export default function InputBox() {
               <Box>
                 {currentSessionType === 'chat' && (
                   <ModelSelector onSelect={handleSelectModel}>
-                    <span
-                      className={clsx(
-                        'flex items-center opacity-70 cursor-pointer bg-transparent hover:bg-slate-400/25 rounded h-8 p-1',
-                        isSmallScreen ? 'text-xs' : 'text-sm'
-                      )}
+                    <Text
+                      span
+                      c="chatbox-secondary"
+                      size={isSmallScreen ? 'xs' : 'sm'}
+                      className="flex items-center cursor-pointer bg-transparent hover:bg-slate-400/25 rounded h-8 p-1"
                     >
-                      {modelSelectorDisplayText}
-                      <IconSelector size={16} className="opacity-50" />
-                    </span>
+                      <span className="line-clamp-2 break-words">{modelSelectorDisplayText}</span>
+
+                      <IconSelector size={16} className="opacity-50 flex-none" />
+                    </Text>
                   </ModelSelector>
                 )}
                 {currentSessionType === 'picture' && (

@@ -408,5 +408,6 @@
   "Regulate the volume of historical messages sent to the AI, striking a harmonious balance between depth of comprehension and the efficiency of responses.": "AIに送信される歴史的メッセージの量を調整し、理解の深さと応答の効率の間に調和のとれたバランスを見つけます。",
   "Modify the creativity of AI responses; the higher the value, the more random and intriguing the answers become, while a lower value ensures greater stability and reliability.": "AIの応答の創造性を変更します。値が高いほど、回答はよりランダムで魅力的になりますが、値が低いとより大きな安定性と信頼性が確保されます。",
   "Survey": "調査",
-  "Failed to fetch models": "モデルの取得に失敗しました"
+  "Failed to fetch models": "モデルの取得に失敗しました",
+  "Favorite": "お気に入り"
 }

@@ -406,5 +406,6 @@
   "Regulate the volume of historical messages sent to the AI, striking a harmonious balance between depth of comprehension and the efficiency of responses.": "Regulieren Sie das Volumen historischer Nachrichten, die an die KI gesendet werden, und schaffen Sie ein harmonisches Gleichgewicht zwischen dem Verständnis und der Effizienz der Antworten.",
   "Modify the creativity of AI responses; the higher the value, the more random and intriguing the answers become, while a lower value ensures greater stability and reliability.": "Ändern Sie die Kreativität der KI-Antworten; je höher der Wert, desto zufälliger und faszinierender werden die Antworten, während ein niedrigerer Wert größere Stabilität und Zuverlässigkeit gewährleistet.",
   "Survey": "Umfrage",
-  "Failed to fetch models": "Abrufen der Modelle fehlgeschlagen"
+  "Failed to fetch models": "Abrufen der Modelle fehlgeschlagen",
+  "Favorite": "Favorit"
 }

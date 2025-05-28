@@ -292,6 +292,11 @@ export interface Settings extends SessionSettings {
 
   customProviders?: CustomProviderBaseInfo[]
 
+  favoritedModels?: {
+    provider: ModelProvider | string
+    model: string
+  }[]
+
   // default models
   threadNamingModel?: {
     provider: ModelProvider | string

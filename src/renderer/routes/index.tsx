@@ -4,6 +4,7 @@ import { useAtomValue } from 'jotai'
 import { useEffect } from 'react'
 import icon from '@/static/icon.png'
 import { Typography } from '@mui/material'
+import Page from '@/components/Page'
 export const Route = createFileRoute('/')({
   component: Index,
 })
@@ -21,11 +22,13 @@ function Index() {
       replace: true,
     })
   }, [currentSession])
-  
+
   return (
-    <div className="p-2 flex flex-col items-center justify-center h-full">
-      <img src={icon} className="w-32 h-32 align-middle" />
-      <Typography variant="h4">Chatbox</Typography>
-    </div>
+    <Page title="">
+      <div className="p-2 flex flex-col items-center justify-center h-full">
+        <img src={icon} className="w-32 h-32 align-middle" />
+        <Typography variant="h4">Chatbox</Typography>
+      </div>
+    </Page>
   )
 }

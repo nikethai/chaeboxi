@@ -407,5 +407,6 @@
   "Regulate the volume of historical messages sent to the AI, striking a harmonious balance between depth of comprehension and the efficiency of responses.": "Reguler volumet av historiske meldinger sendt til AI, og finne en harmonisk balanse mellom dybden av forståelse og effektiviteten av svarene.",
   "Modify the creativity of AI responses; the higher the value, the more random and intriguing the answers become, while a lower value ensures greater stability and reliability.": "Modifiser kreativiteten til AI-responsene; jo høyere verdien er, jo mer tilfeldige og interessante blir svarene, mens en lavere verdi sikrer større stabilitet og pålitelighet.",
   "Survey": "Undersøkelse",
-  "Failed to fetch models": "Kunne ikke hente modeller"
+  "Failed to fetch models": "Kunne ikke hente modeller",
+  "Favorite": "Favoritt"
 }

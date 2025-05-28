@@ -3,6 +3,7 @@ import { FC, PropsWithChildren, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Badge,
+  Box,
   Button,
   Combobox,
   ComboboxProps,
@@ -14,11 +15,13 @@ import {
   Text,
   useCombobox,
 } from '@mantine/core'
-import { ModelProvider } from 'src/shared/types'
+import { ModelProvider, ProviderModelInfo } from 'src/shared/types'
 import ProviderIcon from './icons/ProviderIcon'
 import { useNavigate } from '@tanstack/react-router'
 import { useDisclosure } from '@mantine/hooks'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { IconStar, IconStarFilled } from '@tabler/icons-react'
+import clsx from 'clsx'
 
 export type ModelSelectorProps = PropsWithChildren<
   {
@@ -37,7 +40,7 @@ export const ModelSelector: FC<ModelSelectorProps> = ({
 }) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { providers } = useProviders()
+  const { providers, favoritedModels, favoriteModel, unfavoriteModel, isFavoritedModel } = useProviders()
 
   const [search, setSearch] = useState('')
   const filteredProviders = useMemo(
@@ -76,21 +79,25 @@ export const ModelSelector: FC<ModelSelectorProps> = ({
 
   const groups = filteredProviders.map((provider) => {
     provider
-    const options = provider.models?.map((model) => (
-      <Combobox.Option
-        value={`${provider.id}/${model.modelId}`}
-        key={model.modelId}
-        c={model.labels?.includes('recommended') ? 'chatbox-brand' : 'chatbox-primary'}
-        className="flex items-center"
-      >
-        {model.nickname || model.modelId}
-        {model.labels?.includes('pro') && (
-          <Badge color="chatbox-brand" size="xs" variant="light" ml="xxs">
-            Pro
-          </Badge>
-        )}
-      </Combobox.Option>
-    ))
+    const options = provider.models?.map((model) => {
+      const isFavorited = isFavoritedModel(provider.id, model.modelId)
+
+      return (
+        <ModelItem
+          key={`${provider.id}/${model.modelId}`}
+          providerId={provider.id}
+          model={model}
+          isFavorited={isFavorited}
+          onToggleFavorited={() => {
+            if (isFavorited) {
+              unfavoriteModel(provider.id, model.modelId)
+            } else {
+              favoriteModel(provider.id, model.modelId)
+            }
+          }}
+        />
+      )
+    })
 
     return (
       <Combobox.Group
@@ -178,44 +185,65 @@ export const ModelSelector: FC<ModelSelectorProps> = ({
               </Text>
             </Flex>
           )}
+          {!!favoritedModels?.length && (
+            <Stack gap="xs">
+              <Flex align="center" gap="xs" py="3xs" px="xxs" c="chatbox-tertiary">
+                <IconStarFilled size={16} className="text-inherit" />
+                <Text c="chatbox-tertiary" fw={600} className="uppercase">
+                  {t('Favorite')}
+                </Text>
+              </Flex>
+
+              {favoritedModels.map((fm) => {
+                return (
+                  <ModelItemInDrawer
+                    key={`${fm.provider?.id}/${fm.model?.modelId}`}
+                    providerId={fm.provider!.id}
+                    model={fm.model!}
+                    showIcon={true}
+                    isFavorited={true}
+                    onSelect={() => {
+                      handleOptionSubmit(`${fm.provider?.id}/${fm.model?.modelId}`)
+                      close()
+                    }}
+                    onToggleFavorited={() => {
+                      unfavoriteModel(fm.provider!.id, fm.model!.modelId)
+                    }}
+                  />
+                )
+              })}
+            </Stack>
+          )}
           {filteredProviders.map((provider) => (
             <Stack key={provider.id} gap="xs">
-              <Flex align="center" gap="xs" py="3xs">
-                {!provider.isCustom && <ProviderIcon size={12} provider={provider.id} />}
-                <Text c="chatbox-tertiary" fw={600}>
+              <Flex align="center" gap="xs" py="3xs" px="xxs" c="chatbox-tertiary">
+                {!provider.isCustom && <ProviderIcon size={16} provider={provider.id} className="text-inherit" />}
+                <Text c="chatbox-tertiary" fw={600} className="uppercase">
                   {provider.name}
                 </Text>
               </Flex>
-              {provider.models?.map((model) => (
-                <Flex
-                  component="button"
-                  key={model.modelId}
-                  align="center"
-                  gap="xs"
-                  px="md"
-                  py="sm"
-                  className="border-solid border border-[var(--mantine-color-chatbox-border-secondary-outline)] outline-none bg-transparent rounded-md"
-                  onClick={() => {
-                    handleOptionSubmit(`${provider.id}/${model.modelId}`)
-                    close()
-                  }}
-                >
-                  <Text
-                    span
-                    size="md"
-                    c={model.labels?.includes('recommended') ? 'chatbox-brand' : 'chatbox-secondary'}
-                    lineClamp={1}
-                    className="flex-grow-0 flex-shrink text-left"
-                  >
-                    {model.nickname || model.modelId}
-                  </Text>
-                  {model.labels?.includes('pro') && (
-                    <Badge color="chatbox-brand" size="xs" variant="light" className="flex-grow-0 flex-shrink-0">
-                      Pro
-                    </Badge>
-                  )}
-                </Flex>
-              ))}
+              {provider.models?.map((model) => {
+                const isFavorited = isFavoritedModel(provider.id, model.modelId)
+                return (
+                  <ModelItemInDrawer
+                    key={model.modelId}
+                    providerId={provider.id}
+                    model={model}
+                    isFavorited={isFavorited}
+                    onSelect={() => {
+                      handleOptionSubmit(`${provider.id}/${model.modelId}`)
+                      close()
+                    }}
+                    onToggleFavorited={() => {
+                      if (isFavorited) {
+                        unfavoriteModel(provider.id, model.modelId)
+                      } else {
+                        favoriteModel(provider.id, model.modelId)
+                      }
+                    }}
+                  />
+                )
+              })}
             </Stack>
           ))}
         </Stack>
@@ -258,7 +286,32 @@ export const ModelSelector: FC<ModelSelectorProps> = ({
               </Button>
             </Stack>
           ) : (
-            groups
+            <>
+              <Combobox.Group
+                label={
+                  <Flex align="center" gap="xs">
+                    <IconStar size={12} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
+                    <Text c="chatbox-tertiary" size="xs" fw={600}>
+                      {t('Favorite')}
+                    </Text>
+                  </Flex>
+                }
+              >
+                {favoritedModels?.map((fm) => (
+                  <ModelItem
+                    key={`${fm.provider?.id}/${fm.model?.modelId}`}
+                    showIcon={true}
+                    providerId={fm.provider!.id}
+                    model={fm.model!}
+                    isFavorited={true}
+                    onToggleFavorited={() => {
+                      unfavoriteModel(fm.provider!.id, fm.model!.modelId)
+                    }}
+                  />
+                ))}
+              </Combobox.Group>
+              {groups}
+            </>
           )}
         </Combobox.Options>
       </Combobox.Dropdown>
@@ -267,3 +320,119 @@ export const ModelSelector: FC<ModelSelectorProps> = ({
 }
 
 export default ModelSelector
+
+const ModelItem = ({
+  providerId,
+  model,
+  isFavorited,
+  onToggleFavorited,
+  showIcon,
+}: {
+  providerId: string
+  model: ProviderModelInfo
+  isFavorited: boolean
+  onToggleFavorited(): void
+  showIcon?: boolean
+}) => {
+  return (
+    <Combobox.Option value={`${providerId}/${model.modelId}`} className="flex flex-row items-center group">
+      {showIcon && <ProviderIcon size={12} provider={providerId} className="mr-xs flex-shrink-0" />}
+      <Text
+        span
+        className="flex-shrink"
+        c={model.labels?.includes('recommended') ? 'chatbox-brand' : 'chatbox-primary'}
+      >
+        {model.nickname || model.modelId}
+      </Text>
+      {model.labels?.includes('pro') && (
+        <Badge color="chatbox-brand" size="xs" variant="light" ml="xxs" className="flex-shrink-0 flex-grow-0">
+          Pro
+        </Badge>
+      )}
+
+      <Flex
+        component="span"
+        className={clsx(
+          'ml-auto -m-xs p-xs',
+          isFavorited
+            ? 'text-[var(--mantine-color-chatbox-brand-outline)]'
+            : 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto text-[var(--mantine-color-chatbox-border-secondary-outline)] hover:text-[var(--mantine-color-chatbox-brand-outline)]'
+        )}
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggleFavorited()
+        }}
+      >
+        {isFavorited ? (
+          <IconStarFilled size={16} className="text-inherit" />
+        ) : (
+          <IconStar size={16} className="text-inherit" />
+        )}
+      </Flex>
+    </Combobox.Option>
+  )
+}
+
+const ModelItemInDrawer = ({
+  providerId,
+  model,
+  isFavorited,
+  onToggleFavorited,
+  onSelect,
+  showIcon,
+}: {
+  providerId: string
+  model: ProviderModelInfo
+  isFavorited?: boolean
+  onToggleFavorited?(): void
+  onSelect?(): void
+  showIcon?: boolean
+}) => {
+  const isRecommended = model.labels?.includes('recommended')
+  return (
+    <Flex
+      component="button"
+      key={model.modelId}
+      align="center"
+      gap="xs"
+      px="md"
+      py="sm"
+      c={isRecommended ? 'chatbox-brand' : 'chatbox-secondary'}
+      className="border-solid border border-[var(--mantine-color-chatbox-border-secondary-outline)] outline-none bg-transparent rounded-md"
+      onClick={() => {
+        onSelect?.()
+      }}
+    >
+      {showIcon && <ProviderIcon size={20} provider={providerId} className="flex-shrink-0 text-inherit" />}
+
+      <Text span size="md" className="flex-grow-0 flex-shrink text-left overflow-hidden break-words !text-inherit">
+        {model.nickname || model.modelId}
+      </Text>
+      {model.labels?.includes('pro') && (
+        <Badge color="chatbox-brand" size="xs" variant="light" className="flex-grow-0 flex-shrink-0">
+          Pro
+        </Badge>
+      )}
+
+      <Flex
+        component="span"
+        className={clsx(
+          'ml-auto -m-xs p-xs',
+          isFavorited
+            ? 'text-[var(--mantine-color-chatbox-brand-outline)]'
+            : 'text-[var(--mantine-color-chatbox-border-secondary-outline)]'
+        )}
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggleFavorited?.()
+        }}
+      >
+        {isFavorited ? (
+          <IconStarFilled size={16} className="text-inherit" />
+        ) : (
+          <IconStar size={16} className="text-inherit" />
+        )}
+      </Flex>
+    </Flex>
+  )
+}

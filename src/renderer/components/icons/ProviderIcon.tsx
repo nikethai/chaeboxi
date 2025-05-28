@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { ModelProvider } from 'src/shared/types'
 
-export default function ProviderIcon(props: { className?: string; size?: number; provider: ModelProvider }) {
+export default function ProviderIcon(props: { className?: string; size?: number; provider: ModelProvider | string }) {
   const { className, size = 24, provider } = props
 
   return (

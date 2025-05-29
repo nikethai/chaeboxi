@@ -416,6 +416,7 @@ async function migrate_9_to_10(dataStore: MigrateStore): Promise<boolean> {
             : undefined,
       }
     }
+    log.info('migrate openai settings done')
   } catch (e) {
     log.info('migrate openai settings failed.')
   }
@@ -425,22 +426,26 @@ async function migrate_9_to_10(dataStore: MigrateStore): Promise<boolean> {
       apiKey: claudeApiKey,
       apiHost: claudeApiHost,
     }
+    log.info('migrate claude settings done')
   }
   if (geminiAPIKey || geminiAPIHost) {
     providers[ModelProvider.Gemini] = {
       apiKey: geminiAPIKey,
       apiHost: geminiAPIHost,
     }
+    log.info('migrate gemini settings done')
   }
   if (deepseekAPIKey) {
     providers[ModelProvider.DeepSeek] = {
       apiKey: deepseekAPIKey,
     }
+    log.info('migrate deepseek settings done')
   }
   if (siliconCloudKey) {
     providers[ModelProvider.SiliconFlow] = {
       apiKey: siliconCloudKey,
     }
+    log.info('migrate siliconflow settings done')
   }
   if (azureEndpoint || azureDeploymentNameOptions || azureDalleDeploymentName || azureApikey || azureApiVersion) {
     providers[ModelProvider.Azure] = {
@@ -452,36 +457,43 @@ async function migrate_9_to_10(dataStore: MigrateStore): Promise<boolean> {
         modelId: op,
       })),
     }
+    log.info('migrate azure settings done')
   }
   if (xAIKey) {
     providers[ModelProvider.XAI] = {
       apiKey: xAIKey,
     }
+    log.info('migrate xai settings done')
   }
   if (ollamaHost) {
     providers[ModelProvider.Ollama] = {
       apiHost: ollamaHost,
     }
+    log.info('migrate ollama settings done')
   }
   if (lmStudioHost) {
     providers[ModelProvider.LMStudio] = {
       apiHost: lmStudioHost,
     }
+    log.info('migrate lmstudio settings done')
   }
   if (perplexityApiKey) {
     providers[ModelProvider.Perplexity] = {
       apiKey: perplexityApiKey,
     }
+    log.info('migrate perplexity settings done')
   }
   if (groqAPIKey) {
     providers[ModelProvider.Groq] = {
       apiKey: groqAPIKey,
     }
+    log.info('migrate groq settings done')
   }
   if (chatglmApiKey) {
     providers[ModelProvider.ChatGLM6B] = {
       apiKey: chatglmApiKey,
     }
+    log.info('migrate chatglm settings done')
   }
 
   try {
@@ -505,6 +517,7 @@ async function migrate_9_to_10(dataStore: MigrateStore): Promise<boolean> {
               modelId: op,
             })),
         }
+        log.info(`migrate custom provider [${cp.name}] settings done`)
       })
     }
   } catch (e) {
@@ -521,14 +534,18 @@ async function migrate_9_to_10(dataStore: MigrateStore): Promise<boolean> {
 
   try {
     await dataStore.setData(StorageKey.Settings, { ...oldSettings, providers, customProviders, fontSize } as Settings)
+    log.info('migrate settings done')
   } catch (e) {
     log.info('save new settings to store failed.')
   }
 
   // 迁移session settings
   const chatSessionList = await dataStore.getData<SessionMeta[]>(StorageKey.ChatSessionsList, [])
+  log.info(`migrate_9_to_10, chatSessionList: ${chatSessionList.length}`)
+
   const sessionMap: { [key: string]: Session } = {}
-  for (const sessionMeta of chatSessionList) {
+  for (let i = 0; i < chatSessionList.length; i++) {
+    const sessionMeta = chatSessionList[i]
     try {
       const session: Session = await dataStore.getData(StorageKeyGenerator.session(sessionMeta.id) as any, {} as any)
 
@@ -574,13 +591,15 @@ async function migrate_9_to_10(dataStore: MigrateStore): Promise<boolean> {
 
         sessionMap[StorageKeyGenerator.session(session.id)] = session
       }
+      log.info(`migrate session [${i + 1}/${chatSessionList.length}] settings done`)
     } catch (e) {
-      log.info(`migrate session [${sessionMeta.id}] settings failed.'`)
+      log.info(`migrate session [${i + 1}/${chatSessionList.length}] settings failed, ${sessionMeta.name}`)
     }
   }
 
   try {
     await dataStore.setAll(sessionMap)
+    log.info('migrate sessions settings done')
   } catch (e) {
     log.info('save sessions settings to store failed.')
   }

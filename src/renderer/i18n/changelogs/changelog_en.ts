@@ -1,4 +1,8 @@
 const changelog = `
+### v1.13.2 - 2025.05.30
+
+1. Fixed window can't be dragged on session title bar
+
 ### v1.13.1 - 2025.05.28
 
 1. Refactor settings UI

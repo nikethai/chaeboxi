@@ -66,6 +66,10 @@ export const pasteLongTextAsAFileAtom = focusAtom(settingsAtom, (optic) => optic
 // Related UI state, moved here for proximity to settings
 export const openSettingDialogAtom = atom<SettingWindowTab | null>(null)
 
-// 存储新创建SessionSettings的默认值 缓存在 localStorage
-export const chatSessionSettingsAtom = atomWithStorage<SessionSettings>(StorageKey.ChatSessionSettings, {})
-export const pictureSessionSettingsAtom = atomWithStorage<SessionSettings>(StorageKey.PictureSessionSettings, {})
+// 存储新创建SessionSettings的默认值 缓存在 localStorage (有用户出现 exceed quota 错误，改到 storage 中)
+export const chatSessionSettingsAtom = atomWithStorage<SessionSettings>(StorageKey.ChatSessionSettings, {}, storage)
+export const pictureSessionSettingsAtom = atomWithStorage<SessionSettings>(
+  StorageKey.PictureSessionSettings,
+  {},
+  storage
+)

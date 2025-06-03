@@ -40,21 +40,7 @@ export default class StoreStorage extends BaseStorage {
     return value
   }
 
-  // 对 setItem 进行防抖，应对消息生成时频繁写入时导致的性能问题
-  // 实际用户反馈中发现，频繁写入时，会导致内存占用过高甚至卡顿，尤其是一些安全软件会自动扫描新创建的 JSON 文件
-  private setItemWithDebounce = debounce(
-    (key: string, value: any) => {
-      return super.setItemNow(key, value)
-    },
-    500, // 这里设置太大会可能导致用户关闭应用时没有及时保存数据，根据消息生成的最大速度 100ms 设计
-    { maxWait: 60 * 1000 }
-  )
-
-  /**
-   * 异步写入（防抖）
-   * @deprecated 此方法仅用于兼容 jotail 的 atomWithStorage 的写入，不建议直接使用
-   */
   public async setItem<T>(key: string, value: T): Promise<void> {
-    return this.setItemWithDebounce(key, value)
+    return this.setItemNow(key, value)
   }
 }

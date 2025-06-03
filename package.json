@@ -60,7 +60,7 @@
     "@faker-js/faker": "^8.0.2",
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.10",
     "@svgr/webpack": "^8.0.1",
-    "@tanstack/router-plugin": "^1.114.23",
+    "@tanstack/router-plugin": "^1.120.15",
     "@teamsupercell/typings-for-css-modules-loader": "^2.5.2",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/react": "^14.0.0",

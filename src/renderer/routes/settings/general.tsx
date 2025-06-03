@@ -19,10 +19,10 @@ import {
 } from '@mantine/core'
 import { IconInfoCircle } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
-import { uniqBy } from 'lodash'
+import { mapValues, uniqBy } from 'lodash'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Language, Settings, Theme } from 'src/shared/types'
+import { Language, ProviderInfo, Settings, Theme } from 'src/shared/types'
 
 export const Route = createFileRoute('/settings/general')({
   component: RouteComponent,
@@ -207,6 +207,13 @@ const ImportExportDataSection = () => {
     ;(data[StorageKey.Settings] as Settings).licenseInstances = undefined // 不导出license设备数据，导入数据的新设备也应该计入设备数
     if (!exportItems.includes(ExportDataItem.Key)) {
       delete (data[StorageKey.Settings] as Settings).licenseKey
+      data[StorageKey.Settings].providers = mapValues(
+        (data[StorageKey.Settings] as Settings).providers,
+        (provider: ProviderInfo) => {
+          delete provider.apiKey
+          return provider
+        }
+      )
     }
     if (!exportItems.includes(ExportDataItem.Setting)) {
       delete data[StorageKey.Settings]

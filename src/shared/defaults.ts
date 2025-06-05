@@ -164,118 +164,55 @@ export const SystemProviders: ProviderBaseInfo[] = [
     },
     defaultSettings: {
       apiHost: 'https://api.openai.com',
+      // https://platform.openai.com/docs/models
       models: [
         {
-          modelId: 'gpt-4o-mini',
-          capabilities: ['vision'],
-          contextWindow: 128_000,
-        },
-        {
-          modelId: 'gpt-4o-mini-2024-07-18',
-          capabilities: ['vision'],
-          contextWindow: 128_000,
+          modelId: 'gpt-4.1',
+          capabilities: ['vision', 'tool_use'],
+          contextWindow: 1_047_576,
+          maxOutput: 32_768,
         },
         {
           modelId: 'gpt-4o',
-          capabilities: ['vision'],
+          capabilities: ['vision', 'tool_use'],
           contextWindow: 128_000,
+          maxOutput: 4_096,
         },
         {
-          modelId: 'gpt-4o-2024-05-13',
-          capabilities: ['vision'],
+          modelId: 'gpt-4o-mini',
+          capabilities: ['vision', 'tool_use'],
           contextWindow: 128_000,
+          maxOutput: 4_096,
         },
         {
-          modelId: 'gpt-4o-2024-08-06',
-          capabilities: ['vision'],
-          contextWindow: 128_000,
-        },
-        {
-          modelId: 'gpt-4o-2024-11-20',
-          capabilities: ['vision'],
-          contextWindow: 128_000,
-        },
-        {
-          modelId: 'chatgpt-4o-latest',
-          capabilities: ['vision'],
-          contextWindow: 128_000,
-        },
-        {
-          modelId: 'gpt-4',
-          contextWindow: 8_192,
-        },
-        {
-          modelId: 'gpt-4-turbo',
-          capabilities: ['vision'],
-          contextWindow: 128_000,
-        },
-        {
-          modelId: 'gpt-4-turbo-2024-04-09',
-          capabilities: ['vision'],
-          contextWindow: 128_000,
-        },
-        {
-          modelId: 'gpt-4-0613',
-          contextWindow: 8_192,
-        },
-        {
-          modelId: 'gpt-4-32k',
-          contextWindow: 32_768,
-        },
-        {
-          modelId: 'gpt-4-32k-0613',
-          contextWindow: 32_768,
-        },
-        {
-          modelId: 'gpt-4-1106-preview',
-          contextWindow: 128_000,
-        },
-        {
-          modelId: 'gpt-4-0125-preview',
-          contextWindow: 128_000,
-        },
-        {
-          modelId: 'gpt-4-turbo-preview',
-          contextWindow: 128_000,
-        },
-        {
-          modelId: 'gpt-4-vision-preview',
-          capabilities: ['vision'],
-          contextWindow: 128_000,
-        },
-        {
-          modelId: 'o1',
-          capabilities: ['vision'],
-          contextWindow: 128_000,
-        },
-        {
-          modelId: 'o1-2024-12-17',
-          capabilities: ['vision'],
-          contextWindow: 128_000,
-        },
-        {
-          modelId: 'o1-preview',
-          contextWindow: 128_000,
-        },
-        {
-          modelId: 'o1-preview-2024-09-12',
-          contextWindow: 128_000,
-        },
-        {
-          modelId: 'o1-mini',
-          contextWindow: 128_000,
-        },
-        {
-          modelId: 'o1-mini-2024-09-12',
-          contextWindow: 128_000,
+          modelId: 'o4-mini',
+          capabilities: ['vision', 'tool_use', 'reasoning'],
+          contextWindow: 200_000,
+          maxOutput: 100_000,
         },
         {
           modelId: 'o3-mini',
+          capabilities: ['vision', 'tool_use', 'reasoning'],
           contextWindow: 200_000,
+          maxOutput: 200_000,
         },
         {
-          modelId: 'o3-mini-2025-01-31',
+          modelId: 'o1-mini',
+          capabilities: ['vision', 'tool_use', 'reasoning'],
+          contextWindow: 128_000,
+          maxOutput: 128_000,
+        },
+        {
+          modelId: 'o3',
+          capabilities: ['vision', 'tool_use', 'reasoning'],
           contextWindow: 200_000,
+          maxOutput: 100_000,
+        },
+        {
+          modelId: 'o1',
+          capabilities: ['vision', 'tool_use', 'reasoning'],
+          contextWindow: 200_000,
+          maxOutput: 100_000,
         },
       ],
     },
@@ -289,10 +226,23 @@ export const SystemProviders: ProviderBaseInfo[] = [
     },
     defaultSettings: {
       apiHost: 'https://api.anthropic.com/v1',
+      // https://docs.anthropic.com/en/docs/about-claude/models/overview
       models: [
         {
+          modelId: 'claude-opus-4-0',
+          contextWindow: 200_000,
+          maxOutput: 32_000,
+          capabilities: ['vision', 'reasoning', 'tool_use'],
+        },
+        {
+          modelId: 'claude-sonnet-4-0',
+          contextWindow: 200_000,
+          maxOutput: 64_000,
+          capabilities: ['vision', 'reasoning', 'tool_use'],
+        },
+        {
           modelId: 'claude-3-7-sonnet-latest',
-          capabilities: ['vision', 'tool_use'],
+          capabilities: ['vision', 'tool_use', 'reasoning'],
           contextWindow: 200_000,
         },
         {
@@ -322,14 +272,15 @@ export const SystemProviders: ProviderBaseInfo[] = [
     },
     defaultSettings: {
       apiHost: 'https://generativelanguage.googleapis.com',
+      // https://ai.google.dev/models/gemini
       models: [
         {
           modelId: 'gemini-2.5-flash-preview-05-20',
-          capabilities: ['vision'],
+          capabilities: ['vision', 'reasoning'],
         },
         {
           modelId: 'gemini-2.5-pro-preview-05-06',
-          capabilities: ['vision'],
+          capabilities: ['vision', 'reasoning'],
         },
         {
           modelId: 'gemini-2.0-flash-exp',
@@ -337,11 +288,11 @@ export const SystemProviders: ProviderBaseInfo[] = [
         },
         {
           modelId: 'gemini-2.0-flash-thinking-exp',
-          capabilities: ['vision'],
+          capabilities: ['vision', 'reasoning'],
         },
         {
           modelId: 'gemini-2.0-flash-thinking-exp-1219',
-          capabilities: ['vision'],
+          capabilities: ['vision', 'reasoning'],
         },
         {
           modelId: 'gemini-1.5-pro-latest',
@@ -394,6 +345,7 @@ export const SystemProviders: ProviderBaseInfo[] = [
         {
           modelId: 'deepseek-chat',
           contextWindow: 64_000,
+          capabilities: ['tool_use'],
         },
         {
           modelId: 'deepseek-coder',
@@ -402,7 +354,7 @@ export const SystemProviders: ProviderBaseInfo[] = [
         {
           modelId: 'deepseek-reasoner',
           contextWindow: 64_000,
-          capabilities: ['reasoning'],
+          capabilities: ['reasoning', 'tool_use'],
         },
       ],
     },
@@ -502,10 +454,12 @@ export const SystemProviders: ProviderBaseInfo[] = [
         {
           modelId: 'grok-3-beta',
           contextWindow: 128_000,
+          capabilities: ['vision', 'tool_use'],
         },
         {
           modelId: 'grok-3-mini-beta',
           contextWindow: 128_000,
+          capabilities: ['vision', 'tool_use'],
         },
         {
           modelId: 'grok-2-vision-1212',
@@ -592,12 +546,12 @@ export const SystemProviders: ProviderBaseInfo[] = [
         },
         {
           modelId: 'glm-4v-plus-0111',
-          capabilities: ['vision'],
+          capabilities: ['vision', 'tool_use'],
           contextWindow: 16_000,
         },
         {
           modelId: 'glm-4v-flash',
-          capabilities: ['vision'],
+          capabilities: ['vision', 'tool_use'],
           contextWindow: 16_000,
         },
       ],

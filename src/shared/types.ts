@@ -126,6 +126,29 @@ export function isPictureSession(session: Session) {
   return session.type === 'picture'
 }
 
+type ClaudeParams = {
+  thinking: {
+    type: 'enabled' | 'disabled'
+    budgetTokens: number
+  }
+}
+
+type OpenAIParams = {
+  reasoningEffort: 'low' | 'medium' | 'high' | null
+}
+
+type GoogleParams = {
+  thinkingConfig: {
+    thinkingBudget: number
+    includeThoughts: boolean
+  }
+}
+export type ProviderOptions = {
+  claude?: Partial<ClaudeParams>
+  openai?: Partial<OpenAIParams>
+  google?: Partial<GoogleParams>
+}
+
 export type SessionSettings = Partial<{
   provider: ModelProvider
   modelId: string
@@ -134,6 +157,7 @@ export type SessionSettings = Partial<{
   topP: number
   dalleStyle: 'vivid' | 'natural'
   imageGenerateNum: number // 生成图片的数量
+  providerOptions?: ProviderOptions
 }>
 
 export interface Session {
@@ -212,6 +236,7 @@ export type ProviderModelInfo = {
   labels?: string[]
   capabilities?: ('vision' | 'reasoning' | 'tool_use')[]
   contextWindow?: number
+  maxOutput?: number
 }
 
 export type ProviderBaseInfo = {

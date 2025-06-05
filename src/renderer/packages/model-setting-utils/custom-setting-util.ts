@@ -13,19 +13,7 @@ export default class CustomModelSettingUtil extends BaseConfig implements ModelS
     return `Custom API (${providerSettings?.models?.find((m) => m.modelId === model)?.nickname || model})`
   }
 
-  public getLocalOptionGroups() {
-    return []
-  }
-
   protected async listProviderModels(settings: ProviderSettings) {
     return []
-  }
-
-  isCurrentModelSupportImageInput(model: string): boolean {
-    return true
-  }
-
-  isCurrentModelSupportToolUse(model: string): boolean {
-    return false
   }
 }

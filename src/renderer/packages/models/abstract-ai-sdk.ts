@@ -8,8 +8,8 @@ import {
   APICallError,
   CoreMessage,
   CoreSystemMessage,
-  experimental_generateImage as generateImage,
   FilePart,
+  experimental_generateImage as generateImage,
   ImageModel,
   ImagePart,
   LanguageModelV1,
@@ -22,9 +22,9 @@ import { compact } from 'lodash'
 import {
   Message,
   MessageContentParts,
-  MessageImagePart,
   MessageTextPart,
   MessageToolCallPart,
+  ProviderModelInfo,
   StreamTextResult,
 } from 'src/shared/types'
 import { ApiError, ChatboxAIAPIError } from './errors'
@@ -41,7 +41,18 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
   public name = 'AI SDK Model'
   public injectDefaultMetadata = true
 
-  public abstract isSupportToolUse(): boolean
+  public isSupportToolUse() {
+    return this.options.model.capabilities?.includes('tool_use') || false
+  }
+  public isSupportVision() {
+    return this.options.model.capabilities?.includes('vision') || false
+  }
+  public isSupportReasoning() {
+    return this.options.model.capabilities?.includes('reasoning') || false
+  }
+
+  public constructor(public options: { model: ProviderModelInfo }) {}
+
   protected abstract getChatModel(options: CallChatCompletionOptions): LanguageModelV1
 
   protected getImageModel(): ImageModel | null {
@@ -126,6 +137,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
 
     const messages = sequenceMessages(rawMessages)
     const coreMessages = await convertToCoreMessages(messages)
+    const callSettings = this.getCallSettings(options)
 
     const result = streamText({
       model,
@@ -133,7 +145,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       maxSteps: Number.MAX_SAFE_INTEGER,
       tools: options.tools,
       abortSignal: options.signal,
-      ...this.getCallSettings(options),
+      ...callSettings,
     })
 
     let contentParts: MessageContentParts = []

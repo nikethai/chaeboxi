@@ -8,11 +8,6 @@ export interface ModelSettingUtil {
     sessionType: SessionType,
     providerSettings?: ProviderSettings
   ): Promise<string>
-  // 获取该provider在代码里写死的模型组
-  getLocalOptionGroups(): ModelOptionGroup[]
   // 获取该provider远程的模型组
   getMergeOptionGroups(providerSettings: ProviderSettings): Promise<ModelOptionGroup[]>
-  // 判断模型对feature的支持
-  isCurrentModelSupportImageInput(model: string): boolean
-  isCurrentModelSupportToolUse(model: string): boolean
 }

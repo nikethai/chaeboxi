@@ -1,20 +1,12 @@
 import { createAzure } from '@ai-sdk/azure'
 import AbstractAISDKModel from './abstract-ai-sdk'
-import { ModelHelpers } from './types'
 import { normalizeAzureEndpoint } from './llm_utils'
-
-const helpers: ModelHelpers = {
-  isModelSupportVision: (model: string) => {
-    return true
-  },
-  isModelSupportToolUse: (model: string) => {
-    return true
-  },
-}
+import { ProviderModelInfo } from 'src/shared/types'
+import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
 
 interface Options {
   azureEndpoint: string
-  azureDeploymentName: string
+  model: ProviderModelInfo
   azureDalleDeploymentName: string // dall-e-3 的部署名称
   azureApikey: string
   azureApiVersion: string
@@ -31,10 +23,9 @@ interface Options {
 
 export default class AzureOpenAI extends AbstractAISDKModel {
   public name = 'Azure OpenAI'
-  public static helpers = helpers
 
   constructor(public options: Options) {
-    super()
+    super(options)
   }
 
   private getProvider() {
@@ -47,15 +38,14 @@ export default class AzureOpenAI extends AbstractAISDKModel {
 
   protected getChatModel() {
     const provider = this.getProvider()
-    return provider.chat(this.options.azureDeploymentName)
+    return wrapLanguageModel({
+      model: provider.chat(this.options.model.modelId),
+      middleware: extractReasoningMiddleware({ tagName: 'think' }),
+    })
   }
 
   protected getImageModel() {
     const provider = this.getProvider()
-    return provider.imageModel(this.options.azureDalleDeploymentName)
-  }
-
-  public isSupportToolUse() {
-    return helpers.isModelSupportToolUse(this.options.azureDeploymentName)
+    return provider.imageModel(this.options.model.modelId)
   }
 }

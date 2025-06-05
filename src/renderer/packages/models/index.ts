@@ -29,12 +29,25 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
 
   const formattedApiHost = (providerSetting.apiHost || providerBaseInfo.defaultSettings?.apiHost || '').trim()
 
+  let model = providerSetting.models?.find((m) => m.modelId === setting.modelId)
+  if (!model) {
+    model = SystemProviders.find((p) => p.id === provider)?.defaultSettings?.models?.find(
+      (m) => m.modelId === setting.modelId
+    )
+  }
+  if (!model) {
+    // 如果没有找到对应的 model 配置，直接使用传入的 modelId，这种情况通常发生在用户本地列表中删除了某个 model，但是某个 session 中还在使用，或是检查连接的时候，使用了 defaults 中的 modelId，
+    model = {
+      modelId: setting.modelId!,
+    }
+  }
+
   switch (provider) {
     case ModelProvider.ChatboxAI:
       return new ChatboxAI(
         {
           licenseKey: setting.licenseKey,
-          chatboxAIModel: setting.modelId!,
+          model,
           licenseInstances: setting.licenseInstances,
           licenseDetail: setting.licenseDetail,
           language: setting.language,
@@ -47,7 +60,7 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
       return new OpenAI({
         apiKey: providerSetting.apiKey || '',
         apiHost: formattedApiHost,
-        model: setting.modelId!,
+        model: model,
         dalleStyle: setting.dalleStyle || 'vivid',
         temperature: setting.temperature!,
         topP: setting.topP,
@@ -58,7 +71,7 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
     case ModelProvider.Azure:
       return new AzureOpenAI({
         azureEndpoint: providerSetting.endpoint || providerBaseInfo.defaultSettings?.endpoint || '',
-        azureDeploymentName: setting.modelId || '',
+        model,
         azureDalleDeploymentName: providerSetting.dalleDeploymentName || '',
         azureApikey: providerSetting.apiKey || '',
         azureApiVersion: providerSetting.apiVersion || providerBaseInfo.defaultSettings?.apiVersion || '',
@@ -72,42 +85,42 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
     case ModelProvider.ChatGLM6B:
       return new ChatGLM({
         chatglmApiKey: providerSetting.apiKey || '',
-        chatglmModel: setting.modelId || '',
+        model,
       })
 
     case ModelProvider.Claude:
       return new Claude({
         claudeApiKey: providerSetting.apiKey || '',
         claudeApiHost: formattedApiHost,
-        claudeModel: setting.modelId || '',
+        model,
       })
 
     case ModelProvider.Gemini:
       return new Gemini({
         geminiAPIKey: providerSetting.apiKey || '',
         geminiAPIHost: formattedApiHost,
-        geminiModel: setting.modelId || ('' as any),
+        model,
         temperature: setting.temperature!,
       })
 
     case ModelProvider.Ollama:
       return new Ollama({
         ollamaHost: formattedApiHost,
-        ollamaModel: setting.modelId || '',
+        model,
         temperature: setting.temperature!,
       })
 
     case ModelProvider.Groq:
       return new Groq({
         groqAPIKey: providerSetting.apiKey || '',
-        groqModel: setting.modelId || '',
+        model,
         temperature: setting.temperature!,
       })
 
     case ModelProvider.DeepSeek:
       return new DeepSeek({
         deepseekAPIKey: providerSetting.apiKey || '',
-        deepseekModel: setting.modelId || '',
+        model,
         temperature: setting.temperature,
         topP: setting.topP,
       })
@@ -115,7 +128,7 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
     case ModelProvider.SiliconFlow:
       return new SiliconFlow({
         siliconCloudKey: providerSetting.apiKey || '',
-        siliconCloudModel: setting.modelId || '',
+        model,
         temperature: setting.temperature,
         topP: setting.topP,
       })
@@ -123,7 +136,7 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
     case ModelProvider.LMStudio:
       return new LMStudio({
         lmStudioHost: formattedApiHost,
-        lmStudioModel: setting.modelId || '',
+        model,
         temperature: setting.temperature,
         topP: setting.topP,
       })
@@ -131,7 +144,7 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
     case ModelProvider.Perplexity:
       return new Perplexity({
         perplexityApiKey: providerSetting.apiKey || '',
-        perplexityModel: setting.modelId || '',
+        model,
         temperature: setting.temperature,
         topP: setting.topP,
       })
@@ -139,7 +152,7 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
     case ModelProvider.XAI:
       return new XAI({
         xAIKey: providerSetting.apiKey || '',
-        xAIModel: setting.modelId || '',
+        model,
         temperature: setting.temperature,
         topP: setting.topP,
       })
@@ -149,7 +162,7 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
           apiKey: providerSetting.apiKey || '',
           apiHost: formattedApiHost,
           apiPath: providerSetting.apiPath || '',
-          model: setting.modelId || '',
+          model,
           temperature: setting.temperature,
           topP: setting.topP,
           useProxy: providerSetting.useProxy,

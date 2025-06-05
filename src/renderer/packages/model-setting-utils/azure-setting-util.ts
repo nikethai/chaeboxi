@@ -17,20 +17,7 @@ export default class AzureSettingUtil extends BaseConfig implements ModelSetting
     }
   }
 
-  public getLocalOptionGroups() {
-    // FIXME:
-    return []
-  }
-
   protected async listProviderModels() {
     return []
-  }
-
-  public isCurrentModelSupportImageInput(model: string) {
-    return AzureOpenAI.helpers.isModelSupportVision(model)
-  }
-
-  public isCurrentModelSupportToolUse(model: string) {
-    return AzureOpenAI.helpers.isModelSupportToolUse(model)
   }
 }

@@ -3,7 +3,6 @@ import * as settingActions from '@/stores/settingActions'
 import { saveImage } from '@/utils/image'
 import { cloneMessage, getMessageText, sequenceMessages } from '@/utils/message'
 import * as Sentry from '@sentry/react'
-
 import {
   APICallError,
   CoreMessage,
@@ -176,8 +175,14 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
           | MessageToolCallPart
           | undefined
         if (part) {
-          part.state = 'result'
-          part.result = chunk.result
+          if ((chunk.result as unknown) instanceof Error) {
+            console.debug('mcp tool execute error', chunk.result)
+            part.state = 'error'
+            part.result = JSON.parse(JSON.stringify(chunk.result))
+          } else {
+            part.state = 'result'
+            part.result = chunk.result
+          }
         }
       } else if (chunk.type === 'file' && chunk.mimeType.startsWith('image/')) {
         currentTextPart = undefined

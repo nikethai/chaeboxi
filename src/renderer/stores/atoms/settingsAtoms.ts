@@ -14,6 +14,7 @@ export const settingsAtom = atom(
     // 兼容早期版本
     const settings = Object.assign({}, defaults.settings(), _settings)
     settings.shortcuts = Object.assign({}, defaults.settings().shortcuts, _settings.shortcuts)
+    settings.mcp = Object.assign({}, defaults.settings().mcp, _settings.mcp)
     return settings
   },
   (get, set, update: SetStateAction<Settings>) => {

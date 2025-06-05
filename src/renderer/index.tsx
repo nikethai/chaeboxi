@@ -14,6 +14,7 @@ import { CHATBOX_BUILD_PLATFORM, CHATBOX_BUILD_TARGET } from './variables'
 import { router } from './router'
 import { RouterProvider } from '@tanstack/react-router'
 import '@mantine/core/styles.css'
+import '@mantine/spotlight/styles.css'
 
 const log = getLogger('index')
 
@@ -59,6 +60,9 @@ async function initializeApp() {
 
   // 最后执行 storage 清理，清理不 block 进入UI
   import('./setup/storage_clear')
+
+  // 启动mcp服务器
+  import('./setup/mcp_bootstrap')
 }
 
 // ==========渲染节点==============

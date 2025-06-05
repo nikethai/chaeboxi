@@ -26,6 +26,7 @@ import ExitFullscreenButton from '@/components/ExitFullscreenButton'
 import NiceModal from '@ebay/nice-modal-react'
 import '@/modals'
 import {
+  Avatar,
   Button,
   Checkbox,
   Combobox,
@@ -35,6 +36,7 @@ import {
   MantineColorsTuple,
   MantineProvider,
   Modal,
+  NativeSelect,
   rem,
   Select,
   Switch,
@@ -159,7 +161,6 @@ function Root() {
           <Outlet />
         </Box>
       </Grid>
-
       {/* 对话设置 */}
       {/* <AppStoreRatingDialog /> */}
       {/* 代码预览 */}
@@ -186,7 +187,7 @@ function Root() {
       <SearchDialog />
       {/* 没有配置模型时的欢迎弹窗 */}
       {/* <WelcomeDialog /> */}
-      <Toasts />
+      <Toasts /> {/* mui */}
     </Box>
   )
 }
@@ -446,7 +447,32 @@ const creteMantineTheme = (scale = 1) =>
           },
         }),
       }),
+      Textarea: TextInput.extend({
+        defaultProps: {
+          size: 'sm',
+        },
+        styles: () => ({
+          label: {
+            marginBottom: 'var(--chatbox-spacing-xxs)',
+            fontWeight: '600',
+            lineHeight: '1.5',
+          },
+        }),
+      }),
       Select: Select.extend({
+        defaultProps: {
+          size: 'sm',
+          allowDeselect: false,
+        },
+        styles: () => ({
+          label: {
+            marginBottom: 'var(--chatbox-spacing-xxs)',
+            fontWeight: '600',
+            lineHeight: '1.5',
+          },
+        }),
+      }),
+      NativeSelect: NativeSelect.extend({
         defaultProps: {
           size: 'sm',
         },
@@ -505,6 +531,13 @@ const creteMantineTheme = (scale = 1) =>
         defaultProps: {
           shadow: 'md',
         },
+      }),
+      Avatar: Avatar.extend({
+        styles: () => ({
+          image: {
+            objectFit: 'contain',
+          },
+        }),
       }),
     },
   })

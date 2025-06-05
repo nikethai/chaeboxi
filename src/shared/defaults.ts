@@ -121,6 +121,10 @@ export function settings(): Settings {
         tavilyApiKey: '',
       },
     },
+    mcp: {
+      servers: [],
+      enabledBuiltinServers: [],
+    },
   }
 }
 

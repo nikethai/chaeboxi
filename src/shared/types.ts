@@ -1,5 +1,6 @@
 import { LanguageModelUsage } from 'ai'
 import { v4 as uuidv4 } from 'uuid'
+import { MCPServerConfig } from '@/packages/mcp/types'
 
 export interface SearchResultItem {
   title: string
@@ -47,7 +48,7 @@ export type MessageTextPart = { type: 'text'; text: string }
 export type MessageImagePart = { type: 'image'; storageKey: string }
 export type MessageToolCallPart<Args = unknown, Result = unknown> = {
   type: 'tool-call'
-  state: 'call' | 'result'
+  state: 'call' | 'result' | 'error'
   toolCallId: string
   toolName: string
   args: Args
@@ -111,7 +112,7 @@ export interface Message {
   firstTokenLatency?: number // AI 回答首字耗时(毫秒) - 从发送请求到接收到第一个字的时间间隔
 }
 
-export type SettingWindowTab = 'ai' | 'display' | 'chat' | 'advanced' | 'extension'
+export type SettingWindowTab = 'ai' | 'display' | 'chat' | 'advanced' | 'extension' | 'mcp'
 
 export type ExportChatScope = 'all_threads' | 'current_thread'
 
@@ -315,6 +316,11 @@ export interface ExtensionSettings {
   }
 }
 
+export interface MCPSettings {
+  servers: MCPServerConfig[]
+  enabledBuiltinServers: string[]
+}
+
 export interface Settings extends SessionSettings {
   providers?: {
     [key: string]: ProviderSettings
@@ -386,6 +392,7 @@ export interface Settings extends SessionSettings {
   shortcuts: ShortcutSetting
 
   extension: ExtensionSettings
+  mcp: MCPSettings
 }
 
 export interface ShortcutSetting {

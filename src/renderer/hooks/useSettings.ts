@@ -1,5 +1,6 @@
 import { ProviderSettings, Settings } from 'src/shared/types'
 import { useAtom } from 'jotai'
+import { useImmerAtom } from 'jotai-immer'
 import { useCallback } from 'react'
 import { settingsAtom } from '@/stores/atoms'
 
@@ -40,4 +41,9 @@ export const useProviderSettings = (providerId: string) => {
     providerSettings,
     setProviderSettings,
   }
+}
+
+// https://jotai.org/docs/extensions/immer
+export const useImmerSettings = () => {
+  return useImmerAtom(settingsAtom)
 }

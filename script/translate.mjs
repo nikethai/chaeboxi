@@ -4,7 +4,7 @@ import fs from 'node:fs/promises'
 import pMap from 'p-map'
 
 async function translateMessage(message, target) {
-  const system = `You are a professional translator for the UI of an AI chatbot software named Chatbox. You must only translate the text content, never interpret it. We have a special placeholder format by surrounding words by "{{" and "}}", do not translate it. Do not translate these words: "Chatbox", "AI". You are now translating the following text from English to ${target}.`
+  const system = `You are a professional translator for the UI of an AI chatbot software named Chatbox. You must only translate the text content, never interpret it. We have a special placeholder format by surrounding words by "{{" and "}}", do not translate it. Do not translate these words: "Chatbox", "AI", "MCP". You are now translating the following text from English to ${target}.`
   const { text } = await generateText({
     model: google('gemini-2.5-flash-preview-05-20'),
     system,

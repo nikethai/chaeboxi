@@ -1,5 +1,6 @@
-import uniqueId from 'lodash/uniqueId'
+import { uniqueId } from 'lodash'
 import { Message, MessageToolCallPart, ProviderOptions, StreamTextResult } from '../../../shared/types'
+import { mcpController } from '../mcp/controller'
 import { ModelInterface, OnResultChange, onResultChangeWithCancel } from '../models/types'
 import { constructMessagesWithSearchResults, searchByPromptEngineering, webSearchTool } from './tools'
 
@@ -27,7 +28,7 @@ export async function streamText(
     }
 
     // 不支持工具调用的模型，则使用prompt engineering的方式进行联网搜索
-    if (params.webBrowsing && (!model.isSupportToolUse('web-browsing'))) {
+    if (params.webBrowsing && !model.isSupportToolUse('web-browsing')) {
       const callResult = await searchByPromptEngineering(model, params.messages, controller.signal)
       // 模型判断不需要搜索，或没有搜索结果，让模型正常回答
       if (!callResult?.searchResults?.length) {
@@ -55,11 +56,18 @@ export async function streamText(
       })
     }
 
+    const tools = {
+      ...mcpController.getAvailableTools(),
+      ...(params.webBrowsing ? { web_search: webSearchTool } : {}),
+    }
+
+    console.debug('tools', tools)
+
     result = await model.chat(params.messages, {
       signal: controller.signal,
       onResultChange,
-      tools: params.webBrowsing ? { web_search: webSearchTool } : undefined,
       providerOptions: params.providerOptions,
+      tools,
     })
 
     return result

@@ -154,7 +154,7 @@
   "Insert a New Line into the Input Box": "Insert a New Line into the Input Box",
   "Instruction (System Prompt)": "Instruction (System Prompt)",
   "It only takes a few seconds and helps a lot.": "It only takes a few seconds and helps a lot.",
-  "Keep only the Top N Conversations in List and Permanently Delete the Rest": "Keep only the Top N Conversations in List and Permanently Delete the Rest",
+  "Keep only the Top N Conversations in List and Permanently Delete the Rest": "Keep only the Top <0>{{n}}</0> Conversations in List and Permanently Delete the Rest",
   "language": "language",
   "LaTeX Rendering (Requires Markdown)": "LaTeX Rendering (Requires Markdown)",
   "Launch at system startup": "Launch at system startup",

@@ -1,4 +1,9 @@
 const changelog = `
+### v1.13.3 - 2025.06.08
+
+1. Fixed issue where custom provider couldn't set API Path
+2. OpenAI, Claude, Gemini models support setting thinking effort parameter
+
 ### v1.13.2 - 2025.05.30
 
 1. Fixed window can't be dragged on session title bar

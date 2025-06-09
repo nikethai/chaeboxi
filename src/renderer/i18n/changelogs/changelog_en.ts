@@ -1,4 +1,9 @@
 const changelog = `
+### v1.13.4 - 2025.06.09
+
+1. Fixed storage performance issue
+2. Fixed issue where clearing conversation list in English language couldn't fill in the number of conversations to keep
+
 ### v1.13.3 - 2025.06.08
 
 1. Fixed issue where custom provider couldn't set API Path

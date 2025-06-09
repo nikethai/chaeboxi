@@ -1,4 +1,5 @@
-import { debounce } from 'lodash'
+import { DebouncedFunc } from 'lodash'
+import debounce from 'lodash/debounce'
 import { v4 as uuidv4 } from 'uuid'
 import BaseStorage from './BaseStorage'
 
@@ -40,7 +41,14 @@ export default class StoreStorage extends BaseStorage {
     return value
   }
 
+  private debounceQueue = new Map<string, DebouncedFunc<(key: string, value: unknown) => void>>()
+
   public async setItem<T>(key: string, value: T): Promise<void> {
-    return this.setItemNow(key, value)
+    let debounced = this.debounceQueue.get(key)
+    if (!debounced) {
+      debounced = debounce(this.setItemNow.bind(this), 500, { maxWait: 2000 })
+      this.debounceQueue.set(key, debounced)
+    }
+    debounced(key, value)
   }
 }

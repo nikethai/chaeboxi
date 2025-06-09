@@ -39,7 +39,7 @@ function RouteComponent() {
         setPictureSessionSettings({ provider, modelId })
       }
     }
-  }, [currentSession])
+  }, [currentSession?.settings])
 
   return currentSession ? (
     <div className="flex flex-col h-full">

@@ -3,6 +3,7 @@ import AbstractAISDKModel from './abstract-ai-sdk'
 import { normalizeAzureEndpoint } from './llm_utils'
 import { ProviderModelInfo } from 'src/shared/types'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
+import { CallChatCompletionOptions } from './types'
 
 interface Options {
   azureEndpoint: string
@@ -34,6 +35,13 @@ export default class AzureOpenAI extends AbstractAISDKModel {
       apiVersion: this.options.azureApiVersion,
       baseURL: normalizeAzureEndpoint(this.options.azureEndpoint).endpoint,
     })
+  }
+
+  protected getCallSettings() {
+    return {
+      temperature: this.options.temperature,
+      topP: this.options.topP,
+    }
   }
 
   protected getChatModel() {

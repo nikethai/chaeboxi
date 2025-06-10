@@ -43,9 +43,9 @@ export const ImageModelSelect: FC<ImageModelSelectProps> = ({ onSelect, children
 
       <Combobox.Dropdown>
         <Combobox.Options mah={500} style={{ overflowY: 'auto' }}>
-          {/* Chatbox AI (DALL-E-3) 作为默认选项 */}
+          {/* Chatbox AI 作为默认选项 */}
           <Combobox.Option value={ModelProvider.ChatboxAI} c="chatbox-primary">
-            Chatbox AI (DALL-E-3)
+            Chatbox AI
           </Combobox.Option>
           {avaliableProviders.map((p) => (
             <Combobox.Option key={p.id} value={p.id} c="chatbox-primary">

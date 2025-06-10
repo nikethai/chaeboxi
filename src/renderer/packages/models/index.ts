@@ -1,20 +1,21 @@
-import OpenAI from './openai'
-import { Settings, Config, ModelProvider } from '@/../shared/types'
-import ChatboxAI from './chatboxai'
+import { Config, ModelProvider, Settings } from '@/../shared/types'
+import { SystemProviders } from 'src/shared/defaults'
 import AzureOpenAI from './azure'
+import ChatboxAI from './chatboxai'
 import ChatGLM from './chatglm'
 import Claude from './claude'
-import Gemini from './gemini'
-import Ollama from './ollama'
-import LMStudio from './lmstudio'
-import Groq from './groq'
-import DeepSeek from './deepseek'
-import SiliconFlow from './siliconflow'
-import Perplexity from './perplexity'
-import XAI from './xai'
-import type { ModelInterface } from './types'
 import CustomOpenAI from './custom-openai'
-import { SystemProviders } from 'src/shared/defaults'
+import DeepSeek from './deepseek'
+import Gemini from './gemini'
+import Groq from './groq'
+import LMStudio from './lmstudio'
+import Ollama from './ollama'
+import OpenAI from './openai'
+import Perplexity from './perplexity'
+import SiliconFlow from './siliconflow'
+import type { ModelInterface } from './types'
+import VolcEngine from './volcengine'
+import XAI from './xai'
 
 export function getModel(setting: Settings, config: Config): ModelInterface {
   const provider = setting.provider
@@ -133,6 +134,14 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
         topP: setting.topP,
       })
 
+    case ModelProvider.VolcEngine:
+      return new VolcEngine({
+        apiKey: providerSetting.apiKey || '',
+        model,
+        temperature: setting.temperature,
+        topP: setting.topP,
+      })
+
     case ModelProvider.LMStudio:
       return new LMStudio({
         lmStudioHost: formattedApiHost,
@@ -184,6 +193,7 @@ export const aiProviderNameHash: Record<ModelProvider, string> = {
   [ModelProvider.Groq]: 'Groq API',
   [ModelProvider.DeepSeek]: 'DeepSeek API',
   [ModelProvider.SiliconFlow]: 'SiliconFlow API',
+  [ModelProvider.VolcEngine]: 'VolcEngine API',
   [ModelProvider.LMStudio]: 'LM Studio API',
   [ModelProvider.Perplexity]: 'Perplexity API',
   [ModelProvider.XAI]: 'xAI API',

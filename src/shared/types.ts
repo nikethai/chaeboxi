@@ -224,6 +224,7 @@ export enum ModelProvider {
   Groq = 'groq',
   DeepSeek = 'deepseek',
   SiliconFlow = 'siliconflow',
+  VolcEngine = 'volcengine',
   LMStudio = 'lm-studio',
   Perplexity = 'perplexity',
   XAI = 'xAI',
@@ -279,6 +280,7 @@ export enum ModelProviderType {
   ChatboxAI = 'chatbox-ai',
   OpenAI = 'openai',
   Gemini = 'gemini',
+  Claude = 'claude',  
 }
 
 export type ModelMeta = {

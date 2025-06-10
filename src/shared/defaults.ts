@@ -220,7 +220,7 @@ export const SystemProviders: ProviderBaseInfo[] = [
   {
     id: ModelProvider.Claude,
     name: 'Claude',
-    type: ModelProviderType.OpenAI,
+    type: ModelProviderType.Claude,
     urls: {
       website: 'https://www.anthropic.com',
     },
@@ -266,7 +266,7 @@ export const SystemProviders: ProviderBaseInfo[] = [
   {
     id: ModelProvider.Gemini,
     name: 'Gemini',
-    type: ModelProviderType.OpenAI,
+    type: ModelProviderType.Gemini,
     urls: {
       website: 'https://gemini.google.com/',
     },
@@ -431,6 +431,37 @@ export const SystemProviders: ProviderBaseInfo[] = [
           modelId: 'Pro/Qwen/Qwen2.5-VL-7B-Instruct',
           capabilities: ['vision'],
           contextWindow: 32_000,
+        },
+      ],
+    },
+  },
+  {
+    id: ModelProvider.VolcEngine,
+    name: 'VolcEngine',
+    type: ModelProviderType.OpenAI,
+    defaultSettings: {
+      apiHost: 'https://ark.cn-beijing.volces.com',
+      apiPath: '/api/v3/chat/completions',
+      models: [
+        {
+          modelId: 'deepseek-v3-250324',
+          contextWindow: 64_000,
+          capabilities: ['tool_use', 'reasoning'],
+        },
+        {
+          modelId: 'deepseek-r1-250528',
+          contextWindow: 16_384,
+          capabilities: ['reasoning', 'tool_use'],
+        },
+        {
+          modelId: 'doubao-1-5-thinking-pro-250415',
+          contextWindow: 128_000,
+          capabilities: ['reasoning'],
+        },
+        {
+          modelId: 'doubao-1.5-vision-pro-250328',
+          contextWindow: 128_000,
+          capabilities: ['vision'],
         },
       ],
     },

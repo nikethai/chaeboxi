@@ -212,7 +212,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
     <Stack key={baseInfo.id} gap="xxl">
       <Flex gap="xs" align="center">
         <Title order={3} c="chatbox-secondary">
-          {baseInfo.name}
+          {t(baseInfo.name)}
         </Title>
         {baseInfo.urls?.website && (
           <Button

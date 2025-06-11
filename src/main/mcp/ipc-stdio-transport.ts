@@ -2,7 +2,9 @@
 
 import { StdioClientTransport, StdioServerParameters } from '@modelcontextprotocol/sdk/client/stdio.js'
 import { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js'
+import chardet from 'chardet'
 import { ipcMain } from 'electron'
+import iconv from 'iconv-lite'
 import { isEmpty } from 'lodash'
 import { v4 as uuidv4 } from 'uuid'
 import { getLogger } from '../util'
@@ -51,9 +53,11 @@ ipcMain.handle('mcp:stdio-transport:create', async (event, serverParams: StdioSe
   })
 
   let stderrMessage = ''
-  transport.stderr?.addListener('data', (data) => {
-    logger.debug('mcp stderr', data.toString())
-    stderrMessage += data.toString()
+  transport.stderr?.addListener('data', (data: Buffer) => {
+    const encoding = chardet.detect(new Uint8Array(data))
+    const text = iconv.decode(data, encoding || 'utf-8')
+    logger.debug('mcp stderr', text)
+    stderrMessage += text
   })
 
   const transportId = uuidv4()

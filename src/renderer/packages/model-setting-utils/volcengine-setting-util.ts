@@ -1,10 +1,9 @@
-import { ModelProvider, ProviderSettings, SessionType } from 'src/shared/types'
-import VolcEngine from '../models/volcengine'
+import { ModelProvider, ModelProviderEnum, ProviderSettings, SessionType } from 'src/shared/types'
 import BaseConfig from './base-config'
 import { ModelSettingUtil } from './interface'
 
 export default class VolcEngineSettingUtil extends BaseConfig implements ModelSettingUtil {
-  public provider: ModelProvider = ModelProvider.VolcEngine
+  public provider: ModelProvider = ModelProviderEnum.VolcEngine
   async getCurrentModelDisplayName(
     model: string,
     sessionType: SessionType,

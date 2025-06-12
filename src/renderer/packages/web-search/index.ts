@@ -1,6 +1,6 @@
 import { cachified } from '@epic-web/cachified'
 import { truncate } from 'lodash'
-import type { SearchResultItem } from './base'
+import type { SearchResultItem } from '@/../shared/types'
 import { BingNewsSearch } from './bing-news'
 import { BingSearch } from './bing'
 import { TavilySearch } from './tavily'

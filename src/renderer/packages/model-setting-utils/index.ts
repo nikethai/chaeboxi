@@ -1,4 +1,5 @@
-import { ModelProvider, SessionType, Settings } from 'src/shared/types'
+import { SystemProviders } from 'src/shared/defaults'
+import { ModelProvider, ModelProviderEnum, ProviderBaseInfo, SessionType, Settings } from 'src/shared/types'
 import AzureSettingUtil from './azure-setting-util'
 import ChatboxAISettingUtil from './chatboxai-setting-util'
 import ChatGLMSettingUtil from './chatglm-setting-util'
@@ -18,32 +19,33 @@ import XAISettingUtil from './xai-setting-util'
 
 export function getModelSettingUtil(aiProvider: ModelProvider): ModelSettingUtil {
   const hash: Record<ModelProvider, new () => ModelSettingUtil> = {
-    [ModelProvider.Azure]: AzureSettingUtil,
-    [ModelProvider.ChatboxAI]: ChatboxAISettingUtil,
-    [ModelProvider.ChatGLM6B]: ChatGLMSettingUtil,
-    [ModelProvider.Claude]: ClaudeSettingUtil,
-    [ModelProvider.Gemini]: GeminiSettingUtil,
-    [ModelProvider.Groq]: GroqSettingUtil,
-    [ModelProvider.Ollama]: OllamaSettingUtil,
-    [ModelProvider.OpenAI]: OpenAISettingUtil,
-    [ModelProvider.DeepSeek]: DeepSeekSettingUtil,
-    [ModelProvider.SiliconFlow]: SiliconFlowSettingUtil,
-    [ModelProvider.VolcEngine]: VolcEngineSettingUtil,
-    [ModelProvider.LMStudio]: LMStudioSettingUtil,
-    [ModelProvider.Perplexity]: PerplexitySettingUtil,
-    [ModelProvider.XAI]: XAISettingUtil,
-    [ModelProvider.Custom]: CustomModelSettingUtil,
+    [ModelProviderEnum.Azure]: AzureSettingUtil,
+    [ModelProviderEnum.ChatboxAI]: ChatboxAISettingUtil,
+    [ModelProviderEnum.ChatGLM6B]: ChatGLMSettingUtil,
+    [ModelProviderEnum.Claude]: ClaudeSettingUtil,
+    [ModelProviderEnum.Gemini]: GeminiSettingUtil,
+    [ModelProviderEnum.Groq]: GroqSettingUtil,
+    [ModelProviderEnum.Ollama]: OllamaSettingUtil,
+    [ModelProviderEnum.OpenAI]: OpenAISettingUtil,
+    [ModelProviderEnum.DeepSeek]: DeepSeekSettingUtil,
+    [ModelProviderEnum.SiliconFlow]: SiliconFlowSettingUtil,
+    [ModelProviderEnum.VolcEngine]: VolcEngineSettingUtil,
+    [ModelProviderEnum.LMStudio]: LMStudioSettingUtil,
+    [ModelProviderEnum.Perplexity]: PerplexitySettingUtil,
+    [ModelProviderEnum.XAI]: XAISettingUtil,
+    [ModelProviderEnum.Custom]: CustomModelSettingUtil,
   }
   const Class = hash[aiProvider] || CustomModelSettingUtil
   return new Class()
 }
 
-export async function getModelDisplayName(
-  provider: ModelProvider,
-  model: string,
-  providers: Settings['providers'],
-  sessionType: SessionType
-) {
+export async function getModelDisplayName(settings: Settings, sessionType: SessionType) {
+  const provider = settings.provider!
+  const model = settings.modelId!
+
   const util = getModelSettingUtil(provider)
-  return util.getCurrentModelDisplayName(model, sessionType, providers?.[provider])
+  const providerSettings = settings.providers?.[provider]
+  const providerBaseInfo =
+    settings.customProviders?.find((p) => p.id === provider) || SystemProviders.find((p) => p.id === provider)
+  return util.getCurrentModelDisplayName(model, sessionType, providerSettings, providerBaseInfo)
 }

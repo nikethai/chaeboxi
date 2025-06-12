@@ -1,10 +1,10 @@
-import { ModelProvider, ProviderSettings, SessionType } from 'src/shared/types'
-import { ModelSettingUtil } from './interface'
+import { ModelProvider, ModelProviderEnum, ProviderSettings, SessionType } from 'src/shared/types'
 import Ollama from '../models/ollama'
 import BaseConfig from './base-config'
+import { ModelSettingUtil } from './interface'
 
 export default class OllamaSettingUtil extends BaseConfig implements ModelSettingUtil {
-  public provider: ModelProvider = ModelProvider.Ollama
+  public provider: ModelProvider = ModelProviderEnum.Ollama
   async getCurrentModelDisplayName(
     model: string,
     sessionType: SessionType,

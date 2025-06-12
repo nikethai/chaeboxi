@@ -1,10 +1,10 @@
-import { ModelProvider, ProviderSettings, SessionType } from 'src/shared/types'
+import { ModelProvider, ModelProviderEnum, ProviderSettings, SessionType } from 'src/shared/types'
 import Claude from '../models/claude'
 import BaseConfig from './base-config'
 import { ModelSettingUtil } from './interface'
 
 export default class ClaudeSettingUtil extends BaseConfig implements ModelSettingUtil {
-  public provider: ModelProvider = ModelProvider.Claude
+  public provider: ModelProvider = ModelProviderEnum.Claude
   async getCurrentModelDisplayName(
     model: string,
     sessionType: SessionType,

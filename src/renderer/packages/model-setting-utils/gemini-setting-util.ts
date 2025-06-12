@@ -1,10 +1,10 @@
-import { ModelProvider, ProviderSettings, SessionType } from 'src/shared/types'
+import { ModelProvider, ModelProviderEnum, ProviderSettings, SessionType } from 'src/shared/types'
 import Gemini from '../models/gemini'
 import BaseConfig from './base-config'
 import { ModelSettingUtil } from './interface'
 
 export default class GeminiSettingUtil extends BaseConfig implements ModelSettingUtil {
-  public provider: ModelProvider = ModelProvider.Gemini
+  public provider: ModelProvider = ModelProviderEnum.Gemini
   async getCurrentModelDisplayName(
     model: string,
     sessionType: SessionType,

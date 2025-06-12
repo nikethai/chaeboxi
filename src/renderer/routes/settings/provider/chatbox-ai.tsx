@@ -17,7 +17,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { SystemProviders } from 'src/shared/defaults'
-import { ModelOptionGroup, ModelProvider, ProviderModelInfo } from 'src/shared/types'
+import { ModelOptionGroup, ModelProvider, ModelProviderEnum, ProviderModelInfo } from 'src/shared/types'
 import * as premiumActions from '@/stores/premiumActions'
 import { trackingEvent } from '@/packages/event'
 import { getModelSettingUtil } from '@/packages/model-setting-utils'
@@ -50,7 +50,7 @@ export const Route = createFileRoute('/settings/provider/chatbox-ai')({
 function RouteComponent() {
   const { t } = useTranslation()
   const language = useAtomValue(languageAtom)
-  const providerId: ModelProvider = ModelProvider.ChatboxAI
+  const providerId: ModelProvider = ModelProviderEnum.ChatboxAI
   const baseInfo = SystemProviders.find((p) => p.id === providerId)
   const { providerSettings, setProviderSettings } = useProviderSettings(providerId)
   const { settings } = useSettings()

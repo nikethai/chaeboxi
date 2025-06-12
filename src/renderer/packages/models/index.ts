@@ -1,4 +1,4 @@
-import { Config, ModelProvider, Settings } from '@/../shared/types'
+import { Config, ModelProvider, ModelProviderEnum, Settings } from '@/../shared/types'
 import { SystemProviders } from 'src/shared/defaults'
 import AzureOpenAI from './azure'
 import ChatboxAI from './chatboxai'
@@ -44,7 +44,7 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
   }
 
   switch (provider) {
-    case ModelProvider.ChatboxAI:
+    case ModelProviderEnum.ChatboxAI:
       return new ChatboxAI(
         {
           licenseKey: setting.licenseKey,
@@ -57,7 +57,7 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
         },
         config
       )
-    case ModelProvider.OpenAI:
+    case ModelProviderEnum.OpenAI:
       return new OpenAI({
         apiKey: providerSetting.apiKey || '',
         apiHost: formattedApiHost,
@@ -69,7 +69,7 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
         useProxy: false, // 之前的openaiUseProxy已经没有在使用，直接写死false
       })
 
-    case ModelProvider.Azure:
+    case ModelProviderEnum.Azure:
       return new AzureOpenAI({
         azureEndpoint: providerSetting.endpoint || providerBaseInfo.defaultSettings?.endpoint || '',
         model,
@@ -83,20 +83,20 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
         injectDefaultMetadata: setting.injectDefaultMetadata,
       })
 
-    case ModelProvider.ChatGLM6B:
+    case ModelProviderEnum.ChatGLM6B:
       return new ChatGLM({
         chatglmApiKey: providerSetting.apiKey || '',
         model,
       })
 
-    case ModelProvider.Claude:
+    case ModelProviderEnum.Claude:
       return new Claude({
         claudeApiKey: providerSetting.apiKey || '',
         claudeApiHost: formattedApiHost,
         model,
       })
 
-    case ModelProvider.Gemini:
+    case ModelProviderEnum.Gemini:
       return new Gemini({
         geminiAPIKey: providerSetting.apiKey || '',
         geminiAPIHost: formattedApiHost,
@@ -104,21 +104,21 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
         temperature: setting.temperature!,
       })
 
-    case ModelProvider.Ollama:
+    case ModelProviderEnum.Ollama:
       return new Ollama({
         ollamaHost: formattedApiHost,
         model,
         temperature: setting.temperature!,
       })
 
-    case ModelProvider.Groq:
+    case ModelProviderEnum.Groq:
       return new Groq({
         groqAPIKey: providerSetting.apiKey || '',
         model,
         temperature: setting.temperature!,
       })
 
-    case ModelProvider.DeepSeek:
+    case ModelProviderEnum.DeepSeek:
       return new DeepSeek({
         deepseekAPIKey: providerSetting.apiKey || '',
         model,
@@ -126,7 +126,7 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
         topP: setting.topP,
       })
 
-    case ModelProvider.SiliconFlow:
+    case ModelProviderEnum.SiliconFlow:
       return new SiliconFlow({
         siliconCloudKey: providerSetting.apiKey || '',
         model,
@@ -134,7 +134,7 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
         topP: setting.topP,
       })
 
-    case ModelProvider.VolcEngine:
+    case ModelProviderEnum.VolcEngine:
       return new VolcEngine({
         apiKey: providerSetting.apiKey || '',
         model,
@@ -142,7 +142,7 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
         topP: setting.topP,
       })
 
-    case ModelProvider.LMStudio:
+    case ModelProviderEnum.LMStudio:
       return new LMStudio({
         lmStudioHost: formattedApiHost,
         model,
@@ -150,7 +150,7 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
         topP: setting.topP,
       })
 
-    case ModelProvider.Perplexity:
+    case ModelProviderEnum.Perplexity:
       return new Perplexity({
         perplexityApiKey: providerSetting.apiKey || '',
         model,
@@ -158,7 +158,7 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
         topP: setting.topP,
       })
 
-    case ModelProvider.XAI:
+    case ModelProviderEnum.XAI:
       return new XAI({
         xAIKey: providerSetting.apiKey || '',
         model,
@@ -183,88 +183,88 @@ export function getModel(setting: Settings, config: Config): ModelInterface {
 }
 
 export const aiProviderNameHash: Record<ModelProvider, string> = {
-  [ModelProvider.OpenAI]: 'OpenAI API',
-  [ModelProvider.Azure]: 'Azure OpenAI API',
-  [ModelProvider.ChatGLM6B]: 'ChatGLM API',
-  [ModelProvider.ChatboxAI]: 'Chatbox AI',
-  [ModelProvider.Claude]: 'Claude API',
-  [ModelProvider.Gemini]: 'Google Gemini API',
-  [ModelProvider.Ollama]: 'Ollama API',
-  [ModelProvider.Groq]: 'Groq API',
-  [ModelProvider.DeepSeek]: 'DeepSeek API',
-  [ModelProvider.SiliconFlow]: 'SiliconFlow API',
-  [ModelProvider.VolcEngine]: 'VolcEngine API',
-  [ModelProvider.LMStudio]: 'LM Studio API',
-  [ModelProvider.Perplexity]: 'Perplexity API',
-  [ModelProvider.XAI]: 'xAI API',
-  [ModelProvider.Custom]: 'Custom Provider',
+  [ModelProviderEnum.OpenAI]: 'OpenAI API',
+  [ModelProviderEnum.Azure]: 'Azure OpenAI API',
+  [ModelProviderEnum.ChatGLM6B]: 'ChatGLM API',
+  [ModelProviderEnum.ChatboxAI]: 'Chatbox AI',
+  [ModelProviderEnum.Claude]: 'Claude API',
+  [ModelProviderEnum.Gemini]: 'Google Gemini API',
+  [ModelProviderEnum.Ollama]: 'Ollama API',
+  [ModelProviderEnum.Groq]: 'Groq API',
+  [ModelProviderEnum.DeepSeek]: 'DeepSeek API',
+  [ModelProviderEnum.SiliconFlow]: 'SiliconFlow API',
+  [ModelProviderEnum.VolcEngine]: 'VolcEngine API',
+  [ModelProviderEnum.LMStudio]: 'LM Studio API',
+  [ModelProviderEnum.Perplexity]: 'Perplexity API',
+  [ModelProviderEnum.XAI]: 'xAI API',
+  [ModelProviderEnum.Custom]: 'Custom Provider',
 }
 
 export const AIModelProviderMenuOptionList = [
   {
-    value: ModelProvider.ChatboxAI,
-    label: aiProviderNameHash[ModelProvider.ChatboxAI],
+    value: ModelProviderEnum.ChatboxAI,
+    label: aiProviderNameHash[ModelProviderEnum.ChatboxAI],
     featured: true,
     disabled: false,
   },
   {
-    value: ModelProvider.OpenAI,
-    label: aiProviderNameHash[ModelProvider.OpenAI],
+    value: ModelProviderEnum.OpenAI,
+    label: aiProviderNameHash[ModelProviderEnum.OpenAI],
     disabled: false,
   },
   {
-    value: ModelProvider.Claude,
-    label: aiProviderNameHash[ModelProvider.Claude],
+    value: ModelProviderEnum.Claude,
+    label: aiProviderNameHash[ModelProviderEnum.Claude],
     disabled: false,
   },
   {
-    value: ModelProvider.Gemini,
-    label: aiProviderNameHash[ModelProvider.Gemini],
+    value: ModelProviderEnum.Gemini,
+    label: aiProviderNameHash[ModelProviderEnum.Gemini],
     disabled: false,
   },
   {
-    value: ModelProvider.Ollama,
-    label: aiProviderNameHash[ModelProvider.Ollama],
+    value: ModelProviderEnum.Ollama,
+    label: aiProviderNameHash[ModelProviderEnum.Ollama],
     disabled: false,
   },
   {
-    value: ModelProvider.LMStudio,
-    label: aiProviderNameHash[ModelProvider.LMStudio],
+    value: ModelProviderEnum.LMStudio,
+    label: aiProviderNameHash[ModelProviderEnum.LMStudio],
     disabled: false,
   },
   {
-    value: ModelProvider.DeepSeek,
-    label: aiProviderNameHash[ModelProvider.DeepSeek],
+    value: ModelProviderEnum.DeepSeek,
+    label: aiProviderNameHash[ModelProviderEnum.DeepSeek],
     disabled: false,
   },
   {
-    value: ModelProvider.SiliconFlow,
-    label: aiProviderNameHash[ModelProvider.SiliconFlow],
+    value: ModelProviderEnum.SiliconFlow,
+    label: aiProviderNameHash[ModelProviderEnum.SiliconFlow],
     disabled: false,
   },
   {
-    value: ModelProvider.Azure,
-    label: aiProviderNameHash[ModelProvider.Azure],
+    value: ModelProviderEnum.Azure,
+    label: aiProviderNameHash[ModelProviderEnum.Azure],
     disabled: false,
   },
   {
-    value: ModelProvider.XAI,
-    label: aiProviderNameHash[ModelProvider.XAI],
+    value: ModelProviderEnum.XAI,
+    label: aiProviderNameHash[ModelProviderEnum.XAI],
     disabled: false,
   },
   {
-    value: ModelProvider.Perplexity,
-    label: aiProviderNameHash[ModelProvider.Perplexity],
+    value: ModelProviderEnum.Perplexity,
+    label: aiProviderNameHash[ModelProviderEnum.Perplexity],
     disabled: false,
   },
   {
-    value: ModelProvider.Groq,
-    label: aiProviderNameHash[ModelProvider.Groq],
+    value: ModelProviderEnum.Groq,
+    label: aiProviderNameHash[ModelProviderEnum.Groq],
     disabled: false,
   },
   {
-    value: ModelProvider.ChatGLM6B,
-    label: aiProviderNameHash[ModelProvider.ChatGLM6B],
+    value: ModelProviderEnum.ChatGLM6B,
+    label: aiProviderNameHash[ModelProviderEnum.ChatGLM6B],
     disabled: false,
   },
   // {

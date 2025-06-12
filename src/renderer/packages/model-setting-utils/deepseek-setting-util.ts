@@ -1,10 +1,10 @@
-import { ModelProvider, ProviderSettings, Session, SessionType, Settings } from 'src/shared/types'
-import { ModelSettingUtil } from './interface'
-import BaseConfig from './base-config'
+import { ModelProvider, ModelProviderEnum, ProviderSettings, SessionType } from 'src/shared/types'
 import DeepSeek from '../models/deepseek'
+import BaseConfig from './base-config'
+import { ModelSettingUtil } from './interface'
 
 export default class DeepSeekSettingUtil extends BaseConfig implements ModelSettingUtil {
-  public provider: ModelProvider = ModelProvider.DeepSeek
+  public provider: ModelProvider = ModelProviderEnum.DeepSeek
   async getCurrentModelDisplayName(
     model: string,
     sessionType: SessionType,

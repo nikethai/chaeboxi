@@ -32,6 +32,7 @@ import {
   MessageLink,
   MessagePicture,
   ModelProvider,
+  ModelProviderEnum,
   Session,
   SessionMeta,
   SessionSettings,
@@ -512,7 +513,7 @@ export async function submitNewUserMessage(params: {
   insertMessage(currentSessionId, newUserMsg)
 
   const settings = getCurrentSessionMergedSettings()
-  const isChatboxAI = settings.provider === ModelProvider.ChatboxAI
+  const isChatboxAI = settings.provider === ModelProviderEnum.ChatboxAI
   const remoteConfig = settingActions.getRemoteConfig()
 
   // 根据需要，插入空白的回复消息
@@ -646,7 +647,7 @@ export async function submitNewUserMessage(params: {
       ...newAssistantMsg,
       generating: false,
       cancel: undefined,
-      model: await getModelDisplayName(settings.provider!, settings.modelId!, settings.providers, 'chat'),
+      model: await getModelDisplayName(settings, 'chat'),
       contentParts: [{ type: 'text', text: '' }],
       errorCode,
       error: `${err.message}`, // 这么写是为了避免类型问题
@@ -689,7 +690,7 @@ export async function generate(sessionId: string, targetMsg: Message, options?: 
     // pictures: session.type === 'picture' ? createLoadingPictures(settings.imageGenerateNum) : targetMsg.pictures,
     cancel: undefined,
     aiProvider: settings.provider,
-    model: await getModelDisplayName(settings.provider!, settings.modelId!, settings.providers, session.type || 'chat'),
+    model: await getModelDisplayName(settings, session.type || 'chat'),
     style: session.type === 'picture' ? settings.dalleStyle : undefined,
     generating: true,
     errorCode: undefined,

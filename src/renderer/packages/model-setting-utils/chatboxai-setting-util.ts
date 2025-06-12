@@ -1,9 +1,9 @@
-import { ModelOptionGroup, ModelProvider, ProviderSettings, SessionType } from 'src/shared/types'
+import { ModelOptionGroup, ModelProvider, ModelProviderEnum, ProviderSettings, SessionType } from 'src/shared/types'
 import BaseConfig from './base-config'
 import { ModelSettingUtil } from './interface'
 
 export default class ChatboxAISettingUtil extends BaseConfig implements ModelSettingUtil {
-  public provider: ModelProvider = ModelProvider.ChatboxAI
+  public provider: ModelProvider = ModelProviderEnum.ChatboxAI
 
   async getCurrentModelDisplayName(
     model: string,

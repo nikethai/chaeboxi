@@ -1,4 +1,4 @@
-import { ModelOptionGroup, ModelProvider, ProviderSettings, SessionType } from '../../../shared/types'
+import { ModelOptionGroup, ModelProvider, ProviderBaseInfo, ProviderSettings, SessionType } from '../../../shared/types'
 import * as Sentry from '@sentry/react'
 import * as remote from '../../packages/remote'
 import { ModelSettingUtil } from './interface'
@@ -8,7 +8,8 @@ export default abstract class BaseConfig implements ModelSettingUtil {
   public abstract getCurrentModelDisplayName(
     model: string,
     sessionType: SessionType,
-    providerSettings?: ProviderSettings
+    providerSettings?: ProviderSettings,
+    providerBaseInfo?: ProviderBaseInfo,
   ): Promise<string>
 
   protected abstract listProviderModels(settings: ProviderSettings): Promise<string[]>

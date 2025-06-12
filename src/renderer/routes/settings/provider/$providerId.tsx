@@ -39,15 +39,15 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { ChangeEvent, useMemo, useState } from 'react'
+import { ChangeEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SystemProviders } from 'src/shared/defaults'
 import {
   MessageRoleEnum,
   ModelOptionGroup,
-  ModelProvider,
+  ModelProviderEnum,
   ModelProviderType,
-  ProviderModelInfo,
+  ProviderModelInfo
 } from 'src/shared/types'
 
 export const Route = createFileRoute('/settings/provider/$providerId')({
@@ -287,7 +287,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         )}
 
         {/* API Key */}
-        {![ModelProvider.Ollama, ModelProvider.LMStudio, ''].includes(baseInfo.id) && (
+        {![ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ''].includes(baseInfo.id) && (
           <Stack gap="xxs">
             <Text span fw="600">
               {t('API Key')}
@@ -332,11 +332,11 @@ function ProviderSettings({ providerId }: { providerId: string }) {
 
         {/* API Host */}
         {[
-          ModelProvider.OpenAI,
-          ModelProvider.Claude,
-          ModelProvider.Gemini,
-          ModelProvider.Ollama,
-          ModelProvider.LMStudio,
+          ModelProviderEnum.OpenAI,
+          ModelProviderEnum.Claude,
+          ModelProviderEnum.Gemini,
+          ModelProviderEnum.Ollama,
+          ModelProviderEnum.LMStudio,
           '',
         ].includes(baseInfo.id) && (
           <Stack gap="xxs">
@@ -357,7 +357,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
               />
             </Flex>
             <Text span size="xs" flex="0 1 auto" c="chatbox-secondary">
-              {[ModelProvider.OpenAI, ModelProvider.Ollama, ModelProvider.LMStudio, ''].includes(baseInfo.id)
+              {[ModelProviderEnum.OpenAI, ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ''].includes(baseInfo.id)
                 ? normalizeOpenAIApiHostAndPath({
                     apiHost: providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost,
                   }).apiHost +
@@ -365,11 +365,11 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                     apiHost: providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost,
                   }).apiPath
                 : ''}
-              {baseInfo.id === ModelProvider.Claude
+              {baseInfo.id === ModelProviderEnum.Claude
                 ? normalizeClaudeHost(providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost || '').apiHost +
                   normalizeClaudeHost(providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost || '').apiPath
                 : ''}
-              {baseInfo.id === ModelProvider.Gemini
+              {baseInfo.id === ModelProviderEnum.Gemini
                 ? normalizeGeminiHost(providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost || '').apiHost +
                   normalizeGeminiHost(providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost || '').apiPath
                 : ''}
@@ -439,7 +439,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           </>
         )}
 
-        {baseInfo.id === ModelProvider.Azure && (
+        {baseInfo.id === ModelProviderEnum.Azure && (
           <>
             {/* Azure Endpoint */}
             <Stack gap="xxs">
@@ -459,7 +459,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 />
               </Flex>
               <Text span size="xs" flex="0 1 auto" c="chatbox-secondary">
-                {baseInfo.id === ModelProvider.Azure
+                {baseInfo.id === ModelProviderEnum.Azure
                   ? normalizeAzureEndpoint(providerSettings?.endpoint || baseInfo.defaultSettings?.endpoint || '')
                       .endpoint +
                     normalizeAzureEndpoint(providerSettings?.endpoint || baseInfo.defaultSettings?.endpoint || '')

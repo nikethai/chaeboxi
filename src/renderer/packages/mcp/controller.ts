@@ -216,10 +216,11 @@ export const mcpController = {
   },
 }
 
-const TOOL_NAME_REGEX = /^[A-Za-z0-9_-]+$/
+const SERVER_NAME_REGEX = /^[A-Za-z0-9_-]+$/
 
 function normalizeToolName(serverName: string, toolName: string) {
-  if (TOOL_NAME_REGEX.test(serverName)) {
+  serverName = serverName.replace(/\s+/g, '_')
+  if (SERVER_NAME_REGEX.test(serverName)) {
     return `mcp__${serverName.toLowerCase()}__${toolName}`
   }
   return `mcp__${toolName}`

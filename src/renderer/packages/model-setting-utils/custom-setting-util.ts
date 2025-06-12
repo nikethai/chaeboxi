@@ -12,7 +12,7 @@ export default class CustomModelSettingUtil extends BaseConfig implements ModelS
     providerBaseInfo?: ProviderBaseInfo
   ): Promise<string> {
     const providerName = providerBaseInfo?.name ?? 'Custom API'
-    return `${providerName} (${providerSettings?.models?.find((m) => m.modelId === model)?.nickname ?? model})`
+    return `${providerName} (${providerSettings?.models?.find((m) => m.modelId === model)?.nickname || model})`
   }
 
   protected async listProviderModels(settings: ProviderSettings) {

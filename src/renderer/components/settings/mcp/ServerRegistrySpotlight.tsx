@@ -1,9 +1,9 @@
 import { Avatar } from '@mantine/core'
 import { Spotlight, SpotlightActionData, SpotlightActionGroupData } from '@mantine/spotlight'
-import { IconFileImport, IconJson, IconSearch, IconSquareRoundedPlusFilled } from '@tabler/icons-react'
+import { IconJson, IconSearch, IconSquareRoundedPlusFilled } from '@tabler/icons-react'
 import { FC, useMemo } from 'react'
-import { MCP_ENTRIES_COMMUNITY, MCP_ENTRIES_OFFICIAL, MCPRegistryEntry } from './registries'
 import { useTranslation } from 'react-i18next'
+import { MCP_ENTRIES_COMMUNITY, MCP_ENTRIES_OFFICIAL, MCPRegistryEntry } from './registries'
 
 const ServerRegistrySpotlight: FC<{
   triggerAddServer: (entry?: MCPRegistryEntry) => void
@@ -40,7 +40,7 @@ const ServerRegistrySpotlight: FC<{
           label: entry.title,
           description: entry.description,
           onClick: () => props.triggerAddServer(entry),
-          leftSection: <Avatar src={entry.icon} name={entry.name} color="initials" size={24} />,
+          leftSection: <Avatar src={entry.icon} name={entry.name} color="initials" size={20} />,
         })),
       },
       {
@@ -50,7 +50,7 @@ const ServerRegistrySpotlight: FC<{
           label: entry.title,
           description: entry.description,
           onClick: () => props.triggerAddServer(entry),
-          leftSection: <Avatar src={entry.icon} name={entry.name} color="initials" size={24} />,
+          leftSection: <Avatar src={entry.icon} name={entry.name} color="initials" size={20} />,
         })),
       },
     ]

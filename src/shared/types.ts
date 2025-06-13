@@ -357,6 +357,8 @@ export interface Settings extends SessionSettings {
   fontSize: number
   spellCheck: boolean
 
+  startupPage: 'home' | 'session' // 启动页
+
   // disableQuickToggleShortcut?: boolean // 是否关闭快捷键切换窗口显隐（弃用，为了兼容历史数据，这个字段永远不要使用）
 
   defaultPrompt?: string // 新会话的默认 prompt

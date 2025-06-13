@@ -3,7 +3,7 @@ import { useEffect, useMemo } from 'react'
 import CssBaseline from '@mui/material/CssBaseline'
 import { ThemeProvider } from '@mui/material/styles'
 import { Box, Grid } from '@mui/material'
-import { RemoteConfig, ModelProvider, Theme } from '@/../shared/types'
+import { RemoteConfig, Theme, Settings } from '@/../shared/types'
 import CleanWidnow from '@/pages/CleanWindow'
 import useAppTheme from '@/hooks/useAppTheme'
 import useShortcut from '@/hooks/useShortcut'
@@ -46,6 +46,7 @@ import {
 } from '@mantine/core'
 import { QueryClientProvider } from '@tanstack/react-query'
 import queryClient from '@/stores/queryClient'
+import storage, { StorageKey } from '@/storage'
 
 function Root() {
   const navigate = useNavigate()
@@ -125,6 +126,19 @@ function Root() {
   // FIXME: 为了从LocalStroage中初始化这两个atom，否则首次get这两个atom可能得到默认值
   useAtom(atoms.chatSessionSettingsAtom)
   useAtom(atoms.pictureSessionSettingsAtom)
+
+  useEffect(() => {
+    ;(async () => {
+      const settings = await storage.getItem(StorageKey.Settings, {} as Settings)
+      const sid = JSON.parse(localStorage.getItem('_currentSessionIdCachedAtom') || '""') as string
+      if (sid && settings?.startupPage === 'session') {
+        navigate({
+          to: `/session/${sid}`,
+          replace: true,
+        })
+      }
+    })()
+  }, [])
 
   return (
     <Box className="box-border App" spellCheck={spellCheck} dir={language === 'ar' ? 'rtl' : 'ltr'}>

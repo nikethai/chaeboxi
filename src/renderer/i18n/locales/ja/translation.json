@@ -209,7 +209,7 @@
   "Keep only the Top N Conversations in List and Permanently Delete the Rest": "リストの上位<0>{{n}}</0>の会話だけを保持し、残りを永久に削除",
   "Key Combination": "キーの組み合わせ",
   "Keyboard Shortcuts": "キーボードショートカット",
-  "language": "言語",
+  "Language": "言語",
   "LaTeX Rendering (Requires Markdown)": "LaTeXレンダリング（Markdownが必要）",
   "Launch at system startup": "システム起動時に自動起動",
   "License Activated": "ライセンスが有効化",
@@ -253,7 +253,7 @@
   "Network Proxy": "ネットワークプロキシ",
   "network proxy error tips": "プロキシアドレスが設定されています {{proxy}}。プロキシサーバーが正常に機能しているか確認するか、設定からプロキシアドレスを削除することを検討してください。",
   "New": "新規",
-  "new chat": "新しいチャット",
+  "New Chat": "新しいチャット",
   "New Images": "新しい画像",
   "New Thread": "新しいスレッド",
   "Nickname": "ニックネーム",
@@ -392,7 +392,7 @@
   "The file you sent has expired. To protect your privacy, all file-related cache data has been cleared. You need to create a new conversation or refresh the context, and then send the file again.": "送信したファイルの有効期限が切れました。プライバシーを保護するため、すべてのファイル関連のキャッシュデータがクリアされました。新しい会話を作成するか、コンテキストをリフレッシュしてから、ファイルを再度送信する必要があります。",
   "The Image Creator plugin has been activated for the current conversation": "画像作成プラグインが現在の会話で有効化されました",
   "The license key you entered is invalid. Please check your license key and try again.": "入力したライセンスキーが無効です。ライセンスキーを確認してもう一度お試しください。",
-  "theme": "テーマ",
+  "Theme": "テーマ",
   "Thinking": "考え中",
   "Thinking Budget": "思考予算",
   "Thinking Budget only works for 2.0 or later models": "思考予算は2.0以降のモデルでのみ動作します",
@@ -446,5 +446,9 @@
   "Your ChatboxAI subscription already includes access to models from various providers. There's no need to switch providers - you can select different models directly within ChatboxAI. Switching from ChatboxAI to other providers will require their respective API keys. <button>Back to ChatboxAI</button>": "あなたのChatboxAIサブスクリプションには、さまざまなプロバイダーのモデルへのアクセスがすでに含まれています。プロバイダーを切り替える必要はありません。ChatboxAI内で直接異なるモデルを選択できます。ChatboxAIから他のプロバイダーに切り替えると、それぞれのAPIキーが必要になります。<button>ChatboxAIに戻る</button>",
   "Your current License (Chatbox AI Lite) does not support the {{model}} model. To use this model, please <OpenMorePlanButton>upgrade</OpenMorePlanButton> to Chatbox AI Pro or a higher-tier package. Alternatively, you can switch to a different model by <OpenSettingButton>accessing the settings</OpenSettingButton>.": "あなたの現在のライセンス（Chatbox AI Lite）は{{model}}モデルをサポートしていません。このモデルを使用するには、<OpenMorePlanButton>アップグレード</OpenMorePlanButton>してChatbox AI Proまたはより高いティアのパッケージにアップグレードしてください。または、<OpenSettingButton>設定にアクセス</OpenSettingButton>して別のモデルに切り替えることもできます。",
   "Your license has expired. Please check your subscription or purchase a new one.": "ライセンスが期限切れです。サブスクリプションを確認するか、新しいものを購入してください。",
-  "Your rating on the App Store would help make Chatbox even better!": "App Storeでの評価は、Chatboxをさらに良くするのに役立ちます！"
+  "Your rating on the App Store would help make Chatbox even better!": "App Storeでの評価は、Chatboxをさらに良くするのに役立ちます！",
+  "What can I help you with today?": "今日は何をお手伝いしましょうか？",
+  "Startup Page": "スタートアップページ",
+  "Home Page": "ホームページ",
+  "Last Session": "前回のセッション"
 }

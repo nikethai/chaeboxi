@@ -209,7 +209,7 @@
   "Keep only the Top N Conversations in List and Permanently Delete the Rest": "僅保留最前面的<0>{{n}}</0>條對話紀錄，永久刪除其他對話紀錄",
   "Key Combination": "按鍵",
   "Keyboard Shortcuts": "鍵盤快捷鍵",
-  "language": "語言",
+  "Language": "語言",
   "LaTeX Rendering (Requires Markdown)": "LaTeX 渲染（需要 Markdown）",
   "Launch at system startup": "開機自啟動",
   "License Activated": "License 已啟用",
@@ -253,7 +253,7 @@
   "Network Proxy": "網路代理",
   "network proxy error tips": "因为你設置了代理位址{{proxy}}，請檢查代理伺服器是否正常運作，或者考慮在設定中刪除代理位址。",
   "New": "新建",
-  "new chat": "新對話",
+  "New Chat": "新對話",
   "New Images": "新圖片",
   "New Thread": "新話題",
   "Nickname": "顯示名稱",
@@ -391,7 +391,7 @@
   "The file you sent has expired. To protect your privacy, all file-related cache data has been cleared. You need to create a new conversation or refresh the context, and then send the file again.": "您發送的文件已過期。為了保護您的隱私，所有與文件相關的緩存數據已被清除。您需要創建一個新對話或刷新上下文，然後重新發送文件。",
   "The Image Creator plugin has been activated for the current conversation": "當前對話啟動了 Image Creator 插件",
   "The license key you entered is invalid. Please check your license key and try again.": "您輸入的授權密鑰無效。請檢查您的授權密鑰並重試。",
-  "theme": "主題",
+  "Theme": "主題",
   "Thinking": "思考中",
   "Thinking Budget": "思考預算",
   "Thinking Budget only works for 2.0 or later models": "思考預算僅適用於 2.0 或更新版本模型",
@@ -445,5 +445,9 @@
   "Your ChatboxAI subscription already includes access to models from various providers. There's no need to switch providers - you can select different models directly within ChatboxAI. Switching from ChatboxAI to other providers will require their respective API keys. <button>Back to ChatboxAI</button>": "您的 ChatboxAI 訂閱已包含來自各大供應商的模型訪問權限。您可以直接在 ChatboxAI 中選擇不同的模型，無需切換供應商。從 ChatboxAI 切換到其他供應商將需要他們各自的 API 金鑰。<button>返回 ChatboxAI</button>",
   "Your current License (Chatbox AI Lite) does not support the {{model}} model. To use this model, please <OpenMorePlanButton>upgrade</OpenMorePlanButton> to Chatbox AI Pro or a higher-tier package. Alternatively, you can switch to a different model by <OpenSettingButton>accessing the settings</OpenSettingButton>.": "您當前的 License（Chatbox AI Lite）不支持 {{model}} 模型。要使用此模型，請<OpenMorePlanButton>升級</OpenMorePlanButton>到 Chatbox AI Pro 或更高級別的方案。或者，您可以通過<OpenSettingButton>訪問設置</OpenSettingButton>切換到其他模型。",
   "Your license has expired. Please check your subscription or purchase a new one.": "您的 License 已過期。請檢查您的訂閱或購買新的 License。",
-  "Your rating on the App Store would help make Chatbox even better!": "您的 App Store 評分將幫助 Chatbox 變得更好！"
+  "Your rating on the App Store would help make Chatbox even better!": "您的 App Store 評分將幫助 Chatbox 變得更好！",
+  "What can I help you with today?": "今天我能幫助你什麼？",
+  "Startup Page": "啟動頁面",
+  "Home Page": "首頁",
+  "Last Session": "上次會話"
 }

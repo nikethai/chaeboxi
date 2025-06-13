@@ -209,7 +209,7 @@
   "Keep only the Top N Conversations in List and Permanently Delete the Rest": "احتفظ فقط بأعلى <0>{{n}}</0> محادثات في القائمة واحذف الباقي نهائيًا",
   "Key Combination": "مزيج المفاتيح",
   "Keyboard Shortcuts": "اختصارات لوحة المفاتيح",
-  "language": "اللغة",
+  "Language": "اللغة",
   "LaTeX Rendering (Requires Markdown)": "عرض LaTeX (يتطلب Markdown)",
   "Launch at system startup": "تشغيل تلقائي عند بدء النظام",
   "License Activated": "تم تفعيل الترخيص",
@@ -253,7 +253,7 @@
   "Network Proxy": "بروكسي الشبكة",
   "network proxy error tips": "بسبب عنوان البروكسي الذي قمت بتكوينه كـ {{proxy}}، يرجى التحقق مما إذا كان خادم البروكسي يعمل بشكل صحيح، أو فكر في إزالة عنوان البروكسي من الإعدادات.",
   "New": "جديد",
-  "new chat": "دردشة جديدة",
+  "New Chat": "دردشة جديدة",
   "New Images": "صور جديدة",
   "New Thread": "موضوع جديد",
   "Nickname": "الاسم المستعار",
@@ -391,7 +391,7 @@
   "The file you sent has expired. To protect your privacy, all file-related cache data has been cleared. You need to create a new conversation or refresh the context, and then send the file again.": "الملف الذي أرسلته قد انتهت صلاحيته. لحماية خصوصيتك، تم مسح جميع بيانات ذاكرة التخزين المؤقت المتعلقة بالملف. تحتاج إلى إنشاء محادثة جديدة أو تحديث السياق، ثم إرسال الملف مرة أخرى.",
   "The Image Creator plugin has been activated for the current conversation": "تم تفعيل إضافة منشئ الصور للمحادثة الحالية",
   "The license key you entered is invalid. Please check your license key and try again.": "مفتاح الترخيص الذي أدخلته غير صالح. يرجى التحقق من مفتاح الترخيص والمحاولة مرة أخرى.",
-  "theme": "المظهر",
+  "Theme": "المظهر",
   "Thinking": "جاري التفكير",
   "Thinking Budget": "ميزانية التفكير",
   "Thinking Budget only works for 2.0 or later models": "ميزانية التفكير تعمل فقط مع النماذج من الإصدار 2.0 أو الأحدث",
@@ -445,5 +445,9 @@
   "Your ChatboxAI subscription already includes access to models from various providers. There's no need to switch providers - you can select different models directly within ChatboxAI. Switching from ChatboxAI to other providers will require their respective API keys. <button>Back to ChatboxAI</button>": "تشمل عقد ChatboxAI الذكاء الاصطناعي على نماذج من مختلف المزودين. لا يلزمك تغيير المزود - يمكنك اختيار نماذج مختلفة بشكل مباشر داخل ChatboxAI. التبديل من ChatboxAI إلى مزود آخر سيتطلب مفتاح API الخاص به. <button>Back to ChatboxAI</button>",
   "Your current License (Chatbox AI Lite) does not support the {{model}} model. To use this model, please <OpenMorePlanButton>upgrade</OpenMorePlanButton> to Chatbox AI Pro or a higher-tier package. Alternatively, you can switch to a different model by <OpenSettingButton>accessing the settings</OpenSettingButton>.": "الترخيص الحالي الخاص بك (Chatbox AI Lite) لا يدعم نموذج {{model}}. لاستخدام هذا النموذج، يرجى <OpenMorePlanButton>الترقية</OpenMorePlanButton> إلى Chatbox AI Pro أو حزمة أعلى. بدلاً من ذلك، يمكنك التبديل إلى نموذج مختلف عن طريق <OpenSettingButton>الوصول إلى الإعدادات</OpenSettingButton>.",
   "Your license has expired. Please check your subscription or purchase a new one.": "انتهت صلاحية ترخيصك. يرجى التحقق من اشتراكك أو شراء ترخيص جديد.",
-  "Your rating on the App Store would help make Chatbox even better!": "تقييمك في App Store سيساعد على جعل Chatbox أفضل!"
+  "Your rating on the App Store would help make Chatbox even better!": "تقييمك في App Store سيساعد على جعل Chatbox أفضل!",
+  "What can I help you with today?": "كيف يمكنني مساعدتك اليوم؟",
+  "Startup Page": "صفحة بدء التشغيل",
+  "Home Page": "الصفحة الرئيسية",
+  "Last Session": "الجلسة الأخيرة"
 }

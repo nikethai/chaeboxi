@@ -200,17 +200,21 @@ function RouteComponent() {
                     [
                       [
                         t('Chatbox AI Standard Model Quota'),
-                        100 - licenseDetail.remaining_quota_35 * 100,
+                        licenseDetail.remaining_quota_35 * 100,
                         `${(licenseDetail.remaining_quota_35 * 100).toFixed(2)}%`,
                       ],
                       [
                         t('Chatbox AI Advanced Model Quota'),
-                        100 - licenseDetail.remaining_quota_4 * 100,
+                        licenseDetail.remaining_quota_4 * 100,
                         `${(licenseDetail.remaining_quota_4 * 100).toFixed(2)}%`,
                       ],
                       [
                         t('Chatbox AI Image Quota'),
-                        (licenseDetail.image_used_count / licenseDetail.image_total_quota) * 100,
+                        licenseDetail.image_total_quota > 0
+                          ? ((licenseDetail.image_total_quota - licenseDetail.image_used_count) /
+                              licenseDetail.image_total_quota) *
+                            100
+                          : 0,
                         `${licenseDetail.image_total_quota - licenseDetail.image_used_count}/${
                           licenseDetail.image_total_quota
                         }`,

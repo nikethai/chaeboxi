@@ -4,6 +4,7 @@ import { languageNameMap, languages } from '@/i18n/locales'
 import platform from '@/platform'
 import storage, { StorageKey } from '@/storage'
 import { migrateOnData } from '@/stores/migration'
+import { Flex, Radio } from '@mantine/core'
 import {
   Alert,
   Button,
@@ -50,7 +51,7 @@ function RouteComponent() {
             label: languageNameMap[language],
             // style: language === 'ar' ? { fontFamily: 'Cairo, Arial, sans-serif' } : {},
           }))}
-          label={t('language')}
+          label={t('Language')}
           styles={{
             label: {
               fontWeight: 400,
@@ -69,7 +70,7 @@ function RouteComponent() {
         <Select
           maw={320}
           comboboxProps={{ withinPortal: true, withArrow: true }}
-          label={t('theme')}
+          label={t('Theme')}
           styles={{
             label: {
               fontWeight: 400,
@@ -98,6 +99,11 @@ function RouteComponent() {
             min={10}
             max={22}
             maw={320}
+            marks={[
+              {
+                value: 14,
+              },
+            ]}
             value={settings.fontSize}
             onChange={(val) =>
               setSettings({
@@ -105,6 +111,21 @@ function RouteComponent() {
               })
             }
           />
+        </Stack>
+
+        {/* Startup Page */}
+        <Stack>
+          <Text>{t('Startup Page')}</Text>
+          <Radio.Group
+            value={settings.startupPage}
+            defaultValue="home"
+            onChange={(val) => setSettings({ startupPage: val as any })}
+          >
+            <Flex gap="md">
+              <Radio label={t('Home Page')} value="home" />
+              <Radio label={t('Last Session')} value="session" />
+            </Flex>
+          </Radio.Group>
         </Stack>
       </Stack>
 

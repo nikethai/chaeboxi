@@ -212,6 +212,7 @@ const SessionSettings = NiceModal.create(({ chatConfigDialogSessionId }: { chatC
             onChange={(event) => setSystemPrompt(event.target.value)}
           />
         </div>
+
         <Accordion defaultExpanded={true} className="mt-2">
           <AccordionSummary aria-controls="panel1a-content">
             <div className="flex flex-row w-full justify-between items-center">
@@ -518,7 +519,7 @@ function GoogleProviderConfig({
   )
 }
 
-function ChatConfig({
+export function ChatConfig({
   settings,
   onSettingsChange,
 }: {

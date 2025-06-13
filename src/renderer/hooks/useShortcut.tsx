@@ -7,6 +7,7 @@ import * as sessionActions from '../stores/sessionActions'
 import * as dom from './dom'
 import { useIsSmallScreen } from './useScreenChange'
 import { getOS } from '../packages/navigator'
+import { router } from '@/router'
 
 type NavigationCallback = (path: string) => void
 
@@ -53,7 +54,9 @@ function keyboardShortcut(e: KeyboardEvent, navigate?: NavigationCallback) {
 
   // 创建新会话 CmdOrCtrl + N
   if (e.key === 'n' && ctrlKey && !shift) {
-    sessionActions.createEmpty('chat')
+    router.navigate({
+      to: '/',
+    })
     return
   }
   // 创建新图片会话 CmdOrCtrl + Shift + N

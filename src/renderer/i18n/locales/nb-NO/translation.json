@@ -209,7 +209,7 @@
   "Keep only the Top N Conversations in List and Permanently Delete the Rest": "Behold bare de øverste <0>{{n}}</0> samtalene i listen og slett resten permanent",
   "Key Combination": "Tastekombinasjon",
   "Keyboard Shortcuts": "Hurtigtaster",
-  "language": "Språk",
+  "Language": "Språk",
   "LaTeX Rendering (Requires Markdown)": "LaTeX-gjengivelse (Krever Markdown)",
   "Launch at system startup": "Start ved systemoppstart",
   "License Activated": "Lisens aktivert",
@@ -253,7 +253,7 @@
   "Network Proxy": "Nettverksproxy",
   "network proxy error tips": "På grunn av proxy-adressen du har konfigurert som {{proxy}}, vennligst bekreft at proxy-serveren fungerer som den skal, eller vurder å fjerne proxy-adressen fra innstillingene.",
   "New": "Ny",
-  "new chat": "Ny chat",
+  "New Chat": "Ny chat",
   "New Images": "Nye bilder",
   "New Thread": "Ny tråd",
   "Nickname": "Visningsnavn",
@@ -391,7 +391,7 @@
   "The file you sent has expired. To protect your privacy, all file-related cache data has been cleared. You need to create a new conversation or refresh the context, and then send the file again.": "Filen du sendte har utløpt. For å beskytte personvernet ditt er all filrelatert hurtigbufferdata slettet. Du må opprette en ny samtale eller oppdatere konteksten, og deretter sende filen på nytt.",
   "The Image Creator plugin has been activated for the current conversation": "Bildegenerator-utvidelsen er aktivert for denne samtalen",
   "The license key you entered is invalid. Please check your license key and try again.": "Lisensnøkkelen du la inn er ugyldig. Vennligst sjekk lisensnøkkelen din og prøv igjen.",
-  "theme": "Tema",
+  "Theme": "Tema",
   "Thinking": "Tenker",
   "Thinking Budget": "Tenkebudsjett",
   "Thinking Budget only works for 2.0 or later models": "Tenkebudsjett fungerer kun for 2.0 eller nyere modeller",
@@ -445,5 +445,9 @@
   "Your ChatboxAI subscription already includes access to models from various providers. There's no need to switch providers - you can select different models directly within ChatboxAI. Switching from ChatboxAI to other providers will require their respective API keys. <button>Back to ChatboxAI</button>": "Din ChatboxAI-abonnement inkluderer allerede tilgang til modeller fra mange forfattere. Det er ingen grunn til å bytte forfatter - du kan velge andre modeller direkte i ChatboxAI. Bytte fra ChatboxAI til andre forfattere vil kreve deres respektive API-nøkler. <button>Tilbake til ChatboxAI</button>",
   "Your current License (Chatbox AI Lite) does not support the {{model}} model. To use this model, please <OpenMorePlanButton>upgrade</OpenMorePlanButton> to Chatbox AI Pro or a higher-tier package. Alternatively, you can switch to a different model by <OpenSettingButton>accessing the settings</OpenSettingButton>.": "Din nåværende lisens (Chatbox AI Lite) støtter ikke {{model}}-modellen. For å bruke denne modellen, vennligst <OpenMorePlanButton>oppgrader</OpenMorePlanButton> til Chatbox AI Pro eller en høyere pakke. Alternativt kan du bytte til en annen modell ved å <OpenSettingButton>gå til innstillingene</OpenSettingButton>.",
   "Your license has expired. Please check your subscription or purchase a new one.": "Lisensen din har utløpt. Vennligst sjekk abonnementet ditt eller kjøp en ny.",
-  "Your rating on the App Store would help make Chatbox even better!": "Din betyg på App Store hjelper til å gjøre Chatbox enda bedre!"
+  "Your rating on the App Store would help make Chatbox even better!": "Din betyg på App Store hjelper til å gjøre Chatbox enda bedre!",
+  "What can I help you with today?": "Hva kan jeg hjelpe deg med i dag?",
+  "Startup Page": "Oppstartsside",
+  "Home Page": "Hjemmeside",
+  "Last Session": "Siste økt"
 }

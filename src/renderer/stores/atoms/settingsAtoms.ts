@@ -4,10 +4,25 @@ import { focusAtom } from 'jotai-optics'
 import * as defaults from '../../../shared/defaults'
 import storage, { StorageKey } from '../../storage'
 import platform from '../../platform'
-import { ModelProvider, SessionSettings, Settings, SettingWindowTab } from '../../../shared/types'
+import { SessionSettings, Settings, SettingWindowTab, Theme } from '../../../shared/types'
 
 // settings
-const _settingsAtom = atomWithStorage<Settings>(StorageKey.Settings, defaults.settings(), storage)
+const _settingsAtom = atomWithStorage<Settings>(
+  StorageKey.Settings,
+  {
+    ...defaults.settings(),
+    theme: (() => {
+      const initialTheme = localStorage.getItem('initial-theme')
+      if (initialTheme === 'light') {
+        return Theme.Light
+      } else if (initialTheme === 'dark') {
+        return Theme.Dark
+      }
+      return Theme.System
+    })(),
+  },
+  storage
+)
 export const settingsAtom = atom(
   (get) => {
     const _settings = get(_settingsAtom)

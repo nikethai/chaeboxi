@@ -74,8 +74,8 @@ function InitPage() {
   return (
     <div className={cn('flex flex-col justify-center items-center', showLoadingLog ? 'pt-3' : 'h-80')}>
       <div className={cn('flex flex-col items-center', showLoadingLog ? 'hidden' : '')}>
-        <h1 className="font-roboto font-bold text-3xl text-gray-800 m-0">Chatbox</h1>
-        <p className="font-roboto font-normal text-gray-400 opacity-40">
+        <h1 className="font-roboto font-bold text-3xl m-0">Chatbox</h1>
+        <p className="font-roboto font-normal opacity-40">
           {migrationProcess ? `Migrating...(${migrationProcess})` : 'loading...'}
         </p>
       </div>

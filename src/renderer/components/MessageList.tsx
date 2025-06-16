@@ -138,9 +138,11 @@ export default function MessageList(props: { className?: string; currentSession:
           }}
           components={{
             Footer: () =>
-              isSmallScreen && (
+              isSmallScreen &&
+              currentMessageList &&
+              currentMessageList.length > 0 && (
                 <Flex justify="center">
-                  {!!currentThreadHash[currentMessageList[currentMessageList.length - 1].id] ? (
+                  {currentThreadHash[currentMessageList[currentMessageList.length - 1].id] ? (
                     <Button
                       leftSection={<IconArrowBackUp size={20} />}
                       variant="default"

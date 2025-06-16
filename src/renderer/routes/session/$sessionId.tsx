@@ -1,5 +1,4 @@
 import Header from '@/components/Header'
-import InputBox from '@/components/InputBox'
 import InputBoxNew from '@/components/InputBoxNew'
 import MessageList from '@/components/MessageList'
 import ThreadHistoryDrawer from '@/components/ThreadHistoryDrawer'

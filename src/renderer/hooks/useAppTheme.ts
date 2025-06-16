@@ -16,6 +16,7 @@ export const switchTheme = async (theme: Theme) => {
     finalTheme = theme === Theme.Dark ? 'dark' : 'light'
   }
   store.set(realThemeAtom, finalTheme)
+  localStorage.setItem('initial-theme', finalTheme)
   if (platform instanceof DesktopPlatform) {
     await platform.switchTheme(finalTheme)
   }

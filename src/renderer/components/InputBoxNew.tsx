@@ -33,11 +33,13 @@ import {
 } from '@tabler/icons-react'
 import { useProviders } from '@/hooks/useProviders'
 import ImageModelSelect from './ImageModelSelect'
-import { ActionIcon, Box, Flex, Menu, Stack, Text, Textarea, Tooltip } from '@mantine/core'
+import { ActionIcon, Badge, Box, Button, Flex, Menu, Stack, Text, Textarea, Tooltip } from '@mantine/core'
 import { useViewportSize } from '@mantine/hooks'
 import useInputBoxHistory from '@/hooks/useInputBoxHistory'
 import ProviderImageIcon from './icons/ProviderImageIcon'
 import { delay } from '@/utils'
+import { featureFlags } from '@/utils/feature-flags'
+import MCPMenu from './mcp/MCPMenu'
 
 export type InputBoxPayload = {
   input: string
@@ -150,7 +152,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       () => ({
         // 暂时并没有用到，还是使用了之前atom的方案
         setQuote: (data) => {
-          setMessageInput(messageInput + '\n\n' + data)
+          setMessageInput((prev) => prev + '\n\n' + data)
           dom.focusMessageInput()
           dom.setMessageInputCursorToEnd()
         },
@@ -426,30 +428,28 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             onPaste={onPaste}
           />
 
-          {!!pictureKeys.length ||
-            !!attachments.length ||
-            (!!links.length && (
-              <Flex px="sm" pb="xs" align="center" onClick={() => dom.focusMessageInput()}>
-                {pictureKeys?.map((picKey, ix) => (
-                  <ImageMiniCard key={ix} storageKey={picKey} onDelete={() => onImageDeleteClick(picKey)} />
-                ))}
-                {attachments?.map((file, ix) => (
-                  <FileMiniCard
-                    key={ix}
-                    name={file.name}
-                    fileType={file.type}
-                    onDelete={() => setAttachments(attachments.filter((f) => f.name != file.name))}
-                  />
-                ))}
-                {links?.map((link, ix) => (
-                  <LinkMiniCard
-                    key={ix}
-                    url={link.url}
-                    onDelete={() => setLinks(links.filter((l) => l.url != link.url))}
-                  />
-                ))}
-              </Flex>
-            ))}
+          {(!!pictureKeys.length || !!attachments.length || !!links.length) && (
+            <Flex px="sm" pb="xs" align="center" wrap="wrap" onClick={() => dom.focusMessageInput()}>
+              {pictureKeys?.map((picKey, ix) => (
+                <ImageMiniCard key={ix} storageKey={picKey} onDelete={() => onImageDeleteClick(picKey)} />
+              ))}
+              {attachments?.map((file, ix) => (
+                <FileMiniCard
+                  key={ix}
+                  name={file.name}
+                  fileType={file.type}
+                  onDelete={() => setAttachments(attachments.filter((f) => f.name != file.name))}
+                />
+              ))}
+              {links?.map((link, ix) => (
+                <LinkMiniCard
+                  key={ix}
+                  url={link.url}
+                  onDelete={() => setLinks(links.filter((l) => l.url != link.url))}
+                />
+              ))}
+            </Flex>
+          )}
 
           <Flex px="sm" pb="sm" align="center" justify="space-between" gap="xl">
             <Flex gap="md" flex="0 1 auto" className="!hidden sm:!flex">
@@ -535,6 +535,25 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       <IconWorld />
                     </ActionIcon>
                   </Tooltip>
+
+                  {featureFlags.mcp && (
+                    <MCPMenu>
+                      {(enabledTools) =>
+                        enabledTools > 0 ? (
+                          <Button radius="md" variant="light" h="auto" w="auto" px="xs" py={0}>
+                            <Flex gap="3xs" align="center">
+                              <IconHammer />
+                              <span>{enabledTools}</span>
+                            </Flex>
+                          </Button>
+                        ) : (
+                          <ActionIcon variant="subtle" color="chatbox-secondary">
+                            <IconHammer />
+                          </ActionIcon>
+                        )
+                      }
+                    </MCPMenu>
+                  )}
                 </>
               )}
 
@@ -550,10 +569,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               </Tooltip>
 
               {/* <ActionIcon variant="subtle" color="chatbox-secondary">
-              <IconHammer />
-            </ActionIcon>
-
-            <ActionIcon variant="subtle" color="chatbox-secondary">
               <IconVocabulary />
             </ActionIcon> */}
             </Flex>

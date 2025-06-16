@@ -1,4 +1,14 @@
 const changelog = `
+### v1.14.0 - 2025.06.16
+
+1. Desktop support MCP
+2. New home page design
+3. Add VolcEngine model provider
+4. Fix issue where custom temperature was invalid in Azure, now you can set the temperature of o-series models to 1
+5. Fix shortcut key error on non-QWERT keyboard
+
+Thanks to @Fr0benius for their contributions
+
 ### v1.13.4 - 2025.06.09
 
 1. Fixed storage performance issue

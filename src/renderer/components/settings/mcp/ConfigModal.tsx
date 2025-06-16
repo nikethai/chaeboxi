@@ -19,6 +19,7 @@ import { useForm } from '@mantine/form'
 import { FC, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getConfigFromFormValues, getFormValuesFromConfig, MCPServerConfigFormValues } from './utils'
+import { trackEvent } from '@/utils/track'
 
 interface ConnectionTestingResult {
   config: MCPServerConfig
@@ -82,6 +83,7 @@ const ConfigForm: FC<{
     console.debug('Testing connection with config', config)
     setTesting(true)
     setTestingResult(null)
+    trackEvent('test_mcp_server_connection', { type: config.transport.type })
     try {
       const server = new MCPServer(config.transport)
       await server.start()
@@ -103,6 +105,7 @@ const ConfigForm: FC<{
 
   const handleSubmit = (values: typeof form.values) => {
     console.debug('form onSubmit', values)
+    trackEvent('save_mcp_server', { type: values.transport.type, name: values.name })
     return props.onSave(getConfigFromFormValues(values))
   }
 

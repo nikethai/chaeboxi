@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { useImmerSettings } from './useSettings'
 import { BUILTIN_MCP_SERVERS, getBuiltinServerConfig } from '@/packages/mcp/builtin'
 import { cloneDeep } from 'lodash'
+import { trackEvent } from '@/utils/track'
 
 export function useMCPServerStatus(id: string) {
   const [status, setStatus] = useState<MCPServerStatus | null>(null)
@@ -58,6 +59,7 @@ export function useToggleMCPServer() {
       } else if (effect?.action === 'stop') {
         mcpController.stopServer(effect.id)
       }
+      trackEvent('toggle_mcp_server', { id, enabled })
     },
     [setSettings]
   )

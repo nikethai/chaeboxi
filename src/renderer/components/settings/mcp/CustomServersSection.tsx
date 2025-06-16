@@ -13,6 +13,7 @@ import ServerRegistrySpotlight from './ServerRegistrySpotlight'
 import { MCPRegistryEntry } from './registries'
 import { toast } from 'sonner'
 import { parseServersFromJson } from './utils'
+import { trackEvent } from '@/utils/track'
 
 const ServerCard: FC<{
   config: MCPServerConfig
@@ -113,6 +114,7 @@ const CustomServersSection: FC = () => {
   const triggerImportJson = async () => {
     const content = await navigator.clipboard.readText()
     const servers = parseServersFromJson(content)
+    trackEvent('import_mcp_servers_from_json', { count: servers.length })
     if (!servers.length) {
       toast.error(t('No MCP servers parsed from clipboard'))
       return

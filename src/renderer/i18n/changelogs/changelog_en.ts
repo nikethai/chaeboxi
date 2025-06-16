@@ -1,4 +1,8 @@
 const changelog = `
+### v1.14.1 - 2025.06.16
+
+1. Fixed issue where provider settings were lost after restarting the app
+
 ### v1.14.0 - 2025.06.16
 
 1. Desktop support MCP

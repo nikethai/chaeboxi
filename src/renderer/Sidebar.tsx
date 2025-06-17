@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo, useState } from 'react'
+import { useEffect, useRef, useMemo, useState, useCallback } from 'react'
 import SwipeableDrawer from '@mui/material/SwipeableDrawer'
 import {
   Box,
@@ -125,17 +125,24 @@ function SidebarButtons(props: { sessionListRef: React.RefObject<HTMLDivElement>
   const versionHook = useVersion()
   const routerState = useRouterState()
   const navigate = useNavigate()
+  const [showSidebar, setShowSidebar] = useAtom(atoms.showSidebarAtom)
+  const isSmallScreen = useIsSmallScreen()
 
-  const handleCreateNewSession = () => {
+  const handleCreateNewSession = useCallback(() => {
     // sessionActions.createEmpty('chat')
     // if (sessionListRef.current) {
     //   sessionListRef.current.scrollTo(0, 0)
     // }
-    navigate({
-      to: `/`,
-    })
+    navigate({ to: `/` })
+
+    // On small screen, when click create new session happens
+    // while path does not change, automatic hide sidebar won't take effect.
+    // So trigger by ourself.
+    if (isSmallScreen && routerState.location.pathname === '/') {
+      setShowSidebar(false)
+    }
     trackingEvent('create_new_conversation', { event_category: 'user' })
-  }
+  }, [navigate, setShowSidebar, isSmallScreen, routerState.location.pathname])
 
   const handleCreateNewPictureSession = () => {
     sessionActions.createEmpty('picture')

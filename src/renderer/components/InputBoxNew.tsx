@@ -40,6 +40,7 @@ import ProviderImageIcon from './icons/ProviderImageIcon'
 import { delay } from '@/utils'
 import { featureFlags } from '@/utils/feature-flags'
 import MCPMenu from './mcp/MCPMenu'
+import platform from '@/platform'
 
 export type InputBoxPayload = {
   input: string
@@ -220,6 +221,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
       // 发送消息
       if (isPressedHash[shortcuts.inpubBoxSendMessage]) {
+        if (platform.type === 'mobile' && isSmallScreen && shortcuts.inpubBoxSendMessage === 'Enter') {
+          // 移动端点击回车不会发送消息
+          return
+        }
         event.preventDefault()
         handleSubmit()
         return

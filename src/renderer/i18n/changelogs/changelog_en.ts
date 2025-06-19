@@ -1,4 +1,10 @@
 const changelog = `
+### v1.14.2 - 2025.06.19
+
+1. Fixed issue where pressing Enter for a new line on mobile would send the message immediately
+2. Fixed issue where send button was disabled on some devices
+3. Adjusted new thread button size
+
 ### v1.14.1 - 2025.06.16
 
 1. Fixed issue where provider settings were lost after restarting the app

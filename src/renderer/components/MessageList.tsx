@@ -1,30 +1,29 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import Message from './Message'
-import * as atoms from '../stores/atoms'
-import { useAtomValue, useSetAtom } from 'jotai'
-import { Virtuoso, VirtuosoHandle, StateSnapshot } from 'react-virtuoso'
-import * as scrollActions from '../stores/scrollActions'
-import * as sessionActions from '../stores/sessionActions'
-import { useTranslation } from 'react-i18next'
-import { cn } from '@/lib/utils'
-import StyledMenu from './StyledMenu'
-import { MenuItem, useTheme, IconButton } from '@mui/material'
-import SwapCallsIcon from '@mui/icons-material/SwapCalls'
-import SegmentIcon from '@mui/icons-material/Segment'
+import { Box, Button, Flex } from '@mantine/core'
+import AddIcon from '@mui/icons-material/AddCircleOutline'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import AddIcon from '@mui/icons-material/AddCircleOutline'
-import { Session } from 'src/shared/types'
-import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
-import { Button, Flex, Text } from '@mantine/core'
+import SegmentIcon from '@mui/icons-material/Segment'
+import SwapCallsIcon from '@mui/icons-material/SwapCalls'
+import { IconButton, MenuItem } from '@mui/material'
 import { IconArrowBackUp, IconFilePencil } from '@tabler/icons-react'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { type StateSnapshot, Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
+import type { Session } from 'src/shared/types'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { cn } from '@/lib/utils'
+import * as atoms from '@/stores/atoms'
+import * as scrollActions from '@/stores/scrollActions'
+import * as sessionActions from '@/stores/sessionActions'
+import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
+import Message from './Message'
+import StyledMenu from './StyledMenu'
 
 const sessionScrollPositionCache = new Map<string, StateSnapshot>()
 
 export default function MessageList(props: { className?: string; currentSession: Session }) {
   const { t } = useTranslation()
-  const theme = useTheme()
   const isSmallScreen = useIsSmallScreen()
 
   const currentSession = props.currentSession
@@ -40,6 +39,7 @@ export default function MessageList(props: { className?: string; currentSession:
   const setMessageScrollingScrollPosition = useSetAtom(atoms.messageScrollingScrollPositionAtom)
   const setShowHistoryDrawer = useSetAtom(atoms.showThreadHistoryDrawerAtom)
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 仅执行一次
   useEffect(() => {
     setMessageScrollingAtom(virtuoso)
     const currentVirtuoso = virtuoso.current // 清理时 virtuoso.current 已经为 null
@@ -52,6 +52,7 @@ export default function MessageList(props: { className?: string; currentSession:
       })
     }
   }, [])
+  // biome-ignore lint/correctness/useExhaustiveDependencies: 仅执行一次
   useEffect(() => {
     setMessageListElement(messageListRef)
   }, [])
@@ -67,6 +68,7 @@ export default function MessageList(props: { className?: string; currentSession:
     setThreadMenuClickedTopicId(null)
   }
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: todo
   const openHistoryDrawer = useCallback(() => {
     setShowHistoryDrawer(threadMenuClickedTopicId || true)
     closeThreadMenu()
@@ -100,7 +102,7 @@ export default function MessageList(props: { className?: string; currentSession:
               // <div key={msg.id}>
               <>
                 {index !== 0 && currentThreadHash[msg.id] && (
-                  <div className="text-center pb-4 pt-8" key={'divider-' + msg.id}>
+                  <div className="text-center pb-4 pt-8" key={`divider-${msg.id}`}>
                     <span
                       className="cursor-pointer font-bold border-solid border rounded-xxl py-2 px-3 border-slate-400/25"
                       onClick={(event) => openThreadMenu(event, currentThreadHash[msg.id].id)}
@@ -117,7 +119,7 @@ export default function MessageList(props: { className?: string; currentSession:
                 )}
                 <Message
                   id={msg.id}
-                  key={'msg-' + msg.id}
+                  key={`msg-${msg.id}`}
                   msg={msg}
                   sessionId={currentSession.id}
                   sessionType={currentSession.type || 'chat'}
@@ -137,42 +139,54 @@ export default function MessageList(props: { className?: string; currentSession:
             )
           }}
           components={{
+            // biome-ignore lint/nursery/noNestedComponentDefinitions: todo
             Footer: () =>
               isSmallScreen &&
               currentMessageList &&
-              currentMessageList.length > 0 && (
-                <Flex justify="center">
+              currentMessageList.filter((m) => m.role !== 'system').length > 0 && (
+                <Flex justify="center" align="center" gap="sm" mx="xs" pt="xxs" pb="sm">
+                  <Box h="0.5px" bg="chatbox-border-primary" flex={1} />
                   {currentThreadHash[currentMessageList[currentMessageList.length - 1].id] ? (
                     <Button
-                      leftSection={<IconArrowBackUp size={20} />}
+                      leftSection={<IconArrowBackUp size={16} />}
+                      classNames={{
+                        root: ' shadow-sm',
+                        section: '!mr-xxs',
+                      }}
+                      size="xs"
+                      c="chatbox-tertiary"
                       variant="default"
                       radius="xl"
-                      mb="md"
                       onClick={() => sessionActions.removeCurrentThread(currentSession.id)}
                     >
                       {t('Back to Previous')}
                     </Button>
                   ) : (
                     <Button
-                      leftSection={<IconFilePencil size={20} />}
+                      leftSection={<IconFilePencil size={16} />}
+                      classNames={{
+                        section: '!mr-xxs',
+                      }}
+                      size="xs"
+                      c="chatbox-tertiary"
                       variant="default"
                       radius="xl"
-                      mb="md"
                       onClick={() => sessionActions.startNewThread()}
                     >
                       {t('Start a New Thread')}
                     </Button>
                   )}
+                  <Box h="0.5px" bg="chatbox-border-primary" flex={1} />
                 </Flex>
               ),
           }}
-          onWheel={(e) => {
+          onWheel={() => {
             scrollActions.clearAutoScroll() // 鼠标滚轮滚动时，清除自动滚动
           }}
-          onTouchMove={(e) => {
+          onTouchMove={() => {
             scrollActions.clearAutoScroll() // 手机上触摸屏幕滑动时，清除自动滚动
           }}
-          onScroll={(e) => {
+          onScroll={() => {
             // 为什么不合并到 onWheel 中？
             // 实践中发现 onScroll 处理时效果会更加丝滑一些
             if (virtuoso.current) {
@@ -256,10 +270,9 @@ function ForkNav(props: { msgId: string; forks: NonNullable<Session['messageFork
   const [flash, setFlash] = useState(false)
   const prevLength = useRef(forks.lists.length)
   const { t } = useTranslation()
-  const theme = useTheme()
 
   const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null)
-  const [menuDelete, setMenuDelete] = useState<boolean>(false)
+  const [, setMenuDelete] = useState<boolean>(false)
   const openMenu = (event: React.MouseEvent<HTMLElement>) => {
     setMenuAnchorEl(event.currentTarget)
     setMenuDelete(false)

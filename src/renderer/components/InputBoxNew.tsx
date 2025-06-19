@@ -1,26 +1,11 @@
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import { trackingEvent } from '@/packages/event'
-import * as picUtils from '@/packages/pic_utils'
-import storage from '@/storage'
-import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import NiceModal from '@ebay/nice-modal-react'
-import { useAtom, useAtomValue } from 'jotai'
-import _ from 'lodash'
-import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { useDropzone } from 'react-dropzone'
-import { useTranslation } from 'react-i18next'
-import { SessionType, ShortcutSendValue } from '../../shared/types'
-import * as dom from '../hooks/dom'
-import * as atoms from '../stores/atoms'
-import { FileMiniCard, ImageMiniCard, LinkMiniCard } from './Attachments'
-import { Keys } from './Shortcut'
-import ModelSelector from './ModelSelectorNew'
+import { ActionIcon, Box, Button, Flex, Menu, Stack, Text, Textarea, Tooltip } from '@mantine/core'
+import { useViewportSize } from '@mantine/hooks'
 import {
   IconAdjustmentsHorizontal,
   IconArrowBackUp,
   IconArrowUp,
   IconCirclePlus,
-  IconEraser,
   IconFilePencil,
   IconFolder,
   IconHammer,
@@ -28,19 +13,34 @@ import {
   IconPhoto,
   IconPlayerStopFilled,
   IconSelector,
-  IconVocabulary,
   IconWorld,
 } from '@tabler/icons-react'
-import { useProviders } from '@/hooks/useProviders'
-import ImageModelSelect from './ImageModelSelect'
-import { ActionIcon, Badge, Box, Button, Flex, Menu, Stack, Text, Textarea, Tooltip } from '@mantine/core'
-import { useViewportSize } from '@mantine/hooks'
+import { useAtom, useAtomValue } from 'jotai'
+import _ from 'lodash'
+import type React from 'react'
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import { useDropzone } from 'react-dropzone'
+import { useTranslation } from 'react-i18next'
+import type { SessionType, ShortcutSendValue } from '@/../shared/types'
+import * as dom from '@/hooks/dom'
 import useInputBoxHistory from '@/hooks/useInputBoxHistory'
-import ProviderImageIcon from './icons/ProviderImageIcon'
+import { useProviders } from '@/hooks/useProviders'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { trackingEvent } from '@/packages/event'
+import * as picUtils from '@/packages/pic_utils'
+import platform from '@/platform'
+import storage from '@/storage'
+import { StorageKeyGenerator } from '@/storage/StoreStorage'
+import * as atoms from '@/stores/atoms'
+import * as toastActions from '@/stores/toastActions'
 import { delay } from '@/utils'
 import { featureFlags } from '@/utils/feature-flags'
+import { FileMiniCard, ImageMiniCard, LinkMiniCard } from './Attachments'
+import ImageModelSelect from './ImageModelSelect'
+import ProviderImageIcon from './icons/ProviderImageIcon'
+import ModelSelector from './ModelSelectorNew'
 import MCPMenu from './mcp/MCPMenu'
-import platform from '@/platform'
+import { Keys } from './Shortcut'
 
 export type InputBoxPayload = {
   input: string
@@ -74,7 +74,7 @@ export type InputBoxProps = {
 const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
   (
     {
-      sessionId,
+      // sessionId,
       sessionType = 'chat',
       generating = false,
       model,
@@ -118,7 +118,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       return isSmallScreen
         ? `${modelInfo?.nickname || model.modelId}`
         : `${modelInfo?.nickname || model.modelId} (${providerInfo?.name || model.provider})`
-    }, [providers, model])
+    }, [providers, model, isSmallScreen, t])
 
     const [showSelectModelErrorTip, setShowSelectModelErrorTip] = useState(false)
     useEffect(() => {
@@ -153,18 +153,18 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       () => ({
         // 暂时并没有用到，还是使用了之前atom的方案
         setQuote: (data) => {
-          setMessageInput((prev) => prev + '\n\n' + data)
+          setMessageInput((prev) => `${prev}\n\n${data}`)
           dom.focusMessageInput()
           dom.setMessageInputCursorToEnd()
         },
       }),
-      [messageInput]
+      []
     )
 
     const { addInputBoxHistory, getPreviousHistoryInput, getNextHistoryInput, resetHistoryIndex } = useInputBoxHistory()
 
     const handleSubmit = async (needGenerating = true) => {
-      if (disableSubmit) {
+      if (disableSubmit || generating) {
         return
       }
 
@@ -176,37 +176,48 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         return
       }
 
-      addInputBoxHistory(messageInput)
+      try {
+        const res = await onSubmit?.({
+          input: messageInput,
+          pictureKeys,
+          attachments,
+          links,
+          webBrowsing: webBrowsingMode,
+          needGenerating,
+        })
 
-      const res = await onSubmit?.({
-        input: messageInput,
-        pictureKeys,
-        attachments,
-        links,
-        webBrowsing: webBrowsingMode,
-        needGenerating,
-      })
+        if (!res) {
+          return
+        }
 
-      if (!res) {
-        return
+        // 重置输入内容
+        setMessageInput('')
+        setPictureKeys([])
+        setAttachments([])
+        setLinks([])
+        // 重置清理上下文按钮
+        setShowRollbackThreadButton(false)
+
+        trackingEvent('send_message', { event_category: 'user' })
+
+        // 如果提交成功，添加到输入历史 (非手机端)
+        if (platform.type !== 'mobile') {
+          addInputBoxHistory(messageInput)
+        }
+      } catch (e) {
+        console.error('Error submitting message:', e)
+        toastActions.add((e as Error)?.message || t('An error occurred while sending the message.'))
       }
-
-      // 重置输入内容
-      setMessageInput('')
-      setPictureKeys([])
-      setAttachments([])
-      setLinks([])
-      // 重置清理上下文按钮
-      setShowRollbackThreadButton(false)
-
-      trackingEvent('send_message', { event_category: 'user' })
     }
 
-    const onMessageInput = useCallback((event: React.ChangeEvent<HTMLTextAreaElement>) => {
-      const input = event.target.value
-      setMessageInput(input)
-      resetHistoryIndex()
-    }, [])
+    const onMessageInput = useCallback(
+      (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const input = event.target.value
+        setMessageInput(input)
+        resetHistoryIndex()
+      },
+      [resetHistoryIndex]
+    )
 
     const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       const isPressedHash: Record<ShortcutSendValue, boolean> = {
@@ -322,13 +333,13 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       if (sessionType === 'picture') {
         return
       }
-      if (event.clipboardData && event.clipboardData.items) {
+      if (event.clipboardData?.items) {
         // 对于 Doc/PPT/XLS 等文件中的内容，粘贴时一般会有 4 个 items，分别是 text 文本、html、某格式和图片
         // 因为 getAsString 为异步操作，无法根据 items 中的内容来定制不同的粘贴行为，因此这里选择了最简单的做法：
         // 保持默认的粘贴行为，这时候会粘贴从文档中复制的文本和图片。我认为应该保留图片，因为文档中的表格、图表等图片信息也很重要，很难通过文本格式来表述。
         // 仅在只粘贴图片或文件时阻止默认行为，防止插入文件或图片的名字
         let hasText = false
-        for (let item of event.clipboardData.items) {
+        for (const item of event.clipboardData.items) {
           if (item.kind === 'file') {
             // 插入文件和图片
             const file = item.getAsFile()
@@ -357,7 +368,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 setMessageInput(messageInput) // 删除掉默认粘贴进去的长文本
               }
             })
-            continue
           }
         }
         // 如果没有任何文本，则说明只是复制了图片或文件。这里阻止默认行为，防止插入文件或图片的名字
@@ -385,6 +395,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     // 引用消息
     const [quote, setQuote] = useAtom(atoms.quoteAtom)
+    // biome-ignore lint/correctness/useExhaustiveDependencies: todo
     useEffect(() => {
       if (quote !== '') {
         // TODO: 支持引用消息中的图片
@@ -406,7 +417,13 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     }, [quote])
 
     return (
-      <Box p="sm" pt={isSmallScreen ? 0 : 'sm'} id={dom.InputBoxID} {...getRootProps()}>
+      <Box
+        pt={isSmallScreen ? 0 : 'sm'}
+        pb={isSmallScreen ? 'md' : 'sm'}
+        px={isSmallScreen ? 'xs' : 'sm'}
+        id={dom.InputBoxID}
+        {...getRootProps()}
+      >
         <input className="hidden" {...getInputProps()} />
         <Stack
           className="rounded-lg sm:rounded-md bg-[var(--mantine-color-chatbox-background-secondary-text)] border border-solid border-[var(--mantine-color-chatbox-border-primary-outline)]"
@@ -436,27 +453,34 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           {(!!pictureKeys.length || !!attachments.length || !!links.length) && (
             <Flex px="sm" pb="xs" align="center" wrap="wrap" onClick={() => dom.focusMessageInput()}>
               {pictureKeys?.map((picKey, ix) => (
-                <ImageMiniCard key={ix} storageKey={picKey} onDelete={() => onImageDeleteClick(picKey)} />
+                <ImageMiniCard
+                  // biome-ignore lint/suspicious/noArrayIndexKey: <todo>
+                  key={ix}
+                  storageKey={picKey}
+                  onDelete={() => onImageDeleteClick(picKey)}
+                />
               ))}
               {attachments?.map((file, ix) => (
                 <FileMiniCard
+                  // biome-ignore lint/suspicious/noArrayIndexKey: <todo>
                   key={ix}
                   name={file.name}
                   fileType={file.type}
-                  onDelete={() => setAttachments(attachments.filter((f) => f.name != file.name))}
+                  onDelete={() => setAttachments(attachments.filter((f) => f.name !== file.name))}
                 />
               ))}
               {links?.map((link, ix) => (
                 <LinkMiniCard
+                  // biome-ignore lint/suspicious/noArrayIndexKey: <todo>
                   key={ix}
                   url={link.url}
-                  onDelete={() => setLinks(links.filter((l) => l.url != link.url))}
+                  onDelete={() => setLinks(links.filter((l) => l.url !== link.url))}
                 />
               ))}
             </Flex>
           )}
 
-          <Flex px="sm" pb="sm" align="center" justify="space-between" gap="xl">
+          <Flex px="sm" pb="sm" align="center" justify="space-between" gap="lg">
             <Flex gap="md" flex="0 1 auto" className="!hidden sm:!flex">
               {showRollbackThreadButton ? (
                 <Tooltip label={t('Back to Previous')} withArrow position="top-start">
@@ -583,7 +607,15 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 <>
                   <Menu shadow="md" position="top-start">
                     <Menu.Target>
-                      <ActionIcon variant="subtle" color="chatbox-secondary">
+                      <ActionIcon
+                        variant="transparent"
+                        w={24}
+                        h={24}
+                        miw={24}
+                        mih={24}
+                        bd="none"
+                        color="chatbox-secondary"
+                      >
                         <IconCirclePlus />
                       </ActionIcon>
                     </Menu.Target>
@@ -603,7 +635,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   </Menu>
 
                   <ActionIcon
-                    variant="subtle"
+                    variant="transparent"
+                    w={24}
+                    h={24}
+                    miw={24}
+                    mih={24}
+                    bd="none"
                     color={webBrowsingMode ? 'chatbox-brand' : 'chatbox-secondary'}
                     onClick={() => {
                       setWebBrowsingMode(!webBrowsingMode)
@@ -614,7 +651,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   </ActionIcon>
 
                   <ActionIcon
-                    variant="subtle"
+                    variant="transparent"
+                    w={24}
+                    h={24}
+                    miw={24}
+                    mih={24}
+                    bd="none"
                     color="chatbox-secondary"
                     disabled={!onClickSessionSettings}
                     onClick={onClickSessionSettings}
@@ -650,13 +692,13 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     {isSmallScreen ? (
                       <Flex
                         gap="xxs"
-                        px="xs"
+                        px={isSmallScreen ? 0 : 'xs'}
                         py="xxs"
                         align="center"
                         className="cursor-pointer hover:bg-slate-400/25 rounded"
                       >
                         {!!model && <ProviderImageIcon size={20} provider={model.provider} />}
-                        <Text fw={600} className="line-clamp-1">
+                        <Text size="xs" className="line-clamp-1">
                           {modelSelectorDisplayText}
                         </Text>
                         <IconSelector

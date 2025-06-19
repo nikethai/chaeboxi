@@ -1,4 +1,16 @@
-import { ModelProvider, ModelProviderEnum, ModelProviderType, Session, SessionMeta, Settings } from '@/../shared/types'
+import * as Sentry from '@sentry/react'
+import { getDefaultStore } from 'jotai'
+import { difference, intersection, keyBy, uniq, uniqBy } from 'lodash'
+import oldStore from 'store'
+import { v4 as uuidv4 } from 'uuid'
+import {
+  type ModelProvider,
+  ModelProviderEnum,
+  ModelProviderType,
+  type Session,
+  type SessionMeta,
+  type Settings,
+} from '@/../shared/types'
 import {
   artifactSessionCN,
   artifactSessionEN,
@@ -13,11 +25,6 @@ import platform from '@/platform'
 import WebPlatform from '@/platform/web_platform'
 import storage, { StorageKey } from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
-import * as Sentry from '@sentry/react'
-import { getDefaultStore } from 'jotai'
-import { difference, intersection, keyBy, uniq, uniqBy } from 'lodash'
-import oldStore from 'store'
-import { v4 as uuidv4 } from 'uuid'
 import * as defaults from '../../shared/defaults'
 import { getLogger } from '../lib/utils'
 import { migrationProcessAtom } from './atoms/utilAtoms'
@@ -143,7 +150,10 @@ async function migrate_0_to_1(dataStore: MigrateStore) {
   const settings = await dataStore.getData(StorageKey.Settings, defaults.settings())
   // 如果历史版本的用户开启了消息的token计数展示，那么也帮他们开启token消耗展示
   if (settings.showTokenCount) {
-    await dataStore.setData(StorageKey.Settings, { ...settings, showTokenUsed: true })
+    await dataStore.setData(StorageKey.Settings, {
+      ...settings,
+      showTokenUsed: true,
+    })
   }
 }
 
@@ -406,10 +416,12 @@ async function migrate_9_to_10(dataStore: MigrateStore): Promise<boolean> {
           openaiCustomModel || openaiCustomModelOptions
             ? uniqBy(
                 [
-                  ...(defaults.SystemProviders.find((p) => p.id === ModelProviderEnum.OpenAI)?.defaultSettings?.models ||
-                    []),
+                  ...(defaults.SystemProviders.find((p) => p.id === ModelProviderEnum.OpenAI)?.defaultSettings
+                    ?.models || []),
                   ...(openaiCustomModel ? [{ modelId: openaiCustomModel }] : []),
-                  ...(openaiCustomModelOptions || []).map((o: string) => ({ modelId: o })),
+                  ...(openaiCustomModelOptions || []).map((o: string) => ({
+                    modelId: o,
+                  })),
                 ],
                 'modelId'
               )
@@ -524,16 +536,12 @@ async function migrate_9_to_10(dataStore: MigrateStore): Promise<boolean> {
     log.info('migrate custom provider settings failed.')
   }
 
-  // 之前mui的字号有问题，比如设置14时实际显示的大约是16号字
-  let fontSize: number = oldSettings.fontSize
-  if (fontSize && fontSize <= 20) {
-    fontSize += 2
-  } else {
-    fontSize = fontSize || 14
-  }
-
   try {
-    await dataStore.setData(StorageKey.Settings, { ...oldSettings, providers, customProviders, fontSize } as Settings)
+    await dataStore.setData(StorageKey.Settings, {
+      ...oldSettings,
+      providers,
+      customProviders,
+    } as Settings)
     log.info('migrate settings done')
   } catch (e) {
     log.info('save new settings to store failed.')

@@ -162,6 +162,7 @@
   "Edit default assistant avatar": "Modifica avatar predefinito dell'assistente",
   "Edit MCP Server": "Modifica MCP Server",
   "Edit Model": "Modifica modello",
+  "Edit Thread Name": "Modifica nome thread",
   "Edit user avatar": "Modifica avatar utente",
   "Email Us": "Contatta via email",
   "Enable optional anonymous reporting of crash and event data": "Abilita la segnalazione anonima opzionale di dati su crash ed eventi",
@@ -491,4 +492,3 @@
   "Home Page": "Pagina iniziale",
   "Last Session": "Ultima sessione"
 }
-

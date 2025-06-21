@@ -161,6 +161,34 @@ export function switchToNext(reversed?: boolean) {
 }
 
 /**
+ * 编辑历史话题(目前只支持修改名称)
+ * @param sessionId 会话 id
+ * @param threadId 历史话题 id
+ * @param newThread  Pick<Partial<SessionThread>, 'name'>
+ * @returns
+ */
+export function editThread(sessionId: string, threadId: string, newThread: Pick<Partial<SessionThread>, 'name'>) {
+  const session = getSession(sessionId)
+  if (!session || !session.threads) return
+
+  // 特殊情况： 如果修改的是当前的话题，则直接修改当前会话的threadName, 而不是name
+  if (threadId === sessionId) {
+    saveSession({ ...session, threadName: newThread.name })
+    return
+  }
+
+  const targetThread = session.threads.find((t) => t.id === threadId)
+  if (!targetThread) return
+
+  const threads = session.threads.map((t) => {
+    if (t.id !== threadId) return t
+    return { ...t, ...newThread }
+  })
+
+  saveSession({ ...session, threads })
+}
+
+/**
  * 删除历史话题
  * @param sessionId 会话 id
  * @param threadId 历史话题 id
@@ -227,6 +255,7 @@ export function refreshContextAndCreateNewThread(sessionId: string) {
     messages: session.messages,
     createdAt: Date.now(),
   }
+
   let systemPrompt = session.messages.find((m) => m.role === 'system')
   if (systemPrompt) {
     systemPrompt = createMessage('system', getMessageText(systemPrompt))
@@ -416,7 +445,7 @@ export function modifyMessage(sessionId: string, updated: Message, refreshCounti
   }
 
   // 更新消息时间戳
-  updated.timestamp = new Date().getTime()
+  updated.timestamp = Date.now()
 
   let hasHandled = false
   const handle = (msgs: Message[]): Message[] => {
@@ -631,18 +660,23 @@ export async function submitNewUserMessage(params: {
         modifyMessage(currentSessionId, { ...newUserMsg, links: newLinks }, false)
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     // 如果文件上传失败，一定会出现带有错误信息的回复消息
-    if (!(err instanceof Error)) {
-      err = new Error(`${err}`)
+    const error = !(err instanceof Error) ? new Error(`${err}`) : err
+    if (
+      !(
+        error instanceof ApiError ||
+        error instanceof NetworkError ||
+        error instanceof AIProviderNoImplementedPaintError
+      )
+    ) {
+      Sentry.captureException(error) // unexpected error should be reported
     }
-    if (!(err instanceof ApiError || err instanceof NetworkError || err instanceof AIProviderNoImplementedPaintError)) {
-      Sentry.captureException(err) // unexpected error should be reported
+    let errorCode: number | undefined
+    if (error instanceof BaseError) {
+      errorCode = error.code
     }
-    let errorCode: number | undefined = undefined
-    if (err instanceof BaseError) {
-      errorCode = err.code
-    }
+
     newAssistantMsg = {
       ...newAssistantMsg,
       generating: false,
@@ -650,7 +684,7 @@ export async function submitNewUserMessage(params: {
       model: await getModelDisplayName(settings, 'chat'),
       contentParts: [{ type: 'text', text: '' }],
       errorCode,
-      error: `${err.message}`, // 这么写是为了避免类型问题
+      error: `${error.message}`, // 这么写是为了避免类型问题
       status: [],
     }
     if (needGenerating) {
@@ -779,9 +813,12 @@ export async function generate(sessionId: string, targetMsg: Message, options?: 
           targetMsg.status = []
           modifyMessage(sessionId, targetMsg, true)
         }
+        if (settings.imageGenerateNum === undefined) {
+          throw new Error(`Unknown session type: ${session.type}, generate failed`)
+        }
         await generateImage(model, {
           prompt,
-          num: settings.imageGenerateNum!,
+          num: settings.imageGenerateNum,
           callback: async (picBase64) => {
             const storageKey = StorageKeyGenerator.picture(`${sessionId}:${targetMsg.id}`)
             // 图片需要存储到 indexedDB，如果直接使用 OpenAI 返回的图片链接，图片链接将随着时间而失效
@@ -801,27 +838,32 @@ export async function generate(sessionId: string, targetMsg: Message, options?: 
         throw new Error(`Unknown session type: ${session.type}, generate failed`)
     }
     appleAppStore.tickAfterMessageGenerated()
-  } catch (err: any) {
-    if (!(err instanceof Error)) {
-      err = new Error(`${err}`)
+  } catch (err: unknown) {
+    const error = !(err instanceof Error) ? new Error(`${err}`) : err
+    if (
+      !(
+        error instanceof ApiError ||
+        error instanceof NetworkError ||
+        error instanceof AIProviderNoImplementedPaintError
+      )
+    ) {
+      Sentry.captureException(error) // unexpected error should be reported
     }
-    if (!(err instanceof ApiError || err instanceof NetworkError || err instanceof AIProviderNoImplementedPaintError)) {
-      Sentry.captureException(err) // unexpected error should be reported
-    }
-    let errorCode: number | undefined = undefined
-    if (err instanceof BaseError) {
-      errorCode = err.code
+    let errorCode: number | undefined
+    if (error instanceof BaseError) {
+      errorCode = error.code
     }
     targetMsg = {
       ...targetMsg,
       generating: false,
       cancel: undefined,
       errorCode,
-      error: `${err.message}`, // 这么写是为了避免类型问题
+      error: `${error.message}`, // 这么写是为了避免类型问题
       errorExtra: {
         aiProvider: settings.provider,
-        host: err['host'],
-        responseBody: err.responseBody,
+        host: error instanceof NetworkError ? error.host : undefined,
+        // biome-ignore lint/suspicious/noExplicitAny: FIXME: 找到有responseBody的error类型
+        responseBody: (error as any).responseBody,
       },
       status: [],
     }
@@ -900,7 +942,7 @@ async function _generateName(sessionId: string, modifyName: (sessionId: string, 
     name = name.replace(/['"“”]/g, '').replace(/<think>.*?<\/think>/g, '')
     // name = name.slice(0, 10)    // 限制名字长度
     modifyName(session.id, name)
-  } catch (e: any) {
+  } catch (e: unknown) {
     if (!(e instanceof ApiError || e instanceof NetworkError)) {
       Sentry.captureException(e) // unexpected error should be reported
     }
@@ -934,11 +976,14 @@ async function genMessageContext(settings: Settings, msgs: Message[]) {
   if (msgs.length === 0) {
     throw new Error('No messages to replay')
   }
+  if (maxContextMessageCount === undefined) {
+    throw new Error('maxContextMessageCount is not set')
+  }
   const head = msgs[0].role === 'system' ? msgs[0] : undefined
   if (head) {
     msgs = msgs.slice(1)
   }
-  let totalLen = head ? estimateTokensFromMessages([head]) : 0
+  let _totalLen = head ? estimateTokensFromMessages([head]) : 0
   let prompts: Message[] = []
   for (let i = msgs.length - 1; i >= 0; i--) {
     let msg = msgs[i]
@@ -954,8 +999,8 @@ async function genMessageContext(settings: Settings, msgs: Message[]) {
       // }
     }
     if (
-      maxContextMessageCount! < Number.MAX_SAFE_INTEGER &&
-      prompts.length >= maxContextMessageCount! + 1 // +1是为了保留用户最后一条输入消息
+      maxContextMessageCount < Number.MAX_SAFE_INTEGER &&
+      prompts.length >= maxContextMessageCount + 1 // +1是为了保留用户最后一条输入消息
     ) {
       break
     }
@@ -971,7 +1016,7 @@ async function genMessageContext(settings: Settings, msgs: Message[]) {
             attachment += `<FILE_INDEX>File ${fileIndex + 1}</FILE_INDEX>\n`
             attachment += `<FILE_NAME>${file.name}</FILE_NAME>\n`
             attachment += '<FILE_CONTENT>\n'
-            attachment += content + '\n'
+            attachment += `${content}\n`
             attachment += '</FILE_CONTENT>\n'
             attachment += `</ATTACHMENT_FILE>\n`
             msg = mergeMessages(msg, createMessage(msg.role, attachment))
@@ -990,7 +1035,7 @@ async function genMessageContext(settings: Settings, msgs: Message[]) {
             attachment += `<LINK_INDEX>${linkIndex + 1}</LINK_INDEX>\n`
             attachment += `<LINK_URL>${link.url}</LINK_URL>\n`
             attachment += `<LINK_CONTENT>\n`
-            attachment += content + '\n'
+            attachment += `${content}\n`
             attachment += '</LINK_CONTENT>\n'
             attachment += `</ATTACHMENT_LINK>\n`
             msg = mergeMessages(msg, createMessage(msg.role, attachment))
@@ -1000,7 +1045,7 @@ async function genMessageContext(settings: Settings, msgs: Message[]) {
     }
 
     prompts = [msg, ...prompts]
-    totalLen += size
+    _totalLen += size
   }
   if (head) {
     prompts = [head, ...prompts]
@@ -1143,16 +1188,6 @@ export function mergeSettings(
   }
 }
 
-function omit(obj: any) {
-  const ret = { ...obj }
-  for (const key of Object.keys(ret)) {
-    if (ret[key] === undefined) {
-      delete ret[key]
-    }
-  }
-  return ret
-}
-
 export function getCurrentSessionMergedSettings() {
   const store = getDefaultStore()
   const globalSettings = store.get(atoms.settingsAtom)
@@ -1164,7 +1199,7 @@ export function getCurrentSessionMergedSettings() {
 }
 
 export async function exportChat(session: Session, scope: ExportChatScope, format: ExportChatFormat) {
-  const threads: SessionThread[] = scope == 'all_threads' ? session.threads || [] : []
+  const threads: SessionThread[] = scope === 'all_threads' ? session.threads || [] : []
   threads.push({
     id: session.id,
     name: session.threadName || session.name,
@@ -1172,13 +1207,13 @@ export async function exportChat(session: Session, scope: ExportChatScope, forma
     createdAt: Date.now(),
   })
 
-  if (format == 'Markdown') {
+  if (format === 'Markdown') {
     const content = formatChatAsMarkdown(session.name, threads)
     platform.exporter.exportTextFile(`${session.name}.md`, content)
-  } else if (format == 'TXT') {
+  } else if (format === 'TXT') {
     const content = formatChatAsTxt(session.name, threads)
     platform.exporter.exportTextFile(`${session.name}.txt`, content)
-  } else if (format == 'HTML') {
+  } else if (format === 'HTML') {
     const content = await formatChatAsHtml(session.name, threads)
     platform.exporter.exportTextFile(`${session.name}.html`, content)
   }

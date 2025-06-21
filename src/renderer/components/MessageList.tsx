@@ -1,16 +1,18 @@
+import NiceModal from '@ebay/nice-modal-react'
 import { Box, Button, Flex } from '@mantine/core'
 import AddIcon from '@mui/icons-material/AddCircleOutline'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
+import EditIcon from '@mui/icons-material/Edit'
 import SegmentIcon from '@mui/icons-material/Segment'
 import SwapCallsIcon from '@mui/icons-material/SwapCalls'
 import { IconButton, MenuItem } from '@mui/material'
 import { IconArrowBackUp, IconFilePencil } from '@tabler/icons-react'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { type FC, Fragment, memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type StateSnapshot, Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
-import type { Session } from 'src/shared/types'
+import type { Session, SessionThreadBrief } from 'src/shared/types'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import * as atoms from '@/stores/atoms'
@@ -23,10 +25,10 @@ import StyledMenu from './StyledMenu'
 const sessionScrollPositionCache = new Map<string, StateSnapshot>()
 
 export default function MessageList(props: { className?: string; currentSession: Session }) {
+  const { currentSession } = props
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
 
-  const currentSession = props.currentSession
   const currentMessageList = useAtomValue(atoms.currentMessageListAtom)
   const currentThreadHash = useAtomValue(atoms.currentThreadHistoryHashAtom)
   const virtuoso = useRef<VirtuosoHandle>(null)
@@ -37,7 +39,6 @@ export default function MessageList(props: { className?: string; currentSession:
   const setAtTop = useSetAtom(atoms.messageScrollingAtTopAtom)
   const setAtBottom = useSetAtom(atoms.messageScrollingAtBottomAtom)
   const setMessageScrollingScrollPosition = useSetAtom(atoms.messageScrollingScrollPositionAtom)
-  const setShowHistoryDrawer = useSetAtom(atoms.showThreadHistoryDrawerAtom)
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 仅执行一次
   useEffect(() => {
@@ -59,32 +60,24 @@ export default function MessageList(props: { className?: string; currentSession:
 
   const [threadMenuAnchorEl, setThreadMenuAnchorEl] = useState<null | HTMLElement>(null)
   const [threadMenuClickedTopicId, setThreadMenuClickedTopicId] = useState<null | string>(null)
-  const openThreadMenu = (event: React.MouseEvent<HTMLElement>, topicId: string) => {
+
+  const openThreadMenu = useCallback((event: React.MouseEvent<HTMLElement>, topicId: string) => {
     setThreadMenuAnchorEl(event.currentTarget)
     setThreadMenuClickedTopicId(topicId)
-  }
-  const closeThreadMenu = () => {
+  }, [])
+
+  const closeThreadMenu = useCallback(() => {
     setThreadMenuAnchorEl(null)
     setThreadMenuClickedTopicId(null)
-  }
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: todo
-  const openHistoryDrawer = useCallback(() => {
-    setShowHistoryDrawer(threadMenuClickedTopicId || true)
-    closeThreadMenu()
-  }, [threadMenuClickedTopicId])
+  }, [])
 
   return (
     <div className={cn('w-full h-full mx-auto', props.className)}>
       <div className="overflow-auto h-full pr-0 pl-1 sm:pl-0" ref={messageListRef}>
         <Virtuoso
           data={currentMessageList}
-          atTopStateChange={(atTop) => {
-            setAtTop(atTop)
-          }}
-          atBottomStateChange={(atBottom) => {
-            setAtBottom(atBottom)
-          }}
+          atTopStateChange={setAtTop}
+          atBottomStateChange={setAtBottom}
           ref={virtuoso}
           followOutput={true}
           {...(sessionScrollPositionCache.has(currentSession.id)
@@ -99,27 +92,12 @@ export default function MessageList(props: { className?: string; currentSession:
           increaseViewportBy={{ top: 2000, bottom: 2000 }}
           itemContent={(index, msg) => {
             return (
-              // <div key={msg.id}>
-              <>
-                {index !== 0 && currentThreadHash[msg.id] && (
-                  <div className="text-center pb-4 pt-8" key={`divider-${msg.id}`}>
-                    <span
-                      className="cursor-pointer font-bold border-solid border rounded-xxl py-2 px-3 border-slate-400/25"
-                      onClick={(event) => openThreadMenu(event, currentThreadHash[msg.id].id)}
-                    >
-                      <span className="pr-1 opacity-60">#</span>
-                      <span className="truncate inline-block align-bottom max-w-[calc(50%-4rem)] md:max-w-[calc(30%-4rem)]">
-                        {currentThreadHash[msg.id].name || t('New Thread')}
-                      </span>
-                      {currentThreadHash[msg.id].createdAtLabel && (
-                        <span className="pl-1 opacity-60 text-xs">{currentThreadHash[msg.id].createdAtLabel}</span>
-                      )}
-                    </span>
-                  </div>
+              <Fragment key={msg.id}>
+                {currentThreadHash[msg.id] && (
+                  <ThreadLabel thread={currentThreadHash[msg.id]} onThreadLabelClick={openThreadMenu} />
                 )}
                 <Message
                   id={msg.id}
-                  key={`msg-${msg.id}`}
                   msg={msg}
                   sessionId={currentSession.id}
                   sessionType={currentSession.type || 'chat'}
@@ -128,14 +106,9 @@ export default function MessageList(props: { className?: string; currentSession:
                   preferCollapsedCodeBlock={index < currentMessageList.length - 10}
                 />
                 {currentSession.messageForksHash?.[msg.id] && (
-                  <ForkNav
-                    key={`fork_nav_${msg.id}`}
-                    msgId={msg.id}
-                    forks={currentSession.messageForksHash?.[msg.id]}
-                  />
+                  <ForkNav msgId={msg.id} forks={currentSession.messageForksHash?.[msg.id]} />
                 )}
-              </>
-              // </div>
+              </Fragment>
             )
           }}
           components={{
@@ -207,58 +180,12 @@ export default function MessageList(props: { className?: string; currentSession:
             }
           }}
         />
-        <StyledMenu
-          anchorEl={threadMenuAnchorEl}
-          open={Boolean(threadMenuAnchorEl)}
-          onClose={closeThreadMenu}
-          onDoubleClick={openHistoryDrawer}
-          anchorOrigin={{
-            vertical: 'bottom',
-            horizontal: 'center',
-          }}
-          transformOrigin={{
-            vertical: 'top',
-            horizontal: 'center',
-          }}
-        >
-          <MenuItem disableRipple onClick={openHistoryDrawer}>
-            <SegmentIcon fontSize="small" />
-            {t('Show in Thread List')}
-          </MenuItem>
-          <MenuItem
-            disableRipple
-            onClick={() => {
-              if (threadMenuClickedTopicId) {
-                sessionActions.switchThread(currentSession.id, threadMenuClickedTopicId)
-              }
-              closeThreadMenu()
-            }}
-          >
-            <SwapCallsIcon fontSize="small" />
-            {t('Continue this thread')}
-          </MenuItem>
-          <MenuItem
-            disableRipple
-            divider
-            onClick={() => {
-              if (threadMenuClickedTopicId) {
-                sessionActions.moveThreadToConversations(currentSession.id, threadMenuClickedTopicId)
-              }
-              closeThreadMenu()
-            }}
-          >
-            <AddIcon fontSize="small" />
-            {t('Move to Conversations')}
-          </MenuItem>
-          <ConfirmDeleteMenuItem
-            onDelete={() => {
-              if (threadMenuClickedTopicId) {
-                sessionActions.removeThread(currentSession.id, threadMenuClickedTopicId)
-              }
-              closeThreadMenu()
-            }}
-          />
-        </StyledMenu>
+        <ThreadMenu
+          threadMenuAnchorEl={threadMenuAnchorEl}
+          threadMenuClickedTopicId={threadMenuClickedTopicId}
+          onThreadMenuClose={closeThreadMenu}
+          currentSessionId={currentSession.id}
+        />
       </div>
     </div>
   )
@@ -361,3 +288,111 @@ function ForkNav(props: { msgId: string; forks: NonNullable<Session['messageFork
     </div>
   )
 }
+
+type ThreadLabelProps = {
+  thread: SessionThreadBrief
+  onThreadLabelClick?: (event: React.MouseEvent<HTMLElement>, threadId: string) => void
+}
+const ThreadLabel: FC<ThreadLabelProps> = memo((props) => {
+  const { t } = useTranslation()
+  const { thread, onThreadLabelClick } = props
+  const onClick = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      onThreadLabelClick?.(event, thread.id)
+    },
+    [thread.id, onThreadLabelClick]
+  )
+
+  return (
+    <div className="text-center pb-4 pt-8">
+      <span
+        className="cursor-pointer font-bold border-solid border rounded-xxl py-2 px-3 border-slate-400/25"
+        onClick={onClick}
+      >
+        <span className="pr-1 opacity-60">#</span>
+        <span className="truncate inline-block align-bottom max-w-[calc(50%-4rem)] md:max-w-[calc(30%-4rem)]">
+          {thread.name || t('New Thread')}
+        </span>
+        {thread.createdAtLabel && <span className="pl-1 opacity-60 text-xs">{thread.createdAtLabel}</span>}
+      </span>
+    </div>
+  )
+})
+
+type ThreadMenuProps = {
+  threadMenuAnchorEl: null | HTMLElement
+  threadMenuClickedTopicId: null | string
+  onThreadMenuClose?: () => void
+  currentSessionId: string
+}
+const ThreadMenu: FC<ThreadMenuProps> = memo((props) => {
+  const { t } = useTranslation()
+  const { threadMenuAnchorEl, threadMenuClickedTopicId, onThreadMenuClose, currentSessionId } = props
+  const setShowHistoryDrawer = useSetAtom(atoms.showThreadHistoryDrawerAtom)
+
+  const openHistoryDrawer = useCallback(() => {
+    setShowHistoryDrawer(threadMenuClickedTopicId || true)
+    onThreadMenuClose?.()
+  }, [threadMenuClickedTopicId, setShowHistoryDrawer, onThreadMenuClose])
+
+  const onEditThreadNameClick = useCallback(() => {
+    if (!threadMenuClickedTopicId) return
+    NiceModal.show('thread-name-edit', { sessionId: currentSessionId, threadId: threadMenuClickedTopicId })
+
+    onThreadMenuClose?.()
+  }, [threadMenuClickedTopicId, currentSessionId, onThreadMenuClose])
+
+  const onContinueThreadClick = useCallback(() => {
+    if (!threadMenuClickedTopicId) return
+    sessionActions.switchThread(currentSessionId, threadMenuClickedTopicId)
+    onThreadMenuClose?.()
+  }, [threadMenuClickedTopicId, currentSessionId, onThreadMenuClose])
+
+  const onMoveToConversationsClick = useCallback(() => {
+    if (!threadMenuClickedTopicId) return
+    sessionActions.moveThreadToConversations(currentSessionId, threadMenuClickedTopicId)
+    onThreadMenuClose?.()
+  }, [threadMenuClickedTopicId, currentSessionId, onThreadMenuClose])
+
+  const onDeleteThreadClick = useCallback(() => {
+    if (!threadMenuClickedTopicId) return
+    sessionActions.removeThread(currentSessionId, threadMenuClickedTopicId)
+    onThreadMenuClose?.()
+  }, [threadMenuClickedTopicId, currentSessionId, onThreadMenuClose])
+
+  return (
+    <StyledMenu
+      anchorEl={threadMenuAnchorEl}
+      open={Boolean(threadMenuAnchorEl)}
+      onClose={onThreadMenuClose}
+      onDoubleClick={openHistoryDrawer}
+      anchorOrigin={{
+        vertical: 'bottom',
+        horizontal: 'center',
+      }}
+      transformOrigin={{
+        vertical: 'top',
+        horizontal: 'center',
+      }}
+    >
+      <MenuItem disableRipple onClick={onEditThreadNameClick}>
+        <EditIcon fontSize="small" />
+        {t('Edit Thread Name')}
+      </MenuItem>
+
+      <MenuItem disableRipple onClick={openHistoryDrawer}>
+        <SegmentIcon fontSize="small" />
+        {t('Show in Thread List')}
+      </MenuItem>
+      <MenuItem disableRipple onClick={onContinueThreadClick}>
+        <SwapCallsIcon fontSize="small" />
+        {t('Continue this thread')}
+      </MenuItem>
+      <MenuItem disableRipple divider onClick={onMoveToConversationsClick}>
+        <AddIcon fontSize="small" />
+        {t('Move to Conversations')}
+      </MenuItem>
+      <ConfirmDeleteMenuItem onDelete={onDeleteThreadClick} />
+    </StyledMenu>
+  )
+})

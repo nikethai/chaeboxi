@@ -1,4 +1,6 @@
-import { Badge, Button, Combobox, type ComboboxProps, Drawer, Flex, Stack, Text, useCombobox } from '@mantine/core'
+import { useProviders } from '@/hooks/useProviders'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { Badge, Button, Combobox, ComboboxProps, Drawer, Flex, Stack, Text, useCombobox } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import { IconStar, IconStarFilled } from '@tabler/icons-react'
 import { useNavigate } from '@tanstack/react-router'
@@ -14,9 +16,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ModelProvider, ProviderModelInfo } from 'src/shared/types'
-import { useProviders } from '@/hooks/useProviders'
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { ModelProvider, ProviderModelInfo } from 'src/shared/types'
 import ProviderIcon from './icons/ProviderIcon'
 
 export type ModelSelectorProps = PropsWithChildren<
@@ -40,10 +40,11 @@ export const ModelSelector = forwardRef<HTMLDivElement, ModelSelectorProps>(
         providers.map((provider) => {
           const models = (provider.models || provider.defaultSettings?.models)?.filter(
             (model) =>
-              provider.id.includes(search) ||
-              provider.name.includes(search) ||
-              model.nickname?.includes(search) ||
-              model.modelId?.includes(search)
+              (!model.type || model.type === 'chat') &&
+              (provider.id.includes(search) ||
+                provider.name.includes(search) ||
+                model.nickname?.includes(search) ||
+                model.modelId?.includes(search))
           )
           return {
             ...provider,
@@ -70,10 +71,8 @@ export const ModelSelector = forwardRef<HTMLDivElement, ModelSelectorProps>(
     })
 
     const groups = filteredProviders.map((provider) => {
-      provider
       const options = provider.models?.map((model) => {
         const isFavorited = isFavoritedModel(provider.id, model.modelId)
-
         return (
           <ModelItem
             key={`${provider.id}/${model.modelId}`}

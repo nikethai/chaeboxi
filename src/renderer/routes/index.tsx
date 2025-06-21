@@ -108,7 +108,6 @@ function Index() {
     pictureKeys = [],
     attachments = [],
     links = [],
-    webBrowsing = false,
   }: InputBoxPayload) => {
     const newSession = await createSession({
       name: session.name,
@@ -134,7 +133,6 @@ function Index() {
       needGenerating,
       attachments,
       links,
-      webBrowsing,
     })
     return true
   }

@@ -1,10 +1,10 @@
-import { atom, SetStateAction } from 'jotai'
+import { atom, type SetStateAction } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
 import { focusAtom } from 'jotai-optics'
 import * as defaults from '../../../shared/defaults'
-import storage, { StorageKey } from '../../storage'
+import { type SessionSettings, type Settings, type SettingWindowTab, Theme } from '../../../shared/types'
 import platform from '../../platform'
-import { SessionSettings, Settings, SettingWindowTab, Theme } from '../../../shared/types'
+import storage, { StorageKey } from '../../storage'
 
 // settings
 const _settingsAtom = atomWithStorage<Settings>(
@@ -34,7 +34,7 @@ export const settingsAtom = atom(
   },
   (get, set, update: SetStateAction<Settings>) => {
     const settings = get(_settingsAtom)
-    let newSettings = typeof update === 'function' ? update(settings) : update
+    const newSettings = typeof update === 'function' ? update(settings) : update
     // 考虑关键配置的缺省情况
     // if (!newSettings.apiHost) {
     //   newSettings.apiHost = defaults.settings().apiHost
@@ -82,10 +82,14 @@ export const pasteLongTextAsAFileAtom = focusAtom(settingsAtom, (optic) => optic
 // Related UI state, moved here for proximity to settings
 export const openSettingDialogAtom = atom<SettingWindowTab | null>(null)
 
-// 存储新创建SessionSettings的默认值 缓存在 localStorage (有用户出现 exceed quota 错误，改到 storage 中)
+// 存储新创建SessionSettings的默认值 缓存在 localStorage
 export const chatSessionSettingsAtom = atomWithStorage<SessionSettings>(StorageKey.ChatSessionSettings, {}, storage)
 export const pictureSessionSettingsAtom = atomWithStorage<SessionSettings>(
   StorageKey.PictureSessionSettings,
   {},
   storage
+)
+
+export const knowledgeBaseSettingsAtom = focusAtom(settingsAtom, (optic) =>
+  optic.prop('extension').prop('knowledgeBase')
 )

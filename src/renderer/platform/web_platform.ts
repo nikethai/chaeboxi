@@ -1,13 +1,14 @@
-import { Config, Settings, ShortcutSetting } from 'src/shared/types'
-import * as defaults from 'src/shared/defaults'
-import { Platform, PlatformType } from './interfaces'
-import { getOS, getBrowser } from '../packages/navigator'
-import { parseLocale } from '@/i18n/parser'
 import localforage from 'localforage'
+import * as defaults from 'src/shared/defaults'
+import type { Config, Settings, ShortcutSetting } from 'src/shared/types'
+import { v4 as uuidv4 } from 'uuid'
+import { parseLocale } from '@/i18n/parser'
+import { sliceTextByTokenLimit } from '@/packages/token'
+import { getBrowser, getOS } from '../packages/navigator'
+import type { Platform, PlatformType } from './interfaces'
+import type { KnowledgeBaseController } from './knowledge-base/interface'
 import WebExporter from './web_exporter'
 import { parseTextFileLocally } from './web_platform_utils'
-import { v4 as uuidv4 } from 'uuid'
-import { sliceTextByTokenLimit } from '@/packages/token'
 
 const store = localforage.createInstance({ name: 'chatboxstore' })
 
@@ -22,6 +23,9 @@ export default class WebPlatform implements Platform {
     return 'web'
   }
   public async getPlatform(): Promise<string> {
+    return 'web'
+  }
+  public async getArch(): Promise<string> {
     return 'web'
   }
   public async shouldUseDarkColors(): Promise<boolean> {
@@ -178,8 +182,12 @@ export default class WebPlatform implements Platform {
   public async setFullscreen(enabled: boolean): Promise<void> {
     return
   }
-  
+
   installUpdate(): Promise<void> {
+    throw new Error('Method not implemented.')
+  }
+
+  public getKnowledgeBaseController(): KnowledgeBaseController {
     throw new Error('Method not implemented.')
   }
 }

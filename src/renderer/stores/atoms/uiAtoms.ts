@@ -1,7 +1,7 @@
 import { RefObject } from 'react'
 import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
-import { Toast, MessagePicture } from '../../../shared/types' // Need this import
+import { Toast, MessagePicture, KnowledgeBase } from '../../../shared/types' // Need this import
 import { VirtuosoHandle } from 'react-virtuoso'
 import React from 'react' // Need React for React.ReactNode
 
@@ -32,6 +32,7 @@ export const openAboutDialogAtom = atom(false) // 是否展示相关信息的窗
 // Input box related state
 export const inputBoxLinksAtom = atom<{ url: string }[]>([])
 export const inputBoxWebBrowsingModeAtom = atom(false)
+export const inputBoxKnowledgeBaseAtom = atom<Pick<KnowledgeBase, 'id' | 'name'> | undefined>(undefined)
 
 // Picture viewer state
 export const pictureShowAtom = atom<{

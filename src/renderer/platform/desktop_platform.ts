@@ -1,17 +1,20 @@
-import { ElectronIPC } from 'src/shared/electron-types'
-import { Platform, PlatformType } from './interfaces'
-import { Config, Settings, ShortcutSetting } from 'src/shared/types'
-import { getOS } from '../packages/navigator'
-import { parseLocale } from '@/i18n/parser'
-import WebExporter from './web_exporter'
+import type { ElectronIPC } from 'src/shared/electron-types'
+import type { Config, Settings, ShortcutSetting } from 'src/shared/types'
 import { v4 as uuidv4 } from 'uuid'
+import { parseLocale } from '@/i18n/parser'
 import { sliceTextByTokenLimit } from '@/packages/token'
+import { getOS } from '../packages/navigator'
+import type { Platform, PlatformType } from './interfaces'
+import DesktopKnowledgeBaseController from './knowledge-base/desktop-controller'
+import WebExporter from './web_exporter'
 import { parseTextFileLocally } from './web_platform_utils'
 
 export default class DesktopPlatform implements Platform {
   public type: PlatformType = 'desktop'
 
   public exporter = new WebExporter()
+
+  private _kbController?: DesktopKnowledgeBaseController
 
   public ipc: ElectronIPC
   constructor(ipc: ElectronIPC) {
@@ -23,6 +26,9 @@ export default class DesktopPlatform implements Platform {
   }
   public async getPlatform() {
     return this.ipc.invoke('getPlatform')
+  }
+  public async getArch() {
+    return this.ipc.invoke('getArch')
   }
   public async shouldUseDarkColors(): Promise<boolean> {
     return await this.ipc.invoke('shouldUseDarkColors')
@@ -164,5 +170,12 @@ export default class DesktopPlatform implements Platform {
 
   public async switchTheme(theme: 'dark' | 'light') {
     return this.ipc.invoke('switch-theme', theme)
+  }
+
+  public getKnowledgeBaseController() {
+    if (!this._kbController) {
+      this._kbController = new DesktopKnowledgeBaseController(this.ipc)
+    }
+    return this._kbController
   }
 }

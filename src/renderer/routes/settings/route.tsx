@@ -6,13 +6,14 @@ import { Box, Flex, Stack, Text } from '@mantine/core'
 import { IconButton, Box as MuiBox, useTheme } from '@mui/material'
 import {
   IconAdjustmentsHorizontal,
+  IconBook,
   IconBox,
   IconCategory,
   IconChevronRight,
   IconCircleDottedLetterM,
   IconKeyboard,
   IconMessages,
-  IconWorldWww,
+  IconWorldWww
 } from '@tabler/icons-react'
 import { createFileRoute, Link, Outlet, useCanGoBack, useRouter, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
@@ -42,6 +43,15 @@ const ITEMS = [
           key: 'mcp',
           label: 'MCP',
           icon: <IconCircleDottedLetterM className="w-full h-full" />,
+        },
+      ]
+    : []),
+  ...(featureFlags.knowledgeBase
+    ? [
+        {
+          key: 'knowledge-base',
+          label: 'Knowledge Base',
+          icon: <IconBook className="w-full h-full" />,
         },
       ]
     : []),

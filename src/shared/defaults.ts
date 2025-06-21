@@ -1,5 +1,13 @@
 import { v4 as uuidv4 } from 'uuid'
-import { Config, ModelProviderEnum, ModelProviderType, ProviderBaseInfo, SessionSettings, Settings, Theme } from './types'
+import {
+  Config,
+  ModelProviderEnum,
+  ModelProviderType,
+  ProviderBaseInfo,
+  SessionSettings,
+  Settings,
+  Theme,
+} from './types'
 
 export function settings(): Settings {
   return {
@@ -120,6 +128,12 @@ export function settings(): Settings {
         provider: 'build-in',
         tavilyApiKey: '',
       },
+      knowledgeBase: {
+        models: {
+          embedding: undefined,
+          rerank: undefined,
+        },
+      },
     },
     mcp: {
       servers: [],
@@ -217,6 +231,10 @@ export const SystemProviders: ProviderBaseInfo[] = [
           capabilities: ['vision', 'tool_use', 'reasoning'],
           contextWindow: 200_000,
           maxOutput: 100_000,
+        },
+        {
+          modelId: 'text-embedding-3-small',
+          type: 'embedding',
         },
       ],
     },
@@ -436,6 +454,10 @@ export const SystemProviders: ProviderBaseInfo[] = [
           capabilities: ['vision'],
           contextWindow: 32_000,
         },
+        { modelId: 'BAAI/bge-m3', type: 'embedding' },
+        { modelId: 'BAAI/bge-large-zh-v1.5', type: 'embedding' },
+        { modelId: 'Pro/BAAI/bge-m3', type: 'embedding' },
+        { modelId: 'BAAI/bge-reranker-v2-m3', type: 'rerank' },
       ],
     },
   },
@@ -467,6 +489,7 @@ export const SystemProviders: ProviderBaseInfo[] = [
           contextWindow: 128_000,
           capabilities: ['vision'],
         },
+        { modelId: 'doubao-embedding-text-240715', type: 'embedding' },
       ],
     },
   },

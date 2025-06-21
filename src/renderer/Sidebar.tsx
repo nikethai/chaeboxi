@@ -1,37 +1,36 @@
-import { useEffect, useRef, useMemo, useState, useCallback } from 'react'
-import SwipeableDrawer from '@mui/material/SwipeableDrawer'
+import AddIcon from '@mui/icons-material/AddCircleOutline'
+import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate'
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
+import SettingsIcon from '@mui/icons-material/Settings'
+import SmartToyIcon from '@mui/icons-material/SmartToy'
 import {
   Box,
-  Badge,
-  ListItemText,
-  MenuList,
-  IconButton,
-  Stack,
-  MenuItem,
-  ListItemIcon,
-  Typography,
-  Divider,
-  useTheme,
   Button,
+  Divider,
+  IconButton,
+  ListItemIcon,
+  ListItemText,
+  MenuItem,
+  MenuList,
+  Stack,
+  Typography,
+  useTheme,
 } from '@mui/material'
-import SettingsIcon from '@mui/icons-material/Settings'
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined'
-import { useTranslation } from 'react-i18next'
-import icon from './static/icon.png'
-import SmartToyIcon from '@mui/icons-material/SmartToy'
-import AddIcon from '@mui/icons-material/AddCircleOutline'
-import useVersion from './hooks/useVersion'
-import SessionList from './components/SessionList'
-import * as sessionActions from './stores/sessionActions'
-import { useAtomValue, useAtom } from 'jotai'
-import * as atoms from './stores/atoms'
-import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate'
-import { useIsSmallScreen, useSidebarWidth } from './hooks/useScreenChange'
-import { trackingEvent } from './packages/event'
-import { PanelLeftClose } from 'lucide-react'
+import SwipeableDrawer from '@mui/material/SwipeableDrawer'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
-import { cn } from './lib/utils'
+import { useAtom, useAtomValue } from 'jotai'
+import { PanelLeftClose } from 'lucide-react'
+import { useCallback, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import SessionList from './components/SessionList'
 import useNeedRoomForMacWinControls from './hooks/useNeedRoomForWinControls'
+import { useIsSmallScreen, useSidebarWidth } from './hooks/useScreenChange'
+import useVersion from './hooks/useVersion'
+import { cn } from './lib/utils'
+import { trackingEvent } from './packages/event'
+import icon from './static/icon.png'
+import * as atoms from './stores/atoms'
+import * as sessionActions from './stores/sessionActions'
 
 export default function Sidebar(props: {}) {
   const language = useAtomValue(atoms.languageAtom)

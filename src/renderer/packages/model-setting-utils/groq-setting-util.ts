@@ -1,5 +1,6 @@
+import { createModelDependencies } from '@/adapters'
+import Groq from 'src/shared/models/groq'
 import { ModelProvider, ModelProviderEnum, ProviderModelInfo, ProviderSettings, SessionType } from 'src/shared/types'
-import Groq from '../models/groq'
 import BaseConfig from './base-config'
 import { ModelSettingUtil } from './interface'
 
@@ -18,11 +19,12 @@ export default class GroqSettingUtil extends BaseConfig implements ModelSettingU
     if (!model) {
       return []
     }
+    const dependencies = await createModelDependencies()
     const groq = new Groq({
       groqAPIKey: settings.apiKey!,
       model,
       temperature: 0,
-    })
+    }, dependencies)
     return groq.listModels()
   }
 }

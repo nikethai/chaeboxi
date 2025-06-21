@@ -1,3 +1,4 @@
+import { getToolName } from '@/packages/tools'
 import type { SearchResultItem } from '@/packages/web-search'
 import { alpha, SimpleGrid } from '@mantine/core'
 import { Box, Code, Group, Paper, Space, Stack, Text } from '@mantine/core'
@@ -19,7 +20,7 @@ const ToolCallHeader: FC<{ part: MessageToolCallPart; actionText: string; onClic
     <Paper withBorder radius="md" px="xs" onClick={props.onClick} className="cursor-pointer">
       <Group justify="space-between" className="w-full">
         <Group gap="xs">
-          <Text fw={600}>{props.part.toolName}</Text>
+          <Text fw={600}>{getToolName(props.part.toolName)}</Text>
           <IconTool size={16} color="var(--mantine-color-chatbox-brand-text)" />
           {props.part.state === 'call' ? (
             <IconLoader size={16} className="animate-spin" color="var(--mantine-color-chatbox-brand-text)" />

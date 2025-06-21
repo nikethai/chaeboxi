@@ -3,6 +3,7 @@ import { SystemProviders } from 'src/shared/defaults'
 import { ModelProviderEnum, ProviderInfo } from 'src/shared/types'
 import useChatboxAIModels from './useChatboxAIModels'
 import { useSettings } from './useSettings'
+import { uniqBy } from 'lodash'
 
 export const useProviders = () => {
   const { chatboxAIModels } = useChatboxAIModels()
@@ -32,6 +33,7 @@ export const useProviders = () => {
             return {
               ...p,
               ...providerSettings,
+              models: uniqBy([...(providerSettings?.models || []), ...(p.defaultSettings?.models || [])], 'modelId'),
             } as ProviderInfo
           } else {
             return null

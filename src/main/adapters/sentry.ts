@@ -1,0 +1,57 @@
+import * as Sentry from '@sentry/node'
+import { app } from 'electron'
+import { SentryAdapter, SentryScope } from '../../shared/utils/sentry_adapter'
+import { getSettings } from '../store-node'
+
+function initSentry() {
+  const settings = getSettings()
+  if (!settings.allowReportingAndTracking) {
+    return
+  }
+
+  const version = app.getVersion()
+  Sentry.init({
+    dsn: 'https://eca691c5e01ebfa05958fca1fcb487a9@sentry.midway.run/697',
+    integrations: [],
+    environment: process.env.NODE_ENV || 'development',
+    // Performance Monitoring
+    sampleRate: 1,
+    tracesSampleRate: 0.1,
+    release: version,
+    // 设置全局标签
+    initialScope: {
+      tags: {
+        platform: 'desktop',
+        app_version: version,
+      },
+    },
+  })
+}
+
+initSentry()
+
+/**
+ * 主进程的 Sentry 适配器实现
+ * 使用 @sentry/node 进行错误上报
+ */
+export class MainSentryAdapter implements SentryAdapter {
+  captureException(error: any): void {
+    Sentry.captureException(error)
+  }
+
+  withScope(callback: (scope: SentryScope) => void): void {
+    Sentry.withScope((sentryScope) => {
+      const scope: SentryScope = {
+        setTag(key: string, value: string): void {
+          sentryScope.setTag(key, value)
+        },
+        setExtra(key: string, value: any): void {
+          sentryScope.setExtra(key, value)
+        },
+      }
+      callback(scope)
+    })
+  }
+}
+
+export const sentry = new MainSentryAdapter()

@@ -1,5 +1,6 @@
+import { createModelDependencies } from '@/adapters'
+import SiliconFlow from 'src/shared/models/siliconflow'
 import { ModelProvider, ModelProviderEnum, ProviderSettings, SessionType } from 'src/shared/types'
-import SiliconFlow from '../models/siliconflow'
 import BaseConfig from './base-config'
 import { ModelSettingUtil } from './interface'
 
@@ -14,13 +15,17 @@ export default class SiliconFlowSettingUtil extends BaseConfig implements ModelS
   }
 
   protected async listProviderModels(settings: ProviderSettings) {
-    const siliconFlow = new SiliconFlow({
-      siliconCloudKey: settings.apiKey!,
-      model: {
-        modelId: '',
-        capabilities: [],
+    const dependencies = await createModelDependencies()
+    const siliconFlow = new SiliconFlow(
+      {
+        siliconCloudKey: settings.apiKey!,
+        model: {
+          modelId: '',
+          capabilities: [],
+        },
       },
-    })
+      dependencies
+    )
     return siliconFlow.listModels()
   }
 }

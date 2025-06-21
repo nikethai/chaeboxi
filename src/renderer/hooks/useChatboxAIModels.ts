@@ -1,9 +1,9 @@
-import { getModelManifest } from '@/packages/remote'
-import { languageAtom } from '@/stores/atoms'
 import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
-import { ModelProviderEnum, ProviderModelInfo } from 'src/shared/types'
+import { ModelProviderEnum, type ProviderModelInfo } from 'src/shared/types'
+import { getModelManifest } from '@/packages/remote'
+import { languageAtom } from '@/stores/atoms'
 import { useProviderSettings } from './useSettings'
 
 const useChatboxAIModels = () => {
@@ -29,6 +29,8 @@ const useChatboxAIModels = () => {
             modelId: m.modelId,
             nickname: m.modelName,
             labels: m.labels,
+            capabilities: m.capabilities,
+            type: m.type,
           })),
         }))
       }
@@ -45,7 +47,9 @@ const useChatboxAIModels = () => {
             modelId: item.modelId,
             nickname: item.modelName,
             labels: item.labels,
-          } as ProviderModelInfo)
+            capabilities: item.capabilities,
+            type: item.type,
+          }) as ProviderModelInfo
       ) || [],
     [data]
   )

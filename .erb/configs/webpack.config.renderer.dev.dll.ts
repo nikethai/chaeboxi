@@ -13,8 +13,11 @@ import checkNodeEnv from '../scripts/check-node-env'
 checkNodeEnv('development')
 
 const EXCLUDE_MODULES = new Set([
-  '@modelcontextprotocol/sdk', // avoid `Package path . is not exported from package` error
-])
+    '@modelcontextprotocol/sdk', // avoid `Package path . is not exported from package` error
+    '@mastra/core',
+    '@mastra/rag',
+    '@libsql/client',
+  ])
 
 const dist = webpackPaths.dllPath
 

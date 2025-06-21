@@ -5,8 +5,9 @@ import { tool } from 'ai'
 import { last } from 'lodash'
 import { Message } from 'src/shared/types'
 import { z } from 'zod'
-import { ModelInterface } from '../models/types'
+import { ModelInterface } from '../../../shared/models/types'
 import { webSearchExecutor } from '../web-search'
+import { streamText } from './stream-text'
 
 export const webSearchTool = tool({
   description:
@@ -22,16 +23,20 @@ export const webSearchTool = tool({
 export async function searchByPromptEngineering(model: ModelInterface, messages: Message[], signal?: AbortSignal) {
   const language = settingActions.getLanguage()
   const systemPrompt = promptFormat.contructSearchAction(language)
-  const result = await model.chat(
-    sequenceMessages([
-      {
-        id: '',
-        role: 'system',
-        contentParts: [{ type: 'text', text: systemPrompt }],
-      },
-      ...messages,
-    ]),
-    { signal }
+  const result = await streamText(
+    model,
+    {
+      messages: sequenceMessages([
+        {
+          id: '',
+          role: 'system',
+          contentParts: [{ type: 'text', text: systemPrompt }],
+        },
+        ...messages,
+      ]),
+      onResultChangeWithCancel: () => {},
+    },
+    signal
   )
   // extract json from response
   const regex = /{(?:[^{}]|{(?:[^{}]|{[^{}]*})*})*}/g

@@ -4,17 +4,11 @@ import log from 'electron-log/renderer'
 import { getDefaultStore } from 'jotai'
 import { initLogAtom } from '@/stores/atoms/utilAtoms'
 import dayjs from 'dayjs'
+// Re-export from shared layer for backward compatibility
+export { parseJsonOrEmpty } from '../../shared/utils/json_utils'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
-}
-
-export function parseJsonOrEmpty(json: string): any {
-  try {
-    return JSON.parse(json)
-  } catch (e) {
-    return {}
-  }
 }
 
 export function getLogger(logId: string) {

@@ -96,3 +96,9 @@ export const textExts = [
 export function isTextFilePath(filePath: string) {
   return textExts.some((ext) => filePath.endsWith(ext))
 }
+
+export const epubExts = ['.epub']
+
+export function isEpubFilePath(filePath: string) {
+  return epubExts.some((ext) => filePath.endsWith(ext))
+}

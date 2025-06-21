@@ -1,22 +1,64 @@
 import fs from 'fs'
 import chalk from 'chalk'
 import { execSync } from 'child_process'
+import path from 'path'
 import { dependencies } from '../../package.json'
+
+// Helper function to recursively find .node files in a directory
+function findNodeFiles(dir) {
+    const nodeFiles = []
+    try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true })
+        for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name)
+            if (entry.isDirectory()) {
+                // Only search in common subdirectories to avoid performance issues
+                if (['build', 'prebuilds', 'lib', 'bin'].includes(entry.name)) {
+                    nodeFiles.push(...findNodeFiles(fullPath))
+                }
+            } else if (entry.isFile() && entry.name.endsWith('.node')) {
+                nodeFiles.push(fullPath)
+            }
+        }
+    } catch (e) {
+        // Ignore permission errors or missing directories
+    }
+    return nodeFiles
+}
 
 if (dependencies) {
     const dependenciesKeys = Object.keys(dependencies)
-    const nativeDeps = fs
+    
+    // Check for packages with binding.gyp (source-based native modules)
+    const nativeDepsByBindingGyp = fs
         .readdirSync('node_modules')
         .filter((folder) => fs.existsSync(`node_modules/${folder}/binding.gyp`))
-    if (nativeDeps.length === 0) {
+    
+    // Check for packages with .node files (precompiled native modules)
+    const nativeDepsByNodeFiles = fs
+        .readdirSync('node_modules')
+        .filter((folder) => {
+            const nodeFiles = findNodeFiles(`node_modules/${folder}`)
+            return nodeFiles.length > 0
+        })
+    
+    // Combine both types of native dependencies
+    const allNativeDeps = [...new Set([...nativeDepsByBindingGyp, ...nativeDepsByNodeFiles])]
+    
+    if (allNativeDeps.length === 0) {
         process.exit(0)
     }
+    
+    console.debug(chalk.blue(`Found native dependencies: ${allNativeDeps.join(', ')}`))
+    console.debug(chalk.gray(`- With binding.gyp: ${nativeDepsByBindingGyp.join(', ') || 'none'}`))
+    console.debug(chalk.gray(`- With .node files: ${nativeDepsByNodeFiles.join(', ') || 'none'}`))
+    
     try {
         // Find the reason for why the dependency is installed. If it is installed
         // because of a devDependency then that is okay. Warn when it is installed
         // because of a dependency
         const { dependencies: dependenciesObject } = JSON.parse(
-            execSync(`npm ls ${nativeDeps.join(' ')} --json`).toString()
+            execSync(`npm ls ${allNativeDeps.join(' ')} --json`).toString()
         )
         const rootDependencies = Object.keys(dependenciesObject)
         const filteredRootDependencies = rootDependencies.filter((rootDependency) =>

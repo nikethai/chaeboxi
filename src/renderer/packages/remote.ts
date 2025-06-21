@@ -1,4 +1,7 @@
+import platform from '@/platform'
 import { USE_LOCAL_API } from '@/variables'
+import { ofetch } from 'ofetch'
+import * as chatboxaiAPI from '../../shared/request/chatboxai_pool'
 import {
   ChatboxAILicenseDetail,
   Config,
@@ -11,68 +14,51 @@ import {
 } from '../../shared/types'
 import * as cache from './cache'
 import { getOS } from './navigator'
-import { afetch, uploadFile } from './request'
+import { createAfetch, uploadFile } from '../../shared/request/request'
+
+let _afetch: ReturnType<typeof createAfetch> | null = null
+let afetchPromise: Promise<void> | null = null
+
+async function initAfetch(): Promise<void> {
+  if (afetchPromise) return afetchPromise
+
+  afetchPromise = (async () => {
+    _afetch = createAfetch({
+      type: platform.type,
+      platform: await platform.getPlatform(),
+      os: getOS(),
+      version: await platform.getVersion(),
+    })
+  })()
+
+  return afetchPromise
+}
+
+async function getAfetch() {
+  if (!_afetch) {
+    await initAfetch()
+  }
+  return _afetch!
+}
 
 // ========== API ORIGIN 根据可用性维护 ==========
 
 // const RELEASE_ORIGIN = 'https://releases.chatboxai.app'
-
-export let API_ORIGIN = 'https://api.chatboxai.app'
-
-export function isChatboxAPI(url: RequestInfo | URL) {
-  return url.toString().startsWith(API_ORIGIN)
-}
-/**
- * 按顺序测试 API 的可用性，只要有一个 API 域名可用，就终止测试并切换所有流量到该域名。
- * 在测试过程中，会根据服务器返回添加新的 API 域名，并缓存到本地
- */
-async function testApiOrigins() {
-  // 从缓存中获取已知的 API 域名列表
-  let pool = await cache.store.getItem<string[] | null>('api_origins').catch(() => null)
-  if (!pool) {
-    pool = [
-      'https://api.chatboxai.app',
-      'https://chatboxai.app',
-      'https://api.ai-chatbox.com',
-      'https://api.chatboxapp.xyz',
-    ]
-  }
-  // 按顺序测试 API 的可用性
-  let i = 0
-  while (i < pool.length) {
-    try {
-      const origin: string = pool[i]
-      const controller = new AbortController()
-      setTimeout(() => controller.abort(), 2000) // 2秒超时
-      const res = await ofetch<{ data: { api_origins: string[] } }>(`${origin}/api/api_origins`, {
-        signal: controller.signal,
-        retry: 1,
-      })
-      // 如果服务器返回了新的 API 域名，则更新缓存
-      if (res.data.api_origins.length > 0) {
-        pool = uniq([...pool, ...res.data.api_origins])
-      }
-      // 如果当前 API 可用，则切换所有流量到该域名
-      API_ORIGIN = origin
-      pool = uniq([origin, ...pool]) // 将当前 API 域名添加到列表顶部
-      await cache.store.setItem('api_origins', pool)
-      return
-    } catch (e) {
-      i++
-    }
+function getAPIOrigin() {
+  if (USE_LOCAL_API) {
+    return 'http://localhost:8002'
+  } else {
+    return chatboxaiAPI.getChatboxAPIOrigin()
   }
 }
 
-// 默认情况下，应用启动时立即测试并设置可用 API 域名，并且每小时测试一次并更新缓存
-// 如果使用本地 API，则不进行测试
-if (USE_LOCAL_API) {
-  console.log('==================')
-  console.log('Using local API')
-  console.log('==================')
-  API_ORIGIN = 'http://localhost:8002'
-} else {
-  testApiOrigins()
-  setInterval(testApiOrigins, 60 * 60 * 1000)
+const getChatboxHeaders = async () => {
+  return {
+    'CHATBOX-PLATFORM': await platform.getPlatform(),
+    'CHATBOX-PLATFORM-TYPE': platform.type,
+    'CHATBOX-VERSION': await platform.getVersion(),
+    'CHATBOX-OS': getOS(),
+  }
 }
 
 // ========== 各个接口方法 ==========
@@ -82,7 +68,7 @@ export async function checkNeedUpdate(version: string, os: string, config: Confi
     need_update?: boolean
   }
   // const res = await ofetch<Response>(`${RELEASE_ORIGIN}/chatbox_need_update/${version}`, {
-  const res = await ofetch<Response>(`${API_ORIGIN}/chatbox_need_update/${version}`, {
+  const res = await ofetch<Response>(`${getAPIOrigin()}/chatbox_need_update/${version}`, {
     method: 'POST',
     retry: 3,
     body: {
@@ -120,7 +106,7 @@ export async function listCopilots(lang: string) {
   type Response = {
     data: CopilotDetail[]
   }
-  const res = await ofetch<Response>(`${API_ORIGIN}/api/copilots/list`, {
+  const res = await ofetch<Response>(`${getAPIOrigin()}/api/copilots/list`, {
     method: 'POST',
     retry: 3,
     body: { lang },
@@ -129,7 +115,7 @@ export async function listCopilots(lang: string) {
 }
 
 export async function recordCopilotShare(detail: CopilotDetail) {
-  await ofetch(`${API_ORIGIN}/api/copilots/share-record`, {
+  await ofetch(`${getAPIOrigin()}/api/copilots/share-record`, {
     method: 'POST',
     body: {
       detail: detail,
@@ -145,7 +131,7 @@ export async function getPremiumPrice() {
       discountLabel: string
     }
   }
-  const res = await ofetch<Response>(`${API_ORIGIN}/api/premium/price`, {
+  const res = await ofetch<Response>(`${getAPIOrigin()}/api/premium/price`, {
     retry: 3,
   })
   return res['data']
@@ -155,8 +141,9 @@ export async function getRemoteConfig(config: keyof RemoteConfig) {
   type Response = {
     data: Pick<RemoteConfig, typeof config>
   }
-  const res = await ofetch<Response>(`${API_ORIGIN}/api/remote_config/${config}`, {
+  const res = await ofetch<Response>(`${getAPIOrigin()}/api/remote_config/${config}`, {
     retry: 3,
+    headers: await getChatboxHeaders(),
   })
   return res['data']
 }
@@ -170,10 +157,11 @@ export async function getDialogConfig(params: { uuid: string; language: string; 
   type Response = {
     data: null | DialogConfig
   }
-  const res = await ofetch<Response>(`${API_ORIGIN}/api/dialog_config`, {
+  const res = await ofetch<Response>(`${getAPIOrigin()}/api/dialog_config`, {
     method: 'POST',
     retry: 3,
     body: params,
+    headers: await getChatboxHeaders(),
   })
   return res['data'] || null
 }
@@ -182,10 +170,11 @@ export async function getLicenseDetail(params: { licenseKey: string }) {
   type Response = {
     data: ChatboxAILicenseDetail | null
   }
-  const res = await ofetch<Response>(`${API_ORIGIN}/api/license/detail`, {
+  const res = await ofetch<Response>(`${getAPIOrigin()}/api/license/detail`, {
     retry: 3,
     headers: {
       Authorization: params.licenseKey,
+      ...(await getChatboxHeaders()),
     },
   })
   return res['data'] || null
@@ -195,10 +184,11 @@ export async function getLicenseDetailRealtime(params: { licenseKey: string }) {
   type Response = {
     data: ChatboxAILicenseDetail | null
   }
-  const res = await ofetch<Response>(`${API_ORIGIN}/api/license/detail/realtime`, {
+  const res = await ofetch<Response>(`${getAPIOrigin()}/api/license/detail/realtime`, {
     retry: 5,
     headers: {
       Authorization: params.licenseKey,
+      ...(await getChatboxHeaders()),
     },
   })
   return res['data'] || null
@@ -211,13 +201,15 @@ export async function generateUploadUrl(params: { licenseKey: string; filename: 
       filename: string
     }
   }
+  const afetch = await getAfetch()
   const res = await afetch(
-    `${API_ORIGIN}/api/files/generate-upload-url`,
+    `${getAPIOrigin()}/api/files/generate-upload-url`,
     {
       method: 'POST',
       headers: {
         Authorization: params.licenseKey,
         'Content-Type': 'application/json',
+        ...(await getChatboxHeaders()),
       },
       body: JSON.stringify(params),
     },
@@ -239,13 +231,15 @@ export async function createUserFile<T extends boolean>(params: {
       content: T extends true ? string : undefined
     }
   }
+  const afetch = await getAfetch()
   const res = await afetch(
-    `${API_ORIGIN}/api/files/create`,
+    `${getAPIOrigin()}/api/files/create`,
     {
       method: 'POST',
       headers: {
         Authorization: params.licenseKey,
         'Content-Type': 'application/json',
+        ...(await getChatboxHeaders()),
       },
       body: JSON.stringify(params),
     },
@@ -281,13 +275,15 @@ export async function parseUserLinkPro(params: { licenseKey: string; url: string
       content: string
     }
   }
+  const afetch = await getAfetch()
   const res = await afetch(
-    `${API_ORIGIN}/api/links/parse`,
+    `${getAPIOrigin()}/api/links/parse`,
     {
       method: 'POST',
       headers: {
         Authorization: params.licenseKey,
         'Content-Type': 'application/json',
+        ...(await getChatboxHeaders()),
       },
       body: JSON.stringify({
         ...params,
@@ -316,12 +312,11 @@ export async function parseUserLinkFree(params: { url: string }) {
     title: string
     text: string
   }
+  const afetch = await getAfetch()
   const res = await afetch(`https://cors-proxy.chatboxai.app/api/fetch-webpage`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'CHATBOX-PLATFORM': platform.type,
-      'CHATBOX-VERSION': (await platform.getVersion()) || 'unknown',
     },
     body: JSON.stringify(params),
   })
@@ -341,13 +336,15 @@ export async function webBrowsing(params: { licenseKey: string; query: string })
       }[]
     }
   }
+  const afetch = await getAfetch()
   const res = await afetch(
-    `${API_ORIGIN}/api/tool/web-search`,
+    `${getAPIOrigin()}/api/tool/web-search`,
     {
       method: 'POST',
       headers: {
         Authorization: params.licenseKey,
         'Content-Type': 'application/json',
+        ...(await getChatboxHeaders()),
       },
       body: JSON.stringify(params),
     },
@@ -368,12 +365,14 @@ export async function activateLicense(params: { licenseKey: string; instanceName
       error: string
     }
   }
+  const afetch = await getAfetch()
   const res = await afetch(
-    `${API_ORIGIN}/api/license/activate`,
+    `${getAPIOrigin()}/api/license/activate`,
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(await getChatboxHeaders()),
       },
       body: JSON.stringify(params),
     },
@@ -387,8 +386,9 @@ export async function activateLicense(params: { licenseKey: string; instanceName
 }
 
 export async function deactivateLicense(params: { licenseKey: string; instanceId: string }) {
+  const afetch = await getAfetch()
   await afetch(
-    `${API_ORIGIN}/api/license/deactivate`,
+    `${getAPIOrigin()}/api/license/deactivate`,
     {
       method: 'POST',
       headers: {
@@ -409,12 +409,14 @@ export async function validateLicense(params: { licenseKey: string; instanceId: 
       valid: boolean
     }
   }
+  const afetch = await getAfetch()
   const res = await afetch(
-    `${API_ORIGIN}/api/license/validate`,
+    `${getAPIOrigin()}/api/license/validate`,
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(await getChatboxHeaders()),
       },
       body: JSON.stringify(params),
     },
@@ -433,12 +435,14 @@ export async function getModelConfigs(params: { aiProvider: ModelProvider; licen
       option_groups: ModelOptionGroup[]
     }
   }
+  const afetch = await getAfetch()
   const res = await afetch(
-    `${API_ORIGIN}/api/model_configs`,
+    `${getAPIOrigin()}/api/model_configs`,
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(await getChatboxHeaders()),
       },
       body: JSON.stringify({
         aiProvider: params.aiProvider,
@@ -463,15 +467,19 @@ export async function getModelManifest(params: { aiProvider: ModelProvider; lice
         modelId: string
         modelName: string
         labels: string[]
+        type?: 'chat' | 'embedding' | 'rerank'
+        capabilities?: ('vision' | 'tool_use' | 'reasoning')[]
       }[]
     }
   }
+  const afetch = await getAfetch()
   const res = await afetch(
-    `${API_ORIGIN}/api/model_manifest`,
+    `${getAPIOrigin()}/api/model_manifest`,
     {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(await getChatboxHeaders()),
       },
       body: JSON.stringify({
         aiProvider: params.aiProvider,
@@ -501,7 +509,7 @@ export async function getModelConfigsWithCache(params: {
   }
   type ModelConfig = Awaited<ReturnType<typeof getModelConfigs>>
   const remoteOptionGroups = await cache.cache<ModelConfig>(
-    `model-options:${params.aiProvider}:${params.licenseKey}:${params.language}1`,
+    `model-options:${params.aiProvider}:${params.licenseKey}:${params.language}`,
     async () => {
       return await getModelConfigs(params)
     },
@@ -514,10 +522,12 @@ export async function getModelConfigsWithCache(params: {
 }
 
 export async function reportContent(params: { id: string; type: string; details: string }) {
-  await afetch(`${API_ORIGIN}/api/report_content`, {
+  const afetch = await getAfetch()
+  await afetch(`${getAPIOrigin()}/api/report_content`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...(await getChatboxHeaders()),
     },
     body: JSON.stringify(params),
   })

@@ -1,5 +1,6 @@
+import { createModelDependencies } from '@/adapters'
+import Gemini from 'src/shared/models/gemini'
 import { ModelProvider, ModelProviderEnum, ProviderSettings, SessionType } from 'src/shared/types'
-import Gemini from '../models/gemini'
 import BaseConfig from './base-config'
 import { ModelSettingUtil } from './interface'
 
@@ -22,12 +23,13 @@ export default class GeminiSettingUtil extends BaseConfig implements ModelSettin
     if (!model) {
       return []
     }
+    const dependencies = await createModelDependencies()
     const gemini = new Gemini({
       geminiAPIHost: settings.apiHost!,
       geminiAPIKey: settings.apiKey!,
       model,
       temperature: 0,
-    })
+    }, dependencies)
     return gemini.listModels()
   }
 }

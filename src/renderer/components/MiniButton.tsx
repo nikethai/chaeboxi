@@ -1,8 +1,8 @@
 import React, { forwardRef } from 'react'
-import { Tooltip } from '@mui/material'
+import { Tooltip } from '@mantine/core'
 import { cn } from '@/lib/utils'
 
-interface Props {
+interface MiniButtonProps {
   children: React.ReactNode
   onClick?: React.MouseEventHandler<HTMLButtonElement>
   disabled?: boolean
@@ -24,7 +24,7 @@ interface Props {
     | 'top-start'
 }
 
-const MiniButton = forwardRef<HTMLButtonElement, Props>((props, ref) => {
+const MiniButton = forwardRef<HTMLButtonElement, MiniButtonProps>((props, ref) => {
   const { onClick, disabled, className, style, tooltipTitle, tooltipPlacement, children } = props
   const button = (
     <button
@@ -43,11 +43,26 @@ const MiniButton = forwardRef<HTMLButtonElement, Props>((props, ref) => {
       {children}
     </button>
   )
+
   if (!tooltipTitle) {
     return button
   }
+
   return (
-    <Tooltip title={tooltipTitle} placement={tooltipPlacement}>
+    <Tooltip
+      openDelay={500}
+      label={tooltipTitle}
+      position={tooltipPlacement}
+      withArrow
+      styles={{
+        tooltip: {
+          fontSize: '12px',
+          fontWeight: 400,
+          backgroundColor: 'rgba(97, 97, 97, 0.9)',
+          color: 'white',
+        },
+      }}
+    >
       {button}
     </Tooltip>
   )

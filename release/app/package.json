@@ -1,7 +1,7 @@
 {
   "name": "xyz.chatboxapp.ce",
   "productName": "xyz.chatboxapp.ce",
-  "version": "1.14.4",
+  "version": "1.15.0-alpha.5",
   "description": "A desktop client for multiple cutting-edge AI models",
   "author": {
     "name": "Mediocre Company",
@@ -14,5 +14,7 @@
     "postinstall": "npm run rebuild && npm run link-modules",
     "link-modules": "node -r ts-node/register ../../.erb/scripts/link-modules.ts"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@libsql/client": "^0.15.6"
+  }
 }

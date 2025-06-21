@@ -13,11 +13,12 @@ import log from 'electron-log/main'
 import { autoUpdater } from 'electron-updater'
 import os from 'os'
 import path from 'path'
-import { ShortcutSetting } from 'src/shared/types'
+import type { ShortcutSetting } from 'src/shared/types'
 import * as analystic from './analystic-node'
 import * as autoLauncher from './autoLauncher'
 import { parseFile } from './file-parser'
 import Locale from './locales'
+import * as mcpIpc from './mcp/ipc-stdio-transport'
 import MenuBuilder from './menu'
 import * as proxy from './proxy'
 import {
@@ -31,7 +32,11 @@ import {
 } from './store-node'
 import { resolveHtmlPath } from './util'
 import * as windowState from './window_state'
-import * as mcpIpc from './mcp/ipc-stdio-transport'
+
+// Only import knowledge-base module if not on win32 arm64 (libsql doesn't support win32 arm64)
+if (!(process.platform === 'win32' && process.arch === 'arm64')) {
+  import('./knowledge-base')
+}
 
 // 这行代码是解决 Windows 通知的标题和图标不正确的问题，标题会错误显示成 electron.app.Chatbox
 // 参考：https://stackoverflow.com/questions/65859634/notification-from-electron-shows-electron-app-electron
@@ -447,6 +452,9 @@ ipcMain.handle('getVersion', () => {
 })
 ipcMain.handle('getPlatform', () => {
   return process.platform
+})
+ipcMain.handle('getArch', () => {
+  return process.arch
 })
 ipcMain.handle('getHostname', () => {
   return os.hostname()

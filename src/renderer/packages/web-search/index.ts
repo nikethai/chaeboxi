@@ -1,13 +1,13 @@
+import type { SearchResultItem } from '@/../shared/types'
+import { getExtensionSettings, getLanguage, getLicenseKey } from '@/stores/settingActions'
 import { cachified } from '@epic-web/cachified'
 import { truncate } from 'lodash'
-import { BingNewsSearch } from './bing-news'
-import { BingSearch } from './bing'
-import { TavilySearch } from './tavily'
-import { getExtensionSettings, getLanguage, getLicenseKey } from '@/stores/settingActions'
+import { ChatboxAIAPIError } from '../../../shared/models/errors'
 import WebSearch from './base'
-import { ChatboxAIAPIError } from '../models/errors'
+import { BingSearch } from './bing'
+import { BingNewsSearch } from './bing-news'
 import { ChatboxSearch } from './chatbox-search'
-import { SearchResultItem } from 'src/shared/types'
+import { TavilySearch } from './tavily'
 
 const MAX_CONTEXT_ITEMS = 10
 

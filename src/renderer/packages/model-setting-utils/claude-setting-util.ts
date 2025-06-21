@@ -1,5 +1,6 @@
+import { createModelDependencies } from '@/adapters'
+import Claude from 'src/shared/models/claude'
 import { ModelProvider, ModelProviderEnum, ProviderSettings, SessionType } from 'src/shared/types'
-import Claude from '../models/claude'
 import BaseConfig from './base-config'
 import { ModelSettingUtil } from './interface'
 
@@ -14,14 +15,18 @@ export default class ClaudeSettingUtil extends BaseConfig implements ModelSettin
   }
 
   protected async listProviderModels(settings: ProviderSettings) {
-    const claude = new Claude({
-      claudeApiHost: settings.apiHost!,
-      claudeApiKey: settings.apiKey!,
-      model: {
-        modelId: '',
-        capabilities: [],
+    const dependencies = await createModelDependencies()
+    const claude = new Claude(
+      {
+        claudeApiHost: settings.apiHost!,
+        claudeApiKey: settings.apiKey!,
+        model: {
+          modelId: '',
+          capabilities: [],
+        },
       },
-    })
+      dependencies
+    )
     return claude.listModels()
   }
 }

@@ -46,7 +46,17 @@ const MCPMenu: FC<{ children: (enabledTools: number) => ReactNode }> = ({ childr
   const enabledToolsCount =
     settings.mcp.servers.filter((s) => s.enabled).length + settings.mcp.enabledBuiltinServers.length
   return (
-    <Menu shadow="md" withArrow width={240} closeOnItemClick={false} position="top">
+    <Menu
+      shadow="md"
+      withArrow
+      width={240}
+      closeOnItemClick={false}
+      position="top"
+      transitionProps={{
+        transition: 'fade-up',
+        duration: 300,
+      }}
+    >
       <Menu.Target>{children(enabledToolsCount)}</Menu.Target>
       <Menu.Dropdown>
         <Flex justify="space-between">

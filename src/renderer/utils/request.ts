@@ -1,24 +1,6 @@
 import platform from '@/platform'
-import { ApiError, BaseError, NetworkError } from '../packages/models/errors'
-
-function isLocalHost(url: string): boolean {
-  const prefixes = [
-    'http://localhost:',
-    'https://localhost:',
-    'http://127.',
-    'https://127.',
-    'http://[::1]:',
-    'https://[::1]:',
-
-    'http://192.168.',
-    'https://192.168.',
-    'http://10.',
-    'https://10.',
-    'http://172.',
-    'https://172.',
-  ]
-  return prefixes.some((prefix) => url.startsWith(prefix))
-}
+import { isLocalHost } from '../../shared/utils/network_utils'
+import { ApiError, BaseError, NetworkError } from '../../shared/models/errors'
 
 async function doRequest(
   url: string,

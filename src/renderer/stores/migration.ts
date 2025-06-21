@@ -584,7 +584,7 @@ async function migrate_9_to_10(dataStore: MigrateStore): Promise<boolean> {
           [ModelProviderEnum.ChatGLM6B]: 'chatglmModel',
           [ModelProviderEnum.Custom]: 'model',
         }[sessionProvider]
-        const modelId: string = oldSessionSettings[modelKey] ?? oldSettings[modelKey]
+        const modelId: string = oldSessionSettings[modelKey!] ?? oldSettings[modelKey!]
         session.settings =
           session.type === 'chat'
             ? {

@@ -449,27 +449,30 @@ function RouteComponent() {
                 )}
 
                 <Flex flex="0 0 auto" gap="xs" align="center">
-                  {model.capabilities?.includes('reasoning') && (
-                    <Tooltip label={t('Reasoning')}>
-                      <Text span c="chatbox-warning" className="flex items-center">
-                        <IconBulb size={20} />
-                      </Text>
-                    </Tooltip>
-                  )}
-                  {model.capabilities?.includes('vision') && (
-                    <Tooltip label={t('Vision')}>
-                      <Text span c="chatbox-brand" className="flex items-center">
-                        <IconEye size={20} />
-                      </Text>
-                    </Tooltip>
-                  )}
-                  {model.capabilities?.includes('tool_use') && (
-                    <Tooltip label={t('Tool Use')}>
-                      <Text span c="chatbox-success" className="flex items-center">
-                        <IconTool size={20} />
-                      </Text>
-                    </Tooltip>
-                  )}
+                  {model.type && model.type !== 'chat' && <Badge color="blue">{t(model.type)}</Badge>}
+                  <>
+                    {model.capabilities?.includes('reasoning') && (
+                      <Tooltip label={t('Reasoning')}>
+                        <Text span c="chatbox-warning" className="flex items-center">
+                          <IconBulb size={20} />
+                        </Text>
+                      </Tooltip>
+                    )}
+                    {model.capabilities?.includes('vision') && (
+                      <Tooltip label={t('Vision')}>
+                        <Text span c="chatbox-brand" className="flex items-center">
+                          <IconEye size={20} />
+                        </Text>
+                      </Tooltip>
+                    )}
+                    {model.capabilities?.includes('tool_use') && (
+                      <Tooltip label={t('Tool Use')}>
+                        <Text span c="chatbox-success" className="flex items-center">
+                          <IconTool size={20} />
+                        </Text>
+                      </Tooltip>
+                    )}
+                  </>
                 </Flex>
 
                 <Flex flex="0 0 auto" gap="xs" align="center" className="ml-auto">

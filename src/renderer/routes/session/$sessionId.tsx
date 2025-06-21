@@ -99,14 +99,7 @@ function RouteComponent() {
           return true
         }}
         generating={lastMessage?.generating}
-        onSubmit={async ({
-          needGenerating = true,
-          input = '',
-          pictureKeys = [],
-          attachments = [],
-          links = [],
-          webBrowsing = false,
-        }) => {
+        onSubmit={async ({ needGenerating = true, input = '', pictureKeys = [], attachments = [], links = [] }) => {
           const newMessage = createMessage('user', input)
           if (pictureKeys?.length) {
             newMessage.contentParts = newMessage.contentParts ?? []
@@ -118,7 +111,6 @@ function RouteComponent() {
             needGenerating,
             attachments,
             links,
-            webBrowsing,
           })
           return true
         }}

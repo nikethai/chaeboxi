@@ -1,7 +1,7 @@
-import { AIModelProviderMenuOptionList } from '@/packages/models'
 import NiceModal, { muiDialogV5, useModal } from '@ebay/nice-modal-react'
 import { Box, Dialog, DialogContent, List, ListItem, ListItemButton, ListItemText } from '@mui/material'
 import { useTranslation } from 'react-i18next'
+import { AIModelProviderMenuOptionList } from '../../shared/models'
 import { ModelProvider, ModelProviderEnum } from '../../shared/types'
 
 const ProviderSelector = NiceModal.create(() => {

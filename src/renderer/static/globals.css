@@ -34,3 +34,10 @@
   -webkit-line-clamp: 1;
   overflow: hidden;
 }
+
+/* KaTeX styles for preventing overflow */
+.katex .katex-html {
+  max-width: 100%;
+  overflow-x: auto;
+  display: inline-block;
+}

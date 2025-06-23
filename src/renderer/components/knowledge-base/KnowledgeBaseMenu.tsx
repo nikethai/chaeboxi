@@ -1,11 +1,11 @@
-import { useKnowledgeBases } from '@/hooks/knowledge-base'
 import { Button, Flex, Group, Menu, Text } from '@mantine/core'
-import { IconCheck, IconFile, IconFileOff, IconSettings2 } from '@tabler/icons-react'
+import { IconCheck, IconFile, IconSettings2 } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
 import { PlusIcon } from 'lucide-react'
-import { FC } from 'react'
+import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { KnowledgeBase } from 'src/shared/types'
+import type { KnowledgeBase } from 'src/shared/types'
+import { useKnowledgeBases } from '@/hooks/knowledge-base'
 
 type Props = {
   currentKnowledgeBaseId?: number

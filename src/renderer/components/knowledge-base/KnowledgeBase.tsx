@@ -1,5 +1,5 @@
 import { Alert, Button, Flex, Group, Modal, Paper, Pill, Stack, Text, Title } from '@mantine/core'
-import { IconAlertTriangle, IconInfoCircle, IconPlus, IconX } from '@tabler/icons-react'
+import { IconAlertTriangle, IconInfoCircle, IconPlus } from '@tabler/icons-react'
 import compact from 'lodash/compact'
 import flatten from 'lodash/flatten'
 import type React from 'react'
@@ -90,7 +90,7 @@ const KnowledgeBasePage: React.FC = () => {
   const [editKb, setEditKb] = useState<(Partial<KnowledgeBase> & { id: number }) | null>(null)
   const [editRerankModel, setEditRerankModel] = useState<string | null>(null)
   const [editVisionModel, setEditVisionModel] = useState<string | null>(null)
-  const [deleteConfirmKb, setDeleteConfirmKb] = useState<any>(null)
+  const [deleteConfirmKb, setDeleteConfirmKb] = useState<(Partial<KnowledgeBase> & { id: number }) | null>(null)
   const [isUnsupportedPlatform, setIsUnsupportedPlatform] = useState(false)
 
   const [chatboxAIModels, setChatboxAIModels] = useState<{
@@ -420,66 +420,90 @@ const KnowledgeBasePage: React.FC = () => {
       </Modal>
       {!isUnsupportedPlatform && (
         <Stack gap="xs">
-          {kbList.map((kb) => (
-            <Paper key={kb.id} withBorder p="md">
-              <Stack gap="xs">
-                <Stack gap="0">
-                  <Group justify="space-between" align="center">
-                    <Text fw={600} size="lg">
-                      {kb.name}
-                    </Text>
-                    <Button size="xs" variant="subtle" onClick={() => handleEditKb(kb)}>
-                      {t('Edit')}
-                    </Button>
-                  </Group>
-                  <Group gap="xs" wrap="wrap" align="center">
-                    {kb.embeddingModel?.startsWith('chatbox-ai') ? (
-                      <>
-                        <Text size="xs" c="dimmed">
-                          {t('Models')}:
-                        </Text>
-                        <Pill>Chatbox AI</Pill>
-                      </>
-                    ) : (
-                      <>
-                        <Text size="xs" c="dimmed">
-                          {t('Embedding')}:
-                        </Text>
-                        <ModelPill
-                          modelValue={kb.embeddingModel}
-                          formatModelName={formatModelName}
-                          isProviderAvailable={isProviderAvailable}
-                          type="embedding"
-                          t={t}
-                        />
-                        <Text size="xs" c="dimmed">
-                          {t('Rerank')}:
-                        </Text>
-                        <ModelPill
-                          modelValue={kb.rerankModel}
-                          formatModelName={formatModelName}
-                          isProviderAvailable={isProviderAvailable}
-                          type="rerank"
-                          t={t}
-                        />
-                        <Text size="xs" c="dimmed">
-                          {t('Vision')}:
-                        </Text>
-                        <ModelPill
-                          modelValue={kb.visionModel}
-                          formatModelName={formatModelName}
-                          isProviderAvailable={isProviderAvailable}
-                          type="vision"
-                          t={t}
-                        />
-                      </>
+          {kbList.length === 0 ? (
+            <Paper withBorder p="xl" style={{ textAlign: 'center' }}>
+              <Stack gap="md" align="center">
+                <IconInfoCircle size={48} color="var(--mantine-color-dimmed)" />
+                <Stack gap="xs" align="center">
+                  <Text fw={500} size="lg">
+                    {t('No Knowledge Base Yet')}
+                  </Text>
+                  <Text size="sm" c="dimmed" style={{ maxWidth: 400 }}>
+                    {t(
+                      'Create your first knowledge base to start adding documents and enhance your AI conversations with contextual information.'
                     )}
-                  </Group>
+                  </Text>
                 </Stack>
-                <KnowledgeBaseDocuments knowledgeBase={kb} />
+                <Button variant="outline" onClick={() => setShowCreate(true)} size="sm">
+                  <Group gap="xs">
+                    <IconPlus size={16} />
+                    {t('Create First Knowledge Base')}
+                  </Group>
+                </Button>
               </Stack>
             </Paper>
-          ))}
+          ) : (
+            kbList.map((kb) => (
+              <Paper key={kb.id} withBorder p="md">
+                <Stack gap="xs">
+                  <Stack gap="0">
+                    <Group justify="space-between" align="center">
+                      <Text fw={600} size="lg">
+                        {kb.name}
+                      </Text>
+                      <Button size="xs" variant="subtle" onClick={() => handleEditKb(kb)}>
+                        {t('Edit')}
+                      </Button>
+                    </Group>
+                    <Group gap="xs" wrap="wrap" align="center">
+                      {kb.embeddingModel?.startsWith('chatbox-ai') ? (
+                        <>
+                          <Text size="xs" c="dimmed">
+                            {t('Models')}:
+                          </Text>
+                          <Pill>Chatbox AI</Pill>
+                        </>
+                      ) : (
+                        <>
+                          <Text size="xs" c="dimmed">
+                            {t('Embedding')}:
+                          </Text>
+                          <ModelPill
+                            modelValue={kb.embeddingModel}
+                            formatModelName={formatModelName}
+                            isProviderAvailable={isProviderAvailable}
+                            type="embedding"
+                            t={t}
+                          />
+                          <Text size="xs" c="dimmed">
+                            {t('Rerank')}:
+                          </Text>
+                          <ModelPill
+                            modelValue={kb.rerankModel}
+                            formatModelName={formatModelName}
+                            isProviderAvailable={isProviderAvailable}
+                            type="rerank"
+                            t={t}
+                          />
+                          <Text size="xs" c="dimmed">
+                            {t('Vision')}:
+                          </Text>
+                          <ModelPill
+                            modelValue={kb.visionModel}
+                            formatModelName={formatModelName}
+                            isProviderAvailable={isProviderAvailable}
+                            type="vision"
+                            t={t}
+                          />
+                        </>
+                      )}
+                    </Group>
+                  </Stack>
+                  <KnowledgeBaseDocuments knowledgeBase={kb} />
+                </Stack>
+              </Paper>
+            ))
+          )}
         </Stack>
       )}
     </Stack>

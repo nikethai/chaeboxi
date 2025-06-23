@@ -160,7 +160,7 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
         setIsExpanded(true)
       }
     },
-    [knowledgeBase?.id, refetch, refetchCount, invalidateFiles, isExpanded]
+    [knowledgeBase?.id, refetch, refetchCount, invalidateFiles, isExpanded, knowledgeBase?.name]
   )
 
   // Handle drag and drop events
@@ -276,17 +276,17 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
     const k = 1024
     const sizes = ['B', 'KB', 'MB', 'GB']
     const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / k ** i).toFixed(1)) + ' ' + sizes[i]
+    return `${parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`
   }
 
   // Format date
   const formatDate = (timestamp: number): string => {
     try {
-      if (!timestamp || isNaN(timestamp)) {
+      if (!timestamp || Number.isNaN(timestamp)) {
         return 'Unknown date'
       }
       const date = new Date(timestamp)
-      if (isNaN(date.getTime())) {
+      if (Number.isNaN(date.getTime())) {
         return 'Invalid date'
       }
 

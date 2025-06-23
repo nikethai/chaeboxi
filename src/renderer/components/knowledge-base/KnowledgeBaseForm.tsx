@@ -1,6 +1,6 @@
 import { Button, Group, Input, Pill, Radio, Select, Stack, Text } from '@mantine/core'
 import { IconTrash } from '@tabler/icons-react'
-import React from 'react'
+import type React from 'react'
 import { useTranslation } from 'react-i18next'
 
 interface ModelSelectorsProps {

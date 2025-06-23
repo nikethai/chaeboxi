@@ -1,6 +1,6 @@
 import * as Sentry from '@sentry/node'
 import { app } from 'electron'
-import { SentryAdapter, SentryScope } from '../../shared/utils/sentry_adapter'
+import type { SentryAdapter, SentryScope } from '../../shared/utils/sentry_adapter'
 import { getSettings } from '../store-node'
 
 function initSentry() {
@@ -15,7 +15,7 @@ function initSentry() {
     integrations: [],
     environment: process.env.NODE_ENV || 'development',
     // Performance Monitoring
-    sampleRate: 1,
+    sampleRate: 0.1,
     tracesSampleRate: 0.1,
     release: version,
     // 设置全局标签

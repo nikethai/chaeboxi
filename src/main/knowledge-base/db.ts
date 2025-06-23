@@ -52,9 +52,9 @@ async function initDB(db: Client) {
         processing_started_at DATETIME,
         FOREIGN KEY (kb_id) REFERENCES knowledge_base(id)
       )`,
-      // Add total_chunks column if it doesn't exist (for existing databases)
-      `ALTER TABLE kb_file ADD COLUMN total_chunks INTEGER DEFAULT 0`,
     ])
+    // Add total_chunks column if it doesn't exist (for existing databases)
+    await db.batch([`ALTER TABLE kb_file ADD COLUMN total_chunks INTEGER DEFAULT 0`])
 
     log.info('[DB] Database initialized')
   } catch (error) {

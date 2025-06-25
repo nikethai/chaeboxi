@@ -36,7 +36,7 @@ import { getMessageText } from '@/utils/message'
 import type { Message, MessageReasoningPart, SessionType } from '../../shared/types'
 import '../static/Block.css'
 
-import { IconBrain, IconChevronDown, IconChevronUp, IconCopy, IconInfoCircle } from '@tabler/icons-react'
+import { IconBrain, IconBulb, IconChevronDown, IconChevronUp, IconCopy, IconInfoCircle } from '@tabler/icons-react'
 import {
   autoCollapseCodeBlockAtom,
   autoPreviewArtifactsAtom,
@@ -361,14 +361,14 @@ const _Message: FC<Props> = (props) => {
     }
 
     return (
-      <Stack gap="xs" mb="xs">
-        <Paper withBorder radius="md" px="xs" onClick={toggleExpanded} className="cursor-pointer">
-          <Group justify="space-between" className="w-full">
+      <Paper withBorder radius="md" mb="xs">
+        <Box onClick={toggleExpanded} className="cursor-pointer">
+          <Group px="xs" justify="space-between" className="w-full">
             <Group gap="xs" className={cn(isThinking ? 'animate-pulse' : '')}>
               <Text fw={600} size="sm">
                 {isThinking ? t('Thinking') : t('Deeply thought')}
               </Text>
-              <IconBrain size={16} color="var(--mantine-color-chatbox-brand-text)" />
+              <IconBulb size={16} color="var(--mantine-color-chatbox-warning-text)" />
             </Group>
             <Space miw="xl" />
             <Group gap="xs">
@@ -387,25 +387,25 @@ const _Message: FC<Props> = (props) => {
               <Text c="chatbox-brand" size="xs">
                 {isExpanded ? t('Hide') : t('Expand')}
               </Text>
-              {/* {isExpanded ? (
-                <IconChevronUp size={16} color="var(--mantine-color-chatbox-brand-text)" />
-              ) : (
-                <IconChevronDown size={16} color="var(--mantine-color-chatbox-brand-text)" />
-              )} */}
             </Group>
           </Group>
-        </Paper>
+        </Box>
 
         <Transition transition="fade-down" duration={100} mounted={isExpanded}>
           {(transitionStyle) => (
-            <Paper withBorder radius="md" p="sm" style={{ ...transitionStyle, zIndex: 1 }}>
-              <Text size="sm" style={{ whiteSpace: 'pre-line', lineHeight: 1.5 }}>
+            <Box
+              style={{
+                ...transitionStyle,
+                borderTop: '1px solid var(--paper-border-color)',
+              }}
+            >
+              <Text size="sm" px={'sm'} style={{ whiteSpace: 'pre-line', lineHeight: 1.5 }}>
                 {reasoningContent}
               </Text>
-            </Paper>
+            </Box>
           )}
         </Transition>
-      </Stack>
+      </Paper>
     )
   }
 
@@ -552,7 +552,12 @@ const _Message: FC<Props> = (props) => {
         <Grid item xs sm container sx={{ width: '0px', paddingRight: '15px' }}>
           <Grid item xs>
             <MessageStatuses statuses={msg.status} />
-            <div className={cn('w-full inline-block', msg.role !== 'assistant' ? '  px-2 rounded ' : '')}>
+            <div
+              className={cn(
+                'max-w-full inline-block',
+                msg.role !== 'assistant' ? 'bg-stone-400/10 dark:bg-blue-400/10 px-4 rounded-lg' : 'w-full'
+              )}
+            >
               <Box
                 className={cn('msg-content', { 'msg-content-small': small })}
                 sx={small ? { fontSize: theme.typography.body2.fontSize } : {}}

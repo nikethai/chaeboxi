@@ -541,10 +541,7 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
                           align="center"
                           style={{
                             minHeight: 60,
-                            borderBottom:
-                              index < allFiles.length - 1
-                                ? '1px solid var(--mantine-color-chatbox-border-secondary-text)'
-                                : 'none',
+                            borderBottom: index < allFiles.length - 1 ? '1px solid var(--paper-border-color)' : 'none',
                           }}
                         >
                           <Group gap="sm" align="center" style={{ flex: 1 }}>

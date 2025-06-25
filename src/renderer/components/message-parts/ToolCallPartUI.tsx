@@ -20,7 +20,7 @@ const ToolCallHeader: FC<{ part: MessageToolCallPart; actionText: string; onClic
       <Group justify="space-between" className="w-full">
         <Group gap="xs">
           <Text fw={600}>{getToolName(props.part.toolName)}</Text>
-          <IconTool size={16} color="var(--mantine-color-chatbox-brand-text)" />
+          <IconTool size={16} color="var(--mantine-color-chatbox-success-text)" />
           {props.part.state === 'call' ? (
             <IconLoader size={16} className="animate-spin" color="var(--mantine-color-chatbox-brand-text)" />
           ) : props.part.state === 'error' ? (

@@ -1,11 +1,14 @@
-import { countWord } from '@/packages/word-count'
 import { assign, cloneDeep, omit } from 'lodash'
 import type { Message, MessageContentParts, MessagePicture, SearchResultItem } from 'src/shared/types'
+import { countWord } from '@/packages/word-count'
 
 export function getMessageText(message: Message, includeImagePlaceHolder = true): string {
   if (message.contentParts && message.contentParts.length > 0) {
     return message.contentParts
       .map((c) => {
+        if (c.type === 'reasoning') {
+          return c.text
+        }
         if (c.type === 'text') {
           return c.text
         }
@@ -135,20 +138,20 @@ export function sequenceMessages(msgs: Message[]): Message[] {
     role: 'system',
     contentParts: [],
   }
-  for (let msg of msgs) {
+  for (const msg of msgs) {
     if (msg.role === 'system') {
       system = mergeMessages(system, msg)
     }
   }
   // Initialize the result array with the non-empty system message, if present
-  let ret: Message[] = system.contentParts.length > 0 ? [system] : []
+  const ret: Message[] = system.contentParts.length > 0 ? [system] : []
   let next: Message = {
     id: '',
     role: 'user',
     contentParts: [],
   }
   let isFirstUserMsg = true // Special handling for the first user message
-  for (let msg of msgs) {
+  for (const msg of msgs) {
     // Skip the already processed system messages or empty messages
     if (msg.role === 'system' || isEmptyMessage(msg)) {
       continue
@@ -160,7 +163,7 @@ export function sequenceMessages(msgs: Message[]): Message[] {
     }
     // Merge all assistant messages as a quote block if constructing the first user message
     if (isEmptyMessage(next) && isFirstUserMsg && msg.role === 'assistant') {
-      let quote =
+      const quote =
         getMessageText(msg)
           .split('\n')
           .map((line) => `> ${line}`)

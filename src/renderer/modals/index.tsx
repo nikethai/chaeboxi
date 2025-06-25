@@ -1,16 +1,15 @@
 import NiceModal from '@ebay/nice-modal-react'
+import Welcome from './Welcome'
+import ProviderSelector from './ProviderSelector'
+import SessionSettings from './SessionSettings'
 import AppStoreRating from './AppStoreRating'
 import ArtifactPreview from './ArtifactPreview'
-import AttachLink from './AttachLink'
 import ClearSessionList from './ClearSessionList'
 import ExportChat from './ExportChat'
 import MessageEdit from './MessageEdit'
-import ModelEdit from './ModelEdit'
-import ProviderSelector from './ProviderSelector'
+import AttachLink from './AttachLink'
 import ReportContent from './ReportContent'
-import SessionSettings from './SessionSettings'
-import ThreadNameEdit from './ThreadNameEdit'
-import Welcome from './Welcome'
+import ModelEdit from './ModelEdit'
 
 NiceModal.register('welcome', Welcome)
 NiceModal.register('provider-selector', ProviderSelector)
@@ -23,4 +22,3 @@ NiceModal.register('message-edit', MessageEdit)
 NiceModal.register('attach-link', AttachLink)
 NiceModal.register('report-content', ReportContent)
 NiceModal.register('model-edit', ModelEdit)
-NiceModal.register('thread-name-edit', ThreadNameEdit)

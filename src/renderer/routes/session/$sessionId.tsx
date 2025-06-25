@@ -2,12 +2,12 @@ import NiceModal from '@ebay/nice-modal-react'
 import ArrowCircleDownIcon from '@mui/icons-material/ArrowCircleDown'
 import ArrowCircleUpIcon from '@mui/icons-material/ArrowCircleUp'
 import { Box, ButtonGroup, IconButton } from '@mui/material'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect } from 'react'
 import { createMessage, type ModelProvider } from 'src/shared/types'
 import Header from '@/components/Header'
-import InputBoxNew from '@/components/InputBox'
+import InputBoxNew from '@/components/InputBoxNew'
 import MessageList from '@/components/MessageList'
 import ThreadHistoryDrawer from '@/components/ThreadHistoryDrawer'
 import * as atoms from '@/stores/atoms'
@@ -20,6 +20,7 @@ export const Route = createFileRoute('/session/$sessionId')({
 })
 
 function RouteComponent() {
+  const navigate = useNavigate()
   const { sessionId: currentSessionId } = Route.useParams()
   const currentSession = useAtomValue(atoms.currentSessionAtom)
   const setChatSessionSettings = useSetAtom(atoms.chatSessionSettingsAtom)
@@ -53,11 +54,11 @@ function RouteComponent() {
       <Header />
 
       {/* MessageList 设置 key，确保每个 session 对应新的 MessageList 实例 */}
-      <MessageList key={`message-list${currentSessionId}`} currentSession={currentSession} />
+      <MessageList key={'message-list' + currentSessionId} currentSession={currentSession} />
 
       <ScrollButtons />
       <InputBoxNew
-        key={`input-box${currentSession.id}`}
+        key={'input-box' + currentSession.id}
         sessionId={currentSession.id}
         sessionType={currentSession.type}
         model={
@@ -94,7 +95,7 @@ function RouteComponent() {
             return false
           }
           NiceModal.show('session-settings', {
-            session: currentSession,
+            chatConfigDialogSessionId: currentSession.id,
           })
           return true
         }}

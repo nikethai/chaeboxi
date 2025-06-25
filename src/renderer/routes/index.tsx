@@ -1,19 +1,18 @@
-import NiceModal from '@ebay/nice-modal-react'
-import { ActionIcon, Avatar, Button, Divider, Flex, ScrollArea, Stack, Text } from '@mantine/core'
+import { ActionIcon, Avatar, Divider, Flex, Modal, ScrollArea, Stack, Text } from '@mantine/core'
+import { useDisclosure } from '@mantine/hooks'
 import { IconChevronLeft, IconChevronRight, IconX } from '@tabler/icons-react'
-import { createFileRoute, useNavigate, useRouterState } from '@tanstack/react-router'
-import clsx from 'clsx'
+import { createFileRoute, useRouterState } from '@tanstack/react-router'
 import { useAtom } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { type CopilotDetail, createMessage, type Session } from 'src/shared/types'
+import { type CopilotDetail, createMessage, type Message, type SessionSettings } from 'src/shared/types'
 import { v4 as uuidv4 } from 'uuid'
-import InputBox, { type InputBoxPayload } from '@/components/InputBox'
+import InputBox, { type InputBoxPayload } from '@/components/InputBoxNew'
 import HomepageIcon from '@/components/icons/HomepageIcon'
 import Page from '@/components/Page'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import { useSettings } from '@/hooks/useSettings'
+import { ChatConfig } from '@/modals/SessionSettings'
 import platform from '@/platform'
 import { chatSessionSettingsAtom } from '@/stores/atoms'
 import * as sessionActions from '@/stores/sessionActions'
@@ -28,79 +27,34 @@ export const Route = createFileRoute('/')({
 function Index() {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
-
-  const [chatSessionSettings] = useAtom(chatSessionSettingsAtom)
-  const { settings } = useSettings()
-
-  const [session, setSession] = useState<Session>({
-    id: 'new',
-    ...initEmptyChatSession(),
-  })
-
-  // 理论上 initEmptyChatSession 的时候就已经读取了chatSessionSettingsAtom的值了，但是由于atom是异步的，冷启动的时候大概率会拿到一个空值，所以这里再设置一次
-  useEffect(() => {
-    setSession((old) => ({
-      ...old,
-      settings: {
-        ...old.settings,
-        maxContextMessageCount: settings.maxContextMessageCount || 6,
-        temperature: settings.temperature || undefined,
-        topP: settings.topP || undefined,
-        ...(settings.defaultChatModel
-          ? {
-              provider: settings.defaultChatModel.provider,
-              modelId: settings.defaultChatModel.model,
-            }
-          : chatSessionSettings),
-      },
-    }))
-  }, [chatSessionSettings, settings])
-
+  const [chatSessionSettings, setChatSessionSettings] = useAtom(chatSessionSettingsAtom)
   const selectedModel = useMemo(() => {
-    if (session.settings?.provider && session.settings.modelId) {
+    if (chatSessionSettings.provider && chatSessionSettings.modelId) {
       return {
-        provider: session.settings.provider,
-        modelId: session.settings.modelId,
+        provider: chatSessionSettings.provider,
+        modelId: chatSessionSettings.modelId,
       }
     }
-  }, [session])
+  }, [chatSessionSettings])
 
   const { copilots: myCopilots } = useMyCopilots()
   const { copilots: remoteCopilots } = useRemoteCopilots()
-  const selectedCopilotId = useMemo(() => session?.copilotId, [session?.copilotId])
+  const [selectedCopilotId, setSelectedCopilotId] = useState<string>()
   const selectedCopilot = useMemo(
     () => myCopilots.find((c) => c.id === selectedCopilotId) || remoteCopilots.find((c) => c.id === selectedCopilotId),
     [myCopilots, remoteCopilots, selectedCopilotId]
   )
-  useEffect(() => {
-    setSession((old) => ({
-      ...old,
-      picUrl: selectedCopilot?.picUrl,
-      name: selectedCopilot?.name || 'Untitled',
-      messages: selectedCopilot
-        ? [
-            {
-              id: uuidv4(),
-              role: 'system',
-              contentParts: [
-                {
-                  type: 'text',
-                  text: selectedCopilot.prompt,
-                },
-              ],
-            },
-          ]
-        : initEmptyChatSession().messages,
-    }))
-  }, [selectedCopilot])
 
   const routerState = useRouterState()
   useEffect(() => {
     const { copilotId } = routerState.location.search as any
     if (copilotId) {
-      setSession((old) => ({ ...old, copilotId }))
+      setSelectedCopilotId(copilotId)
     }
   }, [routerState.location.search])
+
+  const [sessionSettings, setSessionSettings] = useState<SessionSettings>()
+  const [opened, { open, close }] = useDisclosure(false)
 
   const handleSubmit = async ({
     needGenerating = true,
@@ -109,14 +63,38 @@ function Index() {
     attachments = [],
     links = [],
   }: InputBoxPayload) => {
-    const newSession = await createSession({
-      name: session.name,
-      type: 'chat',
-      picUrl: session.picUrl,
-      messages: session.messages,
-      copilotId: session.copilotId,
-      settings: session.settings,
-    })
+    const msgs: Message[] = []
+
+    if (selectedCopilot) {
+      msgs.push({ id: uuidv4(), role: 'system', contentParts: [{ type: 'text', text: selectedCopilot.prompt }] })
+      if (selectedCopilot.demoQuestion) {
+        msgs.push({
+          id: uuidv4(),
+          role: 'user',
+          contentParts: [{ type: 'text', text: selectedCopilot.demoQuestion }],
+        })
+      }
+      if (selectedCopilot.demoAnswer) {
+        msgs.push({
+          id: uuidv4(),
+          role: 'assistant',
+          contentParts: [{ type: 'text', text: selectedCopilot.demoAnswer }],
+        })
+      }
+    }
+    const newSession = selectedCopilot
+      ? await createSession({
+          name: selectedCopilot.name,
+          type: 'chat',
+          picUrl: selectedCopilot.picUrl,
+          messages: msgs,
+          copilotId: selectedCopilot.id,
+          settings: sessionSettings,
+        })
+      : await createSession({
+          ...initEmptyChatSession(),
+          settings: sessionSettings,
+        })
 
     sessionActions.switchCurrentSession(newSession.id)
 
@@ -148,91 +126,76 @@ function Index() {
         </Stack>
 
         <Stack gap="sm">
-          {session.copilotId ? (
+          {selectedCopilot ? (
             <Stack mx="md" gap="sm">
               <Flex align="center" gap="sm">
-                <CopilotItem name={session.name} picUrl={session.picUrl} selected />
+                <CopilotItem copilot={selectedCopilot} selected />
                 <ActionIcon
                   size={32}
                   radius={16}
                   c="chatbox-tertiary"
                   bg="#F1F3F5"
-                  onClick={() => setSession((old) => ({ ...old, copilotId: undefined }))}
+                  onClick={() => setSelectedCopilotId(undefined)}
                 >
                   <IconX size={24} />
                 </ActionIcon>
               </Flex>
 
               <Text c="chatbox-secondary" className="line-clamp-5">
-                {session.messages[0]?.contentParts?.map((part) => (part.type === 'text' ? part.text : '')).join('') ||
-                  ''}
+                {selectedCopilot.prompt}
               </Text>
             </Stack>
           ) : (
-            <CopilotPicker onSelect={(copilot) => setSession((old) => ({ ...old, copilotId: copilot?.id }))} />
+            <CopilotPicker onSelect={(copilot) => setSelectedCopilotId(copilot?.id)} />
           )}
 
           <InputBox
             sessionType="chat"
             sessionId="new"
             model={selectedModel}
+            fullWidth
             onSelectModel={(p, m) =>
-              setSession((old) => ({
-                ...old,
-                settings: {
-                  ...(old.settings || {}),
-                  provider: p,
-                  modelId: m,
-                },
-              }))
-            }
-            onClickSessionSettings={async () => {
-              const res: Session = await NiceModal.show('session-settings', {
-                session,
-                disableAutoSave: true,
+              setChatSessionSettings({
+                provider: p as any,
+                modelId: m,
               })
-              if (res) {
-                setSession((old) => ({
-                  ...old,
-                  ...res,
-                }))
-              }
+            }
+            onClickSessionSettings={() => {
+              open()
               return true
             }}
             onSubmit={handleSubmit}
           />
         </Stack>
+
+        <Modal opened={opened} onClose={close} centered size="lg" title={t('Conversation Settings')}>
+          <ChatConfig
+            settings={{
+              ...sessionSettings,
+              provider: selectedModel?.provider,
+              modelId: selectedModel?.modelId,
+            }}
+            onSettingsChange={(_settings) => setSessionSettings((old) => ({ ...(old ?? {}), ..._settings }))}
+          />
+        </Modal>
       </div>
     </Page>
   )
 }
 
-const MAX_COPILOTS_TO_SHOW = 10
-
 const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect?(copilot?: CopilotDetail): void }) => {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
-  const navigate = useNavigate()
   const { copilots: myCopilots } = useMyCopilots()
   const { copilots: remoteCopilots } = useRemoteCopilots()
 
   const copilots = useMemo(
-    () =>
-      myCopilots.length >= MAX_COPILOTS_TO_SHOW
-        ? myCopilots
-        : [
-            ...myCopilots,
-            ...(myCopilots.length && remoteCopilots.length ? [undefined] : []),
-            ...remoteCopilots
-              .filter((c) => !myCopilots.map((mc) => mc.id).includes(c.id))
-              .slice(0, MAX_COPILOTS_TO_SHOW - myCopilots.length - 1),
-          ],
+    () => [
+      ...myCopilots,
+      ...(myCopilots.length && remoteCopilots.length ? [undefined] : []),
+      ...remoteCopilots.filter((c) => !myCopilots.map((mc) => mc.id).includes(c.id)),
+    ],
     [myCopilots, remoteCopilots]
-  )
-
-  const showMoreButton = useMemo(
-    () => copilots.length < myCopilots.length + remoteCopilots.length,
-    [copilots.length, myCopilots.length, remoteCopilots.length]
   )
 
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -254,7 +217,7 @@ const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect
                 // onClick={() => setPage((p) => Math.max(p - 1, 0))}
                 onClick={() => {
                   if (viewportRef.current) {
-                    // const scrollWidth = viewportRef.current.scrollWidth
+                    const scrollWidth = viewportRef.current.scrollWidth
                     const clientWidth = viewportRef.current.clientWidth
                     const newScrollPosition = Math.max(scrollPosition.x - clientWidth, 0)
                     viewportRef.current.scrollTo({ left: newScrollPosition, behavior: 'smooth' })
@@ -297,8 +260,7 @@ const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect
               copilot ? (
                 <CopilotItem
                   key={copilot.id}
-                  name={copilot.name}
-                  picUrl={copilot.picUrl}
+                  copilot={copilot}
                   selected={selectedId === copilot.id}
                   onClick={() => {
                     onSelect?.(copilot)
@@ -308,19 +270,6 @@ const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect
                 <Divider key="divider" orientation="vertical" my="xs" mx="xxs" />
               )
             )}
-
-            {showMoreButton && (
-              <CopilotItem
-                name={t('View All Copilots')}
-                noAvatar={true}
-                selected={false}
-                onClick={() =>
-                  navigate({
-                    to: '/copilots',
-                  })
-                }
-              />
-            )}
           </Flex>
         </ScrollArea>
       </Stack>
@@ -329,17 +278,13 @@ const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect
 }
 
 const CopilotItem = ({
-  name,
-  picUrl,
+  copilot,
   selected,
   onClick,
-  noAvatar = false,
 }: {
-  name: string
-  picUrl?: string
+  copilot: CopilotDetail
   selected?: boolean
   onClick?(): void
-  noAvatar?: boolean
 }) => {
   const isSmallScreen = useIsSmallScreen()
   return (
@@ -350,19 +295,14 @@ const CopilotItem = ({
       px={isSmallScreen ? 'xs' : 'md'}
       bd={selected ? 'none' : '1px solid var(--mantine-color-chatbox-border-primary-outline)'}
       bg={selected ? 'var(--mantine-color-chatbox-brand-light)' : 'transparent'}
-      className={clsx(
-        'cursor-pointer shrink-0 shadow-[0px_2px_12px_0px_rgba(0,0,0,0.04)]',
-        isSmallScreen ? 'rounded-full' : 'rounded-md'
-      )}
+      className={isSmallScreen ? 'cursor-pointer rounded-full shrink-0' : 'cursor-pointer rounded-md shrink-0'}
       onClick={onClick}
     >
-      {!noAvatar && (
-        <Avatar src={picUrl} color="chatbox-brand" size={isSmallScreen ? 20 : 24}>
-          {name.slice(0, 1)}
-        </Avatar>
-      )}
+      <Avatar src={copilot.picUrl} color="chatbox-brand" size={isSmallScreen ? 20 : 24}>
+        {copilot.name.slice(0, 1)}
+      </Avatar>
       <Text fw="600" c={selected ? 'chatbox-brand' : 'chatbox-primary'}>
-        {name}
+        {copilot.name}
       </Text>
     </Flex>
   )

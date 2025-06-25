@@ -43,7 +43,7 @@ const KnowledgeBaseMenu: FC<Props> = (props) => {
         {knowledgeBases?.map((kb) => (
           <Menu.Item key={kb.id} onClick={() => props.onSelect?.(kb)}>
             <Flex justify="space-between" align="center" gap="xs">
-              <Flex gap="xs">
+              <Flex gap="xs" align="center">
                 <IconFile size={14} />
                 <Text c={kb.id === props.currentKnowledgeBaseId ? 'chatbox-brand' : ''}>{kb.name}</Text>
               </Flex>

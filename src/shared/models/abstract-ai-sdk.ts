@@ -1,25 +1,26 @@
 import {
   APICallError,
-  CoreMessage,
-  CoreSystemMessage,
-  EmbeddingModel,
+  type CoreMessage,
+  type CoreSystemMessage,
+  type EmbeddingModel,
   experimental_generateImage as generateImage,
-  ImageModel,
-  LanguageModelV1,
-  Provider,
+  type ImageModel,
+  type LanguageModelV1,
+  type Provider,
   streamText,
-  ToolSet,
+  type ToolSet,
 } from 'ai'
-import {
+import type {
   MessageContentParts,
+  MessageReasoningPart,
   MessageTextPart,
   MessageToolCallPart,
   ProviderModelInfo,
   StreamTextResult,
 } from '../types'
-import { ModelDependencies } from '../types/adapters'
+import type { ModelDependencies } from '../types/adapters'
 import { ApiError, ChatboxAIAPIError } from './errors'
-import { CallChatCompletionOptions, ModelInterface } from './types'
+import type { CallChatCompletionOptions, ModelInterface } from './types'
 
 // ai sdk CallSettings类型的子集
 export interface CallSettings {
@@ -47,7 +48,10 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     return false
   }
 
-  public constructor(public options: { model: ProviderModelInfo }, protected dependencies: ModelDependencies) {
+  public constructor(
+    public options: { model: ProviderModelInfo },
+    protected dependencies: ModelDependencies
+  ) {
     this.modelId = options.model.modelId
   }
 
@@ -149,20 +153,26 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       ...callSettings,
     })
 
-    let contentParts: MessageContentParts = []
-    let currentTextPart: MessageTextPart | undefined = undefined
-    let reasoningContent = ''
+    const contentParts: MessageContentParts = []
+    let currentTextPart: MessageTextPart | undefined
+    let currentReasoningPart: MessageReasoningPart | undefined
 
     for await (const chunk of result.fullStream) {
       console.debug('stream chunk', chunk)
       if (chunk.type === 'text-delta') {
+        currentReasoningPart = undefined
         if (!currentTextPart) {
           currentTextPart = { type: 'text', text: '' }
           contentParts.push(currentTextPart)
         }
         currentTextPart.text += chunk.textDelta
       } else if (chunk.type === 'reasoning') {
-        reasoningContent += chunk.textDelta
+        currentTextPart = undefined
+        if (!currentReasoningPart) {
+          currentReasoningPart = { type: 'reasoning', text: '' }
+          contentParts.push(currentReasoningPart)
+        }
+        currentReasoningPart.text += chunk.textDelta
       } else if (chunk.type === 'tool-call') {
         currentTextPart = undefined
         contentParts.push({
@@ -205,17 +215,16 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       } else {
         continue
       }
-      options.onResultChange?.({ reasoningContent, contentParts })
+      options.onResultChange?.({ contentParts })
     }
 
     const usage = await result.usage
     options.onResultChange?.({
       contentParts,
-      reasoningContent,
       tokenCount: usage?.completionTokens,
       tokensUsed: usage?.totalTokens,
     })
 
-    return { contentParts, reasoningContent, usage }
+    return { contentParts, usage }
   }
 }

@@ -1,12 +1,5 @@
-import Markdown from '@/components/Markdown'
-import * as dom from '@/hooks/dom'
-import { cn } from '@/lib/utils'
-import { copyToClipboard } from '@/packages/navigator'
-import { estimateTokensFromMessages } from '@/packages/token'
-import { countWord } from '@/packages/word-count'
-import platform from '@/platform'
-import { getMessageText } from '@/utils/message'
 import NiceModal from '@ebay/nice-modal-react'
+import { ActionIcon, Group, Paper, Space, Stack, Text } from '@mantine/core'
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import CopyAllIcon from '@mui/icons-material/CopyAll'
@@ -21,18 +14,29 @@ import SettingsIcon from '@mui/icons-material/Settings'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
 import SouthIcon from '@mui/icons-material/South'
 import StopIcon from '@mui/icons-material/Stop'
-import { ButtonGroup, Grid, IconButton, Tooltip, Typography, useTheme } from '@mui/material'
+import { Alert, ButtonGroup, Grid, IconButton, Tooltip, Typography, useTheme } from '@mui/material'
 import Avatar from '@mui/material/Avatar'
 import Box from '@mui/material/Box'
 import MenuItem from '@mui/material/MenuItem'
 import { useNavigate } from '@tanstack/react-router'
 import * as dateFns from 'date-fns'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { isEmpty } from 'lodash'
-import React, { FC, memo, MouseEventHandler, useEffect, useMemo, useRef, useState } from 'react'
+import { isEmpty, last } from 'lodash'
+import type React from 'react'
+import { type FC, type MouseEventHandler, memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Message, SessionType } from '../../shared/types'
+import Markdown from '@/components/Markdown'
+import * as dom from '@/hooks/dom'
+import { cn } from '@/lib/utils'
+import { copyToClipboard } from '@/packages/navigator'
+import { estimateTokensFromMessages } from '@/packages/token'
+import { countWord } from '@/packages/word-count'
+import platform from '@/platform'
+import { getMessageText } from '@/utils/message'
+import type { Message, MessageReasoningPart, SessionType } from '../../shared/types'
 import '../static/Block.css'
+
+import { IconBrain, IconChevronDown, IconChevronUp, IconCopy, IconInfoCircle } from '@tabler/icons-react'
 import {
   autoCollapseCodeBlockAtom,
   autoPreviewArtifactsAtom,
@@ -61,11 +65,11 @@ import * as toastActions from '../stores/toastActions'
 import { isContainRenderableCode, MessageArtifact } from './Artifact'
 import { MessageAttachment } from './Attachments'
 import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
-import Loading from './icons/Loading'
 import { ImageInStorage, Img } from './Image'
-import { ToolCallPartUI } from './message-parts/ToolCallPartUI'
+import Loading from './icons/Loading'
 import MessageErrTips from './MessageErrTips'
 import MessageStatuses from './MessageLoading'
+import { ToolCallPartUI } from './message-parts/ToolCallPartUI'
 import StyledMenu from './StyledMenu'
 
 interface Props {
@@ -80,7 +84,7 @@ interface Props {
   preferCollapsedCodeBlock?: boolean
 }
 
-const Message: FC<Props> = (props) => {
+const _Message: FC<Props> = (props) => {
   const { msg, className, collapseThreshold, hiddenButtonGroup, small, preferCollapsedCodeBlock } = props
 
   const navigate = useNavigate()
@@ -107,9 +111,13 @@ const Message: FC<Props> = (props) => {
   const autoCollapseCodeBlock = useAtomValue(autoCollapseCodeBlockAtom)
 
   const [previewArtifact, setPreviewArtifact] = useState(autoPreviewArtifacts)
+
+  // Reasoning content expansion states
+  const [reasoningExpandStates, setReasoningExpandStates] = useState<Record<string, boolean>>({})
+
   const contentLength = useMemo(() => {
     return getMessageText(msg).length
-  }, [msg.contentParts])
+  }, [msg])
 
   const needCollapse =
     collapseThreshold &&
@@ -117,13 +125,6 @@ const Message: FC<Props> = (props) => {
     contentLength > collapseThreshold &&
     contentLength - collapseThreshold > 50 // 只有折叠有明显效果才折叠，为了更好的用户体验
   const [isCollapsed, setIsCollapsed] = useState(needCollapse)
-
-  const [_isCollapsedReasoning, setIsCollapsedReasoning] = useState<boolean>() // 推理内容是否折叠
-  // 如果设置了 _isCollapsedReasoning 则使用 _isCollapsedReasoning，否则当 msg 的 content 不为空时折叠 reasoning
-  const isCollapsedReasoning = useMemo(
-    () => (typeof _isCollapsedReasoning === 'boolean' ? _isCollapsedReasoning : !!getMessageText(msg)),
-    [_isCollapsedReasoning, msg]
-  )
 
   const ref = useRef<HTMLDivElement>(null)
 
@@ -142,7 +143,7 @@ const Message: FC<Props> = (props) => {
   const quoteMsg = () => {
     let input = getMessageText(msg)
       .split('\n')
-      .map((line: any) => `> ${line}`)
+      .map((line) => `> ${line}`)
       .join('\n')
     input += '\n\n-------------------\n\n'
     setQuote(input)
@@ -168,23 +169,23 @@ const Message: FC<Props> = (props) => {
     setAnchorEl(null)
   }
 
-  const onCopyReasoningContent: MouseEventHandler<HTMLAnchorElement> = (e) => {
-    e.stopPropagation()
-    if (msg.reasoningContent) {
-      copyToClipboard(msg.reasoningContent)
-      toastActions.add(t('copied to clipboard'))
-      setAnchorEl(null)
+  // 复制特定 reasoning 内容
+  const onCopyReasoningContent =
+    (content: string): MouseEventHandler<HTMLButtonElement> =>
+    (e) => {
+      e.stopPropagation()
+      if (content) {
+        copyToClipboard(content)
+        toastActions.add(t('copied to clipboard'))
+        setAnchorEl(null)
+      }
     }
-  }
 
   const onReport = () => {
     setAnchorEl(null)
     NiceModal.show('report-content', { contentId: getMessageText(msg) || msg.id })
   }
 
-  const setMsg = (updated: Message) => {
-    sessionActions.modifyMessage(props.sessionId, updated, true)
-  }
   const onDelMsg = () => {
     setAnchorEl(null)
     sessionActions.removeMessage(props.sessionId, msg.id)
@@ -211,7 +212,7 @@ const Message: FC<Props> = (props) => {
       tips.push(`tokens used: ${msg.tokensUsed || 'unknown'}`)
     }
     if (showFirstTokenLatency && msg.role === 'assistant' && !msg.generating) {
-      let latency = msg.firstTokenLatency ? `${msg.firstTokenLatency}ms` : 'unknown'
+      const latency = msg.firstTokenLatency ? `${msg.firstTokenLatency}ms` : 'unknown'
       tips.push(`first token latency: ${latency}`)
     }
     if (showModelName && props.msg.role === 'assistant') {
@@ -226,7 +227,7 @@ const Message: FC<Props> = (props) => {
 
   // 消息时间戳
   if (showMessageTimestamp && msg.timestamp !== undefined) {
-    let date = new Date(msg.timestamp)
+    const date = new Date(msg.timestamp)
     let messageTimestamp: string
     if (dateFns.isToday(date)) {
       // - 当天，显示 HH:mm
@@ -239,7 +240,7 @@ const Message: FC<Props> = (props) => {
       messageTimestamp = dateFns.format(date, 'yyyy-MM-dd HH:mm')
     }
 
-    tips.push('time: ' + messageTimestamp)
+    tips.push(`time: ${messageTimestamp}`)
   }
 
   let fixedButtonGroup = false
@@ -278,7 +279,7 @@ const Message: FC<Props> = (props) => {
       return false
     }
     return isContainRenderableCode(getMessageText(msg))
-  }, [msg.contentParts, msg.role])
+  }, [msg.contentParts, msg.role, msg])
 
   // 消息生成中自动跟踪滚动
   useEffect(() => {
@@ -292,7 +293,8 @@ const Message: FC<Props> = (props) => {
       }
       setAutoScrollId(null)
     }
-  }, [msg.generating])
+  }, [msg.generating, autoScrollId, msg.id])
+
   useEffect(() => {
     if (msg.generating && autoScrollId) {
       if (needArtifact) {
@@ -310,9 +312,9 @@ const Message: FC<Props> = (props) => {
         scrollActions.tickAutoScroll(autoScrollId)
       }
     }
-  }, [msg.contentParts, msg.reasoningContent, needArtifact])
+  }, [needArtifact, autoScrollId, msg.generating, msg.id])
 
-  let contentParts = msg.contentParts
+  const contentParts = msg.contentParts
 
   const CollapseButton = (
     <span
@@ -342,6 +344,67 @@ const Message: FC<Props> = (props) => {
             ]
           : undefined,
     })
+  }
+
+  const renderReasoningContent = (msg: Message, item?: MessageReasoningPart, index?: number) => {
+    const reasoningContent = item?.text || msg.reasoningContent || ''
+    const reasoningKey = item ? `reasoning-${index}` : 'main-reasoning'
+    const isThinking =
+      msg.generating && item && msg.contentParts && msg.contentParts.length > 0 && msg.contentParts.length - 1 === index
+    const isExpanded = reasoningExpandStates[reasoningKey] ?? isThinking
+
+    const toggleExpanded = () => {
+      setReasoningExpandStates((prev) => ({
+        ...prev,
+        [reasoningKey]: !prev[reasoningKey],
+      }))
+    }
+
+    return (
+      <Stack gap="xs" mb="xs">
+        <Paper withBorder radius="md" px="xs" onClick={toggleExpanded} className="cursor-pointer">
+          <Group justify="space-between" className="w-full">
+            <Group gap="xs" className={cn(isThinking ? 'animate-pulse' : '')}>
+              <Text fw={600} size="sm">
+                {isThinking ? t('Thinking') : t('Deeply thought')}
+              </Text>
+              <IconBrain size={16} color="var(--mantine-color-chatbox-brand-text)" />
+            </Group>
+            <Space miw="xl" />
+            <Group gap="xs">
+              <ActionIcon
+                variant="subtle"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onCopyReasoningContent(reasoningContent)(e)
+                }}
+                aria-label={t('Copy reasoning content')}
+              >
+                <IconCopy size={16} />
+              </ActionIcon>
+
+              <Text c="chatbox-brand" size="xs">
+                {isExpanded ? t('Hide') : t('Expand')}
+              </Text>
+              {/* {isExpanded ? (
+                <IconChevronUp size={16} color="var(--mantine-color-chatbox-brand-text)" />
+              ) : (
+                <IconChevronDown size={16} color="var(--mantine-color-chatbox-brand-text)" />
+              )} */}
+            </Group>
+          </Group>
+        </Paper>
+
+        {isExpanded && (
+          <Paper withBorder radius="md" p="sm">
+            <Text size="sm" style={{ whiteSpace: 'pre-line', lineHeight: 1.5 }}>
+              {reasoningContent}
+            </Text>
+          </Paper>
+        )}
+      </Stack>
+    )
   }
 
   return (
@@ -487,54 +550,8 @@ const Message: FC<Props> = (props) => {
         <Grid item xs sm container sx={{ width: '0px', paddingRight: '15px' }}>
           <Grid item xs>
             <MessageStatuses statuses={msg.status} />
-            <div
-              className={cn(
-                'max-w-full inline-block',
-                msg.role !== 'assistant' ? 'bg-stone-400/10 dark:bg-blue-400/10 px-2 rounded ' : ''
-              )}
-            >
-              {msg.reasoningContent && (
-                <Box className="bg-stone-300/10 dark:bg-blue-300/10 rounded p-2 mb-2 ">
-                  <Box
-                    className="cursor-pointer select-none flex flex-row justify-start items-center gap-1"
-                    onClick={() => setIsCollapsedReasoning(!isCollapsedReasoning)}
-                  >
-                    <Typography variant="caption" color="text.secondary">
-                      {msg.generating ? t('Thinking') : t('Deeply thought')}
-                    </Typography>
-                    <SouthIcon
-                      sx={{
-                        fontSize: 12,
-                        transform: isCollapsedReasoning ? 'rotate(0deg)' : 'rotate(180deg)',
-                        transition: 'transform 0.2s',
-                      }}
-                    />
-
-                    {!msg.generating && (
-                      <IconButton
-                        sx={{
-                          marginLeft: 'auto',
-                        }}
-                        onClick={onCopyReasoningContent}
-                        href="#"
-                      >
-                        <ContentCopyIcon
-                          sx={{
-                            fontSize: 16,
-                          }}
-                        />
-                      </IconButton>
-                    )}
-                  </Box>
-                  {!isCollapsedReasoning && (
-                    <Box sx={{ mt: 1 }}>
-                      <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: 'pre-line' }}>
-                        {msg.reasoningContent}
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-              )}
+            <div className={cn('w-full inline-block', msg.role !== 'assistant' ? '  px-2 rounded ' : '')}>
+              {msg.reasoningContent && renderReasoningContent(msg)}
               <Box
                 className={cn('msg-content', { 'msg-content-small': small })}
                 sx={small ? { fontSize: theme.typography.body2.fontSize } : {}}
@@ -547,8 +564,10 @@ const Message: FC<Props> = (props) => {
                 {contentParts && contentParts.length > 0 && (
                   <div>
                     {contentParts.map((item, index) =>
-                      item.type === 'text' ? (
-                        <div key={index}>
+                      item.type === 'reasoning' ? (
+                        <div key={`reasoning-${msg.id}-${index}`}>{renderReasoningContent(msg, item, index)}</div>
+                      ) : item.type === 'text' ? (
+                        <div key={`text-${msg.id}-${index}`}>
                           {enableMarkdownRendering && !isCollapsed ? (
                             <Markdown
                               enableLaTeXRendering={enableLaTeXRendering}
@@ -563,14 +582,20 @@ const Message: FC<Props> = (props) => {
                             </Markdown>
                           ) : (
                             <div style={{ whiteSpace: 'pre-line' }}>
-                              {needCollapse && isCollapsed ? item.text.slice(0, collapseThreshold) + '...' : item.text}
+                              {needCollapse && isCollapsed ? `${item.text.slice(0, collapseThreshold)}...` : item.text}
                               {needCollapse && isCollapsed && CollapseButton}
                             </div>
                           )}
                         </div>
+                      ) : item.type === 'info' ? (
+                        <div key={`info-${item.text}`} className="mb-2">
+                          <Alert color="info" icon={<IconInfoCircle />}>
+                            {item.text}
+                          </Alert>
+                        </div>
                       ) : item.type === 'image' ? (
                         props.sessionType !== 'picture' && (
-                          <div key={index}>
+                          <div key={`image-${item.storageKey}`}>
                             <div
                               className="w-[100px] min-w-[100px] h-[100px] min-h-[100px]
                                                     md:w-[200px] md:min-w-[200px] md:h-[200px] md:min-h-[200px]
@@ -593,9 +618,9 @@ const Message: FC<Props> = (props) => {
                 <div className="flex flex-row items-start justify-start overflow-x-auto overflow-y-hidden">
                   {msg.contentParts
                     .filter((p) => p.type === 'image')
-                    .map((pic, index) => (
+                    .map((pic) => (
                       <div
-                        key={index}
+                        key={pic.storageKey}
                         className="w-[100px] min-w-[100px] h-[100px] min-h-[100px]
                                                     md:w-[200px] md:min-w-[200px] md:h-[200px] md:min-h-[200px]
                                                     p-1.5 mr-2 mb-2 inline-flex items-center justify-center
@@ -625,11 +650,11 @@ const Message: FC<Props> = (props) => {
               )}
               {(msg.files || msg.links) && (
                 <div className="flex flex-row items-start justify-start overflow-x-auto overflow-y-hidden pb-1">
-                  {msg.files?.map((file, index) => (
-                    <MessageAttachment key={index} label={file.name} filename={file.name} />
+                  {msg.files?.map((file) => (
+                    <MessageAttachment key={file.name} label={file.name} filename={file.name} />
                   ))}
-                  {msg.links?.map((link, index) => (
-                    <MessageAttachment key={index} label={link.title} url={link.url} />
+                  {msg.links?.map((link) => (
+                    <MessageAttachment key={link.url} label={link.title} url={link.url} />
                   ))}
                 </div>
               )}
@@ -668,7 +693,7 @@ const Message: FC<Props> = (props) => {
                       ...(fixedButtonGroup
                         ? {
                             position: 'fixed',
-                            bottom: dom.getInputBoxHeight() + 4 + 'px',
+                            bottom: `${dom.getInputBoxHeight() + 4}px`,
                             zIndex: 100,
                             marginBottom: 'var(--mobile-safe-area-inset-bottom, 0px)',
                           }
@@ -724,7 +749,7 @@ const Message: FC<Props> = (props) => {
                               onClick={onEditClick}
                               disabled={
                                 // 图文消息暂时不让编辑
-                                !isEmpty(msg.contentParts) && !msg.contentParts!.every((c) => c.type === 'text')
+                                !isEmpty(msg.contentParts) && !msg.contentParts.every((c) => c.type === 'text')
                               }
                             >
                               <EditIcon fontSize="small" />
@@ -761,10 +786,10 @@ const Message: FC<Props> = (props) => {
                       anchorEl={anchorEl}
                       open={open}
                       onClose={handleClose}
-                      key={msg.id + 'menu'}
+                      key={`${msg.id}menu`}
                     >
                       <MenuItem
-                        key={msg.id + 'quote'}
+                        key={`${msg.id}quote`}
                         onClick={() => {
                           setAnchorEl(null)
                           quoteMsg()
@@ -776,7 +801,7 @@ const Message: FC<Props> = (props) => {
                         {t('quote')}
                       </MenuItem>
                       {msg.role === 'assistant' && platform.type === 'mobile' && (
-                        <MenuItem key={msg.id + 'report'} onClick={onReport} disableRipple>
+                        <MenuItem key={`${msg.id}report`} onClick={onReport} disableRipple>
                           <ReportIcon fontSize="small" />
                           {t('report')}
                         </MenuItem>
@@ -794,4 +819,4 @@ const Message: FC<Props> = (props) => {
   )
 }
 
-export default memo(Message)
+export default memo(_Message)

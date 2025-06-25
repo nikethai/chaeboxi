@@ -46,6 +46,8 @@ export type MessageRole = (typeof MessageRoleEnum)[keyof typeof MessageRoleEnum]
 
 export type MessageTextPart = { type: 'text'; text: string }
 export type MessageImagePart = { type: 'image'; storageKey: string }
+export type MessageInfoPart = { type: 'info'; text: string; values?: Record<string, any> }
+export type MessageReasoningPart = { type: 'reasoning'; text: string }
 export type MessageToolCallPart<Args = unknown, Result = unknown> = {
   type: 'tool-call'
   state: 'call' | 'result' | 'error'
@@ -55,7 +57,13 @@ export type MessageToolCallPart<Args = unknown, Result = unknown> = {
   result?: Result
 }
 
-export type MessageContentParts = (MessageTextPart | MessageImagePart | MessageToolCallPart)[]
+export type MessageContentParts = (
+  | MessageTextPart
+  | MessageImagePart
+  | MessageInfoPart
+  | MessageToolCallPart
+  | MessageReasoningPart
+)[]
 export type StreamTextResult = {
   contentParts: MessageContentParts
   reasoningContent?: string
@@ -210,9 +218,11 @@ export function createMessage(role: MessageRole = MessageRoleEnum.User, content:
     id: uuidv4(),
     contentParts: content ? [{ type: 'text', text: content }] : [], // 防止为 undefined 或 null
     role: role,
-    timestamp: new Date().getTime(),
+    timestamp: Date.now(),
   }
 }
+
+export type ToolUseScope = 'web-browsing' | 'knowledge-base'
 
 export enum ModelProviderEnum {
   ChatboxAI = 'chatbox-ai',

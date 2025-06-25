@@ -1,7 +1,4 @@
-import { getToolName } from '@/packages/tools'
-import type { SearchResultItem } from '@/packages/web-search'
-import { alpha, SimpleGrid } from '@mantine/core'
-import { Box, Code, Group, Paper, Space, Stack, Text } from '@mantine/core'
+import { alpha, Box, Code, Group, Paper, SimpleGrid, Space, Stack, Text, Transition } from '@mantine/core'
 import {
   IconArrowRight,
   IconCircleCheckFilled,
@@ -11,9 +8,11 @@ import {
   IconTool,
 } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
-import { FC, useState } from 'react'
+import { type FC, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { MessageToolCallPart } from 'src/shared/types'
+import { getToolName } from '@/packages/tools'
+import type { SearchResultItem } from '@/packages/web-search'
 
 const ToolCallHeader: FC<{ part: MessageToolCallPart; actionText: string; onClick: () => void }> = (props) => {
   return (
@@ -69,25 +68,27 @@ const WebSearchToolCallUI: FC<{ part: WebBrowsingToolCallPart }> = ({ part }) =>
         actionText={t(expaned ? 'Hide' : 'Expand')}
         onClick={() => setExpand((prev) => !prev)}
       />
-      {expaned && (
-        <Stack gap="xs">
-          <Group gap="xs" my={2}>
-            <Text c="chatbox-tertiary" m={0}>
-              {t('Search query')}:
-            </Text>
-            <Text fw={600} size="sm" m={0} fs="italic">
-              {part.args.query}
-            </Text>
-          </Group>
-          {part.result && (
-            <SimpleGrid cols={{ sm: 3, md: 4 }} spacing="xs">
-              {part.result.searchResults.map((result, index) => (
-                <SearchResultCard key={result.link} index={index} result={result} />
-              ))}
-            </SimpleGrid>
-          )}
-        </Stack>
-      )}
+      <Transition transition="fade-down" duration={100} mounted={expaned}>
+        {(transitionStyle) => (
+          <Stack gap="xs" style={{ ...transitionStyle, zIndex: 1 }}>
+            <Group gap="xs" my={2}>
+              <Text c="chatbox-tertiary" m={0}>
+                {t('Search query')}:
+              </Text>
+              <Text fw={600} size="sm" m={0} fs="italic">
+                {part.args.query}
+              </Text>
+            </Group>
+            {part.result && (
+              <SimpleGrid cols={{ sm: 3, md: 4 }} spacing="xs">
+                {part.result.searchResults.map((result, index) => (
+                  <SearchResultCard key={result.link} index={index} result={result} />
+                ))}
+              </SimpleGrid>
+            )}
+          </Stack>
+        )}
+      </Transition>
       {!expaned && part.result && (
         <Group gap="xs" wrap="nowrap" className="overflow-x-auto" pb="xs">
           {part.result.searchResults.map((result, index) => (
@@ -109,34 +110,37 @@ const GeneralToolCallUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
         actionText={t(expaned ? 'Hide' : 'Expand')}
         onClick={() => setExpand((prev) => !prev)}
       />
-      {expaned && (
-        <Paper withBorder radius="md" p="sm">
-          <Stack gap="xs">
-            <Group gap="xs" c="chatbox-tertiary">
-              <IconCode size={16} />
-              <Text fw={600} size="xs" c="chatbox-tertiary" m="0">
-                {t('Arguments')}
-              </Text>
-            </Group>
-            <Box>
-              <Code block>{JSON.stringify(part.args, null, 2)}</Code>
-            </Box>
-          </Stack>
-          {!!part.result && (
-            <Stack gap="xs" className="mt-2">
+
+      <Transition transition="fade-down" duration={100} mounted={expaned}>
+        {(transitionStyle) => (
+          <Paper withBorder radius="md" p="sm" style={{ ...transitionStyle, zIndex: 1 }}>
+            <Stack gap="xs">
               <Group gap="xs" c="chatbox-tertiary">
-                <IconArrowRight size={16} />
+                <IconCode size={16} />
                 <Text fw={600} size="xs" c="chatbox-tertiary" m="0">
-                  {t('Result')}
+                  {t('Arguments')}
                 </Text>
               </Group>
               <Box>
-                <Code block>{JSON.stringify(part.result, null, 2)}</Code>
+                <Code block>{JSON.stringify(part.args, null, 2)}</Code>
               </Box>
             </Stack>
-          )}
-        </Paper>
-      )}
+            {!!part.result && (
+              <Stack gap="xs" className="mt-2">
+                <Group gap="xs" c="chatbox-tertiary">
+                  <IconArrowRight size={16} />
+                  <Text fw={600} size="xs" c="chatbox-tertiary" m="0">
+                    {t('Result')}
+                  </Text>
+                </Group>
+                <Box>
+                  <Code block>{JSON.stringify(part.result, null, 2)}</Code>
+                </Box>
+              </Stack>
+            )}
+          </Paper>
+        )}
+      </Transition>
     </Stack>
   )
 }

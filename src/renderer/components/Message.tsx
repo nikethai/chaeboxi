@@ -1,5 +1,5 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { ActionIcon, Group, Paper, Space, Stack, Text } from '@mantine/core'
+import { ActionIcon, Group, Paper, Space, Stack, Text, Transition } from '@mantine/core'
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate'
 import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import CopyAllIcon from '@mui/icons-material/CopyAll'
@@ -396,13 +396,15 @@ const _Message: FC<Props> = (props) => {
           </Group>
         </Paper>
 
-        {isExpanded && (
-          <Paper withBorder radius="md" p="sm">
-            <Text size="sm" style={{ whiteSpace: 'pre-line', lineHeight: 1.5 }}>
-              {reasoningContent}
-            </Text>
-          </Paper>
-        )}
+        <Transition transition="fade-down" duration={100} mounted={isExpanded}>
+          {(transitionStyle) => (
+            <Paper withBorder radius="md" p="sm" style={{ ...transitionStyle, zIndex: 1 }}>
+              <Text size="sm" style={{ whiteSpace: 'pre-line', lineHeight: 1.5 }}>
+                {reasoningContent}
+              </Text>
+            </Paper>
+          )}
+        </Transition>
       </Stack>
     )
   }
@@ -551,11 +553,11 @@ const _Message: FC<Props> = (props) => {
           <Grid item xs>
             <MessageStatuses statuses={msg.status} />
             <div className={cn('w-full inline-block', msg.role !== 'assistant' ? '  px-2 rounded ' : '')}>
-              {msg.reasoningContent && renderReasoningContent(msg)}
               <Box
                 className={cn('msg-content', { 'msg-content-small': small })}
                 sx={small ? { fontSize: theme.typography.body2.fontSize } : {}}
               >
+                {msg.reasoningContent && renderReasoningContent(msg)}
                 {
                   // 这里的空行仅仅是为了在只发送文件时消息气泡的美观
                   // 正常情况下，应该考虑优化 msg-content 的样式。现在这里是一个临时的偷懒方式。

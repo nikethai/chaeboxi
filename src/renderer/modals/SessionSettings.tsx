@@ -1,23 +1,7 @@
-import { Session, SessionSettings, createMessage, isChatSession, isPictureSession } from '@/../shared/types'
-import { Accordion, AccordionDetails, AccordionSummary } from '@/components/Accordion'
-import EditableAvatar from '@/components/EditableAvatar'
-import { ImageInStorage, handleImageInputAndSave } from '@/components/Image'
-import ImageCountSlider from '@/components/ImageCountSlider'
-import ImageStyleSelect from '@/components/ImageStyleSelect'
-import MaxContextMessageCountSlider from '@/components/MaxContextMessageCountSlider'
-import SliderWithInput from '@/components/SliderWithInput'
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import { trackingEvent } from '@/packages/event'
-import { StorageKeyGenerator } from '@/storage/StoreStorage'
-import * as atoms from '@/stores/atoms'
-import * as sessionActions from '@/stores/sessionActions'
-import { getSession, saveSession } from '@/stores/sessionStorageMutations'
-import { getMessageText } from '@/utils/message'
 import NiceModal, { muiDialogV5, useModal } from '@ebay/nice-modal-react'
 import { Flex, Stack, Text, Tooltip } from '@mantine/core'
 import ImageIcon from '@mui/icons-material/Image'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
-import SegmentedControl from '@/components/SegmentedControl'
 import {
   Button,
   Dialog,
@@ -34,233 +18,250 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { chatSessionSettings, pictureSessionSettings } from 'src/shared/defaults'
+import { createMessage, isChatSession, isPictureSession, type Session, type SessionSettings } from '@/../shared/types'
+import { Accordion, AccordionDetails, AccordionSummary } from '@/components/Accordion'
+import EditableAvatar from '@/components/EditableAvatar'
+import { handleImageInputAndSave, ImageInStorage } from '@/components/Image'
+import ImageCountSlider from '@/components/ImageCountSlider'
+import ImageStyleSelect from '@/components/ImageStyleSelect'
+import MaxContextMessageCountSlider from '@/components/MaxContextMessageCountSlider'
+import SegmentedControl from '@/components/SegmentedControl'
+import SliderWithInput from '@/components/SliderWithInput'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { trackingEvent } from '@/packages/event'
+import { StorageKeyGenerator } from '@/storage/StoreStorage'
+import * as atoms from '@/stores/atoms'
+import * as sessionActions from '@/stores/sessionActions'
+import { saveSession } from '@/stores/sessionStorageMutations'
+import { getMessageText } from '@/utils/message'
 
-const SessionSettings = NiceModal.create(({ chatConfigDialogSessionId }: { chatConfigDialogSessionId: string }) => {
-  const modal = useModal()
-  const { t } = useTranslation()
-  const isSmallScreen = useIsSmallScreen()
-  const globalSettings = useAtomValue(atoms.settingsAtom)
-  const theme = useTheme()
+const SessionSettingsModal = NiceModal.create(
+  ({ session, disableAutoSave = false }: { session: Session; disableAutoSave?: boolean }) => {
+    const modal = useModal()
+    const { t } = useTranslation()
+    const isSmallScreen = useIsSmallScreen()
+    const globalSettings = useAtomValue(atoms.settingsAtom)
+    const theme = useTheme()
 
-  const chatConfigDialogSession = getSession(chatConfigDialogSessionId || '')
-  const [editingData, setEditingData] = useState<Session | null>(chatConfigDialogSession || null)
-  useEffect(() => {
-    if (!chatConfigDialogSession) {
-      setEditingData(null)
-    } else {
-      setEditingData({
-        ...chatConfigDialogSession,
-        settings: chatConfigDialogSession.settings ? { ...chatConfigDialogSession.settings } : undefined,
-      })
-    }
-  }, [chatConfigDialogSessionId])
-
-  const [systemPrompt, setSystemPrompt] = useState('')
-  useEffect(() => {
-    if (!chatConfigDialogSession) {
-      setSystemPrompt('')
-    } else {
-      const systemMessage = chatConfigDialogSession.messages.find((m) => m.role === 'system')
-      setSystemPrompt(systemMessage ? getMessageText(systemMessage) : '')
-    }
-  }, [chatConfigDialogSessionId])
-
-  const onReset = (event: React.MouseEvent) => {
-    event.stopPropagation()
-    event.preventDefault()
-    setEditingData((_editingData) =>
-      _editingData
-        ? {
-            ..._editingData,
-            settings: {
-              ..._editingData.settings,
-              maxContextMessageCount: undefined,
-              temperature: undefined,
-              dalleStyle: pictureSessionSettings().dalleStyle,
-              imageGenerateNum: pictureSessionSettings().imageGenerateNum,
-            },
-          }
-        : _editingData
-    )
-  }
-
-  useEffect(() => {
-    if (chatConfigDialogSession) {
-      trackingEvent('chat_config_window', { event_category: 'screen_view' })
-    }
-  }, [chatConfigDialogSessionId])
-
-  const onCancel = () => {
-    if (chatConfigDialogSession) {
-      setEditingData({
-        ...chatConfigDialogSession,
-      })
-    }
-    modal.resolve()
-    modal.hide()
-  }
-  const onSave = () => {
-    if (!chatConfigDialogSession || !editingData) {
-      return
-    }
-    if (editingData.name === '') {
-      editingData.name = chatConfigDialogSession.name
-    }
-    editingData.name = editingData.name.trim()
-    if (systemPrompt === '') {
-      editingData.messages = editingData.messages.filter((m) => m.role !== 'system')
-    } else {
-      const systemMessage = editingData.messages.find((m) => m.role === 'system')
-      if (systemMessage) {
-        systemMessage.contentParts = [{ type: 'text', text: systemPrompt.trim() }]
+    const [editingData, setEditingData] = useState<Session | null>(session || null)
+    useEffect(() => {
+      if (!session) {
+        setEditingData(null)
       } else {
-        editingData.messages.unshift(createMessage('system', systemPrompt.trim()))
+        setEditingData({
+          ...session,
+          settings: session.settings ? { ...session.settings } : undefined,
+        })
       }
+    }, [session])
+
+    const [systemPrompt, setSystemPrompt] = useState('')
+    useEffect(() => {
+      if (!session) {
+        setSystemPrompt('')
+      } else {
+        const systemMessage = session.messages.find((m) => m.role === 'system')
+        setSystemPrompt(systemMessage ? getMessageText(systemMessage) : '')
+      }
+    }, [session])
+
+    const onReset = (event: React.MouseEvent) => {
+      event.stopPropagation()
+      event.preventDefault()
+      setEditingData((_editingData) =>
+        _editingData
+          ? {
+              ..._editingData,
+              settings: {
+                ..._editingData.settings,
+                maxContextMessageCount: undefined,
+                temperature: undefined,
+                dalleStyle: pictureSessionSettings().dalleStyle,
+                imageGenerateNum: pictureSessionSettings().imageGenerateNum,
+              },
+            }
+          : _editingData
+      )
     }
-    saveSession(editingData)
-    // setChatConfigDialogSessionId(null)
-    modal.resolve()
-    modal.hide()
-  }
 
-  if (!chatConfigDialogSession || !editingData) {
-    return null
-  }
+    useEffect(() => {
+      if (session) {
+        trackingEvent('chat_config_window', { event_category: 'screen_view' })
+      }
+    }, [session])
 
-  return (
-    <Dialog
-      {...muiDialogV5(modal)}
-      onClose={() => {
-        modal.resolve()
-        modal.hide()
-      }}
-      fullWidth
-    >
-      <DialogTitle>{t('Conversation Settings')}</DialogTitle>
-      <DialogContent>
-        <DialogContentText></DialogContentText>
+    const onCancel = () => {
+      if (session) {
+        setEditingData({
+          ...session,
+        })
+      }
+      modal.resolve()
+      modal.hide()
+    }
+    const onSave = () => {
+      if (!session || !editingData) {
+        return
+      }
+      if (editingData.name === '') {
+        editingData.name = session.name
+      }
+      editingData.name = editingData.name.trim()
+      if (systemPrompt === '') {
+        editingData.messages = editingData.messages.filter((m) => m.role !== 'system')
+      } else {
+        const systemMessage = editingData.messages.find((m) => m.role === 'system')
+        if (systemMessage) {
+          systemMessage.contentParts = [{ type: 'text', text: systemPrompt.trim() }]
+        } else {
+          editingData.messages.unshift(createMessage('system', systemPrompt.trim()))
+        }
+      }
+      if (!disableAutoSave) {
+        saveSession(editingData)
+      }
+      // setChatConfigDialogSessionId(null)
+      modal.resolve(editingData)
+      modal.hide()
+    }
 
-        <EditableAvatar
-          onChange={(event) => {
-            if (!event.target.files) {
-              return
-            }
-            const file = event.target.files[0]
-            if (file) {
-              const key = StorageKeyGenerator.picture(`assistant-avatar:${chatConfigDialogSession?.id}`)
-              handleImageInputAndSave(file, key, () => setEditingData({ ...editingData, assistantAvatarKey: key }))
-            }
-          }}
-          onRemove={() => {
-            setEditingData({ ...editingData, assistantAvatarKey: undefined })
-          }}
-          removable={!!editingData.assistantAvatarKey}
-          sx={{
-            backgroundColor:
-              editingData.type === 'picture'
-                ? theme.palette.secondary.main
-                : editingData.picUrl
-                ? theme.palette.background.default
-                : theme.palette.primary.main,
-          }}
-        >
-          {editingData.assistantAvatarKey ? (
-            <ImageInStorage
-              storageKey={editingData.assistantAvatarKey}
-              className="object-cover object-center w-full h-full"
-            />
-          ) : editingData.picUrl ? (
-            <img src={editingData.picUrl} className="object-cover object-center w-full h-full" />
-          ) : editingData.type === 'picture' ? (
-            <ImageIcon
-              fontSize="large"
-              sx={{
-                width: '60px',
-                height: '60px',
-              }}
-            />
-          ) : globalSettings.defaultAssistantAvatarKey ? (
-            <ImageInStorage
-              storageKey={globalSettings.defaultAssistantAvatarKey}
-              className="object-cover object-center w-full h-full"
-            />
-          ) : (
-            <SmartToyIcon fontSize="large" />
-          )}
-        </EditableAvatar>
-        <TextField
-          autoFocus={!isSmallScreen}
-          margin="dense"
-          label={t('name')}
-          type="text"
-          fullWidth
-          variant="outlined"
-          value={editingData.name}
-          onChange={(e) => setEditingData({ ...editingData, name: e.target.value })}
-        />
-        <div className="mt-1">
+    if (!session || !editingData) {
+      return null
+    }
+
+    return (
+      <Dialog
+        {...muiDialogV5(modal)}
+        onClose={() => {
+          modal.resolve()
+          modal.hide()
+        }}
+        fullWidth
+      >
+        <DialogTitle>{t('Conversation Settings')}</DialogTitle>
+        <DialogContent>
+          <DialogContentText></DialogContentText>
+
+          <EditableAvatar
+            onChange={(event) => {
+              if (!event.target.files) {
+                return
+              }
+              const file = event.target.files[0]
+              if (file) {
+                const key = StorageKeyGenerator.picture(`assistant-avatar:${session?.id}`)
+                handleImageInputAndSave(file, key, () => setEditingData({ ...editingData, assistantAvatarKey: key }))
+              }
+            }}
+            onRemove={() => {
+              setEditingData({ ...editingData, assistantAvatarKey: undefined })
+            }}
+            removable={!!editingData.assistantAvatarKey}
+            sx={{
+              backgroundColor:
+                editingData.type === 'picture'
+                  ? theme.palette.secondary.main
+                  : editingData.picUrl
+                    ? theme.palette.background.default
+                    : theme.palette.primary.main,
+            }}
+          >
+            {editingData.assistantAvatarKey ? (
+              <ImageInStorage
+                storageKey={editingData.assistantAvatarKey}
+                className="object-cover object-center w-full h-full"
+              />
+            ) : editingData.picUrl ? (
+              <img src={editingData.picUrl} className="object-cover object-center w-full h-full" />
+            ) : editingData.type === 'picture' ? (
+              <ImageIcon
+                fontSize="large"
+                sx={{
+                  width: '60px',
+                  height: '60px',
+                }}
+              />
+            ) : globalSettings.defaultAssistantAvatarKey ? (
+              <ImageInStorage
+                storageKey={globalSettings.defaultAssistantAvatarKey}
+                className="object-cover object-center w-full h-full"
+              />
+            ) : (
+              <SmartToyIcon fontSize="large" />
+            )}
+          </EditableAvatar>
           <TextField
+            autoFocus={!isSmallScreen}
             margin="dense"
-            label={t('Instruction (System Prompt)')}
-            placeholder={t('Copilot Prompt Demo') || ''}
+            label={t('name')}
+            type="text"
             fullWidth
             variant="outlined"
-            multiline
-            minRows={2}
-            maxRows={8}
-            value={systemPrompt}
-            onChange={(event) => setSystemPrompt(event.target.value)}
+            value={editingData.name}
+            onChange={(e) => setEditingData({ ...editingData, name: e.target.value })}
           />
-        </div>
+          <div className="mt-1">
+            <TextField
+              margin="dense"
+              label={t('Instruction (System Prompt)')}
+              placeholder={t('Copilot Prompt Demo') || ''}
+              fullWidth
+              variant="outlined"
+              multiline
+              minRows={2}
+              maxRows={8}
+              value={systemPrompt}
+              onChange={(event) => setSystemPrompt(event.target.value)}
+            />
+          </div>
 
-        <Accordion defaultExpanded={true} className="mt-2">
-          <AccordionSummary aria-controls="panel1a-content">
-            <div className="flex flex-row w-full justify-between items-center">
-              <Typography>{t('Specific model settings')}</Typography>
-            </div>
-            {editingData.settings && (
-              <Button size="small" variant="text" onClick={onReset}>
-                {t('Reset')}
-              </Button>
-            )}
-          </AccordionSummary>
-          <AccordionDetails>
-            {/* <Text>{JSON.stringify(editingData.settings)}</Text> */}
-            {isChatSession(chatConfigDialogSession) && (
-              <ChatConfig
-                settings={editingData.settings}
-                onSettingsChange={(d) =>
-                  setEditingData((_data) => {
-                    if (_data) {
-                      return {
-                        ..._data,
-                        settings: {
-                          ..._data?.settings,
-                          ...d,
-                        },
+          <Accordion defaultExpanded={true} className="mt-2">
+            <AccordionSummary aria-controls="panel1a-content">
+              <div className="flex flex-row w-full justify-between items-center">
+                <Typography>{t('Specific model settings')}</Typography>
+              </div>
+              {editingData.settings && (
+                <Button size="small" variant="text" onClick={onReset}>
+                  {t('Reset')}
+                </Button>
+              )}
+            </AccordionSummary>
+            <AccordionDetails>
+              {/* <Text>{JSON.stringify(editingData.settings)}</Text> */}
+              {isChatSession(session) && (
+                <ChatConfig
+                  settings={editingData.settings}
+                  onSettingsChange={(d) =>
+                    setEditingData((_data) => {
+                      if (_data) {
+                        return {
+                          ..._data,
+                          settings: {
+                            ..._data?.settings,
+                            ...d,
+                          },
+                        }
+                      } else {
+                        return null
                       }
-                    } else {
-                      return null
-                    }
-                  })
-                }
-              />
-            )}
-            {isPictureSession(chatConfigDialogSession) && (
-              <PictureConfig dataEdit={editingData} setDataEdit={setEditingData} />
-            )}
-          </AccordionDetails>
-        </Accordion>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onCancel}>{t('cancel')}</Button>
-        <Button onClick={onSave}>{t('save')}</Button>
-      </DialogActions>
-    </Dialog>
-  )
-})
+                    })
+                  }
+                />
+              )}
+              {isPictureSession(session) && <PictureConfig dataEdit={editingData} setDataEdit={setEditingData} />}
+            </AccordionDetails>
+          </Accordion>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={onCancel}>{t('cancel')}</Button>
+          <Button onClick={onSave}>{t('save')}</Button>
+        </DialogActions>
+      </Dialog>
+    )
+  }
+)
 
-export default SessionSettings
+export default SessionSettingsModal
 
 interface ThinkingBudgetConfigProps {
   currentBudgetTokens: number
@@ -534,6 +535,7 @@ export function ChatConfig({
         value={settings?.maxContextMessageCount ?? chatSessionSettings().maxContextMessageCount!}
         onChange={(v) => onSettingsChange({ maxContextMessageCount: v })}
       />
+
       <Stack gap="xs">
         <Flex align="center" gap="xs">
           <Text size="sm" fw="600">
@@ -554,6 +556,28 @@ export function ChatConfig({
 
         <SliderWithInput value={settings?.temperature} onChange={(v) => onSettingsChange({ temperature: v })} max={2} />
       </Stack>
+
+      <Stack gap="xs">
+        <Flex align="center" gap="xs">
+          <Text size="sm" fw="600">
+            Top P
+          </Text>
+          <Tooltip
+            label={t(
+              'The topP parameter controls the diversity of AI responses: lower values make the output more focused and predictable, while higher values allow for more varied and creative replies.'
+            )}
+            withArrow={true}
+            maw={320}
+            className="!whitespace-normal"
+            zIndex={3000}
+          >
+            <IconInfoCircle size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
+          </Tooltip>
+        </Flex>
+
+        <SliderWithInput value={settings?.topP} onChange={(v) => onSettingsChange({ topP: v })} max={2} />
+      </Stack>
+
       <Stack>
         {settings && settings.provider === 'claude' && (
           <ClaudeProviderConfig settings={settings} onSettingsChange={onSettingsChange} />

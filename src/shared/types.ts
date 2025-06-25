@@ -334,6 +334,10 @@ export interface Settings extends SessionSettings {
   }[]
 
   // default models
+  defaultChatModel?: {
+    provider: ModelProvider | string
+    model: string
+  }
   threadNamingModel?: {
     provider: ModelProvider | string
     model: string

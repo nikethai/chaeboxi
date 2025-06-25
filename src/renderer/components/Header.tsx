@@ -1,4 +1,3 @@
-import { cn } from '@/lib/utils'
 import NiceModal from '@ebay/nice-modal-react'
 import EditIcon from '@mui/icons-material/Edit'
 import ImageIcon from '@mui/icons-material/Image'
@@ -7,18 +6,17 @@ import { useAtom, useAtomValue } from 'jotai'
 import { PanelRightClose, Settings2 } from 'lucide-react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/lib/utils'
 import { isChatSession, isPictureSession } from '../../shared/types'
 import useNeedRoomForWinControls from '../hooks/useNeedRoomForWinControls'
 import { useIsSmallScreen } from '../hooks/useScreenChange'
 import * as atoms from '../stores/atoms'
 import * as sessionActions from '../stores/sessionActions'
 import * as settingActions from '../stores/settingActions'
-import Toolbar from './Toolbar'
 import MiniButton from './MiniButton'
+import Toolbar from './Toolbar'
 
-interface Props {}
-
-export default function Header(props: Props) {
+export default function Header() {
   const { t } = useTranslation()
   const theme = useTheme()
   const currentSession = useAtomValue(atoms.currentSessionAtom)
@@ -50,7 +48,7 @@ export default function Header(props: Props) {
     if (!currentSession) {
       return
     }
-    NiceModal.show('session-settings', { chatConfigDialogSessionId: currentSession.id })
+    NiceModal.show('session-settings', { session: currentSession })
   }
 
   let EditButton: React.ReactNode | null = null

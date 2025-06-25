@@ -1062,7 +1062,15 @@ export function initEmptyChatSession(): Omit<Session, 'id'> {
     type: 'chat',
     messages: [],
     settings: {
-      ...chatSessionSettings,
+      maxContextMessageCount: settings.maxContextMessageCount || 6,
+      temperature: settings.temperature || undefined,
+      topP: settings.topP || undefined,
+      ...(settings.defaultChatModel
+        ? {
+            provider: settings.defaultChatModel.provider,
+            modelId: settings.defaultChatModel.model,
+          }
+        : chatSessionSettings),
     },
   }
   if (settings.defaultPrompt) {

@@ -1,13 +1,15 @@
-import { handleImageInputAndSave, ImageInStorage } from '@/components/Image'
-import { useSettings } from '@/hooks/useSettings'
-import { Box, Button, FileButton, Flex, Stack, Switch, Text, Textarea, Title } from '@mantine/core'
-import { createFileRoute } from '@tanstack/react-router'
-import { useTranslation } from 'react-i18next'
+import { Box, Button, FileButton, Flex, Stack, Switch, Text, Textarea, Title, Tooltip } from '@mantine/core'
 import PersonIcon from '@mui/icons-material/Person'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
-import EditableAvatar from '@/components/EditableAvatar'
+import { IconInfoCircle } from '@tabler/icons-react'
+import { createFileRoute } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
+import { chatSessionSettings, getDefaultPrompt } from 'src/shared/defaults'
+import { handleImageInputAndSave, ImageInStorage } from '@/components/Image'
+import MaxContextMessageCountSlider from '@/components/MaxContextMessageCountSlider'
+import SliderWithInput from '@/components/SliderWithInput'
+import { useSettings } from '@/hooks/useSettings'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
-import { getDefaultPrompt } from 'src/shared/defaults'
 import { add as addToast } from '@/stores/toastActions'
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -128,34 +130,82 @@ function RouteComponent() {
         </Stack>
       </Stack>
 
-      {/* Default Prompt */}
-      <Stack gap="xxs">
-        <Text fw="600">{t('Default Prompt for New Conversation')}</Text>
-        <Textarea
-          value={settings.defaultPrompt || ''}
-          autosize
-          minRows={1}
-          maxRows={12}
-          onChange={(e) =>
-            setSettings({
-              defaultPrompt: e.currentTarget.value,
-            })
-          }
+      {/* Default Settings */}
+      <Stack gap="md">
+        <Text fw="600">{t('Default Settings for New Conversation')}</Text>
+        <Stack gap="xxs">
+          <Text fw="500">{t('Prompt')}</Text>
+          <Textarea
+            value={settings.defaultPrompt || ''}
+            autosize
+            minRows={1}
+            maxRows={12}
+            onChange={(e) =>
+              setSettings({
+                defaultPrompt: e.currentTarget.value,
+              })
+            }
+          />
+          <Button
+            variant="transparent"
+            color="chatbox-gray"
+            onClick={() => {
+              setSettings({
+                defaultPrompt: getDefaultPrompt(),
+              })
+            }}
+            px={3}
+            py={6}
+            className=" self-start"
+          >
+            {t('Reset to Default')}
+          </Button>
+        </Stack>
+
+        <MaxContextMessageCountSlider
+          wrapperProps={{ gap: 'xxs' }}
+          labelProps={{ fw: undefined }}
+          value={settings?.maxContextMessageCount ?? chatSessionSettings().maxContextMessageCount!}
+          onChange={(v) => setSettings({ maxContextMessageCount: v })}
         />
-        <Button
-          variant="transparent"
-          color="chatbox-gray"
-          onClick={() => {
-            setSettings({
-              defaultPrompt: getDefaultPrompt(),
-            })
-          }}
-          px={3}
-          py={6}
-          className=" self-start"
-        >
-          {t('Reset to Default')}
-        </Button>
+
+        <Stack gap="xxs">
+          <Flex align="center" gap="xs">
+            <Text size="sm">{t('Temperature')}</Text>
+            <Tooltip
+              label={t(
+                'Modify the creativity of AI responses; the higher the value, the more random and intriguing the answers become, while a lower value ensures greater stability and reliability.'
+              )}
+              withArrow={true}
+              maw={320}
+              className="!whitespace-normal"
+              zIndex={3000}
+            >
+              <IconInfoCircle size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
+            </Tooltip>
+          </Flex>
+
+          <SliderWithInput value={settings?.temperature} onChange={(v) => setSettings({ temperature: v })} max={2} />
+        </Stack>
+
+        <Stack gap="xxs">
+          <Flex align="center" gap="xs">
+            <Text size="sm">Top P</Text>
+            <Tooltip
+              label={t(
+                'The topP parameter controls the diversity of AI responses: lower values make the output more focused and predictable, while higher values allow for more varied and creative replies.'
+              )}
+              withArrow={true}
+              maw={320}
+              className="!whitespace-normal"
+              zIndex={3000}
+            >
+              <IconInfoCircle size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
+            </Tooltip>
+          </Flex>
+
+          <SliderWithInput value={settings?.topP} onChange={(v) => setSettings({ topP: v })} max={2} />
+        </Stack>
       </Stack>
 
       {/* Conversation Settings */}
@@ -169,7 +219,7 @@ function RouteComponent() {
           <Switch
             label={t('show message word count')}
             checked={settings.showWordCount}
-            onChange={(e) =>
+            onChange={() =>
               setSettings({
                 showWordCount: !settings.showWordCount,
               })
@@ -179,7 +229,7 @@ function RouteComponent() {
           <Switch
             label={t('show message token count')}
             checked={settings.showTokenCount}
-            onChange={(e) =>
+            onChange={() =>
               setSettings({
                 showTokenCount: !settings.showTokenCount,
               })
@@ -189,7 +239,7 @@ function RouteComponent() {
           <Switch
             label={t('show message token usage')}
             checked={settings.showTokenUsed}
-            onChange={(e) =>
+            onChange={() =>
               setSettings({
                 showTokenUsed: !settings.showTokenUsed,
               })
@@ -199,7 +249,7 @@ function RouteComponent() {
           <Switch
             label={t('show model name')}
             checked={settings.showModelName}
-            onChange={(e) =>
+            onChange={() =>
               setSettings({
                 showModelName: !settings.showModelName,
               })
@@ -209,7 +259,7 @@ function RouteComponent() {
           <Switch
             label={t('show message timestamp')}
             checked={settings.showMessageTimestamp}
-            onChange={(e) =>
+            onChange={() =>
               setSettings({
                 showMessageTimestamp: !settings.showMessageTimestamp,
               })
@@ -219,7 +269,7 @@ function RouteComponent() {
           <Switch
             label={t('show first token latency')}
             checked={settings.showFirstTokenLatency}
-            onChange={(e) =>
+            onChange={() =>
               setSettings({
                 showFirstTokenLatency: !settings.showFirstTokenLatency,
               })
@@ -234,7 +284,7 @@ function RouteComponent() {
           <Switch
             label={t('Auto-collapse code blocks')}
             checked={settings.autoCollapseCodeBlock}
-            onChange={(e) =>
+            onChange={() =>
               setSettings({
                 autoCollapseCodeBlock: !settings.autoCollapseCodeBlock,
               })
@@ -243,7 +293,7 @@ function RouteComponent() {
           <Switch
             label={t('Auto-Generate Chat Titles')}
             checked={settings.autoGenerateTitle}
-            onChange={(e) =>
+            onChange={() =>
               setSettings({
                 ...settings,
                 autoGenerateTitle: !settings.autoGenerateTitle,
@@ -253,7 +303,7 @@ function RouteComponent() {
           <Switch
             label={t('Spell Check')}
             checked={settings.spellCheck}
-            onChange={(e) =>
+            onChange={() =>
               setSettings({
                 ...settings,
                 spellCheck: !settings.spellCheck,
@@ -263,7 +313,7 @@ function RouteComponent() {
           <Switch
             label={t('Markdown Rendering')}
             checked={settings.enableMarkdownRendering}
-            onChange={(e) =>
+            onChange={() =>
               setSettings({
                 ...settings,
                 enableMarkdownRendering: !settings.enableMarkdownRendering,
@@ -273,7 +323,7 @@ function RouteComponent() {
           <Switch
             label={t('LaTeX Rendering (Requires Markdown)')}
             checked={settings.enableLaTeXRendering}
-            onChange={(e) =>
+            onChange={() =>
               setSettings({
                 ...settings,
                 enableLaTeXRendering: !settings.enableLaTeXRendering,
@@ -283,7 +333,7 @@ function RouteComponent() {
           <Switch
             label={t('Mermaid Diagrams & Charts Rendering')}
             checked={settings.enableMermaidRendering}
-            onChange={(e) =>
+            onChange={() =>
               setSettings({
                 ...settings,
                 enableMermaidRendering: !settings.enableMermaidRendering,
@@ -294,7 +344,7 @@ function RouteComponent() {
             label={t('Inject default metadata')}
             checked={settings.injectDefaultMetadata}
             description={t('e.g., Model Name, Current Date')}
-            onChange={(e) =>
+            onChange={() =>
               setSettings({
                 ...settings,
                 injectDefaultMetadata: !settings.injectDefaultMetadata,
@@ -305,7 +355,7 @@ function RouteComponent() {
             label={t('Auto-preview artifacts')}
             checked={settings.autoPreviewArtifacts}
             description={t('Automatically render generated artifacts (e.g., HTML with CSS, JS, Tailwind)')}
-            onChange={(e) =>
+            onChange={() =>
               setSettings({
                 ...settings,
                 autoPreviewArtifacts: !settings.autoPreviewArtifacts,
@@ -318,7 +368,7 @@ function RouteComponent() {
             description={t(
               'Pasting long text will automatically insert it as a file, keeping chats clean and reducing token usage with prompt caching.'
             )}
-            onChange={(e) =>
+            onChange={() =>
               setSettings({
                 ...settings,
                 pasteLongTextAsAFile: !settings.pasteLongTextAsAFile,

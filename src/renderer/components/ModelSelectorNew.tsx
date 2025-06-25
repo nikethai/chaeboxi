@@ -1,48 +1,35 @@
-import { useProviders } from '@/hooks/useProviders'
+import { Badge, Button, Combobox, type ComboboxProps, Drawer, Flex, Stack, Text, useCombobox } from '@mantine/core'
+import { useDisclosure } from '@mantine/hooks'
+import { IconStar, IconStarFilled } from '@tabler/icons-react'
+import { useNavigate } from '@tanstack/react-router'
+import clsx from 'clsx'
 import {
   cloneElement,
-  FC,
   forwardRef,
   isValidElement,
-  MouseEvent,
-  PropsWithChildren,
-  ReactElement,
+  type MouseEvent,
+  type PropsWithChildren,
+  type ReactElement,
   useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  Badge,
-  Box,
-  Button,
-  Combobox,
-  ComboboxProps,
-  Divider,
-  Drawer,
-  Flex,
-  FloatingPosition,
-  Stack,
-  Text,
-  useCombobox,
-} from '@mantine/core'
-import { ModelProvider, ProviderModelInfo } from 'src/shared/types'
-import ProviderIcon from './icons/ProviderIcon'
-import { useNavigate } from '@tanstack/react-router'
-import { useDisclosure } from '@mantine/hooks'
+import type { ModelProvider, ProviderModelInfo } from 'src/shared/types'
+import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import { IconStar, IconStarFilled } from '@tabler/icons-react'
-import clsx from 'clsx'
+import ProviderIcon from './icons/ProviderIcon'
 
 export type ModelSelectorProps = PropsWithChildren<
   {
     showAuto?: boolean
+    autoText?: string
     onSelect?: (provider: ModelProvider | string, model: string) => void
     onDropdownOpen?: () => void
   } & ComboboxProps
 >
 
 export const ModelSelector = forwardRef<HTMLDivElement, ModelSelectorProps>(
-  ({ showAuto, onSelect, onDropdownOpen, children, ...comboboxProps }, ref) => {
+  ({ showAuto, autoText, onSelect, onDropdownOpen, children, ...comboboxProps }, ref) => {
     const { t } = useTranslation()
     const navigate = useNavigate()
     const { providers, favoritedModels, favoriteModel, unfavoriteModel, isFavoritedModel } = useProviders()
@@ -196,7 +183,7 @@ export const ModelSelector = forwardRef<HTMLDivElement, ModelSelectorProps>(
                 }}
               >
                 <Text span size="md" c="chatbox-secondary" lineClamp={1} className="flex-grow-0 flex-shrink text-left">
-                  Auto
+                  {autoText || t('Auto')}
                 </Text>
               </Flex>
             )}
@@ -298,7 +285,7 @@ export const ModelSelector = forwardRef<HTMLDivElement, ModelSelectorProps>(
           <Combobox.Options mah="50vh" style={{ overflowY: 'auto' }}>
             {showAuto && (
               <Combobox.Option value={''} c="chatbox-primary">
-                Auto
+                {autoText || t('Auto')}
               </Combobox.Option>
             )}
             {isEmpty && !showAuto ? (

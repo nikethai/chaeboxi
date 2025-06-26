@@ -60,6 +60,4 @@ getInitPromise().catch((error) => {
 // Re-export public APIs for external use
 export { getDatabase, getVectorStore, parseSQLiteTimestamp, withTransaction } from './db'
 export { readChunks, searchKnowledgeBase } from './file-loaders'
-export type { FileMeta } from './file-loaders'
 export { getEmbeddingProvider, getRerankProvider, getVisionProvider } from './model-providers'
-

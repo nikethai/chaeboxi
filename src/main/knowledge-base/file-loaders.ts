@@ -12,13 +12,6 @@ import { getEmbeddingProvider, getRerankProvider, getVisionProvider } from './mo
 
 const log = getLogger('knowledge-base:file-loaders')
 
-export type FileMeta = {
-  name: string
-  path: string
-  type: string
-  size: number
-}
-
 // Parse file to MDocument based on file type
 async function parseFileToDocument(
   filePath: string,
@@ -103,7 +96,12 @@ export async function processFileWithMastra(
     })
 
     if (!allChunks || allChunks.length === 0) {
-      throw new Error('No chunks generated from document')
+      // throw new Error('No chunks generated from document')
+      await db.execute({
+        sql: 'UPDATE kb_file SET chunk_count = 0, status = ? WHERE id = ?',
+        args: ['done', fileMeta.fileId],
+      })
+      return
     }
 
     // Record total chunks if not already recorded

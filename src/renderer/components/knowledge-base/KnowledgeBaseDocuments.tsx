@@ -29,10 +29,10 @@ import {
   IconUpload,
   IconX,
 } from '@tabler/icons-react'
-import { Block } from '@tanstack/react-router'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import type { KnowledgeBase } from 'src/shared/types'
+import { toast } from 'sonner'
+import type { FileMeta, KnowledgeBase } from 'src/shared/types'
 import { useKnowledgeBaseFiles, useKnowledgeBaseFilesActions, useKnowledgeBaseFilesCount } from '@/hooks/knowledge-base'
 import { useChunksPreview } from '@/hooks/useChunksPreview'
 import platform from '@/platform'
@@ -91,6 +91,57 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
     return () => clearInterval(pollInterval)
   }, [knowledgeBase?.id, allFiles, refetch, refetchCount])
 
+  // MIME type correction for Windows compatibility
+  const correctMimeType = React.useCallback((file: File): FileMeta => {
+    const filename = file.name.toLowerCase()
+    let mimeType = file.type
+
+    // If MIME type is empty or incorrect, infer from file extension
+    if (!mimeType || mimeType === '') {
+      if (filename.endsWith('.md') || filename.endsWith('.markdown')) {
+        mimeType = 'text/markdown'
+      } else if (filename.endsWith('.txt')) {
+        mimeType = 'text/plain'
+      } else if (filename.endsWith('.pdf')) {
+        mimeType = 'application/pdf'
+      } else if (filename.endsWith('.doc')) {
+        mimeType = 'application/msword'
+      } else if (filename.endsWith('.docx')) {
+        mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+      } else if (filename.endsWith('.rtf')) {
+        mimeType = 'application/rtf'
+      } else if (filename.endsWith('.csv')) {
+        mimeType = 'text/csv'
+      } else if (filename.endsWith('.epub')) {
+        mimeType = 'application/epub+zip'
+      } else if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) {
+        mimeType = 'image/jpeg'
+      } else if (filename.endsWith('.png')) {
+        mimeType = 'image/png'
+      } else if (filename.endsWith('.gif')) {
+        mimeType = 'image/gif'
+      } else if (filename.endsWith('.webp')) {
+        mimeType = 'image/webp'
+      } else if (filename.endsWith('.svg')) {
+        mimeType = 'image/svg+xml'
+      } else if (filename.endsWith('.bmp')) {
+        mimeType = 'image/bmp'
+      } else {
+        // Default to text/plain for unknown text-like files
+        mimeType = 'text/plain'
+      }
+
+      console.log(`[Upload] Corrected MIME type for ${file.name}: "${file.type}" -> "${mimeType}"`)
+    }
+
+    return {
+      name: file.name,
+      path: file.path,
+      type: mimeType,
+      size: file.size,
+    }
+  }, [])
+
   // Calculate height for exactly 5 document items (each item ~60px + gaps)
   const maxHeight = 5 * 60 // 5 items * 60px
 
@@ -126,10 +177,33 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
       '.epub',
     ]
     const imageTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp']
+
+    // Add MIME types for better Windows compatibility
+    const documentMimeTypes = [
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+      'text/markdown',
+      'application/rtf',
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'text/csv',
+      'application/epub+zip',
+    ]
+    const imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp']
+
     const hasVisionModel = knowledgeBase?.visionModel && knowledgeBase.visionModel.trim() !== ''
 
+    // Combine file extensions and MIME types for better compatibility
+    const allDocumentTypes = [...documentTypes, ...documentMimeTypes]
+    const allImageTypes = hasVisionModel ? [...imageTypes, ...imageMimeTypes] : []
+    const allTypes = [...allDocumentTypes, ...allImageTypes]
+
     return {
-      accept: hasVisionModel ? `${documentTypes.join(',')},${imageTypes.join(',')}` : documentTypes.join(','),
+      accept: allTypes.join(','),
       display: hasVisionModel ? [...documentTypes, ...imageTypes] : documentTypes,
     }
   }, [knowledgeBase?.visionModel])
@@ -141,28 +215,90 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
 
       console.log(`[Upload] Starting upload for ${files.length} files.`)
 
-      const knowledgeBaseController = platform.getKnowledgeBaseController()
-      await Promise.all(
-        Array.from(files).map((file) => {
-          console.log(`[Upload] Starting upload for file: ${file.name}`)
-          return knowledgeBaseController.uploadFile(knowledgeBase.id, file)
+      try {
+        const knowledgeBaseController = platform.getKnowledgeBaseController()
+
+        // Process and correct MIME types for all files
+        const correctedFiles: FileMeta[] = []
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i]
+          const correctedFile = correctMimeType(file)
+          correctedFiles.push(correctedFile)
+
+          console.log(`[Upload] File ${i + 1}/${files.length}: ${file.name} (${correctedFile.type})`)
+        }
+
+        // Upload all files using allSettled to allow partial successes
+        const uploadResults = await Promise.allSettled(
+          correctedFiles.map(async (file) => {
+            console.log(`[Upload] Starting upload for file: ${file.name}`)
+            await knowledgeBaseController.uploadFile(knowledgeBase.id, file)
+            return file
+          })
+        )
+
+        // Count successes and failures
+        const successfulUploads = uploadResults.filter((result) => result.status === 'fulfilled')
+        const failedUploads = uploadResults.filter((result) => result.status === 'rejected')
+
+        // Log individual failures
+        failedUploads.forEach((result, index) => {
+          if (result.status === 'rejected') {
+            const fileName = correctedFiles[uploadResults.indexOf(result)]?.name || 'Unknown file'
+            console.error(`[Upload] Failed to upload file ${fileName}:`, result.reason)
+            toast.error(
+              t('Failed to upload {{filename}}: {{error}}', {
+                filename: fileName,
+                error: (result.reason as Error)?.message || 'Unknown error',
+              })
+            )
+          }
         })
-      )
 
-      console.log(`[Upload] All files uploaded successfully.`)
+        // Provide appropriate user feedback
+        if (successfulUploads.length > 0 && failedUploads.length === 0) {
+          console.log(`[Upload] All files uploaded successfully.`)
+          toast.success(t('Successfully uploaded {{count}} file(s)', { count: successfulUploads.length }))
+        } else if (successfulUploads.length > 0 && failedUploads.length > 0) {
+          console.log(
+            `[Upload] Partial success: ${successfulUploads.length} succeeded, ${failedUploads.length} failed.`
+          )
+          toast.success(
+            t('Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.', {
+              success: successfulUploads.length,
+              total: files.length,
+              failed: failedUploads.length,
+            })
+          )
+        } else if (failedUploads.length === files.length) {
+          console.log(`[Upload] All files failed to upload.`)
+          // Don't show additional error toast here since individual errors were already shown
+        }
 
-      // Immediately refresh the data to show the new file
-      await Promise.all([refetch(), refetchCount()])
+        // Track successful uploads only
+        if (successfulUploads.length > 0) {
 
-      // Also invalidate cache for other components
-      invalidateFiles(knowledgeBase.id)
+          // Immediately refresh the data to show the new files
+          await Promise.all([refetch(), refetchCount()])
 
-      // Auto-expand to show the uploaded file (only if not already expanded)
-      if (!isExpanded) {
-        setIsExpanded(true)
+          // Also invalidate cache for other components
+          invalidateFiles(knowledgeBase.id)
+
+          // Auto-expand to show the uploaded files (only if not already expanded)
+          if (!isExpanded) {
+            setIsExpanded(true)
+          }
+        }
+      } catch (error) {
+        console.error('[Upload] Upload operation failed:', error)
+        toast.error(
+          t('Upload failed: {{error}}', {
+            error: (error as Error)?.message || 'Unknown error',
+          })
+        )
       }
     },
-    [knowledgeBase?.id, refetch, refetchCount, invalidateFiles, isExpanded, knowledgeBase?.name]
+    [knowledgeBase?.id, knowledgeBase?.name, correctMimeType, refetch, refetchCount, invalidateFiles, isExpanded, t]
   )
 
   // Handle drag and drop events
@@ -188,15 +324,15 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
       setIsDragOver(false)
 
       const files = e.dataTransfer.files
-      if (files.length === 0) return
-
-      try {
-        await uploadFiles(files)
-      } catch (error) {
-        console.error('Failed to upload files via drag and drop:', error)
+      if (files.length === 0) {
+        toast.warning(t('No files were dropped'))
+        return
       }
+
+      console.log(`[Upload] Drag & Drop: ${files.length} files`)
+      await uploadFiles(files)
     },
-    [uploadFiles]
+    [uploadFiles, t]
   )
 
   // Handle file deletion
@@ -402,17 +538,30 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
       input.multiple = true
       const { accept } = getSupportedFileTypes()
       input.accept = accept
+
+      console.log('[Upload] File dialog accept types:', accept)
+
       input.onchange = async (e) => {
         const files = (e.target as HTMLInputElement).files
         if (!files || !files.length) return
 
+        console.log('[Upload] Files selected:', files.length)
         await uploadFiles(files)
       }
-      input.click()
+
+      // Add a small delay for better Windows compatibility
+      setTimeout(() => {
+        input.click()
+      }, 10)
     } catch (error) {
       console.error('Failed to upload file:', error)
+      toast.error(
+        t('Failed to open file dialog: {{error}}', {
+          error: (error as Error)?.message || 'Unknown error',
+        })
+      )
     }
-  }, [knowledgeBase?.id, getSupportedFileTypes, uploadFiles])
+  }, [knowledgeBase?.id, getSupportedFileTypes, uploadFiles, t])
 
   const supportedTypes = getSupportedFileTypes()
 
@@ -557,7 +706,7 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
                                 <Text size="xs" c="dimmed">
                                   {formatFileSize(doc.file_size)}
                                 </Text>
-                                {doc.status === 'done' && doc.chunk_count > 0 && (
+                                {doc.status === 'done' && (
                                   <Text
                                     size="xs"
                                     c="dimmed"

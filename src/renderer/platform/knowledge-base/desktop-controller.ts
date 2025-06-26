@@ -1,4 +1,5 @@
 import type { ElectronIPC } from 'src/shared/electron-types'
+import type { FileMeta } from 'src/shared/types'
 import type { KnowledgeBaseController } from './interface'
 
 class DesktopKnowledgeBaseController implements KnowledgeBaseController {
@@ -35,7 +36,7 @@ class DesktopKnowledgeBaseController implements KnowledgeBaseController {
     return await this.ipc.invoke('kb:file:list-paginated', kbId, offset, limit)
   }
 
-  async uploadFile(kbId: number, file: File) {
+  async uploadFile(kbId: number, file: FileMeta) {
     const fileMeta = {
       name: file.name,
       path: file.path,

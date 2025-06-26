@@ -609,3 +609,10 @@ export interface KnowledgeBaseSearchResult {
   mimeType: string
   chunkIndex: number
 }
+
+export type FileMeta = {
+  name: string
+  path: string
+  type: string
+  size: number
+}

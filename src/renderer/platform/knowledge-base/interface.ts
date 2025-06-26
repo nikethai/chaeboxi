@@ -1,4 +1,4 @@
-import type { KnowledgeBase, KnowledgeBaseFile, KnowledgeBaseSearchResult } from 'src/shared/types'
+import type { FileMeta, KnowledgeBase, KnowledgeBaseFile, KnowledgeBaseSearchResult } from 'src/shared/types'
 
 export interface KnowledgeBaseController {
   list(): Promise<KnowledgeBase[]>
@@ -12,7 +12,7 @@ export interface KnowledgeBaseController {
   listFiles(kbId: number): Promise<KnowledgeBaseFile[]>
   countFiles(kbId: number): Promise<number>
   listFilesPaginated(kbId: number, offset?: number, limit?: number): Promise<KnowledgeBaseFile[]>
-  uploadFile(kbId: number, file: File): Promise<void>
+  uploadFile(kbId: number, file: FileMeta): Promise<void>
   deleteFile(fileId: number): Promise<void>
   retryFile(fileId: number): Promise<void>
   pauseFile(fileId: number): Promise<void>

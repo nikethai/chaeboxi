@@ -95,7 +95,9 @@ const ChunksPreviewModal: React.FC<ChunksPreviewModalProps> = ({
           ) : (
             <Center py="xl">
               <Text size="sm" c="dimmed">
-                {t('No chunks found')}
+                {t(
+                  'No chunks available. Try converting the file to a text format before adding it to the knowledge base.'
+                )}
               </Text>
             </Center>
           )}

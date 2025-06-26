@@ -1,8 +1,9 @@
 import { ipcMain } from 'electron'
+import type { FileMeta } from 'src/shared/types'
 import { sentry } from '../adapters/sentry'
 import { getLogger } from '../util'
 import { getDatabase, getVectorStore, parseSQLiteTimestamp, withTransaction } from './db'
-import { type FileMeta, readChunks, searchKnowledgeBase } from './file-loaders'
+import { readChunks, searchKnowledgeBase } from './file-loaders'
 
 const log = getLogger('knowledge-base:ipc-handlers')
 
@@ -404,7 +405,7 @@ export function registerKnowledgeBaseHandlers() {
   // File upload and create task, embeddingProvider parameter is required
   ipcMain.handle('kb:file:upload', async (_event, kbId: number, file: FileMeta): Promise<{ id: number }> => {
     try {
-      log.debug(`ipcMain: kb:file:upload, kbId=${kbId}, filename=${file.name}`)
+      log.debug(`ipcMain: kb:file:upload, kbId=${kbId}, file=${JSON.stringify(file)}`)
 
       if (!kbId || kbId <= 0) {
         throw new Error('Invalid knowledge base ID')

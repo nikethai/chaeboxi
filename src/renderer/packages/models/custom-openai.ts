@@ -1,9 +1,9 @@
-import { fetchWithProxy } from '@/utils/request'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
+import type { ProviderModelInfo } from 'src/shared/types'
+import { fetchWithProxy } from '@/utils/request'
 import AbstractAISDKModel from './abstract-ai-sdk'
 import { normalizeOpenAIApiHostAndPath } from './llm_utils'
-import { ProviderModelInfo } from 'src/shared/types'
 
 interface Options {
   apiKey: string
@@ -45,7 +45,11 @@ export default class CustomOpenAI extends AbstractAISDKModel {
             'HTTP-Referer': 'https://chatboxai.app',
             'X-Title': 'Chatbox AI',
           }
-        : undefined,
+        : this.options.apiHost.includes('aihubmix.com')
+          ? {
+              'APP-Code': 'VAFU9221',
+            }
+          : undefined,
     })
   }
 

@@ -69,7 +69,7 @@ import { ImageInStorage, Img } from './Image'
 import Loading from './icons/Loading'
 import MessageErrTips from './MessageErrTips'
 import MessageStatuses from './MessageLoading'
-import { ToolCallPartUI } from './message-parts/ToolCallPartUI'
+import { ReasoningContentUI, ToolCallPartUI } from './message-parts/ToolCallPartUI'
 import StyledMenu from './StyledMenu'
 
 interface Props {
@@ -347,66 +347,67 @@ const _Message: FC<Props> = (props) => {
   }
 
   const renderReasoningContent = (msg: Message, item?: MessageReasoningPart, index?: number) => {
-    const reasoningContent = item?.text || msg.reasoningContent || ''
-    const reasoningKey = item ? `reasoning-${index}` : 'main-reasoning'
-    const isThinking =
-      msg.generating && item && msg.contentParts && msg.contentParts.length > 0 && msg.contentParts.length - 1 === index
-    const isExpanded = reasoningExpandStates[reasoningKey] ?? isThinking
+    return <ReasoningContentUI message={msg} part={item} onCopyReasoningContent={onCopyReasoningContent} />
+    // const reasoningContent = item?.text || msg.reasoningContent || ''
+    // const reasoningKey = item ? `reasoning-${index}` : 'main-reasoning'
+    // const isThinking =
+    //   msg.generating && item && msg.contentParts && msg.contentParts.length > 0 && msg.contentParts.length - 1 === index
+    // const isExpanded = reasoningExpandStates[reasoningKey] ?? isThinking
 
-    const toggleExpanded = () => {
-      setReasoningExpandStates((prev) => ({
-        ...prev,
-        [reasoningKey]: !prev[reasoningKey],
-      }))
-    }
+    // const toggleExpanded = () => {
+    //   setReasoningExpandStates((prev) => ({
+    //     ...prev,
+    //     [reasoningKey]: !prev[reasoningKey],
+    //   }))
+    // }
 
-    return (
-      <Paper withBorder radius="md" mb="xs">
-        <Box onClick={toggleExpanded} className="cursor-pointer">
-          <Group px="xs" justify="space-between" className="w-full">
-            <Group gap="xs" className={cn(isThinking ? 'animate-pulse' : '')}>
-              <Text fw={600} size="sm">
-                {isThinking ? t('Thinking') : t('Deeply thought')}
-              </Text>
-              <IconBulb size={16} color="var(--mantine-color-chatbox-warning-text)" />
-            </Group>
-            <Space miw="xl" />
-            <Group gap="xs">
-              <ActionIcon
-                variant="subtle"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onCopyReasoningContent(reasoningContent)(e)
-                }}
-                aria-label={t('Copy reasoning content')}
-              >
-                <IconCopy size={16} />
-              </ActionIcon>
+    // return (
+    //   <Paper withBorder radius="md" mb="xs">
+    //     <Box onClick={toggleExpanded} className="cursor-pointer">
+    //       <Group px="xs" justify="space-between" className="w-full">
+    //         <Group gap="xs" className={cn(isThinking ? 'animate-pulse' : '')}>
+    //           <Text fw={600} size="sm">
+    //             {isThinking ? t('Thinking') : t('Deeply thought')}
+    //           </Text>
+    //           <IconBulb size={16} color="var(--mantine-color-chatbox-warning-text)" />
+    //         </Group>
+    //         <Space miw="xl" />
+    //         <Group gap="xs">
+    //           <ActionIcon
+    //             variant="subtle"
+    //             size="sm"
+    //             onClick={(e) => {
+    //               e.stopPropagation()
+    //               onCopyReasoningContent(reasoningContent)(e)
+    //             }}
+    //             aria-label={t('Copy reasoning content')}
+    //           >
+    //             <IconCopy size={16} />
+    //           </ActionIcon>
 
-              <Text c="chatbox-brand" size="xs">
-                {isExpanded ? t('Hide') : t('Expand')}
-              </Text>
-            </Group>
-          </Group>
-        </Box>
+    //           <Text c="chatbox-brand" size="xs">
+    //             {isExpanded ? t('Hide') : t('Expand')}
+    //           </Text>
+    //         </Group>
+    //       </Group>
+    //     </Box>
 
-        <Transition transition="fade-down" duration={100} mounted={isExpanded}>
-          {(transitionStyle) => (
-            <Box
-              style={{
-                ...transitionStyle,
-                borderTop: '1px solid var(--paper-border-color)',
-              }}
-            >
-              <Text size="sm" px={'sm'} style={{ whiteSpace: 'pre-line', lineHeight: 1.5 }}>
-                {reasoningContent}
-              </Text>
-            </Box>
-          )}
-        </Transition>
-      </Paper>
-    )
+    //     <Transition transition="fade-down" duration={100} mounted={isExpanded}>
+    //       {(transitionStyle) => (
+    //         <Box
+    //           style={{
+    //             ...transitionStyle,
+    //             borderTop: '1px solid var(--paper-border-color)',
+    //           }}
+    //         >
+    //           <Text size="sm" px={'sm'} style={{ whiteSpace: 'pre-line', lineHeight: 1.5 }}>
+    //             {reasoningContent}
+    //           </Text>
+    //         </Box>
+    //       )}
+    //     </Transition>
+    //   </Paper>
+    // )
   }
 
   return (

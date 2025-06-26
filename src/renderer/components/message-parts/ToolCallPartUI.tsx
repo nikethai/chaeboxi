@@ -1,22 +1,27 @@
-import { alpha, Box, Code, Group, Paper, SimpleGrid, Space, Stack, Text, Transition } from '@mantine/core'
+import { ActionIcon, alpha, Box, Code, Group, Paper, SimpleGrid, Space, Stack, Text, Transition } from '@mantine/core'
 import {
   IconArrowRight,
+  IconBulb,
+  IconChevronRight,
+  IconChevronUp,
   IconCircleCheckFilled,
   IconCircleXFilled,
   IconCode,
+  IconCopy,
   IconLoader,
   IconTool,
 } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
-import { type FC, useState } from 'react'
+import { type FC, type ReactNode, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { MessageToolCallPart } from 'src/shared/types'
+import type { Message, MessageReasoningPart, MessageToolCallPart } from 'src/shared/types'
+import { cn } from '@/lib/utils'
 import { getToolName } from '@/packages/tools'
 import type { SearchResultItem } from '@/packages/web-search'
 
-const ToolCallHeader: FC<{ part: MessageToolCallPart; actionText: string; onClick: () => void }> = (props) => {
+const ToolCallHeader: FC<{ part: MessageToolCallPart; action: ReactNode; onClick: () => void }> = (props) => {
   return (
-    <Paper withBorder radius="md" px="xs" onClick={props.onClick} className="cursor-pointer">
+    <Paper withBorder radius="md" px="xs" onClick={props.onClick} className="cursor-pointer group">
       <Group justify="space-between" className="w-full">
         <Group gap="xs">
           <Text fw={600}>{getToolName(props.part.toolName)}</Text>
@@ -30,9 +35,7 @@ const ToolCallHeader: FC<{ part: MessageToolCallPart; actionText: string; onClic
           )}
         </Group>
         <Space miw="xl" />
-        <Text c="chatbox-brand" size="xs">
-          {props.actionText}
-        </Text>
+        {props.action}
       </Group>
     </Paper>
   )
@@ -65,8 +68,8 @@ const WebSearchToolCallUI: FC<{ part: WebBrowsingToolCallPart }> = ({ part }) =>
     <Stack gap="xs" mb="xs">
       <ToolCallHeader
         part={part}
-        actionText={t(expaned ? 'Hide' : 'Expand')}
         onClick={() => setExpand((prev) => !prev)}
+        action={expaned ? <IconChevronUp size={16} /> : <IconChevronRight size={16} />}
       />
       <Transition transition="fade-down" duration={100} mounted={expaned}>
         {(transitionStyle) => (
@@ -107,8 +110,8 @@ const GeneralToolCallUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
     <Stack gap="xs" mb="xs">
       <ToolCallHeader
         part={part}
-        actionText={t(expaned ? 'Hide' : 'Expand')}
         onClick={() => setExpand((prev) => !prev)}
+        action={expaned ? <IconChevronUp size={16} /> : <IconChevronRight size={16} />}
       />
 
       <Transition transition="fade-down" duration={100} mounted={expaned}>
@@ -150,4 +153,72 @@ export const ToolCallPartUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
     return <WebSearchToolCallUI part={part as WebBrowsingToolCallPart} />
   }
   return <GeneralToolCallUI part={part} />
+}
+
+export const ReasoningContentUI: FC<{
+  message: Message
+  part?: MessageReasoningPart
+  onCopyReasoningContent: (content: string) => (e: React.MouseEvent<HTMLButtonElement>) => void
+}> = ({ message, part, onCopyReasoningContent }) => {
+  const reasoningContent = part?.text || message.reasoningContent || ''
+  const { t } = useTranslation()
+  const isThinking =
+    (message.generating &&
+      part &&
+      message.contentParts &&
+      message.contentParts.length > 0 &&
+      message.contentParts[message.contentParts.length - 1] === part) ||
+    false
+  const [isExpanded, setIsExpanded] = useState<boolean>(isThinking)
+
+  const toggleExpanded = useCallback(() => {
+    setIsExpanded((prev) => !prev)
+  }, [])
+
+  return (
+    <Paper withBorder radius="md" mb="xs">
+      <Box onClick={toggleExpanded} className="cursor-pointer group">
+        <Group px="xs" justify="space-between" className="w-full">
+          <Group gap="xs" className={cn(isThinking ? 'animate-pulse' : '')}>
+            <Text fw={600} size="sm">
+              {isThinking ? t('Thinking') : t('Deeply thought')}
+            </Text>
+            <IconBulb size={16} color="var(--mantine-color-chatbox-warning-text)" />
+          </Group>
+          <Space miw="xl" />
+          <Group gap="xs">
+            <ActionIcon
+              variant="subtle"
+              c="chatbox-gray"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                onCopyReasoningContent(reasoningContent)(e)
+              }}
+              aria-label={t('Copy reasoning content')}
+            >
+              <IconCopy size={16} />
+            </ActionIcon>
+
+            {isExpanded ? <IconChevronUp size={16} /> : <IconChevronRight size={16} />}
+          </Group>
+        </Group>
+      </Box>
+
+      <Transition transition="fade-down" duration={100} mounted={isExpanded}>
+        {(transitionStyle) => (
+          <Box
+            style={{
+              ...transitionStyle,
+              borderTop: '1px solid var(--paper-border-color)',
+            }}
+          >
+            <Text size="sm" px={'sm'} style={{ whiteSpace: 'pre-line', lineHeight: 1.5 }}>
+              {reasoningContent}
+            </Text>
+          </Box>
+        )}
+      </Transition>
+    </Paper>
+  )
 }

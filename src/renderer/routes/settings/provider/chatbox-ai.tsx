@@ -1,31 +1,44 @@
-import { useProviderSettings, useSettings } from '@/hooks/useSettings'
-import platform from '@/platform'
-import { Badge, Button, Flex, Modal, Paper, PasswordInput, Progress, Stack, Text, Title, Tooltip } from '@mantine/core'
 import {
+  Alert,
+  Badge,
+  Button,
+  Flex,
+  Modal,
+  Paper,
+  PasswordInput,
+  Progress,
+  Stack,
+  Text,
+  Title,
+  Tooltip,
+} from '@mantine/core'
+import {
+  IconArrowRight,
   IconBulb,
   IconCircleCheckFilled,
   IconCircleMinus,
   IconCirclePlus,
+  IconExclamationCircle,
   IconExternalLink,
   IconEye,
+  IconHelp,
   IconRefresh,
   IconRestore,
-  IconSettings,
   IconTool,
 } from '@tabler/icons-react'
-import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useMemo, useState } from 'react'
-import { Trans, useTranslation } from 'react-i18next'
-import { SystemProviders } from 'src/shared/defaults'
-import { ModelOptionGroup, ModelProvider, ModelProviderEnum, ProviderModelInfo } from 'src/shared/types'
-import * as premiumActions from '@/stores/premiumActions'
-import { trackingEvent } from '@/packages/event'
-import { getModelSettingUtil } from '@/packages/model-setting-utils'
 import { useQuery } from '@tanstack/react-query'
-import { getLicenseDetailRealtime, getModelConfigsWithCache } from '@/packages/remote'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
-import { languageAtom } from '@/stores/atoms'
+import { useEffect, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
+import { type ModelProvider, ModelProviderEnum } from 'src/shared/types'
 import useChatboxAIModels from '@/hooks/useChatboxAIModels'
+import { useProviderSettings, useSettings } from '@/hooks/useSettings'
+import { trackingEvent } from '@/packages/event'
+import { getLicenseDetailRealtime } from '@/packages/remote'
+import platform from '@/platform'
+import { languageAtom } from '@/stores/atoms'
+import * as premiumActions from '@/stores/premiumActions'
 
 const useLicenseDetail = (licenseKey: string) => {
   const { data: licenseDetail, ...others } = useQuery({
@@ -51,11 +64,8 @@ function RouteComponent() {
   const { t } = useTranslation()
   const language = useAtomValue(languageAtom)
   const providerId: ModelProvider = ModelProviderEnum.ChatboxAI
-  const baseInfo = SystemProviders.find((p) => p.id === providerId)
   const { providerSettings, setProviderSettings } = useProviderSettings(providerId)
   const { settings } = useSettings()
-
-  // const displayModels = providerSettings?.models || baseInfo?.defaultSettings?.models || []
 
   const [licenseKey, setLicenseKey] = useState(settings.licenseKey || '')
 
@@ -128,6 +138,19 @@ function RouteComponent() {
         >
           <IconExternalLink size={24} />
         </Button>
+
+        <Flex gap="xxs" align="center" className="ml-auto" c="chatbox-brand">
+          <IconHelp size={16} />
+          <Text
+            component="a"
+            c="chatbox-brand"
+            className="!underline"
+            href={`https://chatboxai.app/redirect_app/how_to_use_license/${language}`}
+            target="_blank"
+          >
+            {t('How to use?')}
+          </Text>
+        </Flex>
       </Flex>
 
       <Stack gap="xl">
@@ -199,15 +222,21 @@ function RouteComponent() {
                   {(
                     [
                       [
-                        t('Chatbox AI Standard Model Quota'),
-                        licenseDetail.remaining_quota_35 * 100,
-                        `${(licenseDetail.remaining_quota_35 * 100).toFixed(2)}%`,
+                        t('Chatbox AI Quota'),
+                        licenseDetail.remaining_quota_unified * 100,
+                        `${(licenseDetail.remaining_quota_unified * 100).toFixed(2)}%`,
                       ],
-                      [
-                        t('Chatbox AI Advanced Model Quota'),
-                        licenseDetail.remaining_quota_4 * 100,
-                        `${(licenseDetail.remaining_quota_4 * 100).toFixed(2)}%`,
-                      ],
+                      ...(licenseDetail.expansion_pack_limit
+                        ? [
+                            [
+                              t('Expansion Pack Quota'),
+                              ((licenseDetail.expansion_pack_limit - licenseDetail.expansion_pack_usage) /
+                                licenseDetail.expansion_pack_limit) *
+                                100,
+                              `${(((licenseDetail.expansion_pack_limit - licenseDetail.expansion_pack_usage) / licenseDetail.expansion_pack_limit) * 100).toFixed(2)}%`,
+                            ],
+                          ]
+                        : []),
                       [
                         t('Chatbox AI Image Quota'),
                         licenseDetail.image_total_quota > 0
@@ -260,6 +289,28 @@ function RouteComponent() {
                   </Stack>
                 </Stack>
               </Paper>
+
+              {licenseDetail.remaining_quota_unified <= 0 &&
+                licenseDetail.expansion_pack_limit - licenseDetail.expansion_pack_usage <= 0 && (
+                  <Alert variant="light" color="yellow" p="sm">
+                    <Flex gap="xs" align="center" c="chatbox-primary">
+                      <IconExclamationCircle size={16} className="flex-shrink-0" />
+                      <Text>{t('You have no more Chatbox AI quota left this month.')}</Text>
+
+                      <a
+                        href={`https://chatboxai.app/redirect_app/manage_license/${language}/${settings.licenseKey}`}
+                        target="_blank"
+                        className="ml-auto flex flex-row items-center gap-xxs"
+                      >
+                        <Text span fw={600} className="whitespace-nowrap">
+                          {t('get more')}
+                        </Text>
+                        <IconArrowRight size={16} />
+                      </a>
+                    </Flex>
+                  </Alert>
+                )}
+
               <Flex gap="xs" align="center">
                 <Button
                   variant="outline"

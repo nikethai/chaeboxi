@@ -1,6 +1,6 @@
-import { LanguageModelUsage } from 'ai'
+import type { LanguageModelUsage } from 'ai'
 import { v4 as uuidv4 } from 'uuid'
-import { MCPServerConfig } from '@/packages/mcp/types'
+import type { MCPServerConfig } from '@/packages/mcp/types'
 
 export interface SearchResultItem {
   title: string
@@ -510,6 +510,9 @@ export interface ChatboxAILicenseDetail {
   image_total_quota: number
   token_refreshed_time: string
   token_expire_time: string | null | undefined
+  remaining_quota_unified: number
+  expansion_pack_limit: number
+  expansion_pack_usage: number
 }
 
 export type ChatboxAIModel = 'chatboxai-3.5' | 'chatboxai-4' | string

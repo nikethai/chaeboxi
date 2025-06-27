@@ -1,7 +1,8 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { ActionIcon, Avatar, Divider, Flex, ScrollArea, Stack, Text } from '@mantine/core'
+import { ActionIcon, Avatar, Button, Divider, Flex, ScrollArea, Stack, Text } from '@mantine/core'
 import { IconChevronLeft, IconChevronRight, IconX } from '@tabler/icons-react'
-import { createFileRoute, useRouterState } from '@tanstack/react-router'
+import { createFileRoute, useNavigate, useRouterState } from '@tanstack/react-router'
+import clsx from 'clsx'
 import { useAtom } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -207,19 +208,32 @@ function Index() {
   )
 }
 
+const MAX_COPILOTS_TO_SHOW = 10
+
 const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect?(copilot?: CopilotDetail): void }) => {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
+  const navigate = useNavigate()
   const { copilots: myCopilots } = useMyCopilots()
   const { copilots: remoteCopilots } = useRemoteCopilots()
 
   const copilots = useMemo(
-    () => [
-      ...myCopilots,
-      ...(myCopilots.length && remoteCopilots.length ? [undefined] : []),
-      ...remoteCopilots.filter((c) => !myCopilots.map((mc) => mc.id).includes(c.id)),
-    ],
+    () =>
+      myCopilots.length >= MAX_COPILOTS_TO_SHOW
+        ? myCopilots
+        : [
+            ...myCopilots,
+            ...(myCopilots.length && remoteCopilots.length ? [undefined] : []),
+            ...remoteCopilots
+              .filter((c) => !myCopilots.map((mc) => mc.id).includes(c.id))
+              .slice(0, MAX_COPILOTS_TO_SHOW - myCopilots.length - 1),
+          ],
     [myCopilots, remoteCopilots]
+  )
+
+  const showMoreButton = useMemo(
+    () => copilots.length < myCopilots.length + remoteCopilots.length,
+    [copilots.length, myCopilots.length, remoteCopilots.length]
   )
 
   const viewportRef = useRef<HTMLDivElement>(null)
@@ -295,6 +309,19 @@ const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect
                 <Divider key="divider" orientation="vertical" my="xs" mx="xxs" />
               )
             )}
+
+            {showMoreButton && (
+              <CopilotItem
+                name={t('View All Copilots')}
+                noAvatar={true}
+                selected={false}
+                onClick={() =>
+                  navigate({
+                    to: '/copilots',
+                  })
+                }
+              />
+            )}
           </Flex>
         </ScrollArea>
       </Stack>
@@ -307,11 +334,13 @@ const CopilotItem = ({
   picUrl,
   selected,
   onClick,
+  noAvatar = false,
 }: {
   name: string
   picUrl?: string
   selected?: boolean
   onClick?(): void
+  noAvatar?: boolean
 }) => {
   const isSmallScreen = useIsSmallScreen()
   return (
@@ -322,12 +351,17 @@ const CopilotItem = ({
       px={isSmallScreen ? 'xs' : 'md'}
       bd={selected ? 'none' : '1px solid var(--mantine-color-chatbox-border-primary-outline)'}
       bg={selected ? 'var(--mantine-color-chatbox-brand-light)' : 'transparent'}
-      className={isSmallScreen ? 'cursor-pointer rounded-full shrink-0' : 'cursor-pointer rounded-md shrink-0'}
+      className={clsx(
+        'cursor-pointer shrink-0 shadow-[0px_2px_12px_0px_rgba(0,0,0,0.04)]',
+        isSmallScreen ? 'rounded-full' : 'rounded-md'
+      )}
       onClick={onClick}
     >
-      <Avatar src={picUrl} color="chatbox-brand" size={isSmallScreen ? 20 : 24}>
-        {name.slice(0, 1)}
-      </Avatar>
+      {!noAvatar && (
+        <Avatar src={picUrl} color="chatbox-brand" size={isSmallScreen ? 20 : 24}>
+          {name.slice(0, 1)}
+        </Avatar>
+      )}
       <Text fw="600" c={selected ? 'chatbox-brand' : 'chatbox-primary'}>
         {name}
       </Text>

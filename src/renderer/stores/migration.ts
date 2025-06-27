@@ -139,6 +139,14 @@ export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true)
     log.info(`migrate_9_to_10, needRelaunch: ${needRelaunch}`)
   }
 
+  if (configVersion < 11) {
+    const _needRelaunch = await migrate_10_to_11(dataStore)
+    needRelaunch ||= _needRelaunch
+    configVersion = 11
+    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
+    log.info(`migrate_10_to_11, needRelaunch: ${needRelaunch}`)
+  }
+
   // 如果需要重启，则重启应用
   if (needRelaunch && canRelaunch) {
     log.info(`migrate: relaunch`)
@@ -614,4 +622,21 @@ async function migrate_9_to_10(dataStore: MigrateStore): Promise<boolean> {
 
   log.info(`migrate_9_to_10, done`)
   return true
+}
+
+async function migrate_10_to_11(dataStore: MigrateStore) {
+  if (platform.type === 'mobile') {
+    // 释放 localstorage 空间
+    log.info('migrate_10_to_11, remove settings')
+    oldStore.remove(StorageKey.Settings)
+  }
+
+  // 修复之前写入的错误的默认值
+  const settings = await dataStore.getData(StorageKey.Settings, defaults.settings())
+  if (settings.fontSize === 16) {
+    settings.fontSize = 14
+  }
+  await dataStore.setData(StorageKey.Settings, settings)
+  log.info('migrate_10_to_11, done')
+  return false
 }

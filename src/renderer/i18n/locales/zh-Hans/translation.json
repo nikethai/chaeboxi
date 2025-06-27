@@ -1,6 +1,7 @@
 {
   "[Ctrl+Enter] Save, [Ctrl+Shift+Enter] Save and Resend": "[Ctrl+Enter] 保存, [Ctrl+Shift+Enter] 保存并发送",
   "[Enter] send, [Shift+Enter] line break, [Ctrl+Enter] send without generating": "[回车键] 发送，[Shift+回车键] 换行, [Ctrl+回车键] 发送但不生成",
+  "{{count}} file(s) not supported: {{files}}. Supported formats: {{formats}}": "{{count}} 个文件不支持：{{files}}。支持的格式：{{formats}}",
   "{{count}} MCP servers imported": "{{count}} 个 MCP 服务器已导入",
   "About": "关于",
   "About Chatbox": "版本信息",
@@ -211,6 +212,7 @@
   "Failed": "失败",
   "Failed to activate license, please check your license key and network connection": "激活许可证失败，请检查您的许可证密钥和网络连接",
   "Failed to create knowledge base, Error: {{error}}": "创建知识库失败，错误：{{error}}",
+  "Failed to export file: {{error}}": "导出文件失败：{{error}}",
   "Failed to fetch Chatbox AI models config, Error: {{error}}": "获取 {{Chatbox}} {{AI}} 模型配置失败，错误：{{error}}",
   "Failed to fetch file chunks, Error: {{error}}": "获取文件分块失败，错误：{{error}}",
   "Failed to fetch files, Error: {{error}}": "获取文件失败，错误：{{error}}",
@@ -484,6 +486,7 @@
   "stop generating": "停止生成",
   "submit": "提交",
   "Successfully uploaded {{count}} file(s)": "成功上传 {{count}} 个文件",
+  "Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.": "已成功上传 {{success}}/{{total}} 个文件。{{failed}} 个文件上传失败。",
   "Support for ChatBox development": "支持ChatBox的开发",
   "Support jpg or png file smaller than 5MB": "支持小于 5MB 的 jpg 或 png 文件",
   "Supported formats": "支持的格式",

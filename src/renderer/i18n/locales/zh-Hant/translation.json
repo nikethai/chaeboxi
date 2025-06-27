@@ -1,6 +1,7 @@
 {
   "[Ctrl+Enter] Save, [Ctrl+Shift+Enter] Save and Resend": "[Ctrl+Enter] 儲存, [Ctrl+Shift+Enter] 儲存後重發",
   "[Enter] send, [Shift+Enter] line break, [Ctrl+Enter] send without generating": "[Enter] 傳送、[Shift＋Enter] 換行、[Ctrl＋Enter] 傳送但不產生",
+  "{{count}} file(s) not supported: {{files}}. Supported formats: {{formats}}": "{{count}} 檔案不支援：{{files}}。支援的格式：{{formats}}",
   "{{count}} MCP servers imported": "{{count}} MCP 伺服器已匯入",
   "About": "關於",
   "About Chatbox": "版本資訊",
@@ -211,6 +212,7 @@
   "Failed": "失敗",
   "Failed to activate license, please check your license key and network connection": "激活授權失敗，請檢查您的授權金鑰和網路連接",
   "Failed to create knowledge base, Error: {{error}}": "建立知識庫失敗，錯誤：{{error}}",
+  "Failed to export file: {{error}}": "匯出檔案失敗：{{error}}",
   "Failed to fetch Chatbox AI models config, Error: {{error}}": "無法取得 Chatbox AI 模型配置，錯誤：{{error}}",
   "Failed to fetch file chunks, Error: {{error}}": "無法取得檔案區塊，錯誤：{{error}}",
   "Failed to fetch files, Error: {{error}}": "無法獲取檔案，錯誤：{{error}}",
@@ -482,6 +484,7 @@
   "stop generating": "停止產生",
   "submit": "提交",
   "Successfully uploaded {{count}} file(s)": "成功上傳 {{count}} 個檔案",
+  "Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.": "已成功上傳 {{success}} 個檔案，共 {{total}} 個。{{failed}} 個檔案上傳失敗。",
   "Support for ChatBox development": "支持ChatBox的開發",
   "Support jpg or png file smaller than 5MB": "支持小於 5MB 的 jpg 或 png 檔案",
   "Supported formats": "支援的格式",

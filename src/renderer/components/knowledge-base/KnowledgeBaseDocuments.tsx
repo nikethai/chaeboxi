@@ -301,6 +301,37 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
     [knowledgeBase?.id, knowledgeBase?.name, correctMimeType, refetch, refetchCount, invalidateFiles, isExpanded, t]
   )
 
+  // Validate file type against supported types
+  const validateFileType = React.useCallback(
+    (file: File): boolean => {
+      const supportedTypes = getSupportedFileTypes()
+      const fileName = file.name.toLowerCase()
+      const fileType = file.type.toLowerCase()
+
+      // Get supported extensions and MIME types
+      const acceptableTypes = supportedTypes.accept.toLowerCase().split(',')
+
+      // Check file extension
+      const hasValidExtension = acceptableTypes.some((type) => {
+        if (type.startsWith('.')) {
+          return fileName.endsWith(type)
+        }
+        return false
+      })
+
+      // Check MIME type
+      const hasValidMimeType = acceptableTypes.some((type) => {
+        if (type.includes('/')) {
+          return fileType === type.trim()
+        }
+        return false
+      })
+
+      return hasValidExtension || hasValidMimeType
+    },
+    [getSupportedFileTypes]
+  )
+
   // Handle drag and drop events
   const handleDragOver = React.useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -329,10 +360,45 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
         return
       }
 
-      console.log(`[Upload] Drag & Drop: ${files.length} files`)
-      await uploadFiles(files)
+      // Filter files by supported types
+      const validFiles: File[] = []
+      const invalidFiles: File[] = []
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        if (validateFileType(file)) {
+          validFiles.push(file)
+        } else {
+          invalidFiles.push(file)
+        }
+      }
+
+      // Show warning for invalid files
+      if (invalidFiles.length > 0) {
+        const invalidFileNames = invalidFiles.map((f) => f.name).join(', ')
+        const supportedTypes = getSupportedFileTypes()
+        toast.error(
+          t('{{count}} file(s) not supported: {{files}}. Supported formats: {{formats}}', {
+            count: invalidFiles.length,
+            files: invalidFileNames,
+            formats: supportedTypes.display.join(', '),
+          })
+        )
+      }
+
+      // Upload valid files if any
+      if (validFiles.length > 0) {
+        console.log(`[Upload] Drag & Drop: ${validFiles.length} valid files out of ${files.length} total`)
+
+        // Create a proper FileList-like object
+        const fileListLike = Object.assign(validFiles, {
+          item: (index: number) => validFiles[index] || null,
+        }) as unknown as FileList
+
+        await uploadFiles(fileListLike)
+      }
     },
-    [uploadFiles, t]
+    [uploadFiles, validateFileType, getSupportedFileTypes, t]
   )
 
   // Handle file deletion
@@ -604,13 +670,10 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
               <Pill
                 size="xs"
                 bg={filesCount > 0 ? 'var(--mantine-color-chatbox-brand-light)' : 'var(--mantine-color-gray-2)'}
+                c={filesCount > 0 ? 'var(--mantine-color-chatbox-brand-filled)' : 'var(--mantine-color-gray-6)'}
+                fz="xs"
               >
-                <Text
-                  size="xs"
-                  c={filesCount > 0 ? 'var(--mantine-color-chatbox-brand-filled)' : 'var(--mantine-color-gray-6)'}
-                >
-                  {filesCount}
-                </Text>
+                {filesCount}
               </Pill>
             </Group>
             <Button

@@ -1,6 +1,7 @@
 {
   "[Ctrl+Enter] Save, [Ctrl+Shift+Enter] Save and Resend": "[Ctrl+Enter] Guardar, [Ctrl+Shift+Enter] Guardar y reenviar",
   "[Enter] send, [Shift+Enter] line break, [Ctrl+Enter] send without generating": "[Enter] enviar, [Shift+Enter] salto de línea, [Ctrl+Enter] enviar sin generar",
+  "{{count}} file(s) not supported: {{files}}. Supported formats: {{formats}}": "{{count}} archivo(s) no compatible(s): {{files}}. Formatos compatibles: {{formats}}",
   "{{count}} MCP servers imported": "{{count}} servidores MCP importados",
   "About": "Acerca de",
   "About Chatbox": "Acerca de Chatbox",
@@ -211,6 +212,7 @@
   "Failed": "Fallido",
   "Failed to activate license, please check your license key and network connection": "Error al activar la licencia, por favor verifica tu clave de licencia y conexión a la red",
   "Failed to create knowledge base, Error: {{error}}": "Error al crear la base de conocimientos, Error: {{error}}",
+  "Failed to export file: {{error}}": "No se pudo exportar el archivo: {{error}}",
   "Failed to fetch Chatbox AI models config, Error: {{error}}": "Error al obtener la configuración de modelos de Chatbox AI, Error: {{error}}",
   "Failed to fetch file chunks, Error: {{error}}": "Fallo al obtener fragmentos de archivo, Error: {{error}}",
   "Failed to fetch files, Error: {{error}}": "Error al obtener archivos, Error: {{error}}",
@@ -482,6 +484,7 @@
   "stop generating": "Detener generación",
   "submit": "Enviar",
   "Successfully uploaded {{count}} file(s)": "Carga de {{count}} archivo(s) completada con éxito.",
+  "Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.": "Se subieron {{success}} de {{total}} archivo(s) correctamente. {{failed}} archivo(s) fallaron.",
   "Support for ChatBox development": "Apoyo al desarrollo de ChatBox",
   "Support jpg or png file smaller than 5MB": "Soporte para archivos jpg o png de menos de 5MB",
   "Supported formats": "Formatos compatibles",

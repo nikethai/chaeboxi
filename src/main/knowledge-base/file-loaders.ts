@@ -343,24 +343,39 @@ export async function searchKnowledgeBase(kbId: number, query: string) {
       queryVector: embedding.embeddings[0],
       topK: 20,
     })
-
-    const rerankInstance = await getRerankProvider(kbId)
-    if (rerankInstance) {
-      const rerankedResults = await rerank(results, query, rerankInstance, {
-        topK: 5,
+    try {
+      const rerankInstance = await getRerankProvider(kbId)
+      if (rerankInstance) {
+        const rerankedResults = await rerank(results, query, rerankInstance, {
+          topK: 5,
+        })
+        return rerankedResults.map((r) => ({
+          id: r.result.id,
+          score: r.result.score,
+          ...r.result.metadata,
+        }))
+      }
+      return results.map((r) => ({
+        id: r.id,
+        score: r.score,
+        ...r.metadata,
+      }))
+    } catch (e) {
+      log.error(`[FILE] Failed to rerank: kbId=${kbId}, query=${query}`, e)
+      sentry.withScope((scope) => {
+        scope.setTag('component', 'knowledge-base-file')
+        scope.setTag('operation', 'rerank')
+        scope.setExtra('kbId', kbId)
+        scope.setExtra('query', query)
+        sentry.captureException(e)
       })
-      return rerankedResults.map((r) => ({
-        id: r.result.id,
-        score: r.result.score,
-        ...r.result.metadata,
+      return results.map((r) => ({
+        id: r.id,
+        score: r.score,
+        ...r.metadata,
       }))
     }
-    return results.map((r) => ({
-      id: r.id,
-      score: r.score,
-      ...r.metadata,
-    }))
-  } catch (e: any) {
+  } catch (e) {
     log.error(`[FILE] Failed to search: kbId=${kbId}, query=${query}`, e)
 
     sentry.withScope((scope) => {

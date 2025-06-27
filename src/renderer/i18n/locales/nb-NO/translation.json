@@ -1,6 +1,7 @@
 {
   "[Ctrl+Enter] Save, [Ctrl+Shift+Enter] Save and Resend": "[Ctrl+Enter] Lagre, [Ctrl+Shift+Enter] Lagre og send på nytt",
   "[Enter] send, [Shift+Enter] line break, [Ctrl+Enter] send without generating": "[Enter] send, [Shift+Enter] linjeskift, [Ctrl+Enter] send uten å generere",
+  "{{count}} file(s) not supported: {{files}}. Supported formats: {{formats}}": "{{count}} fil(er) støttes ikke: {{files}}. Støttede formater: {{formats}}",
   "{{count}} MCP servers imported": "{{count}} MCP servere importert",
   "About": "Om",
   "About Chatbox": "Om Chatbox",
@@ -211,6 +212,7 @@
   "Failed": "Mislyktes",
   "Failed to activate license, please check your license key and network connection": "Aktivering av lisens mislyktes, vennligst sjekk lisensnøkkelen din og nettverksforbindelsen.",
   "Failed to create knowledge base, Error: {{error}}": "Kunne ikke opprette kunnskapsbase, Feil: {{error}}",
+  "Failed to export file: {{error}}": "Kunne ikke eksportere fil: {{error}}",
   "Failed to fetch Chatbox AI models config, Error: {{error}}": "Kunne ikke hente Chatbox AI-modellkonfigurasjon, Feil: {{error}}",
   "Failed to fetch file chunks, Error: {{error}}": "Feil ved henting av filbiter, Feil: {{error}}",
   "Failed to fetch files, Error: {{error}}": "Kunne ikke hente filer, Feil: {{error}}",
@@ -482,6 +484,7 @@
   "stop generating": "Stopp generering",
   "submit": "Send inn",
   "Successfully uploaded {{count}} file(s)": "Vellykket opplasting av {{count}} filer",
+  "Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.": "{{success}} av {{total}} fil(er) ble lastet opp. {{failed}} fil(er) mislyktes.",
   "Support for ChatBox development": "Støtte til ChatBox-utvikling",
   "Support jpg or png file smaller than 5MB": "Støtt jpg eller png-filer som er mindre enn 5MB",
   "Supported formats": "Støttede formater",

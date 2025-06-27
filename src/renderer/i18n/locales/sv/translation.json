@@ -1,6 +1,7 @@
 {
   "[Ctrl+Enter] Save, [Ctrl+Shift+Enter] Save and Resend": "[Ctrl+Enter] Spara, [Ctrl+Shift+Enter] Spara och skicka igen",
   "[Enter] send, [Shift+Enter] line break, [Ctrl+Enter] send without generating": "[Enter] skicka, [Shift+Enter] radbrytning, [Ctrl+Enter] skicka utan generering",
+  "{{count}} file(s) not supported: {{files}}. Supported formats: {{formats}}": "{{count}} fil(er) stöds inte: {{files}}. Format som stöds: {{formats}}",
   "{{count}} MCP servers imported": "{{count}} MCP servrar importerade",
   "About": "Om",
   "About Chatbox": "Om Chatbox",
@@ -211,6 +212,7 @@
   "Failed": "Misslyckades",
   "Failed to activate license, please check your license key and network connection": "Misslyckades med att aktivera licensen, vänligen kontrollera din licensnyckel och nätverksanslutning",
   "Failed to create knowledge base, Error: {{error}}": "Misslyckades med att skapa kunskapsbas, Fel: {{error}}",
+  "Failed to export file: {{error}}": "Kunde inte exportera fil: {{error}}",
   "Failed to fetch Chatbox AI models config, Error: {{error}}": "Misslyckades med att hämta Chatbox AI-modellkonfiguration, Fel: {{error}}",
   "Failed to fetch file chunks, Error: {{error}}": "Misslyckades med att hämta filsegment, Fel: {{error}}",
   "Failed to fetch files, Error: {{error}}": "Kunde inte hämta filer, Fel: {{error}}",
@@ -482,6 +484,7 @@
   "stop generating": "Avbryt generering",
   "submit": "Skicka",
   "Successfully uploaded {{count}} file(s)": "{{count}} fil(er) har laddats upp framgångsrikt",
+  "Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.": "Lyckades ladda upp {{success}} av {{total}} fil(er). {{failed}} fil(er) misslyckades.",
   "Support for ChatBox development": "Stöd för utvecklingen av ChatBox",
   "Support jpg or png file smaller than 5MB": "Stöd för jpg- eller png-filer mindre än 5MB",
   "Supported formats": "Stödda format",

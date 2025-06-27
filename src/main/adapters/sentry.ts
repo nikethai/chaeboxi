@@ -14,9 +14,21 @@ function initSentry() {
     dsn: 'https://eca691c5e01ebfa05958fca1fcb487a9@sentry.midway.run/697',
     integrations: [],
     environment: process.env.NODE_ENV || 'development',
-    // Performance Monitoring
-    sampleRate: 0.1,
-    tracesSampleRate: 0.1,
+    // Performance Monitoring - set to 1.0 since we control sampling in beforeSend
+    sampleRate: 1.0,
+    tracesSampler(samplingContext) {
+      // For traces related to knowledge-base operations, always sample
+      const isKnowledgeBaseTrace =
+        samplingContext.tags?.component === 'knowledge-base-file' ||
+        samplingContext.tags?.component === 'knowledge-base-db' ||
+        samplingContext.tags?.component === 'knowledge-base'
+
+      if (isKnowledgeBaseTrace) {
+        return 1.0 // 100% sampling for knowledge-base traces
+      }
+
+      return 0.1 // 10% sampling for other traces
+    },
     release: version,
     // 设置全局标签
     initialScope: {

@@ -7,6 +7,9 @@ export interface CacheItem<T> {
   expireAt: number
 }
 
+// Memory cache to store ongoing promises and prevent duplicate calls
+const pendingPromises = new Map<string, Promise<unknown>>()
+
 export async function cache<T>(
   key: string,
   getter: () => Promise<T>,
@@ -30,18 +33,33 @@ export async function cache<T>(
     return cache.value
   }
 
-  try {
-    const newValue = await getter()
-    cache = {
-      value: newValue,
-      expireAt: Date.now() + options.ttl,
-    }
-    await store.setItem(key, JSON.stringify(cache))
-    return newValue
-  } catch (e) {
-    if (options.refreshFallbackToCache && cache) {
-      return cache.value
-    }
-    throw e
+  // Check if there's already a pending promise for this key
+  const existingPromise = pendingPromises.get(key) as Promise<T> | undefined
+  if (existingPromise) {
+    return existingPromise
   }
+
+  // Create new promise and store it to prevent duplicate calls
+  const promise = (async () => {
+    try {
+      const newValue = await getter()
+      cache = {
+        value: newValue,
+        expireAt: Date.now() + options.ttl,
+      }
+      await store.setItem(key, JSON.stringify(cache))
+      return newValue
+    } catch (e) {
+      if (options.refreshFallbackToCache && cache) {
+        return cache.value
+      }
+      throw e
+    } finally {
+      // Remove the promise from pending map when done
+      pendingPromises.delete(key)
+    }
+  })()
+
+  pendingPromises.set(key, promise)
+  return promise
 }

@@ -1,6 +1,7 @@
 {
   "[Ctrl+Enter] Save, [Ctrl+Shift+Enter] Save and Resend": "[Ctrl+Enter] 保存, [Ctrl+Shift+Enter] 保存して再送信",
   "[Enter] send, [Shift+Enter] line break, [Ctrl+Enter] send without generating": "[Enter] 送信、[Shift+Enter] 改行、[Ctrl+Enter] 生成せずに送信",
+  "{{count}} file(s) not supported: {{files}}. Supported formats: {{formats}}": "{{count}}個のファイルはサポートされていません: {{files}}。サポートされている形式: {{formats}}",
   "{{count}} MCP servers imported": "{{count}} MCPサーバーがインポートされました",
   "About": "情報",
   "About Chatbox": "Chatboxについて",
@@ -211,6 +212,7 @@
   "Failed": "失敗しました",
   "Failed to activate license, please check your license key and network connection": "ライセンスの有効化に失敗しました。ライセンスキーとネットワーク接続を確認してください",
   "Failed to create knowledge base, Error: {{error}}": "知識ベースの作成に失敗しました、エラー: {{error}}",
+  "Failed to export file: {{error}}": "ファイルのエクスポートに失敗しました: {{error}}",
   "Failed to fetch Chatbox AI models config, Error: {{error}}": "Chatbox AI モデル設定の取得に失敗しました、エラー: {{error}}",
   "Failed to fetch file chunks, Error: {{error}}": "ファイルチャンクの取得に失敗しました、エラー: {{error}}",
   "Failed to fetch files, Error: {{error}}": "ファイルの取得に失敗しました、エラー: {{error}}",
@@ -483,6 +485,7 @@
   "stop generating": "生成を停止",
   "submit": "送信",
   "Successfully uploaded {{count}} file(s)": "{{count}} ファイルが正常にアップロードされました",
+  "Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.": "{{total}}個中{{success}}個のファイルをアップロードしました。{{failed}}個のファイルは失敗しました。",
   "Support for ChatBox development": "ChatBox開発のサポート",
   "Support jpg or png file smaller than 5MB": "5MB未満のjpgまたはpngファイルをサポート",
   "Supported formats": "対応形式",

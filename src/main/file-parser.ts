@@ -1,5 +1,7 @@
+import * as chardet from 'chardet'
 import Epub from 'epub'
 import * as fs from 'fs-extra'
+import * as iconv from 'iconv-lite'
 import officeParser from 'officeparser'
 import { isEpubFilePath, isOfficeFilePath } from '../shared/file-extensions'
 import { getLogger } from './util'
@@ -86,7 +88,25 @@ export async function parseFile(filePath: string) {
     }
   }
 
-  const data = await fs.readFile(filePath, 'utf8')
+  // Read first 4KB for encoding detection to avoid memory issues with large files
+  const stats = await fs.stat(filePath)
+  const sampleSize = Math.min(4096, stats.size)
+
+  // Read sample using createReadStream for partial file reading
+  const sampleBuffer = new Uint8Array(sampleSize)
+  const fd = await fs.promises.open(filePath, 'r')
+  await fd.read(sampleBuffer, 0, sampleSize, 0)
+  await fd.close()
+
+  // Detect encoding from sample
+  const detectedEncoding = chardet.detect(sampleBuffer)
+  const encoding = detectedEncoding || 'utf8'
+
+  log.debug(`Detected encoding for ${filePath}: ${encoding}`)
+
+  // Read full file as buffer and convert with detected encoding
+  const fileBuffer = await fs.readFile(filePath)
+  const data = iconv.decode(fileBuffer, encoding)
   return data
 }
 
@@ -101,15 +121,16 @@ export async function parseEpub(filePath: string): Promise<string> {
 
     epub.on('end', async () => {
       try {
+        const metadata = epub.metadata as { title?: string; creator?: string; language?: string }
         log.info('EPUB metadata:', {
-          title: (epub.metadata as any).title,
-          creator: (epub.metadata as any).creator,
-          language: (epub.metadata as any).language,
+          title: metadata.title,
+          creator: metadata.creator,
+          language: metadata.language,
           chapters: epub.flow.length,
         })
 
         // Helper function to process a single chapter
-        const processChapter = async (chapter: any): Promise<string | null> => {
+        const processChapter = async (chapter: { id: string }): Promise<string | null> => {
           try {
             const chapterText = await new Promise<string>((resolveChapter, rejectChapter) => {
               epub.getChapter(chapter.id, (error, text) => {
@@ -140,7 +161,7 @@ export async function parseEpub(filePath: string): Promise<string> {
         // Extract text from all chapters using concurrent processing
         log.info(`Starting concurrent processing of ${epub.flow.length} chapters with concurrency: 8`)
 
-        const chapterResults = await concurrentMap(epub.flow, processChapter, 8)
+        const chapterResults = await concurrentMap(epub.flow as { id: string }[], processChapter, 8)
         const chapterTexts = chapterResults.filter((text: string | null) => text !== null) as string[]
         log.info(`Successfully processed ${chapterTexts.length}/${epub.flow.length} chapters`)
 

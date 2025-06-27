@@ -1,6 +1,7 @@
 {
   "[Ctrl+Enter] Save, [Ctrl+Shift+Enter] Save and Resend": "[Ctrl+Enter] Enregistrer, [Ctrl+Shift+Enter] Enregistrer et Renvoyer",
   "[Enter] send, [Shift+Enter] line break, [Ctrl+Enter] send without generating": "[Entrée] envoyer, [Maj+Entrée] saut de ligne, [Ctrl+Entrée] envoyer sans générer",
+  "{{count}} file(s) not supported: {{files}}. Supported formats: {{formats}}": "{{count}} fichier(s) non pris en charge : {{files}}. Formats pris en charge : {{formats}}",
   "{{count}} MCP servers imported": "{{count}} serveurs MCP importés",
   "About": "À propos",
   "About Chatbox": "À propos de Chatbox",
@@ -211,6 +212,7 @@
   "Failed": "Échec",
   "Failed to activate license, please check your license key and network connection": "Échec de l'activation de la licence, veuillez vérifier votre clé de licence et votre connexion réseau",
   "Failed to create knowledge base, Error: {{error}}": "Échec de la création de la base de connaissances, Erreur : {{error}}",
+  "Failed to export file: {{error}}": "Échec de l'exportation du fichier : {{error}}",
   "Failed to fetch Chatbox AI models config, Error: {{error}}": "Échec de la récupération de la configuration des modèles Chatbox AI, Erreur : {{error}}",
   "Failed to fetch file chunks, Error: {{error}}": "Échec de la récupération des blocs de fichier, Erreur : {{error}}",
   "Failed to fetch files, Error: {{error}}": "Échec de la récupération des fichiers, Erreur : {{error}}",
@@ -483,6 +485,7 @@
   "stop generating": "Arrêter la génération",
   "submit": "Envoyer",
   "Successfully uploaded {{count}} file(s)": "{{count}} fichier(s) importé(s) avec succès",
+  "Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.": "{{success}} fichier(s) sur {{total}} téléchargé(s) avec succès. {{failed}} fichier(s) ont échoué.",
   "Support for ChatBox development": "Support du développement de ChatBox",
   "Support jpg or png file smaller than 5MB": "Supporte les fichiers jpg ou png de moins de 5 Mo",
   "Supported formats": "Formats pris en charge",

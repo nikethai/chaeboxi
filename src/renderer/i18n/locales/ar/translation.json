@@ -1,6 +1,7 @@
 {
   "[Ctrl+Enter] Save, [Ctrl+Shift+Enter] Save and Resend": "[Ctrl+Enter] حفظ، [Ctrl+Shift+Enter] حفظ وإعادة الإرسال",
   "[Enter] send, [Shift+Enter] line break, [Ctrl+Enter] send without generating": "[Enter] إرسال، [Shift+Enter] فاصل سطر، [Ctrl+Enter] إرسال بدون توليد",
+  "{{count}} file(s) not supported: {{files}}. Supported formats: {{formats}}": "{{count}} ملفات غير مدعومة: {{files}}. التنسيقات المدعومة: {{formats}}",
   "{{count}} MCP servers imported": "{{count}} خوادم MCP مستوردة",
   "About": "حول",
   "About Chatbox": "حول Chatbox",
@@ -211,6 +212,7 @@
   "Failed": "فشل",
   "Failed to activate license, please check your license key and network connection": "فشل في تفعيل الترخيص، يرجى التحقق من مفتاح الترخيص الخاص بك و الاتصال بالشبكة",
   "Failed to create knowledge base, Error: {{error}}": "فشل إنشاء قاعدة المعرفة، خطأ: {{error}}",
+  "Failed to export file: {{error}}": "فشل في تصدير الملف: {{error}}",
   "Failed to fetch Chatbox AI models config, Error: {{error}}": "فشل في جلب إعدادات نماذج Chatbox AI، خطأ: {{error}}",
   "Failed to fetch file chunks, Error: {{error}}": "فشل جلب أجزاء الملف، خطأ: {{error}}",
   "Failed to fetch files, Error: {{error}}": "فشل جلب الملفات، خطأ: {{error}}",
@@ -482,6 +484,7 @@
   "stop generating": "إيقاف التوليد",
   "submit": "إرسال",
   "Successfully uploaded {{count}} file(s)": "تم رفع {{count}} ملف(ات) بنجاح",
+  "Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.": "تم رفع {{success}} من {{total}} ملف(ات) بنجاح. فشل رفع {{failed}} ملف(ات).",
   "Support for ChatBox development": "دعم تطوير ChatBox",
   "Support jpg or png file smaller than 5MB": "يدعم ملفات jpg أو png أقل من 5MB",
   "Supported formats": "الصيغ المدعومة",

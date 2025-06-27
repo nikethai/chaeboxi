@@ -47,7 +47,6 @@ import {
   virtualColor,
 } from '@mantine/core'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { ErrorBoundary } from '@/components/ErrorBoundary'
 import storage, { StorageKey } from '@/storage'
 import queryClient from '@/stores/queryClient'
 
@@ -109,7 +108,7 @@ function Root() {
     }, 2000)
 
     return () => clearTimeout(tid)
-  }, [navigate, setOpenAboutDialog, setRemoteConfig])
+  }, [setRemoteConfig, navigate, setOpenAboutDialog])
 
   const [showSidebar] = useAtom(atoms.showSidebarAtom)
   const sidebarWidth = useSidebarWidth()
@@ -424,7 +423,7 @@ const creteMantineTheme = (scale = 1) =>
         }),
       }),
       Input: Input.extend({
-        styles: (_theme, props) => ({
+        styles: (_, props) => ({
           wrapper: {
             '--input-height-sm': rem('32px'),
             ...(props.error
@@ -489,7 +488,7 @@ const creteMantineTheme = (scale = 1) =>
         defaultProps: {
           size: 'sm',
         },
-        styles: (_theme, props) => {
+        styles: (_, props) => {
           return {
             label: {
               color: props.checked
@@ -503,7 +502,7 @@ const creteMantineTheme = (scale = 1) =>
         defaultProps: {
           size: 'sm',
         },
-        styles: (_theme, props) => ({
+        styles: (_, props) => ({
           label: {
             color: props.checked
               ? 'var(--mantine-color-chatbox-primary-text)'
@@ -565,9 +564,7 @@ export const Route = createRootRoute({
           <ThemeProvider theme={theme}>
             <CssBaseline />
             <NiceModal.Provider>
-              <ErrorBoundary>
-                <Root />
-              </ErrorBoundary>
+              <Root />
             </NiceModal.Provider>
           </ThemeProvider>
         </MantineProvider>

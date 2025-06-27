@@ -18,7 +18,7 @@ import {
 } from '@mui/material'
 import SwipeableDrawer from '@mui/material/SwipeableDrawer'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
-import { useAtom, useAtomValue } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { PanelLeftClose } from 'lucide-react'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -32,10 +32,9 @@ import icon from './static/icon.png'
 import * as atoms from './stores/atoms'
 import * as sessionActions from './stores/sessionActions'
 
-export default function Sidebar(props: {}) {
+export default function Sidebar() {
   const language = useAtomValue(atoms.languageAtom)
   const [showSidebar, setShowSidebar] = useAtom(atoms.showSidebarAtom)
-  const routerState = useRouterState()
 
   const sessionListRef = useRef<HTMLDivElement>(null)
 
@@ -47,11 +46,11 @@ export default function Sidebar(props: {}) {
     if (isSmallScreen) {
       setShowSidebar(false)
     }
-  }, [isSmallScreen, routerState.location.pathname])
+  }, [isSmallScreen, setShowSidebar])
 
   const theme = useTheme()
 
-  const { needRoomForMacWindowControls, needRoomForWindowsWindowControls } = useNeedRoomForMacWinControls()
+  const { needRoomForMacWindowControls } = useNeedRoomForMacWinControls()
 
   return (
     <div>
@@ -124,7 +123,7 @@ function SidebarButtons(props: { sessionListRef: React.RefObject<HTMLDivElement>
   const versionHook = useVersion()
   const routerState = useRouterState()
   const navigate = useNavigate()
-  const [showSidebar, setShowSidebar] = useAtom(atoms.showSidebarAtom)
+  const setShowSidebar = useSetAtom(atoms.showSidebarAtom)
   const isSmallScreen = useIsSmallScreen()
 
   const handleCreateNewSession = useCallback(() => {

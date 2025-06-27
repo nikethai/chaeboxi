@@ -21,6 +21,34 @@ export const webSearchTool = tool({
   },
 })
 
+/**
+ * Extracts and parses JSON from a model response result to find search actions
+ * @param result The model response result containing content parts
+ * @returns The parsed search action object or null if none found
+ */
+async function extractSearchActionFromResult<T = any>(result: { contentParts: Array<{ type: string; text?: string }> }): Promise<T | null> {
+  const regex = /{(?:[^{}]|{(?:[^{}]|{[^{}]*})*})*}/g
+  const textPart = result.contentParts.find((part) => part.type === 'text')
+  
+  if (!textPart || !textPart.text) {
+    return null
+  }
+  
+  const match = textPart.text.match(regex)
+  if (match) {
+    for (const jsonString of match) {
+      try {
+        const jsonObject = JSON.parse(jsonString) as T
+        return jsonObject
+      } catch (error) {
+        console.warn('Failed to parse JSON string:', jsonString, error)
+      }
+    }
+  }
+  
+  return null
+}
+
 export async function searchByPromptEngineering(model: ModelInterface, messages: Message[], signal?: AbortSignal) {
   const language = settingActions.getLanguage()
   const systemPrompt = promptFormat.contructSearchAction(language)
@@ -35,29 +63,18 @@ export async function searchByPromptEngineering(model: ModelInterface, messages:
       ...messages,
     ])
   )
-  // extract json from response
-  const regex = /{(?:[^{}]|{(?:[^{}]|{[^{}]*})*})*}/g
-  const textPart = result.contentParts.find((part) => part.type === 'text')
-  if (!textPart) {
-    return { query: '', searchResults: [] }
+  
+  const searchAction = await extractSearchActionFromResult<{
+    action: 'search' | 'proceed'
+    query: string
+  }>(result)
+  
+  if (searchAction && searchAction.action === 'search') {
+    const { searchResults } = await webSearchExecutor({ query: searchAction.query }, { abortSignal: signal })
+    return { query: searchAction.query, searchResults }
   }
-  const match = textPart.text.match(regex)
-  if (match) {
-    for (const jsonString of match) {
-      try {
-        const jsonObject = JSON.parse(jsonString) as {
-          action: 'search' | 'proceed'
-          query: string
-        }
-        if (jsonObject.action === 'search') {
-          const { searchResults } = await webSearchExecutor({ query: jsonObject.query }, { abortSignal: signal })
-          return { query: jsonObject.query, searchResults }
-        }
-      } catch (error) {
-        console.warn('Failed to parse JSON string:', jsonString, error)
-      }
-    }
-  }
+  
+  return { query: '', searchResults: [] }
 }
 
 export async function knowledgeBaseSearchByPromptEngineering(
@@ -78,30 +95,19 @@ export async function knowledgeBaseSearchByPromptEngineering(
       ...messages,
     ])
   )
-  // extract json from response
-  const regex = /{(?:[^{}]|{(?:[^{}]|{[^{}]*})*})*}/g
-  const textPart = result.contentParts.find((part) => part.type === 'text')
-  if (!textPart) {
-    return { query: '', searchResults: [] }
+  
+  const searchAction = await extractSearchActionFromResult<{
+    action: 'search' | 'proceed'
+    query: string
+  }>(result)
+  
+  if (searchAction && searchAction.action === 'search') {
+    const knowledgeBaseController = platform.getKnowledgeBaseController()
+    const searchResults = await knowledgeBaseController.search(knowledgeBaseId, searchAction.query)
+    return { query: searchAction.query, searchResults }
   }
-  const match = textPart.text.match(regex)
-  if (match) {
-    for (const jsonString of match) {
-      try {
-        const jsonObject = JSON.parse(jsonString) as {
-          action: 'search' | 'proceed'
-          query: string
-        }
-        if (jsonObject.action === 'search') {
-          const knowledgeBaseController = platform.getKnowledgeBaseController()
-          const searchResults = await knowledgeBaseController.search(knowledgeBaseId, jsonObject.query)
-          return { query: jsonObject.query, searchResults }
-        }
-      } catch (error) {
-        console.warn('Failed to parse JSON string:', jsonString, error)
-      }
-    }
-  }
+  
+  return { query: '', searchResults: [] }
 }
 
 export async function combinedSearchByPromptEngineering(
@@ -123,34 +129,24 @@ export async function combinedSearchByPromptEngineering(
       ...messages,
     ])
   )
-  // extract json from response
-  const regex = /{(?:[^{}]|{(?:[^{}]|{[^{}]*})*})*}/g
-  const textPart = result.contentParts.find((part) => part.type === 'text')
-  if (!textPart) {
-    return { query: '', searchResults: [], type: 'none' as const }
-  }
-  const match = textPart.text.match(regex)
-  if (match) {
-    for (const jsonString of match) {
-      try {
-        const jsonObject = JSON.parse(jsonString) as {
-          action: 'search_knowledge_base' | 'search_web' | 'proceed'
-          query: string
-        }
-        if (jsonObject.action === 'search_knowledge_base' && knowledgeBaseId) {
-          const knowledgeBaseController = platform.getKnowledgeBaseController()
-          const searchResults = await knowledgeBaseController.search(knowledgeBaseId, jsonObject.query)
-          return { query: jsonObject.query, searchResults, type: 'knowledge_base' as const }
-        }
-        if (jsonObject.action === 'search_web') {
-          const { searchResults } = await webSearchExecutor({ query: jsonObject.query }, { abortSignal: signal })
-          return { query: jsonObject.query, searchResults, type: 'web' as const }
-        }
-      } catch (error) {
-        console.warn('Failed to parse JSON string:', jsonString, error)
-      }
+  
+  const searchAction = await extractSearchActionFromResult<{
+    action: 'search_knowledge_base' | 'search_web' | 'proceed'
+    query: string
+  }>(result)
+  
+  if (searchAction) {
+    if (searchAction.action === 'search_knowledge_base' && knowledgeBaseId) {
+      const knowledgeBaseController = platform.getKnowledgeBaseController()
+      const searchResults = await knowledgeBaseController.search(knowledgeBaseId, searchAction.query)
+      return { query: searchAction.query, searchResults, type: 'knowledge_base' as const }
+    }
+    if (searchAction.action === 'search_web') {
+      const { searchResults } = await webSearchExecutor({ query: searchAction.query }, { abortSignal: signal })
+      return { query: searchAction.query, searchResults, type: 'web' as const }
     }
   }
+  
   return { query: '', searchResults: [], type: 'none' as const }
 }
 

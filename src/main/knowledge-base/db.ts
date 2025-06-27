@@ -54,7 +54,9 @@ async function initDB(db: Client) {
       )`,
     ])
     // Add total_chunks column if it doesn't exist (for existing databases)
-    await db.batch([`ALTER TABLE kb_file ADD COLUMN total_chunks INTEGER DEFAULT 0`])
+    await db.batch([`ALTER TABLE kb_file ADD COLUMN total_chunks INTEGER DEFAULT 0`]).catch((e) => {
+      log.error('[DB] Failed to add total_chunks column:', e)
+    })
 
     log.info('[DB] Database initialized')
   } catch (error) {
@@ -79,6 +81,7 @@ export async function initializeDatabase() {
     vectorStore = new LibSQLVector({
       connectionUrl: `file:${dbPath}`,
     })
+    // 这里不再创建新的 client，因为多个 client 同时操作一个 db 文件会导致数据损坏
     db = (vectorStore as any).turso
     await initDB(db)
 

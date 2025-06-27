@@ -34,27 +34,6 @@ export function registerKnowledgeBaseHandlers() {
     }
   })
 
-  ipcMain.handle('kb:get', async (event, id: number) => {
-    try {
-      log.debug(`ipcMain: kb:get, id=${id}`)
-      if (!id || id <= 0) {
-        throw new Error('Invalid knowledge base ID')
-      }
-      const db = getDatabase()
-      const rs = await db.execute('SELECT * FROM knowledge_base WHERE id = ?', [id])
-      return rs.rows[0]
-    } catch (error: any) {
-      log.error(`ipcMain: kb:get failed for id=${id}`, error)
-      sentry.withScope((scope) => {
-        scope.setTag('component', 'knowledge-base-ipc')
-        scope.setTag('operation', 'kb_get')
-        scope.setExtra('kbId', id)
-        sentry.captureException(error)
-      })
-      throw error
-    }
-  })
-
   ipcMain.handle(
     'kb:create',
     async (

@@ -215,6 +215,12 @@ export class ChatboxAIAPIError extends BaseError {
       i18nKey:
         'Tool use is not enabled for Model {{model}}. Please enable it in <OpenSettingButton>provider settings</OpenSettingButton> or switch to a model that supports tool use.',
     },
+    mobile_not_support_local_file_parsing: {
+      name: 'mobile_not_support_local_file_parsing',
+      code: 20027,
+      i18nKey:
+        'Mobile devices temporarily do not support local parsing of this file type. Please use text files (txt, markdown, etc.) or use <LinkToAdvancedFileProcessing>Chatbox AI Service</LinkToAdvancedFileProcessing> for cloud-based document analysis.',
+    },
   }
   static fromCodeName(response: string, codeName: string) {
     if (!codeName) {

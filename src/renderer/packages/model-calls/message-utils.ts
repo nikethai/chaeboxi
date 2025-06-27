@@ -1,11 +1,10 @@
-import { createModelDependencies } from '@/adapters'
-import { getMessageText, cloneMessage } from '@/utils/message'
-import { TextPart, ImagePart, FilePart, CoreMessage } from 'ai'
+import type { CoreMessage, FilePart, ImagePart, TextPart } from 'ai'
 import dayjs from 'dayjs'
 import { compact } from 'lodash'
-import { Message } from 'src/shared/types'
-import { MessageContentParts } from 'src/shared/types'
-import { ModelDependencies } from 'src/shared/types/adapters'
+import type { Message, MessageContentParts } from 'src/shared/types'
+import type { ModelDependencies } from 'src/shared/types/adapters'
+import { createModelDependencies } from '@/adapters'
+import { cloneMessage, getMessageText } from '@/utils/message'
 
 async function convertContentParts<T extends TextPart | ImagePart | FilePart>(
   contentParts: MessageContentParts,
@@ -18,15 +17,24 @@ async function convertContentParts<T extends TextPart | ImagePart | FilePart>(
         if (c.type === 'text') {
           return { type: 'text', text: c.text! } as T
         } else if (c.type === 'image') {
-          const imageData = (await dependencies.storage.getImage(c.storageKey))?.replace(
-            /^data:image\/[^;]+;base64,/,
-            ''
-          )
-          return {
-            type: imageType,
-            ...(imageType === 'image' ? { image: imageData } : { data: imageData }),
-            mimeType: 'image/png',
-          } as T
+          try {
+            const imageData = await dependencies.storage.getImage(c.storageKey)
+            if (!imageData) {
+              console.warn(`Image not found for storage key: ${c.storageKey}`)
+              return null
+            }
+            const base64Data = imageData.replace(/^data:image\/[^;]+;base64,/, '')
+            const mimeType = imageData.match(/^data:([^;]+)/)?.[1] || 'image/png'
+
+            return {
+              type: imageType,
+              ...(imageType === 'image' ? { image: base64Data } : { data: base64Data }),
+              mimeType,
+            } as T
+          } catch (error) {
+            console.error(`Failed to get image for storage key ${c.storageKey}:`, error)
+            return null
+          }
         }
         return null
       })
@@ -50,38 +58,40 @@ async function convertAssistantContentParts(
 
 export async function convertToCoreMessages(messages: Message[]): Promise<CoreMessage[]> {
   const dependencies = await createModelDependencies()
-  return compact(
-    await Promise.all(
-      messages.map(async (m) => {
-        switch (m.role) {
-          case 'system':
-            return {
-              role: 'system' as const,
-              content: getMessageText(m),
-            }
-          case 'user': {
-            const contentParts = await convertUserContentParts(m.contentParts || [], dependencies)
-            return {
-              role: 'user' as const,
-              content: contentParts,
-            }
+  const results = await Promise.all(
+    messages.map(async (m): Promise<CoreMessage | null> => {
+      switch (m.role) {
+        case 'system':
+          return {
+            role: 'system' as const,
+            content: getMessageText(m),
           }
-          case 'assistant': {
-            const contentParts = m.contentParts || []
-            return {
-              role: 'assistant' as const,
-              content: await convertAssistantContentParts(contentParts, dependencies),
-            }
+        case 'user': {
+          const contentParts = await convertUserContentParts(m.contentParts || [], dependencies)
+          return {
+            role: 'user' as const,
+            content: contentParts,
           }
-          case 'tool':
-            return null
-          default:
-            const _exhaustiveCheck: never = m.role
-            throw new Error(`Unkown role: ${_exhaustiveCheck}`)
         }
-      })
-    )
+        case 'assistant': {
+          const contentParts = m.contentParts || []
+          return {
+            role: 'assistant' as const,
+            content: await convertAssistantContentParts(contentParts, dependencies),
+          }
+        }
+        case 'tool':
+          return null
+        default: {
+          const _exhaustiveCheck: never = m.role
+          throw new Error(`Unknown role: ${_exhaustiveCheck}`)
+        }
+      }
+    })
   )
+  
+  // Filter out null values manually instead of using compact
+  return results.filter((result): result is CoreMessage => result !== null)
 }
 
 /**

@@ -5,11 +5,6 @@ import type { KnowledgeBaseController } from './interface'
 class DesktopKnowledgeBaseController implements KnowledgeBaseController {
   constructor(private ipc: ElectronIPC) {}
 
-  async get(id: number) {
-    const kb = await this.ipc.invoke('kb:get', id)
-    return kb
-  }
-
   async list() {
     const knowledgeBases = await this.ipc.invoke('kb:list')
     return knowledgeBases
@@ -37,13 +32,7 @@ class DesktopKnowledgeBaseController implements KnowledgeBaseController {
   }
 
   async uploadFile(kbId: number, file: FileMeta) {
-    const fileMeta = {
-      name: file.name,
-      path: file.path,
-      type: file.type,
-      size: file.size,
-    }
-    return await this.ipc.invoke('kb:file:upload', kbId, fileMeta)
+    return await this.ipc.invoke('kb:file:upload', kbId, file)
   }
 
   async deleteFile(fileId: number) {

@@ -96,6 +96,7 @@ export default function MaxContextMessageCountSlider({ value, onChange, classNam
           maw={320}
           className="!whitespace-normal"
           zIndex={3000}
+          events={{ hover: true, focus: true, touch: true }}
         >
           <IconInfoCircle size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
         </Tooltip>

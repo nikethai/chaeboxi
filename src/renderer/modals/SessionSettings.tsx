@@ -364,7 +364,14 @@ function ThinkingBudgetConfig({
         <Text size="sm" fw="600">
           {t('Thinking Budget')}
         </Text>
-        <Tooltip label={tooltipText} withArrow={true} maw={320} className="!whitespace-normal" zIndex={3000}>
+        <Tooltip
+          label={tooltipText}
+          withArrow={true}
+          maw={320}
+          className="!whitespace-normal"
+          zIndex={3000}
+          events={{ hover: true, focus: true, touch: true }}
+        >
           <IconInfoCircle size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
         </Tooltip>
       </Flex>
@@ -475,6 +482,7 @@ function OpenAIProviderConfig({
           maw={320}
           className="!whitespace-normal"
           zIndex={3000}
+          events={{ hover: true, focus: true, touch: true }}
         >
           <IconInfoCircle size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
         </Tooltip>
@@ -549,6 +557,7 @@ export function ChatConfig({
             maw={320}
             className="!whitespace-normal"
             zIndex={3000}
+            events={{ hover: true, focus: true, touch: true }}
           >
             <IconInfoCircle size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
           </Tooltip>
@@ -570,6 +579,7 @@ export function ChatConfig({
             maw={320}
             className="!whitespace-normal"
             zIndex={3000}
+            events={{ hover: true, focus: true, touch: true }}
           >
             <IconInfoCircle size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
           </Tooltip>

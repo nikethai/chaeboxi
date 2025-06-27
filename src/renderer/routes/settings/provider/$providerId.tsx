@@ -1,15 +1,3 @@
-import PopoverConfirm from '@/components/PopoverConfirm'
-import { useProviderSettings, useSettings } from '@/hooks/useSettings'
-import { getModelSettingUtil } from '@/packages/model-setting-utils'
-import { getModel } from '@/packages/models'
-import {
-  normalizeAzureEndpoint,
-  normalizeClaudeHost,
-  normalizeGeminiHost,
-  normalizeOpenAIApiHostAndPath,
-} from '@/packages/models/llm_utils'
-import platform from '@/platform'
-import { add, add as addToast } from '@/stores/toastActions'
 import NiceModal from '@ebay/nice-modal-react'
 import {
   Button,
@@ -39,16 +27,28 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { ChangeEvent, useState } from 'react'
+import { type ChangeEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SystemProviders } from 'src/shared/defaults'
 import {
   MessageRoleEnum,
-  ModelOptionGroup,
+  type ModelOptionGroup,
   ModelProviderEnum,
   ModelProviderType,
-  ProviderModelInfo
+  type ProviderModelInfo,
 } from 'src/shared/types'
+import PopoverConfirm from '@/components/PopoverConfirm'
+import { useProviderSettings, useSettings } from '@/hooks/useSettings'
+import { getModelSettingUtil } from '@/packages/model-setting-utils'
+import { getModel } from '@/packages/models'
+import {
+  normalizeAzureEndpoint,
+  normalizeClaudeHost,
+  normalizeGeminiHost,
+  normalizeOpenAIApiHostAndPath,
+} from '@/packages/models/llm_utils'
+import platform from '@/platform'
+import { add, add as addToast } from '@/stores/toastActions'
 
 export const Route = createFileRoute('/settings/provider/$providerId')({
   component: RouteComponent,
@@ -147,7 +147,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         setFetchedModels(
           modelList
             .reduce((pre, cur) => [...pre, ...cur.options], [] as ModelOptionGroup['options'])
-            .map((option) => ({ modelId: option.value } as ProviderModelInfo))
+            .map((option) => ({ modelId: option.value }) as ProviderModelInfo)
         )
       } else {
         add(t('Failed to fetch models'))
@@ -300,8 +300,8 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                   !providerSettings?.apiKey
                     ? t('API Key is required to check connection')
                     : !checkModel
-                    ? t('Add at least one model to check connection')
-                    : null
+                      ? t('Add at least one model to check connection')
+                      : null
                 }
               >
                 <Button
@@ -357,7 +357,9 @@ function ProviderSettings({ providerId }: { providerId: string }) {
               />
             </Flex>
             <Text span size="xs" flex="0 1 auto" c="chatbox-secondary">
-              {[ModelProviderEnum.OpenAI, ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ''].includes(baseInfo.id)
+              {[ModelProviderEnum.OpenAI, ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ''].includes(
+                baseInfo.id
+              )
                 ? normalizeOpenAIApiHostAndPath({
                     apiHost: providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost,
                   }).apiHost +
@@ -552,21 +554,21 @@ function ProviderSettings({ providerId }: { providerId: string }) {
 
                 <Flex flex="0 0 auto" gap="xs" align="center">
                   {model.capabilities?.includes('reasoning') && (
-                    <Tooltip label={t('Reasoning')}>
+                    <Tooltip label={t('Reasoning')} events={{ hover: true, focus: true, touch: true }}>
                       <Text span c="chatbox-warning" className="flex items-center">
                         <IconBulb size={20} />
                       </Text>
                     </Tooltip>
                   )}
                   {model.capabilities?.includes('vision') && (
-                    <Tooltip label={t('Vision')}>
+                    <Tooltip label={t('Vision')} events={{ hover: true, focus: true, touch: true }}>
                       <Text span c="chatbox-brand" className="flex items-center">
                         <IconEye size={20} />
                       </Text>
                     </Tooltip>
                   )}
                   {model.capabilities?.includes('tool_use') && (
-                    <Tooltip label={t('Tool Use')}>
+                    <Tooltip label={t('Tool Use')} events={{ hover: true, focus: true, touch: true }}>
                       <Text span c="chatbox-success" className="flex items-center">
                         <IconTool size={20} />
                       </Text>

@@ -166,7 +166,8 @@ function Index() {
               </Flex>
 
               <Text c="chatbox-secondary" className="line-clamp-5">
-                {session.messages[0].contentParts.map((part) => (part.type === 'text' ? part.text : '')).join('')}
+                {session.messages[0]?.contentParts?.map((part) => (part.type === 'text' ? part.text : '')).join('') ||
+                  ''}
               </Text>
             </Stack>
           ) : (

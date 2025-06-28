@@ -314,7 +314,7 @@ const Message: FC<Props> = (props) => {
     }
   }, [msg.contentParts, msg.reasoningContent, needArtifact])
 
-  const contentParts = msg.contentParts
+  const contentParts = msg.contentParts || []
 
   const CollapseButton = (
     <span

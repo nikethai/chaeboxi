@@ -1,12 +1,5 @@
 import { Anchor, Box, Button, Container, Divider, Flex, Image, Popover, Stack, Text, Title } from '@mantine/core'
-import { createFileRoute } from '@tanstack/react-router'
-import iconPNG from '@/static/icon.png'
-import useVersion from '@/hooks/useVersion'
-import { useTranslation } from 'react-i18next'
-import { Fragment, ReactElement } from 'react'
-import BrandX from '@/components/icons/BrandX'
-import BrandWechat from '@/components/icons/BrandWechat'
-import BrandRedNote from '@/components/icons/BrandRedNote'
+import { useDisclosure } from '@mantine/hooks'
 import {
   IconAlertTriangle,
   IconChevronRight,
@@ -17,14 +10,20 @@ import {
   IconMessage2,
   IconPencil,
 } from '@tabler/icons-react'
-import { useDisclosure } from '@mantine/hooks'
-import IMG_WECHAT_QRCODE from '@/static/wechat_qrcode.png'
-import BrandGithub from '@/components/icons/BrandGithub'
+import { createFileRoute } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
-import { languageAtom } from '@/stores/atoms'
-import platform from '@/platform'
+import { Fragment, type ReactElement } from 'react'
+import { useTranslation } from 'react-i18next'
+import BrandGithub from '@/components/icons/BrandGithub'
+import BrandRedNote from '@/components/icons/BrandRedNote'
+import BrandWechat from '@/components/icons/BrandWechat'
 import Page from '@/components/Page'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import useVersion from '@/hooks/useVersion'
+import platform from '@/platform'
+import iconPNG from '@/static/icon.png'
+import IMG_WECHAT_QRCODE from '@/static/wechat_qrcode.png'
+import { languageAtom } from '@/stores/atoms'
 
 export const Route = createFileRoute('/about')({
   component: RouteComponent,
@@ -153,6 +152,13 @@ function RouteComponent() {
             />
           </List>
         </Stack>
+
+        {/* 开发环境下显示错误测试面板 */}
+        {/* {process.env.NODE_ENV === 'development' && (
+          <div className="mt-8 max-w-md">
+            <ErrorTestPanel />
+          </div>
+        )} */}
       </Container>
     </Page>
   )

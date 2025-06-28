@@ -1,29 +1,29 @@
-import { createRootRoute, Outlet, useNavigate } from '@tanstack/react-router'
-import { useEffect, useMemo } from 'react'
+import NiceModal from '@ebay/nice-modal-react'
+import { Box, Grid } from '@mui/material'
 import CssBaseline from '@mui/material/CssBaseline'
 import { ThemeProvider } from '@mui/material/styles'
-import { Box, Grid } from '@mui/material'
-import { RemoteConfig, Theme, Settings } from '@/../shared/types'
-import CleanWidnow from '@/pages/CleanWindow'
-import useAppTheme from '@/hooks/useAppTheme'
-import useShortcut from '@/hooks/useShortcut'
-import useScreenChange, { useSidebarWidth } from '@/hooks/useScreenChange'
-import * as remote from '@/packages/remote'
-import { useI18nEffect } from '@/hooks/useI18nEffect'
-import Toasts from '@/components/Toasts'
-import * as settingActions from '@/stores/settingActions'
-import RemoteDialogWindow from '@/pages/RemoteDialogWindow'
-import { useSystemLanguageWhenInit } from '@/hooks/useDefaultSystemLanguage'
+import { createRootRoute, Outlet, useNavigate } from '@tanstack/react-router'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import * as atoms from '@/stores/atoms'
-import SearchDialog from '@/pages/SearchDialog'
-import Sidebar from '@/Sidebar'
-import PictureDialog from '@/pages/PictureDialog'
-import * as premiumActions from '@/stores/premiumActions'
-import platform from '@/platform'
-import { getOS } from '@/packages/navigator'
+import { useEffect, useMemo } from 'react'
+import { type RemoteConfig, type Settings, Theme } from '@/../shared/types'
 import ExitFullscreenButton from '@/components/ExitFullscreenButton'
-import NiceModal from '@ebay/nice-modal-react'
+import Toasts from '@/components/Toasts'
+import useAppTheme from '@/hooks/useAppTheme'
+import { useSystemLanguageWhenInit } from '@/hooks/useDefaultSystemLanguage'
+import { useI18nEffect } from '@/hooks/useI18nEffect'
+import useScreenChange, { useSidebarWidth } from '@/hooks/useScreenChange'
+import useShortcut from '@/hooks/useShortcut'
+import { getOS } from '@/packages/navigator'
+import * as remote from '@/packages/remote'
+import CleanWidnow from '@/pages/CleanWindow'
+import PictureDialog from '@/pages/PictureDialog'
+import RemoteDialogWindow from '@/pages/RemoteDialogWindow'
+import SearchDialog from '@/pages/SearchDialog'
+import platform from '@/platform'
+import Sidebar from '@/Sidebar'
+import * as atoms from '@/stores/atoms'
+import * as premiumActions from '@/stores/premiumActions'
+import * as settingActions from '@/stores/settingActions'
 import '@/modals'
 import {
   Avatar,
@@ -31,9 +31,9 @@ import {
   Checkbox,
   Combobox,
   createTheme,
-  DefaultMantineColor,
+  type DefaultMantineColor,
   Input,
-  MantineColorsTuple,
+  type MantineColorsTuple,
   MantineProvider,
   Modal,
   NativeSelect,
@@ -47,8 +47,9 @@ import {
   virtualColor,
 } from '@mantine/core'
 import { QueryClientProvider } from '@tanstack/react-query'
-import queryClient from '@/stores/queryClient'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import storage, { StorageKey } from '@/storage'
+import queryClient from '@/stores/queryClient'
 
 function Root() {
   const navigate = useNavigate()
@@ -64,7 +65,7 @@ function Root() {
       ;(async () => {
         const remoteConfig = await remote
           .getRemoteConfig('setting_chatboxai_first')
-          .catch(() => ({ setting_chatboxai_first: false } as RemoteConfig))
+          .catch(() => ({ setting_chatboxai_first: false }) as RemoteConfig)
         setRemoteConfig((conf) => ({ ...conf, ...remoteConfig }))
         // 是否需要弹出设置窗口
         if (settingActions.needEditSetting()) {
@@ -108,7 +109,7 @@ function Root() {
     }, 2000)
 
     return () => clearTimeout(tid)
-  }, [])
+  }, [navigate, setOpenAboutDialog, setRemoteConfig])
 
   const [showSidebar] = useAtom(atoms.showSidebarAtom)
   const sidebarWidth = useSidebarWidth()
@@ -123,7 +124,7 @@ function Root() {
     } else {
       setColorScheme('auto')
     }
-  }, [_theme])
+  }, [_theme, setColorScheme])
 
   // FIXME: 为了从LocalStroage中初始化这两个atom，否则首次get这两个atom可能得到默认值
   useAtom(atoms.chatSessionSettingsAtom)
@@ -140,7 +141,7 @@ function Root() {
         })
       }
     })()
-  }, [])
+  }, [navigate])
 
   return (
     <Box className="box-border App" spellCheck={spellCheck} dir={language === 'ar' ? 'rtl' : 'ltr'}>
@@ -423,7 +424,7 @@ const creteMantineTheme = (scale = 1) =>
         }),
       }),
       Input: Input.extend({
-        styles: (theme, props) => ({
+        styles: (_theme, props) => ({
           wrapper: {
             '--input-height-sm': rem('32px'),
             ...(props.error
@@ -488,7 +489,7 @@ const creteMantineTheme = (scale = 1) =>
         defaultProps: {
           size: 'sm',
         },
-        styles: (theme, props) => {
+        styles: (_theme, props) => {
           return {
             label: {
               color: props.checked
@@ -502,7 +503,7 @@ const creteMantineTheme = (scale = 1) =>
         defaultProps: {
           size: 'sm',
         },
-        styles: (theme, props) => ({
+        styles: (_theme, props) => ({
           label: {
             color: props.checked
               ? 'var(--mantine-color-chatbox-primary-text)'
@@ -564,7 +565,9 @@ export const Route = createRootRoute({
           <ThemeProvider theme={theme}>
             <CssBaseline />
             <NiceModal.Provider>
-              <Root />
+              <ErrorBoundary>
+                <Root />
+              </ErrorBoundary>
             </NiceModal.Provider>
           </ThemeProvider>
         </MantineProvider>

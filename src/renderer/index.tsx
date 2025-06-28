@@ -1,19 +1,20 @@
+import '@mantine/core/styles.css'
 import * as Sentry from '@sentry/react'
+import { RouterProvider } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
 import { StrictMode, useState } from 'react'
 import ReactDOM from 'react-dom/client'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import './i18n'
 import { cn, getLogger } from './lib/utils'
 import reportWebVitals from './reportWebVitals'
+import { router } from './router'
 import { initData } from './setup/init_data'
 import './static/globals.css'
 import './static/index.css'
 import { initLogAtom, migrationProcessAtom } from './stores/atoms/utilAtoms'
 import * as migration from './stores/migration'
 import { CHATBOX_BUILD_PLATFORM, CHATBOX_BUILD_TARGET } from './variables'
-import { router } from './router'
-import { RouterProvider } from '@tanstack/react-router'
-import '@mantine/core/styles.css'
 import '@mantine/spotlight/styles.css'
 
 const log = getLogger('index')
@@ -24,11 +25,19 @@ import './setup/load_polyfill'
 // Sentry 初始化
 import './setup/sentry_init'
 
+// 全局错误处理
+import './setup/global_error_handler'
+
 // GA4 初始化
 import './setup/ga_init'
 
 // 引入保护代码
 import './setup/protect'
+
+// 开发环境下引入错误测试工具
+// if (process.env.NODE_ENV === 'development') {
+//   import('./utils/error-testing')
+// }
 
 // 引入移动端安全区域代码，主要为了解决异形屏幕的问题
 if (CHATBOX_BUILD_TARGET === 'mobile_app' && CHATBOX_BUILD_PLATFORM === 'ios') {
@@ -104,7 +113,9 @@ function InitPage() {
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement)
 root.render(
   <StrictMode>
-    <InitPage />
+    <ErrorBoundary>
+      <InitPage />
+    </ErrorBoundary>
   </StrictMode>
 )
 
@@ -119,7 +130,9 @@ initializeApp()
     // 初始化完成，可以开始渲染
     root.render(
       <StrictMode>
-        <RouterProvider router={router} />
+        <ErrorBoundary>
+          <RouterProvider router={router} />
+        </ErrorBoundary>
       </StrictMode>
     )
   })

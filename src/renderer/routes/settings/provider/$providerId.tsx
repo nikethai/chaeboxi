@@ -1,10 +1,3 @@
-import { createModelDependencies } from '@/adapters'
-import PopoverConfirm from '@/components/PopoverConfirm'
-import { useProviderSettings, useSettings } from '@/hooks/useSettings'
-import { streamText } from '@/packages/model-calls'
-import { getModelSettingUtil } from '@/packages/model-setting-utils'
-import platform from '@/platform'
-import { add, add as addToast } from '@/stores/toastActions'
 import NiceModal from '@ebay/nice-modal-react'
 import {
   Badge,
@@ -53,6 +46,13 @@ import {
   normalizeGeminiHost,
   normalizeOpenAIApiHostAndPath,
 } from 'src/shared/utils'
+import { createModelDependencies } from '@/adapters'
+import PopoverConfirm from '@/components/PopoverConfirm'
+import { useProviderSettings, useSettings } from '@/hooks/useSettings'
+import { streamText } from '@/packages/model-calls'
+import { getModelSettingUtil } from '@/packages/model-setting-utils'
+import platform from '@/platform'
+import { add as addToast } from '@/stores/toastActions'
 
 export const Route = createFileRoute('/settings/provider/$providerId')({
   component: RouteComponent,
@@ -154,7 +154,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
             .map((option) => ({ modelId: option.value } as ProviderModelInfo))
         )
       } else {
-        add(t('Failed to fetch models'))
+        addToast(t('Failed to fetch models'))
       }
       setFetchingModels(false)
     } catch (error) {
@@ -234,25 +234,23 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           </Button>
         )}
         {baseInfo.isCustom && (
-          <>
-            <PopoverConfirm
-              title={t('Confirm to delete this custom provider?')}
-              confirmButtonColor="chatbox-error"
-              onConfirm={() => {
-                setSettings({
-                  customProviders: settings.customProviders?.filter((p) => p.id !== baseInfo.id),
-                })
-                navigate({ to: './..' as any, replace: true })
-              }}
-            >
-              <Button
-                variant="transparent"
-                size="compact-xs"
-                leftSection={<IconTrash size={24} />}
-                color="chatbox-error"
-              ></Button>
-            </PopoverConfirm>
-          </>
+          <PopoverConfirm
+            title={t('Confirm to delete this custom provider?')}
+            confirmButtonColor="chatbox-error"
+            onConfirm={() => {
+              setSettings({
+                customProviders: settings.customProviders?.filter((p) => p.id !== baseInfo.id),
+              })
+              navigate({ to: './..' as any, replace: true })
+            }}
+          >
+            <Button
+              variant="transparent"
+              size="compact-xs"
+              leftSection={<IconTrash size={24} />}
+              color="chatbox-error"
+            ></Button>
+          </PopoverConfirm>
         )}
       </Flex>
 

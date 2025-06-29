@@ -29,7 +29,7 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { type ModelProvider, ModelProviderEnum } from 'src/shared/types'
 import useChatboxAIModels from '@/hooks/useChatboxAIModels'
@@ -88,7 +88,7 @@ function RouteComponent() {
     })
   }
 
-  const activate = async () => {
+  const activate = useCallback(async () => {
     try {
       setActivating(true)
       setActivateError(undefined)
@@ -101,7 +101,7 @@ function RouteComponent() {
     } finally {
       setActivating(false)
     }
-  }
+  }, [licenseKey])
 
   // 自动激活
   useEffect(() => {
@@ -113,7 +113,7 @@ function RouteComponent() {
       console.log('auto activate')
       activate()
     }
-  }, [licenseKey])
+  }, [licenseKey, activate, settings.licenseInstances])
 
   const [showFetchedModels, setShowFetchedModels] = useState(false)
   const handleFetchModels = () => {
@@ -257,7 +257,7 @@ function RouteComponent() {
                           {text}
                         </Text>
                       </Flex>
-                      <Progress value={val} />
+                      <Progress value={Number(val)} />
                     </Stack>
                   ))}
 
@@ -450,29 +450,28 @@ function RouteComponent() {
 
                 <Flex flex="0 0 auto" gap="xs" align="center">
                   {model.type && model.type !== 'chat' && <Badge color="blue">{t(model.type)}</Badge>}
-                  <>
-                    {model.capabilities?.includes('reasoning') && (
-                      <Tooltip label={t('Reasoning')}>
-                        <Text span c="chatbox-warning" className="flex items-center">
-                          <IconBulb size={20} />
-                        </Text>
-                      </Tooltip>
-                    )}
-                    {model.capabilities?.includes('vision') && (
-                      <Tooltip label={t('Vision')}>
-                        <Text span c="chatbox-brand" className="flex items-center">
-                          <IconEye size={20} />
-                        </Text>
-                      </Tooltip>
-                    )}
-                    {model.capabilities?.includes('tool_use') && (
-                      <Tooltip label={t('Tool Use')}>
-                        <Text span c="chatbox-success" className="flex items-center">
-                          <IconTool size={20} />
-                        </Text>
-                      </Tooltip>
-                    )}
-                  </>
+
+                  {model.capabilities?.includes('reasoning') && (
+                    <Tooltip label={t('Reasoning')}>
+                      <Text span c="chatbox-warning" className="flex items-center">
+                        <IconBulb size={20} />
+                      </Text>
+                    </Tooltip>
+                  )}
+                  {model.capabilities?.includes('vision') && (
+                    <Tooltip label={t('Vision')}>
+                      <Text span c="chatbox-brand" className="flex items-center">
+                        <IconEye size={20} />
+                      </Text>
+                    </Tooltip>
+                  )}
+                  {model.capabilities?.includes('tool_use') && (
+                    <Tooltip label={t('Tool Use')}>
+                      <Text span c="chatbox-success" className="flex items-center">
+                        <IconTool size={20} />
+                      </Text>
+                    </Tooltip>
+                  )}
                 </Flex>
 
                 <Flex flex="0 0 auto" gap="xs" align="center" className="ml-auto">

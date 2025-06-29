@@ -122,8 +122,6 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
         mimeType = 'image/gif'
       } else if (filename.endsWith('.webp')) {
         mimeType = 'image/webp'
-      } else if (filename.endsWith('.svg')) {
-        mimeType = 'image/svg+xml'
       } else if (filename.endsWith('.bmp')) {
         mimeType = 'image/bmp'
       } else {
@@ -176,7 +174,7 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
       '.csv',
       '.epub',
     ]
-    const imageTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp']
+    const imageTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
 
     // Add MIME types for better Windows compatibility
     const documentMimeTypes = [
@@ -193,7 +191,7 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
       'text/csv',
       'application/epub+zip',
     ]
-    const imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml', 'image/bmp']
+    const imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp']
 
     const hasVisionModel = knowledgeBase?.visionModel && knowledgeBase.visionModel.trim() !== ''
 

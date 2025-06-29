@@ -32,7 +32,15 @@ export const openAboutDialogAtom = atom(false) // 是否展示相关信息的窗
 // Input box related state
 export const inputBoxLinksAtom = atom<{ url: string }[]>([])
 export const inputBoxWebBrowsingModeAtom = atom(false)
-export const inputBoxKnowledgeBaseAtom = atom<Pick<KnowledgeBase, 'id' | 'name'> | undefined>(undefined)
+
+// Session-specific knowledge base selections (sessionId -> knowledge base)
+export const sessionKnowledgeBaseMapAtom = atom<Record<string, Pick<KnowledgeBase, 'id' | 'name'> | undefined>>({})
+
+// Temporary state for new sessions (before they are created)
+export const newSessionStateAtom = atom<{
+  knowledgeBase?: Pick<KnowledgeBase, 'id' | 'name'>
+  webBrowsing?: boolean
+}>({})
 
 // Picture viewer state
 export const pictureShowAtom = atom<{

@@ -1,11 +1,9 @@
 import type { ToolSet } from 'ai'
-import { t } from 'i18next'
-import { getDefaultStore } from 'jotai'
 import { uniqueId } from 'lodash'
 import { sequenceMessages } from 'src/shared/utils/message'
-import { inputBoxKnowledgeBaseAtom, inputBoxWebBrowsingModeAtom } from '@/stores/atoms'
 import type { ModelInterface, OnResultChange, onResultChangeWithCancel } from '../../../shared/models/types'
 import type {
+  KnowledgeBase,
   Message,
   MessageInfoPart,
   MessageToolCallPart,
@@ -78,12 +76,12 @@ export async function streamText(
     messages: Message[]
     onResultChangeWithCancel: onResultChangeWithCancel
     providerOptions?: ProviderOptions
+    knowledgeBase?: Pick<KnowledgeBase, 'id' | 'name'>
+    webBrowsing?: boolean
   },
   signal?: AbortSignal
 ) {
-  const store = getDefaultStore()
-  const knowledgeBase = store.get(inputBoxKnowledgeBaseAtom)
-  const webBrowsing = store.get(inputBoxWebBrowsingModeAtom)
+  const { knowledgeBase, webBrowsing } = params
 
   const controller = new AbortController()
   const cancel = () => controller.abort()

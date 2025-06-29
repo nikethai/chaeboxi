@@ -1,8 +1,8 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import type { Client } from '@libsql/client'
 import { LibSQLVector } from '@mastra/core/vector/libsql'
 import { app } from 'electron'
-import fs from 'fs'
-import path from 'path'
 import { sentry } from '../adapters/sentry'
 import { getLogger } from '../util'
 
@@ -19,8 +19,7 @@ if (!fs.existsSync(dbDir)) {
 
 // Polyfill for mastra
 if (typeof global.crypto === 'undefined' || !('subtle' in global.crypto)) {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-  global.crypto = require('crypto') as any
+  global.crypto = require('node:crypto')
 }
 
 let db: Client
@@ -54,25 +53,26 @@ async function initDB(db: Client) {
       )`,
     ])
     // Add total_chunks column if it doesn't exist (for existing databases)
-    await db.batch([`ALTER TABLE kb_file ADD COLUMN total_chunks INTEGER DEFAULT 0`]).catch((e) => {
-      log.error('[DB] Failed to add total_chunks column:', e)
+    await db.batch([`ALTER TABLE kb_file ADD COLUMN total_chunks INTEGER DEFAULT 0`]).catch((error) => {
+      if (error instanceof Error && !error.message.includes('duplicate column name')) {
+        log.error('[DB] Failed to add total_chunks column', error)
+      } else {
+        // Ignore error if column already exists
+        log.info('[DB] Database initialized (total_chunks column already exists)')
+      }
     })
 
     log.info('[DB] Database initialized')
   } catch (error) {
-    // Ignore error if column already exists
-    if (error instanceof Error && !error.message.includes('duplicate column name')) {
-      log.error('[DB] Failed to initialize database:', error)
-      sentry.withScope((scope) => {
-        scope.setTag('component', 'knowledge-base-db')
-        scope.setTag('operation', 'database_initialization')
-        scope.setExtra('dbPath', dbPath)
-        sentry.captureException(error)
-      })
-      throw error
-    } else {
-      log.info('[DB] Database initialized (total_chunks column already exists)')
-    }
+    log.error('[DB] Failed to initialize database:', error)
+
+    sentry.withScope((scope) => {
+      scope.setTag('component', 'knowledge-base-db')
+      scope.setTag('operation', 'database_initialization')
+      scope.setExtra('dbPath', dbPath)
+      sentry.captureException(error)
+    })
+    throw error
   }
 }
 
@@ -82,6 +82,7 @@ export async function initializeDatabase() {
       connectionUrl: `file:${dbPath}`,
     })
     // 这里不再创建新的 client，因为多个 client 同时操作一个 db 文件会导致数据损坏
+    // biome-ignore lint/suspicious/noExplicitAny: access internal property
     db = (vectorStore as any).turso
     await initDB(db)
 
@@ -132,15 +133,15 @@ export function parseSQLiteTimestamp(sqliteTimestamp: string): number {
   try {
     // SQLite CURRENT_TIMESTAMP returns UTC time in format: 'YYYY-MM-DD HH:MM:SS'
     // We need to explicitly tell JavaScript this is UTC time
-    const utcDate = new Date(sqliteTimestamp + ' UTC')
+    const utcDate = new Date(`${sqliteTimestamp} UTC`)
     const timestamp = utcDate.getTime()
 
-    if (isNaN(timestamp)) {
+    if (Number.isNaN(timestamp)) {
       throw new Error(`Invalid timestamp format: ${sqliteTimestamp}`)
     }
 
     return timestamp
-  } catch (error: any) {
+  } catch (error) {
     log.error(`[DB] Failed to parse SQLite timestamp: ${sqliteTimestamp}`, error)
     sentry.withScope((scope) => {
       scope.setTag('component', 'knowledge-base-db')

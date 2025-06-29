@@ -1,7 +1,5 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { ActionIcon, Group, Paper, Space, Stack, Text, Transition } from '@mantine/core'
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate'
-import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import CopyAllIcon from '@mui/icons-material/CopyAll'
 import EditIcon from '@mui/icons-material/Edit'
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote'
@@ -21,7 +19,7 @@ import MenuItem from '@mui/material/MenuItem'
 import { useNavigate } from '@tanstack/react-router'
 import * as dateFns from 'date-fns'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { isEmpty, last } from 'lodash'
+import { isEmpty } from 'lodash'
 import type React from 'react'
 import { type FC, type MouseEventHandler, memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -33,10 +31,10 @@ import { estimateTokensFromMessages } from '@/packages/token'
 import { countWord } from '@/packages/word-count'
 import platform from '@/platform'
 import { getMessageText } from '@/utils/message'
-import type { Message, MessageReasoningPart, SessionType } from '../../shared/types'
+import type { Message, SessionType } from '../../shared/types'
 import '../static/Block.css'
 
-import { IconBrain, IconBulb, IconChevronDown, IconChevronUp, IconCopy, IconInfoCircle } from '@tabler/icons-react'
+import { IconInfoCircle } from '@tabler/icons-react'
 import {
   autoCollapseCodeBlockAtom,
   autoPreviewArtifactsAtom,
@@ -111,9 +109,6 @@ const _Message: FC<Props> = (props) => {
   const autoCollapseCodeBlock = useAtomValue(autoCollapseCodeBlockAtom)
 
   const [previewArtifact, setPreviewArtifact] = useState(autoPreviewArtifacts)
-
-  // Reasoning content expansion states
-  const [reasoningExpandStates, setReasoningExpandStates] = useState<Record<string, boolean>>({})
 
   const contentLength = useMemo(() => {
     return getMessageText(msg).length
@@ -346,70 +341,6 @@ const _Message: FC<Props> = (props) => {
     })
   }
 
-  const renderReasoningContent = (msg: Message, item?: MessageReasoningPart, index?: number) => {
-    return <ReasoningContentUI message={msg} part={item} onCopyReasoningContent={onCopyReasoningContent} />
-    // const reasoningContent = item?.text || msg.reasoningContent || ''
-    // const reasoningKey = item ? `reasoning-${index}` : 'main-reasoning'
-    // const isThinking =
-    //   msg.generating && item && msg.contentParts && msg.contentParts.length > 0 && msg.contentParts.length - 1 === index
-    // const isExpanded = reasoningExpandStates[reasoningKey] ?? isThinking
-
-    // const toggleExpanded = () => {
-    //   setReasoningExpandStates((prev) => ({
-    //     ...prev,
-    //     [reasoningKey]: !prev[reasoningKey],
-    //   }))
-    // }
-
-    // return (
-    //   <Paper withBorder radius="md" mb="xs">
-    //     <Box onClick={toggleExpanded} className="cursor-pointer">
-    //       <Group px="xs" justify="space-between" className="w-full">
-    //         <Group gap="xs" className={cn(isThinking ? 'animate-pulse' : '')}>
-    //           <Text fw={600} size="sm">
-    //             {isThinking ? t('Thinking') : t('Deeply thought')}
-    //           </Text>
-    //           <IconBulb size={16} color="var(--mantine-color-chatbox-warning-text)" />
-    //         </Group>
-    //         <Space miw="xl" />
-    //         <Group gap="xs">
-    //           <ActionIcon
-    //             variant="subtle"
-    //             size="sm"
-    //             onClick={(e) => {
-    //               e.stopPropagation()
-    //               onCopyReasoningContent(reasoningContent)(e)
-    //             }}
-    //             aria-label={t('Copy reasoning content')}
-    //           >
-    //             <IconCopy size={16} />
-    //           </ActionIcon>
-
-    //           <Text c="chatbox-brand" size="xs">
-    //             {isExpanded ? t('Hide') : t('Expand')}
-    //           </Text>
-    //         </Group>
-    //       </Group>
-    //     </Box>
-
-    //     <Transition transition="fade-down" duration={100} mounted={isExpanded}>
-    //       {(transitionStyle) => (
-    //         <Box
-    //           style={{
-    //             ...transitionStyle,
-    //             borderTop: '1px solid var(--paper-border-color)',
-    //           }}
-    //         >
-    //           <Text size="sm" px={'sm'} style={{ whiteSpace: 'pre-line', lineHeight: 1.5 }}>
-    //             {reasoningContent}
-    //           </Text>
-    //         </Box>
-    //       )}
-    //     </Transition>
-    //   </Paper>
-    // )
-  }
-
   return (
     <Box
       ref={ref}
@@ -563,7 +494,9 @@ const _Message: FC<Props> = (props) => {
                 className={cn('msg-content', { 'msg-content-small': small })}
                 sx={small ? { fontSize: theme.typography.body2.fontSize } : {}}
               >
-                {msg.reasoningContent && renderReasoningContent(msg)}
+                {msg.reasoningContent && (
+                  <ReasoningContentUI message={msg} onCopyReasoningContent={onCopyReasoningContent} />
+                )}
                 {
                   // 这里的空行仅仅是为了在只发送文件时消息气泡的美观
                   // 正常情况下，应该考虑优化 msg-content 的样式。现在这里是一个临时的偷懒方式。
@@ -573,7 +506,13 @@ const _Message: FC<Props> = (props) => {
                   <div>
                     {contentParts.map((item, index) =>
                       item.type === 'reasoning' ? (
-                        <div key={`reasoning-${msg.id}-${index}`}>{renderReasoningContent(msg, item, index)}</div>
+                        <div key={`reasoning-${msg.id}-${index}`}>
+                          <ReasoningContentUI
+                            message={msg}
+                            part={item}
+                            onCopyReasoningContent={onCopyReasoningContent}
+                          />
+                        </div>
                       ) : item.type === 'text' ? (
                         <div key={`text-${msg.id}-${index}`}>
                           {enableMarkdownRendering && !isCollapsed ? (

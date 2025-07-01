@@ -1,10 +1,10 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
-import { ProviderModelInfo } from '../types'
-import { ModelDependencies } from '../types/adapters'
+import type { ProviderModelInfo } from '../types'
+import type { ModelDependencies } from '../types/adapters'
 import AbstractAISDKModel from './abstract-ai-sdk'
 import { ApiError } from './errors'
-import { CallChatCompletionOptions } from './types'
+import type { CallChatCompletionOptions } from './types'
 
 interface Options {
   apiKey: string
@@ -15,6 +15,8 @@ interface Options {
   topP?: number
   useProxy?: boolean
 }
+
+type FetchFunction = typeof globalThis.fetch
 
 export default class CustomOpenAI extends AbstractAISDKModel {
   public name = 'Custom OpenAI'
@@ -44,17 +46,30 @@ export default class CustomOpenAI extends AbstractAISDKModel {
     return true
   }
 
-  protected getProvider() {
+  protected getProvider(_options: CallChatCompletionOptions, fetchFunction?: FetchFunction) {
     return createOpenAICompatible({
       name: this.name,
       apiKey: this.options.apiKey,
-      baseURL: `${this.options.apiHost}${this.options.apiPath}`,
-      fetch: this.createFetchWithProxy(),
+      baseURL: this.options.apiHost,
+      fetch: fetchFunction,
+      headers: this.options.apiHost.includes('openrouter.ai')
+        ? {
+            'HTTP-Referer': 'https://chatboxai.app',
+            'X-Title': 'Chatbox AI',
+          }
+        : this.options.apiHost.includes('aihubmix.com')
+          ? {
+              'APP-Code': 'VAFU9221',
+            }
+          : undefined,
     })
   }
 
   protected getChatModel(options: CallChatCompletionOptions) {
-    const provider = this.getProvider()
+    const fetcher = this.createFetchWithProxy()
+    const provider = this.getProvider(options, async (_input, init) => {
+      return fetcher(`${this.options.apiHost}${this.options.apiPath}`, init)
+    })
     return wrapLanguageModel({
       model: provider.languageModel(this.options.model.modelId),
       middleware: extractReasoningMiddleware({ tagName: 'think' }),

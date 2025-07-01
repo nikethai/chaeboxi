@@ -15,6 +15,7 @@ import OpenAI from './openai'
 import Perplexity from './perplexity'
 import SiliconFlow from './siliconflow'
 import type { ModelInterface } from './types'
+import VolcEngine from './volcengine'
 import XAI from './xai'
 
 export function getProviderSettings(setting: Settings) {
@@ -169,6 +170,17 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
       return new SiliconFlow(
         {
           siliconCloudKey: providerSetting.apiKey || '',
+          model,
+          temperature: setting.temperature,
+          topP: setting.topP,
+        },
+        dependencies
+      )
+
+    case ModelProviderEnum.VolcEngine:
+      return new VolcEngine(
+        {
+          apiKey: providerSetting.apiKey || '',
           model,
           temperature: setting.temperature,
           topP: setting.topP,

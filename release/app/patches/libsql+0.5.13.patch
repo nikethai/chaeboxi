@@ -1,0 +1,30 @@
+diff --git a/node_modules/libsql/index.js b/node_modules/libsql/index.js
+index 9ac15cc..44ce0a9 100644
+--- a/node_modules/libsql/index.js
++++ b/node_modules/libsql/index.js
+@@ -23,6 +23,10 @@ function requireNative() {
+   if (target === "linux-arm-gnueabihf" && familySync() == MUSL) {
+       target = "linux-arm-musleabihf";
+   }
++  if (target === "win32-arm64-msvc") {
++    // no native module for this target
++    return {}
++  }
+   return require(`@libsql/${target}`);
+ }
+ 
+diff --git a/node_modules/libsql/promise.js b/node_modules/libsql/promise.js
+index 1fa6e67..2d08c2c 100644
+--- a/node_modules/libsql/promise.js
++++ b/node_modules/libsql/promise.js
+@@ -38,6 +38,10 @@ function requireNative() {
+   if (target === "linux-arm-gnueabihf" && familySync() == MUSL) {
+       target = "linux-arm-musleabihf";
+   }
++  if (target === "win32-arm64-msvc") {
++    // no native module for this target
++    return {}
++  }
+   return require(`@libsql/${target}`);
+ }
+ 

@@ -1,9 +1,9 @@
 import NiceModal, { muiDialogV5, useModal } from '@ebay/nice-modal-react'
-import { ChangeEvent, useEffect, useState } from 'react'
-import { Input, Button, Dialog, DialogContent, DialogActions, DialogTitle, DialogContentText } from '@mui/material'
-import { useTranslation, Trans } from 'react-i18next'
-import * as sessionActions from '../stores/sessionActions'
+import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Input } from '@mui/material'
+import { type ChangeEvent, useEffect, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { trackingEvent } from '@/packages/event'
+import * as sessionActions from '../stores/sessionActions'
 
 const ClearSessionList = NiceModal.create(() => {
   const modal = useModal()
@@ -43,10 +43,11 @@ const ClearSessionList = NiceModal.create(() => {
       <DialogContent>
         <DialogContentText>
           <Trans
-            i18nKey="Keep only the Top N Conversations in List and Permanently Delete the Rest"
+            i18nKey="Keep only the Top <0>{{N}}</0> Conversations in List and Permanently Delete the Rest"
             values={{ n: value }}
             components={[
               <Input
+                key={'0'}
                 value={value}
                 onChange={handleInput}
                 className="w-14"

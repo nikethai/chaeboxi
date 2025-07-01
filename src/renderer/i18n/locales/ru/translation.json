@@ -273,7 +273,7 @@
   "Instruction (System Prompt)": "Инструкция (Системная подсказка)",
   "Invalid request parameters detected. Please try again later. Persistent failures may indicate an outdated software version. Consider upgrading to access the latest performance improvements and features.": "Обнаружены недопустимые параметры запроса. Пожалуйста, попробуйте снова позже. Постоянные сбои могут указывать на устаревшую версию программного обеспечения. Рассмотрите возможность обновления для доступа к последним улучшениям производительности и функциям.",
   "It only takes a few seconds and helps a lot.": "Это займет всего несколько секунд и очень поможет.",
-  "Keep only the Top N Conversations in List and Permanently Delete the Rest": "Сохранить только топ <0>{{n}}</0> разговоров в списке и окончательно удалить остальные",
+  "Keep only the Top <0>{{N}}</0> Conversations in List and Permanently Delete the Rest": "Сохранить только {{N}} последних бесед в списке и безвозвратно удалить остальные",
   "Key Combination": "Комбинация клавиш",
   "Keyboard Shortcuts": "Горячие клавиши",
   "Knowledge Base": "База знаний",

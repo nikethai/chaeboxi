@@ -83,7 +83,6 @@ const KnowledgeBasePage: React.FC = () => {
   const [showCreate, setShowCreate] = useState(false)
   const { settings } = useSettings()
 
-  const [newProviderMode, setNewProviderMode] = useState<'chatbox-ai' | 'custom'>('chatbox-ai')
   const [newEmbeddingModel, setNewEmbeddingModel] = useState<string | null>(null)
   const [newRerankModel, setNewRerankModel] = useState<string | null>(null)
   const [newVisionModel, setNewVisionModel] = useState<string | null>(null)
@@ -98,6 +97,20 @@ const KnowledgeBasePage: React.FC = () => {
     vision: string
     rerank: string
   } | null>(null)
+
+  const canUseChatboxAIProvider = useMemo(() => {
+    return !!(chatboxAIModels && settings.licenseKey)
+  }, [chatboxAIModels, settings.licenseKey])
+
+  const [newProviderMode, setNewProviderMode] = useState<'chatbox-ai' | 'custom'>('custom')
+
+  useEffect(() => {
+    if (canUseChatboxAIProvider) {
+      setNewProviderMode('chatbox-ai')
+    } else {
+      setNewProviderMode('custom')
+    }
+  }, [canUseChatboxAIProvider])
 
   const { providers } = useProviders()
 
@@ -335,7 +348,7 @@ const KnowledgeBasePage: React.FC = () => {
           <KnowledgeBaseProviderModeSelect
             value={newProviderMode}
             onChange={setNewProviderMode}
-            isChatboxAIDisabled={!chatboxAIModels}
+            isChatboxAIDisabled={!canUseChatboxAIProvider}
           />
 
           {newProviderMode === 'chatbox-ai' ? (
@@ -358,7 +371,9 @@ const KnowledgeBasePage: React.FC = () => {
             onCancel={() => setShowCreate(false)}
             onConfirm={createKb}
             confirmText={t('Create')}
-            isConfirmDisabled={!newKbName || (newProviderMode === 'chatbox-ai' ? !chatboxAIModels : !newEmbeddingModel)}
+            isConfirmDisabled={
+              !newKbName || (newProviderMode === 'chatbox-ai' ? !canUseChatboxAIProvider : !newEmbeddingModel)
+            }
           />
         </Stack>
       </Modal>
@@ -461,7 +476,13 @@ const KnowledgeBasePage: React.FC = () => {
                           <Text size="xs" c="dimmed">
                             {t('Models')}:
                           </Text>
-                          <Pill>Chatbox AI</Pill>
+                          <ModelPill
+                            modelValue={'Chatbox AI'}
+                            formatModelName={() => 'Chatbox AI'}
+                            isProviderAvailable={() => canUseChatboxAIProvider}
+                            type="embedding"
+                            t={t}
+                          />
                         </>
                       ) : (
                         <>

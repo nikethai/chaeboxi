@@ -68,6 +68,7 @@ function RouteComponent() {
   const { settings } = useSettings()
 
   const [licenseKey, setLicenseKey] = useState(settings.licenseKey || '')
+  const [isDeactivating, setIsDeactivating] = useState(false)
 
   const activated = premiumActions.useAutoValidate()
   const [activating, setActivating] = useState(false)
@@ -106,6 +107,7 @@ function RouteComponent() {
   // 自动激活
   useEffect(() => {
     if (
+      !isDeactivating &&
       licenseKey &&
       licenseKey.length >= 36 &&
       !settings.licenseInstances?.[licenseKey] // 仅当 license key 还没激活
@@ -113,7 +115,7 @@ function RouteComponent() {
       console.log('auto activate')
       activate()
     }
-  }, [licenseKey, activate, settings.licenseInstances])
+  }, [licenseKey, activate, settings.licenseInstances, isDeactivating])
 
   const [showFetchedModels, setShowFetchedModels] = useState(false)
   const handleFetchModels = () => {
@@ -173,8 +175,10 @@ function RouteComponent() {
               ) : (
                 <Button
                   onClick={async () => {
+                    setIsDeactivating(true)
                     await premiumActions.deactivate()
                     setLicenseKey('')
+                    setIsDeactivating(false)
                     trackingEvent('click_deactivate_license_button', { event_category: 'user' })
                   }}
                 >

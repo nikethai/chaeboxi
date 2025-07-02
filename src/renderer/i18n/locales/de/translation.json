@@ -27,6 +27,7 @@
   "AI Model Provider": "KI-Modell Anbieter",
   "ai provider no implemented paint tips": "Der aktuelle AI-Modellanbieter ({{aiProvider}}) unterstützt derzeit keine Zeichenfunktionen. Aktuell bieten nur Chatbox AI, OpenAI und Azure OpenAI diese Funktion an. Falls erforderlich, bitte <0>gehen Sie zu den Einstellungen</0> und wechseln Sie den AI-Modellanbieter.",
   "AI Settings": "KI-Einstellungen",
+  "AIHubMix integration in Chatbox offers 10% discount": "AIHubMix Integration in Chatbox bietet 10% Rabatt",
   "All data is stored locally, ensuring privacy and rapid access": "Alle Daten werden lokal gespeichert, um Datenschutz und schnellen Zugriff zu gewährleisten",
   "All major AI models in one subscription": "Alle großen AI-Modelle in einem Abonnement",
   "All threads": "Alle Threads",

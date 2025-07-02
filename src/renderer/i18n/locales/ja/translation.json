@@ -27,6 +27,7 @@
   "AI Model Provider": "AIモデル提供者",
   "ai provider no implemented paint tips": "現在のAIモデルプロバイダー({{aiProvider}})は、描画機能をサポートしていません。現在、描画機能はChatbox AI、OpenAI、およびAzure OpenAIのみが提供しています。必要であれば、<0>設定に進んで</0>AIモデルプロバイダーを切り替えてください。",
   "AI Settings": "AI設定",
+  "AIHubMix integration in Chatbox offers 10% discount": "ChatboxでのAIHubMix連携で10%割引",
   "All data is stored locally, ensuring privacy and rapid access": "すべてのデータはローカルに保存され、プライバシーと迅速なアクセスを保証",
   "All major AI models in one subscription": "すべての主要なAIモデルを1つのサブスクリプションで使用",
   "All threads": "すべてのスレッド",

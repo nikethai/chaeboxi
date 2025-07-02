@@ -18,6 +18,7 @@ import {
   IconBulb,
   IconCircleMinus,
   IconCirclePlus,
+  IconDiscount2,
   IconExternalLink,
   IconEye,
   IconPlus,
@@ -427,6 +428,14 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                     apiPath: providerSettings?.apiPath,
                   }).apiPath}
               </Text>
+              {providerSettings?.apiHost?.includes('aihubmix.com') && (
+                <Flex align="center" gap={4}>
+                  <IconDiscount2 size={14} color="var(--mantine-color-chatbox-tertiary-text)" />
+                  <Text span size="xs" c="chatbox-tertiary">
+                    {t('AIHubMix integration in Chatbox offers 10% discount')}
+                  </Text>
+                </Flex>
+              )}
             </Stack>
 
             <Switch

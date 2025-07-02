@@ -27,6 +27,7 @@
   "AI Model Provider": "AI 模型提供者",
   "ai provider no implemented paint tips": "當前 AI 模型提供方（{{aiProvider}}）暫時不支持繪圖功能，目前僅 Chatbox AI、OpenAI 與 Azure OpenAI 支持該功能，如有需要請<0>開啟設置切換</0> AI 模型提供方",
   "AI Settings": "AI 設定",
+  "AIHubMix integration in Chatbox offers 10% discount": "在Chatbox中接入AIHubMix可享受10%優惠",
   "All data is stored locally, ensuring privacy and rapid access": "所有數據都存儲在本地，確保隱私和快速訪問",
   "All major AI models in one subscription": "一個訂閱高速訪問所有主流 AI 模型",
   "All threads": "所有話題",

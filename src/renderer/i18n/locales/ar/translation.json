@@ -27,6 +27,7 @@
   "AI Model Provider": "مقدم نموذج الذكاء الصناعي",
   "ai provider no implemented paint tips": "مزود نموذج الذكاء الاصطناعي الحالي ({{aiProvider}}) لا يدعم قدرات الرسم في هذا الوقت. حاليًا، فقط Chatbox AI وOpenAI وAzure OpenAI يقدمون هذه الميزة. إذا لزم الأمر، يرجى <0>الذهاب إلى الإعدادات</0> وتبديل مزود نموذج الذكاء الاصطناعي.",
   "AI Settings": "إعدادات الذكاء الصناعي",
+  "AIHubMix integration in Chatbox offers 10% discount": "تكامل AIHubMix في Chatbox يقدم خصم 10%",
   "All data is stored locally, ensuring privacy and rapid access": "يتم تخزين جميع البيانات محليًا، مما يضمن الخصوصية والوصول السريع",
   "All major AI models in one subscription": "جميع النماذج الرئيسية للذكاء الاصطناعي في حزمة واحدة",
   "All threads": "جميع المحادثات",

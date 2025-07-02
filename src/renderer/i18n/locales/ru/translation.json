@@ -27,6 +27,7 @@
   "AI Model Provider": "Поставщик модели AI",
   "ai provider no implemented paint tips": "Текущий провайдер AI модели ({{aiProvider}}) временно не поддерживает функцию рисования. В настоящее время данная функция поддерживается только Chatbox AI, OpenAI и Azure OpenAI. Если это необходимо, пожалуйста, <0>перейдите в настройки</0>, чтобы сменить провайдера AI модели.",
   "AI Settings": "Настройки ИИ",
+  "AIHubMix integration in Chatbox offers 10% discount": "Интеграция AIHubMix в Chatbox предлагает скидку 10%",
   "All data is stored locally, ensuring privacy and rapid access": "Все данные хранятся локально, обеспечивая конфиденциальность и быстрый доступ",
   "All major AI models in one subscription": "Все основные AI-модели в одной подписке",
   "All threads": "Все темы",

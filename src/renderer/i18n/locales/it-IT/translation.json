@@ -27,6 +27,7 @@
   "AI Model Provider": "Fornitore del modello AI",
   "ai provider no implemented paint tips": "Il fornitore di modelli AI attuale ({{aiProvider}}) non supporta al momento le capacità di pittura. Attualmente, solo Chatbox AI, OpenAI e Azure OpenAI offrono questa funzionalità. Se necessario, <0>vai alle impostazioni</0> e cambia il fornitore del modello AI.",
   "AI Settings": "Impostazioni AI",
+  "AIHubMix integration in Chatbox offers 10% discount": "L'integrazione di AIHubMix in Chatbox offre uno sconto del 10%.",
   "All data is stored locally, ensuring privacy and rapid access": "Tutti i dati sono archiviati localmente, garantendo privacy e accesso rapido",
   "All major AI models in one subscription": "Tutti i principali modelli di IA in un abbonamento",
   "All threads": "Tutti i thread",

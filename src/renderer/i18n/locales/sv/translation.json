@@ -27,6 +27,7 @@
   "AI Model Provider": "AI-modellleverantör",
   "ai provider no implemented paint tips": "Den nuvarande AI-modellleverantören ({{aiProvider}}) stöder inte bildskapande funktioner för tillfället. För närvarande erbjuder endast Chatbox AI, OpenAI och Azure OpenAI denna funktion. Vid behov, vänligen <0>gå till inställningar</0> och byt AI-modellleverantör.",
   "AI Settings": "AI-inställningar",
+  "AIHubMix integration in Chatbox offers 10% discount": "AIHubMix-integration i Chatbox erbjuder 10% rabatt",
   "All data is stored locally, ensuring privacy and rapid access": "All data lagras lokalt, vilket säkerställer integritet och snabb åtkomst",
   "All major AI models in one subscription": "Alla stora AI-modeller i en prenumeration",
   "All threads": "Alla trådar",

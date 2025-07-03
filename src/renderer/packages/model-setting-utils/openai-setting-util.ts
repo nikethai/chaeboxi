@@ -1,6 +1,8 @@
-import { ModelProvider, ModelProviderEnum, ProviderSettings, SessionType } from 'src/shared/types'
+import OpenAI from 'src/shared/models/openai'
+import { type ModelProvider, ModelProviderEnum, type ProviderSettings, type SessionType } from 'src/shared/types'
+import { createModelDependencies } from '@/adapters'
 import BaseConfig from './base-config'
-import { ModelSettingUtil } from './interface'
+import type { ModelSettingUtil } from './interface'
 
 export default class OpenAISettingUtil extends BaseConfig implements ModelSettingUtil {
   public provider: ModelProvider = ModelProviderEnum.OpenAI
@@ -16,7 +18,24 @@ export default class OpenAISettingUtil extends BaseConfig implements ModelSettin
     }
   }
 
-  protected async listProviderModels() {
-    return []
+  protected async listProviderModels(settings: ProviderSettings) {
+    const model = settings.models?.[0]
+    if (!model) {
+      return []
+    }
+    const dependencies = await createModelDependencies()
+    const openai = new OpenAI(
+      {
+        apiHost: settings.apiHost!,
+        apiKey: settings.apiKey!,
+        model,
+        temperature: 0,
+        dalleStyle: 'vivid',
+        injectDefaultMetadata: false,
+        useProxy: settings.useProxy || false,
+      },
+      dependencies
+    )
+    return openai.listModels()
   }
 }

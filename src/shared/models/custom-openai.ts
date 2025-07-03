@@ -2,6 +2,7 @@ import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
 import type { ProviderModelInfo } from '../types'
 import type { ModelDependencies } from '../types/adapters'
+import { normalizeOpenAIApiHostAndPath } from '../utils/llm_utils'
 import AbstractAISDKModel from './abstract-ai-sdk'
 import { ApiError } from './errors'
 import type { CallChatCompletionOptions } from './types'
@@ -23,6 +24,8 @@ export default class CustomOpenAI extends AbstractAISDKModel {
 
   constructor(public options: Options, dependencies: ModelDependencies) {
     super(options, dependencies)
+    const { apiHost, apiPath } = normalizeOpenAIApiHostAndPath(options)
+    this.options = { ...options, apiHost, apiPath }
   }
 
   private createFetchWithProxy = () => {
@@ -67,8 +70,9 @@ export default class CustomOpenAI extends AbstractAISDKModel {
 
   protected getChatModel(options: CallChatCompletionOptions) {
     const fetcher = this.createFetchWithProxy()
+    const { apiHost, apiPath } = this.options
     const provider = this.getProvider(options, async (_input, init) => {
-      return fetcher(`${this.options.apiHost}${this.options.apiPath}`, init)
+      return fetcher(`${apiHost}${apiPath}`, init)
     })
     return wrapLanguageModel({
       model: provider.languageModel(this.options.model.modelId),
@@ -78,7 +82,8 @@ export default class CustomOpenAI extends AbstractAISDKModel {
 
   public async listModels(): Promise<string[]> {
     const fetcher = this.createFetchWithProxy()
-    const res = await fetcher(`${this.options.apiHost}${this.options.apiPath}/models`, {
+    const { apiHost } = this.options
+    const res = await fetcher(`${apiHost}/models`, {
       headers: {
         Authorization: `Bearer ${this.options.apiKey}`,
       },

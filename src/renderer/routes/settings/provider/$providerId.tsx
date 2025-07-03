@@ -135,10 +135,6 @@ function ProviderSettings({ providerId }: { providerId: string }) {
   const [fetchedModels, setFetchedModels] = useState<ProviderModelInfo[]>()
 
   const handleFetchModels = async () => {
-    if (baseInfo?.isCustom === true) {
-      return
-    }
-
     try {
       setFetchedModels(undefined)
       setFetchingModels(true)

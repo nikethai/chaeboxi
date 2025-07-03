@@ -1,6 +1,15 @@
-import { ModelProvider, ModelProviderEnum, ProviderBaseInfo, ProviderSettings, SessionType } from 'src/shared/types'
-import { ModelSettingUtil } from './interface'
+import { getModel } from 'src/shared/models'
+import CustomOpenAI from 'src/shared/models/custom-openai'
+import {
+  type ModelProvider,
+  ModelProviderEnum,
+  type ProviderBaseInfo,
+  type ProviderSettings,
+  type SessionType,
+} from 'src/shared/types'
+import { createModelDependencies } from '@/adapters'
 import BaseConfig from './base-config'
+import type { ModelSettingUtil } from './interface'
 
 // TODO: 重新实现
 export default class CustomModelSettingUtil extends BaseConfig implements ModelSettingUtil {
@@ -16,6 +25,22 @@ export default class CustomModelSettingUtil extends BaseConfig implements ModelS
   }
 
   protected async listProviderModels(settings: ProviderSettings) {
-    return []
+    const model = settings.models?.[0]
+    if (!model) {
+      return []
+    }
+    const dependencies = await createModelDependencies()
+    const customOpenAI = new CustomOpenAI(
+      {
+        apiHost: settings.apiHost!,
+        apiKey: settings.apiKey!,
+        apiPath: settings.apiPath!,
+        model,
+        temperature: 0,
+        useProxy: settings.useProxy,
+      },
+      dependencies
+    )
+    return customOpenAI.listModels()
   }
 }

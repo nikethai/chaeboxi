@@ -1,29 +1,27 @@
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import rehypeKatex from 'rehype-katex'
-import remarkMath from 'remark-math'
-import remarkBreaks from 'remark-breaks'
-import { useTranslation } from 'react-i18next'
+import { sanitizeUrl } from '@braintree/sanitize-url'
 import { useTheme } from '@mui/material'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { a11yDark, atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
-import * as toastActions from '../stores/toastActions'
-import { sanitizeUrl } from '@braintree/sanitize-url'
-import * as latex from '../packages/latex'
+import rehypeKatex from 'rehype-katex'
+import remarkBreaks from 'remark-breaks'
+import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
 import * as codeblockStateRecorder from '../packages/codeblock_state_recorder'
-import { useSetAtom } from 'jotai'
-import * as atoms from '../stores/atoms'
+import * as latex from '../packages/latex'
+import * as toastActions from '../stores/toastActions'
 import { isRenderableCodeLanguage } from './Artifact'
 
 import 'katex/dist/katex.min.css' // `rehype-katex` does not import the CSS for you
-import { copyToClipboard } from '@/packages/navigator'
-import { MessageMermaid, SVGPreview } from './Mermaid'
-import ContentCopyIcon from '@mui/icons-material/ContentCopy'
+import NiceModal from '@ebay/nice-modal-react'
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos'
+import ContentCopyIcon from '@mui/icons-material/ContentCopy'
 import ExpandLessIcon from '@mui/icons-material/ExpandLess'
 import PlayCircleIcon from '@mui/icons-material/PlayCircle'
-import NiceModal from '@ebay/nice-modal-react'
+import { copyToClipboard } from '@/packages/navigator'
+import { MessageMermaid, SVGPreview } from './Mermaid'
 
 export default function Markdown(props: {
   children: string
@@ -76,7 +74,7 @@ export default function Markdown(props: {
         {enableLaTeXRendering ? latex.processLaTeX(children) : children}
       </ReactMarkdown>
     ),
-    [children, enableLaTeXRendering, enableMermaidRendering]
+    [children, enableLaTeXRendering, enableMermaidRendering, generating]
   )
 }
 
@@ -127,7 +125,7 @@ export function CodeRenderer(props: {
         generating={generating}
       />
     )
-  }, [props.children, theme.palette.mode, props.enableMermaidRendering])
+  }, [props.children, theme.palette.mode, props.enableMermaidRendering, props.generating])
 }
 
 function InlineCode(props: { children: string; className?: string }) {

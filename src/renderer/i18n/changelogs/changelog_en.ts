@@ -1,4 +1,9 @@
 const changelog = `
+### v1.15.0 - 2025.07.07
+
+1. Local knowledge base support
+2. Adjust thinking and tool call message style
+
 ### v1.14.4 - 2025.07.03
 
 1. Fixed issue where editing in conversation list would cause the app to crash

@@ -1,7 +1,7 @@
 export const officeExts = ['.pdf', '.docx', '.pptx', '.xlsx', '.odt', '.odp', '.ods']
 
 export function isOfficeFilePath(filePath: string) {
-  return officeExts.some((ext) => filePath.endsWith(ext))
+  return officeExts.some((ext) => filePath.toLowerCase().endsWith(ext))
 }
 
 export const textExts = [
@@ -94,11 +94,11 @@ export const textExts = [
 ]
 
 export function isTextFilePath(filePath: string) {
-  return textExts.some((ext) => filePath.endsWith(ext))
+  return textExts.some((ext) => filePath.toLowerCase().endsWith(ext))
 }
 
 export const epubExts = ['.epub']
 
 export function isEpubFilePath(filePath: string) {
-  return epubExts.some((ext) => filePath.endsWith(ext))
+  return epubExts.some((ext) => filePath.toLowerCase().endsWith(ext))
 }

@@ -1,9 +1,10 @@
-import { RefObject } from 'react'
 import { atom } from 'jotai'
 import { atomWithStorage } from 'jotai/utils'
-import { Toast, MessagePicture, KnowledgeBase } from '../../../shared/types' // Need this import
-import { VirtuosoHandle } from 'react-virtuoso'
-import React from 'react' // Need React for React.ReactNode
+import type React from 'react'
+import type { RefObject } from 'react'
+import type { VirtuosoHandle } from 'react-virtuoso'
+import platform from '@/platform'
+import type { KnowledgeBase, MessagePicture, Toast } from '../../../shared/types'
 
 // toasts
 export const toastsAtom = atom<Toast[]>([])
@@ -22,7 +23,7 @@ export const messageScrollingAtBottomAtom = atom(false)
 export const messageScrollingScrollPositionAtom = atom<number>(0) // 当前视图高度位置（包含了视图的高度+视图距离顶部的偏移）
 
 // Sidebar visibility
-export const showSidebarAtom = atom(true)
+export const showSidebarAtom = atom(platform.type !== 'mobile')
 
 // Dialog states (excluding settings, session clean, copilot which were moved)
 export const openSearchDialogAtom = atom(false)

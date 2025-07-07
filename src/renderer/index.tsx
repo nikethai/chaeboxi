@@ -6,7 +6,7 @@ import { StrictMode, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import './i18n'
-import { cn, getLogger } from './lib/utils'
+import { getLogger } from './lib/utils'
 import reportWebVitals from './reportWebVitals'
 import { router } from './router'
 import { initData } from './setup/init_data'
@@ -16,6 +16,8 @@ import { initLogAtom, migrationProcessAtom } from './stores/atoms/utilAtoms'
 import * as migration from './stores/migration'
 import { CHATBOX_BUILD_PLATFORM, CHATBOX_BUILD_TARGET } from './variables'
 import '@mantine/spotlight/styles.css'
+import platform from './platform'
+import { delay } from './utils'
 
 const log = getLogger('index')
 
@@ -80,19 +82,17 @@ function InitPage() {
   const log = useAtomValue(initLogAtom)
   const [showLoadingLog, setShowLoadingLog] = useState(false)
   const migrationProcess = useAtomValue(migrationProcessAtom)
+
   return (
-    <div className={cn('flex flex-col justify-center items-center', showLoadingLog ? 'pt-3' : 'h-80')}>
-      <div className={cn('flex flex-col items-center', showLoadingLog ? 'hidden' : '')}>
-        <h1 className="font-roboto font-bold text-3xl m-0">Chatbox</h1>
-        <p className="font-roboto font-normal opacity-40">
-          {migrationProcess ? `Migrating...(${migrationProcess})` : 'loading...'}
-        </p>
-      </div>
-      <div className="mt-4">
+    <div className="flex flex-col items-center absolute top-0 left-0 w-full h-full">
+      <p className="font-roboto font-normal opacity-40 mt-4 mb-2">
+        {migrationProcess ? `Migrating...(${migrationProcess})` : 'loading...'}
+      </p>
+      <div className="">
         <div
           role="button"
           tabIndex={0}
-          className="px-4 py-2 rounded-md cursor-pointer select-none text-sm text-blue-600 hover:bg-blue-100 active:bg-blue-200"
+          className="px-4 py-0 rounded-md cursor-pointer select-none text-sm text-blue-600"
           onClick={() => setShowLoadingLog(!showLoadingLog)}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -105,19 +105,23 @@ function InitPage() {
         </div>
       </div>
       {/* 倒叙展示，能够看到最新的日志 */}
-      {showLoadingLog && <pre className="whitespace-pre-wrap">{[...log].reverse().join('\n')}</pre>}
+      {showLoadingLog && (
+        <pre className="whitespace-pre-wrap flex-1 overflow-y-auto m-0 p-2">{[...log].reverse().join('\n')}</pre>
+      )}
     </div>
   )
 }
 
-const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement)
-root.render(
-  <StrictMode>
-    <ErrorBoundary>
-      <InitPage />
-    </ErrorBoundary>
-  </StrictMode>
-)
+// initializeApp执行时间少于1s的话，将不会看到log
+const tid = setTimeout(() => {
+  ReactDOM.createRoot(document.getElementById('log-root') as HTMLElement).render(
+    <StrictMode>
+      <ErrorBoundary>
+        <InitPage />
+      </ErrorBoundary>
+    </StrictMode>
+  )
+}, 1000)
 
 // 等待初始化完成后再渲染
 initializeApp()
@@ -127,8 +131,29 @@ initializeApp()
     log.error('initializeApp error', e)
   })
   .finally(() => {
+    clearTimeout(tid)
+
+    // 等待settings初始化完成，尽量避免闪屏
+    // TODO: 更好的做法是在必要的数据全部初始化完成后再hide splash screen
+    delay(500).then(() => {
+      const el = document.querySelector('.splash-screen')
+      if (platform.type !== 'mobile') {
+        // remove loading page with animation
+        if (el) {
+          el.addEventListener('animationend', () => {
+            el.parentNode?.removeChild(el)
+          })
+          el.classList.add('splash-screen-fade-out')
+        }
+      } else {
+        if (el) {
+          el.parentNode?.removeChild(el)
+        }
+      }
+    })
+
     // 初始化完成，可以开始渲染
-    root.render(
+    ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <StrictMode>
         <ErrorBoundary>
           <RouterProvider router={router} />

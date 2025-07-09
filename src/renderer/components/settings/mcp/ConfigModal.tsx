@@ -1,14 +1,12 @@
-import { MCPServer } from '@/packages/mcp/controller'
-import { MCPServerConfig } from '@/packages/mcp/types'
 import {
   Anchor,
   Badge,
   Button,
   Group,
   Kbd,
-  Radio,
   Modal,
   Paper,
+  Radio,
   Stack,
   Text,
   Textarea,
@@ -16,10 +14,13 @@ import {
   Tooltip,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
-import { FC, useRef, useState } from 'react'
+import pTimeout from 'p-timeout'
+import { type FC, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getConfigFromFormValues, getFormValuesFromConfig, MCPServerConfigFormValues } from './utils'
+import { MCPServer } from '@/packages/mcp/controller'
+import type { MCPServerConfig } from '@/packages/mcp/types'
 import { trackEvent } from '@/utils/track'
+import { getConfigFromFormValues, getFormValuesFromConfig, type MCPServerConfigFormValues } from './utils'
 
 interface ConnectionTestingResult {
   config: MCPServerConfig
@@ -32,7 +33,7 @@ const TestingResult: FC<{ result: ConnectionTestingResult }> = ({ result }) => {
   if (result.error) {
     return (
       <Paper withBorder p="md" mt="md">
-        <Text size="sm" c="chatbox-error" className="whitespace-pre-line">
+        <Text size="sm" c="chatbox-error" className="whitespace-pre-line overflow-x-auto">
           {result.error.message}
         </Text>
         {result.error.message.includes('ENOENT') && result.config.transport.type === 'stdio' && (
@@ -69,6 +70,7 @@ const ConfigForm: FC<{
   const formRef = useRef<HTMLFormElement>(null)
   const [testing, setTesting] = useState(false)
   const [testingResult, setTestingResult] = useState<ConnectionTestingResult | null>()
+  const testingAbortController = useRef<AbortController | null>(null)
 
   const form = useForm<MCPServerConfigFormValues>({
     mode: 'controlled',
@@ -86,7 +88,11 @@ const ConfigForm: FC<{
     trackEvent('test_mcp_server_connection', { type: config.transport.type })
     try {
       const server = new MCPServer(config.transport)
-      await server.start()
+      testingAbortController.current = new AbortController()
+      await pTimeout(server.start(), {
+        milliseconds: 5 * 60_000,
+        signal: testingAbortController.current.signal,
+      })
       if (server.status.state !== 'running') {
         throw new Error(server.status.error || `Failed to start server: ${server.status.state}`)
       }
@@ -97,6 +103,9 @@ const ConfigForm: FC<{
       })
       await server.stop()
     } catch (err) {
+      if (testingAbortController.current?.signal.aborted) {
+        return
+      }
       setTestingResult({ config, error: err as Error, tools: [] })
     } finally {
       setTesting(false)
@@ -164,6 +173,11 @@ const ConfigForm: FC<{
             <Text />
           )}
           <Group justify="flex-end" gap="sm">
+            {testing && (
+              <Button variant="subtle" color="red" onClick={() => testingAbortController.current?.abort()}>
+                {t('Cancel')}
+              </Button>
+            )}
             <Button variant="outline" onClick={testConnection} loading={testing} disabled={testing}>
               {t('Test')}
             </Button>

@@ -191,6 +191,18 @@ export const SystemProviders: ProviderBaseInfo[] = [
           maxOutput: 32_768,
         },
         {
+          modelId: 'gpt-4.1-mini',
+          capabilities: ['vision', 'tool_use'],
+          contextWindow: 1_047_576,
+          maxOutput: 32_768,
+        },
+        {
+          modelId: 'gpt-4.1-nano',
+          capabilities: ['vision', 'tool_use'],
+          contextWindow: 1_047_576,
+          maxOutput: 32_768,
+        },
+        {
           modelId: 'gpt-4o',
           capabilities: ['vision', 'tool_use'],
           contextWindow: 128_000,

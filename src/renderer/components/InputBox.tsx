@@ -480,7 +480,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             unstyled={true}
             classNames={{
               input:
-                'block w-full outline-none border-none px-sm pt-sm pb-xs resize-none bg-transparent text-[var(--mantine-color-chatbox-primary-text)]',
+                'block w-full outline-none border-none px-sm pt-sm pb-sm resize-none bg-transparent text-[var(--mantine-color-chatbox-primary-text)]',
             }}
             size="sm"
             id={dom.messageInputID}
@@ -527,12 +527,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             </Flex>
           )}
 
-          <Flex px="sm" pb="sm" align="center" justify="space-between" gap="lg">
+          <Flex px="sm" pb={isSmallScreen ? 'sm' : '0'} align="center" justify="space-between" gap="lg">
             <Flex gap="md" flex="0 1 auto" className="!hidden sm:!flex">
               {showRollbackThreadButton ? (
                 <Tooltip label={t('Back to Previous')} withArrow position="top-start">
-                  <ActionIcon variant="subtle" color="chatbox-secondary" onClick={rollbackThread}>
-                    <IconArrowBackUp />
+                  <ActionIcon size="sm" variant="subtle" color="chatbox-secondary" onClick={rollbackThread}>
+                    <IconArrowBackUp strokeWidth={1.8} />
                   </ActionIcon>
                 </Tooltip>
               ) : (
@@ -549,12 +549,13 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   position="top-start"
                 >
                   <ActionIcon
+                    size="sm"
                     variant="subtle"
                     color="chatbox-secondary"
                     disabled={!onStartNewThread}
                     onClick={startNewThread}
                   >
-                    <IconFilePencil />
+                    <IconFilePencil strokeWidth={1.8} />
                   </ActionIcon>
                 </Tooltip>
               )}
@@ -570,21 +571,21 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     multiple
                   />
                   <Tooltip label={t('Attach Image')} withArrow position="top">
-                    <ActionIcon variant="subtle" color="chatbox-secondary" onClick={onImageUploadClick}>
-                      <IconPhoto />
+                    <ActionIcon size="sm" variant="subtle" color="chatbox-secondary" onClick={onImageUploadClick}>
+                      <IconPhoto strokeWidth={1.8} />
                     </ActionIcon>
                   </Tooltip>
 
                   <input type="file" ref={fileInputRef} className="hidden" onChange={onFileInputChange} multiple />
                   <Tooltip label={t('Select File')} withArrow position="top">
-                    <ActionIcon variant="subtle" color="chatbox-secondary" onClick={onFileUploadClick}>
-                      <IconFolder />
+                    <ActionIcon size="sm" variant="subtle" color="chatbox-secondary" onClick={onFileUploadClick}>
+                      <IconFolder strokeWidth={1.8} />
                     </ActionIcon>
                   </Tooltip>
 
                   <Tooltip label={t('Attach Link')} withArrow position="top">
-                    <ActionIcon variant="subtle" color="chatbox-secondary" onClick={handleAttachLink}>
-                      <IconLink />
+                    <ActionIcon size="sm" variant="subtle" color="chatbox-secondary" onClick={handleAttachLink}>
+                      <IconLink strokeWidth={1.8} />
                     </ActionIcon>
                   </Tooltip>
 
@@ -601,6 +602,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     position="top"
                   >
                     <ActionIcon
+                      size="sm"
                       variant="subtle"
                       color={webBrowsingMode ? 'chatbox-brand' : 'chatbox-secondary'}
                       onClick={() => {
@@ -608,7 +610,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                         dom.focusMessageInput()
                       }}
                     >
-                      <IconWorld />
+                      <IconWorld strokeWidth={1.8} />
                     </ActionIcon>
                   </Tooltip>
                   {featureFlags.mcp && (
@@ -622,8 +624,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                             </Flex>
                           </Button>
                         ) : (
-                          <ActionIcon variant="subtle" color="chatbox-secondary">
-                            <IconHammer />
+                          <ActionIcon size="sm" variant="subtle" color="chatbox-secondary">
+                            <IconHammer strokeWidth={1.8} />
                           </ActionIcon>
                         )
                       }
@@ -632,8 +634,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   {featureFlags.knowledgeBase && (
                     <KnowledgeBaseMenu currentKnowledgeBaseId={knowledgeBase?.id} onSelect={handleKnowledgeBaseSelect}>
                       <Tooltip label={t('Knowledge Base')} withArrow position="top">
-                        <ActionIcon variant="subtle" color={knowledgeBase ? 'chatbox-brand' : 'chatbox-secondary'}>
-                          <IconVocabulary />
+                        <ActionIcon
+                          size="sm"
+                          variant="subtle"
+                          color={knowledgeBase ? 'chatbox-brand' : 'chatbox-secondary'}
+                        >
+                          <IconVocabulary strokeWidth={1.8} />
                         </ActionIcon>
                       </Tooltip>
                     </KnowledgeBaseMenu>
@@ -643,12 +649,13 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
               <Tooltip label={t('Customize settings for the current conversation')} withArrow position="top">
                 <ActionIcon
+                  size="sm"
                   variant="subtle"
                   color="chatbox-secondary"
                   disabled={!onClickSessionSettings}
                   onClick={onClickSessionSettings}
                 >
-                  <IconAdjustmentsHorizontal />
+                  <IconAdjustmentsHorizontal strokeWidth={1.8} />
                 </ActionIcon>
               </Tooltip>
               {/* <ActionIcon variant="subtle" color="chatbox-secondary">
@@ -663,14 +670,14 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     <Menu.Target>
                       <ActionIcon
                         variant="transparent"
-                        w={24}
-                        h={24}
-                        miw={24}
-                        mih={24}
+                        w={20}
+                        h={20}
+                        miw={20}
+                        mih={20}
                         bd="none"
                         color="chatbox-secondary"
                       >
-                        <IconCirclePlus />
+                        <IconCirclePlus strokeWidth={1.8} />
                       </ActionIcon>
                     </Menu.Target>
 
@@ -690,10 +697,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
                   <ActionIcon
                     variant="transparent"
-                    w={24}
-                    h={24}
-                    miw={24}
-                    mih={24}
+                    w={20}
+                    h={20}
+                    miw={20}
+                    mih={20}
                     bd="none"
                     color={webBrowsingMode ? 'chatbox-brand' : 'chatbox-secondary'}
                     onClick={() => {
@@ -701,21 +708,21 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       dom.focusMessageInput()
                     }}
                   >
-                    <IconWorld />
+                    <IconWorld strokeWidth={1.8} />
                   </ActionIcon>
 
                   <ActionIcon
                     variant="transparent"
-                    w={24}
-                    h={24}
-                    miw={24}
-                    mih={24}
+                    w={20}
+                    h={20}
+                    miw={20}
+                    mih={20}
                     bd="none"
                     color="chatbox-secondary"
                     disabled={!onClickSessionSettings}
                     onClick={onClickSessionSettings}
                   >
-                    <IconAdjustmentsHorizontal />
+                    <IconAdjustmentsHorizontal strokeWidth={1.8} />
                   </ActionIcon>
                 </>
               ) : null}

@@ -1,11 +1,11 @@
-import { useAtom } from 'jotai'
-import { FC } from 'react'
-import * as atoms from '@/stores/atoms'
-import { cn } from '@/lib/utils'
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { Box, IconButton, Typography, useTheme } from '@mui/material'
+import { useAtom } from 'jotai'
 import { PanelRightClose } from 'lucide-react'
+import type { FC } from 'react'
 import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { cn } from '@/lib/utils'
+import * as atoms from '@/stores/atoms'
 
 export type PageProps = {
   children?: React.ReactNode

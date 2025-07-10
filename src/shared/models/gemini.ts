@@ -1,17 +1,19 @@
-import { createGoogleGenerativeAI, GoogleGenerativeAIProviderOptions } from '@ai-sdk/google'
-import { LanguageModelV1 } from 'ai'
-import { ProviderModelInfo } from '../types'
-import { ModelDependencies } from '../types/adapters'
+import { createGoogleGenerativeAI, type GoogleGenerativeAIProviderOptions } from '@ai-sdk/google'
+import type { LanguageModelV1 } from 'ai'
+import type { ProviderModelInfo } from '../types'
+import type { ModelDependencies } from '../types/adapters'
 import { normalizeGeminiHost } from '../utils/llm_utils'
-import AbstractAISDKModel, { CallSettings } from './abstract-ai-sdk'
+import AbstractAISDKModel, { type CallSettings } from './abstract-ai-sdk'
 import { ApiError } from './errors'
-import { CallChatCompletionOptions } from './types'
+import type { CallChatCompletionOptions } from './types'
 
 interface Options {
   geminiAPIKey: string
   geminiAPIHost: string
   model: ProviderModelInfo
-  temperature: number
+  temperature?: number
+  topP?: number
+  maxTokens?: number
 }
 
 export default class Gemeni extends AbstractAISDKModel {
@@ -63,6 +65,7 @@ export default class Gemeni extends AbstractAISDKModel {
     }
 
     const settings: CallSettings = {
+      maxTokens: this.options.maxTokens,
       providerOptions: {
         google: {
           ...providerParams,

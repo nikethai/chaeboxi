@@ -1,15 +1,18 @@
-import { AnthropicProviderOptions, createAnthropic } from '@ai-sdk/anthropic'
-import { ProviderModelInfo } from '../types'
-import { ModelDependencies } from '../types/adapters'
-import AbstractAISDKModel, { CallSettings } from './abstract-ai-sdk'
-import { ApiError } from './errors'
+import { type AnthropicProviderOptions, createAnthropic } from '@ai-sdk/anthropic'
+import type { ProviderModelInfo } from '../types'
+import type { ModelDependencies } from '../types/adapters'
 import { normalizeClaudeHost } from '../utils/llm_utils'
-import { CallChatCompletionOptions } from './types'
+import AbstractAISDKModel, { type CallSettings } from './abstract-ai-sdk'
+import { ApiError } from './errors'
+import type { CallChatCompletionOptions } from './types'
 
 interface Options {
   claudeApiKey: string
   claudeApiHost: string
   model: ProviderModelInfo
+  temperature?: number
+  topP?: number
+  maxTokens?: number
 }
 
 export default class Claude extends AbstractAISDKModel {
@@ -46,6 +49,9 @@ export default class Claude extends AbstractAISDKModel {
     }
     return {
       providerOptions,
+      temperature: this.options.temperature,
+      topP: this.options.topP,
+      maxTokens: this.options.maxTokens,
     }
   }
 

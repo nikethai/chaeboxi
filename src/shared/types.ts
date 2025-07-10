@@ -164,6 +164,7 @@ export type SessionSettings = Partial<{
   maxContextMessageCount: number
   temperature: number
   topP: number
+  maxTokens?: number
   dalleStyle: 'vivid' | 'natural'
   imageGenerateNum: number // 生成图片的数量
   providerOptions?: ProviderOptions

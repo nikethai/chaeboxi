@@ -1,5 +1,5 @@
-import { ProviderModelInfo } from '../types'
-import { ModelDependencies } from '../types/adapters'
+import type { ProviderModelInfo } from '../types'
+import type { ModelDependencies } from '../types/adapters'
 import OpenAICompatible from './openai-compatible'
 
 interface Options {
@@ -7,19 +7,27 @@ interface Options {
   model: ProviderModelInfo
   temperature?: number
   topP?: number
+  maxTokens?: number
 }
 
 export default class SiliconFlow extends OpenAICompatible {
   public name = 'SiliconFlow'
 
-  constructor(public options: Options, dependencies: ModelDependencies) {
-    super({
-      apiKey: options.siliconCloudKey,
-      apiHost: 'https://api.siliconflow.cn/v1',
-      model: options.model,
-      temperature: options.temperature,
-      topP: options.topP,
-    }, dependencies)
+  constructor(
+    public options: Options,
+    dependencies: ModelDependencies
+  ) {
+    super(
+      {
+        apiKey: options.siliconCloudKey,
+        apiHost: 'https://api.siliconflow.cn/v1',
+        model: options.model,
+        temperature: options.temperature,
+        topP: options.topP,
+        maxTokens: options.maxTokens,
+      },
+      dependencies
+    )
   }
 
   isSupportToolUse(scope?: 'web-browsing') {

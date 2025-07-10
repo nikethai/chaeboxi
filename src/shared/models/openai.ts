@@ -1,19 +1,20 @@
 import { createOpenAI } from '@ai-sdk/openai'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
-import { ProviderModelInfo } from '../types'
-import { ModelDependencies } from '../types/adapters'
-import AbstractAISDKModel from './abstract-ai-sdk'
+import type { ProviderModelInfo } from '../types'
+import type { ModelDependencies } from '../types/adapters'
 import { normalizeOpenAIApiHostAndPath } from '../utils/llm_utils'
+import AbstractAISDKModel from './abstract-ai-sdk'
 import { fetchRemoteModels } from './openai-compatible'
-import { CallChatCompletionOptions } from './types'
+import type { CallChatCompletionOptions } from './types'
 
 interface Options {
   apiKey: string
   apiHost: string
   model: ProviderModelInfo
   dalleStyle: 'vivid' | 'natural'
-  temperature: number
+  temperature?: number
   topP?: number
+  maxTokens?: number
   injectDefaultMetadata: boolean
   useProxy: boolean
 }
@@ -77,9 +78,11 @@ export default class OpenAI extends AbstractAISDKModel {
         openai: options.providerOptions?.openai || {},
       }
     }
+
     return {
       temperature: this.options.temperature,
       topP: this.options.topP,
+      maxTokens: this.options.maxTokens,
       providerOptions,
     }
   }

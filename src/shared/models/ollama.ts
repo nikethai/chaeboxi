@@ -1,5 +1,5 @@
-import { ProviderModelInfo } from '../types'
-import { ModelDependencies } from '../types/adapters'
+import type { ProviderModelInfo } from '../types'
+import type { ModelDependencies } from '../types/adapters'
 import { normalizeOpenAIApiHostAndPath } from '../utils/llm_utils'
 import OpenAICompatible from './openai-compatible'
 
@@ -42,7 +42,9 @@ const helpers = {
 interface Options {
   ollamaHost: string
   model: ProviderModelInfo
-  temperature: number
+  temperature?: number
+  topP?: number
+  maxTokens?: number
 }
 
 export default class Ollama extends OpenAICompatible {
@@ -55,6 +57,8 @@ export default class Ollama extends OpenAICompatible {
         apiHost: normalizeOpenAIApiHostAndPath({ apiHost: options.ollamaHost }).apiHost,
         model: options.model,
         temperature: options.temperature,
+        topP: options.topP,
+        maxTokens: options.maxTokens,
       },
       dependencies
     )

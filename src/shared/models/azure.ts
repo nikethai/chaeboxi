@@ -1,7 +1,7 @@
 import { createAzure } from '@ai-sdk/azure'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
-import { ProviderModelInfo } from '../types'
-import { ModelDependencies } from '../types/adapters'
+import type { ProviderModelInfo } from '../types'
+import type { ModelDependencies } from '../types/adapters'
 import { normalizeAzureEndpoint } from '../utils/llm_utils'
 import AbstractAISDKModel from './abstract-ai-sdk'
 
@@ -13,8 +13,9 @@ interface Options {
   azureApiVersion: string
 
   // openaiMaxTokens: number
-  temperature: number
-  topP: number
+  temperature?: number
+  topP?: number
+  maxTokens?: number
 
   dalleStyle: 'vivid' | 'natural'
   imageGenerateNum: number // 生成图片的数量
@@ -45,6 +46,7 @@ export default class AzureOpenAI extends AbstractAISDKModel {
     return {
       temperature: this.options.temperature,
       topP: this.options.topP,
+      maxTokens: this.options.maxTokens,
     }
   }
 

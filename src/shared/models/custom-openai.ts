@@ -1,5 +1,6 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
+import { max } from 'lodash'
 import type { ProviderModelInfo } from '../types'
 import type { ModelDependencies } from '../types/adapters'
 import { normalizeOpenAIApiHostAndPath } from '../utils/llm_utils'
@@ -14,6 +15,7 @@ interface Options {
   model: ProviderModelInfo
   temperature?: number
   topP?: number
+  maxTokens?: number
   useProxy?: boolean
 }
 
@@ -42,6 +44,7 @@ export default class CustomOpenAI extends AbstractAISDKModel {
     return {
       temperature: this.options.temperature,
       topP: this.options.topP,
+      maxTokens: this.options.maxTokens,
     }
   }
 

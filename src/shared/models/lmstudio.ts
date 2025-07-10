@@ -1,13 +1,14 @@
-import { ProviderModelInfo } from '../types'
-import { ModelDependencies } from '../types/adapters'
-import OpenAICompatible from './openai-compatible'
+import type { ProviderModelInfo } from '../types'
+import type { ModelDependencies } from '../types/adapters'
 import { normalizeOpenAIApiHostAndPath } from '../utils/llm_utils'
+import OpenAICompatible from './openai-compatible'
 
 interface Options {
   lmStudioHost: string
   model: ProviderModelInfo
   temperature?: number
   topP?: number
+  maxTokens?: number
 }
 
 export default class LMStudio extends OpenAICompatible {
@@ -21,6 +22,7 @@ export default class LMStudio extends OpenAICompatible {
         model: options.model,
         temperature: options.temperature,
         topP: options.topP,
+        maxTokens: options.maxTokens,
       },
       dependencies
     )

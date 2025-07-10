@@ -26,6 +26,7 @@ import type { CallChatCompletionOptions, ModelInterface } from './types'
 export interface CallSettings {
   temperature?: number
   topP?: number
+  maxTokens?: number
   providerOptions?: CoreSystemMessage['providerOptions']
 }
 

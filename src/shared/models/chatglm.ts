@@ -1,10 +1,13 @@
-import { ProviderModelInfo } from '../types'
-import { ModelDependencies } from '../types/adapters'
+import type { ProviderModelInfo } from '../types'
+import type { ModelDependencies } from '../types/adapters'
 import OpenAICompatible from './openai-compatible'
 
 interface Options {
   chatglmApiKey: string
   model: ProviderModelInfo
+  temperature?: number
+  topP?: number
+  maxTokens?: number
 }
 
 export default class ChatGLM extends OpenAICompatible {
@@ -16,6 +19,9 @@ export default class ChatGLM extends OpenAICompatible {
         apiKey: options.chatglmApiKey,
         apiHost: 'https://open.bigmodel.cn/api/paas/v4/',
         model: options.model,
+        temperature: options.temperature,
+        topP: options.topP,
+        maxTokens: options.maxTokens,
       },
       dependencies
     )

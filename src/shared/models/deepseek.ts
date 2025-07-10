@@ -1,5 +1,5 @@
-import { ProviderModelInfo } from '../types'
-import { ModelDependencies } from '../types/adapters'
+import type { ProviderModelInfo } from '../types'
+import type { ModelDependencies } from '../types/adapters'
 import OpenAICompatible from './openai-compatible'
 
 interface Options {
@@ -7,19 +7,27 @@ interface Options {
   model: ProviderModelInfo
   temperature?: number
   topP?: number
+  maxTokens?: number
 }
 
 export default class DeepSeek extends OpenAICompatible {
   public name = 'DeepSeek'
 
-  constructor(public options: Options, dependencies: ModelDependencies) {
-    super({
-      apiKey: options.deepseekAPIKey,
-      apiHost: 'https://api.deepseek.com/v1',
-      model: options.model,
-      temperature: options.model.modelId === 'deepseek-reasoner' ? undefined : options.temperature,
-      topP: options.model.modelId === 'deepseek-reasoner' ? undefined : options.topP,
-    }, dependencies)
+  constructor(
+    public options: Options,
+    dependencies: ModelDependencies
+  ) {
+    super(
+      {
+        apiKey: options.deepseekAPIKey,
+        apiHost: 'https://api.deepseek.com/v1',
+        model: options.model,
+        temperature: options.model.modelId === 'deepseek-reasoner' ? undefined : options.temperature,
+        topP: options.model.modelId === 'deepseek-reasoner' ? undefined : options.topP,
+        maxTokens: options.maxTokens,
+      },
+      dependencies
+    )
   }
 
   isSupportToolUse(scope?: 'web-browsing') {

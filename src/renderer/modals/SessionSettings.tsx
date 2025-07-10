@@ -1,5 +1,5 @@
 import NiceModal, { muiDialogV5, useModal } from '@ebay/nice-modal-react'
-import { Flex, Stack, Text, Tooltip } from '@mantine/core'
+import { Flex, NumberInput, Stack, Text, Tooltip } from '@mantine/core'
 import ImageIcon from '@mui/icons-material/Image'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
 import {
@@ -24,6 +24,7 @@ import EditableAvatar from '@/components/EditableAvatar'
 import { handleImageInputAndSave, ImageInStorage } from '@/components/Image'
 import ImageCountSlider from '@/components/ImageCountSlider'
 import ImageStyleSelect from '@/components/ImageStyleSelect'
+import LazyNumberInput from '@/components/LazyNumberInput'
 import MaxContextMessageCountSlider from '@/components/MaxContextMessageCountSlider'
 import SegmentedControl from '@/components/SegmentedControl'
 import SliderWithInput from '@/components/SliderWithInput'
@@ -587,6 +588,36 @@ export function ChatConfig({
 
         <SliderWithInput value={settings?.topP} onChange={(v) => onSettingsChange({ topP: v })} max={2} />
       </Stack>
+
+      <Flex justify="space-between" align="center">
+        <Flex align="center" gap="xs">
+          <Text size="sm" fw="600">
+            {t('Max Output Tokens')}
+          </Text>
+          <Tooltip
+            label={t(
+              'Set the maximum number of tokens for model output. Please set it within the acceptable range of the model, otherwise errors may occur.'
+            )}
+            withArrow={true}
+            maw={320}
+            className="!whitespace-normal"
+            zIndex={3000}
+            events={{ hover: true, focus: true, touch: true }}
+          >
+            <IconInfoCircle size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
+          </Tooltip>
+        </Flex>
+
+        <LazyNumberInput
+          width={96}
+          value={settings?.maxTokens}
+          onChange={(v) => onSettingsChange({ maxTokens: typeof v === 'number' ? v : undefined })}
+          min={0}
+          step={1024}
+          allowDecimal={false}
+          placeholder={t('Not set') || ''}
+        />
+      </Flex>
 
       <Stack>
         {settings && settings.provider === 'claude' && (

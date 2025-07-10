@@ -1,10 +1,10 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
-import { ProviderModelInfo } from '../types'
-import { ModelDependencies } from '../types/adapters'
+import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
+import type { ProviderModelInfo } from '../types'
+import type { ModelDependencies } from '../types/adapters'
 import AbstractAISDKModel from './abstract-ai-sdk'
 import { ApiError } from './errors'
-import { ModelInterface } from './types'
-import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
+import type { ModelInterface } from './types'
 
 interface OpenAICompatibleSettings {
   apiKey: string
@@ -13,6 +13,7 @@ interface OpenAICompatibleSettings {
   temperature?: number
   topP?: number
   useProxy?: boolean
+  maxTokens?: number
 }
 
 export default abstract class OpenAICompatible extends AbstractAISDKModel implements ModelInterface {
@@ -26,6 +27,7 @@ export default abstract class OpenAICompatible extends AbstractAISDKModel implem
     return {
       temperature: this.settings.temperature,
       topP: this.settings.topP,
+      maxTokens: this.settings.maxTokens,
     }
   }
 

@@ -36,10 +36,7 @@ export default function SliderWithInput({ value, onChange, min = 0, max = 1, ste
     () => tempInputValue ?? tempSliderValue ?? value,
     [tempInputValue, tempSliderValue, value]
   )
-  const inputValue = useMemo(
-    () => (inputRawValue === undefined ? t('Not set') : `${inputRawValue}`),
-    [inputRawValue, t]
-  )
+  const inputValue = useMemo(() => (inputRawValue === undefined ? '' : `${inputRawValue}`), [inputRawValue])
   const handleInputChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     const v = e.currentTarget.value
     setTempInputValue(v)
@@ -73,6 +70,7 @@ export default function SliderWithInput({ value, onChange, min = 0, max = 1, ste
       <TextInput
         w={64}
         size="sm"
+        placeholder={t('Not set') || ''}
         value={inputValue}
         onChange={handleInputChange}
         onFocus={(e) => e.currentTarget.select()}

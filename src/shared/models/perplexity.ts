@@ -1,7 +1,7 @@
 import { createPerplexity } from '@ai-sdk/perplexity'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
-import { ProviderModelInfo } from '../types'
-import { ModelDependencies } from '../types/adapters'
+import type { ProviderModelInfo } from '../types'
+import type { ModelDependencies } from '../types/adapters'
 import AbstractAISDKModel from './abstract-ai-sdk'
 
 interface Options {
@@ -9,6 +9,7 @@ interface Options {
   model: ProviderModelInfo
   temperature?: number
   topP?: number
+  maxTokens?: number
 }
 
 export default class Perplexity extends AbstractAISDKModel {

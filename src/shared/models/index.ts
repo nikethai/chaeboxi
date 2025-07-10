@@ -68,7 +68,9 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
           licenseDetail: setting.licenseDetail,
           language: setting.language,
           dalleStyle: setting.dalleStyle || 'vivid',
-          temperature: setting.temperature!,
+          temperature: setting.temperature,
+          topP: setting.topP,
+          maxTokens: setting.maxTokens,
         },
         config,
         dependencies
@@ -80,8 +82,9 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
           apiHost: formattedApiHost,
           model: model,
           dalleStyle: setting.dalleStyle || 'vivid',
-          temperature: setting.temperature!,
+          temperature: setting.temperature,
           topP: setting.topP,
+          maxTokens: setting.maxTokens,
           injectDefaultMetadata: setting.injectDefaultMetadata,
           useProxy: false, // 之前的openaiUseProxy已经没有在使用，直接写死false
         },
@@ -96,8 +99,9 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
           azureDalleDeploymentName: providerSetting.dalleDeploymentName || '',
           azureApikey: providerSetting.apiKey || '',
           azureApiVersion: providerSetting.apiVersion || providerBaseInfo.defaultSettings?.apiVersion || '',
-          temperature: setting.temperature!,
-          topP: setting.topP || 0,
+          temperature: setting.temperature,
+          topP: setting.topP,
+          maxTokens: setting.maxTokens,
           dalleStyle: setting.dalleStyle || 'vivid',
           imageGenerateNum: setting.imageGenerateNum || 1,
           injectDefaultMetadata: setting.injectDefaultMetadata,
@@ -110,6 +114,9 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
         {
           chatglmApiKey: providerSetting.apiKey || '',
           model,
+          temperature: setting.temperature,
+          topP: setting.topP,
+          maxTokens: setting.maxTokens,
         },
         dependencies
       )
@@ -120,6 +127,9 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
           claudeApiKey: providerSetting.apiKey || '',
           claudeApiHost: formattedApiHost,
           model,
+          temperature: setting.temperature,
+          topP: setting.topP,
+          maxTokens: setting.maxTokens,
         },
         dependencies
       )
@@ -130,7 +140,9 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
           geminiAPIKey: providerSetting.apiKey || '',
           geminiAPIHost: formattedApiHost,
           model,
-          temperature: setting.temperature!,
+          temperature: setting.temperature,
+          topP: setting.topP,
+          maxTokens: setting.maxTokens,
         },
         dependencies
       )
@@ -140,7 +152,9 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
         {
           ollamaHost: formattedApiHost,
           model,
-          temperature: setting.temperature!,
+          temperature: setting.temperature,
+          topP: setting.topP,
+          maxTokens: setting.maxTokens,
         },
         dependencies
       )
@@ -150,7 +164,9 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
         {
           groqAPIKey: providerSetting.apiKey || '',
           model,
-          temperature: setting.temperature!,
+          temperature: setting.temperature,
+          topP: setting.topP,
+          maxTokens: setting.maxTokens,
         },
         dependencies
       )
@@ -162,6 +178,7 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
           model,
           temperature: setting.temperature,
           topP: setting.topP,
+          maxTokens: setting.maxTokens,
         },
         dependencies
       )
@@ -173,6 +190,7 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
           model,
           temperature: setting.temperature,
           topP: setting.topP,
+          maxTokens: setting.maxTokens,
         },
         dependencies
       )
@@ -184,6 +202,7 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
           model,
           temperature: setting.temperature,
           topP: setting.topP,
+          maxTokens: setting.maxTokens,
         },
         dependencies
       )
@@ -195,6 +214,7 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
           model,
           temperature: setting.temperature,
           topP: setting.topP,
+          maxTokens: setting.maxTokens,
         },
         dependencies
       )
@@ -206,6 +226,7 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
           model,
           temperature: setting.temperature,
           topP: setting.topP,
+          maxTokens: setting.maxTokens,
         },
         dependencies
       )
@@ -217,6 +238,7 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
           model,
           temperature: setting.temperature,
           topP: setting.topP,
+          maxTokens: setting.maxTokens,
         },
         dependencies
       )
@@ -230,6 +252,7 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
             model,
             temperature: setting.temperature,
             topP: setting.topP,
+            maxTokens: setting.maxTokens,
             useProxy: providerSetting.useProxy,
           },
           dependencies

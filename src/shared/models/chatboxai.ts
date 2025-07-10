@@ -1,10 +1,10 @@
-import { createGoogleGenerativeAI, GoogleGenerativeAIProvider } from '@ai-sdk/google'
+import { createGoogleGenerativeAI, type GoogleGenerativeAIProvider } from '@ai-sdk/google'
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
-import { ChatboxAILicenseDetail, ProviderModelInfo } from '../types'
-import AbstractAISDKModel from './abstract-ai-sdk'
-import { CallChatCompletionOptions, ModelInterface } from './types'
-import { ModelDependencies } from '../types/adapters'
 import { getChatboxAPIOrigin } from '../request/chatboxai_pool'
+import type { ChatboxAILicenseDetail, ProviderModelInfo } from '../types'
+import type { ModelDependencies } from '../types/adapters'
+import AbstractAISDKModel from './abstract-ai-sdk'
+import type { CallChatCompletionOptions, ModelInterface } from './types'
 
 interface Options {
   licenseKey?: string
@@ -15,7 +15,9 @@ interface Options {
   licenseDetail?: ChatboxAILicenseDetail
   language: string
   dalleStyle: 'vivid' | 'natural'
-  temperature: number
+  temperature?: number
+  topP?: number
+  maxTokens?: number
 }
 
 interface Config {
@@ -64,6 +66,14 @@ export default class ChatboxAI extends AbstractAISDKModel implements ModelInterf
         fetch: this.chatboxAIFetch.bind(this),
       })
       return provider
+    }
+  }
+
+  protected getCallSettings() {
+    return {
+      temperature: this.options.temperature,
+      topP: this.options.topP,
+      maxTokens: this.options.maxTokens,
     }
   }
 

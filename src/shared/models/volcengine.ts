@@ -1,6 +1,6 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
-import { ProviderModelInfo } from 'src/shared/types'
-import { ModelDependencies } from 'src/shared/types/adapters'
+import type { ProviderModelInfo } from 'src/shared/types'
+import type { ModelDependencies } from 'src/shared/types/adapters'
 import AbstractAISDKModel from './abstract-ai-sdk'
 
 type FetchFunction = typeof globalThis.fetch
@@ -10,6 +10,7 @@ interface Options {
   model: ProviderModelInfo
   temperature?: number
   topP?: number
+  maxTokens?: number
 }
 
 const Host = 'https://ark.cn-beijing.volces.com'
@@ -26,6 +27,7 @@ export default class VolcEngine extends AbstractAISDKModel {
     return {
       temperature: this.options.temperature,
       topP: this.options.topP,
+      maxTokens: this.options.maxTokens,
     }
   }
 

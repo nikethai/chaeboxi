@@ -38,7 +38,7 @@ export const ModelSelector = forwardRef<HTMLDivElement, ModelSelectorProps>(
     const filteredProviders = useMemo(
       () =>
         providers.map((provider) => {
-          const models = (provider.models || provider.defaultSettings?.models)?.filter(
+          const models = provider.models?.filter(
             (model) =>
               (!model.type || model.type === 'chat') &&
               (provider.id.includes(search) ||

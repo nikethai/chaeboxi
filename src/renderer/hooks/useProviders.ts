@@ -1,9 +1,9 @@
+import { uniqBy } from 'lodash'
 import { useCallback, useMemo } from 'react'
 import { SystemProviders } from 'src/shared/defaults'
-import { ModelProviderEnum, ProviderInfo } from 'src/shared/types'
+import { ModelProviderEnum, type ProviderInfo } from 'src/shared/types'
 import useChatboxAIModels from './useChatboxAIModels'
 import { useSettings } from './useSettings'
-import { uniqBy } from 'lodash'
 
 export const useProviders = () => {
   const { chatboxAIModels } = useChatboxAIModels()
@@ -31,16 +31,17 @@ export const useProviders = () => {
               providerSettings?.models?.length)
           ) {
             return {
+              // 如果没有自定义 models 列表，使用 defaultSettings，否则被自定义的列表（可能有添加或删除部分 model）覆盖, 不能包含用户排除过的 models
+              models: p.defaultSettings?.models,
               ...p,
               ...providerSettings,
-              models: uniqBy([...(providerSettings?.models || []), ...(p.defaultSettings?.models || [])], 'modelId'),
             } as ProviderInfo
           } else {
             return null
           }
         })
         .filter((p) => !!p),
-    [providerSettingsMap, allProviderBaseInfos, chatboxAIModels]
+    [providerSettingsMap, allProviderBaseInfos, chatboxAIModels, settings.licenseKey]
   )
 
   const favoritedModels = useMemo(
@@ -73,7 +74,7 @@ export const useProviders = () => {
         ],
       })
     },
-    [settings]
+    [settings, setSettings]
   )
 
   const unfavoriteModel = useCallback(
@@ -82,7 +83,7 @@ export const useProviders = () => {
         favoritedModels: (settings.favoritedModels || []).filter((m) => m.provider !== provider || m.model !== model),
       })
     },
-    [settings]
+    [settings, setSettings]
   )
 
   const isFavoritedModel = useCallback(

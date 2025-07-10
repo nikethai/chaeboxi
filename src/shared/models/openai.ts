@@ -17,6 +17,7 @@ interface Options {
   maxTokens?: number
   injectDefaultMetadata: boolean
   useProxy: boolean
+  stream?: boolean
 }
 
 export default class OpenAI extends AbstractAISDKModel {

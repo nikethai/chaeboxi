@@ -14,6 +14,7 @@ interface OpenAICompatibleSettings {
   topP?: number
   useProxy?: boolean
   maxTokens?: number
+  stream?: boolean
 }
 
 export default abstract class OpenAICompatible extends AbstractAISDKModel implements ModelInterface {

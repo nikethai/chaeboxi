@@ -16,6 +16,7 @@ interface Options {
   temperature?: number
   topP?: number
   maxTokens?: number
+  stream?: boolean
   useProxy?: boolean
 }
 
@@ -45,6 +46,7 @@ export default class CustomOpenAI extends AbstractAISDKModel {
       temperature: this.options.temperature,
       topP: this.options.topP,
       maxTokens: this.options.maxTokens,
+      stream: this.options.stream,
     }
   }
 

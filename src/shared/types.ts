@@ -165,6 +165,7 @@ export type SessionSettings = Partial<{
   temperature: number
   topP: number
   maxTokens?: number
+  stream: boolean
   dalleStyle: 'vivid' | 'natural'
   imageGenerateNum: number // 生成图片的数量
   providerOptions?: ProviderOptions

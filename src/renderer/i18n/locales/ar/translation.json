@@ -485,6 +485,7 @@
   "Startup Page": "صفحة بدء التشغيل",
   "Status": "الحالة",
   "stop generating": "إيقاف التوليد",
+  "Stream output": "إخراج متدفق",
   "submit": "إرسال",
   "Successfully uploaded {{count}} file(s)": "تم رفع {{count}} ملف(ات) بنجاح",
   "Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.": "تم رفع {{success}} من {{total}} ملف(ات) بنجاح. فشل رفع {{failed}} ملف(ات).",

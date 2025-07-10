@@ -9,6 +9,7 @@ interface Options {
   temperature?: number
   topP?: number
   maxTokens?: number
+  stream?: boolean
 }
 
 export default class LMStudio extends OpenAICompatible {
@@ -23,6 +24,7 @@ export default class LMStudio extends OpenAICompatible {
         temperature: options.temperature,
         topP: options.topP,
         maxTokens: options.maxTokens,
+        stream: options.stream,
       },
       dependencies
     )

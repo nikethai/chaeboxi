@@ -485,6 +485,7 @@
   "Startup Page": "Página de inicio",
   "Status": "Estado",
   "stop generating": "Detener generación",
+  "Stream output": "Salida continua",
   "submit": "Enviar",
   "Successfully uploaded {{count}} file(s)": "Carga de {{count}} archivo(s) completada con éxito.",
   "Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.": "Se subieron {{success}} de {{total}} archivo(s) correctamente. {{failed}} archivo(s) fallaron.",

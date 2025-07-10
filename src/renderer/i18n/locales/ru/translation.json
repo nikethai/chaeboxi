@@ -486,6 +486,7 @@
   "Startup Page": "Страница запуска",
   "Status": "Статус",
   "stop generating": "Остановить генерацию",
+  "Stream output": "Потоковый вывод",
   "submit": "Отправить",
   "Successfully uploaded {{count}} file(s)": "Успешно загружено {{count}} файлов",
   "Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.": "Успешно загружено {{success}} из {{total}} файл(ов). {{failed}} файл(ов) не загрузилось.",

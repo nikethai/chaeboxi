@@ -14,6 +14,7 @@ interface Options {
   temperature?: number
   topP?: number
   maxTokens?: number
+  stream?: boolean
 }
 
 export default class Gemeni extends AbstractAISDKModel {

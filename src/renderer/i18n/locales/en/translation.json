@@ -398,6 +398,7 @@
   "Startup Page": "Startup Page",
   "Status": "Status",
   "stop generating": "stop generating",
+  "Stream output": "Stream output",
   "submit": "submit",
   "Successfully uploaded {{count}} file(s)": "Successfully uploaded {{count}} file(s)",
   "Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.": "Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.",

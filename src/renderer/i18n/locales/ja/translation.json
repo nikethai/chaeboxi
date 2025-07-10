@@ -486,6 +486,7 @@
   "Startup Page": "スタートアップページ",
   "Status": "ステータス",
   "stop generating": "生成を停止",
+  "Stream output": "ストリーム出力",
   "submit": "送信",
   "Successfully uploaded {{count}} file(s)": "{{count}} ファイルが正常にアップロードされました",
   "Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.": "{{total}}個中{{success}}個のファイルをアップロードしました。{{failed}}個のファイルは失敗しました。",

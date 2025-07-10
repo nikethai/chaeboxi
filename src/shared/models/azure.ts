@@ -21,6 +21,7 @@ interface Options {
   imageGenerateNum: number // 生成图片的数量
 
   injectDefaultMetadata: boolean
+  stream?: boolean
 }
 
 export default class AzureOpenAI extends AbstractAISDKModel {

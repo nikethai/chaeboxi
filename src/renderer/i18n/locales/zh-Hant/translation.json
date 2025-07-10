@@ -485,6 +485,7 @@
   "Startup Page": "啟動頁面",
   "Status": "狀態",
   "stop generating": "停止產生",
+  "Stream output": "流式輸出",
   "submit": "提交",
   "Successfully uploaded {{count}} file(s)": "成功上傳 {{count}} 個檔案",
   "Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.": "已成功上傳 {{success}} 個檔案，共 {{total}} 個。{{failed}} 個檔案上傳失敗。",

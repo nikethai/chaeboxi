@@ -10,6 +10,7 @@ interface Options {
   temperature?: number
   topP?: number
   maxTokens?: number
+  stream?: boolean
 }
 
 export default class Perplexity extends AbstractAISDKModel {

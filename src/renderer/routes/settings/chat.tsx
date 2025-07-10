@@ -208,6 +208,17 @@ function RouteComponent() {
 
           <SliderWithInput value={settings?.topP} onChange={(v) => setSettings({ topP: v })} max={2} />
         </Stack>
+
+        <Stack gap="xxs">
+          <Flex align="center" gap="xs">
+            <Text size="sm">{t('Stream output')}</Text>
+          </Flex>
+          <Switch
+            label={t('Stream output')}
+            checked={settings?.stream ?? true}
+            onChange={(v) => setSettings({ stream: v.target.checked })}
+          />
+        </Stack>
       </Stack>
 
       {/* Conversation Settings */}

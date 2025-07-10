@@ -485,6 +485,7 @@
   "Startup Page": "Startsidans sida",
   "Status": "Status",
   "stop generating": "Avbryt generering",
+  "Stream output": "Strömmande utdata",
   "submit": "Skicka",
   "Successfully uploaded {{count}} file(s)": "{{count}} fil(er) har laddats upp framgångsrikt",
   "Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.": "Lyckades ladda upp {{success}} av {{total}} fil(er). {{failed}} fil(er) misslyckades.",

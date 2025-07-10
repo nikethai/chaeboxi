@@ -11,6 +11,7 @@ interface Options {
   temperature?: number
   topP?: number
   maxTokens?: number
+  stream?: boolean
 }
 
 const Host = 'https://ark.cn-beijing.volces.com'

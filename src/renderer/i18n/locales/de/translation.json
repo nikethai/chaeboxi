@@ -486,6 +486,7 @@
   "Startup Page": "Startseite",
   "Status": "Status",
   "stop generating": "Generierung stoppen",
+  "Stream output": "Ausgabe streamen",
   "submit": "Senden",
   "Successfully uploaded {{count}} file(s)": "Erfolgreich {{count}} Datei(en) hochgeladen",
   "Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.": "Erfolgreich {{success}} von {{total}} Datei(en) hochgeladen. {{failed}} Datei(en) fehlgeschlagen.",

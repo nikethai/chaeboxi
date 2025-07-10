@@ -1,5 +1,5 @@
 import NiceModal, { muiDialogV5, useModal } from '@ebay/nice-modal-react'
-import { Flex, NumberInput, Stack, Text, Tooltip } from '@mantine/core'
+import { Flex, NumberInput, Stack, Switch, Text, Tooltip } from '@mantine/core'
 import ImageIcon from '@mui/icons-material/Image'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
 import {
@@ -18,7 +18,14 @@ import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { chatSessionSettings, pictureSessionSettings } from 'src/shared/defaults'
-import { createMessage, isChatSession, isPictureSession, type Session, type SessionSettings } from '@/../shared/types'
+import {
+  createMessage,
+  isChatSession,
+  isPictureSession,
+  ModelProviderEnum,
+  type Session,
+  type SessionSettings,
+} from '@/../shared/types'
 import { Accordion, AccordionDetails, AccordionSummary } from '@/components/Accordion'
 import EditableAvatar from '@/components/EditableAvatar'
 import { handleImageInputAndSave, ImageInStorage } from '@/components/Image'
@@ -317,7 +324,7 @@ function ThinkingBudgetConfig({
         setUserSelectedCustom(false)
       }
     }
-  }, [isEnabled, currentBudgetTokens, PRESET_VALUES])
+  }, [isEnabled, currentBudgetTokens, PRESET_VALUES, isCustomMode, userSelectedCustom])
 
   // Determine current segment value
   const getCurrentSegmentValue = useCallback(() => {
@@ -619,24 +626,31 @@ export function ChatConfig({
         />
       </Flex>
 
+      {settings?.provider !== ModelProviderEnum.ChatboxAI && (
+        <Stack gap="xs" py="xs">
+          <Flex align="center" justify="space-between" gap="xs">
+            <Text size="sm" fw="600">
+              {t('Stream output')}
+            </Text>
+            <Switch
+              checked={settings?.stream ?? true}
+              onChange={(v) => onSettingsChange({ stream: v.target.checked })}
+            />
+          </Flex>
+        </Stack>
+      )}
+
       <Stack>
-        {settings && settings.provider === 'claude' && (
+        {settings?.provider === ModelProviderEnum.Claude && (
           <ClaudeProviderConfig settings={settings} onSettingsChange={onSettingsChange} />
         )}
-        {settings && settings.provider === 'openai' && (
+        {settings?.provider === ModelProviderEnum.OpenAI && (
           <OpenAIProviderConfig settings={settings} onSettingsChange={onSettingsChange} />
         )}
-        {settings && settings.provider === 'gemini' && (
+        {settings?.provider === ModelProviderEnum.Gemini && (
           <GoogleProviderConfig settings={settings} onSettingsChange={onSettingsChange} />
         )}
       </Stack>
-      {/* <Stack gap="xs">
-        <Text size="sm" fw="600">
-          {t('Top P')}
-        </Text>
-
-        <SliderWithInput value={settings?.topP ?? 0} onChange={(v) => onSettingsChange({ topP: v })} />
-      </Stack> */}
     </Stack>
   )
 }

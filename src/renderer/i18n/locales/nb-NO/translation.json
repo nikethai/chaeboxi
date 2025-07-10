@@ -485,6 +485,7 @@
   "Startup Page": "Oppstartsside",
   "Status": "Status",
   "stop generating": "Stopp generering",
+  "Stream output": "Strømme utdata",
   "submit": "Send inn",
   "Successfully uploaded {{count}} file(s)": "Vellykket opplasting av {{count}} filer",
   "Successfully uploaded {{success}} of {{total}} file(s). {{failed}} file(s) failed.": "{{success}} av {{total}} fil(er) ble lastet opp. {{failed}} fil(er) mislyktes.",

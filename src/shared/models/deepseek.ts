@@ -8,6 +8,7 @@ interface Options {
   temperature?: number
   topP?: number
   maxTokens?: number
+  stream?: boolean
 }
 
 export default class DeepSeek extends OpenAICompatible {
@@ -25,6 +26,7 @@ export default class DeepSeek extends OpenAICompatible {
         temperature: options.model.modelId === 'deepseek-reasoner' ? undefined : options.temperature,
         topP: options.model.modelId === 'deepseek-reasoner' ? undefined : options.topP,
         maxTokens: options.maxTokens,
+        stream: options.stream,
       },
       dependencies
     )

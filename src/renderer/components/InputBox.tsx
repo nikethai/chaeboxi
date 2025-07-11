@@ -499,27 +499,20 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
           {(!!pictureKeys.length || !!attachments.length || !!links.length) && (
             <Flex px="sm" pb="xs" align="center" wrap="wrap" onClick={() => dom.focusMessageInput()}>
-              {pictureKeys?.map((picKey, ix) => (
-                <ImageMiniCard
-                  // biome-ignore lint/suspicious/noArrayIndexKey: <todo>
-                  key={ix}
-                  storageKey={picKey}
-                  onDelete={() => onImageDeleteClick(picKey)}
-                />
+              {pictureKeys?.map((picKey) => (
+                <ImageMiniCard key={picKey} storageKey={picKey} onDelete={() => onImageDeleteClick(picKey)} />
               ))}
-              {attachments?.map((file, ix) => (
+              {attachments?.map((file) => (
                 <FileMiniCard
-                  // biome-ignore lint/suspicious/noArrayIndexKey: <todo>
-                  key={ix}
+                  key={file.name + file.lastModified}
                   name={file.name}
                   fileType={file.type}
                   onDelete={() => setAttachments(attachments.filter((f) => f.name !== file.name))}
                 />
               ))}
-              {links?.map((link, ix) => (
+              {links?.map((link) => (
                 <LinkMiniCard
-                  // biome-ignore lint/suspicious/noArrayIndexKey: <todo>
-                  key={ix}
+                  key={link.url}
                   url={link.url}
                   onDelete={() => setLinks(links.filter((l) => l.url !== link.url))}
                 />
@@ -619,7 +612,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                         enabledTools > 0 ? (
                           <Button radius="md" variant="light" h="auto" w="auto" px="xs" py={0}>
                             <Flex gap="3xs" align="center">
-                              <IconHammer />
+                              <IconHammer strokeWidth={1.8} size={20} />
                               <span>{enabledTools}</span>
                             </Flex>
                           </Button>

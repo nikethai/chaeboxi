@@ -1,7 +1,7 @@
-import { MCPServerConfig } from '@/packages/mcp/types'
-import { v4 as uuid } from 'uuid'
 import * as shellQuote from 'shell-quote'
+import { v4 as uuid } from 'uuid'
 import z from 'zod'
+import type { MCPServerConfig } from '@/packages/mcp/types'
 
 const envUtils = {
   parse: (env: string): Record<string, string> => {
@@ -86,12 +86,23 @@ export function getFormValuesFromConfig(config: MCPServerConfig): MCPServerConfi
   }
 }
 
-const serverConfigSchema = z.object({
-  command: z.string(),
-  args: z.array(z.string()),
-  env: z.record(z.string(), z.string()).optional(),
-  name: z.string().optional(),
-})
+const serverConfigSchema = z.union([
+  z
+    .object({
+      command: z.string(),
+      args: z.array(z.string()),
+      env: z.record(z.string(), z.string()).optional(),
+      name: z.string().optional(),
+    })
+    .transform((data) => ({ ...data, type: 'stdio' as const })),
+  z
+    .object({
+      url: z.string(),
+      headers: z.record(z.string(), z.string()).optional(),
+      name: z.string().optional(),
+    })
+    .transform((data) => ({ ...data, type: 'http' as const })),
+])
 
 export function parseServersFromJson(text: string): MCPServerConfig[] {
   try {
@@ -104,12 +115,7 @@ export function parseServersFromJson(text: string): MCPServerConfig[] {
           id: uuid(),
           name: parsed.name ?? key,
           enabled: false,
-          transport: {
-            type: 'stdio',
-            command: parsed.command,
-            args: parsed.args,
-            env: parsed.env,
-          },
+          transport: parsed,
         })
       } catch (err) {
         console.error(err)

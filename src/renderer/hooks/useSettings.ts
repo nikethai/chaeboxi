@@ -1,21 +1,24 @@
-import { ProviderSettings, Settings } from 'src/shared/types'
 import { useAtom } from 'jotai'
 import { useImmerAtom } from 'jotai-immer'
 import { useCallback } from 'react'
+import type { ProviderSettings, Settings } from 'src/shared/types'
 import { settingsAtom } from '@/stores/atoms'
 
 export const useSettings = () => {
   const [settings, _setSettings] = useAtom(settingsAtom)
 
-  const setSettings = useCallback((update: Partial<Settings> | ((prev: Settings) => Partial<Settings>)) => {
-    _setSettings((prev) => {
-      const val = typeof update === 'function' ? update(prev) : update
-      return {
-        ...prev,
-        ...val,
-      }
-    })
-  }, [])
+  const setSettings = useCallback(
+    (update: Partial<Settings> | ((prev: Settings) => Partial<Settings>)) => {
+      _setSettings((prev) => {
+        const val = typeof update === 'function' ? update(prev) : update
+        return {
+          ...prev,
+          ...val,
+        }
+      })
+    },
+    [_setSettings]
+  )
 
   return {
     settings,

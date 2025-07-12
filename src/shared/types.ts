@@ -45,8 +45,8 @@ export const MessageRoleEnum = {
 export type MessageRole = (typeof MessageRoleEnum)[keyof typeof MessageRoleEnum]
 
 export type MessageTextPart = { type: 'text'; text: string }
-export type MessageImagePart = { type: 'image'; storageKey: string }
-export type MessageInfoPart = { type: 'info'; text: string; values?: Record<string, any> }
+export type MessageImagePart = { type: 'image'; storageKey: string; ocrResult?: string }
+export type MessageInfoPart = { type: 'info'; text: string; values?: Record<string, unknown> }
 export type MessageReasoningPart = { type: 'reasoning'; text: string }
 export type MessageToolCallPart<Args = unknown, Result = unknown> = {
   type: 'tool-call'
@@ -100,7 +100,7 @@ export interface Message {
   errorCode?: number
   error?: string
   errorExtra?: {
-    [key: string]: any
+    [key: string]: unknown
   }
   status?: (
     | {
@@ -368,6 +368,10 @@ export interface Settings extends SessionSettings {
     model: string
   }
   searchTermConstructionModel?: {
+    provider: ModelProvider | string
+    model: string
+  }
+  ocrModel?: {
     provider: ModelProvider | string
     model: string
   }

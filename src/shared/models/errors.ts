@@ -142,7 +142,7 @@ export class ChatboxAIAPIError extends BaseError {
       name: 'model_not_support_image_2',
       code: 20014,
       i18nKey:
-        'Vision capability is not enabled for Model {{model}}. Please enable it in <OpenSettingButton>provider settings</OpenSettingButton> or switch to a model that supports vision.',
+        'Vision capability is not enabled for Model {{model}}. Please enable it or set a default OCR model in <OpenSettingButton>Settings</OpenSettingButton>',
     },
     // 当前模型不支持发送链接
     // 'model_not_support_link': {

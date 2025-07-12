@@ -116,6 +116,38 @@ function RouteComponent() {
           {t('Chatbox will automatically use this model to construct search term.')}
         </Text>
       </Stack>
+      <Stack gap="xs">
+        <Text fw={600}>{t('OCR Model')}</Text>
+
+        <ModelSelector
+          position="bottom-start"
+          showAuto={true}
+          autoText={settings.licenseKey ? t('Auto (Use Chatbox AI)')! : t('None')!}
+          width={320}
+          modelFilter={(model) => model.capabilities?.includes('vision') ?? false}
+          onSelect={(provider, model) =>
+            setSettings({
+              ocrModel:
+                provider && model
+                  ? {
+                      provider,
+                      model,
+                    }
+                  : undefined,
+            })
+          }
+        >
+          <ModelSelectContent
+            autoText={settings.licenseKey ? t('Auto (Use Chatbox AI)')! : t('None')!}
+            provider={settings.ocrModel?.provider}
+            model={settings.ocrModel?.model}
+          />
+        </ModelSelector>
+
+        <Text c="chatbox-tertiary" size="xs">
+          {t('Chatbox OCRs images with this model and sends the text to models without image support.')}
+        </Text>
+      </Stack>
     </Stack>
   )
 }

@@ -56,6 +56,8 @@ function trackGenerateEvent(
     session_type: sessionType || 'chat',
   })
 }
+
+import { imageOCR } from '@/packages/model-calls/preprocess'
 import {
   AIProviderNoImplementedPaintError,
   ApiError,
@@ -844,9 +846,7 @@ export async function generate(
           }
           modifyMessage(sessionId, targetMsg)
         }, 100)
-        if (!model.isSupportVision() && messages.some((m) => m.contentParts.some((c) => c.type === 'image'))) {
-          throw ChatboxAIAPIError.fromCodeName('model_not_support_image_2', 'model_not_support_image_2')
-        }
+
         await streamText(model, {
           messages: promptMsgs,
           onResultChangeWithCancel: throttledModifyMessage,

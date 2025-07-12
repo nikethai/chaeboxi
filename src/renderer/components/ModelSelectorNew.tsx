@@ -1,6 +1,4 @@
-import { useProviders } from '@/hooks/useProviders'
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import { Badge, Button, Combobox, ComboboxProps, Drawer, Flex, Stack, Text, useCombobox } from '@mantine/core'
+import { Badge, Button, Combobox, type ComboboxProps, Drawer, Flex, Stack, Text, useCombobox } from '@mantine/core'
 import { useDisclosure } from '@mantine/hooks'
 import { IconStar, IconStarFilled } from '@tabler/icons-react'
 import { useNavigate } from '@tanstack/react-router'
@@ -16,7 +14,9 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ModelProvider, ProviderModelInfo } from 'src/shared/types'
+import type { ModelProvider, ProviderBaseInfo, ProviderModelInfo } from 'src/shared/types'
+import { useProviders } from '@/hooks/useProviders'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import ProviderIcon from './icons/ProviderIcon'
 
 export type ModelSelectorProps = PropsWithChildren<
@@ -25,11 +25,12 @@ export type ModelSelectorProps = PropsWithChildren<
     autoText?: string
     onSelect?: (provider: ModelProvider | string, model: string) => void
     onDropdownOpen?: () => void
+    modelFilter?: (model: ProviderModelInfo) => boolean
   } & ComboboxProps
 >
 
 export const ModelSelector = forwardRef<HTMLDivElement, ModelSelectorProps>(
-  ({ showAuto, autoText, onSelect, onDropdownOpen, children, ...comboboxProps }, ref) => {
+  ({ showAuto, autoText, onSelect, onDropdownOpen, children, modelFilter, ...comboboxProps }, ref) => {
     const { t } = useTranslation()
     const navigate = useNavigate()
     const { providers, favoritedModels, favoriteModel, unfavoriteModel, isFavoritedModel } = useProviders()
@@ -44,14 +45,15 @@ export const ModelSelector = forwardRef<HTMLDivElement, ModelSelectorProps>(
               (provider.id.includes(search) ||
                 provider.name.includes(search) ||
                 model.nickname?.includes(search) ||
-                model.modelId?.includes(search))
+                model.modelId?.includes(search)) &&
+              (!modelFilter || modelFilter(model))
           )
           return {
             ...provider,
             models,
           }
         }),
-      [providers, search]
+      [providers, search, modelFilter]
     )
     const isEmpty = useMemo(
       () => filteredProviders.reduce((pre, cur) => pre + (cur.models?.length || 0), 0) === 0,

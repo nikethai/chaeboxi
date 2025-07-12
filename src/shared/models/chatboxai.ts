@@ -146,10 +146,6 @@ export default class ChatboxAI extends AbstractAISDKModel implements ModelInterf
     ].includes(this.options.model.modelId)
   }
 
-  public isSupportVision() {
-    return true
-  }
-
   public isSupportToolUse() {
     return true
   }

@@ -1,5 +1,5 @@
-import { ModelInterface } from '../../../shared/models/types'
-import { Message } from '../../../shared/types'
+import type { ModelInterface } from '../../../shared/models/types'
+import type { Message } from '../../../shared/types'
 import { convertToCoreMessages } from './message-utils'
 
 export { streamText } from './stream-text'

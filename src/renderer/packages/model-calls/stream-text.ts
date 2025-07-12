@@ -1,18 +1,26 @@
 import type { ToolSet } from 'ai'
+import { t } from 'i18next'
 import { uniqueId } from 'lodash'
+import { getModel } from 'src/shared/models'
+import { ChatboxAIAPIError } from 'src/shared/models/errors'
 import { sequenceMessages } from 'src/shared/utils/message'
+import { getModelSettings } from 'src/shared/utils/model_settings'
+import { createModelDependencies } from '@/adapters'
+import * as settingActions from '@/stores/settingActions'
 import type { ModelInterface, OnResultChange, onResultChangeWithCancel } from '../../../shared/models/types'
-import type {
-  KnowledgeBase,
-  Message,
-  MessageInfoPart,
-  MessageToolCallPart,
-  ProviderOptions,
-  StreamTextResult,
+import {
+  type KnowledgeBase,
+  type Message,
+  type MessageInfoPart,
+  type MessageToolCallPart,
+  ModelProviderEnum,
+  type ProviderOptions,
+  type StreamTextResult,
 } from '../../../shared/types'
 import { getToolSet } from '../knowledge-base/tools'
 import { mcpController } from '../mcp/controller'
 import { convertToCoreMessages, injectModelSystemPrompt } from './message-utils'
+import { imageOCR } from './preprocess'
 import {
   combinedSearchByPromptEngineering,
   constructMessagesWithKnowledgeBaseResults,
@@ -67,6 +75,28 @@ async function handleSearchResult(
   })
 }
 
+async function ocrMessages(messages: Message[]) {
+  // check chatbox ai license active
+  const licenseKey = settingActions.getLicenseKey()
+  const settings = settingActions.getSettings()
+  if (!licenseKey && !(settings.ocrModel?.provider && settings.ocrModel?.model)) {
+    // use default ocr model
+    throw ChatboxAIAPIError.fromCodeName('model_not_support_image_2', 'model_not_support_image_2')
+  }
+  let ocrModel: ModelInterface
+  const dependencies = await createModelDependencies()
+  if (settings.licenseKey) {
+    const modelSettings = getModelSettings(settings, ModelProviderEnum.ChatboxAI, 'chatbox-ocr-1')
+    ocrModel = getModel(modelSettings, { uuid: '123' }, dependencies)
+  } else {
+    const ocrModelSetting = settings.ocrModel
+    const modelSettings = getModelSettings(settings, ocrModelSetting?.provider!, ocrModelSetting?.model!)
+    ocrModel = getModel(modelSettings, { uuid: '123' }, dependencies)
+  }
+  // do OCR first
+  await imageOCR(ocrModel, messages)
+}
+
 /**
  * 这里是供UI层调用，集中处理了模型的联网搜索、工具调用、系统消息等逻辑
  */
@@ -111,7 +141,6 @@ export async function streamText(
   }
 
   const messages = sequenceMessages(params.messages)
-  const coreMessages = await convertToCoreMessages(messages)
   const infoParts: MessageInfoPart[] = []
   try {
     params.onResultChangeWithCancel({ cancel }) // 这里先传递 cancel 方法
@@ -123,6 +152,20 @@ export async function streamText(
       }
       params.onResultChangeWithCancel({ ...result, cancel })
     }
+    if (
+      !model.isSupportVision() &&
+      messages.some((m) => m.contentParts.some((c) => c.type === 'image' && !c.ocrResult))
+    ) {
+      await ocrMessages(messages)
+      infoParts.push({
+        type: 'info',
+        text: t('Current model {{modelName}} does not support image input, using OCR to process images', {
+          modelName: model.modelId,
+        }),
+      })
+    }
+
+    const coreMessages = await convertToCoreMessages(messages, { modelSupportVision: model.isSupportVision() })
 
     if (kbNotSupported || webNotSupported) {
       // 当两个功能都启用且都不支持工具调用时，使用组合搜索

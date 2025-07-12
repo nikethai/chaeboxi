@@ -9,7 +9,8 @@ import { cloneMessage, getMessageText } from '@/utils/message'
 async function convertContentParts<T extends TextPart | ImagePart | FilePart>(
   contentParts: MessageContentParts,
   imageType: 'image' | 'file',
-  dependencies: ModelDependencies
+  dependencies: ModelDependencies,
+  options?: { modelSupportVision: boolean }
 ): Promise<T[]> {
   return compact(
     await Promise.all(
@@ -17,6 +18,9 @@ async function convertContentParts<T extends TextPart | ImagePart | FilePart>(
         if (c.type === 'text') {
           return { type: 'text', text: c.text! } as T
         } else if (c.type === 'image') {
+          if (options?.modelSupportVision === false) {
+            return { type: 'text', text: `This is an image, OCR Result: \n${c.ocrResult}` } as T
+          }
           try {
             const imageData = await dependencies.storage.getImage(c.storageKey)
             if (!imageData) {
@@ -44,9 +48,10 @@ async function convertContentParts<T extends TextPart | ImagePart | FilePart>(
 
 async function convertUserContentParts(
   contentParts: MessageContentParts,
-  dependencies: ModelDependencies
+  dependencies: ModelDependencies,
+  options?: { modelSupportVision: boolean }
 ): Promise<Array<TextPart | ImagePart>> {
-  return convertContentParts<TextPart | ImagePart>(contentParts, 'image', dependencies)
+  return convertContentParts<TextPart | ImagePart>(contentParts, 'image', dependencies, options)
 }
 
 async function convertAssistantContentParts(
@@ -56,7 +61,10 @@ async function convertAssistantContentParts(
   return convertContentParts<TextPart | FilePart>(contentParts, 'file', dependencies)
 }
 
-export async function convertToCoreMessages(messages: Message[]): Promise<CoreMessage[]> {
+export async function convertToCoreMessages(
+  messages: Message[],
+  options?: { modelSupportVision: boolean }
+): Promise<CoreMessage[]> {
   const dependencies = await createModelDependencies()
   const results = await Promise.all(
     messages.map(async (m): Promise<CoreMessage | null> => {
@@ -67,7 +75,7 @@ export async function convertToCoreMessages(messages: Message[]): Promise<CoreMe
             content: getMessageText(m),
           }
         case 'user': {
-          const contentParts = await convertUserContentParts(m.contentParts || [], dependencies)
+          const contentParts = await convertUserContentParts(m.contentParts || [], dependencies, options)
           return {
             role: 'user' as const,
             content: contentParts,

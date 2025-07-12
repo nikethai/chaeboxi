@@ -1,4 +1,4 @@
-import { Box, Button, FileButton, Flex, Stack, Switch, Text, Textarea, Title, Tooltip } from '@mantine/core'
+import { Box, Button, Divider, FileButton, Flex, Stack, Switch, Text, Textarea, Title, Tooltip } from '@mantine/core'
 import PersonIcon from '@mui/icons-material/Person'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
 import { IconInfoCircle } from '@tabler/icons-react'
@@ -130,6 +130,8 @@ function RouteComponent() {
         </Stack>
       </Stack>
 
+      <Divider />
+
       {/* Default Settings */}
       <Stack gap="md">
         <Text fw="600">{t('Default Settings for New Conversation')}</Text>
@@ -210,16 +212,17 @@ function RouteComponent() {
         </Stack>
 
         <Stack gap="xxs">
-          <Flex align="center" gap="xs">
+          <Flex align="center" gap="xs" justify="space-between">
             <Text size="sm">{t('Stream output')}</Text>
+            <Switch
+              // label={t('Stream output')}
+              checked={settings?.stream ?? true}
+              onChange={(v) => setSettings({ stream: v.target.checked })}
+            />
           </Flex>
-          <Switch
-            label={t('Stream output')}
-            checked={settings?.stream ?? true}
-            onChange={(v) => setSettings({ stream: v.target.checked })}
-          />
         </Stack>
       </Stack>
+      <Divider />
 
       {/* Conversation Settings */}
       <Stack gap="md">

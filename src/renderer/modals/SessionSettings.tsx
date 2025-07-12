@@ -1,5 +1,5 @@
 import NiceModal, { muiDialogV5, useModal } from '@ebay/nice-modal-react'
-import { Flex, NumberInput, Stack, Switch, Text, Tooltip } from '@mantine/core'
+import { Flex, Stack, Switch, Text, Tooltip } from '@mantine/core'
 import ImageIcon from '@mui/icons-material/Image'
 import SmartToyIcon from '@mui/icons-material/SmartToy'
 import {
@@ -25,6 +25,7 @@ import {
   ModelProviderEnum,
   type Session,
   type SessionSettings,
+  type Settings,
 } from '@/../shared/types'
 import { Accordion, AccordionDetails, AccordionSummary } from '@/components/Accordion'
 import EditableAvatar from '@/components/EditableAvatar'
@@ -239,6 +240,7 @@ const SessionSettingsModal = NiceModal.create(
               {isChatSession(session) && (
                 <ChatConfig
                   settings={editingData.settings}
+                  globalSettings={globalSettings}
                   onSettingsChange={(d) =>
                     setEditingData((_data) => {
                       if (_data) {
@@ -539,8 +541,10 @@ function GoogleProviderConfig({
 export function ChatConfig({
   settings,
   onSettingsChange,
+  globalSettings,
 }: {
   settings: Session['settings']
+  globalSettings: Settings
   onSettingsChange: (data: Session['settings']) => void
 }) {
   const { t } = useTranslation()
@@ -633,7 +637,7 @@ export function ChatConfig({
               {t('Stream output')}
             </Text>
             <Switch
-              checked={settings?.stream ?? true}
+              checked={settings?.stream ?? globalSettings?.stream ?? true}
               onChange={(v) => onSettingsChange({ stream: v.target.checked })}
             />
           </Flex>

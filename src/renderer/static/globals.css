@@ -36,8 +36,46 @@
 }
 
 /* KaTeX styles for preventing overflow */
-.katex .katex-html {
-  max-width: 100%;
+.katex-display {
   overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.5rem;
+}
+
+.katex-display > .katex {
+  max-width: 100%;
   display: inline-block;
+}
+
+/* Hide scrollbar for inline math */
+.katex:not(.katex-display) {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* Style scrollbar for displayed math equations */
+.katex-display::-webkit-scrollbar {
+  height: 6px;
+}
+
+.katex-display::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.katex-display::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.katex-display:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Dark mode scrollbar */
+[data-mantine-color-scheme="dark"] .katex-display::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+[data-mantine-color-scheme="dark"] .katex-display:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
 }

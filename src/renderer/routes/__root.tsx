@@ -149,9 +149,11 @@ function Root() {
   }, [navigate])
 
   useEffect(() => {
-    return window.electronAPI.onNavigate((path) => {
-      navigate({ to: path })
-    })
+    if (window.electronAPI) {
+      return window.electronAPI.onNavigate((path) => {
+        navigate({ to: path })
+      })
+    }
   }, [navigate])
 
   return (

@@ -1,7 +1,13 @@
-import { ModelOptionGroup, ModelProvider, ProviderBaseInfo, ProviderSettings, SessionType } from '../../../shared/types'
 import * as Sentry from '@sentry/react'
+import type {
+  ModelOptionGroup,
+  ModelProvider,
+  ProviderBaseInfo,
+  ProviderSettings,
+  SessionType,
+} from '../../../shared/types'
 import * as remote from '../../packages/remote'
-import { ModelSettingUtil } from './interface'
+import type { ModelSettingUtil } from './interface'
 
 export default abstract class BaseConfig implements ModelSettingUtil {
   public abstract provider: ModelProvider
@@ -9,7 +15,7 @@ export default abstract class BaseConfig implements ModelSettingUtil {
     model: string,
     sessionType: SessionType,
     providerSettings?: ProviderSettings,
-    providerBaseInfo?: ProviderBaseInfo,
+    providerBaseInfo?: ProviderBaseInfo
   ): Promise<string>
 
   protected abstract listProviderModels(settings: ProviderSettings): Promise<string[]>
@@ -20,10 +26,7 @@ export default abstract class BaseConfig implements ModelSettingUtil {
         aiProvider: this.provider,
       })
       .then((res) => {
-        return res.option_groups
-          .map((group) => group.options)
-          .flat()
-          .map((o) => o.value)
+        return res.option_groups.flatMap((group) => group.options).map((o) => o.value)
       })
   }
 

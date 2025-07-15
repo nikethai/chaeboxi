@@ -25,10 +25,8 @@ export default class CustomModelSettingUtil extends BaseConfig implements ModelS
   }
 
   protected async listProviderModels(settings: ProviderSettings) {
-    const model = settings.models?.[0]
-    if (!model) {
-      return []
-    }
+    const model = settings.models?.[0] || { modelId: 'gpt-4o-mini' }
+
     const dependencies = await createModelDependencies()
     const customOpenAI = new CustomOpenAI(
       {

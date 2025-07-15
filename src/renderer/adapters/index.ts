@@ -1,11 +1,11 @@
+import { createAfetch } from 'src/shared/request/request'
+import type { ApiRequestOptions, ModelDependencies } from 'src/shared/types/adapters'
+import { getOS } from '@/packages/navigator'
+import platform from '@/platform'
 import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
-import { createAfetch } from 'src/shared/request/request'
-import { apiRequest } from '@/utils/request'
 import * as settingActions from '@/stores/settingActions'
-import platform from '@/platform'
-import { getOS } from '@/packages/navigator'
-import { ModelDependencies, ApiRequestOptions } from 'src/shared/types/adapters'
+import { apiRequest } from '@/utils/request'
 import { RendererSentryAdapter } from './sentry'
 
 export async function createModelDependencies(): Promise<ModelDependencies> {
@@ -40,7 +40,7 @@ export async function createModelDependencies(): Promise<ModelDependencies> {
         // 支持自定义选项的 fetch
         return afetch(url, init, options || {})
       },
-      async apiRequest(options: ApiRequestOptions): Promise<any> {
+      async apiRequest(options: ApiRequestOptions): Promise<Response> {
         if (options.method === 'POST') {
           return apiRequest.post(options.url, options.headers || {}, options.body, {
             signal: options.signal,

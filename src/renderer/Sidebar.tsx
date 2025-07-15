@@ -147,6 +147,9 @@ function SidebarButtons(props: { sessionListRef: React.RefObject<HTMLDivElement>
     if (sessionListRef.current) {
       sessionListRef.current.scrollTo(0, 0)
     }
+    if (isSmallScreen) {
+      setShowSidebar(false)
+    }
     trackingEvent('create_new_picture_conversation', { event_category: 'user' })
   }
 
@@ -197,6 +200,9 @@ function SidebarButtons(props: { sessionListRef: React.RefObject<HTMLDivElement>
           navigate({
             to: '/copilots',
           })
+          if (isSmallScreen) {
+            setShowSidebar(false)
+          }
         }}
         selected={routerState.location.pathname === '/copilots'}
         sx={{ padding: '0.2rem 0.1rem', margin: '0.1rem' }}
@@ -219,6 +225,9 @@ function SidebarButtons(props: { sessionListRef: React.RefObject<HTMLDivElement>
               to: '/settings',
             })
           }
+          if (isSmallScreen) {
+            setShowSidebar(false)
+          }
         }}
         selected={routerState.location.pathname.startsWith('/settings')}
         sx={{ padding: '0.2rem 0.1rem', margin: '0.1rem' }}
@@ -239,6 +248,9 @@ function SidebarButtons(props: { sessionListRef: React.RefObject<HTMLDivElement>
           navigate({
             to: '/about',
           })
+          if (isSmallScreen) {
+            setShowSidebar(false)
+          }
         }}
         selected={routerState.location.pathname === '/about'}
         sx={{ padding: '0.2rem 0.1rem', margin: '0.1rem' }}

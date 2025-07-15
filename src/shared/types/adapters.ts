@@ -1,4 +1,4 @@
-import { SentryAdapter } from '../utils/sentry_adapter'
+import type { SentryAdapter } from '../utils/sentry_adapter'
 
 export interface ApiRequestOptions {
   url: string
@@ -16,8 +16,12 @@ export interface StorageAdapter {
 }
 
 export interface RequestAdapter {
-  fetchWithOptions(url: string, init?: RequestInit, options?: { retry?: number; parseChatboxRemoteError?: boolean }): Promise<Response>
-  apiRequest(options: ApiRequestOptions): Promise<any>
+  fetchWithOptions(
+    url: string,
+    init?: RequestInit,
+    options?: { retry?: number; parseChatboxRemoteError?: boolean }
+  ): Promise<Response>
+  apiRequest(options: ApiRequestOptions): Promise<Response>
   fetchWithProxy(url: string, init?: RequestInit): Promise<Response>
 }
 

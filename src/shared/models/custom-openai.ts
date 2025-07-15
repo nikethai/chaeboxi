@@ -1,12 +1,11 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
-import { max } from 'lodash'
 import type { ProviderModelInfo } from '../types'
 import type { ModelDependencies } from '../types/adapters'
 import { normalizeOpenAIApiHostAndPath } from '../utils/llm_utils'
 import AbstractAISDKModel from './abstract-ai-sdk'
-import { ApiError } from './errors'
 import type { CallChatCompletionOptions } from './types'
+import { createFetchWithProxy, fetchRemoteModels } from './utils/fetch-proxy'
 
 interface Options {
   apiKey: string
@@ -29,16 +28,6 @@ export default class CustomOpenAI extends AbstractAISDKModel {
     super(options, dependencies)
     const { apiHost, apiPath } = normalizeOpenAIApiHostAndPath(options)
     this.options = { ...options, apiHost, apiPath }
-  }
-
-  private createFetchWithProxy = () => {
-    if (!this.options.useProxy) {
-      return fetch
-    }
-
-    return async (url: RequestInfo | URL, init?: RequestInit) => {
-      return this.dependencies.request.fetchWithProxy(url.toString(), init)
-    }
   }
 
   protected getCallSettings() {
@@ -74,10 +63,9 @@ export default class CustomOpenAI extends AbstractAISDKModel {
   }
 
   protected getChatModel(options: CallChatCompletionOptions) {
-    const fetcher = this.createFetchWithProxy()
     const { apiHost, apiPath } = this.options
     const provider = this.getProvider(options, async (_input, init) => {
-      return fetcher(`${apiHost}${apiPath}`, init)
+      return createFetchWithProxy(this.options.useProxy, this.dependencies)(`${apiHost}${apiPath}`, init)
     })
     return wrapLanguageModel({
       model: provider.languageModel(this.options.model.modelId),
@@ -85,25 +73,15 @@ export default class CustomOpenAI extends AbstractAISDKModel {
     })
   }
 
-  public async listModels(): Promise<string[]> {
-    const fetcher = this.createFetchWithProxy()
-    const { apiHost } = this.options
-    const res = await fetcher(`${apiHost}/models`, {
-      headers: {
-        Authorization: `Bearer ${this.options.apiKey}`,
+  public listModels() {
+    return fetchRemoteModels(
+      {
+        apiHost: this.options.apiHost,
+        apiKey: this.options.apiKey,
+        useProxy: this.options.useProxy,
       },
-    })
-
-    if (!res.ok) {
-      throw new ApiError(`Failed to fetch models: ${res.status}`)
-    }
-
-    const data = await res.json()
-    if (!data.data) {
-      throw new ApiError('Invalid response format')
-    }
-
-    return data.data.map((item: any) => item.id)
+      this.dependencies
+    )
   }
 
   protected getImageModel() {

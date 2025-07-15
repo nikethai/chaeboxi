@@ -1,6 +1,6 @@
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect } from 'react'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
 
 export const Route = createFileRoute('/settings/')({
   component: RouteComponent,
@@ -13,7 +13,7 @@ function RouteComponent() {
     if (!isSmallScreen) {
       navigate({ to: '/settings/provider', replace: true })
     }
-  }, [isSmallScreen])
+  }, [isSmallScreen, navigate])
 
   return null
 }

@@ -1,16 +1,11 @@
-import LazySlider from '@/components/LazySlider'
-import { useSettings } from '@/hooks/useSettings'
-import { languageNameMap, languages } from '@/i18n/locales'
-import platform from '@/platform'
-import storage, { StorageKey } from '@/storage'
-import { migrateOnData } from '@/stores/migration'
-import { Flex, Radio } from '@mantine/core'
 import {
   Alert,
   Button,
   Checkbox,
   Divider,
   FileButton,
+  Flex,
+  Radio,
   Select,
   Stack,
   Switch,
@@ -23,7 +18,13 @@ import { createFileRoute } from '@tanstack/react-router'
 import { mapValues, uniqBy } from 'lodash'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Language, ProviderInfo, Settings, Theme } from 'src/shared/types'
+import { type Language, type ProviderInfo, type Settings, Theme } from 'src/shared/types'
+import LazySlider from '@/components/LazySlider'
+import { useSettings } from '@/hooks/useSettings'
+import { languageNameMap, languages } from '@/i18n/locales'
+import platform from '@/platform'
+import storage, { StorageKey } from '@/storage'
+import { migrateOnData } from '@/stores/migration'
 
 export const Route = createFileRoute('/settings/general')({
   component: RouteComponent,
@@ -262,7 +263,7 @@ const ImportExportDataSection = () => {
       ;(async () => {
         setImportTips('')
         try {
-          let result = event.target?.result
+          const result = event.target?.result
           if (typeof result !== 'string') {
             throw new Error('FileReader result is not string')
           }

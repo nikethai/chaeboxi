@@ -2,24 +2,24 @@ import platform from '@/platform'
 import { USE_LOCAL_API } from '@/variables'
 import { ofetch } from 'ofetch'
 import * as chatboxaiAPI from '../../shared/request/chatboxai_pool'
+import { createAfetch, uploadFile } from '../../shared/request/request'
 import {
-  ChatboxAILicenseDetail,
-  Config,
-  CopilotDetail,
-  ModelOptionGroup,
-  ModelProvider,
+  type ChatboxAILicenseDetail,
+  type Config,
+  type CopilotDetail,
+  type ModelOptionGroup,
+  type ModelProvider,
   ModelProviderEnum,
-  RemoteConfig,
-  Settings,
+  type RemoteConfig,
+  type Settings,
 } from '../../shared/types'
 import * as cache from './cache'
 import { getOS } from './navigator'
-import { createAfetch, uploadFile } from '../../shared/request/request'
 
 let _afetch: ReturnType<typeof createAfetch> | null = null
-let afetchPromise: Promise<void> | null = null
+let afetchPromise: Promise<ReturnType<typeof createAfetch>> | null = null
 
-async function initAfetch(): Promise<void> {
+async function initAfetch(): Promise<ReturnType<typeof createAfetch>> {
   if (afetchPromise) return afetchPromise
 
   afetchPromise = (async () => {
@@ -29,6 +29,7 @@ async function initAfetch(): Promise<void> {
       os: getOS(),
       version: await platform.getVersion(),
     })
+    return _afetch
   })()
 
   return afetchPromise
@@ -36,9 +37,9 @@ async function initAfetch(): Promise<void> {
 
 async function getAfetch() {
   if (!_afetch) {
-    await initAfetch()
+    return await initAfetch()
   }
-  return _afetch!
+  return _afetch
 }
 
 // ========== API ORIGIN 根据可用性维护 ==========

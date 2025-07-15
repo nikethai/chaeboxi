@@ -39,7 +39,7 @@ const helpers = {
   },
 }
 
-interface Options {
+interface OllamaOptions {
   ollamaHost: string
   model: ProviderModelInfo
   temperature?: number
@@ -51,16 +51,19 @@ interface Options {
 export default class Ollama extends OpenAICompatible {
   public name = 'Ollama'
 
-  constructor(public options: Options, dependencies: ModelDependencies) {
+  constructor(
+    private ollamaOptions: OllamaOptions,
+    dependencies: ModelDependencies
+  ) {
     super(
       {
         apiKey: 'ollama',
-        apiHost: normalizeOpenAIApiHostAndPath({ apiHost: options.ollamaHost }).apiHost,
-        model: options.model,
-        temperature: options.temperature,
-        topP: options.topP,
-        maxTokens: options.maxTokens,
-        stream: options.stream,
+        apiHost: normalizeOpenAIApiHostAndPath({ apiHost: ollamaOptions.ollamaHost }).apiHost,
+        model: ollamaOptions.model,
+        temperature: ollamaOptions.temperature,
+        topP: ollamaOptions.topP,
+        maxTokens: ollamaOptions.maxTokens,
+        stream: ollamaOptions.stream,
       },
       dependencies
     )

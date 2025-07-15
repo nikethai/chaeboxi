@@ -1,5 +1,5 @@
-import { parseJsonOrEmpty } from '../utils/json_utils'
 import { ApiError, BaseError, ChatboxAIAPIError, NetworkError } from '../models/errors'
+import { parseJsonOrEmpty } from '../utils/json_utils'
 import { isChatboxAPI } from './chatboxai_pool'
 
 interface PlatformInfo {
@@ -72,27 +72,17 @@ export function createAfetch(platformInfo: PlatformInfo) {
   }
 }
 
-// 保留原有的afetch函数以兼容现有代码，但它需要平台信息
-export async function afetch(
-  url: RequestInfo | URL,
-  init?: RequestInit,
-  options: {
-    retry?: number
-    parseChatboxRemoteError?: boolean
-  } = {}
-) {
-  throw new Error('afetch must be created with platform info. Use createAfetch() instead.')
-}
-
 export async function uploadFile(file: File, url: string) {
   // COS 需要使用原始的 XMLHttpRequest（根据官网示例）
   // 如果使用 fetch，会导致上传的 excel、docx 格式不正确
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('PUT', url, true)
-    xhr.upload.onprogress = function (e) {}
-    xhr.onload = function () {
-      if (/^2\d\d$/.test('' + xhr.status)) {
+    xhr.upload.onprogress = () => {
+      // do nothing
+    }
+    xhr.onload = () => {
+      if (/^2\d\d$/.test(`${xhr.status}`)) {
         const ETag = xhr.getResponseHeader('etag')
         resolve({ url: url, ETag: ETag })
       } else {
@@ -100,7 +90,7 @@ export async function uploadFile(file: File, url: string) {
         reject(error)
       }
     }
-    xhr.onerror = function () {
+    xhr.onerror = () => {
       const error = new NetworkError(`XMLHttpRequest failed, status code ${xhr.status}`, '')
       reject(error)
     }

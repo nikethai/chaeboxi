@@ -4,8 +4,8 @@ import type { ProviderModelInfo } from '../types'
 import type { ModelDependencies } from '../types/adapters'
 import { normalizeOpenAIApiHostAndPath } from '../utils/llm_utils'
 import AbstractAISDKModel from './abstract-ai-sdk'
-import { fetchRemoteModels } from './openai-compatible'
 import type { CallChatCompletionOptions } from './types'
+import { createFetchWithProxy, fetchRemoteModels } from './utils/fetch-proxy'
 
 interface Options {
   apiKey: string
@@ -30,16 +30,6 @@ export default class OpenAI extends AbstractAISDKModel {
     this.options = { ...options, apiHost }
   }
 
-  private createFetchWithProxy = () => {
-    if (!this.options.useProxy) {
-      return undefined
-    }
-
-    return async (url: RequestInfo | URL, init?: RequestInit) => {
-      return this.dependencies.request.fetchWithProxy(url.toString(), init)
-    }
-  }
-
   static isSupportTextEmbedding() {
     return true
   }
@@ -48,7 +38,7 @@ export default class OpenAI extends AbstractAISDKModel {
     return createOpenAI({
       apiKey: this.options.apiKey,
       baseURL: this.options.apiHost,
-      fetch: this.createFetchWithProxy(),
+      fetch: createFetchWithProxy(this.options.useProxy, this.dependencies),
       headers: this.options.apiHost.includes('openrouter.ai')
         ? {
             'HTTP-Referer': 'https://chatboxai.app',

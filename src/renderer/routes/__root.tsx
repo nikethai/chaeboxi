@@ -2,9 +2,9 @@ import NiceModal from '@ebay/nice-modal-react'
 import { Box, Grid } from '@mui/material'
 import CssBaseline from '@mui/material/CssBaseline'
 import { ThemeProvider } from '@mui/material/styles'
-import { createRootRoute, Outlet, useNavigate } from '@tanstack/react-router'
+import { createRootRoute, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { type RemoteConfig, type Settings, Theme } from '@/../shared/types'
 import ExitFullscreenButton from '@/components/ExitFullscreenButton'
 import Toasts from '@/components/Toasts'
@@ -51,14 +51,19 @@ import storage, { StorageKey } from '@/storage'
 import queryClient from '@/stores/queryClient'
 
 function Root() {
+  const location = useLocation()
   const navigate = useNavigate()
   const spellCheck = useAtomValue(atoms.spellCheckAtom)
   const language = useAtomValue(atoms.languageAtom)
+  const initialized = useRef(false)
 
   const setOpenAboutDialog = useSetAtom(atoms.openAboutDialogAtom)
-
   const setRemoteConfig = useSetAtom(atoms.remoteConfigAtom)
+
   useEffect(() => {
+    if (initialized.current) {
+      return
+    }
     // 通过定时器延迟启动，防止处理状态底层存储的异步加载前错误的初始数据
     const tid = setTimeout(() => {
       ;(async () => {
@@ -67,7 +72,8 @@ function Root() {
           .catch(() => ({ setting_chatboxai_first: false }) as RemoteConfig)
         setRemoteConfig((conf) => ({ ...conf, ...remoteConfig }))
         // 是否需要弹出设置窗口
-        if (settingActions.needEditSetting()) {
+        initialized.current = true
+        if (settingActions.needEditSetting() && location.pathname !== '/settings/mcp') {
           const res = await NiceModal.show('welcome')
           if (res) {
             if (res === 'custom') {
@@ -108,7 +114,7 @@ function Root() {
     }, 2000)
 
     return () => clearTimeout(tid)
-  }, [setRemoteConfig, navigate, setOpenAboutDialog])
+  }, [navigate, setOpenAboutDialog, setRemoteConfig, location.pathname])
 
   const [showSidebar] = useAtom(atoms.showSidebarAtom)
   const sidebarWidth = useSidebarWidth()
@@ -140,6 +146,12 @@ function Root() {
         })
       }
     })()
+  }, [navigate])
+
+  useEffect(() => {
+    return window.electronAPI.onNavigate((path) => {
+      navigate({ to: path })
+    })
   }, [navigate])
 
   return (

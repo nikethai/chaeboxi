@@ -4,4 +4,5 @@ export interface ElectronIPC {
   onWindowShow: (callback: () => void) => () => void
   onUpdateDownloaded: (callback: () => void) => () => void
   addMcpStdioTransportEventListener: (transportId: string, event: string, callback?: (...args: any[]) => void) => void
+  onNavigate: (callback: (path: string) => void) => () => void
 }

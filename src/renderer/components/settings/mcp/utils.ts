@@ -104,6 +104,17 @@ const serverConfigSchema = z.union([
     .transform((data) => ({ ...data, type: 'http' as const })),
 ])
 
+export function parseServerFromJson(text: string): MCPServerConfig | undefined {
+  const json = JSON.parse(text)
+  const parsed = serverConfigSchema.parse(json)
+  return {
+    id: uuid(),
+    name: parsed.name ?? '',
+    enabled: true,
+    transport: parsed,
+  }
+}
+
 export function parseServersFromJson(text: string): MCPServerConfig[] {
   try {
     const json = JSON.parse(text)

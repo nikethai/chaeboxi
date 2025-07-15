@@ -1,19 +1,20 @@
-import { useToggleMCPServer } from '@/hooks/mcp'
-import { useImmerSettings } from '@/hooks/useSettings'
-import { mcpController } from '@/packages/mcp/controller'
-import { MCPServerConfig } from '@/packages/mcp/types'
 import { ActionIcon, Anchor, Badge, Flex, Paper, SimpleGrid, Switch, Text } from '@mantine/core'
 import { spotlight } from '@mantine/spotlight'
 import { IconPlus } from '@tabler/icons-react'
-import { FC, useCallback, useState } from 'react'
+import { useSearch } from '@tanstack/react-router'
+import { type FC, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { v4 as uuid } from 'uuid'
-import { ConfigModal } from './ConfigModal'
-import ServerRegistrySpotlight from './ServerRegistrySpotlight'
-import { MCPRegistryEntry } from './registries'
 import { toast } from 'sonner'
-import { parseServersFromJson } from './utils'
+import { v4 as uuid } from 'uuid'
+import { useToggleMCPServer } from '@/hooks/mcp'
+import { useImmerSettings } from '@/hooks/useSettings'
+import { mcpController } from '@/packages/mcp/controller'
+import type { MCPServerConfig } from '@/packages/mcp/types'
 import { trackEvent } from '@/utils/track'
+import { ConfigModal } from './ConfigModal'
+import type { MCPRegistryEntry } from './registries'
+import ServerRegistrySpotlight from './ServerRegistrySpotlight'
+import { parseServersFromJson } from './utils'
 
 const ServerCard: FC<{
   config: MCPServerConfig
@@ -46,11 +47,21 @@ const ServerCard: FC<{
   )
 }
 
-const CustomServersSection: FC = () => {
+type Props = {
+  installConfig?: MCPServerConfig
+}
+
+const CustomServersSection: FC<Props> = (props) => {
   const { t } = useTranslation()
   const [settings, setSettings] = useImmerSettings()
   const onEnabledChange = useToggleMCPServer()
   const [modal, setModal] = useState<{ config: MCPServerConfig; mode: 'add' | 'edit' } | null>(null)
+
+  useEffect(() => {
+    if (props.installConfig) {
+      setModal({ mode: 'add', config: props.installConfig })
+    }
+  }, [props.installConfig])
 
   const handleServerUpdate = (config: MCPServerConfig) => {
     setSettings((draft) => {
@@ -79,37 +90,34 @@ const CustomServersSection: FC = () => {
     setModal(null)
   }
 
-  const triggerAddServer = useCallback(
-    (entry?: MCPRegistryEntry) => {
-      if (entry) {
-        setModal({
-          mode: 'add',
-          config: {
-            id: uuid(),
-            name: entry.title,
-            enabled: true,
-            transport: {
-              type: 'stdio',
-              command: entry.configuration.command,
-              args: entry.configuration.args,
-              env: entry.configuration.env,
-            },
+  const triggerAddServer = useCallback((entry?: MCPRegistryEntry) => {
+    if (entry) {
+      setModal({
+        mode: 'add',
+        config: {
+          id: uuid(),
+          name: entry.title,
+          enabled: true,
+          transport: {
+            type: 'stdio',
+            command: entry.configuration.command,
+            args: entry.configuration.args,
+            env: entry.configuration.env,
           },
-        })
-      } else {
-        setModal({
-          mode: 'add',
-          config: {
-            id: uuid(),
-            name: '',
-            enabled: true,
-            transport: { type: 'http', url: '' },
-          },
-        })
-      }
-    },
-    [setModal]
-  )
+        },
+      })
+    } else {
+      setModal({
+        mode: 'add',
+        config: {
+          id: uuid(),
+          name: '',
+          enabled: true,
+          transport: { type: 'http', url: '' },
+        },
+      })
+    }
+  }, [])
 
   const triggerImportJson = async () => {
     const content = await navigator.clipboard.readText()

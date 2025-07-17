@@ -474,7 +474,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           className={cn(
             'rounded-lg sm:rounded-md bg-[var(--mantine-color-chatbox-background-secondary-text)] border border-solid border-[var(--mantine-color-chatbox-border-primary-outline)] justify-between',
             widthFull ? 'w-full' : 'max-w-4xl mx-auto',
-            !isSmallScreen && 'h-[92px]'
+            !isSmallScreen && 'min-h-[92px]'
           )}
           gap={0}
         >

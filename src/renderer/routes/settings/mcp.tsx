@@ -1,13 +1,14 @@
 import { Box, Title } from '@mantine/core'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import { BuiltinServersSection } from '@/components/settings/mcp/BuiltinServersSection'
 import CustomServersSection from '@/components/settings/mcp/CustomServersSection'
 import { parseServerFromJson } from '@/components/settings/mcp/utils'
 import type { MCPServerConfig } from '@/packages/mcp/types'
+import { decodeBase64 } from '@/utils/base64'
 
 const searchSchema = z.object({
   install: z.string().optional(), // b64 encoded config
@@ -28,7 +29,7 @@ function RouteComponent() {
   useEffect(() => {
     if (searchParams.install) {
       try {
-        const config = parseServerFromJson(atob(searchParams.install))
+        const config = parseServerFromJson(decodeBase64(searchParams.install))
         setInstallConfig(config)
       } catch (err) {
         console.error(err)

@@ -1,12 +1,13 @@
 import { Box, Title } from '@mantine/core'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
 import { BuiltinServersSection } from '@/components/settings/mcp/BuiltinServersSection'
 import CustomServersSection from '@/components/settings/mcp/CustomServersSection'
 import { parseServerFromJson } from '@/components/settings/mcp/utils'
+import type { MCPServerConfig } from '@/packages/mcp/types'
 
 const searchSchema = z.object({
   install: z.string().optional(), // b64 encoded config
@@ -19,19 +20,27 @@ export const Route = createFileRoute('/settings/mcp')({
 
 function RouteComponent() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const searchParams = Route.useSearch()
+  const [installConfig, setInstallConfig] = useState<MCPServerConfig | undefined>(undefined)
 
-  const installConfig = useMemo(() => {
-    if (!searchParams.install) {
-      return undefined
+  // Handle install parameter from search params
+  useEffect(() => {
+    if (searchParams.install) {
+      try {
+        const config = parseServerFromJson(atob(searchParams.install))
+        setInstallConfig(config)
+      } catch (err) {
+        console.error(err)
+      }
+      // Clear search params immediately after reading
+      navigate({
+        to: '/settings/mcp',
+        search: {},
+        replace: true,
+      })
     }
-    try {
-      return parseServerFromJson(atob(searchParams.install))
-    } catch (err) {
-      console.error(err)
-      return undefined
-    }
-  }, [searchParams.install])
+  }, [searchParams.install, navigate])
 
   return (
     <Box p="md">

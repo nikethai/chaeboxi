@@ -148,10 +148,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       const modelInfo = (providerInfo?.models || providerInfo?.defaultSettings?.models)?.find(
         (m) => m.modelId === model.modelId
       )
-      return isSmallScreen
-        ? `${modelInfo?.nickname || model.modelId}`
-        : `${modelInfo?.nickname || model.modelId} (${providerInfo?.name || model.provider})`
-    }, [providers, model, isSmallScreen, t])
+      return `${modelInfo?.nickname || model.modelId}`
+    }, [providers, model, t])
 
     const [showSelectModelErrorTip, setShowSelectModelErrorTip] = useState(false)
     useEffect(() => {
@@ -725,12 +723,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               ) : null}
             </Flex>
 
-            <Flex
-              gap={isSmallScreen ? 'xxs' : 'sm'}
-              align="flex-end"
-              justify="flex-end"
-              maw={isSmallScreen ? undefined : '30%'}
-            >
+            <Flex gap={isSmallScreen ? 'xxs' : 'sm'} align="flex-end" justify="flex-end">
               <Tooltip
                 label={t('Please select a model')}
                 color="chatbox-error"
@@ -739,42 +732,28 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               >
                 {sessionType === 'picture' ? (
                   <ImageModelSelect onSelect={onSelectModel}>
-                    <span className="flex items-center text-sm opacity-70 cursor-pointer bg-transparent hover:bg-slate-400/25 rounded h-6">
+                    <span className="flex items-center text-sm opacity-70 cursor-pointer bg-transparent hover:bg-slate-400/25 h-6">
                       {providers.find((p) => p.id === model?.provider)?.name || model?.provider || t('Select Model')}
                       <IconSelector size={16} className="opacity-50" />
                     </span>
                   </ImageModelSelect>
                 ) : (
                   <ModelSelector onSelect={onSelectModel}>
-                    {isSmallScreen ? (
-                      <Flex
-                        gap="xxs"
-                        px={isSmallScreen ? 0 : 'xs'}
-                        align="center"
-                        className="cursor-pointer hover:bg-slate-400/25 rounded"
-                      >
-                        {!!model && <ProviderImageIcon size={20} provider={model.provider} />}
-                        <Text size="xs" className="line-clamp-1">
-                          {modelSelectorDisplayText}
-                        </Text>
-                        <IconSelector
-                          size={20}
-                          className="flex-[0_0_auto] text-[var(--mantine-color-chatbox-tertiary-text)]"
-                        />
-                      </Flex>
-                    ) : (
-                      <Flex align="center" className="cursor-pointer hover:bg-slate-400/25 rounded p-1">
-                        <Text
-                          span
-                          c="chatbox-secondary"
-                          size="sm"
-                          className="line-clamp-2 break-words text-center flex-initial"
-                        >
-                          {modelSelectorDisplayText}
-                        </Text>
-                        <IconSelector size={16} className="opacity-50 flex-[0_0_auto]" />
-                      </Flex>
-                    )}
+                    <Flex
+                      gap="xxs"
+                      px={isSmallScreen ? 0 : 'xs'}
+                      align="center"
+                      className={cn('cursor-pointer hover:bg-slate-400/25 rounded-lg', !isSmallScreen && 'py-1')}
+                    >
+                      {!!model && <ProviderImageIcon size={isSmallScreen ? 20 : 24} provider={model.provider} />}
+                      <Text size={isSmallScreen ? 'xs' : 'sm'} className="line-clamp-1">
+                        {modelSelectorDisplayText}
+                      </Text>
+                      <IconSelector
+                        size={20}
+                        className="flex-[0_0_auto] text-[var(--mantine-color-chatbox-tertiary-text)]"
+                      />
+                    </Flex>
                   </ModelSelector>
                 )}
               </Tooltip>

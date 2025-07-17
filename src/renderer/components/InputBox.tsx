@@ -467,12 +467,16 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         px={isSmallScreen ? '0.3rem' : '1rem'}
         id={dom.InputBoxID}
         {...getRootProps()}
+        onClick={() => {
+          inputRef.current?.focus()
+        }}
       >
         <input className="hidden" {...getInputProps()} />
         <Stack
           className={cn(
-            'rounded-lg sm:rounded-md bg-[var(--mantine-color-chatbox-background-secondary-text)] border border-solid border-[var(--mantine-color-chatbox-border-primary-outline)]',
-            widthFull ? 'w-full' : 'max-w-4xl mx-auto'
+            'rounded-lg sm:rounded-md bg-[var(--mantine-color-chatbox-background-secondary-text)] border border-solid border-[var(--mantine-color-chatbox-border-primary-outline)] justify-between',
+            widthFull ? 'w-full' : 'max-w-4xl mx-auto',
+            !isSmallScreen && 'h-[92px]'
           )}
           gap={0}
         >
@@ -520,7 +524,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             </Flex>
           )}
 
-          <Flex px="sm" pb={isSmallScreen ? 'sm' : '0'} align="center" justify="space-between" gap="lg">
+          <Flex px="sm" pb="sm" align="flex-end" justify="space-between" gap="lg">
             <Flex gap="md" flex="0 1 auto" className="!hidden sm:!flex">
               {showRollbackThreadButton ? (
                 <Tooltip label={t('Back to Previous')} withArrow position="top-start">
@@ -542,7 +546,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   position="top-start"
                 >
                   <ActionIcon
-                    size="sm"
+                    size="24px"
                     variant="subtle"
                     color="chatbox-secondary"
                     disabled={!onStartNewThread}
@@ -564,20 +568,20 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     multiple
                   />
                   <Tooltip label={t('Attach Image')} withArrow position="top">
-                    <ActionIcon size="sm" variant="subtle" color="chatbox-secondary" onClick={onImageUploadClick}>
+                    <ActionIcon size="24px" variant="subtle" color="chatbox-secondary" onClick={onImageUploadClick}>
                       <IconPhoto strokeWidth={1.8} />
                     </ActionIcon>
                   </Tooltip>
 
                   <input type="file" ref={fileInputRef} className="hidden" onChange={onFileInputChange} multiple />
                   <Tooltip label={t('Select File')} withArrow position="top">
-                    <ActionIcon size="sm" variant="subtle" color="chatbox-secondary" onClick={onFileUploadClick}>
+                    <ActionIcon size="24px" variant="subtle" color="chatbox-secondary" onClick={onFileUploadClick}>
                       <IconFolder strokeWidth={1.8} />
                     </ActionIcon>
                   </Tooltip>
 
                   <Tooltip label={t('Attach Link')} withArrow position="top">
-                    <ActionIcon size="sm" variant="subtle" color="chatbox-secondary" onClick={handleAttachLink}>
+                    <ActionIcon size="24px" variant="subtle" color="chatbox-secondary" onClick={handleAttachLink}>
                       <IconLink strokeWidth={1.8} />
                     </ActionIcon>
                   </Tooltip>
@@ -595,7 +599,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     position="top"
                   >
                     <ActionIcon
-                      size="sm"
+                      size="24px"
                       variant="subtle"
                       color={webBrowsingMode ? 'chatbox-brand' : 'chatbox-secondary'}
                       onClick={() => {
@@ -612,12 +616,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                         enabledTools > 0 ? (
                           <Button radius="md" variant="light" h="auto" w="auto" px="xs" py={0}>
                             <Flex gap="3xs" align="center">
-                              <IconHammer strokeWidth={1.8} size={20} />
+                              <IconHammer strokeWidth={1.8} size={22} />
                               <span>{enabledTools}</span>
                             </Flex>
                           </Button>
                         ) : (
-                          <ActionIcon size="sm" variant="subtle" color="chatbox-secondary">
+                          <ActionIcon size="24px" variant="subtle" color="chatbox-secondary">
                             <IconHammer strokeWidth={1.8} />
                           </ActionIcon>
                         )
@@ -628,7 +632,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     <KnowledgeBaseMenu currentKnowledgeBaseId={knowledgeBase?.id} onSelect={handleKnowledgeBaseSelect}>
                       <Tooltip label={t('Knowledge Base')} withArrow position="top">
                         <ActionIcon
-                          size="sm"
+                          size="24px"
                           variant="subtle"
                           color={knowledgeBase ? 'chatbox-brand' : 'chatbox-secondary'}
                         >
@@ -642,7 +646,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
               <Tooltip label={t('Customize settings for the current conversation')} withArrow position="top">
                 <ActionIcon
-                  size="sm"
+                  size="24px"
                   variant="subtle"
                   color="chatbox-secondary"
                   disabled={!onClickSessionSettings}
@@ -723,9 +727,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
             <Flex
               gap={isSmallScreen ? 'xxs' : 'sm'}
-              align="center"
+              align="flex-end"
               justify="flex-end"
-              flex={1}
               maw={isSmallScreen ? undefined : '30%'}
             >
               <Tooltip
@@ -736,7 +739,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               >
                 {sessionType === 'picture' ? (
                   <ImageModelSelect onSelect={onSelectModel}>
-                    <span className="flex items-center text-sm opacity-70 cursor-pointer bg-transparent hover:bg-slate-400/25 rounded h-8 p-1">
+                    <span className="flex items-center text-sm opacity-70 cursor-pointer bg-transparent hover:bg-slate-400/25 rounded h-6">
                       {providers.find((p) => p.id === model?.provider)?.name || model?.provider || t('Select Model')}
                       <IconSelector size={16} className="opacity-50" />
                     </span>
@@ -747,7 +750,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       <Flex
                         gap="xxs"
                         px={isSmallScreen ? 0 : 'xs'}
-                        py="xxs"
                         align="center"
                         className="cursor-pointer hover:bg-slate-400/25 rounded"
                       >
@@ -782,11 +784,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 radius={18}
                 size={isSmallScreen ? 28 : 36}
                 onClick={generating ? onStopGenerating : () => handleSubmit()}
-                className={
-                  disableSubmit && !generating
-                    ? '!text-white !bg-[var(--mantine-color-chatbox-background-tertiary-text)]'
-                    : ''
-                }
+                className={cn(
+                  // 'mt-[-6px] mb-[2px]',
+                  disableSubmit &&
+                    !generating &&
+                    '!text-white !bg-[var(--mantine-color-chatbox-background-tertiary-text)]'
+                )}
               >
                 {generating ? <IconPlayerStopFilled size={20} /> : <IconArrowUp size={20} />}
               </ActionIcon>

@@ -597,7 +597,7 @@ export function ChatConfig({
           </Tooltip>
         </Flex>
 
-        <SliderWithInput value={settings?.topP} onChange={(v) => onSettingsChange({ topP: v })} max={2} />
+        <SliderWithInput value={settings?.topP} onChange={(v) => onSettingsChange({ topP: v })} max={1} />
       </Stack>
 
       <Flex justify="space-between" align="center">

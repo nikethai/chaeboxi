@@ -208,7 +208,7 @@ function RouteComponent() {
             </Tooltip>
           </Flex>
 
-          <SliderWithInput value={settings?.topP} onChange={(v) => setSettings({ topP: v })} max={2} />
+          <SliderWithInput value={settings?.topP} onChange={(v) => setSettings({ topP: v })} max={1} />
         </Stack>
 
         <Stack gap="xxs">

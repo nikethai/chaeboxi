@@ -6,7 +6,7 @@ import AbstractAISDKModel from './abstract-ai-sdk'
 import type { ModelInterface } from './types'
 import { createFetchWithProxy, fetchRemoteModels } from './utils/fetch-proxy'
 
-interface OpenAICompatibleSettings {
+export interface OpenAICompatibleSettings {
   apiKey: string
   apiHost: string
   model: ProviderModelInfo

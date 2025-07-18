@@ -1,28 +1,28 @@
-import { useState, useRef } from 'react'
 import {
-  Typography,
-  Switch,
   Box,
-  FormGroup,
-  FormControlLabel,
-  Checkbox,
   Button,
-  Tabs,
+  Checkbox,
+  FormControlLabel,
+  FormGroup,
+  Switch,
   Tab,
+  Tabs,
+  Typography,
   useTheme,
 } from '@mui/material'
-import platform from '../../platform'
-import { Settings } from '../../../shared/types'
-import { useTranslation } from 'react-i18next'
-import { Accordion, AccordionSummary, AccordionDetails } from '../../components/Accordion'
-import TextFieldReset from '../../components/TextFieldReset'
-import storage, { StorageKey } from '../../storage'
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { useAtom } from 'jotai'
-import * as atoms from '../../stores/atoms'
-import { ShortcutConfig } from '../../components/Shortcut'
-import { migrateOnData } from '@/stores/migration'
 import { uniq, uniqBy } from 'lodash'
+import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { migrateOnData } from '@/stores/migration'
+import type { Settings } from '../../../shared/types'
+import { Accordion, AccordionDetails, AccordionSummary } from '../../components/Accordion'
+import { ShortcutConfig } from '../../components/Shortcut'
+import TextFieldReset from '../../components/TextFieldReset'
+import platform from '../../platform'
+import storage, { StorageKey } from '../../storage'
+import * as atoms from '../../stores/atoms'
 
 interface Props {
   settingsEdit: Settings
@@ -204,7 +204,7 @@ function ExportAndImport(props: { onCancel: () => void }) {
       ;(async () => {
         setImportTips('')
         try {
-          let result = event.target?.result
+          const result = event.target?.result
           if (typeof result !== 'string') {
             throw new Error('FileReader result is not string')
           }
@@ -284,6 +284,7 @@ function ExportAndImport(props: { onCancel: () => void }) {
               { label: t('My Copilots'), value: ExportDataItem.Copilot },
             ].map((item) => (
               <FormControlLabel
+                key={item.value}
                 label={item.label}
                 control={
                   <Checkbox

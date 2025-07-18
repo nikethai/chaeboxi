@@ -1,27 +1,17 @@
-import type { ProviderModelInfo } from '../types'
 import type { ModelDependencies } from '../types/adapters'
-import OpenAICompatible from './openai-compatible'
+import OpenAICompatible, { type OpenAICompatibleSettings } from './openai-compatible'
 
-interface Options {
-  groqAPIKey: string
-  model: ProviderModelInfo
-  temperature?: number
-  topP?: number
-  maxTokens?: number
-  stream?: boolean
-}
+interface Options extends OpenAICompatibleSettings {}
 
 export default class Groq extends OpenAICompatible {
   public name = 'Groq'
-
-  constructor(
-    public options: Options,
-    dependencies: ModelDependencies
-  ) {
+  public options: Options
+  constructor(options: Omit<Options, 'apiHost'>, dependencies: ModelDependencies) {
+    const apiHost = 'https://api.groq.com/openai/v1'
     super(
       {
-        apiKey: options.groqAPIKey,
-        apiHost: 'https://api.groq.com/openai/v1',
+        apiKey: options.apiKey,
+        apiHost,
         model: options.model,
         temperature: options.temperature,
         topP: options.topP,
@@ -30,5 +20,9 @@ export default class Groq extends OpenAICompatible {
       },
       dependencies
     )
+    this.options = {
+      ...options,
+      apiHost,
+    }
   }
 }

@@ -23,11 +23,14 @@ export default class GroqSettingUtil extends BaseConfig implements ModelSettingU
   protected async listProviderModels(settings: ProviderSettings) {
     const model: ProviderModelInfo = settings.models?.[0] || { modelId: 'llama3-8b-8192' }
     const dependencies = await createModelDependencies()
-    const groq = new Groq({
-      groqAPIKey: settings.apiKey!,
-      model,
-      temperature: 0,
-    }, dependencies)
+    const groq = new Groq(
+      {
+        apiKey: settings.apiKey!,
+        model,
+        temperature: 0,
+      },
+      dependencies
+    )
     return groq.listModels()
   }
 }

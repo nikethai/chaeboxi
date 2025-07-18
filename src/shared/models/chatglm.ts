@@ -1,24 +1,18 @@
-import type { ProviderModelInfo } from '../types'
 import type { ModelDependencies } from '../types/adapters'
-import OpenAICompatible from './openai-compatible'
+import OpenAICompatible, { type OpenAICompatibleSettings } from './openai-compatible'
 
-interface Options {
-  chatglmApiKey: string
-  model: ProviderModelInfo
-  temperature?: number
-  topP?: number
-  maxTokens?: number
-  stream?: boolean
-}
+interface Options extends OpenAICompatibleSettings {}
 
 export default class ChatGLM extends OpenAICompatible {
   public name = 'ChatGLM'
+  public options: Options
 
-  constructor(public options: Options, dependencies: ModelDependencies) {
+  constructor(options: Omit<Options, 'apiHost'>, dependencies: ModelDependencies) {
+    const apiHost = 'https://open.bigmodel.cn/api/paas/v4/'
     super(
       {
-        apiKey: options.chatglmApiKey,
-        apiHost: 'https://open.bigmodel.cn/api/paas/v4/',
+        apiKey: options.apiKey,
+        apiHost,
         model: options.model,
         temperature: options.temperature,
         topP: options.topP,
@@ -27,6 +21,10 @@ export default class ChatGLM extends OpenAICompatible {
       },
       dependencies
     )
+    this.options = {
+      ...options,
+      apiHost,
+    }
   }
 
   public async listModels() {

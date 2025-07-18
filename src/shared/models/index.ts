@@ -115,7 +115,7 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
     case ModelProviderEnum.ChatGLM6B:
       return new ChatGLM(
         {
-          chatglmApiKey: providerSetting.apiKey || '',
+          apiKey: providerSetting.apiKey || '',
           model,
           temperature: setting.temperature,
           topP: setting.topP,
@@ -169,7 +169,7 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
     case ModelProviderEnum.Groq:
       return new Groq(
         {
-          groqAPIKey: providerSetting.apiKey || '',
+          apiKey: providerSetting.apiKey || '',
           model,
           temperature: setting.temperature,
           topP: setting.topP,
@@ -182,7 +182,7 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
     case ModelProviderEnum.DeepSeek:
       return new DeepSeek(
         {
-          deepseekAPIKey: providerSetting.apiKey || '',
+          apiKey: providerSetting.apiKey || '',
           model,
           temperature: setting.temperature,
           topP: setting.topP,
@@ -195,7 +195,7 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
     case ModelProviderEnum.SiliconFlow:
       return new SiliconFlow(
         {
-          siliconCloudKey: providerSetting.apiKey || '',
+          apiKey: providerSetting.apiKey || '',
           model,
           temperature: setting.temperature,
           topP: setting.topP,
@@ -221,7 +221,7 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
     case ModelProviderEnum.LMStudio:
       return new LMStudio(
         {
-          lmStudioHost: formattedApiHost,
+          apiHost: formattedApiHost,
           model,
           temperature: setting.temperature,
           topP: setting.topP,
@@ -247,7 +247,7 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
     case ModelProviderEnum.XAI:
       return new XAI(
         {
-          xAIKey: providerSetting.apiKey || '',
+          apiKey: providerSetting.apiKey || '',
           model,
           temperature: setting.temperature,
           topP: setting.topP,

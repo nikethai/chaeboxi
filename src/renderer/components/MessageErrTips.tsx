@@ -164,7 +164,11 @@ export default function MessageErrTips(props: { msg: Message }) {
       <Trans
         i18nKey="unknown error tips"
         components={[
-          <a href={`https://chatboxai.app/redirect_app/faqs/${settingActions.getLanguage()}`} target="_blank"></a>,
+          <a
+            key="0"
+            href={`https://chatboxai.app/redirect_app/faqs/${settingActions.getLanguage()}`}
+            target="_blank"
+          ></a>,
         ]}
       />
     )
@@ -172,11 +176,9 @@ export default function MessageErrTips(props: { msg: Message }) {
   return (
     <Alert icon={false} severity="error" className="message-error-tips">
       {tips.map((tip, i) => (
-        <b key={i}>{tip}</b>
+        <b key={`${i}-${tip}`}>{tip}</b>
       ))}
-      {onlyShowTips ? (
-        <></>
-      ) : (
+      {onlyShowTips ? null : (
         <>
           <br />
           <br />

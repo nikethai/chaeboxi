@@ -1,27 +1,18 @@
-import type { ProviderModelInfo } from '../types'
 import type { ModelDependencies } from '../types/adapters'
-import OpenAICompatible from './openai-compatible'
+import OpenAICompatible, { type OpenAICompatibleSettings } from './openai-compatible'
 
-interface Options {
-  deepseekAPIKey: string
-  model: ProviderModelInfo
-  temperature?: number
-  topP?: number
-  maxTokens?: number
-  stream?: boolean
-}
+interface Options extends OpenAICompatibleSettings {}
 
 export default class DeepSeek extends OpenAICompatible {
   public name = 'DeepSeek'
+  public options: Options
 
-  constructor(
-    public options: Options,
-    dependencies: ModelDependencies
-  ) {
+  constructor(options: Omit<Options, 'apiHost'>, dependencies: ModelDependencies) {
+    const apiHost = 'https://api.deepseek.com/v1'
     super(
       {
-        apiKey: options.deepseekAPIKey,
-        apiHost: 'https://api.deepseek.com/v1',
+        apiKey: options.apiKey,
+        apiHost,
         model: options.model,
         temperature: options.model.modelId === 'deepseek-reasoner' ? undefined : options.temperature,
         topP: options.model.modelId === 'deepseek-reasoner' ? undefined : options.topP,
@@ -30,6 +21,10 @@ export default class DeepSeek extends OpenAICompatible {
       },
       dependencies
     )
+    this.options = {
+      ...options,
+      apiHost,
+    }
   }
 
   isSupportToolUse(scope?: 'web-browsing') {

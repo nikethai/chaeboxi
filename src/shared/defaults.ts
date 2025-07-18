@@ -588,16 +588,22 @@ export const SystemProviders: ProviderBaseInfo[] = [
       apiHost: 'https://api.groq.com/openai',
       models: [
         {
-          modelId: 'llama-3.2-1b-preview',
+          modelId: 'llama-3.3-70b-versatile',
+          contextWindow: 131_072,
+          maxOutput: 32_768,
+          capabilities: ['tool_use'],
         },
         {
-          modelId: 'llama-3.2-3b-preview',
+          modelId: 'moonshotai/kimi-k2-instruct',
+          contextWindow: 131_072,
+          maxOutput: 16_384,
+          capabilities: ['tool_use'],
         },
         {
-          modelId: 'llama-3.2-11b-text-preview',
-        },
-        {
-          modelId: 'llama-3.2-90b-text-preview',
+          modelId: 'qwen/qwen3-32b',
+          contextWindow: 131_072,
+          maxOutput: 40_960,
+          capabilities: ['tool_use'],
         },
       ],
     },

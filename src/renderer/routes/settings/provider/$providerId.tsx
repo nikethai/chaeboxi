@@ -30,16 +30,16 @@ import {
 } from '@tabler/icons-react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { capitalize } from 'lodash'
-import { ChangeEvent, useState } from 'react'
+import { type ChangeEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SystemProviders } from 'src/shared/defaults'
 import { getModel } from 'src/shared/models'
 import {
   MessageRoleEnum,
-  ModelOptionGroup,
+  type ModelOptionGroup,
   ModelProviderEnum,
   ModelProviderType,
-  ProviderModelInfo,
+  type ProviderModelInfo,
 } from 'src/shared/types'
 import {
   normalizeAzureEndpoint,
@@ -48,6 +48,7 @@ import {
   normalizeOpenAIApiHostAndPath,
 } from 'src/shared/utils'
 import { createModelDependencies } from '@/adapters'
+import { ModelList } from '@/components/ModelList'
 import PopoverConfirm from '@/components/PopoverConfirm'
 import { useProviderSettings, useSettings } from '@/hooks/useSettings'
 import { streamText } from '@/packages/model-calls'
@@ -148,7 +149,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         setFetchedModels(
           modelList
             .reduce((pre, cur) => [...pre, ...cur.options], [] as ModelOptionGroup['options'])
-            .map((option) => ({ modelId: option.value } as ProviderModelInfo))
+            .map((option) => ({ modelId: option.value }) as ProviderModelInfo)
         )
       } else {
         addToast(t('Failed to fetch models'))
@@ -303,8 +304,8 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                   !providerSettings?.apiKey
                     ? t('API Key is required to check connection')
                     : !checkModel
-                    ? t('Add at least one model to check connection')
-                    : null
+                      ? t('Add at least one model to check connection')
+                      : null
                 }
               >
                 <Button
@@ -545,79 +546,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
             </Flex>
           </Flex>
 
-          <Stack
-            gap={0}
-            px="xxs"
-            className=" border-solid border rounded-sm min-h-[100px] border-[var(--mantine-color-chatbox-border-primary-outline)]"
-          >
-            {displayModels.map((model, index, list) => (
-              <Flex
-                key={model.modelId}
-                gap="xs"
-                align="center"
-                py="sm"
-                px="xs"
-                className="border-solid border-0 border-b last:border-b-0 border-[var(--mantine-color-chatbox-border-primary-outline)]"
-              >
-                <Text component="span" size="sm" flex="0 1 auto">
-                  {model.nickname || model.modelId}
-                </Text>
-
-                <Flex flex="0 0 auto" gap="xs" align="center">
-                  {model.type && model.type !== 'chat' && <Badge color="blue">{t(capitalize(model.type))}</Badge>}
-                  <>
-                    {model.capabilities?.includes('reasoning') && (
-                      <Tooltip label={t('Reasoning')}>
-                        <Text span c="chatbox-warning" className="flex items-center">
-                          <IconBulb size={20} />
-                        </Text>
-                      </Tooltip>
-                    )}
-                    {model.capabilities?.includes('vision') && (
-                      <Tooltip label={t('Vision')}>
-                        <Text span c="chatbox-brand" className="flex items-center">
-                          <IconEye size={20} />
-                        </Text>
-                      </Tooltip>
-                    )}
-                    {model.capabilities?.includes('tool_use') && (
-                      <Tooltip label={t('Tool Use')}>
-                        <Text span c="chatbox-success" className="flex items-center">
-                          <IconTool size={20} />
-                        </Text>
-                      </Tooltip>
-                    )}
-                  </>
-                </Flex>
-
-                <Flex flex="0 0 auto" gap="xs" align="center" className="ml-auto">
-                  <Button
-                    variant="transparent"
-                    c="chatbox-tertiary"
-                    p={0}
-                    h="auto"
-                    size="xs"
-                    bd={0}
-                    onClick={() => editModel(model)}
-                  >
-                    <IconSettings size={20} />
-                  </Button>
-
-                  <Button
-                    variant="transparent"
-                    c="chatbox-error"
-                    p={0}
-                    h="auto"
-                    size="compact-xs"
-                    bd={0}
-                    onClick={() => deleteModel(model.modelId)}
-                  >
-                    <IconCircleMinus size={20} />
-                  </Button>
-                </Flex>
-              </Flex>
-            ))}
-          </Stack>
+          <ModelList models={displayModels} showActions={true} onEditModel={editModel} onDeleteModel={deleteModel} />
         </Stack>
 
         <Modal

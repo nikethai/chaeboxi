@@ -151,25 +151,7 @@ const configuration: webpack.Configuration = {
 
     new webpack.DefinePlugin({
       'process.type': '"renderer"',
-    }),
-    new JavaScriptObfuscator({
-      optionsPreset: 'default',
-      // 太卡了
-      // controlFlowFlattening: true,
-      // controlFlowFlatteningThreshold: 0.1,
-
-      // 默认的变量名混淆，可能被误报为恶意代码
-      identifierNamesGenerator: 'mangled-shuffled',
-      // 这些静态字符串混淆后，很可能被误报为恶意代码
-      exclude: ['initial_data.ts', 'initial_data.js'],
-
-      numbersToExpressions: true,
-      // 保护前端代码不被偷到其他地方部署
-      // 迁移过程中，暂时关闭保护
-      // domainLock: ['localhost', ".chatboxai.app", ".chatboxai.com", ".chatboxapp.xyz", "chatbox-pro.pages.dev"],
-      // domainLockRedirectUrl: 'https://chatboxai.app',
-      sourceMap: true,
-    }),
+    }),   
   ],
 }
 

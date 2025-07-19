@@ -3,12 +3,12 @@ import type { Config, Settings, ShortcutSetting } from 'src/shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { parseLocale } from '@/i18n/parser'
 import { sliceTextByTokenLimit } from '@/packages/token'
+import { cache } from '../packages/cache'
 import { getOS } from '../packages/navigator'
 import type { Platform, PlatformType } from './interfaces'
 import DesktopKnowledgeBaseController from './knowledge-base/desktop-controller'
 import WebExporter from './web_exporter'
 import { parseTextFileLocally } from './web_platform_utils'
-import { cache } from '../packages/cache'
 
 export default class DesktopPlatform implements Platform {
   public type: PlatformType = 'desktop'
@@ -42,6 +42,9 @@ export default class DesktopPlatform implements Platform {
   }
   public onUpdateDownloaded(callback: () => void): () => void {
     return this.ipc.onUpdateDownloaded(callback)
+  }
+  public onNavigate(callback: (path: string) => void): () => void {
+    return window.electronAPI.onNavigate(callback)
   }
   public async openLink(url: string): Promise<void> {
     return this.ipc.invoke('openLink', url)

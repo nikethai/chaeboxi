@@ -83,7 +83,7 @@ function Root() {
                 navigate({
                   to: '/settings/provider/chatbox-ai',
                   search: {
-                    custom: 'true',
+                    custom: true,
                   },
                 })
               } else {
@@ -149,8 +149,9 @@ function Root() {
   }, [navigate])
 
   useEffect(() => {
-    if (window.electronAPI) {
-      return window.electronAPI.onNavigate((path) => {
+    if (platform.onNavigate) {
+      // 移动端和其他平台的导航监听器
+      return platform.onNavigate((path) => {
         navigate({ to: path })
       })
     }
@@ -347,6 +348,18 @@ const creteMantineTheme = (scale = 1) =>
         'var(--mantine-color-gray-2)',
         'var(--mantine-color-gray-2)',
         'var(--mantine-color-gray-2)',
+      ],
+      'chatbox-background-error-secondary': [
+        'var(--mantine-color-red-9)',
+        'var(--mantine-color-red-9)',
+        'var(--mantine-color-red-9)',
+        'var(--mantine-color-red-9)',
+        'var(--mantine-color-red-9)',
+        'var(--mantine-color-red-1)',
+        'var(--mantine-color-red-1)',
+        'var(--mantine-color-red-1)',
+        'var(--mantine-color-red-1)',
+        'var(--mantine-color-red-1)',
       ],
     },
     headings: {
@@ -598,6 +611,7 @@ type ExtendedCustomColors =
   | 'chatbox-tertiary'
   | 'chatbox-border-primary'
   | 'chatbox-border-secondary'
+  | 'chatbox-background-error-secondary'
   | DefaultMantineColor
 
 declare module '@mantine/core' {

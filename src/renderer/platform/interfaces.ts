@@ -17,6 +17,7 @@ export interface Platform {
   onSystemThemeChange(callback: () => void): () => void
   onWindowShow(callback: () => void): () => void
   onUpdateDownloaded(callback: () => void): () => void
+  onNavigate?(callback: (path: string) => void): () => void
   openLink(url: string): Promise<void>
   getInstanceName(): Promise<string>
   getLocale(): Promise<Language>

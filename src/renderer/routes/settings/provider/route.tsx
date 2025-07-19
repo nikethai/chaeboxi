@@ -1,25 +1,29 @@
-import CustomProviderIcon from '@/components/CustomProviderIcon'
-import { useProviders } from '@/hooks/useProviders'
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import { useSettings } from '@/hooks/useSettings'
-import { Box, Flex, Stack, Text, Image, Button, Modal, TextInput, Select, Indicator } from '@mantine/core'
-import { IconChevronRight, IconPlus } from '@tabler/icons-react'
-import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
-import clsx from 'clsx'
+import { Box, Flex } from '@mantine/core'
+import { createFileRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SystemProviders } from 'src/shared/defaults'
-import { ModelProviderType } from 'src/shared/types'
-import { v4 as uuidv4 } from 'uuid'
+import type { ModelProviderEnum, ProviderInfo, ProviderSettings } from 'src/shared/types'
+import { z } from 'zod'
+import { AddProviderModal } from '@/components/settings/provider/AddProviderModal'
+import { ImportProviderModal } from '@/components/settings/provider/ImportProviderModal'
+import { ProviderList } from '@/components/settings/provider/ProviderList'
+import { useProviderImport } from '@/hooks/useProviderImport'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { useSettings } from '@/hooks/useSettings'
+import { add as addToast } from '@/stores/toastActions'
+import { decodeBase64 } from '@/utils/base64'
+import { parseProviderFromJson } from '@/utils/provider-config'
 
-const iconContext = (require as any).context('../../../static/icons/providers', false, /\.png$/)
-const icons: { name: string; src: string }[] = iconContext.keys().map((key: string) => ({
-  name: key.replace('./', '').replace('.png', ''), // 获取图片名称
-  src: iconContext(key), // 获取图片路径
-}))
+const searchSchema = z.object({
+  import: z.string().optional(), // base64 encoded config
+  custom: z.boolean().optional(),
+})
 
 export const Route = createFileRoute('/settings/provider')({
   component: RouteComponent,
+  validateSearch: zodValidator(searchSchema),
 })
 
 function RouteComponent() {
@@ -27,100 +31,101 @@ function RouteComponent() {
   const navigate = useNavigate()
   const isSmallScreen = useIsSmallScreen()
   const routerState = useRouterState()
-  const providerId = routerState.location.pathname.split('/')[3]
-  const { settings, setSettings } = useSettings()
+  const { settings } = useSettings()
 
-  const providers = useMemo(() => [...SystemProviders, ...(settings.customProviders || [])], [settings.customProviders])
-
-  const { providers: availableProviders } = useProviders()
+  const providers = useMemo<ProviderInfo[]>(
+    () =>
+      [
+        ...SystemProviders,
+        ...(settings.customProviders || []),
+      ].map((p) => ({
+        ...p,
+        ...(settings.providers?.[p.id] || {}),
+      })),
+    [settings.customProviders, settings.providers]
+  )
 
   const [newProviderModalOpened, setNewProviderModalOpened] = useState(false)
-  const [newProviderName, setNewProviderName] = useState('')
-  const [newProviderMode] = useState(ModelProviderType.OpenAI)
+
+  // Import hook
+  const {
+    importModalOpened,
+    setImportModalOpened,
+    importedConfig,
+    setImportedConfig,
+    importError,
+    setImportError,
+    isImporting,
+    existingProvider,
+    checkExistingProvider,
+    handleClipboardImport,
+    handleCancelImport,
+  } = useProviderImport(providers)
+
+  const searchParams = Route.useSearch()
+
+  // Show toast for import errors
+  useEffect(() => {
+    if (importError) {
+      addToast(`${t('Import Error')}: ${importError}`)
+      setImportError(null) // Clear the error after showing toast
+    }
+  }, [importError, t, setImportError])
 
   useEffect(() => {
-    if (routerState.location.search.custom) {
+    if (searchParams.custom) {
       setNewProviderModalOpened(true)
     }
-  }, [routerState.location.search])
+  }, [searchParams.custom])
+  // Handle deep link import
+  const [deepLinkConfig, setDeepLinkConfig] = useState<
+    ProviderInfo | (ProviderSettings & { id: ModelProviderEnum }) | null
+  >(null)
+
+  useEffect(() => {
+    if (searchParams.import) {
+      try {
+        const decoded = decodeBase64(searchParams.import)
+        setDeepLinkConfig(parseProviderFromJson(decoded) || null)
+      } catch (err) {
+        console.error('Failed to parse deep link config:', err)
+        setImportError(t('Invalid deep link config format'))
+        setDeepLinkConfig(null)
+      } finally {
+        // 暂时禁用了，会导致页面路径不对，获取不到assets
+        // 保证移动端能够后退到settings页面
+        // window.history.replaceState(null, '', '/settings')
+        navigate({
+          to: '/settings/provider',
+          search: {},
+          replace: true,
+        })
+      }
+    }
+  }, [searchParams.import, setImportError, t, navigate])
+
+  useEffect(() => {
+    if (deepLinkConfig) {
+      checkExistingProvider(deepLinkConfig.id)
+      setImportedConfig(deepLinkConfig)
+      setImportModalOpened(true)
+    }
+  }, [deepLinkConfig, checkExistingProvider, setImportedConfig, setImportModalOpened])
+
+  const handleImportModalClose = () => {
+    handleCancelImport()
+    setDeepLinkConfig(null)
+  }
 
   return (
     <Flex h="100%">
       {(!isSmallScreen || routerState.location.pathname === '/settings/provider') && (
-        <Stack
-          className={clsx(
-            'border-solid border-0 border-r border-[var(--mantine-color-chatbox-border-primary-outline)] ',
-            isSmallScreen ? 'w-full border-r-0' : ''
-          )}
-          gap={0}
-        >
-          <Stack p={isSmallScreen ? 0 : 'xs'} gap={isSmallScreen ? 0 : 'xs'} flex={1} className="overflow-auto">
-            {providers.map((provider) => (
-              <Link
-                key={provider.id}
-                to={`/settings/provider/$providerId`}
-                params={{ providerId: provider.id }}
-                className={clsx(
-                  'no-underline',
-                  isSmallScreen
-                    ? 'border-solid border-0 border-b border-[var(--mantine-color-chatbox-border-primary-outline)]'
-                    : ''
-                )}
-              >
-                <Flex
-                  component="span"
-                  align="center"
-                  gap="xs"
-                  p="md"
-                  py={isSmallScreen ? 'sm' : undefined}
-                  c={provider.id === providerId ? 'chatbox-brand' : 'chatbox-secondary'}
-                  bg={provider.id === providerId ? 'var(--mantine-color-chatbox-brand-light)' : 'transparent'}
-                  className="cursor-pointer select-none rounded-md hover:!bg-[var(--mantine-color-chatbox-brand-outline-hover)]"
-                >
-                  {provider.isCustom ? (
-                    <CustomProviderIcon providerId={provider.id} providerName={provider.name} size={36} />
-                  ) : (
-                    <Image w={36} h={36} src={icons.find((icon) => icon.name === provider.id)?.src} />
-                  )}
-
-                  <Text
-                    span
-                    size="sm"
-                    w={isSmallScreen ? undefined : 132}
-                    flex={isSmallScreen ? 1 : undefined}
-                    className="!text-inherit"
-                  >
-                    {t(provider.name)}
-                  </Text>
-
-                  <Indicator
-                    size={8}
-                    ml={12}
-                    color="chatbox-success"
-                    className="ml-auto"
-                    disabled={!availableProviders.find((p) => p.id === provider.id)}
-                  />
-
-                  {isSmallScreen && (
-                    <IconChevronRight
-                      size={20}
-                      className="!text-[var(--mantine-color-chatbox-tertiary-outline)] ml-2"
-                    />
-                  )}
-                </Flex>
-              </Link>
-            ))}
-          </Stack>
-          <Button
-            variant="outline"
-            leftSection={<IconPlus size={16} />}
-            mx="md"
-            my="sm"
-            onClick={() => setNewProviderModalOpened(true)}
-          >
-            {t('Add')}
-          </Button>
-        </Stack>
+        <ProviderList
+          providers={providers}
+          onAddProvider={() => setNewProviderModalOpened(true)}
+          onImportProvider={handleClipboardImport}
+          isImporting={isImporting}
+        />
       )}
       {!(isSmallScreen && routerState.location.pathname === '/settings/provider') && (
         <Box flex={1} p="md" className="overflow-auto">
@@ -128,58 +133,14 @@ function RouteComponent() {
         </Box>
       )}
 
-      <Modal
-        size="sm"
-        opened={newProviderModalOpened}
-        onClose={() => setNewProviderModalOpened(false)}
-        centered
-        title={t('Add provider')}
-      >
-        <Stack gap="xs">
-          <Text>{t('Name')}</Text>
-          <TextInput value={newProviderName} onChange={(e) => setNewProviderName(e.currentTarget.value)} />
-          <Text>{t('API Mode')}</Text>
-          <Select
-            value={newProviderMode}
-            data={[
-              {
-                value: ModelProviderType.OpenAI,
-                label: t('OpenAI API Compatible'),
-              },
-            ]}
-          />
-          <Flex justify="flex-end" gap="sm" mt="sm">
-            <Button variant="light" color="chatbox-gray" onClick={() => setNewProviderModalOpened(false)}>
-              {t('Cancel')}
-            </Button>
-            <Button
-              onClick={() => {
-                const pid = 'custom-provider-' + uuidv4()
-                setSettings({
-                  customProviders: [
-                    ...(settings.customProviders || []),
-                    {
-                      id: pid,
-                      name: newProviderName,
-                      type: ModelProviderType.OpenAI,
-                      isCustom: true,
-                    },
-                  ],
-                })
-                setNewProviderModalOpened(false)
-                navigate({
-                  to: '/settings/provider/$providerId',
-                  params: {
-                    providerId: pid,
-                  },
-                })
-              }}
-            >
-              {t('Add')}
-            </Button>
-          </Flex>
-        </Stack>
-      </Modal>
+      <AddProviderModal opened={newProviderModalOpened} onClose={() => setNewProviderModalOpened(false)} />
+
+      <ImportProviderModal
+        opened={importModalOpened}
+        onClose={handleImportModalClose}
+        importedConfig={importedConfig}
+        existingProvider={existingProvider}
+      />
     </Flex>
   )
 }

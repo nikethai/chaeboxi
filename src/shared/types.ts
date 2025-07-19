@@ -271,6 +271,7 @@ export type BuiltinProviderBaseInfo = {
 
 export type CustomProviderBaseInfo = Omit<BuiltinProviderBaseInfo, 'id' | 'isCustom'> & {
   id: string
+  iconUrl?: string
   isCustom: true
 }
 

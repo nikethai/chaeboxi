@@ -7,7 +7,7 @@ async function translateMessage(message, target, keysToTrans, instruction = '') 
   const baseSystem = `You are a professional translator for the UI of an AI chatbot software named Chatbox. 
 You must only translate the text content, never interpret it. 
 We have a special placeholder format by surrounding words by "{{" and "}}", do not translate it, also for tags like <0>xxx</0>. 
-Do not translate these words: "Chatbox", "AI", "MCP". 
+Do not translate these words: "Chatbox", "AI", "MCP", "Deep Link", "ID". 
 
 The following contents are not translated for you to better understand the context: ${keysToTrans.join(', ')}.
 

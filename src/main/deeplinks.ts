@@ -10,4 +10,10 @@ export function handleDeepLink(mainWindow: BrowserWindow, link: string) {
     const encodedConfig = url.searchParams.get('server') || ''
     mainWindow.webContents.send('navigate-to', `/settings/mcp?install=${encodeURIComponent(encodedConfig)}`)
   }
+
+  // handle `chatbox://provider/import?config=`
+  if (url.hostname === 'provider' && url.pathname === '/import') {
+    const encodedConfig = url.searchParams.get('config') || ''
+    mainWindow.webContents.send('navigate-to', `/settings/provider?import=${encodeURIComponent(encodedConfig)}`)
+  }
 }

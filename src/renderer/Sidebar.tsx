@@ -136,11 +136,11 @@ function SidebarButtons(props: { sessionListRef: React.RefObject<HTMLDivElement>
     // On small screen, when click create new session happens
     // while path does not change, automatic hide sidebar won't take effect.
     // So trigger by ourself.
-    if (isSmallScreen && routerState.location.pathname === '/') {
+    if (isSmallScreen) {
       setShowSidebar(false)
     }
     trackingEvent('create_new_conversation', { event_category: 'user' })
-  }, [navigate, setShowSidebar, isSmallScreen, routerState.location.pathname])
+  }, [navigate, setShowSidebar, isSmallScreen])
 
   const handleCreateNewPictureSession = () => {
     sessionActions.createEmpty('picture')

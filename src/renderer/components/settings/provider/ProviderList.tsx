@@ -8,6 +8,7 @@ import type { ProviderBaseInfo } from 'src/shared/types'
 import CustomProviderIcon from '@/components/CustomProviderIcon'
 import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import platform from '@/platform'
 
 // @ts-ignore - Webpack require.context
 const iconContext = require.context('../../../static/icons/providers', false, /\.png$/)
@@ -106,14 +107,16 @@ export function ProviderList({ providers, onAddProvider, onImportProvider, isImp
         <Button variant="outline" leftSection={<IconPlus size={16} />} onClick={onAddProvider}>
           {t('Add')}
         </Button>
-        <Button
-          variant="light"
-          leftSection={<IconFileImport size={16} />}
-          onClick={onImportProvider}
-          loading={isImporting}
-        >
-          {t('Import from clipboard')}
-        </Button>
+        {platform.type !== 'mobile' && (
+          <Button
+            variant="light"
+            leftSection={<IconFileImport size={16} />}
+            onClick={onImportProvider}
+            loading={isImporting}
+          >
+            {t('Import from clipboard')}
+          </Button>
+        )}
       </Stack>
     </Stack>
   )

@@ -16,8 +16,7 @@ import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import * as atoms from '@/stores/atoms'
 import * as sessionActions from '@/stores/sessionActions'
-import { getSession, removeSession, saveSession } from '@/stores/sessionStorageMutations'
-import { delay } from '@/utils'
+import { getSessionAsync, removeSession, saveSession } from '@/stores/sessionStorageMutations'
 import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
 import StyledMenu from './StyledMenu'
 
@@ -110,10 +109,8 @@ function _SessionItem(props: Props) {
         <MenuItem
           key={`${session.id}edit`}
           onClick={async () => {
-            getSession(session.id)
-            await delay(200) // ensure the next getSession will not return undefined
             NiceModal.show('session-settings', {
-              session: getSession(session.id),
+              session: await getSessionAsync(session.id),
             })
             handleMenuClose()
           }}

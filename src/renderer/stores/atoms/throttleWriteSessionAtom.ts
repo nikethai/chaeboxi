@@ -1,7 +1,7 @@
-import { StorageKeyGenerator } from '@/storage/StoreStorage'
-import { atom, getDefaultStore, SetStateAction, WritableAtom } from 'jotai'
-import { Session } from '@/../shared/types'
+import { atom, getDefaultStore, type SetStateAction, type WritableAtom } from 'jotai'
+import type { Session } from '@/../shared/types'
 import storage from '@/storage'
+import { StorageKeyGenerator } from '@/storage/StoreStorage'
 
 const sessionAtomCache = new Map<string, WritableAtom<Session | null, [SetStateAction<Session | null>], void>>()
 
@@ -32,13 +32,16 @@ class WriteQueue {
 
   private flush() {
     this.timer = null
-    const groupedItems = this.queue.reduce((acc, item) => {
-      if (!acc[item.sessionId]) {
-        acc[item.sessionId] = []
-      }
-      acc[item.sessionId].push(item)
-      return acc
-    }, {} as Record<string, typeof this.queue>)
+    const groupedItems = this.queue.reduce(
+      (acc, item) => {
+        if (!acc[item.sessionId]) {
+          acc[item.sessionId] = []
+        }
+        acc[item.sessionId].push(item)
+        return acc
+      },
+      {} as Record<string, typeof this.queue>
+    )
 
     Object.entries(groupedItems).forEach(async ([sessionId, items]) => {
       let storageItem = await storage.getItem<Session | null>(StorageKeyGenerator.session(sessionId), null)

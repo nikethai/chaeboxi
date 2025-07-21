@@ -18,7 +18,7 @@ import platform from '@/platform'
 import { chatSessionSettingsAtom, newSessionStateAtom, sessionKnowledgeBaseMapAtom } from '@/stores/atoms'
 import * as sessionActions from '@/stores/sessionActions'
 import { initEmptyChatSession } from '@/stores/sessionActions'
-import { createSession } from '@/stores/sessionStorageMutations'
+import { createSession, getSessionAsync } from '@/stores/sessionStorageMutations'
 import { delay } from '@/utils'
 
 export const Route = createFileRoute('/')({
@@ -120,6 +120,9 @@ function Index() {
       settings: session.settings,
     })
 
+    // Ensure that the session atom is created successfully.
+    await getSessionAsync(newSession.id)
+
     // Transfer knowledge base from newSessionState to the actual session
     if (newSessionState.knowledgeBase) {
       setSessionKnowledgeBaseMap({
@@ -136,9 +139,6 @@ function Index() {
     if (pictureKeys && pictureKeys.length > 0) {
       newMessage.contentParts.push(...pictureKeys.map((k) => ({ type: 'image' as const, storageKey: k })))
     }
-    // FIXME: submitNewUserMessage内部会使用到getSession，getSession读取了一个动态的atom，是异步的，所以暂时通过延时来解决，否则会导致无法生成消息
-    await delay(200)
-
     await sessionActions.submitNewUserMessage({
       currentSessionId: newSession.id,
       newUserMsg: newMessage,

@@ -1,14 +1,14 @@
+import { arrayMove } from '@dnd-kit/sortable'
+import { getDefaultStore } from 'jotai'
+import { omit, pick } from 'lodash'
+import { copyMessage, copyThreads, type Message, type Session, type SessionMeta } from 'src/shared/types'
+import { v4 as uuidv4 } from 'uuid'
 import { getLogger } from '@/lib/utils'
 import { defaultSessionsForCN, defaultSessionsForEN } from '@/packages/initial_data'
 import platform from '@/platform'
 import storage from '@/storage'
 import { StorageKey, StorageKeyGenerator } from '@/storage/StoreStorage'
 import { getMessageText, migrateMessage } from '@/utils/message'
-import { arrayMove } from '@dnd-kit/sortable'
-import { getDefaultStore } from 'jotai'
-import { omit, pick } from 'lodash'
-import { copyMessage, copyThreads, Message, Session, SessionMeta } from 'src/shared/types'
-import { v4 as uuidv4 } from 'uuid'
 import { migrateSession, sortSessions } from '../utils/session-utils'
 import * as atoms from './atoms'
 import { createSessionAtom } from './atoms'
@@ -16,11 +16,40 @@ import { createSessionAtom } from './atoms'
 const log = getLogger('sessionStorageMutations')
 
 // session 的读写都放到这里，统一管理
-
 export function getSession(sessionId: string) {
   const store = getDefaultStore()
   const sessionAtom = createSessionAtom(sessionId)
   const session = store.get(sessionAtom)
+  if (!session) {
+    return null
+  }
+  return migrateSession(session)
+}
+
+export async function getSessionAsync(sessionId: string, timeout = 1000): Promise<Session | null> {
+  const store = getDefaultStore()
+  const sessionAtom = createSessionAtom(sessionId)
+
+  // Wait for the atom to be initialized
+  let session = store.get(sessionAtom)
+  if (!session) {
+    // If session is null, wait a bit for the atom to load from storage
+    session = await new Promise((resolve) => {
+      const unsubscribe = store.sub(sessionAtom, () => {
+        const loadedSession = store.get(sessionAtom)
+        if (loadedSession !== null) {
+          unsubscribe()
+          resolve(loadedSession)
+        }
+      })
+
+      // If still null after storage check, it truly doesn't exist
+      setTimeout(() => {
+        unsubscribe()
+        resolve(null)
+      }, timeout)
+    })
+  }
   if (!session) {
     return null
   }

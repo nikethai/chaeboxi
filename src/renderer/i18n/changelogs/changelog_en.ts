@@ -1,11 +1,12 @@
 const changelog = `
-## v1.15.1 - 2025.07.19
+## v1.15.1 - 2025.07.22
 
 1. Support disabling streaming output
 2. Support setting max token parameter
 3. Fix issue where mobile couldn't access ollama
 4. Adjust input box style
 5. Support importing MCP and provider configurations through deep link
+6. Fix issue where new conversation message was not sent in some conditions
 
 ### v1.15.0 - 2025.07.07
 

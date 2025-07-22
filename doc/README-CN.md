@@ -85,17 +85,17 @@
 </p>
 
 <p align="center">
-<a href="https://github.com/Bin-Huang/chatbox/releases" target="_blank">
+<a href="https://github.com/chatboxai/chatbox/releases" target="_blank">
 <img alt="macOS" src="https://img.shields.io/badge/-macOS-black?style=flat-square&logo=apple&logoColor=white" />
 </a>
-<a href="https://github.com/Bin-Huang/chatbox/releases" target="_blank">
+<a href="https://github.com/chatboxai/chatbox/releases" target="_blank">
 <img alt="Windows" src="https://img.shields.io/badge/-Windows-blue?style=flat-square&logo=windows&logoColor=white" />
 </a>
-<a href="https://github.com/Bin-Huang/chatbox/releases" target="_blank">
+<a href="https://github.com/chatboxai/chatbox/releases" target="_blank">
 <img alt="Linux" src="https://img.shields.io/badge/-Linux-yellow?style=flat-square&logo=linux&logoColor=white" />
 </a>
-<a href="https://github.com/Bin-Huang/chatbox/releases" target="_blank">
-<img alt="下载量" src="https://img.shields.io/github/downloads/Bin-Huang/chatbox/total.svg?style=flat" />
+<a href="https://github.com/chatboxai/chatbox/releases" target="_blank">
+<img alt="下载量" src="https://img.shields.io/github/downloads/chatboxai/chatbox/total.svg?style=flat" />
 </a>
 <a href="https://twitter.com/benn_huang" target="_blank">
 <img alt="Twitter" src="https://img.shields.io/badge/关注-benn_huang-blue?style=flat&logo=Twitter" />
@@ -195,7 +195,7 @@
 1. 从 Github 克隆仓库
 
 ```bash
-git clone https://github.com/Bin-Huang/chatbox.git
+git clone https://github.com/chatboxai/chatbox.git
 ```
 
 2. 安装所需的依赖

@@ -1,4 +1,11 @@
 const changelog = `
+## v1.15.2 - 2025.07.24
+
+1. Fixed issue where maxTokens parameter was missing in some clients, causing message sending to fail
+2. Fixed issue where thinking content couldn't be edited
+3. Fixed issue where third-party embedding API call failed in knowledge base
+4. Fixed issue where some API providers returned empty thinking content, causing multiple thinking content to appear
+
 ## v1.15.1 - 2025.07.22
 
 1. Support disabling streaming output

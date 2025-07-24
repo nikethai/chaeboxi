@@ -159,7 +159,7 @@ const _Message: FC<Props> = (props) => {
   }
 
   const onCopyMsg = () => {
-    copyToClipboard(getMessageText(msg))
+    copyToClipboard(getMessageText(msg, true, false))
     toastActions.add(t('copied to clipboard'))
     setAnchorEl(null)
   }

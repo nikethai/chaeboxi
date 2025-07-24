@@ -344,6 +344,10 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
         break
       }
       case 'reasoning': {
+        // 部分提供方会随文本返回空的reasoning，防止分割正常的content
+        if (knownChunk.textDelta.trim() === '') {
+          break
+        }
         currentTextPart = undefined
         currentReasoningPart = this.createOrUpdateReasoningPart(
           knownChunk.textDelta,

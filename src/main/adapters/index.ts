@@ -3,7 +3,7 @@ import fs from 'fs'
 import os from 'os'
 import path from 'path'
 import { createAfetch } from '../../shared/request/request'
-import { ModelDependencies, ApiRequestOptions } from '../../shared/types/adapters'
+import type { ApiRequestOptions, ModelDependencies } from '../../shared/types/adapters'
 import { isLocalHost } from '../../shared/utils/network_utils'
 import { getSettings } from '../store-node'
 import { sentry } from './sentry'
@@ -11,7 +11,7 @@ import { sentry } from './sentry'
 async function createMainFetchWithProxy(platformInfo: { type: string; platform: string; os: string; version: string }) {
   return async function fetchWithProxy(url: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     let targetUrl = typeof url === 'string' ? url : url instanceof URL ? url.toString() : (url as Request).url
-    let headers = new Headers(init?.headers)
+    const headers = new Headers(init?.headers)
 
     // 检查是否需要使用代理
     const settings = getSettings()
@@ -79,7 +79,7 @@ export async function createModelDependencies(): Promise<ModelDependencies> {
         const response = await fetchFn(options.url, {
           method: options.method || 'GET',
           headers: options.headers,
-          body: options.body ? JSON.stringify(options.body) : undefined,
+          body: options.body,
           signal: options.signal,
         })
         return response

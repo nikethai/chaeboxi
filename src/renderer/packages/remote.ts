@@ -13,7 +13,7 @@ import {
   type RemoteConfig,
   type Settings,
 } from '../../shared/types'
-import * as cache from './cache'
+import * as cache from 'src/shared/utils/cache'
 import { getOS } from './navigator'
 
 let _afetch: ReturnType<typeof createAfetch> | null = null

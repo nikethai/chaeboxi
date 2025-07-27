@@ -465,9 +465,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         px={isSmallScreen ? '0.3rem' : '1rem'}
         id={dom.InputBoxID}
         {...getRootProps()}
-        onClick={() => {
-          inputRef.current?.focus()
-        }}
       >
         <input className="hidden" {...getInputProps()} />
         <Stack

@@ -165,6 +165,8 @@ const MessageEdit = NiceModal.create((props: { sessionId: string; msg: Message }
   return (
     <Dialog
       {...muiDialogV5(modal)}
+      fullWidth
+      maxWidth="md"
       onClose={() => {
         modal.resolve()
         modal.hide()

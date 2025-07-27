@@ -47,7 +47,17 @@ export type MessageRole = (typeof MessageRoleEnum)[keyof typeof MessageRoleEnum]
 export type MessageTextPart = { type: 'text'; text: string }
 export type MessageImagePart = { type: 'image'; storageKey: string; ocrResult?: string }
 export type MessageInfoPart = { type: 'info'; text: string; values?: Record<string, unknown> }
-export type MessageReasoningPart = { type: 'reasoning'; text: string }
+/**
+ * Represents a reasoning/thinking part of a message with timing information
+ */
+export type MessageReasoningPart = {
+  type: 'reasoning';
+  text: string;
+  /** Timestamp when the thinking process started (milliseconds since epoch) */
+  startTime?: number;
+  /** Total duration of the thinking process in milliseconds */
+  duration?: number;
+}
 export type MessageToolCallPart<Args = unknown, Result = unknown> = {
   type: 'tool-call'
   state: 'call' | 'result' | 'error'
@@ -96,6 +106,9 @@ export interface Message {
 
   reasoningContent?: string
   contentParts: MessageContentParts
+
+  /** Whether this message was generated in streaming mode (affects timer display for reasoning content) */
+  isStreamingMode?: boolean
 
   errorCode?: number
   error?: string

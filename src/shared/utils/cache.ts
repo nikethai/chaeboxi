@@ -153,13 +153,3 @@ export async function cache<T>(
 ): Promise<T> {
   return cacheWithStorage(key, getter, options)
 }
-
-export async function memoryOnlyCache<T>(
-  key: string,
-  getter: () => Promise<T>,
-  options: {
-    ttl: number // 缓存过期时间，单位为毫秒
-  }
-): Promise<T> {
-  return cacheWithStorage(key, getter, { ...options, memoryOnly: true })
-}

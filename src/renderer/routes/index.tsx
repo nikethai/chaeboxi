@@ -15,7 +15,12 @@ import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { useSettings } from '@/hooks/useSettings'
 import platform from '@/platform'
-import { chatSessionSettingsAtom, newSessionStateAtom, sessionKnowledgeBaseMapAtom } from '@/stores/atoms'
+import {
+  chatSessionSettingsAtom,
+  newSessionStateAtom,
+  sessionKnowledgeBaseMapAtom,
+  showCopilotsInNewSessionAtom,
+} from '@/stores/atoms'
 import * as sessionActions from '@/stores/sessionActions'
 import { initEmptyChatSession } from '@/stores/sessionActions'
 import { createSession, getSessionAsync } from '@/stores/sessionStorageMutations'
@@ -32,6 +37,7 @@ function Index() {
   const [chatSessionSettings] = useAtom(chatSessionSettingsAtom)
   const [newSessionState, setNewSessionState] = useAtom(newSessionStateAtom)
   const [sessionKnowledgeBaseMap, setSessionKnowledgeBaseMap] = useAtom(sessionKnowledgeBaseMapAtom)
+  const showCopilotsInNewSession = useAtomValue(showCopilotsInNewSessionAtom)
   const { settings } = useSettings()
 
   const [session, setSession] = useState<Session>({
@@ -181,7 +187,9 @@ function Index() {
               </Text>
             </Stack>
           ) : (
-            <CopilotPicker onSelect={(copilot) => setSession((old) => ({ ...old, copilotId: copilot?.id }))} />
+            showCopilotsInNewSession && (
+              <CopilotPicker onSelect={(copilot) => setSession((old) => ({ ...old, copilotId: copilot?.id }))} />
+            )
           )}
 
           <InputBox

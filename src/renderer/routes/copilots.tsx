@@ -1,13 +1,4 @@
-import { ConfirmDeleteMenuItem } from '@/components/ConfirmDeleteButton'
-import Page from '@/components/Page'
-import StyledMenu from '@/components/StyledMenu'
-import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import { trackingEvent } from '@/packages/event'
-import * as remote from '@/packages/remote'
-import platform from '@/platform'
-import * as atoms from '@/stores/atoms'
-import * as sessionActions from '@/stores/sessionActions'
+import { Switch as MantineSwitch } from '@mantine/core'
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import EditIcon from '@mui/icons-material/Edit'
 import MoreHorizOutlinedIcon from '@mui/icons-material/MoreHorizOutlined'
@@ -35,8 +26,16 @@ import { useAtom } from 'jotai'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuidv4 } from 'uuid'
-import { CopilotDetail, Message } from '../../shared/types'
-import { createSession } from '@/stores/sessionStorageMutations'
+import { ConfirmDeleteMenuItem } from '@/components/ConfirmDeleteButton'
+import Page from '@/components/Page'
+import StyledMenu from '@/components/StyledMenu'
+import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { trackingEvent } from '@/packages/event'
+import * as remote from '@/packages/remote'
+import platform from '@/platform'
+import * as atoms from '@/stores/atoms'
+import type { CopilotDetail } from '../../shared/types'
 
 export const Route = createFileRoute('/copilots')({
   component: Copilots,
@@ -44,6 +43,7 @@ export const Route = createFileRoute('/copilots')({
 
 function Copilots() {
   const [open, setOpen] = useAtom(atoms.openCopilotDialogAtom)
+  const [showCopilotsInNewSession, setShowCopilotsInNewSession] = useAtom(atoms.showCopilotsInNewSessionAtom)
   const navigate = useNavigate()
 
   const { t } = useTranslation()
@@ -51,45 +51,17 @@ function Copilots() {
   const store = useMyCopilots()
   const { copilots: remoteCopilots } = useRemoteCopilots()
 
-  const createChatSessionWithCopilot = async (copilot: CopilotDetail) => {
-    const msgs: Message[] = []
-    msgs.push({ id: uuidv4(), role: 'system', contentParts: [{ type: 'text', text: copilot.prompt }] })
-    if (copilot.demoQuestion) {
-      msgs.push({
-        id: uuidv4(),
-        role: 'user',
-        contentParts: [{ type: 'text', text: copilot.demoQuestion }],
-      })
-    }
-    if (copilot.demoAnswer) {
-      msgs.push({
-        id: uuidv4(),
-        role: 'assistant',
-        contentParts: [{ type: 'text', text: copilot.demoAnswer }],
-      })
-    }
-    const newSession = await createSession({
-      name: copilot.name,
-      type: 'chat',
-      picUrl: copilot.picUrl,
-      messages: msgs,
-      starred: false,
-      copilotId: copilot.id,
-    })
-    sessionActions.switchCurrentSession(newSession.id)
-    trackingEvent('create_copilot_conversation', { event_category: 'user' })
-  }
   const handleClose = () => {
     setOpen(false)
   }
 
-  const useCopilot = (detail: CopilotDetail) => {
+  const selectCopilot = (detail: CopilotDetail) => {
     const newDetail = { ...detail, usedCount: (detail.usedCount || 0) + 1 }
     if (newDetail.shared) {
       remote.recordCopilotShare(newDetail)
     }
     store.addOrUpdate(newDetail)
-    // createChatSessionWithCopilot(newDetail)
+
     navigate({
       to: '/',
       search: {
@@ -138,6 +110,13 @@ function Copilots() {
             {t('Create New Copilot')}
           </Button>
         )}
+        <Box sx={{ mt: 2, mb: 2, display: 'flex', alignItems: 'center' }}>
+          <MantineSwitch
+            checked={showCopilotsInNewSession}
+            onChange={(event) => setShowCopilotsInNewSession(event.currentTarget.checked)}
+            label={t('Show Copilots in New Session')}
+          />
+        </Box>
         <ScrollableTabsButtonAuto
           values={[{ value: 'my', label: t('My Copilots') }]}
           currentValue="my"
@@ -158,7 +137,7 @@ function Copilots() {
               key={`${item.id}_${ix}`}
               mode="local"
               detail={item}
-              useMe={() => useCopilot(item)}
+              selectMe={() => selectCopilot(item)}
               switchStarred={() => {
                 store.addOrUpdate({
                   ...item,
@@ -196,7 +175,7 @@ function Copilots() {
           }}
         >
           {remoteCopilots?.map((item, ix) => (
-            <MiniItem key={`${item.id}_${ix}`} mode="remote" detail={item} useMe={() => useCopilot(item)} />
+            <MiniItem key={`${item.id}_${ix}`} mode="remote" detail={item} selectMe={() => selectCopilot(item)} />
           ))}
         </div>
       </div>
@@ -208,7 +187,7 @@ type MiniItemProps =
   | {
       mode: 'local'
       detail: CopilotDetail
-      useMe(): void
+      selectMe(): void
       switchStarred(): void
       editMe(): void
       deleteMe(): void
@@ -216,19 +195,19 @@ type MiniItemProps =
   | {
       mode: 'remote'
       detail: CopilotDetail
-      useMe(): void
+      selectMe(): void
     }
 
 function MiniItem(props: MiniItemProps) {
   const { t } = useTranslation()
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null)
   const open = Boolean(anchorEl)
-  const useCopilot = (event: React.MouseEvent<HTMLElement>) => {
+  const selectCopilot = (event: React.MouseEvent<HTMLElement>) => {
     event.preventDefault()
     if (open) {
       return
     }
-    props.useMe()
+    props.selectMe()
   }
   const openMenu = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation()
@@ -255,7 +234,7 @@ function MiniItem(props: MiniItemProps) {
         },
       }}
       className="w-full sm:w-48 hover:bg-slate-400/25 border-solid border-slate-400/20 rounded-md"
-      onClick={useCopilot}
+      onClick={selectCopilot}
     >
       <Avatar sizes="30px" sx={{ width: '30px', height: '30px' }} src={props.detail.picUrl}></Avatar>
       <div
@@ -356,7 +335,7 @@ function ScrollableTabsButtonAuto(props: TabsProps) {
       <Tabs
         component="a"
         value={props.currentValue}
-        onChange={(event, newValue) => {
+        onChange={(_event, newValue) => {
           props.onChange(newValue)
         }}
         variant="scrollable"
@@ -436,7 +415,7 @@ function CopilotForm(props: CopilotFormProps) {
         placeholder={t('My Assistant') || ''}
         value={copilotEdit.name}
         onChange={inputHandler('name')}
-        helperText={helperTexts['name']}
+        helperText={helperTexts.name}
       />
       <TextField
         margin="dense"

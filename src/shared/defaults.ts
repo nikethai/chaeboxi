@@ -309,11 +309,11 @@ export const SystemProviders: ProviderBaseInfo[] = [
       // https://ai.google.dev/models/gemini
       models: [
         {
-          modelId: 'gemini-2.5-flash-preview-05-20',
+          modelId: 'gemini-2.5-flash',
           capabilities: ['vision', 'reasoning'],
         },
         {
-          modelId: 'gemini-2.5-pro-preview-06-05',
+          modelId: 'gemini-2.5-pro',
           capabilities: ['vision', 'reasoning'],
         },
         {

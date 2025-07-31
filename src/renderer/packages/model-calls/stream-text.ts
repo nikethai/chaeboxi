@@ -103,6 +103,7 @@ async function ocrMessages(messages: Message[]) {
 export async function streamText(
   model: ModelInterface,
   params: {
+    sessionId: string
     messages: Message[]
     onResultChangeWithCancel: onResultChangeWithCancel
     providerOptions?: ProviderOptions
@@ -111,7 +112,7 @@ export async function streamText(
   },
   signal?: AbortSignal
 ) {
-  const { knowledgeBase, webBrowsing } = params
+  const { knowledgeBase, webBrowsing, sessionId } = params
 
   const controller = new AbortController()
   const cancel = () => controller.abort()
@@ -258,6 +259,7 @@ export async function streamText(
     console.debug('tools', tools)
 
     result = await model.chat(coreMessages, {
+      sessionId,
       signal: controller.signal,
       onResultChange,
       providerOptions: params.providerOptions,

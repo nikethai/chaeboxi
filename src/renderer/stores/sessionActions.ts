@@ -850,6 +850,7 @@ export async function generate(
         }, 100)
 
         await streamText(model, {
+          sessionId,
           messages: promptMsgs,
           onResultChangeWithCancel: throttledModifyMessage,
           providerOptions: settings.providerOptions,

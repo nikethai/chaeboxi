@@ -57,6 +57,7 @@ export default class ChatboxAI extends AbstractAISDKModel implements ModelInterf
         headers: {
           'Instance-Id': instanceId,
           Authorization: `Bearer ${this.options.licenseKey || ''}`,
+          'chatbox-session-id': options.sessionId,
         },
         fetch: this.chatboxAIFetch.bind(this),
       })
@@ -68,6 +69,7 @@ export default class ChatboxAI extends AbstractAISDKModel implements ModelInterf
         baseURL: `${getChatboxAPIOrigin()}/gateway/openai/v1`,
         headers: {
           'Instance-Id': instanceId,
+          'chatbox-session-id': options.sessionId || '',
         },
         fetch: this.chatboxAIFetch.bind(this),
       })

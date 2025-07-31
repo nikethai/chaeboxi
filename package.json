@@ -52,6 +52,10 @@
     "email": "tohuangbin@gmail.com"
   },
   "devDependencies": {
+    "@babel/core": "^7.28.0",
+    "@babel/plugin-transform-class-static-block": "^7.27.1",
+    "@babel/preset-env": "^7.28.0",
+    "@biomejs/biome": "2.0.0",
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^6.0.0",
     "@electron/notarize": "^2.0.0",
@@ -91,6 +95,7 @@
     "@typescript-eslint/eslint-plugin": "^5.59.8",
     "@typescript-eslint/parser": "^5.59.8",
     "autoprefixer": "^10.4.14",
+    "babel-loader": "^10.0.0",
     "browserslist-config-erb": "^0.0.3",
     "chalk": "^4.1.2",
     "concurrently": "^8.1.0",

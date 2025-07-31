@@ -82,7 +82,7 @@ const SessionSettingsModal = NiceModal.create(
         _editingData
           ? {
               ..._editingData,
-              settings: pick(_editingData.settings, ['provider', 'modelId', 'dalleStyle']),
+              settings: pick(_editingData.settings, ['provider', 'modelId']),
             }
           : _editingData
       )

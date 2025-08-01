@@ -1,5 +1,13 @@
+import { ConfirmDeleteMenuItem } from '@/components/ConfirmDeleteButton'
+import Page from '@/components/Page'
+import StyledMenu from '@/components/StyledMenu'
+import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { trackingEvent } from '@/packages/event'
+import * as remote from '@/packages/remote'
+import platform from '@/platform'
+import * as atoms from '@/stores/atoms'
 import { Button as MantineButton, Switch as MantineSwitch } from '@mantine/core'
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline'
 import EditIcon from '@mui/icons-material/Edit'
 import MoreHorizOutlinedIcon from '@mui/icons-material/MoreHorizOutlined'
 import StarIcon from '@mui/icons-material/Star'
@@ -25,15 +33,6 @@ import { useAtom } from 'jotai'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuidv4 } from 'uuid'
-import { ConfirmDeleteMenuItem } from '@/components/ConfirmDeleteButton'
-import Page from '@/components/Page'
-import StyledMenu from '@/components/StyledMenu'
-import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import { trackingEvent } from '@/packages/event'
-import * as remote from '@/packages/remote'
-import platform from '@/platform'
-import * as atoms from '@/stores/atoms'
 import type { CopilotDetail } from '../../shared/types'
 
 export const Route = createFileRoute('/copilots')({
@@ -152,7 +151,7 @@ function Copilots() {
                 sx={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                  gap: 2,
+                  gap: 1.5,
                 }}
               >
                 {list.map((item, ix) => (
@@ -196,7 +195,7 @@ function Copilots() {
                 sx={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                  gap: 2,
+                  gap: 1.5,
                 }}
               >
                 {remoteCopilots?.map((item, ix) => (
@@ -251,7 +250,8 @@ function MiniItem(props: MiniItemProps) {
         display: 'flex',
         flexDirection: 'row',
         alignItems: 'center',
-        padding: '16px',
+        padding: '10px 16px',
+        height: '49px',
         cursor: 'pointer',
         borderRadius: '8px',
         border: '1px solid',
@@ -273,8 +273,8 @@ function MiniItem(props: MiniItemProps) {
     >
       <Avatar
         sx={{
-          width: '40px',
-          height: '40px',
+          width: '28px',
+          height: '28px',
           backgroundColor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#e9ecef'),
         }}
         src={props.detail.picUrl}

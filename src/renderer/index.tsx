@@ -59,16 +59,6 @@ async function initializeApp() {
     Sentry.captureException(e as Error)
   }
 
-  try {
-    // migration 中没有写入 Demo session了，可以在 migration 之后初始化
-    // 初始化数据
-    await initData()
-    log.info('init data done')
-  } catch (e) {
-    log.error('init data error', e)
-    Sentry.captureException(e as Error)
-  }
-
   // 最后执行 storage 清理，清理不 block 进入UI
   import('./setup/storage_clear')
 
@@ -121,6 +111,9 @@ const tid = setTimeout(() => {
       </ErrorBoundary>
     </StrictMode>
   )
+  if (platform.type === 'mobile') {
+    SplashScreen.hide()
+  }
 }, 1000)
 
 // 等待初始化完成后再渲染
@@ -136,19 +129,15 @@ initializeApp()
     // 等待settings初始化完成，尽量避免闪屏
     // TODO: 更好的做法是在必要的数据全部初始化完成后再hide splash screen
     delay(500).then(() => {
+      if (platform.type === 'mobile') {
+        SplashScreen.hide()
+      }
       const el = document.querySelector('.splash-screen')
-      if (platform.type !== 'mobile') {
-        // remove loading page with animation
-        if (el) {
-          el.addEventListener('animationend', () => {
-            el.parentNode?.removeChild(el)
-          })
-          el.classList.add('splash-screen-fade-out')
-        }
-      } else {
-        if (el) {
+      if (el) {
+        el.addEventListener('animationend', () => {
           el.parentNode?.removeChild(el)
-        }
+        })
+        el.classList.add('splash-screen-fade-out')
       }
     })
 

@@ -1,3 +1,5 @@
+/** biome-ignore-all lint/suspicious/noExplicitAny: <any> */
+import localforage from 'localforage'
 import type { ElectronIPC } from 'src/shared/electron-types'
 import type { Config, Settings, ShortcutSetting } from 'src/shared/types'
 import { v4 as uuidv4 } from 'uuid'
@@ -9,6 +11,8 @@ import type { Platform, PlatformType } from './interfaces'
 import DesktopKnowledgeBaseController from './knowledge-base/desktop-controller'
 import WebExporter from './web_exporter'
 import { parseTextFileLocally } from './web_platform_utils'
+
+const store = localforage.createInstance({ name: 'chatboxstore' })
 
 export default class DesktopPlatform implements Platform {
   public type: PlatformType = 'desktop'
@@ -74,27 +78,67 @@ export default class DesktopPlatform implements Platform {
     return this.ipc.invoke('getSettings')
   }
 
+  private needStoreInFile(key: string): boolean {
+    return key === 'configs' || key === 'settings' || key === 'configVersion'
+  }
+
   public async setStoreValue(key: string, value: any) {
-    // 为什么要序列化？
-    // 为了实现进程通信，electron invoke 会自动对传输数据进行序列化，
-    // 但如果数据包含无法被序列化的类型（比如 message 中常带有的 cancel 函数）将直接报错：
-    // Uncaught (in promise) Error: An object could not be cloned.
-    // 因此对于数据类型不容易控制的场景，应该提前 JSON.stringify，这种序列化方式会自动处理异常类型。
-    const valueJson = JSON.stringify(value)
-    return this.ipc.invoke('setStoreValue', key, valueJson)
+    // 为什么序列化成 JSON？
+    // 因为 IndexedDB 作为底层驱动时，可以直接存储对象，但是如果对象中包含函数或引用，将会直接报错
+    let valueJson: string
+    try {
+      valueJson = JSON.stringify(value)
+    } catch (error: any) {
+      throw new Error(`Failed to serialize value for key "${key}": ${error.message}`)
+    }
+    if (this.needStoreInFile(key)) {
+      return this.ipc.invoke('setStoreValue', key, valueJson)
+    } else {
+      await store.setItem(key, valueJson)
+    }
   }
   public async getStoreValue(key: string) {
-    return this.ipc.invoke('getStoreValue', key)
+    if (this.needStoreInFile(key)) {
+      return this.ipc.invoke('getStoreValue', key)
+    } else {
+      const json = await store.getItem<string>(key)
+      if (!json) return null
+      try {
+        return JSON.parse(json)
+      } catch (error) {
+        console.error(`Failed to parse stored value for key "${key}":`, error)
+        return null
+      }
+    }
   }
-  public delStoreValue(key: string) {
-    return this.ipc.invoke('delStoreValue', key)
+  public async delStoreValue(key: string) {
+    if (this.needStoreInFile(key)) {
+      return this.ipc.invoke('delStoreValue', key)
+    } else {
+      return await store.removeItem(key)
+    }
   }
   public async getAllStoreValues(): Promise<{ [key: string]: any }> {
-    const json = await this.ipc.invoke('getAllStoreValues')
-    return JSON.parse(json)
+    const ret: { [key: string]: any } = {}
+    await store.iterate((json, key) => {
+      const value = typeof json === 'string' ? JSON.parse(json) : null
+      ret[key] = value
+    })
+    const json = JSON.parse(await this.ipc.invoke('getAllStoreValues'))
+    for (const [key, value] of Object.entries(json)) {
+      ret[key] = value
+    }
+    return ret
   }
-  public async setAllStoreValues(data: { [key: string]: any }) {
-    await this.ipc.invoke('setAllStoreValues', JSON.stringify(data))
+  public async getAllStoreKeys(): Promise<string[]> {
+    const keys = await store.keys()
+    const ipcKeys: string[] = await this.ipc.invoke('getAllStoreKeys')
+    return [...keys, ...ipcKeys]
+  }
+  public async setAllStoreValues(data: { [key: string]: any }): Promise<void> {
+    for (const [key, value] of Object.entries(data)) {
+      await this.setStoreValue(key, value)
+    }
   }
 
   public async getStoreBlob(key: string): Promise<string | null> {

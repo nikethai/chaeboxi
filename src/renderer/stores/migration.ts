@@ -22,17 +22,19 @@ import {
   mermaidSessionEN,
 } from '@/packages/initial_data'
 import platform from '@/platform'
+import { DesktopFileStorage, getOldVersionStorages } from '@/platform/old_version_storages'
 import WebPlatform from '@/platform/web_platform'
 import storage, { StorageKey } from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import * as defaults from '../../shared/defaults'
 import { getLogger } from '../lib/utils'
 import { migrationProcessAtom } from './atoms/utilAtoms'
-import { getSessionMeta } from './sessionStorageMutations'
+import { getSessionMeta, initPresetSessions } from './sessionStorageMutations'
 
 const log = getLogger('migration')
 
 export async function migrate() {
+  await migrateStorage()
   await migrateOnData(
     {
       getData: storage.getItem.bind(storage),
@@ -51,7 +53,63 @@ type MigrateStore = {
   setBlob?: (key: string, value: string) => Promise<void>
 }
 
-export const CurrentVersion = 10
+export const CurrentVersion = 12
+
+async function migrateStorage() {
+  const configVersion = await storage.getItem<number>(StorageKey.ConfigVersion, 0)
+  if (configVersion === 0) {
+    // 如果当前的storage中没有读取到版本号，那么存在两种可能性
+    // 1. 这是第一次运行应用。
+    // 2. 刚刚切换到新的storage实现，之前的数据还没有迁移过来。
+    log.info('migrateStorage: no config version found')
+    const oldVersionStorages = getOldVersionStorages()
+    let hasOldData = false
+    for (const oldStorage of oldVersionStorages) {
+      const oldConfigVersion = await oldStorage.getStoreValue(StorageKey.ConfigVersion)
+      if (oldConfigVersion) {
+        // 找到老版本的数据，说明是升级，执行数据迁移操作
+        log.info('migrateStorage: old version storage found, migrating data from old storage')
+        hasOldData = true
+        const keys = await oldStorage.getAllStoreKeys()
+        for (let index = 0; index < keys.length; index++) {
+          const key = keys[index]
+          try {
+            const val = await oldStorage.getStoreValue(key)
+            await storage.setItemNow(key, val)
+            log.info(`[] migrateStorage: ${index + 1} / ${keys.length} migrated`)
+          } catch {
+            log.info(`migrateStorage: failed to migrate ${key}`)
+          }
+        }
+        break
+      }
+    }
+
+    if (!hasOldData) {
+      // 这是第一次运行应用，直接将ConfigVersion设置为CurrentVersion，跳过后续的数据迁移
+      await storage.setItemNow(StorageKey.ConfigVersion, CurrentVersion)
+      // 初始化默认会话
+      await initPresetSessions()
+    }
+  } else if (platform.type === 'desktop' && configVersion <= 11) {
+    // 桌面端configVersion <= 11时，需要将除了settings、configs和ConfigVersion以外的数据迁移
+    log.info('migrateStorage: old version storage found')
+    const oldStorage = new DesktopFileStorage()
+    const kvs = await oldStorage.getAllStoreValues()
+    const keys = Object.keys(kvs).filter((k) => !['settings', 'configs', 'configVersion'].includes(k))
+    for (let index = 0; index < keys.length; index++) {
+      const key = keys[index]
+      try {
+        const val = kvs[key]
+        await storage.setItemNow(key, val)
+        await oldStorage.delStoreValue(key)
+        log.info(`migrateStorage: ${index + 1} / ${keys.length} migrated`)
+      } catch {
+        log.info(`migrateStorage: failed to migrate ${key}`)
+      }
+    }
+  }
+}
 
 export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true) {
   let needRelaunch = false
@@ -65,86 +123,26 @@ export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true)
   scope.setTag('configVersion', configVersion)
   log.info(`migrateOnData: ${configVersion}, canRelaunch: ${canRelaunch}`)
 
-  if (configVersion < 1) {
-    // await migrate_0_to_1(dataStore)
-    configVersion = 1
-    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
-    log.info(`migrate_0_to_1`)
-  }
-  if (configVersion < 2) {
-    // await migrate_1_to_2(dataStore)
-    configVersion = 2
-    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
-    log.info(`migrate_1_to_2`)
-  }
-  if (configVersion < 3) {
-    await migrate_2_to_3(dataStore)
-    configVersion = 3
-    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
-    log.info(`migrate_2_to_3`)
-  }
-  if (configVersion < 4) {
-    // await migrate_3_to_4(dataStore)
-    configVersion = 4
-    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
-    log.info(`migrate_3_to_4`)
-  }
-  if (configVersion < 5) {
-    const _needRelaunch = await migrate_4_to_5(dataStore)
-    needRelaunch ||= _needRelaunch
-    configVersion = 5
-    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
-    log.info(`migrate_4_to_5, needRelaunch: ${needRelaunch}`)
-  }
-  if (configVersion < 6) {
-    // await migrate_5_to_6(dataStore)
-    configVersion = 6
-    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
-    log.info(`migrate_5_to_6`)
-  }
-  if (configVersion < 7) {
-    const _needRelaunch = await migrate_6_to_7(dataStore)
-    needRelaunch ||= _needRelaunch
-    configVersion = 7
-    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
-    log.info(`migrate_6_to_7, needRelaunch: ${needRelaunch}`)
-  }
-  let migrate_7_to_8_executed = false
-  if (configVersion < 8) {
-    // 必须这么写，如果写在一行， 编译优化会导致 migrate 不执行
-    const _needRelaunch = await migrate_7_to_8(dataStore)
-    needRelaunch ||= _needRelaunch
-    configVersion = 8
-    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
-    log.info(`migrate_7_to_8, needRelaunch: ${needRelaunch}`)
-    migrate_7_to_8_executed = true
-  }
+  const migrateFunctions = [
+    null,
+    null,
+    migrate_2_to_3,
+    null,
+    null,
+    null,
+    null,
+    migrate_7_to_8,
+    null,
+    migrate_9_to_10,
+    migrate_10_to_11,
+    migrate_11_to_12,
+  ]
 
-  if (configVersion < 9) {
-    if (!migrate_7_to_8_executed) {
-      // 如果 migrate_7_to_8 执行了，就没有必要执行 migrate_8_to_9 找回数据了
-      const _needRelaunch = await migrate_8_to_9(dataStore)
-      needRelaunch ||= _needRelaunch
-    }
-    configVersion = 9
-    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
-    log.info(`migrate_8_to_9, needRelaunch: ${needRelaunch}`)
-  }
-
-  if (configVersion < 10) {
-    const _needRelaunch = await migrate_9_to_10(dataStore)
-    needRelaunch ||= _needRelaunch
-    configVersion = 10
-    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
-    log.info(`migrate_9_to_10, needRelaunch: ${needRelaunch}`)
-  }
-
-  if (configVersion < 11) {
-    const _needRelaunch = await migrate_10_to_11(dataStore)
-    needRelaunch ||= _needRelaunch
-    configVersion = 11
-    await dataStore.setData(StorageKey.ConfigVersion, configVersion)
-    log.info(`migrate_10_to_11, needRelaunch: ${needRelaunch}`)
+  for (; configVersion < CurrentVersion; configVersion++) {
+    const _needRelaunch = await migrateFunctions[configVersion]?.(dataStore)
+    needRelaunch ||= !!_needRelaunch
+    await dataStore.setData(StorageKey.ConfigVersion, configVersion + 1)
+    log.info(`migrate_${configVersion}_to_${configVersion + 1}, needRelaunch: ${needRelaunch}`)
   }
 
   // 如果需要重启，则重启应用
@@ -211,6 +209,7 @@ async function migrate_3_to_4(dataStore: MigrateStore) {
   await dataStore.setData(StorageKey.ChatSessions, [...sessions, targetSession])
 }
 
+// 已经迁移到storage migration
 async function migrate_4_to_5(dataStore: MigrateStore): Promise<boolean> {
   if (platform.type !== 'web') {
     return false
@@ -242,6 +241,7 @@ async function migrate_5_to_6(dataStore: MigrateStore) {
 
 // 针对 mobile 端，从 store 迁移至 sqlite
 // 解决容量不够用的问题
+// 不在需要了
 async function migrate_6_to_7(dataStore: MigrateStore): Promise<boolean> {
   if (platform.type !== 'mobile') {
     return false
@@ -639,4 +639,9 @@ async function migrate_10_to_11(dataStore: MigrateStore) {
   await dataStore.setData(StorageKey.Settings, settings)
   log.info('migrate_10_to_11, done')
   return false
+}
+
+// 占位，防止后面重复使用该版本号
+async function migrate_11_to_12(dataStore: MigrateStore) {
+  return true
 }

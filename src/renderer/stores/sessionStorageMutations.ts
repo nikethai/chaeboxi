@@ -137,7 +137,7 @@ export function getSessionMeta(session: SessionMeta) {
   return pick(session, ['id', 'name', 'starred', 'assistantAvatarKey', 'picUrl', 'type'])
 }
 
-async function initPresetSessions() {
+export async function initPresetSessions() {
   const lang = await platform.getLocale().catch((e) => 'en')
   log.info(`initPresetSessions, lang: ${lang}`)
 

@@ -83,11 +83,21 @@ export default class WebPlatform implements Platform {
   public async setStoreValue(key: string, value: any) {
     // 为什么序列化成 JSON？
     // 因为 IndexedDB 作为底层驱动时，可以直接存储对象，但是如果对象中包含函数或引用，将会直接报错
-    await store.setItem(key, JSON.stringify(value))
+    try {
+      await store.setItem(key, JSON.stringify(value))
+    } catch (error) {
+      throw new Error(`Failed to store value for key "${key}": ${(error as Error).message}`)
+    }
   }
   public async getStoreValue(key: string) {
     const json = await store.getItem<string>(key)
-    return json ? JSON.parse(json) : null
+    if (!json) return null
+    try {
+      return JSON.parse(json)
+    } catch (error) {
+      console.error(`Failed to parse stored value for key "${key}":`, error)
+      return null
+    }
   }
   public async delStoreValue(key: string) {
     return await store.removeItem(key)
@@ -102,7 +112,7 @@ export default class WebPlatform implements Platform {
   }
   public async setAllStoreValues(data: { [key: string]: any }): Promise<void> {
     for (const [key, value] of Object.entries(data)) {
-      await store.setItem(key, JSON.stringify(value))
+      await this.setStoreValue(key, value)
     }
   }
 

@@ -103,7 +103,7 @@ async function ocrMessages(messages: Message[]) {
 export async function streamText(
   model: ModelInterface,
   params: {
-    sessionId: string
+    sessionId?: string
     messages: Message[]
     onResultChangeWithCancel: onResultChangeWithCancel
     providerOptions?: ProviderOptions

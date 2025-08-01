@@ -37,6 +37,7 @@ const useChatboxAIModels = () => {
 
       return res.models
     },
+    staleTime: 3600 * 1000,
   })
 
   const allChatboxAIModels = useMemo(

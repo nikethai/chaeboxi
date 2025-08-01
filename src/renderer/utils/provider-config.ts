@@ -19,7 +19,8 @@ const BuiltinProviderConfigSchema = z.object({
   }),
 })
 
-const providerConfigSchema = z.object({
+const CustomProviderConfigSchema = z.object({
+  isCustom: z.literal(true).catch(true),
   id: z.string(),
   name: z.string(),
   type: z.enum(['openai', 'anthropic']),
@@ -40,57 +41,46 @@ const providerConfigSchema = z.object({
   }),
 })
 
-export type ProviderConfig = z.infer<typeof providerConfigSchema> | z.infer<typeof BuiltinProviderConfigSchema>
+const ProviderConfigSchema = z.union([BuiltinProviderConfigSchema, CustomProviderConfigSchema])
 
-function parseBuiltinProviderConfig(json: unknown): (ProviderSettings & { id: ModelProviderEnum }) | undefined {
-  const { data: parsed, success, error: parseError } = BuiltinProviderConfigSchema.safeParse(json)
-  if (!success) {
-    console.error('Builtin provider config validation failed:', parseError)
-    return undefined
-  }
-  const providerSettings: ProviderSettings & { id: ModelProviderEnum } = {
-    id: parsed.id,
-    apiHost: parsed.settings.apiHost,
-    apiKey: parsed.settings.apiKey,
-  }
-  return providerSettings
-}
+export type ProviderConfig = z.infer<typeof ProviderConfigSchema>
 
-function parseProviderConfig(json: unknown): ProviderInfo | undefined {
-  const { data: parsed, success, error: parseError } = providerConfigSchema.safeParse(json)
-  if (!success) {
-    console.error('Provider config validation failed:', parseError)
-    return undefined
-  }
-  // Convert to ProviderInfo format
-  const providerInfo: ProviderInfo = {
-    id: parsed.id,
-    name: parsed.name,
-    type: parsed.type === 'openai' ? ModelProviderType.OpenAI : ModelProviderType.OpenAI, // Default to OpenAI for now
-    urls: parsed.urls,
-    iconUrl: parsed.iconUrl,
+function parseProviderConfig(json: unknown): ProviderInfo | (ProviderSettings & { id: ModelProviderEnum }) | undefined {
+  const parsed = ProviderConfigSchema.parse(json)
+  if (parsed.id in ModelProviderEnum) {
+    // builtin provider
+    const providerSettings: ProviderSettings & { id: ModelProviderEnum } = {
+      id: parsed.id as ModelProviderEnum,
+      apiHost: parsed.settings.apiHost,
+      apiKey: parsed.settings.apiKey,
+    }
+    return providerSettings
+  } else {
+    const parsedCustom = parsed as z.infer<typeof CustomProviderConfigSchema>
+    // Convert to ProviderInfo format
+    const providerInfo: ProviderInfo = {
+      id: parsedCustom.id,
+      name: parsedCustom.name,
+      type: parsedCustom.type === 'openai' ? ModelProviderType.OpenAI : ModelProviderType.OpenAI, // Default to OpenAI for now
+      urls: parsedCustom.urls,
+      iconUrl: parsedCustom.iconUrl,
+      isCustom: true,
 
-    apiHost: parsed.settings.apiHost,
-    apiPath: parsed.settings.apiPath,
-    apiKey: parsed.settings.apiKey,
-    models: parsed.settings.models,
-  }
+      apiHost: parsedCustom.settings.apiHost,
+      apiPath: parsedCustom.settings.apiPath,
+      apiKey: parsedCustom.settings.apiKey,
+      models: parsedCustom.settings.models,
+    }
 
-  return providerInfo
+    return providerInfo
+  }
 }
 export function parseProviderFromJson(
   text: string
 ): ProviderInfo | (ProviderSettings & { id: ModelProviderEnum }) | undefined {
   try {
     const json = JSON.parse(text)
-    const provider = parseProviderConfig(json)
-    if (provider) {
-      return provider
-    }
-    const builtinProvider = parseBuiltinProviderConfig(json)
-    if (builtinProvider) {
-      return builtinProvider
-    }
+    return parseProviderConfig(json)
   } catch (err) {
     console.error('Failed to parse provider config:', err)
     return undefined
@@ -99,7 +89,7 @@ export function parseProviderFromJson(
 
 export function validateProviderConfig(config: unknown): ProviderConfig | undefined {
   try {
-    return providerConfigSchema.parse(config)
+    return ProviderConfigSchema.parse(config)
   } catch (err) {
     console.error('Provider config validation failed:', err)
     return undefined

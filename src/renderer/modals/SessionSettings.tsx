@@ -409,7 +409,7 @@ function ClaudeProviderConfig({
   onSettingsChange: (data: Session['settings']) => void
 }) {
   const { t } = useTranslation()
-  const providerOptions = settings?.providerOptions?.claude || {}
+  const providerOptions = settings?.providerOptions?.claude
 
   const handleConfigChange = (config: { budgetTokens: number; enabled: boolean }) => {
     onSettingsChange({
@@ -426,8 +426,8 @@ function ClaudeProviderConfig({
 
   return (
     <ThinkingBudgetConfig
-      currentBudgetTokens={providerOptions.thinking?.budgetTokens || 1024}
-      isEnabled={providerOptions.thinking?.type === 'enabled'}
+      currentBudgetTokens={providerOptions?.thinking?.budgetTokens || 1024}
+      isEnabled={providerOptions?.thinking?.type === 'enabled'}
       onConfigChange={handleConfigChange}
       tooltipText={t('Thinking Budget only works for 3.7 or later models')}
       minValue={1024}
@@ -444,7 +444,7 @@ function OpenAIProviderConfig({
   onSettingsChange: (data: Session['settings']) => void
 }) {
   const { t } = useTranslation()
-  const providerOptions = settings?.providerOptions?.openai || {}
+  const providerOptions = settings?.providerOptions?.openai
 
   // Memoize options to prevent recreation on every render
   const reasoningEffortOptions = useMemo(
@@ -459,7 +459,7 @@ function OpenAIProviderConfig({
 
   const handleReasoningEffortChange = useCallback(
     (value: string) => {
-      const reasoningEffort = value === 'null' ? null : (value as 'low' | 'medium' | 'high')
+      const reasoningEffort = value === 'null' ? undefined : (value as 'low' | 'medium' | 'high')
       onSettingsChange({
         providerOptions: {
           openai: { reasoningEffort },
@@ -471,9 +471,9 @@ function OpenAIProviderConfig({
 
   // Simplify value calculation to avoid instability
   const currentValue = useMemo(() => {
-    const effort = providerOptions.reasoningEffort
-    return effort === null || effort === undefined ? 'null' : effort
-  }, [providerOptions.reasoningEffort])
+    const effort = providerOptions?.reasoningEffort
+    return effort === undefined ? 'null' : effort
+  }, [providerOptions?.reasoningEffort])
 
   return (
     <Stack gap="md">
@@ -511,7 +511,7 @@ function GoogleProviderConfig({
   onSettingsChange: (data: Session['settings']) => void
 }) {
   const { t } = useTranslation()
-  const providerOptions = settings?.providerOptions?.google || {}
+  const providerOptions = settings?.providerOptions?.google
 
   const handleConfigChange = (config: { budgetTokens: number; enabled: boolean }) => {
     onSettingsChange({
@@ -523,8 +523,8 @@ function GoogleProviderConfig({
 
   return (
     <ThinkingBudgetConfig
-      currentBudgetTokens={providerOptions.thinkingConfig?.thinkingBudget || 0}
-      isEnabled={(providerOptions.thinkingConfig?.thinkingBudget || 0) > 0}
+      currentBudgetTokens={providerOptions?.thinkingConfig?.thinkingBudget || 0}
+      isEnabled={(providerOptions?.thinkingConfig?.thinkingBudget || 0) > 0}
       onConfigChange={handleConfigChange}
       tooltipText={t('Thinking Budget only works for 2.0 or later models')}
       minValue={0}

@@ -87,11 +87,11 @@ async function ocrMessages(messages: Message[]) {
   const dependencies = await createModelDependencies()
   if (settings.licenseKey) {
     const modelSettings = getModelSettings(settings, ModelProviderEnum.ChatboxAI, 'chatbox-ocr-1')
-    ocrModel = getModel(modelSettings, { uuid: '123' }, dependencies)
+    ocrModel = getModel(modelSettings, settings, { uuid: '123' }, dependencies)
   } else {
     const ocrModelSetting = settings.ocrModel
     const modelSettings = getModelSettings(settings, ocrModelSetting?.provider!, ocrModelSetting?.model!)
-    ocrModel = getModel(modelSettings, { uuid: '123' }, dependencies)
+    ocrModel = getModel(modelSettings, settings, { uuid: '123' }, dependencies)
   }
   // do OCR first
   await imageOCR(ocrModel, messages)

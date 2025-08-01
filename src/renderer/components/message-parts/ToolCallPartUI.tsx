@@ -15,10 +15,10 @@ import { Link } from '@tanstack/react-router'
 import { type FC, type ReactNode, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Message, MessageReasoningPart, MessageToolCallPart } from 'src/shared/types'
+import { formatElapsedTime, useThinkingTimer } from '@/hooks/useThinkingTimer'
 import { cn } from '@/lib/utils'
 import { getToolName } from '@/packages/tools'
 import type { SearchResultItem } from '@/packages/web-search'
-import { useThinkingTimer, formatElapsedTime } from '@/hooks/useThinkingTimer'
 
 const ToolCallHeader: FC<{ part: MessageToolCallPart; action: ReactNode; onClick: () => void }> = (props) => {
   return (
@@ -184,11 +184,8 @@ export const ReasoningContentUI: FC<{
   // 2. If actively thinking and we have elapsed time, show real-time updates
   // 3. Otherwise show 0 (fallback for edge cases)
   // This ensures the timer stops immediately when thinking ends and persists the final duration
-  const displayTime = part?.duration && part.duration > 0
-    ? part.duration
-    : isThinking && elapsedTime > 0
-      ? elapsedTime
-      : 0
+  const displayTime =
+    part?.duration && part.duration > 0 ? part.duration : isThinking && elapsedTime > 0 ? elapsedTime : 0
 
   const toggleExpanded = useCallback(() => {
     setIsExpanded((prev) => !prev)

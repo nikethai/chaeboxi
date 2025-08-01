@@ -1,13 +1,6 @@
-import { createModelDependencies } from '@/adapters'
-import { ModelList } from '@/components/ModelList'
-import PopoverConfirm from '@/components/PopoverConfirm'
-import { useProviderSettings, useSettings } from '@/hooks/useSettings'
-import { streamText } from '@/packages/model-calls'
-import { getModelSettingUtil } from '@/packages/model-setting-utils'
-import platform from '@/platform'
-import { add as addToast } from '@/stores/toastActions'
 import NiceModal from '@ebay/nice-modal-react'
 import {
+  Badge,
   Button,
   Flex,
   Modal,
@@ -19,7 +12,7 @@ import {
   Text,
   TextInput,
   Title,
-  Tooltip
+  Tooltip,
 } from '@mantine/core'
 import {
   IconBulb,
@@ -31,11 +24,14 @@ import {
   IconPlus,
   IconRefresh,
   IconRestore,
+  IconSearch,
+  IconSettings,
   IconTool,
-  IconTrash
+  IconTrash,
 } from '@tabler/icons-react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { type ChangeEvent, useState } from 'react'
+import { capitalize } from 'lodash'
+import { type ChangeEvent, useState, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SystemProviders } from 'src/shared/defaults'
 import { getModel } from 'src/shared/models'
@@ -52,6 +48,15 @@ import {
   normalizeGeminiHost,
   normalizeOpenAIApiHostAndPath,
 } from 'src/shared/utils'
+import { createModelDependencies } from '@/adapters'
+import { ModelList } from '@/components/ModelList'
+import PopoverConfirm from '@/components/PopoverConfirm'
+import { useProviderSettings, useSettings } from '@/hooks/useSettings'
+import { streamText } from '@/packages/model-calls'
+import { getModelSettingUtil } from '@/packages/model-setting-utils'
+import platform from '@/platform'
+import * as sessionActions from '@/stores/sessionActions'
+import { add as addToast } from '@/stores/toastActions'
 
 export const Route = createFileRoute('/settings/provider/$providerId')({
   component: RouteComponent,
@@ -131,6 +136,17 @@ function ProviderSettings({ providerId }: { providerId: string }) {
 
   const [fetchingModels, setFetchingModels] = useState(false)
   const [fetchedModels, setFetchedModels] = useState<ProviderModelInfo[]>()
+  const [modelSearchQuery, setModelSearchQuery] = useState('')
+
+  const filteredFetchedModels = useMemo(() => {
+    if (!fetchedModels || !modelSearchQuery.trim()) return fetchedModels
+
+    const query = modelSearchQuery.toLowerCase()
+    return fetchedModels.filter((model) => {
+      const displayName = (model.nickname || model.modelId).toLowerCase()
+      return displayName.includes(query)
+    })
+  }, [fetchedModels, modelSearchQuery])
 
   const handleFetchModels = async () => {
     try {
@@ -168,11 +184,11 @@ function ProviderSettings({ providerId }: { providerId: string }) {
       const configs = await platform.getConfig()
       const dependencies = await createModelDependencies()
       const modelInstance = getModel(
-        {
-          ...settings,
-          provider: providerId as any,
+        sessionActions.mergeSettings(settings, {
+          provider: providerId,
           modelId: checkModel,
-        },
+        }),
+        settings,
         configs,
         dependencies
       )
@@ -441,7 +457,26 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 })
               }
             />
+
+            <Stack gap="xs">
+              <Text span fw="600" className=" whitespace-nowrap">
+                {t('Improve Network Compatibility')}
+              </Text>
+            </Stack>
           </>
+        )}
+
+        {/* useProxy for Ollama */}
+        {baseInfo.id === ModelProviderEnum.Ollama && (
+          <Switch
+            label={t('Improve Network Compatibility')}
+            checked={providerSettings?.useProxy || false}
+            onChange={(e) =>
+              setProviderSettings({
+                useProxy: e.currentTarget.checked,
+              })
+            }
+          />
         )}
 
         {baseInfo.id === ModelProviderEnum.Azure && (
@@ -543,70 +578,85 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         <Modal
           keepMounted={false}
           opened={!!fetchedModels}
-          onClose={() => setFetchedModels(undefined)}
+          onClose={() => {
+            setFetchedModels(undefined)
+            setModelSearchQuery('')
+          }}
           title={t('Edit Model')}
           centered={true}
         >
           <Stack gap="md">
-            {fetchedModels?.map((model) => (
-              <Flex key={model.modelId}>
-                <Text component="span" size="sm" flex="0 1 auto">
-                  {model.nickname || model.modelId}
-                </Text>
+            <TextInput
+              placeholder={t('Search models...') as string}
+              leftSection={<IconSearch size={16} />}
+              value={modelSearchQuery}
+              onChange={(event) => setModelSearchQuery(event.currentTarget.value)}
+            />
+            {filteredFetchedModels && filteredFetchedModels.length > 0 ? (
+              filteredFetchedModels.map((model) => (
+                <Flex key={model.modelId}>
+                  <Text component="span" size="sm" flex="0 1 auto">
+                    {model.nickname || model.modelId}
+                  </Text>
 
-                <Flex flex="0 0 auto" gap="xs" align="center">
-                  {model.capabilities?.includes('reasoning') && (
-                    <Tooltip label={t('Reasoning')}>
-                      <IconBulb size={20} className="text-[var(--mantine-color-chatbox-warning-text)]" />
-                    </Tooltip>
-                  )}
-                  {model.capabilities?.includes('vision') && (
-                    <Tooltip label={t('Vision')}>
-                      <IconEye size={20} className="text-[var(--mantine-color-chatbox-brand-text)]" />
-                    </Tooltip>
-                  )}
-                  {model.capabilities?.includes('tool_use') && (
-                    <Tooltip label={t('Tool Use')}>
-                      <IconTool size={20} className="text-[var(--mantine-color-chatbox-success-text)]" />
-                    </Tooltip>
+                  <Flex flex="0 0 auto" gap="xs" align="center">
+                    {model.capabilities?.includes('reasoning') && (
+                      <Tooltip label={t('Reasoning') as string}>
+                        <IconBulb size={20} className="text-[var(--mantine-color-chatbox-warning-text)]" />
+                      </Tooltip>
+                    )}
+                    {model.capabilities?.includes('vision') && (
+                      <Tooltip label={t('Vision') as string}>
+                        <IconEye size={20} className="text-[var(--mantine-color-chatbox-brand-text)]" />
+                      </Tooltip>
+                    )}
+                    {model.capabilities?.includes('tool_use') && (
+                      <Tooltip label={t('Tool Use') as string}>
+                        <IconTool size={20} className="text-[var(--mantine-color-chatbox-success-text)]" />
+                      </Tooltip>
+                    )}
+                  </Flex>
+
+                  {displayModels?.find((m) => m.modelId === model.modelId) ? (
+                    <Button
+                      variant="transparent"
+                      p={0}
+                      h="auto"
+                      size="xs"
+                      bd={0}
+                      className="ml-auto"
+                      onClick={() =>
+                        setProviderSettings({
+                          models: displayModels.filter((m) => m.modelId !== model.modelId),
+                        })
+                      }
+                    >
+                      <IconCircleMinus size={20} className="text-[var(--mantine-color-chatbox-error-text)]" />
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="transparent"
+                      p={0}
+                      h="auto"
+                      size="xs"
+                      bd={0}
+                      className="ml-auto"
+                      onClick={() =>
+                        setProviderSettings({
+                          models: [...displayModels, model],
+                        })
+                      }
+                    >
+                      <IconCirclePlus size={20} className="text-[var(--mantine-color-chatbox-success-text)]" />
+                    </Button>
                   )}
                 </Flex>
-
-                {displayModels?.find((m) => m.modelId === model.modelId) ? (
-                  <Button
-                    variant="transparent"
-                    p={0}
-                    h="auto"
-                    size="xs"
-                    bd={0}
-                    className="ml-auto"
-                    onClick={() =>
-                      setProviderSettings({
-                        models: displayModels.filter((m) => m.modelId !== model.modelId),
-                      })
-                    }
-                  >
-                    <IconCircleMinus size={20} className="text-[var(--mantine-color-chatbox-error-text)]" />
-                  </Button>
-                ) : (
-                  <Button
-                    variant="transparent"
-                    p={0}
-                    h="auto"
-                    size="xs"
-                    bd={0}
-                    className="ml-auto"
-                    onClick={() =>
-                      setProviderSettings({
-                        models: [...displayModels, model],
-                      })
-                    }
-                  >
-                    <IconCirclePlus size={20} className="text-[var(--mantine-color-chatbox-success-text)]" />
-                  </Button>
-                )}
-              </Flex>
-            ))}
+              ))
+            ) : (
+              <Text c="chatbox-tertiary" ta="center" py="lg">
+                {modelSearchQuery.trim() ? t('No models found matching your search') : t('No models available')}
+              </Text>
+            )}
           </Stack>
         </Modal>
       </Stack>

@@ -1,4 +1,3 @@
-import { uniqBy } from 'lodash'
 import { useCallback, useMemo } from 'react'
 import { SystemProviders } from 'src/shared/defaults'
 import { ModelProviderEnum, type ProviderInfo } from 'src/shared/types'

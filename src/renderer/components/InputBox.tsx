@@ -260,8 +260,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       }
 
       // 发送消息
-      if (isPressedHash[shortcuts.inpubBoxSendMessage]) {
-        if (platform.type === 'mobile' && isSmallScreen && shortcuts.inpubBoxSendMessage === 'Enter') {
+      if (isPressedHash[shortcuts.inputBoxSendMessage]) {
+        if (platform.type === 'mobile' && isSmallScreen && shortcuts.inputBoxSendMessage === 'Enter') {
           // 移动端点击回车不会发送消息
           return
         }
@@ -271,7 +271,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       }
 
       // 发送消息但不生成回复
-      if (isPressedHash[shortcuts.inpubBoxSendMessageWithoutResponse]) {
+      if (isPressedHash[shortcuts.inputBoxSendMessageWithoutResponse]) {
         event.preventDefault()
         handleSubmit(false)
         return

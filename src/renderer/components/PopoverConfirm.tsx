@@ -1,6 +1,6 @@
 import { Button, type ButtonProps, Flex, Popover, type PopoverProps, Stack, Text } from '@mantine/core'
 import { t } from 'i18next'
-import { cloneElement, type FC, isValidElement, type PropsWithChildren, type ReactElement, useState } from 'react'
+import { cloneElement, type FC, isValidElement, type PropsWithChildren, useState } from 'react'
 
 export type PopoverConfirmProps = PropsWithChildren<
   PopoverProps & {
@@ -29,10 +29,9 @@ export const PopoverConfirm: FC<PopoverConfirmProps> = ({
   // cloneElement 保证传递事件，不破坏原子元素的所有 CSS
   let target = children
   if (isValidElement(children)) {
-    const childElement = children as ReactElement<{ onClick?: (e: React.MouseEvent) => void }>
-    target = cloneElement(childElement, {
-      onClick: (e: React.MouseEvent) => {
-        if (childElement.props.onClick) childElement.props.onClick(e)
+    target = cloneElement(children, {
+      onClick: (e) => {
+        if (children.props.onClick) children.props.onClick(e)
         setOpened(true)
       },
     })

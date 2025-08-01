@@ -46,6 +46,7 @@ interface OllamaOptions {
   topP?: number
   maxTokens?: number
   stream?: boolean
+  useProxy?: boolean
 }
 
 export default class Ollama extends OpenAICompatible {
@@ -64,6 +65,7 @@ export default class Ollama extends OpenAICompatible {
         topP: ollamaOptions.topP,
         maxTokens: ollamaOptions.maxTokens,
         stream: ollamaOptions.stream,
+        useProxy: ollamaOptions.useProxy,
       },
       dependencies
     )

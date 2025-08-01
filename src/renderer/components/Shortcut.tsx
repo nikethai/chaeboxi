@@ -1,14 +1,14 @@
-import { getOS } from '@/packages/navigator'
-import { useTranslation } from 'react-i18next'
-import {
-  Settings,
-  ShortcutName,
-  ShortcutSetting,
-  shortcutToggleWindowValues,
-  shortcutSendValues,
-} from '@/../shared/types'
 import { Box, Combobox, Flex, Input, InputBase, Kbd, Select, Table, Text, useCombobox } from '@mantine/core'
 import { IconAlertHexagon } from '@tabler/icons-react'
+import { useTranslation } from 'react-i18next'
+import {
+  type Settings,
+  type ShortcutName,
+  type ShortcutSetting,
+  shortcutSendValues,
+  shortcutToggleWindowValues,
+} from '@/../shared/types'
+import { getOS } from '@/packages/navigator'
 
 const os = getOS()
 
@@ -76,11 +76,9 @@ export function Keys(props: {
   const sizeClass = 'text-xs'
   const opacityClass = props.opacity !== undefined ? `opacity-${props.opacity * 100}` : ''
   return (
-    <span
-      className={`inline-block px-1 ${opacityClass} ${props.className || ''}`}
-    >
-      {props.keys.map((key, index) => (
-        <Kbd key={key + index} className="mr-3xs">
+    <span className={`inline-block px-1 ${opacityClass} ${props.className || ''}`}>
+      {props.keys.map((key) => (
+        <Kbd key={key} className="mr-3xs">
           {formatKey(key)}
         </Kbd>
         // <Key key={index}>{formatKey(key)}</Key>
@@ -121,8 +119,8 @@ export function ShortcutConfig(props: {
     },
     {
       label: t('Send'),
-      name: 'inpubBoxSendMessage',
-      keys: shortcuts.inpubBoxSendMessage,
+      name: 'inputBoxSendMessage',
+      keys: shortcuts.inputBoxSendMessage,
       options: shortcutSendValues,
     },
     // {
@@ -132,8 +130,8 @@ export function ShortcutConfig(props: {
     // },
     {
       label: t('Send Without Generating Response'),
-      name: 'inpubBoxSendMessageWithoutResponse',
-      keys: shortcuts.inpubBoxSendMessageWithoutResponse,
+      name: 'inputBoxSendMessageWithoutResponse',
+      keys: shortcuts.inputBoxSendMessageWithoutResponse,
       options: shortcutSendValues,
     },
     {
@@ -206,8 +204,8 @@ export function ShortcutConfig(props: {
         </Table.Thead>
 
         <Table.Tbody>
-          {items.map(({ name, label, keys, options }, itemIndex) => (
-            <Table.Tr key={`${name}-${itemIndex}`}>
+          {items.map(({ name, label, keys, options }) => (
+            <Table.Tr key={`${name}`}>
               <Table.Td>{label}</Table.Td>
               <Table.Td>
                 {options ? (

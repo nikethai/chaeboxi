@@ -1,5 +1,5 @@
 import { SystemProviders } from '../defaults'
-import { type Config, type ModelProvider, ModelProviderEnum, type Settings } from '../types'
+import { type Config, type ModelProvider, ModelProviderEnum, type SessionSettings, type Settings } from '../types'
 import type { ModelDependencies } from '../types/adapters'
 import AzureOpenAI from './azure'
 import ChatboxAI from './chatboxai'
@@ -19,17 +19,19 @@ import type { ModelInterface } from './types'
 import VolcEngine from './volcengine'
 import XAI from './xai'
 
-export function getProviderSettings(setting: Settings) {
+export function getProviderSettings(setting: SessionSettings, globalSettings: Settings) {
   console.debug('getModel', setting.provider, setting.modelId)
   const provider = setting.provider
   if (!provider) {
     throw new Error('Model provider must not be empty.')
   }
-  const providerBaseInfo = [...SystemProviders, ...(setting.customProviders || [])].find((p) => p.id === provider)
+  const providerBaseInfo = [...SystemProviders, ...(globalSettings.customProviders || [])].find(
+    (p) => p.id === provider
+  )
   if (!providerBaseInfo) {
     throw new Error(`Cannot find model with provider: ${setting.provider}`)
   }
-  const providerSetting = setting.providers?.[setting.provider!] || {}
+  const providerSetting = globalSettings.providers?.[setting.provider!] || {}
   const formattedApiHost = (providerSetting.apiHost || providerBaseInfo.defaultSettings?.apiHost || '').trim()
   return {
     providerSetting,
@@ -38,24 +40,29 @@ export function getProviderSettings(setting: Settings) {
   }
 }
 
-export function getModel(setting: Settings, config: Config, dependencies: ModelDependencies): ModelInterface {
-  console.debug('getModel', setting.provider, setting.modelId)
-  const provider = setting.provider
+export function getModel(
+  settings: SessionSettings,
+  globalSettings: Settings,
+  config: Config,
+  dependencies: ModelDependencies
+): ModelInterface {
+  console.debug('getModel', settings.provider, settings.modelId)
+  const provider = settings.provider
   if (!provider) {
     throw new Error('Model provider must not be empty.')
   }
-  const { providerSetting, formattedApiHost, providerBaseInfo } = getProviderSettings(setting)
+  const { providerSetting, formattedApiHost, providerBaseInfo } = getProviderSettings(settings, globalSettings)
 
-  let model = providerSetting.models?.find((m) => m.modelId === setting.modelId)
+  let model = providerSetting.models?.find((m) => m.modelId === settings.modelId)
   if (!model) {
     model = SystemProviders.find((p) => p.id === provider)?.defaultSettings?.models?.find(
-      (m) => m.modelId === setting.modelId
+      (m) => m.modelId === settings.modelId
     )
   }
   if (!model) {
     // 如果没有找到对应的 model 配置，直接使用传入的 modelId，这种情况通常发生在用户本地列表中删除了某个 model，但是某个 session 中还在使用，或是检查连接的时候，使用了 defaults 中的 modelId，
     model = {
-      modelId: setting.modelId!,
+      modelId: settings.modelId!,
     }
   }
 
@@ -63,16 +70,16 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
     case ModelProviderEnum.ChatboxAI:
       return new ChatboxAI(
         {
-          licenseKey: setting.licenseKey,
+          licenseKey: globalSettings.licenseKey,
           model,
-          licenseInstances: setting.licenseInstances,
-          licenseDetail: setting.licenseDetail,
-          language: setting.language,
-          dalleStyle: setting.dalleStyle || 'vivid',
-          temperature: setting.temperature,
-          topP: setting.topP,
-          maxTokens: setting.maxTokens,
-          stream: setting.stream,
+          licenseInstances: globalSettings.licenseInstances,
+          licenseDetail: globalSettings.licenseDetail,
+          language: globalSettings.language,
+          dalleStyle: settings.dalleStyle || 'vivid',
+          temperature: settings.temperature,
+          topP: settings.topP,
+          maxTokens: settings.maxTokens,
+          stream: settings.stream,
         },
         config,
         dependencies
@@ -83,13 +90,13 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
           apiKey: providerSetting.apiKey || '',
           apiHost: formattedApiHost,
           model: model,
-          dalleStyle: setting.dalleStyle || 'vivid',
-          temperature: setting.temperature,
-          topP: setting.topP,
-          maxTokens: setting.maxTokens,
-          injectDefaultMetadata: setting.injectDefaultMetadata,
+          dalleStyle: settings.dalleStyle || 'vivid',
+          temperature: settings.temperature,
+          topP: settings.topP,
+          maxTokens: settings.maxTokens,
+          injectDefaultMetadata: globalSettings.injectDefaultMetadata,
           useProxy: false, // 之前的openaiUseProxy已经没有在使用，直接写死false
-          stream: setting.stream,
+          stream: settings.stream,
         },
         dependencies
       )
@@ -102,13 +109,13 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
           azureDalleDeploymentName: providerSetting.dalleDeploymentName || '',
           azureApikey: providerSetting.apiKey || '',
           azureApiVersion: providerSetting.apiVersion || providerBaseInfo.defaultSettings?.apiVersion || '',
-          temperature: setting.temperature,
-          topP: setting.topP,
-          maxTokens: setting.maxTokens,
-          dalleStyle: setting.dalleStyle || 'vivid',
-          imageGenerateNum: setting.imageGenerateNum || 1,
-          injectDefaultMetadata: setting.injectDefaultMetadata,
-          stream: setting.stream,
+          temperature: settings.temperature,
+          topP: settings.topP,
+          maxTokens: settings.maxTokens,
+          dalleStyle: settings.dalleStyle || 'vivid',
+          imageGenerateNum: settings.imageGenerateNum || 1,
+          injectDefaultMetadata: globalSettings.injectDefaultMetadata,
+          stream: settings.stream,
         },
         dependencies
       )
@@ -118,10 +125,10 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
         {
           apiKey: providerSetting.apiKey || '',
           model,
-          temperature: setting.temperature,
-          topP: setting.topP,
-          maxTokens: setting.maxTokens,
-          stream: setting.stream,
+          temperature: settings.temperature,
+          topP: settings.topP,
+          maxTokens: settings.maxTokens,
+          stream: settings.stream,
         },
         dependencies
       )
@@ -132,10 +139,10 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
           claudeApiKey: providerSetting.apiKey || '',
           claudeApiHost: formattedApiHost,
           model,
-          temperature: setting.temperature,
-          topP: setting.topP,
-          maxTokens: setting.maxTokens,
-          stream: setting.stream,
+          temperature: settings.temperature,
+          topP: settings.topP,
+          maxTokens: settings.maxTokens,
+          stream: settings.stream,
         },
         dependencies
       )
@@ -146,10 +153,10 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
           geminiAPIKey: providerSetting.apiKey || '',
           geminiAPIHost: formattedApiHost,
           model,
-          temperature: setting.temperature,
-          topP: setting.topP,
-          maxTokens: setting.maxTokens,
-          stream: setting.stream,
+          temperature: settings.temperature,
+          topP: settings.topP,
+          maxTokens: settings.maxTokens,
+          stream: settings.stream,
         },
         dependencies
       )
@@ -159,10 +166,11 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
         {
           ollamaHost: formattedApiHost,
           model,
-          temperature: setting.temperature,
-          topP: setting.topP,
-          maxTokens: setting.maxTokens,
-          stream: setting.stream,
+          temperature: settings.temperature,
+          topP: settings.topP,
+          maxTokens: settings.maxTokens,
+          stream: settings.stream,
+          useProxy: providerSetting.useProxy,
         },
         dependencies
       )
@@ -172,10 +180,10 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
         {
           apiKey: providerSetting.apiKey || '',
           model,
-          temperature: setting.temperature,
-          topP: setting.topP,
-          maxTokens: setting.maxTokens,
-          stream: setting.stream,
+          temperature: settings.temperature,
+          topP: settings.topP,
+          maxTokens: settings.maxTokens,
+          stream: settings.stream,
         },
         dependencies
       )
@@ -185,10 +193,10 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
         {
           apiKey: providerSetting.apiKey || '',
           model,
-          temperature: setting.temperature,
-          topP: setting.topP,
-          maxTokens: setting.maxTokens,
-          stream: setting.stream,
+          temperature: settings.temperature,
+          topP: settings.topP,
+          maxTokens: settings.maxTokens,
+          stream: settings.stream,
         },
         dependencies
       )
@@ -198,10 +206,10 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
         {
           apiKey: providerSetting.apiKey || '',
           model,
-          temperature: setting.temperature,
-          topP: setting.topP,
-          maxTokens: setting.maxTokens,
-          stream: setting.stream,
+          temperature: settings.temperature,
+          topP: settings.topP,
+          maxTokens: settings.maxTokens,
+          stream: settings.stream,
         },
         dependencies
       )
@@ -211,10 +219,10 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
         {
           apiKey: providerSetting.apiKey || '',
           model,
-          temperature: setting.temperature,
-          topP: setting.topP,
-          maxTokens: setting.maxTokens,
-          stream: setting.stream,
+          temperature: settings.temperature,
+          topP: settings.topP,
+          maxTokens: settings.maxTokens,
+          stream: settings.stream,
         },
         dependencies
       )
@@ -224,10 +232,10 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
         {
           apiKey: providerSetting.apiKey || '',
           model,
-          temperature: setting.temperature,
-          topP: setting.topP,
-          maxTokens: setting.maxTokens,
-          stream: setting.stream,
+          temperature: settings.temperature,
+          topP: settings.topP,
+          maxTokens: settings.maxTokens,
+          stream: settings.stream,
         },
         dependencies
       )
@@ -237,10 +245,10 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
         {
           apiHost: formattedApiHost,
           model,
-          temperature: setting.temperature,
-          topP: setting.topP,
-          maxTokens: setting.maxTokens,
-          stream: setting.stream,
+          temperature: settings.temperature,
+          topP: settings.topP,
+          maxTokens: settings.maxTokens,
+          stream: settings.stream,
         },
         dependencies
       )
@@ -250,10 +258,10 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
         {
           perplexityApiKey: providerSetting.apiKey || '',
           model,
-          temperature: setting.temperature,
-          topP: setting.topP,
-          maxTokens: setting.maxTokens,
-          stream: setting.stream,
+          temperature: settings.temperature,
+          topP: settings.topP,
+          maxTokens: settings.maxTokens,
+          stream: settings.stream,
         },
         dependencies
       )
@@ -263,10 +271,10 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
         {
           apiKey: providerSetting.apiKey || '',
           model,
-          temperature: setting.temperature,
-          topP: setting.topP,
-          maxTokens: setting.maxTokens,
-          stream: setting.stream,
+          temperature: settings.temperature,
+          topP: settings.topP,
+          maxTokens: settings.maxTokens,
+          stream: settings.stream,
         },
         dependencies
       )
@@ -278,16 +286,16 @@ export function getModel(setting: Settings, config: Config, dependencies: ModelD
             apiHost: formattedApiHost,
             apiPath: providerSetting.apiPath || '',
             model,
-            temperature: setting.temperature,
-            topP: setting.topP,
-            maxTokens: setting.maxTokens,
-            stream: setting.stream,
+            temperature: settings.temperature,
+            topP: settings.topP,
+            maxTokens: settings.maxTokens,
+            stream: settings.stream,
             useProxy: providerSetting.useProxy,
           },
           dependencies
         )
       } else {
-        throw new Error(`Cannot find model with provider: ${setting.provider}`)
+        throw new Error(`Cannot find model with provider: ${settings.provider}`)
       }
   }
 }

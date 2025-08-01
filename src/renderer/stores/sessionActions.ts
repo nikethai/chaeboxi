@@ -23,7 +23,7 @@ import * as defaults from '../../shared/defaults'
  * 跟踪生成事件
  */
 function trackGenerateEvent(
-  settings: Settings,
+  settings: SessionSettings,
   globalSettings: Settings,
   sessionType: SessionType | undefined,
   options?: { operationType?: 'send_message' | 'regenerate' }
@@ -78,6 +78,7 @@ import {
   type Session,
   type SessionMeta,
   type SessionSettings,
+  SessionSettingsSchema,
   type SessionThread,
   type SessionType,
   type Settings,
@@ -585,6 +586,7 @@ export async function submitNewUserMessage(params: {
   insertMessage(currentSessionId, newUserMsg)
 
   const settings = getCurrentSessionMergedSettings()
+  const globalSettings = store.get(atoms.settingsAtom)
   const isChatboxAI = settings.provider === ModelProviderEnum.ChatboxAI
   const remoteConfig = settingActions.getRemoteConfig()
 
@@ -617,7 +619,7 @@ export async function submitNewUserMessage(params: {
     // 如果本次消息开启了联网问答，需要检查当前模型是否支持
     // 桌面版&手机端总是支持联网问答，不再需要检查模型是否支持
     const dependencies = await createModelDependencies()
-    const model = getModel(settings, { uuid: '' }, dependencies)
+    const model = getModel(settings, globalSettings, { uuid: '' }, dependencies)
     if (webBrowsing && platform.type === 'web' && !model.isSupportToolUse()) {
       if (remoteConfig.setting_chatboxai_first) {
         throw ChatboxAIAPIError.fromCodeName('model_not_support_web_browsing', 'model_not_support_web_browsing')
@@ -735,7 +737,7 @@ export async function submitNewUserMessage(params: {
       ...newAssistantMsg,
       generating: false,
       cancel: undefined,
-      model: await getModelDisplayName(settings, 'chat'),
+      model: await getModelDisplayName(settings, globalSettings, 'chat'),
       contentParts: [{ type: 'text', text: '' }],
       errorCode,
       error: `${error.message}`, // 这么写是为了避免类型问题
@@ -773,7 +775,7 @@ export async function generate(
   if (!session) {
     return
   }
-  const settings = session.settings ? mergeSettings(globalSettings, session.settings, session.type) : globalSettings
+  const settings = mergeSettings(globalSettings, session.settings, session.type)
 
   // 跟踪生成事件
   trackGenerateEvent(settings, globalSettings, session.type, options)
@@ -785,7 +787,7 @@ export async function generate(
     // pictures: session.type === 'picture' ? createLoadingPictures(settings.imageGenerateNum) : targetMsg.pictures,
     cancel: undefined,
     aiProvider: settings.provider,
-    model: await getModelDisplayName(settings, session.type || 'chat'),
+    model: await getModelDisplayName(settings, globalSettings, session.type || 'chat'),
     style: session.type === 'picture' ? settings.dalleStyle : undefined,
     generating: true,
     errorCode: undefined,
@@ -823,7 +825,7 @@ export async function generate(
 
   try {
     const dependencies = await createModelDependencies()
-    const model = getModel(settings, configs, dependencies)
+    const model = getModel(settings, globalSettings, configs, dependencies)
     const sessionKnowledgeBaseMap = store.get(atoms.sessionKnowledgeBaseMapAtom)
     const knowledgeBase = sessionKnowledgeBaseMap[sessionId]
     const webBrowsing = store.get(atoms.inputBoxWebBrowsingModeAtom)
@@ -997,7 +999,7 @@ async function _generateName(sessionId: string, modifyName: (sessionId: string, 
   const configs = await platform.getConfig()
   try {
     const dependencies = await createModelDependencies()
-    const model = getModel(settings, configs, dependencies)
+    const model = getModel(settings, globalSettings, configs, dependencies)
     const result = await generateText(
       model,
       promptFormat.nameConversation(
@@ -1106,7 +1108,7 @@ export function clearConversationList(keepNum: number) {
 /**
  * 从历史消息中生成 prompt 上下文
  */
-async function genMessageContext(settings: Settings, msgs: Message[]) {
+async function genMessageContext(settings: SessionSettings, msgs: Message[]) {
   const {
     // openaiMaxContextTokens,
     maxContextMessageCount,
@@ -1317,10 +1319,13 @@ export function getMessageThreadContext(sessionId: string, messageId: string): M
 
 export function mergeSettings(
   globalSettings: Settings,
-  sessionSetting: SessionSettings,
+  sessionSetting?: SessionSettings,
   sessionType?: 'picture' | 'chat'
-): Settings {
-  return {
+): SessionSettings {
+  if (!sessionSetting) {
+    return SessionSettingsSchema.parse(globalSettings)
+  }
+  return SessionSettingsSchema.parse({
     ...globalSettings,
     ...(sessionType === 'picture'
       ? {
@@ -1331,15 +1336,15 @@ export function mergeSettings(
           maxContextMessageCount: defaults.chatSessionSettings().maxContextMessageCount,
         }),
     ...sessionSetting,
-  }
+  })
 }
 
-export function getCurrentSessionMergedSettings() {
+export function getCurrentSessionMergedSettings(): SessionSettings {
   const store = getDefaultStore()
   const globalSettings = store.get(atoms.settingsAtom)
   const session = store.get(atoms.currentSessionAtom)
   if (!session || !session.settings) {
-    return globalSettings
+    return SessionSettingsSchema.parse(globalSettings)
   }
   return mergeSettings(globalSettings, session.settings, session.type)
 }

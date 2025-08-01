@@ -1,7 +1,7 @@
 import { useAtom } from 'jotai'
 import { useImmerAtom } from 'jotai-immer'
 import { useCallback } from 'react'
-import type { ProviderSettings, Settings } from 'src/shared/types'
+import { type ProviderSettings, ProviderSettingsSchema, type Settings, SettingsSchema } from 'src/shared/types'
 import { settingsAtom } from '@/stores/atoms'
 
 export const useSettings = () => {
@@ -11,10 +11,10 @@ export const useSettings = () => {
     (update: Partial<Settings> | ((prev: Settings) => Partial<Settings>)) => {
       _setSettings((prev) => {
         const val = typeof update === 'function' ? update(prev) : update
-        return {
+        return SettingsSchema.parse({
           ...prev,
           ...val,
-        }
+        })
       })
     },
     [_setSettings]
@@ -41,10 +41,10 @@ export const useProviderSettings = (providerId: string) => {
       return {
         providers: {
           ...(currentSettings.providers || {}),
-          [providerId]: {
+          [providerId]: ProviderSettingsSchema.parse({
             ...currentProviderSettings,
             ...newProviderSettings,
-          },
+          }),
         },
       }
     })

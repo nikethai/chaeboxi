@@ -23,6 +23,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import { useDropzone } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
 import useInputBoxHistory from '@/hooks/useInputBoxHistory'
+import { useMessageInput } from '@/hooks/useMessageInput'
 import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
@@ -99,7 +100,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const shortcuts = useAtomValue(atoms.shortcutsAtom)
     const widthFull = useAtomValue(atoms.widthFullAtom) || fullWidth
 
-    const [messageInput, setMessageInput] = useState('')
     const [pictureKeys, setPictureKeys] = useState<string[]>([])
     const [attachments, setAttachments] = useState<File[]>([])
 
@@ -107,6 +107,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const [newSessionState, setNewSessionState] = useAtom(atoms.newSessionStateAtom)
     const currentSessionId = sessionId || 'default'
     const isNewSession = currentSessionId === 'new'
+    const { messageInput, setMessageInput } = useMessageInput('', { isNewSession })
 
     const knowledgeBase = isNewSession ? newSessionState.knowledgeBase : sessionKnowledgeBaseMap[currentSessionId]
     const setKnowledgeBase = useCallback(
@@ -131,6 +132,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const [webBrowsingMode, setWebBrowsingMode] = useAtom(atoms.inputBoxWebBrowsingModeAtom)
 
     const [links, setLinks] = useAtom(atoms.inputBoxLinksAtom)
+
     const pictureInputRef = useRef<HTMLInputElement | null>(null)
     const fileInputRef = useRef<HTMLInputElement | null>(null)
     const disableSubmit = useMemo(
@@ -189,7 +191,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           dom.setMessageInputCursorToEnd()
         },
       }),
-      []
+      [setMessageInput]
     )
 
     const { addInputBoxHistory, getPreviousHistoryInput, getNextHistoryInput, resetHistoryIndex } = useInputBoxHistory()
@@ -245,7 +247,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         setMessageInput(input)
         resetHistoryIndex()
       },
-      [resetHistoryIndex]
+      [setMessageInput, resetHistoryIndex]
     )
 
     const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -431,13 +433,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         // TODO: 支持引用消息中的文件
         setQuote('')
         setMessageInput((val) => {
-          if (!val) {
-            return quote
-          } else {
-            const newlines = val.match(/(\n)+$/)?.[0].length || 0
-            console.log(newlines, Math.max(0, 2 - newlines))
-            return val + '\n'.repeat(Math.max(0, 2 - newlines)) + quote
-          }
+          const newValue = !val
+            ? quote
+            : val + '\n'.repeat(Math.max(0, 2 - (val.match(/(\n)+$/)?.[0].length || 0))) + quote
+          return newValue
         })
         // setPreviousMessageQuickInputMark('')
         dom.focusMessageInput()

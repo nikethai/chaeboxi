@@ -50,7 +50,7 @@ export default class ChatboxAI extends AbstractAISDKModel implements ModelInterf
   protected getProvider(options: CallChatCompletionOptions) {
     const license = this.options.licenseKey || ''
     const instanceId = (this.options.licenseInstances ? this.options.licenseInstances[license] : '') || ''
-    if (this.options.model.modelId.startsWith('gemini')) {
+    if (this.options.model.apiStyle === 'google') {
       const provider = createGoogleGenerativeAI({
         apiKey: this.options.licenseKey || '',
         baseURL: `${getChatboxAPIOrigin()}/gateway/google-ai-studio/v1beta`,
@@ -87,7 +87,7 @@ export default class ChatboxAI extends AbstractAISDKModel implements ModelInterf
 
   getChatModel(options: CallChatCompletionOptions) {
     const provider = this.getProvider(options)
-    if (this.options.model.modelId.startsWith('gemini')) {
+    if (this.options.model.apiStyle === 'google') {
       return (provider as GoogleGenerativeAIProvider).chat(this.options.model.modelId, {
         structuredOutputs: false,
       })

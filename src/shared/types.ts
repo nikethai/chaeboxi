@@ -262,6 +262,7 @@ export type ModelProvider = ModelProviderEnum | string
 export type ProviderModelInfo = {
   modelId: string
   type?: 'chat' | 'embedding' | 'rerank' // 模型类型，chat/embedding/rerank
+  apiStyle?: 'google' | 'openai' | 'anthropic'
   nickname?: string
   labels?: string[]
   capabilities?: ('vision' | 'reasoning' | 'tool_use' | 'web_search')[]

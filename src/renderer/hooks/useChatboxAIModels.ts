@@ -31,6 +31,7 @@ const useChatboxAIModels = () => {
             labels: m.labels,
             capabilities: m.capabilities,
             type: m.type,
+            apiStyle: m.apiStyle,
           })),
         }))
       }

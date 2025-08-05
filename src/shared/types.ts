@@ -567,16 +567,16 @@ export interface RemoteConfig {
 
 export type ChatboxAIModel = 'chatboxai-3.5' | 'chatboxai-4' | string
 
-export interface ModelOptionGroup {
-  group_name?: string
-  options: {
-    label: string
-    value: string
-    recommended?: boolean
-  }[]
-  // hidden?: boolean
-  collapsable?: boolean
-}
+// export interface ModelOptionGroup {
+//   group_name?: string
+//   options: {
+//     label: string
+//     value: string
+//     recommended?: boolean
+//   }[]
+//   // hidden?: boolean
+//   collapsable?: boolean
+// }
 
 export function copyMessage(source: Message): Message {
   return {

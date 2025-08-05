@@ -57,7 +57,7 @@ export default class Claude extends AbstractAISDKModel {
   }
 
   // https://docs.anthropic.com/en/docs/api/models
-  public async listModels(): Promise<string[]> {
+  public async listModels(): Promise<ProviderModelInfo[]> {
     type Response = {
       data: { id: string; type: string }[]
     }
@@ -74,6 +74,11 @@ export default class Claude extends AbstractAISDKModel {
     if (!json['data']) {
       throw new ApiError(JSON.stringify(json))
     }
-    return json['data'].filter((item) => item.type === 'model').map((item) => item.id)
+    return json['data']
+      .filter((item) => item.type === 'model')
+      .map((item) => ({
+        modelId: item.id,
+        type: 'chat',
+      }))
   }
 }

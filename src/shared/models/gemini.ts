@@ -84,7 +84,7 @@ export default class Gemeni extends AbstractAISDKModel {
     return settings
   }
 
-  async listModels(): Promise<string[]> {
+  async listModels(): Promise<ProviderModelInfo[]> {
     // https://ai.google.dev/api/models#method:-models.list
     type Response = {
       models: {
@@ -112,7 +112,13 @@ export default class Gemeni extends AbstractAISDKModel {
     return json['models']
       .filter((m) => m['supportedGenerationMethods'].some((method) => method.includes('generate')))
       .filter((m) => m['name'].includes('gemini'))
-      .map((m) => m['name'].replace('models/', ''))
-      .sort()
+      .map((m) => ({
+        modelId: m['name'].replace('models/', ''),
+        nickname: m['displayName'],
+        type: 'chat' as const,
+        contextWindow: m['inputTokenLimit'],
+        maxOutput: m['outputTokenLimit'],
+      }))
+      .sort((a, b) => a.modelId.localeCompare(b.modelId))
   }
 }

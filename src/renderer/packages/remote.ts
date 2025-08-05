@@ -1,6 +1,7 @@
 import platform from '@/platform'
 import { USE_LOCAL_API } from '@/variables'
 import { ofetch } from 'ofetch'
+import { z } from 'zod'
 import * as cache from 'src/shared/utils/cache'
 import * as chatboxaiAPI from '../../shared/request/chatboxai_pool'
 import { createAfetch, uploadFile } from '../../shared/request/request'
@@ -8,9 +9,8 @@ import {
   type ChatboxAILicenseDetail,
   type Config,
   type CopilotDetail,
-  type ModelOptionGroup,
   type ModelProvider,
-  ModelProviderEnum,
+  ProviderModelInfoSchema,
   type RemoteConfig,
   type Settings,
 } from '../../shared/types'
@@ -78,7 +78,7 @@ export async function checkNeedUpdate(version: string, os: string, config: Confi
       allowReportingAndTracking: settings.allowReportingAndTracking ? 1 : 0,
     },
   })
-  return !!res['need_update']
+  return !!res.need_update
 }
 
 // export async function getSponsorAd(): Promise<null | SponsorAd> {
@@ -112,7 +112,7 @@ export async function listCopilots(lang: string) {
     retry: 3,
     body: { lang },
   })
-  return res['data']
+  return res.data
 }
 
 export async function recordCopilotShare(detail: CopilotDetail) {
@@ -135,7 +135,7 @@ export async function getPremiumPrice() {
   const res = await ofetch<Response>(`${getAPIOrigin()}/api/premium/price`, {
     retry: 3,
   })
-  return res['data']
+  return res.data
 }
 
 export async function getRemoteConfig(config: keyof RemoteConfig) {
@@ -430,50 +430,25 @@ export async function validateLicense(params: { licenseKey: string; instanceId: 
   return json['data']
 }
 
-export async function getModelConfigs(params: { aiProvider: ModelProvider; licenseKey?: string; language?: string }) {
-  type Response = {
-    data: {
-      option_groups: ModelOptionGroup[]
-    }
-  }
-  const afetch = await getAfetch()
-  const res = await afetch(
-    `${getAPIOrigin()}/api/model_configs`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(await getChatboxHeaders()),
-      },
-      body: JSON.stringify({
-        aiProvider: params.aiProvider,
-        licenseKey: params.licenseKey,
-        language: params.language,
-      }),
-    },
-    {
-      parseChatboxRemoteError: true,
-      retry: 2,
-    }
-  )
-  const json: Response = await res.json()
-  return json['data']
-}
+const RemoteModelInfoSchema = z.object({
+  modelId: z.string(),
+  modelName: z.string(),
+  labels: z.array(z.string()).optional(),
+  type: z.enum(['chat', 'embedding', 'rerank']).optional(),
+  apiStyle: z.enum(['google', 'openai', 'anthropic']).optional(),
+  contextWindow: z.number().optional(),
+  capabilities: z.array(z.enum(['vision', 'tool_use', 'reasoning'])).optional(),
+})
+
+const ModelManifestResponseSchema = z.object({
+  success: z.boolean().optional(),
+  data: z.object({
+    groupName: z.string(),
+    models: z.array(RemoteModelInfoSchema),
+  }),
+})
 
 export async function getModelManifest(params: { aiProvider: ModelProvider; licenseKey?: string; language?: string }) {
-  type Response = {
-    data: {
-      groupName: string
-      models: {
-        modelId: string
-        modelName: string
-        labels: string[]
-        type?: 'chat' | 'embedding' | 'rerank'
-        capabilities?: ('vision' | 'tool_use' | 'reasoning')[]
-        apiStyle?: 'google' | 'openai' | 'anthropic'
-      }[]
-    }
-  }
   const afetch = await getAfetch()
   const res = await afetch(
     `${getAPIOrigin()}/api/model_manifest`,
@@ -494,33 +469,12 @@ export async function getModelManifest(params: { aiProvider: ModelProvider; lice
       retry: 2,
     }
   )
-  const json: Response = await res.json()
-  return json['data']
-}
-
-export async function getModelConfigsWithCache(params: {
-  aiProvider: ModelProvider
-  licenseKey?: string
-  language?: string
-}) {
-  if (
-    params.aiProvider === ModelProviderEnum.Custom ||
-    (typeof params.aiProvider === 'string' && params.aiProvider.startsWith('custom-provider'))
-  ) {
-    return { option_groups: [] }
+  const { success, data, error } = ModelManifestResponseSchema.safeParse(await res.json())
+  if (!success) {
+    console.log('getModelManifest error', error)
+    return []
   }
-  type ModelConfig = Awaited<ReturnType<typeof getModelConfigs>>
-  const remoteOptionGroups = await cache.cache<ModelConfig>(
-    `model-options:${params.aiProvider}:${params.licenseKey}:${params.language}`,
-    async () => {
-      return await getModelConfigs(params)
-    },
-    {
-      ttl: USE_LOCAL_API ? 1000 * 5 : 1000 * 60 * 10,
-      refreshFallbackToCache: true,
-    }
-  )
-  return remoteOptionGroups
+  return data.data
 }
 
 export async function reportContent(params: { id: string; type: string; details: string }) {
@@ -533,4 +487,30 @@ export async function reportContent(params: { id: string; type: string; details:
     },
     body: JSON.stringify(params),
   })
+}
+
+const ProviderInfoResponseSchema = z.object({
+  success: z.boolean(),
+  data: z.record(z.string(), ProviderModelInfoSchema.nullable()),
+})
+
+export async function getProviderModelsInfo(params: { modelIds: string[] }) {
+  const afetch = await getAfetch()
+  const res = await afetch(
+    `${getAPIOrigin()}/api/provider_models_info`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(await getChatboxHeaders()),
+      },
+      body: JSON.stringify(params),
+    },
+    {
+      parseChatboxRemoteError: true,
+      retry: 2,
+    }
+  )
+  const json = ProviderInfoResponseSchema.parse(await res.json())
+  return json.data
 }

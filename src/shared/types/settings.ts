@@ -8,7 +8,7 @@ export enum ModelProviderType {
   Claude = 'claude',
 }
 
-const ProviderModelInfoSchema = z.object({
+export const ProviderModelInfoSchema = z.object({
   modelId: z.string(),
   type: z.enum(['chat', 'embedding', 'rerank']).optional().catch(undefined),
   apiStyle: z.enum(['google', 'openai', 'anthropic']).optional().catch(undefined),

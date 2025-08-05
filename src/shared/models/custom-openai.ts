@@ -4,8 +4,9 @@ import type { ProviderModelInfo } from '../types'
 import type { ModelDependencies } from '../types/adapters'
 import { normalizeOpenAIApiHostAndPath } from '../utils/llm_utils'
 import AbstractAISDKModel from './abstract-ai-sdk'
+import { fetchRemoteModels } from './openai-compatible'
 import type { CallChatCompletionOptions } from './types'
-import { createFetchWithProxy, fetchRemoteModels } from './utils/fetch-proxy'
+import { createFetchWithProxy } from './utils/fetch-proxy'
 
 interface Options {
   apiKey: string

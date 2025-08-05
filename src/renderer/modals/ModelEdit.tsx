@@ -1,5 +1,5 @@
 import NiceModal, { useModal } from '@ebay/nice-modal-react'
-import { Button, Checkbox, Flex, Modal, Stack, Text, TextInput, Select } from '@mantine/core'
+import { Button, Checkbox, Flex, Modal, NumberInput, Stack, Text, TextInput, Select } from '@mantine/core'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ProviderModelInfo } from 'src/shared/types'
@@ -13,6 +13,8 @@ const ModelEdit = NiceModal.create((props: { model?: ProviderModelInfo }) => {
   const [nickname, setNickname] = useState(props.model?.nickname || '')
   const [capabilities, setCapabilities] = useState(props.model?.capabilities || [])
   const [type, setType] = useState<ProviderModelInfo['type']>(props.model?.type || 'chat')
+  const [contextWindow, setContextWindow] = useState<number | undefined>(props.model?.contextWindow)
+  const [maxOutput, setMaxOutput] = useState<number | undefined>(props.model?.maxOutput)
 
   const typeOptions = [
     { value: 'chat', label: t('Chat')?.toString() ?? 'Chat' },
@@ -25,6 +27,8 @@ const ModelEdit = NiceModal.create((props: { model?: ProviderModelInfo }) => {
     setNickname(props.model?.nickname || '')
     setCapabilities(props.model?.capabilities || [])
     setType(props.model?.type || 'chat')
+    setContextWindow(props.model?.contextWindow)
+    setMaxOutput(props.model?.maxOutput)
   }, [props])
 
   const handleCancel = () => {
@@ -36,8 +40,10 @@ const ModelEdit = NiceModal.create((props: { model?: ProviderModelInfo }) => {
     modal.resolve({
       modelId,
       type,
-      nickname,
+      nickname: nickname || undefined,
       capabilities,
+      contextWindow,
+      maxOutput,
     })
     modal.hide()
   }
@@ -139,6 +145,39 @@ const ModelEdit = NiceModal.create((props: { model?: ProviderModelInfo }) => {
             </Flex>
           </Stack>
         )}
+
+        {/* Context Window and Max Output */}
+        <Stack gap="xs">
+          <Text fw="600">{t('Advanced Settings')}</Text>
+          <Flex gap="md">
+            <Stack gap="xs" flex={1}>
+              <Text size="sm">{t('Context Window')}</Text>
+              <NumberInput
+                placeholder={String(t('e.g. 128000'))}
+                value={contextWindow}
+                onChange={(value) => setContextWindow(typeof value === 'number' ? value : undefined)}
+                min={1}
+                max={10_000_000}
+                step={1000}
+                thousandSeparator=","
+                clampBehavior="strict"
+              />
+            </Stack>
+            <Stack gap="xs" flex={1}>
+              <Text size="sm">{t('Max Output Tokens')}</Text>
+              <NumberInput
+                placeholder={String(t('e.g. 4096'))}
+                value={maxOutput}
+                onChange={(value) => setMaxOutput(typeof value === 'number' ? value : undefined)}
+                min={1}
+                max={1_000_000}
+                step={100}
+                thousandSeparator=","
+                clampBehavior="strict"
+              />
+            </Stack>
+          </Flex>
+        </Stack>
 
         <Flex align="center" justify="flex-end" gap="xs">
           <Button onClick={handleCancel} color="chatbox-gray" variant="light">

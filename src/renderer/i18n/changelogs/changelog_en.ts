@@ -1,4 +1,20 @@
 const changelog = `
+## v1.15.3 - 2025.08.06
+
+1. Optimize streaming output display
+2. Fix message edit box width
+3. Fix input box keyboard pop-up trigger condition
+4. Fix message count limit reset issue
+5. Optimize App system compatibility, now supports lower system versions
+6. Shorten the display time of the copied prompt
+7. Model list supports search
+8. Input box automatically saves draft
+9. Add mistral provider
+10. Show thinking time
+11. New conversation defaults to hiding my partner list, can be enabled in my partner page
+
+Thanks to @wc222, @julienheinen for their contributions
+
 ## v1.15.2 - 2025.07.24
 
 1. Fixed issue where maxTokens parameter was missing in some clients, causing message sending to fail

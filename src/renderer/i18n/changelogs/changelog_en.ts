@@ -1,4 +1,12 @@
 const changelog = `
+## v1.15.4 - 2025.08.12
+
+1. Fix mobile "Improve Network Compatibility" feature, support cross-domain API requests
+2. OpenAI provider added support for gpt-5 series models
+3. Mobile full-screen preview artifacts
+4. Fix issue where input box draft was not cleared immediately after sending a message
+5. Sidebar support on iOS
+
 ## v1.15.3 - 2025.08.06
 
 1. Optimize streaming output display

@@ -211,6 +211,7 @@
     "axios": "^1.3.4",
     "big.js": "^7.0.1",
     "capacitor-plugin-safe-area": "^3.0.3",
+    "capacitor-stream-http": "^0.0.1",
     "chardet": "^2.1.0",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.0.0",

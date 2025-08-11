@@ -22,7 +22,6 @@ export interface RequestAdapter {
     options?: { retry?: number; parseChatboxRemoteError?: boolean }
   ): Promise<Response>
   apiRequest(options: ApiRequestOptions): Promise<Response>
-  fetchWithProxy(url: string, init?: RequestInit): Promise<Response>
 }
 
 export interface ModelDependencies {

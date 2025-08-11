@@ -59,6 +59,13 @@ export function useMessageInput(initialMessage = '', _options: Partial<Options> 
     [storeDraft]
   )
 
+  const clearDraft = useCallback(() => {
+    _setMessageInput('')
+    draftRef.current = ''
+    localStorage.removeItem(draftStorageKey)
+    _debouncedStoreDraft.cancel()
+  }, [draftStorageKey, _debouncedStoreDraft])
+
   useEffect(() => {
     if (options.saveDraft) {
       restoreDraft()
@@ -68,6 +75,7 @@ export function useMessageInput(initialMessage = '', _options: Partial<Options> 
   return {
     messageInput,
     setMessageInput,
+    clearDraft,
     storeDraft,
     restoreDraft,
   }

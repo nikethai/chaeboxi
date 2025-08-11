@@ -107,7 +107,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const [newSessionState, setNewSessionState] = useAtom(atoms.newSessionStateAtom)
     const currentSessionId = sessionId || 'default'
     const isNewSession = currentSessionId === 'new'
-    const { messageInput, setMessageInput } = useMessageInput('', { isNewSession })
+    const { messageInput, setMessageInput, clearDraft } = useMessageInput('', { isNewSession })
 
     const knowledgeBase = isNewSession ? newSessionState.knowledgeBase : sessionKnowledgeBaseMap[currentSessionId]
     const setKnowledgeBase = useCallback(
@@ -210,8 +210,9 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       }
 
       try {
+        const textToSend = messageInput.trim()
         const res = await onSubmit?.({
-          input: messageInput,
+          input: textToSend,
           pictureKeys,
           attachments,
           links,
@@ -222,7 +223,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         }
 
         // 重置输入内容
-        setMessageInput('')
+        clearDraft()
         setPictureKeys([])
         setAttachments([])
         setLinks([])
@@ -233,7 +234,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
         // 如果提交成功，添加到输入历史 (非手机端)
         if (platform.type !== 'mobile') {
-          addInputBoxHistory(messageInput)
+          addInputBoxHistory(textToSend)
         }
       } catch (e) {
         console.error('Error submitting message:', e)

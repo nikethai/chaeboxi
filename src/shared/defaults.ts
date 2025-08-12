@@ -185,6 +185,12 @@ export const SystemProviders: ProviderBaseInfo[] = [
       // https://platform.openai.com/docs/models
       models: [
         {
+          modelId: 'gpt-5-chat-latest',
+          capabilities: ['vision', 'tool_use'],
+          contextWindow: 400_000,
+          maxOutput: 128_000,
+        },
+        {
           modelId: 'gpt-5',
           capabilities: ['vision', 'tool_use'],
           contextWindow: 400_000,
@@ -655,6 +661,21 @@ export const SystemProviders: ProviderBaseInfo[] = [
     defaultSettings: {
       apiHost: 'https://open.bigmodel.cn/api/paas/v4/',
       models: [
+        {
+          modelId: 'glm-4.5',
+          capabilities: ['reasoning', 'tool_use'],
+          contextWindow: 128_000,
+        },
+        {
+          modelId: 'glm-4.5-air',
+          capabilities: ['reasoning', 'tool_use'],
+          contextWindow: 128_000,
+        },
+        {
+          modelId: 'glm-4.5v',
+          capabilities: ['reasoning', 'vision', 'tool_use'],
+          contextWindow: 64_000,
+        },
         {
           modelId: 'glm-4-air',
           capabilities: ['tool_use'],

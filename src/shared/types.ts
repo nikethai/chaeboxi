@@ -1,4 +1,4 @@
-import type { LanguageModelUsage } from 'ai'
+import type { FinishReason, LanguageModelUsage } from 'ai'
 import { v4 as uuidv4 } from 'uuid'
 import type { MCPServerConfig } from './types/mcp'
 
@@ -78,6 +78,7 @@ export type StreamTextResult = {
   contentParts: MessageContentParts
   reasoningContent?: string
   usage?: LanguageModelUsage
+  finishReason?: FinishReason
 }
 
 // Chatbox 应用的消息类型
@@ -131,6 +132,7 @@ export interface Message {
   tokensUsed?: number // 生成当前消息的 token 使用量
   timestamp?: number // 当前消息的时间戳
   firstTokenLatency?: number // AI 回答首字耗时(毫秒) - 从发送请求到接收到第一个字的时间间隔
+  finishReason?: FinishReason // 生成当前消息的结束原因
 }
 
 export type SettingWindowTab = 'ai' | 'display' | 'chat' | 'advanced' | 'extension' | 'mcp'

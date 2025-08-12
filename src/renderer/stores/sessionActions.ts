@@ -57,7 +57,6 @@ function trackGenerateEvent(
   })
 }
 
-import { imageOCR } from '@/packages/model-calls/preprocess'
 import {
   AIProviderNoImplementedPaintError,
   ApiError,
@@ -849,7 +848,7 @@ export async function generate(
           modifyMessage(sessionId, targetMsg)
         }, 100)
 
-        await streamText(model, {
+        const result = await streamText(model, {
           sessionId,
           messages: promptMsgs,
           onResultChangeWithCancel: throttledModifyMessage,
@@ -863,6 +862,7 @@ export async function generate(
           cancel: undefined,
           tokensUsed: targetMsg.tokensUsed ?? estimateTokensFromMessages([...promptMsgs, targetMsg]),
           status: [],
+          finishReason: result.finishReason,
         }
         modifyMessage(sessionId, targetMsg, true)
         break

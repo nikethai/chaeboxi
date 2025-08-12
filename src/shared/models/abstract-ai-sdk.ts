@@ -3,13 +3,13 @@ import {
   type CoreMessage,
   type CoreSystemMessage,
   type EmbeddingModel,
+  type FinishReason,
   experimental_generateImage as generateImage,
   generateText,
   type ImageModel,
   type LanguageModelUsage,
   type LanguageModelV1,
   type Provider,
-  smoothStream,
   streamText,
   type ToolSet,
 } from 'ai'
@@ -336,7 +336,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
         // Critical timing logic: When we receive the first text chunk, the thinking phase has ended.
         // We must capture the thinking duration at this exact moment to ensure the timer
         // shows only the thinking time, not the total response generation time.
-        if (currentReasoningPart && currentReasoningPart.startTime && !currentReasoningPart.duration) {
+        if (currentReasoningPart?.startTime && !currentReasoningPart.duration) {
           currentReasoningPart.duration = Date.now() - currentReasoningPart.startTime
         }
         currentReasoningPart = undefined
@@ -359,7 +359,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       case 'tool-call': {
         // Similar to text-delta: when tool calls begin, thinking has ended.
         // Capture the thinking duration before processing tool calls.
-        if (currentReasoningPart && currentReasoningPart.startTime && !currentReasoningPart.duration) {
+        if (currentReasoningPart?.startTime && !currentReasoningPart.duration) {
           currentReasoningPart.duration = Date.now() - currentReasoningPart.startTime
         }
         currentTextPart = undefined
@@ -409,7 +409,10 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
    */
   private finalizeResult(
     contentParts: MessageContentParts,
-    usage: LanguageModelUsage | undefined,
+    result: {
+      usage?: LanguageModelUsage
+      finishReason?: FinishReason
+    },
     options: CallChatCompletionOptions
   ): StreamTextResult {
     // Fallback: Set final duration for any reasoning parts that don't have it yet
@@ -424,10 +427,10 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
 
     options.onResultChange?.({
       contentParts,
-      tokenCount: usage?.completionTokens,
-      tokensUsed: usage?.totalTokens,
+      tokenCount: result.usage?.completionTokens,
+      tokensUsed: result.usage?.totalTokens,
     })
-    return { contentParts, usage }
+    return { contentParts, usage: result.usage, finishReason: result.finishReason }
   }
 
   private async handleNonStreamingCompletion<T extends ToolSet>(
@@ -479,7 +482,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
         ...callSettings,
       })
 
-      return this.finalizeResult(contentParts, result.usage, options)
+      return this.finalizeResult(contentParts, result, options)
     } catch (error) {
       // Handle errors consistently with streaming mode
       this.handleError(error)
@@ -528,14 +531,20 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       }
     } catch (error) {
       // Ensure reasoning parts get their duration set even if streaming is interrupted
-      if (currentReasoningPart && currentReasoningPart.startTime && !currentReasoningPart.duration) {
+      if (currentReasoningPart?.startTime && !currentReasoningPart.duration) {
         currentReasoningPart.duration = Date.now() - currentReasoningPart.startTime
       }
       throw error
     }
 
-    const usage = await result.usage
-    return this.finalizeResult(contentParts, usage, options)
+    return this.finalizeResult(
+      contentParts,
+      {
+        usage: await result.usage,
+        finishReason: await result.finishReason,
+      },
+      options
+    )
   }
 
   private async _callChatCompletion<T extends ToolSet>(

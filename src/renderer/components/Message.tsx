@@ -220,6 +220,10 @@ const _Message: FC<Props> = (props) => {
     }
   }
 
+  if (msg.finishReason && ['content-filter', 'length', 'error'].includes(msg.finishReason)) {
+    tips.push(`finish reason: ${msg.finishReason}`)
+  }
+
   // 消息时间戳
   if (showMessageTimestamp && msg.timestamp !== undefined) {
     const date = new Date(msg.timestamp)

@@ -1,4 +1,4 @@
-import type { ToolSet } from 'ai'
+import type { CoreMessage, ToolSet } from 'ai'
 import { t } from 'i18next'
 import { uniqueId } from 'lodash'
 import { getModel } from 'src/shared/models'
@@ -38,7 +38,7 @@ async function handleSearchResult(
   toolName: string,
   model: ModelInterface,
   messages: Message[],
-  coreMessages: any[],
+  coreMessages: CoreMessage[],
   controller: AbortController,
   onResultChange: OnResultChange,
   params: { providerOptions?: ProviderOptions }

@@ -389,6 +389,9 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     if (APICallError.isInstance(error)) {
       throw new ApiError(`Error from ${this.name}${context}`, error.responseBody)
     }
+    if (error instanceof ApiError) {
+      throw error
+    }
     if (error instanceof ChatboxAIAPIError) {
       throw error
     }

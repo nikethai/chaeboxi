@@ -1,13 +1,15 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { ActionIcon, Avatar, Box, Divider, Flex, ScrollArea, Space, Stack, Text } from '@mantine/core'
+import { ActionIcon, Avatar, Divider, Flex, ScrollArea, Space, Stack, Text } from '@mantine/core'
 import { IconChevronLeft, IconChevronRight, IconX } from '@tabler/icons-react'
 import { createFileRoute, useNavigate, useRouterState } from '@tanstack/react-router'
+import { zodValidator } from '@tanstack/zod-adapter'
 import clsx from 'clsx'
 import { useAtom, useAtomValue } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type CopilotDetail, createMessage, type Session } from 'src/shared/types'
 import { v4 as uuidv4 } from 'uuid'
+import { z } from 'zod'
 import InputBox, { type InputBoxPayload } from '@/components/InputBox'
 import HomepageIcon from '@/components/icons/HomepageIcon'
 import Page from '@/components/Page'
@@ -24,10 +26,14 @@ import {
 import * as sessionActions from '@/stores/sessionActions'
 import { initEmptyChatSession } from '@/stores/sessionActions'
 import { createSession, getSessionAsync } from '@/stores/sessionStorageMutations'
-import { delay } from '@/utils'
 
 export const Route = createFileRoute('/')({
   component: Index,
+  validateSearch: zodValidator(
+    z.object({
+      copilotId: z.string().optional(),
+    })
+  ),
 })
 
 function Index() {
@@ -104,7 +110,7 @@ function Index() {
 
   const routerState = useRouterState()
   useEffect(() => {
-    const { copilotId } = routerState.location.search as any
+    const { copilotId } = routerState.location.search
     if (copilotId) {
       setSession((old) => ({ ...old, copilotId }))
     }
@@ -152,7 +158,6 @@ function Index() {
       attachments,
       links,
     })
-    return true
   }
 
   return (

@@ -556,6 +556,32 @@ const _Message: FC<Props> = (props) => {
                             >
                               {item.storageKey && <ImageInStorage storageKey={item.storageKey} className="w-full" />}
                             </div>
+                            {item.ocrResult && (
+                              <div
+                                className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded-md cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  NiceModal.show('ocr-content-viewer', { content: item.ocrResult })
+                                }}
+                              >
+                                <Typography variant="caption" className="text-gray-600 dark:text-gray-400 block mb-1">
+                                  {t('OCR Text')} ({item.ocrResult.length} {t('characters')})
+                                </Typography>
+                                <Typography
+                                  variant="body2"
+                                  className="line-clamp-2 text-gray-700 dark:text-gray-300"
+                                  title={item.ocrResult}
+                                >
+                                  {item.ocrResult}
+                                </Typography>
+                                <Typography
+                                  variant="caption"
+                                  className="text-blue-500 hover:text-blue-600 mt-1 inline-block"
+                                >
+                                  {t('Click to view full text')}
+                                </Typography>
+                              </div>
+                            )}
                           </div>
                         )
                       ) : item.type === 'tool-call' ? (

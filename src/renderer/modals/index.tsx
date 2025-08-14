@@ -8,8 +8,10 @@ import ClearSessionList from './ClearSessionList'
 import ExportChat from './ExportChat'
 import MessageEdit from './MessageEdit'
 import AttachLink from './AttachLink'
-import ReportContent from './ReportContent'
 import ModelEdit from './ModelEdit'
+import OcrContentViewer from './OcrContentViewer'
+import ThreadNameEdit from './ThreadNameEdit'
+import ReportContent from './ReportContent'
 
 NiceModal.register('welcome', Welcome)
 NiceModal.register('provider-selector', ProviderSelector)
@@ -22,3 +24,5 @@ NiceModal.register('message-edit', MessageEdit)
 NiceModal.register('attach-link', AttachLink)
 NiceModal.register('report-content', ReportContent)
 NiceModal.register('model-edit', ModelEdit)
+NiceModal.register('thread-name-edit', ThreadNameEdit)
+NiceModal.register('ocr-content-viewer', OcrContentViewer)

@@ -12,9 +12,10 @@ import {
   IconLink,
   IconPhoto,
   IconPlayerStopFilled,
+  IconPlus,
   IconSelector,
+  IconSettings,
   IconVocabulary,
-  IconWorld,
 } from '@tabler/icons-react'
 import { useAtom, useAtomValue } from 'jotai'
 import _, { pick } from 'lodash'
@@ -22,10 +23,13 @@ import type React from 'react'
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
+import { formatNumber } from 'src/shared/utils'
 import useInputBoxHistory from '@/hooks/useInputBoxHistory'
+import { useKnowledgeBase } from '@/hooks/useKnowledgeBase'
 import { useMessageInput } from '@/hooks/useMessageInput'
 import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { useTokenCount } from '@/hooks/useTokenCount'
 import { cn } from '@/lib/utils'
 import { trackingEvent } from '@/packages/event'
 import * as picUtils from '@/packages/pic_utils'
@@ -35,23 +39,43 @@ import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import { delay } from '@/utils'
 import { featureFlags } from '@/utils/feature-flags'
 import { trackEvent } from '@/utils/track'
-import type { KnowledgeBase, SessionType, ShortcutSendValue } from '../../shared/types'
-import * as dom from '../hooks/dom'
-import * as atoms from '../stores/atoms'
-import * as toastActions from '../stores/toastActions'
-import { FileMiniCard, ImageMiniCard, LinkMiniCard } from './Attachments'
-import ImageModelSelect from './ImageModelSelect'
-import ProviderImageIcon from './icons/ProviderImageIcon'
-import KnowledgeBaseMenu from './knowledge-base/KnowledgeBaseMenu'
-import ModelSelector from './ModelSelectorNew'
-import MCPMenu from './mcp/MCPMenu'
-import { Keys } from './Shortcut'
+import {
+  type KnowledgeBase,
+  type Message,
+  ModelProviderEnum,
+  type SessionType,
+  type ShortcutSendValue,
+} from '../../../shared/types'
+import * as dom from '../../hooks/dom'
+import * as atoms from '../../stores/atoms'
+import * as sessionActions from '../../stores/sessionActions'
+import * as toastActions from '../../stores/toastActions'
+import { FileMiniCard, ImageMiniCard, LinkMiniCard } from '../Attachments'
+import { CompressionModal } from '../CompressionModal'
+import ImageModelSelect from '../ImageModelSelect'
+import ProviderImageIcon from '../icons/ProviderImageIcon'
+import KnowledgeBaseMenu from '../knowledge-base/KnowledgeBaseMenu'
+import ModelSelector from '../ModelSelectorNew'
+import MCPMenu from '../mcp/MCPMenu'
+import { Keys } from '../Shortcut'
+import TokenCountMenu from '../TokenCountMenu'
+import { ImageUploadButton } from './ImageUploadButton'
+import { ImageUploadInput } from './ImageUploadInput'
+import {
+  cleanupFile,
+  cleanupLink,
+  markFileProcessing,
+  markLinkProcessing,
+  onFileProcessed,
+  onLinkProcessed,
+  storeFilePromise,
+  storeLinkPromise,
+} from './preprocessState'
+import { SessionSettingsButton } from './SessionSettingsButton'
+import { WebBrowsingButton } from './WebBrowsingButton'
 
 export type InputBoxPayload = {
-  input: string
-  pictureKeys?: string[]
-  attachments?: File[]
-  links?: { url: string }[]
+  constructedMessage: Message
   needGenerating?: boolean
 }
 
@@ -100,38 +124,59 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const shortcuts = useAtomValue(atoms.shortcutsAtom)
     const widthFull = useAtomValue(atoms.widthFullAtom) || fullWidth
 
-    const [pictureKeys, setPictureKeys] = useState<string[]>([])
-    const [attachments, setAttachments] = useState<File[]>([])
+    // Use atom as the source of truth for pictureKeys and attachments
 
-    const [sessionKnowledgeBaseMap, setSessionKnowledgeBaseMap] = useAtom(atoms.sessionKnowledgeBaseMapAtom)
-    const [newSessionState, setNewSessionState] = useAtom(atoms.newSessionStateAtom)
-    const currentSessionId = sessionId || 'default'
+    const currentSessionId = sessionId
     const isNewSession = currentSessionId === 'new'
     const { messageInput, setMessageInput, clearDraft } = useMessageInput('', { isNewSession })
 
-    const knowledgeBase = isNewSession ? newSessionState.knowledgeBase : sessionKnowledgeBaseMap[currentSessionId]
-    const setKnowledgeBase = useCallback(
-      (value: Pick<KnowledgeBase, 'id' | 'name'> | undefined) => {
-        if (isNewSession) {
-          setNewSessionState((prev) => ({ ...prev, knowledgeBase: value }))
-        } else {
-          setSessionKnowledgeBaseMap((prev) => {
-            if (value === undefined) {
-              const { [currentSessionId]: _, ...rest } = prev
-              return rest
-            }
-            return {
-              ...prev,
-              [currentSessionId]: value,
-            }
-          })
-        }
-      },
-      [currentSessionId, isNewSession, setSessionKnowledgeBaseMap, setNewSessionState]
+    // Pre-constructed message state (scoped by session)
+    const [preConstructedMessage, setPreConstructedMessage] = useAtom(
+      atoms.inputBoxPreConstructedMessageFamily(currentSessionId || 'new')
     )
-    const [webBrowsingMode, setWebBrowsingMode] = useAtom(atoms.inputBoxWebBrowsingModeAtom)
+    const pictureKeys = preConstructedMessage.pictureKeys || []
+    const attachments = preConstructedMessage.attachments || []
 
-    const [links, setLinks] = useAtom(atoms.inputBoxLinksAtom)
+    const currentSession = useAtomValue(atoms.currentSessionAtom)
+    const currentSessionMergedSettings = useAtomValue(atoms.currentMergedSettingsAtom)
+
+    // Get current messages for token counting
+    const currentMessages = useMemo(() => {
+      if (!currentSession || isNewSession) return []
+      return currentSession.messages.slice(-(currentSessionMergedSettings.maxContextMessageCount || 0))
+    }, [currentSession, isNewSession, currentSessionMergedSettings.maxContextMessageCount])
+
+    const { knowledgeBase, setKnowledgeBase } = useKnowledgeBase({ isNewSession })
+
+    const [webBrowsingMode, setWebBrowsingMode] = useAtom(atoms.inputBoxWebBrowsingModeAtom)
+    const [showCompressionModal, setShowCompressionModal] = useState(false)
+
+    const [links, setLinks] = useAtom(atoms.inputBoxLinksFamily(currentSessionId || 'new'))
+
+    useEffect(() => {
+      const constructedMessage = sessionActions.constructUserMessage(
+        messageInput,
+        pictureKeys,
+        preConstructedMessage.preprocessedFiles,
+        preConstructedMessage.preprocessedLinks
+      )
+      setPreConstructedMessage((prev) => ({
+        ...prev,
+        text: messageInput,
+        pictureKeys,
+        attachments,
+        links,
+        message: constructedMessage,
+      }))
+    }, [
+      messageInput,
+      pictureKeys,
+      attachments,
+      links,
+      preConstructedMessage.preprocessedFiles,
+      preConstructedMessage.preprocessedLinks,
+      setPreConstructedMessage,
+    ])
 
     const pictureInputRef = useRef<HTMLInputElement | null>(null)
     const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -152,6 +197,19 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       )
       return `${modelInfo?.nickname || model.modelId}`
     }, [providers, model, t])
+
+    // Get model info for context window
+    const modelInfo = useMemo(() => {
+      if (!model) return null
+      const providerInfo = providers.find((p) => p.id === model.provider)
+      return (providerInfo?.models || providerInfo?.defaultSettings?.models)?.find((m) => m.modelId === model.modelId)
+    }, [providers, model])
+
+    // Calculate token counts
+    const { currentInputTokens, contextTokens, totalTokens } = useTokenCount(
+      preConstructedMessage.message,
+      isNewSession ? [] : currentMessages
+    )
 
     const [showSelectModelErrorTip, setShowSelectModelErrorTip] = useState(false)
     useEffect(() => {
@@ -210,25 +268,53 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       }
 
       try {
-        // clone params to avoid mutating the original state
+        // Wait for all preprocessing to complete
+        const allPromises = [
+          ...Array.from(preConstructedMessage.preprocessingPromises.files.values()),
+          ...Array.from(preConstructedMessage.preprocessingPromises.links.values()),
+        ]
+
+        if (allPromises.length > 0) {
+          await Promise.all(allPromises)
+        }
+
+        // Use the already constructed message
+        if (!preConstructedMessage.message) {
+          console.error('No constructed message available')
+          return
+        }
+
         const params = {
-          input: messageInput.trim(),
-          pictureKeys: pictureKeys && [...pictureKeys],
-          attachments: attachments && [...attachments],
-          links: links && [...links],
+          constructedMessage: preConstructedMessage.message,
           needGenerating,
         }
 
         // 重置输入内容
         clearDraft()
-        setPictureKeys([])
-        setAttachments([])
         setLinks([])
+        // 重置预处理数据
+        setPreConstructedMessage({
+          text: '',
+          pictureKeys: [],
+          attachments: [],
+          links: [],
+          preprocessedFiles: [],
+          preprocessedLinks: [],
+          preprocessingStatus: {
+            files: {},
+            links: {},
+          },
+          preprocessingPromises: {
+            files: new Map(),
+            links: new Map(),
+          },
+          message: undefined,
+        })
         // 重置清理上下文按钮
         setShowRollbackThreadButton(false)
         // 如果提交成功，添加到输入历史 (非手机端)
-        if (platform.type !== 'mobile') {
-          addInputBoxHistory(params.input)
+        if (platform.type !== 'mobile' && preConstructedMessage.message) {
+          addInputBoxHistory(preConstructedMessage.message.contentParts.find((p) => p.type === 'text')?.text || '')
         }
 
         await onSubmit?.(params)
@@ -315,11 +401,83 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       }
     }
 
-    const insertLinks = (urls: string[]) => {
+    // ----- Preprocessing helpers -----
+    const startLinkPreprocessing = (url: string) => {
+      // 设置为处理中状态
+      setPreConstructedMessage((prev) => markLinkProcessing(prev, url))
+
+      // 异步预处理链接，失败时标记为 error，并吞掉异常避免 Promise.all reject
+      const preprocessPromise = sessionActions
+        .preprocessLink(url, { provider: model?.provider || '' })
+        .then((preprocessedLink) => {
+          setPreConstructedMessage((prev) => onLinkProcessed(prev, url, preprocessedLink, 6))
+        })
+        .catch((error) => {
+          setPreConstructedMessage((prev) =>
+            onLinkProcessed(
+              prev,
+              url,
+              {
+                url,
+                title: '',
+                content: '',
+                storageKey: '',
+                error: (error as Error)?.message || 'Failed to preprocess the link.',
+              },
+              6
+            )
+          )
+        })
+
+      // Store the promise
+      setPreConstructedMessage((prev) => storeLinkPromise(prev, url, preprocessPromise))
+    }
+
+    const startFilePreprocessing = (file: File) => {
+      // 设置为处理中状态
+      setPreConstructedMessage((prevMsg) => markFileProcessing(prevMsg, file))
+
+      // 异步预处理文件，失败时标记为 error，并吞掉异常避免 Promise.all reject
+      const preprocessPromise = sessionActions
+        .preprocessFile(file, { provider: model?.provider || '' })
+        .then((preprocessedFile) => {
+          setPreConstructedMessage((prev) => onFileProcessed(prev, file, preprocessedFile, 10))
+        })
+        .catch((error) => {
+          setPreConstructedMessage((prev) =>
+            onFileProcessed(
+              prev,
+              file,
+              {
+                file,
+                content: '',
+                storageKey: '',
+                error: (error as Error)?.message || 'Failed to preprocess the file.',
+              },
+              10
+            )
+          )
+        })
+
+      // Store the promise
+      setPreConstructedMessage((prev) => storeFilePromise(prev, file, preprocessPromise))
+    }
+
+    const insertLinks = async (urls: string[]) => {
       let newLinks = [...(links || []), ...urls.map((u) => ({ url: u }))]
       newLinks = _.uniqBy(newLinks, 'url')
       newLinks = newLinks.slice(-6) // 最多插入 6 个链接
       setLinks(newLinks)
+
+      // 预处理链接（只处理前6个）
+      for (let i = 0; i < Math.min(urls.length, 6); i++) {
+        const url = urls[i]
+        const linkIndex = newLinks.findIndex((l) => l.url === url)
+
+        if (linkIndex < 6) {
+          startLinkPreprocessing(url)
+        }
+      }
     }
 
     const insertFiles = async (files: File[]) => {
@@ -329,9 +487,27 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           const base64 = await picUtils.getImageBase64AndResize(file)
           const key = StorageKeyGenerator.picture('input-box')
           await storage.setBlob(key, base64)
-          setPictureKeys((prev) => [...prev, key].slice(-8)) // 最多插入 8 个图片
+          setPreConstructedMessage((prev) => ({
+            ...prev,
+            pictureKeys: [...(prev.pictureKeys || []), key].slice(-8),
+          })) // 最多插入 8 个图片
         } else {
-          setAttachments((prev) => [...prev, file].slice(-10)) // 最多插入 10 个附件
+          setPreConstructedMessage((prev) => {
+            const newAttachments = [...(prev.attachments || []), file].slice(-10) // 最多插入 10 个附件
+
+            // 只预处理前10个文件，避免浪费资源
+            const fileIndex = newAttachments.findIndex(
+              (f) => f.name === file.name && f.lastModified === file.lastModified
+            )
+            if (fileIndex < 10) {
+              startFilePreprocessing(file)
+            }
+
+            return {
+              ...prev,
+              attachments: newAttachments,
+            }
+          })
         }
       }
     }
@@ -353,7 +529,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     }
 
     const onImageDeleteClick = async (picKey: string) => {
-      setPictureKeys(pictureKeys?.filter((k) => k !== picKey))
+      setPreConstructedMessage((prev) => ({
+        ...prev,
+        pictureKeys: (prev.pictureKeys || []).filter((k) => k !== picKey),
+      }))
       // 不删除图片数据，因为可能在其他地方引用，比如通过上下键盘的历史消息快捷输入、发送的消息中引用
       // await storage.delBlob(picKey)
     }
@@ -500,17 +679,29 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               ))}
               {attachments?.map((file) => (
                 <FileMiniCard
-                  key={file.name + file.lastModified}
+                  key={StorageKeyGenerator.fileUniqKey(file)}
                   name={file.name}
                   fileType={file.type}
-                  onDelete={() => setAttachments(attachments.filter((f) => f.name !== file.name))}
+                  status={preConstructedMessage.preprocessingStatus.files[StorageKeyGenerator.fileUniqKey(file)]}
+                  onDelete={() => {
+                    setPreConstructedMessage((prev) => ({
+                      ...cleanupFile(prev, file),
+                      attachments: (prev.attachments || []).filter(
+                        (f) => StorageKeyGenerator.fileUniqKey(f) !== StorageKeyGenerator.fileUniqKey(file)
+                      ),
+                    }))
+                  }}
                 />
               ))}
               {links?.map((link) => (
                 <LinkMiniCard
-                  key={link.url}
+                  key={StorageKeyGenerator.linkUniqKey(link.url)}
                   url={link.url}
-                  onDelete={() => setLinks(links.filter((l) => l.url !== link.url))}
+                  status={preConstructedMessage.preprocessingStatus.links[StorageKeyGenerator.linkUniqKey(link.url)]}
+                  onDelete={() => {
+                    setLinks(links.filter((l) => l.url !== link.url))
+                    setPreConstructedMessage((prev) => cleanupLink(prev, link.url))
+                  }}
                 />
               ))}
             </Flex>
@@ -518,90 +709,18 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
           <Flex px="sm" pb="sm" align="flex-end" justify="space-between" gap="lg">
             <Flex gap="md" flex="0 1 auto" className="!hidden sm:!flex">
-              {showRollbackThreadButton ? (
-                <Tooltip label={t('Back to Previous')} withArrow position="top-start">
-                  <ActionIcon size="sm" variant="subtle" color="chatbox-secondary" onClick={rollbackThread}>
-                    <IconArrowBackUp strokeWidth={1.8} />
-                  </ActionIcon>
-                </Tooltip>
-              ) : (
-                <Tooltip
-                  label={
-                    <Stack align="center" gap="xxs" pb="xxs">
-                      <div className="whitespace-nowrap">{t('Start a New Thread')}</div>
-                      <Flex align="center">
-                        <Keys keys={shortcuts.messageListRefreshContext.split('+')} size="small" opacity={0.7} />
-                      </Flex>
-                    </Stack>
-                  }
-                  withArrow
-                  position="top-start"
-                >
-                  <ActionIcon
-                    size="24px"
-                    variant="subtle"
-                    color="chatbox-secondary"
-                    disabled={!onStartNewThread}
-                    onClick={startNewThread}
-                  >
-                    <IconFilePencil strokeWidth={1.8} />
-                  </ActionIcon>
-                </Tooltip>
-              )}
-
               {sessionType !== 'picture' && (
                 <>
-                  <input
-                    type="file"
-                    ref={pictureInputRef}
-                    className="hidden"
-                    onChange={onFileInputChange}
-                    accept="image/png, image/jpeg"
-                    multiple
-                  />
-                  <Tooltip label={t('Attach Image')} withArrow position="top">
-                    <ActionIcon size="24px" variant="subtle" color="chatbox-secondary" onClick={onImageUploadClick}>
-                      <IconPhoto strokeWidth={1.8} />
-                    </ActionIcon>
-                  </Tooltip>
-
+                  <ImageUploadInput ref={pictureInputRef} onChange={onFileInputChange} />
                   <input type="file" ref={fileInputRef} className="hidden" onChange={onFileInputChange} multiple />
-                  <Tooltip label={t('Select File')} withArrow position="top">
-                    <ActionIcon size="24px" variant="subtle" color="chatbox-secondary" onClick={onFileUploadClick}>
-                      <IconFolder strokeWidth={1.8} />
-                    </ActionIcon>
-                  </Tooltip>
 
-                  <Tooltip label={t('Attach Link')} withArrow position="top">
-                    <ActionIcon size="24px" variant="subtle" color="chatbox-secondary" onClick={handleAttachLink}>
-                      <IconLink strokeWidth={1.8} />
-                    </ActionIcon>
-                  </Tooltip>
+                  <AttachmentMenu
+                    onImageUploadClick={onImageUploadClick}
+                    onFileUploadClick={onFileUploadClick}
+                    handleAttachLink={handleAttachLink}
+                    t={t}
+                  />
 
-                  <Tooltip
-                    label={
-                      <Stack align="center" gap="xxs" pb="xxs">
-                        <div className="whitespace-nowrap">{t('Web Browsing')}</div>
-                        <Flex align="center">
-                          <Keys keys={shortcuts.inputBoxWebBrowsingMode.split('+')} size="small" opacity={0.7} />
-                        </Flex>
-                      </Stack>
-                    }
-                    withArrow
-                    position="top"
-                  >
-                    <ActionIcon
-                      size="24px"
-                      variant="subtle"
-                      color={webBrowsingMode ? 'chatbox-brand' : 'chatbox-secondary'}
-                      onClick={() => {
-                        setWebBrowsingMode(!webBrowsingMode)
-                        dom.focusMessageInput()
-                      }}
-                    >
-                      <IconWorld strokeWidth={1.8} />
-                    </ActionIcon>
-                  </Tooltip>
                   {featureFlags.mcp && (
                     <MCPMenu>
                       {(enabledTools) =>
@@ -622,31 +741,80 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   )}
                   {featureFlags.knowledgeBase && (
                     <KnowledgeBaseMenu currentKnowledgeBaseId={knowledgeBase?.id} onSelect={handleKnowledgeBaseSelect}>
-                      <Tooltip label={t('Knowledge Base')} withArrow position="top">
-                        <ActionIcon
-                          size="24px"
-                          variant="subtle"
-                          color={knowledgeBase ? 'chatbox-brand' : 'chatbox-secondary'}
-                        >
-                          <IconVocabulary strokeWidth={1.8} />
-                        </ActionIcon>
-                      </Tooltip>
+                      <ActionIcon
+                        size="24px"
+                        variant="subtle"
+                        color={knowledgeBase ? 'chatbox-brand' : 'chatbox-secondary'}
+                      >
+                        <IconVocabulary strokeWidth={1.8} />
+                      </ActionIcon>
                     </KnowledgeBaseMenu>
+                  )}
+
+                  <Tooltip
+                    label={
+                      <Stack align="center" gap="xxs" pb="xxs">
+                        <div className="whitespace-nowrap">{t('Web Browsing')}</div>
+                        <Flex align="center">
+                          <Keys keys={shortcuts.inputBoxWebBrowsingMode.split('+')} size="small" opacity={0.7} />
+                        </Flex>
+                      </Stack>
+                    }
+                    withArrow
+                    position="top"
+                  >
+                    <WebBrowsingButton
+                      active={webBrowsingMode}
+                      onClick={() => {
+                        setWebBrowsingMode(!webBrowsingMode)
+                        dom.focusMessageInput()
+                      }}
+                    />
+                  </Tooltip>
+
+                  {showRollbackThreadButton ? (
+                    <Tooltip label={t('Back to Previous')} withArrow position="top-start">
+                      <ActionIcon size="sm" variant="subtle" color="chatbox-secondary" onClick={rollbackThread}>
+                        <IconArrowBackUp strokeWidth={1.8} />
+                      </ActionIcon>
+                    </Tooltip>
+                  ) : (
+                    <Tooltip
+                      label={
+                        <Stack align="center" gap="xxs" pb="xxs">
+                          <div className="whitespace-nowrap">{t('Start a New Thread')}</div>
+                          <Flex align="center">
+                            <Keys keys={shortcuts.messageListRefreshContext.split('+')} size="small" opacity={0.7} />
+                          </Flex>
+                        </Stack>
+                      }
+                      withArrow
+                      position="top-start"
+                    >
+                      <ActionIcon
+                        size="24px"
+                        variant="subtle"
+                        color="chatbox-secondary"
+                        disabled={!onStartNewThread}
+                        onClick={startNewThread}
+                      >
+                        <IconFilePencil strokeWidth={1.8} />
+                      </ActionIcon>
+                    </Tooltip>
                   )}
                 </>
               )}
-
-              <Tooltip label={t('Customize settings for the current conversation')} withArrow position="top">
-                <ActionIcon
-                  size="24px"
-                  variant="subtle"
-                  color="chatbox-secondary"
-                  disabled={!onClickSessionSettings}
-                  onClick={onClickSessionSettings}
-                >
-                  <IconAdjustmentsHorizontal strokeWidth={1.8} />
-                </ActionIcon>
-              </Tooltip>
+              {model?.provider === ModelProviderEnum.ChatboxAI && sessionType === 'picture' && (
+                <>
+                  <ImageUploadInput ref={pictureInputRef} onChange={onFileInputChange} />
+                  <ImageUploadButton onClick={onImageUploadClick} tooltipLabel={t('Attach Image')} />
+                </>
+              )}
+              <SessionSettingsButton
+                onClick={onClickSessionSettings}
+                tooltipLabel={t('Customize settings for the current conversation')}
+                disabled={!onClickSessionSettings}
+              />
               {/* <ActionIcon variant="subtle" color="chatbox-secondary">
               <IconVocabulary />
             </ActionIcon> */}
@@ -655,7 +823,33 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             <Flex className="sm:!hidden" gap="xs">
               {sessionType !== 'picture' ? (
                 <>
-                  <Menu shadow="md" position="top-start">
+                  <AttachmentMenu
+                    onImageUploadClick={onImageUploadClick}
+                    onFileUploadClick={onFileUploadClick}
+                    handleAttachLink={handleAttachLink}
+                    t={t}
+                    size={20}
+                    iconSize={undefined}
+                  />
+
+                  <WebBrowsingButton
+                    active={webBrowsingMode}
+                    onClick={() => {
+                      setWebBrowsingMode(!webBrowsingMode)
+                      dom.focusMessageInput()
+                    }}
+                    isMobile
+                  />
+                  <Menu
+                    trigger="hover"
+                    openDelay={100}
+                    closeDelay={100}
+                    keepMounted
+                    transitionProps={{
+                      transition: 'pop',
+                      duration: 200,
+                    }}
+                  >
                     <Menu.Target>
                       <ActionIcon
                         variant="transparent"
@@ -666,91 +860,92 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                         bd="none"
                         color="chatbox-secondary"
                       >
-                        <IconCirclePlus strokeWidth={1.8} />
+                        <IconSettings strokeWidth={1.8} />
                       </ActionIcon>
                     </Menu.Target>
-
                     <Menu.Dropdown>
-                      <Menu.Item leftSection={<IconPhoto size={16} />} onClick={onImageUploadClick}>
-                        {t('Attach Image')}
+                      <Menu.Item leftSection={<IconPlus size={16} />} onClick={startNewThread}>
+                        {t('New Thread')}
                       </Menu.Item>
-                      <Menu.Item leftSection={<IconFolder size={16} />} onClick={onFileUploadClick}>
-                        {t('Select File')}
-                      </Menu.Item>
-
-                      <Menu.Item leftSection={<IconLink size={16} />} onClick={handleAttachLink}>
-                        {t('Attach Link')}
+                      <Menu.Item leftSection={<IconAdjustmentsHorizontal size={16} />} onClick={onClickSessionSettings}>
+                        {t('Conversation Settings')}
                       </Menu.Item>
                     </Menu.Dropdown>
                   </Menu>
-
-                  <ActionIcon
-                    variant="transparent"
-                    w={20}
-                    h={20}
-                    miw={20}
-                    mih={20}
-                    bd="none"
-                    color={webBrowsingMode ? 'chatbox-brand' : 'chatbox-secondary'}
-                    onClick={() => {
-                      setWebBrowsingMode(!webBrowsingMode)
-                      dom.focusMessageInput()
-                    }}
-                  >
-                    <IconWorld strokeWidth={1.8} />
-                  </ActionIcon>
-
-                  <ActionIcon
-                    variant="transparent"
-                    w={20}
-                    h={20}
-                    miw={20}
-                    mih={20}
-                    bd="none"
-                    color="chatbox-secondary"
-                    disabled={!onClickSessionSettings}
-                    onClick={onClickSessionSettings}
-                  >
-                    <IconAdjustmentsHorizontal strokeWidth={1.8} />
-                  </ActionIcon>
                 </>
-              ) : null}
+              ) : (
+                <>
+                  {model?.provider === ModelProviderEnum.ChatboxAI && (
+                    <>
+                      <ImageUploadInput ref={pictureInputRef} onChange={onFileInputChange} />
+                      <ImageUploadButton onClick={onImageUploadClick} tooltipLabel={t('Add images')} isMobile />
+                    </>
+                  )}
+                  <SessionSettingsButton
+                    onClick={onClickSessionSettings}
+                    tooltipLabel={t('Customize settings for the current conversation')}
+                    disabled={!onClickSessionSettings}
+                    isMobile
+                  />
+                </>
+              )}
             </Flex>
 
             <Flex gap={isSmallScreen ? 'xxs' : 'sm'} align="flex-end" justify="flex-end">
-              <Tooltip
-                label={t('Please select a model')}
-                color="chatbox-error"
-                opened={showSelectModelErrorTip}
-                withArrow
-              >
-                {sessionType === 'picture' ? (
-                  <ImageModelSelect onSelect={onSelectModel}>
-                    <span className="flex items-center text-sm opacity-70 cursor-pointer bg-transparent hover:bg-slate-400/25 h-6">
-                      {providers.find((p) => p.id === model?.provider)?.name || model?.provider || t('Select Model')}
-                      <IconSelector size={16} className="opacity-50" />
-                    </span>
-                  </ImageModelSelect>
-                ) : (
-                  <ModelSelector onSelect={onSelectModel}>
+              {/* Wrap TokenCountMenu and ModelSelector in a Flex with center alignment */}
+              <Flex gap={isSmallScreen ? 'xxs' : 'sm'} align="center">
+                {/* Token count display */}
+                {sessionType !== 'picture' && (
+                  <TokenCountMenu
+                    currentInputTokens={currentInputTokens}
+                    contextTokens={contextTokens}
+                    totalTokens={totalTokens}
+                    contextWindow={modelInfo?.contextWindow}
+                    onCompressClick={sessionId && !isNewSession ? () => setShowCompressionModal(true) : undefined}
+                  >
                     <Flex
-                      gap="xxs"
-                      px={isSmallScreen ? 0 : 'xs'}
                       align="center"
-                      className={cn('cursor-pointer hover:bg-slate-400/25 rounded-lg', !isSmallScreen && 'py-1')}
+                      gap="2"
+                      className="text-xs text-[var(--mantine-color-chatbox-secondary-text)] cursor-pointer hover:text-[var(--mantine-color-chatbox-primary-text)] transition-colors"
                     >
-                      {!!model && <ProviderImageIcon size={isSmallScreen ? 20 : 24} provider={model.provider} />}
-                      <Text size={isSmallScreen ? 'xs' : 'sm'} className="line-clamp-1">
-                        {modelSelectorDisplayText}
+                      <IconArrowUp size={14} />
+                      <Text size="xs">
+                        {formatNumber(totalTokens)}
+                        {!isSmallScreen && modelInfo?.contextWindow && ` / ${formatNumber(modelInfo.contextWindow)}`}
                       </Text>
-                      <IconSelector
-                        size={20}
-                        className="flex-[0_0_auto] text-[var(--mantine-color-chatbox-tertiary-text)]"
-                      />
                     </Flex>
-                  </ModelSelector>
+                  </TokenCountMenu>
                 )}
-              </Tooltip>
+
+                <Tooltip
+                  label={t('Please select a model')}
+                  color="chatbox-error"
+                  opened={showSelectModelErrorTip}
+                  withArrow
+                >
+                  {sessionType === 'picture' ? (
+                    <ImageModelSelect onSelect={onSelectModel}>
+                      <span className="flex items-center text-sm cursor-pointer bg-transparent h-6">
+                        {providers.find((p) => p.id === model?.provider)?.name || model?.provider || t('Select Model')}
+                        <IconSelector size={16} className="opacity-50" />
+                      </span>
+                    </ImageModelSelect>
+                  ) : (
+                    <ModelSelector onSelect={onSelectModel}>
+                      <Flex gap="xxs" px={isSmallScreen ? 0 : 'xs'} align="center" className={cn('cursor-pointer')}>
+                        {!!model && <ProviderImageIcon size={isSmallScreen ? 20 : 24} provider={model.provider} />}
+                        <Text size={isSmallScreen ? 'xs' : 'sm'} className="line-clamp-1">
+                          {modelSelectorDisplayText}
+                        </Text>
+                        <IconSelector
+                          size={20}
+                          className="flex-[0_0_auto] text-[var(--mantine-color-chatbox-tertiary-text)]"
+                        />
+                      </Flex>
+                    </ModelSelector>
+                  )}
+                </Tooltip>
+              </Flex>
 
               <ActionIcon
                 disabled={disableSubmit && !generating}
@@ -769,9 +964,63 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             </Flex>
           </Flex>
         </Stack>
+        {sessionId && (
+          <CompressionModal
+            opened={showCompressionModal}
+            onClose={() => setShowCompressionModal(false)}
+            sessionId={sessionId}
+          />
+        )}
       </Box>
     )
   }
 )
+
+// Reusable attachment menu component
+const AttachmentMenu: React.FC<{
+  onImageUploadClick: () => void
+  onFileUploadClick: () => void
+  handleAttachLink: () => void
+  t: (key: string) => string
+  size?: number
+  iconSize?: number
+}> = ({ onImageUploadClick, onFileUploadClick, handleAttachLink, t, size = 24, iconSize = 20 }) => {
+  return (
+    <Menu
+      shadow="md"
+      trigger="hover"
+      position="top-start"
+      openDelay={100}
+      closeDelay={100}
+      keepMounted
+      transitionProps={{
+        transition: 'pop',
+        duration: 200,
+      }}
+    >
+      <Menu.Target>
+        <ActionIcon
+          size={size === 20 ? undefined : `${size}px`}
+          variant={size === 20 ? 'transparent' : 'subtle'}
+          color="chatbox-secondary"
+          {...(size === 20 ? { w: 20, h: 20, miw: 20, mih: 20, bd: 'none' } : {})}
+        >
+          <IconCirclePlus strokeWidth={1.8} size={iconSize} />
+        </ActionIcon>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Item leftSection={<IconPhoto size={16} />} onClick={onImageUploadClick}>
+          {t('Attach Image')}
+        </Menu.Item>
+        <Menu.Item leftSection={<IconFolder size={16} />} onClick={onFileUploadClick}>
+          {t('Select File')}
+        </Menu.Item>
+        <Menu.Item leftSection={<IconLink size={16} />} onClick={handleAttachLink}>
+          {t('Attach Link')}
+        </Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
+  )
+}
 
 export default InputBox

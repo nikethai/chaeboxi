@@ -51,7 +51,7 @@ const MCPMenu: FC<{ children: (enabledTools: number) => ReactNode }> = ({ childr
       withArrow
       width={240}
       closeOnItemClick={false}
-      position="top"
+      position="top-start"
       transitionProps={{
         transition: 'fade-up',
         duration: 300,

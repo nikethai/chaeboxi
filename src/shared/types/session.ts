@@ -1,6 +1,10 @@
 import type { LanguageModelUsage } from 'ai'
 import { z } from 'zod'
 import { SessionSettingsSchema } from '../types/settings'
+import { ModelProviderEnum } from './provider'
+
+// Re-export for backward compatibility
+export { ModelProviderEnum } from './provider'
 
 // Search result schemas
 export const SearchResultItemSchema = z.object({
@@ -99,26 +103,6 @@ export const StreamTextResultSchema = z.object({
 // Tool and provider schemas
 export const ToolUseScopeSchema = z.enum(['web-browsing', 'knowledge-base'])
 
-// FIXME: 这个 enum 有点被滥用了，既表示 provider 的类型，也表示 provider 的 id，custom 只表示类型
-export enum ModelProviderEnum {
-  ChatboxAI = 'chatbox-ai',
-  OpenAI = 'openai',
-  Azure = 'azure',
-  ChatGLM6B = 'chatglm-6b',
-  Claude = 'claude',
-  Gemini = 'gemini',
-  Ollama = 'ollama',
-  Groq = 'groq',
-  DeepSeek = 'deepseek',
-  SiliconFlow = 'siliconflow',
-  VolcEngine = 'volcengine',
-  MistralAI = 'mistral-ai',
-  LMStudio = 'lm-studio',
-  Perplexity = 'perplexity',
-  XAI = 'xAI',
-  Custom = 'custom',
-}
-
 export const ModelProviderSchema = z.union([z.nativeEnum(ModelProviderEnum), z.string()])
 
 // Message status schemas
@@ -134,11 +118,17 @@ export const MessageStatusSchema = z.discriminatedUnion('type', [
 ])
 
 // Main Message schema
+// Define a custom function type for cancel
+const CancelFunctionSchema = z.custom<(() => void) | undefined>(
+  (val) => val === undefined || typeof val === 'function',
+  { message: 'Must be a function or undefined' }
+)
+
 export const MessageSchema = z.object({
   id: z.string(),
   role: z.nativeEnum(MessageRoleEnum),
   name: z.string().optional(),
-  cancel: z.function().optional(),
+  cancel: CancelFunctionSchema.optional(),
   generating: z.boolean().optional(),
   aiProvider: z.union([ModelProviderSchema, z.string()]).optional(),
   model: z.string().optional(),

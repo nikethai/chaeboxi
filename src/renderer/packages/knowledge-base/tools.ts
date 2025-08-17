@@ -1,16 +1,16 @@
-import platform from '@/platform'
 import { tool } from 'ai'
 import { z } from 'zod'
+import platform from '@/platform'
 
 export const queryKnowledgeBaseTool = (kbId: number) => {
   return tool({
     description: 'Query a knowledge base',
-    parameters: z.object({
+    inputSchema: z.object({
       query: z.string().describe('The query to search the knowledge base'),
     }),
-    execute: async ({ query }) => {
+    execute: async (input: { query: string }) => {
       const knowledgeBaseController = platform.getKnowledgeBaseController()
-      return knowledgeBaseController.search(kbId, query)
+      return knowledgeBaseController.search(kbId, input.query)
     },
   })
 }
@@ -18,15 +18,15 @@ export const queryKnowledgeBaseTool = (kbId: number) => {
 export function getFilesMetaTool(knowledgeBaseId: number) {
   return tool({
     description: `Get metadata for files in the current knowledge base. Use this to find out more about files returned from a search, like filename, size, and total number of chunks.`,
-    parameters: z.object({
+    inputSchema: z.object({
       fileIds: z.array(z.number()).describe('An array of file IDs to get metadata for.'),
     }),
-    execute: async ({ fileIds }) => {
-      if (!fileIds || fileIds.length === 0) {
+    execute: async (input: { fileIds: number[] }) => {
+      if (!input.fileIds || input.fileIds.length === 0) {
         return 'Please provide an array of file IDs.'
       }
       const knowledgeBaseController = platform.getKnowledgeBaseController()
-      return knowledgeBaseController.getFilesMeta(knowledgeBaseId, fileIds)
+      return knowledgeBaseController.getFilesMeta(knowledgeBaseId, input.fileIds)
     },
   })
 }
@@ -34,7 +34,7 @@ export function getFilesMetaTool(knowledgeBaseId: number) {
 export function readFileChunksTool(knowledgeBaseId: number) {
   return tool({
     description: `Read content chunks from specified files in the current knowledge base. Use this to get the text content of a document.`,
-    parameters: z.object({
+    inputSchema: z.object({
       chunks: z
         .array(
           z.object({
@@ -44,12 +44,12 @@ export function readFileChunksTool(knowledgeBaseId: number) {
         )
         .describe('An array of file and chunk index pairs to read.'),
     }),
-    execute: async ({ chunks }) => {
-      if (!chunks || chunks.length === 0) {
+    execute: async (input: { chunks: Array<{ fileId: number; chunkIndex: number }> }) => {
+      if (!input.chunks || input.chunks.length === 0) {
         return 'Please provide an array of chunks to read.'
       }
       const knowledgeBaseController = platform.getKnowledgeBaseController()
-      return knowledgeBaseController.readFileChunks(knowledgeBaseId, chunks)
+      return knowledgeBaseController.readFileChunks(knowledgeBaseId, input.chunks)
     },
   })
 }
@@ -57,13 +57,13 @@ export function readFileChunksTool(knowledgeBaseId: number) {
 export function listFilesTool(knowledgeBaseId: number) {
   return tool({
     description: `List all files in the current knowledge base. Returns file ID, filename, and chunk count for each file.`,
-    parameters: z.object({
+    inputSchema: z.object({
       page: z.number().describe('The page number to list, start from 0.'),
       pageSize: z.number().describe('The number of files to list per page.'),
     }),
-    execute: async ({ page, pageSize }) => {
+    execute: async (input: { page: number; pageSize: number }) => {
       const knowledgeBaseController = platform.getKnowledgeBaseController()
-      const files = await knowledgeBaseController.listFilesPaginated(knowledgeBaseId, page, pageSize)
+      const files = await knowledgeBaseController.listFilesPaginated(knowledgeBaseId, input.page, input.pageSize)
       return files
         .filter((file) => file.status === 'done')
         .map((file) => ({

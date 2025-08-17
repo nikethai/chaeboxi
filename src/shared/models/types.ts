@@ -1,4 +1,4 @@
-import type { CoreMessage, ToolSet } from 'ai'
+import type { ModelMessage, ToolSet } from 'ai'
 import type { MessageContentParts, ProviderOptions, StreamTextResult, ToolUseScope } from 'src/shared/types'
 
 export interface ModelInterface {
@@ -7,8 +7,16 @@ export interface ModelInterface {
   isSupportVision(): boolean
   isSupportToolUse(scope?: ToolUseScope): boolean
   isSupportSystemMessage(): boolean
-  chat: (messages: CoreMessage[], options: CallChatCompletionOptions) => Promise<StreamTextResult>
-  paint: (prompt: string, num: number, callback?: (picBase64: string) => any, signal?: AbortSignal) => Promise<string[]>
+  chat: (messages: ModelMessage[], options: CallChatCompletionOptions) => Promise<StreamTextResult>
+  paint: (
+    params: {
+      prompt: string
+      images?: { imageUrl: string }[]
+      num: number
+    },
+    signal?: AbortSignal,
+    callback?: (picBase64: string) => void
+  ) => Promise<string[]>
 }
 
 export interface CallChatCompletionOptions<Tools extends ToolSet = ToolSet> {

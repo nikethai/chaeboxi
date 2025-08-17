@@ -15,7 +15,7 @@ interface Options {
   dalleStyle: 'vivid' | 'natural'
   temperature?: number
   topP?: number
-  maxTokens?: number
+  maxOutputTokens?: number
   injectDefaultMetadata: boolean
   useProxy: boolean
   stream?: boolean
@@ -74,7 +74,7 @@ export default class OpenAI extends AbstractAISDKModel {
     return {
       temperature: this.options.temperature,
       topP: this.options.topP,
-      maxTokens: this.options.maxTokens,
+      maxOutputTokens: this.options.maxOutputTokens,
       providerOptions,
     }
   }

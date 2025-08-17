@@ -78,7 +78,7 @@ export function getModel(
           dalleStyle: settings.dalleStyle || 'vivid',
           temperature: settings.temperature,
           topP: settings.topP,
-          maxTokens: settings.maxTokens,
+          maxOutputTokens: settings.maxTokens,
           stream: settings.stream,
         },
         config,
@@ -93,7 +93,7 @@ export function getModel(
           dalleStyle: settings.dalleStyle || 'vivid',
           temperature: settings.temperature,
           topP: settings.topP,
-          maxTokens: settings.maxTokens,
+          maxOutputTokens: settings.maxTokens,
           injectDefaultMetadata: globalSettings.injectDefaultMetadata,
           useProxy: false, // 之前的openaiUseProxy已经没有在使用，直接写死false
           stream: settings.stream,
@@ -111,7 +111,7 @@ export function getModel(
           azureApiVersion: providerSetting.apiVersion || providerBaseInfo.defaultSettings?.apiVersion || '',
           temperature: settings.temperature,
           topP: settings.topP,
-          maxTokens: settings.maxTokens,
+          maxOutputTokens: settings.maxTokens,
           dalleStyle: settings.dalleStyle || 'vivid',
           imageGenerateNum: settings.imageGenerateNum || 1,
           injectDefaultMetadata: globalSettings.injectDefaultMetadata,
@@ -127,7 +127,7 @@ export function getModel(
           model,
           temperature: settings.temperature,
           topP: settings.topP,
-          maxTokens: settings.maxTokens,
+          maxOutputTokens: settings.maxTokens,
           stream: settings.stream,
         },
         dependencies
@@ -141,7 +141,7 @@ export function getModel(
           model,
           temperature: settings.temperature,
           topP: settings.topP,
-          maxTokens: settings.maxTokens,
+          maxOutputTokens: settings.maxTokens,
           stream: settings.stream,
         },
         dependencies
@@ -155,7 +155,7 @@ export function getModel(
           model,
           temperature: settings.temperature,
           topP: settings.topP,
-          maxTokens: settings.maxTokens,
+          maxOutputTokens: settings.maxTokens,
           stream: settings.stream,
         },
         dependencies
@@ -168,7 +168,7 @@ export function getModel(
           model,
           temperature: settings.temperature,
           topP: settings.topP,
-          maxTokens: settings.maxTokens,
+          maxOutputTokens: settings.maxTokens,
           stream: settings.stream,
           useProxy: providerSetting.useProxy,
         },
@@ -182,7 +182,7 @@ export function getModel(
           model,
           temperature: settings.temperature,
           topP: settings.topP,
-          maxTokens: settings.maxTokens,
+          maxOutputTokens: settings.maxTokens,
           stream: settings.stream,
         },
         dependencies
@@ -195,7 +195,7 @@ export function getModel(
           model,
           temperature: settings.temperature,
           topP: settings.topP,
-          maxTokens: settings.maxTokens,
+          maxOutputTokens: settings.maxTokens,
           stream: settings.stream,
         },
         dependencies
@@ -208,7 +208,7 @@ export function getModel(
           model,
           temperature: settings.temperature,
           topP: settings.topP,
-          maxTokens: settings.maxTokens,
+          maxOutputTokens: settings.maxTokens,
           stream: settings.stream,
         },
         dependencies
@@ -221,7 +221,7 @@ export function getModel(
           model,
           temperature: settings.temperature,
           topP: settings.topP,
-          maxTokens: settings.maxTokens,
+          maxOutputTokens: settings.maxTokens,
           stream: settings.stream,
         },
         dependencies
@@ -234,7 +234,7 @@ export function getModel(
           model,
           temperature: settings.temperature,
           topP: settings.topP,
-          maxTokens: settings.maxTokens,
+          maxOutputTokens: settings.maxTokens,
           stream: settings.stream,
         },
         dependencies
@@ -247,7 +247,7 @@ export function getModel(
           model,
           temperature: settings.temperature,
           topP: settings.topP,
-          maxTokens: settings.maxTokens,
+          maxOutputTokens: settings.maxTokens,
           stream: settings.stream,
         },
         dependencies
@@ -260,7 +260,7 @@ export function getModel(
           model,
           temperature: settings.temperature,
           topP: settings.topP,
-          maxTokens: settings.maxTokens,
+          maxOutputTokens: settings.maxTokens,
           stream: settings.stream,
         },
         dependencies
@@ -273,7 +273,7 @@ export function getModel(
           model,
           temperature: settings.temperature,
           topP: settings.topP,
-          maxTokens: settings.maxTokens,
+          maxOutputTokens: settings.maxTokens,
           stream: settings.stream,
         },
         dependencies
@@ -288,7 +288,7 @@ export function getModel(
             model,
             temperature: settings.temperature,
             topP: settings.topP,
-            maxTokens: settings.maxTokens,
+            maxOutputTokens: settings.maxTokens,
             stream: settings.stream,
             useProxy: providerSetting.useProxy,
           },

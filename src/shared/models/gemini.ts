@@ -1,5 +1,5 @@
 import { createGoogleGenerativeAI, type GoogleGenerativeAIProviderOptions } from '@ai-sdk/google'
-import type { LanguageModelV1 } from 'ai'
+import type { LanguageModel } from 'ai'
 import type { ProviderModelInfo } from '../types'
 import type { ModelDependencies } from '../types/adapters'
 import { normalizeGeminiHost } from '../utils/llm_utils'
@@ -13,7 +13,7 @@ interface Options {
   model: ProviderModelInfo
   temperature?: number
   topP?: number
-  maxTokens?: number
+  maxOutputTokens?: number
   stream?: boolean
 }
 
@@ -38,23 +38,22 @@ export default class Gemeni extends AbstractAISDKModel {
     })
   }
 
-  protected getChatModel(options: CallChatCompletionOptions): LanguageModelV1 {
+  protected getChatModel(options: CallChatCompletionOptions): LanguageModel {
     const provider = this.getProvider()
 
-    return provider.chat(this.options.model.modelId, {
-      structuredOutputs: false,
+    return provider.chat(this.options.model.modelId)
+  }
+
+  protected getCallSettings(options: CallChatCompletionOptions): CallSettings {
+    const isModelSupportThinking = this.isSupportReasoning()
+    let providerParams: GoogleGenerativeAIProviderOptions = {
       safetySettings: [
         { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
         { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
         { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
         { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
       ],
-    })
-  }
-
-  protected getCallSettings(options: CallChatCompletionOptions): CallSettings {
-    const isModelSupportThinking = this.isSupportReasoning()
-    let providerParams = {} as GoogleGenerativeAIProviderOptions
+    }
     if (isModelSupportThinking) {
       providerParams = {
         ...(options.providerOptions?.google || {}),
@@ -66,7 +65,7 @@ export default class Gemeni extends AbstractAISDKModel {
     }
 
     const settings: CallSettings = {
-      maxTokens: this.options.maxTokens,
+      maxOutputTokens: this.options.maxOutputTokens,
       providerOptions: {
         google: {
           ...providerParams,

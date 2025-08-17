@@ -1,12 +1,8 @@
 import { z } from 'zod'
-import { ModelProviderEnum } from './session'
+import { ModelProviderEnum, ModelProviderType } from './provider'
 
-export enum ModelProviderType {
-  ChatboxAI = 'chatbox-ai',
-  OpenAI = 'openai',
-  Gemini = 'gemini',
-  Claude = 'claude',
-}
+// Re-export for backward compatibility
+export { ModelProviderType } from './provider'
 
 export const ProviderModelInfoSchema = z.object({
   modelId: z.string(),

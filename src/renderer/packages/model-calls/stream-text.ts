@@ -1,4 +1,4 @@
-import type { CoreMessage, ToolSet } from 'ai'
+import type { ModelMessage, ToolSet } from 'ai'
 import { t } from 'i18next'
 import { uniqueId } from 'lodash'
 import { getModel } from 'src/shared/models'
@@ -19,7 +19,7 @@ import {
 } from '../../../shared/types'
 import { getToolSet } from '../knowledge-base/tools'
 import { mcpController } from '../mcp/controller'
-import { convertToCoreMessages, injectModelSystemPrompt } from './message-utils'
+import { convertToModelMessages, injectModelSystemPrompt } from './message-utils'
 import { imageOCR } from './preprocess'
 import {
   combinedSearchByPromptEngineering,
@@ -38,7 +38,7 @@ async function handleSearchResult(
   toolName: string,
   model: ModelInterface,
   messages: Message[],
-  coreMessages: CoreMessage[],
+  coreMessages: ModelMessage[],
   controller: AbortController,
   onResultChange: OnResultChange,
   params: { providerOptions?: ProviderOptions }
@@ -62,7 +62,7 @@ async function handleSearchResult(
       ? constructMessagesWithKnowledgeBaseResults(messages, result.searchResults)
       : constructMessagesWithSearchResults(messages, result.searchResults)
 
-  return model.chat(await convertToCoreMessages(messagesWithResults), {
+  return model.chat(await convertToModelMessages(messagesWithResults), {
     signal: controller.signal,
     onResultChange: (data) => {
       if (data.contentParts) {
@@ -166,7 +166,7 @@ export async function streamText(
       })
     }
 
-    const coreMessages = await convertToCoreMessages(messages, { modelSupportVision: model.isSupportVision() })
+    const coreMessages = await convertToModelMessages(messages, { modelSupportVision: model.isSupportVision() })
 
     if (kbNotSupported || webNotSupported) {
       // 当两个功能都启用且都不支持工具调用时，使用组合搜索

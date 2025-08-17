@@ -14,7 +14,7 @@ export interface OpenAICompatibleSettings {
   temperature?: number
   topP?: number
   useProxy?: boolean
-  maxTokens?: number
+  maxOutputTokens?: number
   stream?: boolean
 }
 
@@ -32,7 +32,7 @@ export default abstract class OpenAICompatible extends AbstractAISDKModel implem
     return {
       temperature: this.options.temperature,
       topP: this.options.topP,
-      maxTokens: this.options.maxTokens,
+      maxOutputTokens: this.options.maxOutputTokens,
     }
   }
 

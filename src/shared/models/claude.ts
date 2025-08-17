@@ -12,7 +12,7 @@ interface Options {
   model: ProviderModelInfo
   temperature?: number
   topP?: number
-  maxTokens?: number
+  maxOutputTokens?: number
   stream?: boolean
 }
 
@@ -52,7 +52,7 @@ export default class Claude extends AbstractAISDKModel {
       providerOptions,
       temperature: this.options.temperature,
       topP: this.options.topP,
-      maxTokens: this.options.maxTokens,
+      maxOutputTokens: this.options.maxOutputTokens,
     }
   }
 

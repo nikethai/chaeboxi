@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { SystemProviders } from 'src/shared/defaults'
 import type { KnowledgeBase, ModelProvider, ProviderModelInfo } from 'src/shared/types'
+import { parseKnowledgeBaseModelString } from 'src/shared/utils/knowledge-base-model-parser'
 import { useProviders } from '@/hooks/useProviders'
 import { useSettings } from '@/hooks/useSettings'
 import * as remote from '@/packages/remote'
@@ -179,16 +180,17 @@ const KnowledgeBasePage: React.FC = () => {
 
   const isProviderAvailable = useCallback(
     (modelString: string) => {
-      if (!modelString) return false
-      const [providerId] = modelString.split(':')
-      return providers.some((provider) => provider.id === providerId)
+      const parsed = parseKnowledgeBaseModelString(modelString)
+      if (!parsed) return false
+      return providers.some((provider) => provider.id === parsed.providerId)
     },
     [providers]
   )
 
   function formatModelName(model: string) {
-    if (!model) return t('Unknown')
-    const [providerId, modelId] = model.split(':')
+    const parsed = parseKnowledgeBaseModelString(model)
+    if (!parsed) return t('Unknown')
+    const { providerId, modelId } = parsed
     const providerName = getProviderName(providerId)
     const modelName = getModelName(providerId, modelId) || modelId
     return `${providerName} | ${modelName}`

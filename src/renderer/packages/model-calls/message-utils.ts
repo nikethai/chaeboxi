@@ -16,7 +16,7 @@ async function convertContentParts<T extends TextPart | ImagePart | FilePart>(
     await Promise.all(
       contentParts.map(async (c) => {
         if (c.type === 'text') {
-          return { type: 'text', text: c.text! } as T
+          return { type: 'text', text: c.text } as T
         } else if (c.type === 'image') {
           if (options?.modelSupportVision === false) {
             return { type: 'text', text: `This is an image, OCR Result: \n${c.ocrResult}` } as T

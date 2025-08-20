@@ -304,13 +304,13 @@ export const SystemProviders: ProviderBaseInfo[] = [
       models: [
         {
           modelId: 'gemini-2.5-flash',
-          capabilities: ['vision', 'reasoning'],
+          capabilities: ['vision', 'reasoning', 'tool_use'],
           contextWindow: 1_000_000,
           maxOutput: 8_192,
         },
         {
           modelId: 'gemini-2.5-pro',
-          capabilities: ['vision', 'reasoning'],
+          capabilities: ['vision', 'reasoning', 'tool_use'],
           contextWindow: 1_000_000,
           maxOutput: 8_192,
         },

@@ -152,6 +152,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const [showCompressionModal, setShowCompressionModal] = useState(false)
 
     const [links, setLinks] = useAtom(atoms.inputBoxLinksFamily(currentSessionId || 'new'))
+    const [isSubmitting, setIsSubmitting] = useState(false)
 
     useEffect(() => {
       const constructedMessage = sessionActions.constructUserMessage(
@@ -180,6 +181,18 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     const pictureInputRef = useRef<HTMLInputElement | null>(null)
     const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+    // Check if any preprocessing is in progress
+    const isPreprocessing = useMemo(() => {
+      const hasProcessingFiles = Object.values(preConstructedMessage.preprocessingStatus.files || {}).some(
+        (status) => status === 'processing'
+      )
+      const hasProcessingLinks = Object.values(preConstructedMessage.preprocessingStatus.links || {}).some(
+        (status) => status === 'processing'
+      )
+      return hasProcessingFiles || hasProcessingLinks
+    }, [preConstructedMessage.preprocessingStatus])
+
     const disableSubmit = useMemo(
       () => !(messageInput.trim() || links?.length || attachments?.length || pictureKeys?.length),
       [messageInput, links, attachments, pictureKeys]
@@ -255,7 +268,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const { addInputBoxHistory, getPreviousHistoryInput, getNextHistoryInput, resetHistoryIndex } = useInputBoxHistory()
 
     const handleSubmit = async (needGenerating = true) => {
-      if (disableSubmit || generating) {
+      if (disableSubmit || generating || isSubmitting || isPreprocessing) {
         return
       }
 
@@ -267,17 +280,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         return
       }
 
+      setIsSubmitting(true)
       try {
-        // Wait for all preprocessing to complete
-        const allPromises = [
-          ...Array.from(preConstructedMessage.preprocessingPromises.files.values()),
-          ...Array.from(preConstructedMessage.preprocessingPromises.links.values()),
-        ]
-
-        if (allPromises.length > 0) {
-          await Promise.all(allPromises)
-        }
-
         // Use the already constructed message
         if (!preConstructedMessage.message) {
           console.error('No constructed message available')
@@ -322,6 +326,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       } catch (e) {
         console.error('Error submitting message:', e)
         toastActions.add((e as Error)?.message || t('An error occurred while sending the message.'))
+      } finally {
+        setIsSubmitting(false)
       }
     }
 
@@ -957,13 +963,13 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               </Flex>
 
               <ActionIcon
-                disabled={disableSubmit && !generating}
+                disabled={(disableSubmit || isPreprocessing || isSubmitting) && !generating}
                 radius={18}
                 size={isSmallScreen ? 28 : 36}
                 onClick={generating ? onStopGenerating : () => handleSubmit()}
                 className={cn(
                   // 'mt-[-6px] mb-[2px]',
-                  disableSubmit &&
+                  (disableSubmit || isPreprocessing || isSubmitting) &&
                     !generating &&
                     '!text-white !bg-[var(--mantine-color-chatbox-background-tertiary-text)]'
                 )}

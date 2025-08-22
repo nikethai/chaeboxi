@@ -5,7 +5,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { forwardRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SystemProviders } from 'src/shared/defaults'
-import ModelSelector from '@/components/ModelSelectorNew'
+import ModelSelector from '@/components/ModelSelector'
 import { useSettings } from '@/hooks/useSettings'
 
 export const Route = createFileRoute('/settings/default-models')({
@@ -25,9 +25,17 @@ function RouteComponent() {
 
         <ModelSelector
           position="bottom-start"
+          transitionProps={{
+            transition: 'fade-down',
+            duration: 200,
+          }}
+          keepMounted
           width={320}
           showAuto={true}
           autoText={t('Auto (Use Last Used)')!}
+          selectedProviderId={settings.defaultChatModel?.provider}
+          selectedModelId={settings.defaultChatModel?.model}
+          searchPosition="top"
           onSelect={(provider, model) => {
             console.log(provider, model)
             setSettings({
@@ -61,6 +69,9 @@ function RouteComponent() {
           width={320}
           showAuto={true}
           autoText={t('Auto (Use Chat Model)')!}
+          selectedProviderId={settings.threadNamingModel?.provider}
+          selectedModelId={settings.threadNamingModel?.model}
+          searchPosition="top"
           onSelect={(provider, model) =>
             setSettings({
               threadNamingModel:
@@ -93,6 +104,9 @@ function RouteComponent() {
           width={320}
           showAuto={true}
           autoText={t('Auto (Use Chat Model)')!}
+          selectedProviderId={settings.searchTermConstructionModel?.provider}
+          selectedModelId={settings.searchTermConstructionModel?.model}
+          searchPosition="top"
           onSelect={(provider, model) =>
             setSettings({
               searchTermConstructionModel:
@@ -125,6 +139,9 @@ function RouteComponent() {
           autoText={settings.licenseKey ? t('Auto (Use Chatbox AI)')! : t('None')!}
           width={320}
           modelFilter={(model) => model.capabilities?.includes('vision') ?? false}
+          selectedProviderId={settings.ocrModel?.provider}
+          selectedModelId={settings.ocrModel?.model}
+          searchPosition="top"
           onSelect={(provider, model) =>
             setSettings({
               ocrModel:

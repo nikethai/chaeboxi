@@ -17,6 +17,7 @@ import {
   useTheme,
 } from '@mui/material'
 import SwipeableDrawer from '@mui/material/SwipeableDrawer'
+import { IconCode } from '@tabler/icons-react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { PanelLeftClose } from 'lucide-react'
@@ -244,6 +245,31 @@ function SidebarButtons(props: { sessionListRef: React.RefObject<HTMLDivElement>
           {/* ⌘N */}
         </Typography>
       </MenuItem>
+
+      {/* Show Dev menu only in development mode */}
+      {process.env.NODE_ENV === 'development' && (
+        <MenuItem
+          onClick={() => {
+            navigate({
+              to: '/dev',
+            })
+            if (isSmallScreen) {
+              setShowSidebar(false)
+            }
+          }}
+          selected={routerState.location.pathname.startsWith('/dev')}
+          sx={{ padding: '0.2rem 0.1rem', margin: '0.1rem' }}
+        >
+          <ListItemIcon>
+            <IconButton>
+              <IconCode size={18} />
+            </IconButton>
+          </ListItemIcon>
+          <ListItemText>
+            <Typography>Dev Tools</Typography>
+          </ListItemText>
+        </MenuItem>
+      )}
 
       <MenuItem
         onClick={() => {

@@ -55,7 +55,7 @@ import { CompressionModal } from '../CompressionModal'
 import ImageModelSelect from '../ImageModelSelect'
 import ProviderImageIcon from '../icons/ProviderImageIcon'
 import KnowledgeBaseMenu from '../knowledge-base/KnowledgeBaseMenu'
-import ModelSelector from '../ModelSelectorNew'
+import ModelSelector from '../ModelSelector'
 import MCPMenu from '../mcp/MCPMenu'
 import { Keys } from '../Shortcut'
 import TokenCountMenu from '../TokenCountMenu'
@@ -931,7 +931,16 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       </span>
                     </ImageModelSelect>
                   ) : (
-                    <ModelSelector onSelect={onSelectModel}>
+                    <ModelSelector
+                      onSelect={onSelectModel}
+                      selectedProviderId={model?.provider}
+                      selectedModelId={model?.modelId}
+                      position="top-end"
+                      transitionProps={{
+                        transition: 'fade-up',
+                        duration: 200,
+                      }}
+                    >
                       <Flex gap="xxs" px={isSmallScreen ? 0 : 'xs'} align="center" className={cn('cursor-pointer')}>
                         {!!model && <ProviderImageIcon size={isSmallScreen ? 20 : 24} provider={model.provider} />}
                         <Text size={isSmallScreen ? 'xs' : 'sm'} className="line-clamp-1">

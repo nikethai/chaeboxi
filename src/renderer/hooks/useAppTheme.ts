@@ -1,21 +1,21 @@
-import { useMemo, useLayoutEffect } from 'react'
-import { getDefaultStore, useAtomValue } from 'jotai'
-import { realThemeAtom, themeAtom, fontSizeAtom, languageAtom } from '../stores/atoms'
-import { createTheme } from '@mui/material/styles'
-import { ThemeOptions } from '@mui/material/styles'
-import { Theme, Language } from '../../shared/types'
+import { createTheme, type ThemeOptions } from '@mui/material/styles'
+import { useLayoutEffect, useMemo } from 'react'
+import { settingsStore, useLanguage, useSettingsStore } from '@/stores/settingsStore'
+import { uiStore, useUIStore } from '@/stores/uiStore'
+import { type Language, Theme } from '../../shared/types'
 import platform from '../platform'
 import DesktopPlatform from '../platform/desktop_platform'
 
 export const switchTheme = async (theme: Theme) => {
-  const store = getDefaultStore()
   let finalTheme = 'light' as 'light' | 'dark'
   if (theme === Theme.System) {
     finalTheme = (await platform.shouldUseDarkColors()) ? 'dark' : 'light'
   } else {
     finalTheme = theme === Theme.Dark ? 'dark' : 'light'
   }
-  store.set(realThemeAtom, finalTheme)
+  uiStore.setState({
+    realTheme: finalTheme,
+  })
   localStorage.setItem('initial-theme', finalTheme)
   if (platform instanceof DesktopPlatform) {
     await platform.switchTheme(finalTheme)
@@ -23,10 +23,10 @@ export const switchTheme = async (theme: Theme) => {
 }
 
 export default function useAppTheme() {
-  const theme = useAtomValue(themeAtom)
-  const fontSize = useAtomValue(fontSizeAtom)
-  const realTheme = useAtomValue(realThemeAtom)
-  const language = useAtomValue(languageAtom)
+  const theme = useSettingsStore((state) => state.theme)
+  const fontSize = useSettingsStore((state) => state.fontSize)
+  const realTheme = useUIStore((state) => state.realTheme)
+  const language = useLanguage()
 
   useLayoutEffect(() => {
     switchTheme(theme)
@@ -34,8 +34,7 @@ export default function useAppTheme() {
 
   useLayoutEffect(() => {
     platform.onSystemThemeChange(() => {
-      const store = getDefaultStore()
-      const theme = store.get(themeAtom)
+      const theme = settingsStore.getState().theme
       switchTheme(theme)
     })
   }, [])

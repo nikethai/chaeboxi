@@ -3,17 +3,21 @@ import ArrowCircleDownIcon from '@mui/icons-material/ArrowCircleDown'
 import ArrowCircleUpIcon from '@mui/icons-material/ArrowCircleUp'
 import { Box, ButtonGroup, IconButton } from '@mui/material'
 import { createFileRoute } from '@tanstack/react-router'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValue } from 'jotai'
 import { useEffect } from 'react'
 import { createMessage, type ModelProvider } from 'src/shared/types'
+import { useStore } from 'zustand'
 import Header from '@/components/Header'
-import InputBox from '@/components/InputBox'
+import InputBox from '@/components/InputBox/InputBox'
 import MessageList from '@/components/MessageList'
 import ThreadHistoryDrawer from '@/components/ThreadHistoryDrawer'
 import * as atoms from '@/stores/atoms'
+import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 import * as scrollActions from '@/stores/scrollActions'
 import * as sessionActions from '@/stores/sessionActions'
 import { saveSession } from '@/stores/sessionStorageMutations'
+import { useLanguage } from '@/stores/settingsStore'
+import { useUIStore } from '@/stores/uiStore'
 
 export const Route = createFileRoute('/session/$sessionId')({
   component: RouteComponent,
@@ -22,8 +26,8 @@ export const Route = createFileRoute('/session/$sessionId')({
 function RouteComponent() {
   const { sessionId: currentSessionId } = Route.useParams()
   const currentSession = useAtomValue(atoms.currentSessionAtom)
-  const setChatSessionSettings = useSetAtom(atoms.chatSessionSettingsAtom)
-  const setPictureSessionSettings = useSetAtom(atoms.pictureSessionSettingsAtom)
+  const setLastUsedChatModel = useStore(lastUsedModelStore, (state) => state.setChatModel)
+  const setLastUsedPictureModel = useStore(lastUsedModelStore, (state) => state.setPictureModel)
   const lastMessage = currentSession?.messages.length
     ? currentSession.messages[currentSession.messages.length - 1]
     : null
@@ -39,20 +43,18 @@ function RouteComponent() {
     if (currentSession) {
       if (currentSession.type === 'chat' && currentSession.settings) {
         const { provider, modelId } = currentSession.settings
-        setChatSessionSettings({ provider, modelId })
+        if (provider && modelId) {
+          setLastUsedChatModel(provider, modelId)
+        }
       }
       if (currentSession.type === 'picture' && currentSession.settings) {
         const { provider, modelId } = currentSession.settings
-        setPictureSessionSettings({ provider, modelId })
+        if (provider && modelId) {
+          setLastUsedPictureModel(provider, modelId)
+        }
       }
     }
-  }, [
-    currentSession?.settings,
-    currentSession?.type,
-    setChatSessionSettings,
-    setPictureSessionSettings,
-    currentSession,
-  ])
+  }, [currentSession?.settings, currentSession?.type, currentSession, setLastUsedChatModel, setLastUsedPictureModel])
 
   return currentSession ? (
     <div className="flex flex-col h-full">
@@ -105,18 +107,11 @@ function RouteComponent() {
           return true
         }}
         generating={lastMessage?.generating}
-        onSubmit={async ({ needGenerating = true, input = '', pictureKeys = [], attachments = [], links = [] }) => {
-          const newMessage = createMessage('user', input)
-          if (pictureKeys?.length) {
-            newMessage.contentParts = newMessage.contentParts ?? []
-            newMessage.contentParts.push(...pictureKeys.map((k) => ({ type: 'image' as const, storageKey: k })))
-          }
-          sessionActions.submitNewUserMessage({
+        onSubmit={async ({ constructedMessage, needGenerating = true }) => {
+          await sessionActions.submitNewUserMessage({
             currentSessionId: currentSessionId,
-            newUserMsg: newMessage,
+            newUserMsg: constructedMessage,
             needGenerating,
-            attachments,
-            links,
           })
         }}
         onStopGenerating={() => {
@@ -137,9 +132,9 @@ function RouteComponent() {
 }
 
 function ScrollButtons() {
-  const atScrollTop = useAtomValue(atoms.messageScrollingAtTopAtom)
-  const atScrollBottom = useAtomValue(atoms.messageScrollingAtBottomAtom)
-  const language = useAtomValue(atoms.languageAtom)
+  const atScrollTop = useUIStore((s) => s.messageScrollingAtTop)
+  const atScrollBottom = useUIStore((s) => s.messageScrollingAtBottom)
+  const language = useLanguage()
   return (
     <Box className="relative">
       <ButtonGroup

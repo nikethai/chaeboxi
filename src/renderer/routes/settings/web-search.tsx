@@ -1,10 +1,10 @@
-import { useSettings } from '@/hooks/useSettings'
-import platform from '@/platform'
-import { Title, Text, Select, Stack, PasswordInput, Flex, Button } from '@mantine/core'
+import { Button, Flex, PasswordInput, Select, Stack, Text, Title } from '@mantine/core'
 import { createFileRoute } from '@tanstack/react-router'
 import { ofetch } from 'ofetch'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import platform from '@/platform'
+import { useSettingsStore } from '@/stores/settingsStore'
 
 export const Route = createFileRoute('/settings/web-search')({
   component: RouteComponent,
@@ -12,12 +12,13 @@ export const Route = createFileRoute('/settings/web-search')({
 
 function RouteComponent() {
   const { t } = useTranslation()
-  const { settings, setSettings } = useSettings()
+  const setSettings = useSettingsStore((state) => state.setSettings)
+  const extension = useSettingsStore((state) => state.extension)
 
   const [checkingTavily, setCheckingTavily] = useState(false)
   const [tavilyAvaliable, setTavilyAvaliable] = useState<boolean>()
   const checkTavily = async () => {
-    if (settings.extension.webSearch.tavilyApiKey) {
+    if (extension.webSearch.tavilyApiKey) {
       setCheckingTavily(true)
       setTavilyAvaliable(undefined)
       try {
@@ -25,7 +26,7 @@ function RouteComponent() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${settings.extension.webSearch.tavilyApiKey}`,
+            Authorization: `Bearer ${extension.webSearch.tavilyApiKey}`,
           },
           body: {
             query: 'Chatbox',
@@ -54,14 +55,14 @@ function RouteComponent() {
           { value: 'bing', label: 'Bing' },
           { value: 'tavily', label: 'Tavily' },
         ]}
-        value={settings.extension.webSearch.provider}
+        value={extension.webSearch.provider}
         onChange={(e) =>
           e &&
           setSettings({
             extension: {
-              ...settings.extension,
+              ...extension,
               webSearch: {
-                ...settings.extension.webSearch,
+                ...extension.webSearch,
                 provider: e as any,
               },
             },
@@ -72,21 +73,21 @@ function RouteComponent() {
       />
 
       {/* Tavily API Key */}
-      {settings.extension.webSearch.provider === 'tavily' && (
+      {extension.webSearch.provider === 'tavily' && (
         <Stack gap="xs">
           <Text fw="600">{t('Tavily API Key')}</Text>
           <Flex align="center" gap="xs">
             <PasswordInput
               flex={1}
               maw={320}
-              value={settings.extension.webSearch.tavilyApiKey}
+              value={extension.webSearch.tavilyApiKey}
               onChange={(e) => {
                 setTavilyAvaliable(undefined)
                 setSettings({
                   extension: {
-                    ...settings.extension,
+                    ...extension,
                     webSearch: {
-                      ...settings.extension.webSearch,
+                      ...extension.webSearch,
                       tavilyApiKey: e.currentTarget.value,
                     },
                   },

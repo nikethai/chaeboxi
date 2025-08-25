@@ -3,9 +3,9 @@ import { Box, Grid } from '@mui/material'
 import CssBaseline from '@mui/material/CssBaseline'
 import { ThemeProvider } from '@mui/material/styles'
 import { createRootRoute, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
-import { useAtom, useAtomValue, useSetAtom } from 'jotai'
+import { useSetAtom } from 'jotai'
 import { useEffect, useMemo, useRef } from 'react'
-import { type RemoteConfig, type Settings, Theme } from '@/../shared/types'
+import { type RemoteConfig, Theme } from '@/../shared/types'
 import ExitFullscreenButton from '@/components/ExitFullscreenButton'
 import Toasts from '@/components/Toasts'
 import useAppTheme from '@/hooks/useAppTheme'
@@ -47,17 +47,20 @@ import {
   virtualColor,
 } from '@mantine/core'
 import { QueryClientProvider } from '@tanstack/react-query'
-import storage, { StorageKey } from '@/storage'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import queryClient from '@/stores/queryClient'
+import { settingsStore, useLanguage, useSettingsStore, useTheme } from '@/stores/settingsStore'
+import { useUIStore } from '@/stores/uiStore'
 
 function Root() {
   const location = useLocation()
   const navigate = useNavigate()
-  const spellCheck = useAtomValue(atoms.spellCheckAtom)
-  const language = useAtomValue(atoms.languageAtom)
+  const spellCheck = useSettingsStore((state) => state.spellCheck)
+  const language = useLanguage()
   const initialized = useRef(false)
 
-  const setOpenAboutDialog = useSetAtom(atoms.openAboutDialogAtom)
+  const setOpenAboutDialog = useUIStore((s) => s.setOpenAboutDialog)
+
   const setRemoteConfig = useSetAtom(atoms.remoteConfigAtom)
 
   useEffect(() => {
@@ -116,10 +119,10 @@ function Root() {
     return () => clearTimeout(tid)
   }, [navigate, setOpenAboutDialog, setRemoteConfig, location.pathname])
 
-  const [showSidebar] = useAtom(atoms.showSidebarAtom)
+  const showSidebar = useUIStore((s) => s.showSidebar)
   const sidebarWidth = useSidebarWidth()
 
-  const _theme = useAtomValue(atoms.themeAtom)
+  const _theme = useTheme()
   const { setColorScheme } = useMantineColorScheme()
   // biome-ignore lint/correctness/useExhaustiveDependencies: setColorScheme is stable
   useEffect(() => {
@@ -132,22 +135,18 @@ function Root() {
     }
   }, [_theme])
 
-  // FIXME: 为了从LocalStroage中初始化这两个atom，否则首次get这两个atom可能得到默认值
-  useAtom(atoms.chatSessionSettingsAtom)
-  useAtom(atoms.pictureSessionSettingsAtom)
-
   useEffect(() => {
     ;(async () => {
-      const settings = await storage.getItem(StorageKey.Settings, {} as Settings)
+      const { startupPage } = settingsStore.getState()
       const sid = JSON.parse(localStorage.getItem('_currentSessionIdCachedAtom') || '""') as string
-      if (sid && settings?.startupPage === 'session') {
+      if (sid && startupPage === 'session') {
         navigate({
           to: `/session/${sid}`,
           replace: true,
         })
       }
     })()
-  }, [navigate])
+  }, [])
 
   useEffect(() => {
     if (platform.onNavigate) {
@@ -451,7 +450,7 @@ const creteMantineTheme = (scale = 1) =>
         }),
       }),
       Input: Input.extend({
-        styles: (_, props) => ({
+        styles: (_theme, props) => ({
           wrapper: {
             '--input-height-sm': rem('32px'),
             ...(props.error
@@ -516,7 +515,7 @@ const creteMantineTheme = (scale = 1) =>
         defaultProps: {
           size: 'sm',
         },
-        styles: (_, props) => {
+        styles: (_theme, props) => {
           return {
             label: {
               color: props.checked
@@ -530,7 +529,7 @@ const creteMantineTheme = (scale = 1) =>
         defaultProps: {
           size: 'sm',
         },
-        styles: (_, props) => ({
+        styles: (_theme, props) => ({
           label: {
             color: props.checked
               ? 'var(--mantine-color-chatbox-primary-text)'
@@ -578,9 +577,9 @@ export const Route = createRootRoute({
     useShortcut()
     useScreenChange()
     const theme = useAppTheme()
-    const _theme = useAtomValue(atoms.themeAtom)
-    const settings = useAtomValue(atoms.settingsAtom)
-    const scale = settings.fontSize / 14
+    const _theme = useTheme()
+    const fontSize = useSettingsStore((state) => state.fontSize)
+    const scale = fontSize / 14
     const mantineTheme = useMemo(() => creteMantineTheme(scale), [scale])
 
     return (
@@ -592,7 +591,9 @@ export const Route = createRootRoute({
           <ThemeProvider theme={theme}>
             <CssBaseline />
             <NiceModal.Provider>
-              <Root />
+              <ErrorBoundary>
+                <Root />
+              </ErrorBoundary>
             </NiceModal.Provider>
           </ThemeProvider>
         </MantineProvider>

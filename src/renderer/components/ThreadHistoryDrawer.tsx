@@ -11,15 +11,15 @@ import type { SessionThreadBrief } from 'src/shared/types'
 import StyledMenu from '@/components/StyledMenu'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
-import * as atoms from '@/stores/atoms'
 import { currentSessionIdAtom, currentThreadHistoryHashAtom, showThreadHistoryDrawerAtom } from '@/stores/atoms'
 import { scrollToMessage } from '@/stores/scrollActions'
+import { useLanguage } from '@/stores/settingsStore'
 import * as sessionActions from '../stores/sessionActions'
 import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
 
 export default function ThreadHistoryDrawer() {
   const { t } = useTranslation()
-  const language = useAtomValue(atoms.languageAtom)
+  const language = useLanguage()
   const [showDrawer, setShowDrawer] = useAtom(showThreadHistoryDrawerAtom)
   const currentThreadHistoryHash = useAtomValue(currentThreadHistoryHashAtom)
   const currentSessionId = useAtomValue(currentSessionIdAtom)

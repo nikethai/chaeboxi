@@ -14,7 +14,6 @@ import {
   useTheme,
 } from '@mui/material'
 import { IconInfoCircle } from '@tabler/icons-react'
-import { useAtomValue } from 'jotai'
 import { pick } from 'lodash'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -40,17 +39,17 @@ import SliderWithInput from '@/components/SliderWithInput'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { trackingEvent } from '@/packages/event'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
-import * as atoms from '@/stores/atoms'
 import * as sessionActions from '@/stores/sessionActions'
 import { saveSession } from '@/stores/sessionStorageMutations'
-import { getMessageText } from '@/utils/message'
+import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
+import { getMessageText } from '../../shared/utils/message'
 
 const SessionSettingsModal = NiceModal.create(
   ({ session, disableAutoSave = false }: { session: Session; disableAutoSave?: boolean }) => {
     const modal = useModal()
     const { t } = useTranslation()
     const isSmallScreen = useIsSmallScreen()
-    const globalSettings = useAtomValue(atoms.settingsAtom)
+    const defaultAssistantAvatarKey = useSettingsStore((state) => state.defaultAssistantAvatarKey)
     const theme = useTheme()
 
     const [editingData, setEditingData] = useState<Session | null>(session || null)
@@ -185,9 +184,9 @@ const SessionSettingsModal = NiceModal.create(
                   height: '60px',
                 }}
               />
-            ) : globalSettings.defaultAssistantAvatarKey ? (
+            ) : defaultAssistantAvatarKey ? (
               <ImageInStorage
-                storageKey={globalSettings.defaultAssistantAvatarKey}
+                storageKey={defaultAssistantAvatarKey}
                 className="object-cover object-center w-full h-full"
               />
             ) : (
@@ -235,7 +234,6 @@ const SessionSettingsModal = NiceModal.create(
               {isChatSession(session) && (
                 <ChatConfig
                   settings={editingData.settings}
-                  globalSettings={globalSettings}
                   onSettingsChange={(d) =>
                     setEditingData((_data) => {
                       if (_data) {
@@ -536,13 +534,12 @@ function GoogleProviderConfig({
 export function ChatConfig({
   settings,
   onSettingsChange,
-  globalSettings,
 }: {
   settings: Session['settings']
-  globalSettings: Settings
   onSettingsChange: (data: Session['settings']) => void
 }) {
   const { t } = useTranslation()
+  const globalSettingsStream = useSettingsStore((s) => s.stream)
 
   return (
     <Stack gap="md">
@@ -632,7 +629,7 @@ export function ChatConfig({
               {t('Stream output')}
             </Text>
             <Switch
-              checked={settings?.stream ?? globalSettings?.stream ?? true}
+              checked={settings?.stream ?? globalSettingsStream ?? true}
               onChange={(v) => onSettingsChange({ stream: v.target.checked })}
             />
           </Flex>
@@ -656,7 +653,7 @@ export function ChatConfig({
 
 function PictureConfig(props: { dataEdit: Session; setDataEdit: (data: Session) => void }) {
   const { dataEdit, setDataEdit } = props
-  const globalSettings = useAtomValue(atoms.settingsAtom)
+  const globalSettings = settingsStore.getState().getSettings()
   const sessionSettings = sessionActions.mergeSettings(globalSettings, dataEdit.settings || {}, dataEdit.type || 'chat')
   const updateSettingsEdit = (updated: Partial<SessionSettings>) => {
     setDataEdit({

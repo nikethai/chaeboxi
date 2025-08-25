@@ -1,9 +1,8 @@
-import * as atoms from '@/stores/atoms'
-import * as settingActions from '@/stores/settingActions'
 import NiceModal, { muiDialogV5, useModal } from '@ebay/nice-modal-react'
 import { Box, Button, Dialog, DialogContent, Paper } from '@mui/material'
 import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
+import * as atoms from '@/stores/atoms'
 import { ModelProviderEnum } from '../../shared/types'
 import icon from '../static/icon.png'
 
@@ -75,7 +74,6 @@ const Welcome = NiceModal.create(() => {
                     lineHeight: 1.4,
                   }}
                   onClick={() => {
-                    settingActions.setModelProvider(ModelProviderEnum.ChatboxAI)
                     modal.resolve(ModelProviderEnum.ChatboxAI)
                     modal.hide()
                   }}

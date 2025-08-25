@@ -1,10 +1,9 @@
-import { useTheme, useMediaQuery } from '@mui/material'
-import { useSetAtom } from 'jotai'
-import * as atoms from '../stores/atoms'
+import { useMediaQuery, useTheme } from '@mui/material'
 import { useEffect } from 'react'
+import { useUIStore } from '@/stores/uiStore'
 
 export default function useScreenChange() {
-  const setShowSidebar = useSetAtom(atoms.showSidebarAtom)
+  const setShowSidebar = useUIStore((s) => s.setShowSidebar)
   const realIsSmallScreen = useIsSmallScreen()
   useEffect(() => {
     setShowSidebar(!realIsSmallScreen)

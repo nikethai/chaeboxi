@@ -8,8 +8,8 @@ import { chatSessionSettings, getDefaultPrompt } from 'src/shared/defaults'
 import { handleImageInputAndSave, ImageInStorage } from '@/components/Image'
 import MaxContextMessageCountSlider from '@/components/MaxContextMessageCountSlider'
 import SliderWithInput from '@/components/SliderWithInput'
-import { useSettings } from '@/hooks/useSettings'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { add as addToast } from '@/stores/toastActions'
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -20,7 +20,7 @@ export const Route = createFileRoute('/settings/chat')({
 
 function RouteComponent() {
   const { t } = useTranslation()
-  const { settings, setSettings } = useSettings()
+  const { setSettings, ...settings } = useSettingsStore((state) => state)
 
   return (
     <Stack gap="xxl" p="md">
@@ -236,8 +236,8 @@ function RouteComponent() {
             label={t('show message word count')}
             checked={settings.showWordCount}
             onChange={() =>
-              setSettings({
-                showWordCount: !settings.showWordCount,
+              setSettings((draft) => {
+                draft.showWordCount = !draft.showWordCount
               })
             }
           />

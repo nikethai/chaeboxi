@@ -1,44 +1,25 @@
-import {
-  Alert,
-  Badge,
-  Button,
-  Flex,
-  Modal,
-  Paper,
-  PasswordInput,
-  Progress,
-  Stack,
-  Text,
-  Title,
-  Tooltip,
-} from '@mantine/core'
+import { Alert, Button, Flex, Modal, Paper, PasswordInput, Progress, Stack, Text, Title } from '@mantine/core'
 import {
   IconArrowRight,
-  IconBulb,
   IconCircleCheckFilled,
-  IconCircleMinus,
-  IconCirclePlus,
   IconExclamationCircle,
   IconExternalLink,
-  IconEye,
   IconHelp,
   IconRefresh,
   IconRestore,
-  IconTool,
 } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute, Link } from '@tanstack/react-router'
-import { useAtomValue } from 'jotai'
+import { createFileRoute } from '@tanstack/react-router'
 import { useCallback, useEffect, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { type ModelProvider, ModelProviderEnum } from 'src/shared/types'
+import { ModelList } from '@/components/ModelList'
 import useChatboxAIModels from '@/hooks/useChatboxAIModels'
-import { useProviderSettings, useSettings } from '@/hooks/useSettings'
 import { trackingEvent } from '@/packages/event'
 import { getLicenseDetailRealtime } from '@/packages/remote'
 import platform from '@/platform'
-import { languageAtom } from '@/stores/atoms'
 import * as premiumActions from '@/stores/premiumActions'
+import { useLanguage, useProviderSettings, useSettingsStore } from '@/stores/settingsStore'
 
 const useLicenseDetail = (licenseKey: string) => {
   const { data: licenseDetail, ...others } = useQuery({
@@ -62,10 +43,10 @@ export const Route = createFileRoute('/settings/provider/chatbox-ai')({
 
 function RouteComponent() {
   const { t } = useTranslation()
-  const language = useAtomValue(languageAtom)
+  const language = useLanguage()
   const providerId: ModelProvider = ModelProviderEnum.ChatboxAI
   const { providerSettings, setProviderSettings } = useProviderSettings(providerId)
-  const { settings } = useSettings()
+  const settings = useSettingsStore((state) => state)
 
   const [licenseKey, setLicenseKey] = useState(settings.licenseKey || '')
   const [isDeactivating, setIsDeactivating] = useState(false)
@@ -423,89 +404,7 @@ function RouteComponent() {
             </Flex>
           </Flex>
 
-          <Stack
-            gap={0}
-            p="xxs"
-            className="border-solid border rounded-sm min-h-[100px] border-[var(--mantine-color-chatbox-border-primary-outline)]"
-          >
-            {chatboxAIModels.map((model) => (
-              <Flex
-                key={model.modelId}
-                gap="xs"
-                align="center"
-                p="sm"
-                px="xs"
-                className="border-solid border-0 border-b last:border-b-0 border-[var(--mantine-color-chatbox-border-primary-outline)]"
-              >
-                <Text
-                  component="span"
-                  size="sm"
-                  flex="0 1 auto"
-                  c={model.labels?.includes('recommended') ? 'chatbox-brand' : undefined}
-                >
-                  {model.nickname || model.modelId}
-                </Text>
-
-                {model.labels?.includes('pro') && (
-                  <Badge color="chatbox-brand" size="xs" variant="light">
-                    Pro
-                  </Badge>
-                )}
-
-                <Flex flex="0 0 auto" gap="xs" align="center">
-                  {model.type && model.type !== 'chat' && <Badge color="blue">{t(model.type)}</Badge>}
-
-                  {model.capabilities?.includes('reasoning') && (
-                    <Tooltip label={t('Reasoning')}>
-                      <Text span c="chatbox-warning" className="flex items-center">
-                        <IconBulb size={20} />
-                      </Text>
-                    </Tooltip>
-                  )}
-                  {model.capabilities?.includes('vision') && (
-                    <Tooltip label={t('Vision')}>
-                      <Text span c="chatbox-brand" className="flex items-center">
-                        <IconEye size={20} />
-                      </Text>
-                    </Tooltip>
-                  )}
-                  {model.capabilities?.includes('tool_use') && (
-                    <Tooltip label={t('Tool Use')}>
-                      <Text span c="chatbox-success" className="flex items-center">
-                        <IconTool size={20} />
-                      </Text>
-                    </Tooltip>
-                  )}
-                </Flex>
-
-                <Flex flex="0 0 auto" gap="xs" align="center" className="ml-auto">
-                  {/* <Button
-                    variant="transparent"
-                    c="chatbox-tertiary"
-                    p={0}
-                    h="auto"
-                    size="xs"
-                    bd={0}
-                    onClick={() => editModel(model)}
-                  >
-                    <IconSettings size={20} />
-                  </Button> */}
-
-                  <Button
-                    variant="transparent"
-                    c="chatbox-error"
-                    p={0}
-                    h="auto"
-                    size="compact-xs"
-                    bd={0}
-                    onClick={() => deleteModel(model.modelId)}
-                  >
-                    <IconCircleMinus size={20} />
-                  </Button>
-                </Flex>
-              </Flex>
-            ))}
-          </Stack>
+          <ModelList models={chatboxAIModels} showActions={true} onDeleteModel={deleteModel} showSearch={false} />
         </Stack>
       </Stack>
 
@@ -515,78 +414,24 @@ function RouteComponent() {
         onClose={() => setShowFetchedModels(false)}
         title={t('Edit Model')}
         centered={true}
+        size="lg"
       >
-        <Stack gap="md">
-          {allChatboxAIModels?.map((model) => (
-            <Flex key={model.modelId} align="center" gap="xs">
-              <Text
-                component="span"
-                size="sm"
-                flex="0 1 auto"
-                c={model.labels?.includes('recommended') ? 'chatbox-brand' : undefined}
-              >
-                {model.nickname || model.modelId}
-              </Text>
-              {model.labels?.includes('pro') && (
-                <Badge color="chatbox-brand" size="xs" variant="light">
-                  Pro
-                </Badge>
-              )}
-
-              <Flex flex="0 0 auto" gap="xs" align="center">
-                {model.capabilities?.includes('reasoning') && (
-                  <Tooltip label={t('Reasoning')}>
-                    <IconBulb size={20} className="text-[var(--mantine-color-chatbox-warning-text)]" />
-                  </Tooltip>
-                )}
-                {model.capabilities?.includes('vision') && (
-                  <Tooltip label={t('Vision')}>
-                    <IconEye size={20} className="text-[var(--mantine-color-chatbox-brand-text)]" />
-                  </Tooltip>
-                )}
-                {model.capabilities?.includes('tool_use') && (
-                  <Tooltip label={t('Tool Use')}>
-                    <IconTool size={20} className="text-[var(--mantine-color-chatbox-success-text)]" />
-                  </Tooltip>
-                )}
-              </Flex>
-
-              {!providerSettings?.excludedModels?.includes(model.modelId) ? (
-                <Button
-                  variant="transparent"
-                  p={0}
-                  h="auto"
-                  size="xs"
-                  bd={0}
-                  className="ml-auto"
-                  onClick={() =>
-                    setProviderSettings({
-                      excludedModels: [...(providerSettings?.excludedModels || []), model.modelId],
-                    })
-                  }
-                >
-                  <IconCircleMinus size={20} className="text-[var(--mantine-color-chatbox-error-text)]" />
-                </Button>
-              ) : (
-                <Button
-                  variant="transparent"
-                  p={0}
-                  h="auto"
-                  size="xs"
-                  bd={0}
-                  className="ml-auto"
-                  onClick={() =>
-                    setProviderSettings({
-                      excludedModels: (providerSettings?.excludedModels || []).filter((m) => m !== model.modelId),
-                    })
-                  }
-                >
-                  <IconCirclePlus size={20} className="text-[var(--mantine-color-chatbox-success-text)]" />
-                </Button>
-              )}
-            </Flex>
-          ))}
-        </Stack>
+        <ModelList
+          models={allChatboxAIModels}
+          showActions={true}
+          onAddModel={(model) =>
+            setProviderSettings({
+              excludedModels: (providerSettings?.excludedModels || []).filter((m) => m !== model.modelId),
+            })
+          }
+          onRemoveModel={(modelId) =>
+            setProviderSettings({
+              excludedModels: [...(providerSettings?.excludedModels || []), modelId],
+            })
+          }
+          displayedModelIds={chatboxAIModels.map((m) => m.modelId)}
+          showSearch={true}
+        />
       </Modal>
     </Stack>
   )

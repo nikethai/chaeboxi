@@ -5,7 +5,7 @@ import storage, { StorageKey } from '../../storage'
 import { migrateMessage } from '../../utils/message'
 import { migrateSession, sortSessions } from '../../utils/session-utils'
 import { mergeSettings } from '../sessionActions'
-import { settingsAtom } from './settingsAtoms'
+import { settingsStore } from '../settingsStore'
 import { createSessionAtom } from './throttleWriteSessionAtom'
 
 // sessions
@@ -110,7 +110,7 @@ export const currentSessionTypeAtom = selectAtom(currentSessionAtom, (session) =
 
 export const currentMergedSettingsAtom = atom((get) => {
   const sessionSettings = get(currentSessionSettingsAtom)
-  const globalSettings = get(settingsAtom) // Ensure settingsAtom is imported correctly
+  const globalSettings = settingsStore.getState().getSettings()
   if (!sessionSettings) {
     return globalSettings
   }

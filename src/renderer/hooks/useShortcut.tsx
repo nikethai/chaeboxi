@@ -1,13 +1,12 @@
 import { useNavigate } from '@tanstack/react-router'
-import { getDefaultStore } from 'jotai'
 import { useEffect } from 'react'
+import { router } from '@/router'
+import { uiStore } from '@/stores/uiStore'
+import { getOS } from '../packages/navigator'
 import platform from '../platform'
-import * as atoms from '../stores/atoms'
 import * as sessionActions from '../stores/sessionActions'
 import * as dom from './dom'
 import { useIsSmallScreen } from './useScreenChange'
-import { getOS } from '../packages/navigator'
-import { router } from '@/router'
 
 type NavigationCallback = (path: string) => void
 
@@ -47,8 +46,9 @@ function keyboardShortcut(e: KeyboardEvent, navigate?: NavigationCallback) {
   }
   if (e.key === 'e' && ctrlKey) {
     dom.focusMessageInput()
-    const store = getDefaultStore()
-    store.set(atoms.inputBoxWebBrowsingModeAtom, (v) => !v)
+    uiStore.setState((draft) => {
+      draft.inputBoxWebBrowsingMode = !draft.inputBoxWebBrowsingMode
+    })
     return
   }
 
@@ -89,12 +89,11 @@ function keyboardShortcut(e: KeyboardEvent, navigate?: NavigationCallback) {
   }
 
   if (e.key === 'k' && ctrlKey) {
-    const store = getDefaultStore()
-    const openSearchDialog = store.get(atoms.openSearchDialogAtom)
+    const openSearchDialog = uiStore.getState().openSearchDialog
     if (openSearchDialog) {
-      store.set(atoms.openSearchDialogAtom, false)
+      uiStore.setState({ openSearchDialog: false })
     } else {
-      store.set(atoms.openSearchDialogAtom, true)
+      uiStore.setState({ openSearchDialog: true })
     }
   }
   if (e.key === ',' && e.metaKey && navigate) {

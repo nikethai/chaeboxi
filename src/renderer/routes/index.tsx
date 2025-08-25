@@ -4,7 +4,6 @@ import { IconChevronLeft, IconChevronRight, IconX } from '@tabler/icons-react'
 import { createFileRoute, useNavigate, useRouterState } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import clsx from 'clsx'
-import { useAtom, useAtomValue } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type CopilotDetail, createMessage, type Session } from 'src/shared/types'
@@ -15,17 +14,11 @@ import HomepageIcon from '@/components/icons/HomepageIcon'
 import Page from '@/components/Page'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import { useSettings } from '@/hooks/useSettings'
 import platform from '@/platform'
-import {
-  chatSessionSettingsAtom,
-  newSessionStateAtom,
-  sessionKnowledgeBaseMapAtom,
-  showCopilotsInNewSessionAtom,
-} from '@/stores/atoms'
 import * as sessionActions from '@/stores/sessionActions'
 import { initEmptyChatSession } from '@/stores/sessionActions'
 import { createSession, getSessionAsync } from '@/stores/sessionStorageMutations'
+import { useUIStore } from '@/stores/uiStore'
 
 export const Route = createFileRoute('/')({
   component: Index,
@@ -40,11 +33,10 @@ function Index() {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
 
-  const [chatSessionSettings] = useAtom(chatSessionSettingsAtom)
-  const [newSessionState, setNewSessionState] = useAtom(newSessionStateAtom)
-  const [sessionKnowledgeBaseMap, setSessionKnowledgeBaseMap] = useAtom(sessionKnowledgeBaseMapAtom)
-  const showCopilotsInNewSession = useAtomValue(showCopilotsInNewSessionAtom)
-  const { settings } = useSettings()
+  const newSessionState = useUIStore((s) => s.newSessionState)
+  const setNewSessionState = useUIStore((s) => s.setNewSessionState)
+  const addSessionKnowledgeBase = useUIStore((s) => s.addSessionKnowledgeBase)
+  const showCopilotsInNewSession = useUIStore((s) => s.showCopilotsInNewSession)
 
   const [session, setSession] = useState<Session>({
     id: 'new',
@@ -52,23 +44,23 @@ function Index() {
   })
 
   // 理论上 initEmptyChatSession 的时候就已经读取了chatSessionSettingsAtom的值了，但是由于atom是异步的，冷启动的时候大概率会拿到一个空值，所以这里再设置一次
-  useEffect(() => {
-    setSession((old) => ({
-      ...old,
-      settings: {
-        ...old.settings,
-        maxContextMessageCount: settings.maxContextMessageCount || 6,
-        temperature: settings.temperature || undefined,
-        topP: settings.topP || undefined,
-        ...(settings.defaultChatModel
-          ? {
-              provider: settings.defaultChatModel.provider,
-              modelId: settings.defaultChatModel.model,
-            }
-          : chatSessionSettings),
-      },
-    }))
-  }, [chatSessionSettings, settings])
+  // useEffect(() => {
+  //   setSession((old) => ({
+  //     ...old,
+  //     settings: {
+  //       ...old.settings,
+  //       maxContextMessageCount: settings.maxContextMessageCount || 6,
+  //       temperature: settings.temperature || undefined,
+  //       topP: settings.topP || undefined,
+  //       ...(settings.defaultChatModel
+  //         ? {
+  //             provider: settings.defaultChatModel.provider,
+  //             modelId: settings.defaultChatModel.model,
+  //           }
+  //         : chatSessionSettings),
+  //     },
+  //   }))
+  // }, [chatSessionSettings, settings])
 
   const selectedModel = useMemo(() => {
     if (session.settings?.provider && session.settings.modelId) {
@@ -137,10 +129,7 @@ function Index() {
 
     // Transfer knowledge base from newSessionState to the actual session
     if (newSessionState.knowledgeBase) {
-      setSessionKnowledgeBaseMap({
-        ...sessionKnowledgeBaseMap,
-        [newSession.id]: newSessionState.knowledgeBase,
-      })
+      addSessionKnowledgeBase(newSession.id, newSessionState.knowledgeBase)
       // Clear newSessionState after transfer
       setNewSessionState({})
     }

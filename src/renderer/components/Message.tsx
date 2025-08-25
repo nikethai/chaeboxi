@@ -18,7 +18,7 @@ import Box from '@mui/material/Box'
 import MenuItem from '@mui/material/MenuItem'
 import { useNavigate } from '@tanstack/react-router'
 import * as dateFns from 'date-fns'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtomValue } from 'jotai'
 import { isEmpty } from 'lodash'
 import type React from 'react'
 import { type FC, type MouseEventHandler, memo, useEffect, useMemo, useRef, useState } from 'react'
@@ -30,33 +30,14 @@ import { copyToClipboard } from '@/packages/navigator'
 import { estimateTokensFromMessages } from '@/packages/token'
 import { countWord } from '@/packages/word-count'
 import platform from '@/platform'
-import { getMessageText } from '@/utils/message'
-import type { Message, SessionType } from '../../shared/types'
+import type { Message, MessageToolCallPart, SessionType } from '../../shared/types'
+import { getMessageText } from '../../shared/utils/message'
 import '../static/Block.css'
 
 import { IconInfoCircle } from '@tabler/icons-react'
-import {
-  autoCollapseCodeBlockAtom,
-  autoPreviewArtifactsAtom,
-  currentSessionAssistantAvatarKeyAtom,
-  currentSessionPicUrlAtom,
-  defaultAssistantAvatarKeyAtom,
-  enableLaTeXRenderingAtom,
-  enableMarkdownRenderingAtom,
-  enableMermaidRenderingAtom,
-  messageScrollingScrollPositionAtom,
-  openSettingDialogAtom,
-  pictureShowAtom,
-  quoteAtom,
-  showFirstTokenLatencyAtom,
-  showMessageTimestampAtom,
-  showModelNameAtom,
-  showTokenCountAtom,
-  showTokenUsedAtom,
-  showWordCountAtom,
-  userAvatarKeyAtom,
-  widthFullAtom,
-} from '../stores/atoms'
+import { useSettingsStore } from '@/stores/settingsStore'
+import { useUIStore } from '@/stores/uiStore'
+import { currentSessionAssistantAvatarKeyAtom, currentSessionPicUrlAtom } from '../stores/atoms'
 import * as scrollActions from '../stores/scrollActions'
 import * as sessionActions from '../stores/sessionActions'
 import * as toastActions from '../stores/toastActions'
@@ -88,25 +69,26 @@ const _Message: FC<Props> = (props) => {
   const navigate = useNavigate()
   const { t } = useTranslation()
   const theme = useTheme()
+  const {
+    defaultAssistantAvatarKey,
+    userAvatarKey,
+    showMessageTimestamp,
+    showModelName,
+    showTokenCount,
+    showWordCount,
+    showTokenUsed,
+    showFirstTokenLatency,
+    enableMarkdownRendering,
+    enableLaTeXRendering,
+    enableMermaidRendering,
+    autoPreviewArtifacts,
+    autoCollapseCodeBlock,
+  } = useSettingsStore((state) => state)
   const currentSessionAssistantAvatarKey = useAtomValue(currentSessionAssistantAvatarKeyAtom)
-  const defaultAssistantAvatarKey = useAtomValue(defaultAssistantAvatarKeyAtom)
-  const userAvatarKey = useAtomValue(userAvatarKeyAtom)
-  const showMessageTimestamp = useAtomValue(showMessageTimestampAtom)
-  const showModelName = useAtomValue(showModelNameAtom)
-  const showTokenCount = useAtomValue(showTokenCountAtom)
-  const showWordCount = useAtomValue(showWordCountAtom)
-  const showTokenUsed = useAtomValue(showTokenUsedAtom)
-  const showFirstTokenLatency = useAtomValue(showFirstTokenLatencyAtom)
-  const enableMarkdownRendering = useAtomValue(enableMarkdownRenderingAtom)
-  const enableLaTeXRendering = useAtomValue(enableLaTeXRenderingAtom)
-  const enableMermaidRendering = useAtomValue(enableMermaidRenderingAtom)
   const currentSessionPicUrl = useAtomValue(currentSessionPicUrlAtom)
-  const messageScrollingScrollPosition = useAtomValue(messageScrollingScrollPositionAtom)
-  const setPictureShow = useSetAtom(pictureShowAtom)
-  const setOpenSettingWindow = useSetAtom(openSettingDialogAtom)
-  const widthFull = useAtomValue(widthFullAtom)
-  const autoPreviewArtifacts = useAtomValue(autoPreviewArtifactsAtom)
-  const autoCollapseCodeBlock = useAtomValue(autoCollapseCodeBlockAtom)
+  const messageScrollingScrollPosition = useUIStore((s) => s.messageScrollingScrollPosition)
+  const setPictureShow = useUIStore((s) => s.setPictureShow)
+  const widthFull = useUIStore((s) => s.widthFull)
 
   const [previewArtifact, setPreviewArtifact] = useState(autoPreviewArtifacts)
 
@@ -125,7 +107,7 @@ const _Message: FC<Props> = (props) => {
 
   const [autoScrollId, setAutoScrollId] = useState<null | string>(null)
 
-  const setQuote = useSetAtom(quoteAtom)
+  const setQuote = useUIStore((state) => state.setQuote)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const open = Boolean(anchorEl)
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -313,7 +295,7 @@ const _Message: FC<Props> = (props) => {
     }
   }, [needArtifact, autoScrollId, msg.generating, msg.id])
 
-  const contentParts = msg.contentParts
+  const contentParts = msg.contentParts || []
 
   const CollapseButton = (
     <span
@@ -445,9 +427,8 @@ const _Message: FC<Props> = (props) => {
                     }}
                     className="cursor-pointer"
                     onClick={() => {
-                      setOpenSettingWindow('chat')
                       navigate({
-                        to: '/settings',
+                        to: '/settings/chat',
                       })
                     }}
                   >
@@ -504,7 +485,7 @@ const _Message: FC<Props> = (props) => {
                 {
                   // 这里的空行仅仅是为了在只发送文件时消息气泡的美观
                   // 正常情况下，应该考虑优化 msg-content 的样式。现在这里是一个临时的偷懒方式。
-                  getMessageText(msg).trim() === '' && <p></p>
+                  getMessageText(msg, true, true).trim() === '' && <p></p>
                 }
                 {contentParts && contentParts.length > 0 && (
                   <div>
@@ -585,7 +566,7 @@ const _Message: FC<Props> = (props) => {
                           </div>
                         )
                       ) : item.type === 'tool-call' ? (
-                        <ToolCallPartUI key={item.toolCallId} part={item} />
+                        <ToolCallPartUI key={item.toolCallId} part={item as MessageToolCallPart} />
                       ) : null
                     )}
                   </div>

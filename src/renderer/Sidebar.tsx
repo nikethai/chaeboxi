@@ -19,7 +19,6 @@ import {
 import SwipeableDrawer from '@mui/material/SwipeableDrawer'
 import { IconCode } from '@tabler/icons-react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
-import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { PanelLeftClose } from 'lucide-react'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,13 +29,15 @@ import useVersion from './hooks/useVersion'
 import { cn } from './lib/utils'
 import { trackingEvent } from './packages/event'
 import icon from './static/icon.png'
-import * as atoms from './stores/atoms'
 import * as sessionActions from './stores/sessionActions'
+import { useLanguage } from './stores/settingsStore'
+import { useUIStore } from './stores/uiStore'
 import { CHATBOX_BUILD_PLATFORM } from './variables'
 
 export default function Sidebar() {
-  const language = useAtomValue(atoms.languageAtom)
-  const [showSidebar, setShowSidebar] = useAtom(atoms.showSidebarAtom)
+  const language = useLanguage()
+  const showSidebar = useUIStore((s) => s.showSidebar)
+  const setShowSidebar = useUIStore((s) => s.setShowSidebar)
 
   const sessionListRef = useRef<HTMLDivElement>(null)
 
@@ -126,7 +127,7 @@ function SidebarButtons(props: { sessionListRef: React.RefObject<HTMLDivElement>
   const versionHook = useVersion()
   const routerState = useRouterState()
   const navigate = useNavigate()
-  const setShowSidebar = useSetAtom(atoms.showSidebarAtom)
+  const setShowSidebar = useUIStore((s) => s.setShowSidebar)
   const isSmallScreen = useIsSmallScreen()
 
   const handleCreateNewSession = useCallback(() => {

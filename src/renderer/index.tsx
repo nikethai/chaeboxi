@@ -5,7 +5,7 @@ import { useAtomValue } from 'jotai'
 import { StrictMode, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import { ErrorBoundary } from './components/ErrorBoundary'
-import './i18n'
+import i18n from './i18n'
 import { getLogger } from './lib/utils'
 import reportWebVitals from './reportWebVitals'
 import { router } from './router'
@@ -35,6 +35,8 @@ import './setup/ga_init'
 
 // 引入保护代码
 import './setup/protect'
+import { initLastUsedModelStore } from './stores/lastUsedModelStore'
+import { initSettingsStore } from './stores/settingsStore'
 
 // 开发环境下引入错误测试工具
 // if (process.env.NODE_ENV === 'development') {
@@ -123,23 +125,13 @@ initializeApp()
     Sentry.captureException(e)
     log.error('initializeApp error', e)
   })
-  .finally(() => {
+  .finally(async () => {
     clearTimeout(tid)
 
-    // 等待settings初始化完成，尽量避免闪屏
-    // TODO: 更好的做法是在必要的数据全部初始化完成后再hide splash screen
-    delay(500).then(() => {
-      if (platform.type === 'mobile') {
-        SplashScreen.hide()
-      }
-      const el = document.querySelector('.splash-screen')
-      if (el) {
-        el.addEventListener('animationend', () => {
-          el.parentNode?.removeChild(el)
-        })
-        el.classList.add('splash-screen-fade-out')
-      }
-    })
+    // 等待settings初始化完成，避免闪屏
+    const [settings] = await Promise.all([initSettingsStore(), initLastUsedModelStore()])
+
+    i18n.changeLanguage(settings.language)
 
     // 初始化完成，可以开始渲染
     ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
@@ -149,6 +141,17 @@ initializeApp()
         </ErrorBoundary>
       </StrictMode>
     )
+
+    if (platform.type === 'mobile') {
+      SplashScreen.hide()
+    }
+    const el = document.querySelector('.splash-screen')
+    if (el) {
+      el.addEventListener('animationend', () => {
+        el.parentNode?.removeChild(el)
+      })
+      el.classList.add('splash-screen-fade-out')
+    }
   })
 
 // If you want to start measuring performance in your app, pass a function

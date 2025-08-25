@@ -2,11 +2,12 @@ import NiceModal from '@ebay/nice-modal-react'
 import EditIcon from '@mui/icons-material/Edit'
 import ImageIcon from '@mui/icons-material/Image'
 import { Box, Chip, IconButton, Tooltip, Typography, useTheme } from '@mui/material'
-import { useAtom, useAtomValue } from 'jotai'
+import { useAtomValue } from 'jotai'
 import { PanelRightClose, Settings2 } from 'lucide-react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
+import { useUIStore } from '@/stores/uiStore'
 import { isChatSession, isPictureSession } from '../../shared/types'
 import useNeedRoomForWinControls from '../hooks/useNeedRoomForWinControls'
 import { useIsSmallScreen } from '../hooks/useScreenChange'
@@ -20,7 +21,8 @@ export default function Header() {
   const { t } = useTranslation()
   const theme = useTheme()
   const currentSession = useAtomValue(atoms.currentSessionAtom)
-  const [showSidebar, setShowSidebar] = useAtom(atoms.showSidebarAtom)
+  const showSidebar = useUIStore((s) => s.showSidebar)
+  const setShowSidebar = useUIStore((s) => s.setShowSidebar)
 
   const isSmallScreen = useIsSmallScreen()
 

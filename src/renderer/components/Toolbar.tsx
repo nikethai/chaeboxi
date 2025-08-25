@@ -1,26 +1,27 @@
-import Box from '@mui/material/Box'
-import IconButton from '@mui/material/IconButton'
-import Button from '@mui/material/Button'
-import SearchIcon from '@mui/icons-material/Search'
-import HistoryIcon from '@mui/icons-material/History'
-import Save from '@mui/icons-material/Save'
-import { useAtom, useAtomValue, useSetAtom } from 'jotai'
-import * as atoms from '../stores/atoms'
-import { useTranslation } from 'react-i18next'
-import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
-import StyledMenu from './StyledMenu'
-import { useState, useEffect } from 'react'
-import { MenuItem } from '@mui/material'
+import NiceModal from '@ebay/nice-modal-react'
 import CleaningServicesIcon from '@mui/icons-material/CleaningServices'
+import HistoryIcon from '@mui/icons-material/History'
+import MoreHorizIcon from '@mui/icons-material/MoreHoriz'
+import Save from '@mui/icons-material/Save'
+import SearchIcon from '@mui/icons-material/Search'
 import WidthNormalIcon from '@mui/icons-material/WidthNormal'
 import WidthWideIcon from '@mui/icons-material/WidthWide'
+import { MenuItem } from '@mui/material'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import IconButton from '@mui/material/IconButton'
+import { useAtomValue, useSetAtom } from 'jotai'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useIsLargeScreen, useIsSmallScreen } from '@/hooks/useScreenChange'
-import * as sessionActions from '@/stores/sessionActions'
-import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
-import NiceModal from '@ebay/nice-modal-react'
-import { removeSession } from '@/stores/sessionStorageMutations'
-import UpdateAvailableButton from './UpdateAvailableButton'
 import platform from '@/platform'
+import * as sessionActions from '@/stores/sessionActions'
+import { removeSession } from '@/stores/sessionStorageMutations'
+import { useUIStore } from '@/stores/uiStore'
+import * as atoms from '../stores/atoms'
+import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
+import StyledMenu from './StyledMenu'
+import UpdateAvailableButton from './UpdateAvailableButton'
 
 /**
  * 顶部标题工具栏（右侧）
@@ -34,9 +35,10 @@ export default function Toolbar() {
   const currentSession = useAtomValue(atoms.currentSessionAtom)
   const [showUpdateNotification, setShowUpdateNotification] = useState(false)
 
-  const setOpenSearchDialog = useSetAtom(atoms.openSearchDialogAtom)
+  const setOpenSearchDialog = useUIStore((s) => s.setOpenSearchDialog)
   const setThreadHistoryDrawerOpen = useSetAtom(atoms.showThreadHistoryDrawerAtom)
-  const [widthFull, setWidthFull] = useAtom(atoms.widthFullAtom)
+  const widthFull = useUIStore((s) => s.widthFull)
+  const setWidthFull = useUIStore((s) => s.setWidthFull)
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const open = Boolean(anchorEl)
@@ -86,7 +88,7 @@ export default function Toolbar() {
           aria-label="menu"
           onClick={() => setOpenSearchDialog(true)}
           sx={{
-            mr: 0.5
+            mr: 0.5,
           }}
         >
           <SearchIcon />
@@ -116,7 +118,7 @@ export default function Toolbar() {
           aria-label="width-full-button"
           onClick={() => setWidthFull(!widthFull)}
           sx={{
-            mr: 0.5
+            mr: 0.5,
           }}
         >
           {widthFull ? <WidthWideIcon /> : <WidthNormalIcon />}
@@ -126,7 +128,7 @@ export default function Toolbar() {
         color="inherit"
         aria-label="thread-history-drawer-button"
         sx={{
-          mr: 0.5
+          mr: 0.5,
         }}
         onClick={() => setThreadHistoryDrawerOpen(true)}
       >

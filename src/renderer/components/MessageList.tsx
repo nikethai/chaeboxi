@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils'
 import * as atoms from '@/stores/atoms'
 import * as scrollActions from '@/stores/scrollActions'
 import * as sessionActions from '@/stores/sessionActions'
+import { useUIStore } from '@/stores/uiStore'
 import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
 import Message from './Message'
 import StyledMenu from './StyledMenu'
@@ -34,15 +35,15 @@ export default function MessageList(props: { className?: string; currentSession:
   const virtuoso = useRef<VirtuosoHandle>(null)
   const messageListRef = useRef<HTMLDivElement>(null)
 
-  const setMessageListElement = useSetAtom(atoms.messageListElementAtom)
-  const setMessageScrollingAtom = useSetAtom(atoms.messageScrollingAtom)
-  const setAtTop = useSetAtom(atoms.messageScrollingAtTopAtom)
-  const setAtBottom = useSetAtom(atoms.messageScrollingAtBottomAtom)
-  const setMessageScrollingScrollPosition = useSetAtom(atoms.messageScrollingScrollPositionAtom)
+  const setMessageListElement = useUIStore((s) => s.setMessageListElement)
+  const setMessageScrolling = useUIStore((s) => s.setMessageScrolling)
+  const setAtTop = useUIStore((s) => s.setMessageScrollingAtTop)
+  const setAtBottom = useUIStore((s) => s.setMessageScrollingAtBottom)
+  const setMessageScrollingScrollPosition = useUIStore((s) => s.setMessageScrollingScrollPosition)
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 仅执行一次
   useEffect(() => {
-    setMessageScrollingAtom(virtuoso)
+    setMessageScrolling(virtuoso)
     const currentVirtuoso = virtuoso.current // 清理时 virtuoso.current 已经为 null
     return () => {
       currentVirtuoso?.getState((state) => {
@@ -194,7 +195,7 @@ export default function MessageList(props: { className?: string; currentSession:
 
 function ForkNav(props: { msgId: string; forks: NonNullable<Session['messageForksHash']>[string] }) {
   const { msgId, forks } = props
-  const widthFull = useAtomValue(atoms.widthFullAtom)
+  const widthFull = useUIStore((s) => s.widthFull)
   const [flash, setFlash] = useState(false)
   const prevLength = useRef(forks.lists.length)
   const { t } = useTranslation()

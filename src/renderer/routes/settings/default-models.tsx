@@ -6,7 +6,7 @@ import { forwardRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SystemProviders } from 'src/shared/defaults'
 import ModelSelector from '@/components/ModelSelector'
-import { useSettings } from '@/hooks/useSettings'
+import { useSettingsStore } from '@/stores/settingsStore'
 
 export const Route = createFileRoute('/settings/default-models')({
   component: RouteComponent,
@@ -14,7 +14,7 @@ export const Route = createFileRoute('/settings/default-models')({
 
 function RouteComponent() {
   const { t } = useTranslation()
-  const { settings, setSettings } = useSettings()
+  const { setSettings, ...settings } = useSettingsStore((state) => state)
 
   return (
     <Stack p="md" gap="xl">
@@ -174,17 +174,18 @@ const ModelSelectContent = forwardRef<
   { provider?: string; model?: string; autoText?: string; onClick?: () => void }
 >(({ provider, model, autoText, onClick }, ref) => {
   const { t } = useTranslation()
-  const { settings } = useSettings()
+  const customProviders = useSettingsStore((state) => state.customProviders)
+  const providers = useSettingsStore((state) => state.providers)
   const displayText = useMemo(
     () =>
       !provider || !model
         ? autoText || t('Auto')
-        : ([...SystemProviders, ...(settings.customProviders || [])].find((p) => p.id === provider)?.name || provider) +
+        : ([...SystemProviders, ...(customProviders || [])].find((p) => p.id === provider)?.name || provider) +
           '/' +
-          ((settings.providers?.[provider]?.models || SystemProviders[provider as any]?.defaultSettings?.models)?.find(
+          ((providers?.[provider]?.models || SystemProviders[provider as any]?.defaultSettings?.models)?.find(
             (m) => m.modelId === model
           )?.nickname || model),
-    [provider, model, settings, autoText, t]
+    [provider, model, autoText, t, customProviders, providers]
   )
   return (
     <Flex

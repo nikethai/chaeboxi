@@ -53,7 +53,7 @@ type MigrateStore = {
   setBlob?: (key: string, value: string) => Promise<void>
 }
 
-export const CurrentVersion = 12
+export const CurrentVersion = 13
 
 async function migrateStorage() {
   const configVersion = await storage.getItem<number>(StorageKey.ConfigVersion, 0)
@@ -136,6 +136,7 @@ export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true)
     migrate_9_to_10,
     migrate_10_to_11,
     migrate_11_to_12,
+    migrate_12_to_13,
   ]
 
   for (; configVersion < CurrentVersion; configVersion++) {
@@ -644,4 +645,16 @@ async function migrate_10_to_11(dataStore: MigrateStore) {
 // 占位，防止后面重复使用该版本号
 async function migrate_11_to_12(dataStore: MigrateStore) {
   return true
+}
+
+async function migrate_12_to_13(dataStore: MigrateStore) {
+  // 将settings的结构调整为zustand需要的结构
+  const settings = await dataStore.getData(StorageKey.Settings, defaults.settings())
+
+  await dataStore.setData(StorageKey.Settings, {
+    state: settings,
+    version: 0,
+  })
+  log.info('migrate_12_to_13, done')
+  return false
 }

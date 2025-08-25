@@ -7,6 +7,7 @@ import { sequenceMessages } from 'src/shared/utils/message'
 import { getModelSettings } from 'src/shared/utils/model_settings'
 import { createModelDependencies } from '@/adapters'
 import * as settingActions from '@/stores/settingActions'
+import { settingsStore } from '@/stores/settingsStore'
 import type { ModelInterface, OnResultChange, onResultChangeWithCancel } from '../../../shared/models/types'
 import {
   type KnowledgeBase,
@@ -78,7 +79,7 @@ async function handleSearchResult(
 async function ocrMessages(messages: Message[]) {
   // check chatbox ai license active
   const licenseKey = settingActions.getLicenseKey()
-  const settings = settingActions.getSettings()
+  const settings = settingsStore.getState().getSettings()
   if (!licenseKey && !(settings.ocrModel?.provider && settings.ocrModel?.model)) {
     // use default ocr model
     throw ChatboxAIAPIError.fromCodeName('model_not_support_image_2', 'model_not_support_image_2')

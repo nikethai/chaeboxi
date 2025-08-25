@@ -30,11 +30,11 @@ import {
 import { createModelDependencies } from '@/adapters'
 import { ModelList } from '@/components/ModelList'
 import PopoverConfirm from '@/components/PopoverConfirm'
-import { useProviderSettings, useSettings } from '@/hooks/useSettings'
 import { streamText } from '@/packages/model-calls'
 import { getModelSettingUtil } from '@/packages/model-setting-utils'
 import platform from '@/platform'
 import * as sessionActions from '@/stores/sessionActions'
+import { useProviderSettings, useSettingsStore } from '@/stores/settingsStore'
 import { add as addToast } from '@/stores/toastActions'
 
 export const Route = createFileRoute('/settings/provider/$providerId')({
@@ -49,7 +49,8 @@ function RouteComponent() {
 function ProviderSettings({ providerId }: { providerId: string }) {
   const navigate = useNavigate()
   const { t } = useTranslation()
-  const { settings, setSettings } = useSettings()
+  const { setSettings, ...settings } = useSettingsStore((state) => state)
+
   const baseInfo = [...SystemProviders, ...(settings.customProviders || [])].find((p) => p.id === providerId)
 
   const { providerSettings, setProviderSettings } = useProviderSettings(providerId)

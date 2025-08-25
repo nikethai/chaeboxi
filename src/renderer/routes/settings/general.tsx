@@ -20,11 +20,11 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type Language, type ProviderInfo, type Settings, Theme } from 'src/shared/types'
 import LazySlider from '@/components/LazySlider'
-import { useSettings } from '@/hooks/useSettings'
 import { languageNameMap, languages } from '@/i18n/locales'
 import platform from '@/platform'
 import storage, { StorageKey } from '@/storage'
 import { migrateOnData } from '@/stores/migration'
+import { useSettingsStore } from '@/stores/settingsStore'
 
 export const Route = createFileRoute('/settings/general')({
   component: RouteComponent,
@@ -32,7 +32,7 @@ export const Route = createFileRoute('/settings/general')({
 
 function RouteComponent() {
   const { t } = useTranslation()
-  const { settings, setSettings } = useSettings()
+  const { setSettings, ...settings } = useSettingsStore((state) => state)
 
   return (
     <Stack p="md" gap="xl">

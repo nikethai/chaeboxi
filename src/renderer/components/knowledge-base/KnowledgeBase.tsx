@@ -10,9 +10,10 @@ import { SystemProviders } from 'src/shared/defaults'
 import type { KnowledgeBase, ModelProvider, ProviderModelInfo } from 'src/shared/types'
 import { parseKnowledgeBaseModelString } from 'src/shared/utils/knowledge-base-model-parser'
 import { useProviders } from '@/hooks/useProviders'
-import { useSettings } from '@/hooks/useSettings'
 import * as remote from '@/packages/remote'
 import platform from '@/platform'
+import { useSettingsStore } from '@/stores/settingsStore'
+import { trackEvent } from '@/utils/track'
 import KnowledgeBaseDocuments from './KnowledgeBaseDocuments'
 import {
   KnowledgeBaseChatboxAIInfo,
@@ -82,7 +83,8 @@ const KnowledgeBasePage: React.FC = () => {
   const [kbList, setKbList] = useState<KnowledgeBase[]>([])
   const [newKbName, setNewKbName] = useState('')
   const [showCreate, setShowCreate] = useState(false)
-  const { settings } = useSettings()
+  const licenseKey = useSettingsStore((state) => state.licenseKey)
+  const customProviders = useSettingsStore((state) => state.customProviders)
 
   const [newEmbeddingModel, setNewEmbeddingModel] = useState<string | null>(null)
   const [newRerankModel, setNewRerankModel] = useState<string | null>(null)
@@ -100,8 +102,8 @@ const KnowledgeBasePage: React.FC = () => {
   } | null>(null)
 
   const canUseChatboxAIProvider = useMemo(() => {
-    return !!(chatboxAIModels && settings.licenseKey)
-  }, [chatboxAIModels, settings.licenseKey])
+    return !!(chatboxAIModels && licenseKey)
+  }, [chatboxAIModels, licenseKey])
 
   const [newProviderMode, setNewProviderMode] = useState<'chatbox-ai' | 'custom'>('custom')
 
@@ -155,14 +157,14 @@ const KnowledgeBasePage: React.FC = () => {
         return SystemProviders.find((it) => it.id === providerId)?.name
       }
 
-      const customProvider = settings.customProviders?.find((it) => it.id === providerId)
+      const customProvider = customProviders?.find((it) => it.id === providerId)
       if (customProvider) {
         return customProvider.name
       }
 
       return providerId
     },
-    [settings.customProviders]
+    [customProviders]
   )
 
   const getModelName = useCallback(
@@ -267,6 +269,14 @@ const KnowledgeBasePage: React.FC = () => {
         embeddingModel: embeddingModel,
         rerankModel: rerankModel,
         visionModel: visionModel,
+      })
+
+      trackEvent('knowledge_base_created', {
+        provider_mode: newProviderMode,
+        embedding_model: embeddingModel,
+        rerank_model: rerankModel || null,
+        vision_model: visionModel || null,
+        knowledge_base_name: newKbName,
       })
 
       // Reset form

@@ -1,11 +1,10 @@
+import { app, powerMonitor } from 'electron'
 import Store from 'electron-store'
-import { Config, Settings } from '../shared/types'
-import * as defaults from '../shared/defaults'
-import path from 'path'
-import { app } from 'electron'
 import * as fs from 'fs-extra'
-import { powerMonitor } from 'electron'
+import path from 'path'
 import sanitizeFilename from 'sanitize-filename'
+import * as defaults from '../shared/defaults'
+import type { Config, Settings } from '../shared/types'
 import { getLogger } from './util'
 
 const logger = getLogger('store-node')
@@ -32,7 +31,10 @@ if (fs.existsSync(configPath) && !checkConfigValid(configPath)) {
 
 // 2) 初始化store
 interface StoreType {
-  settings: Settings
+  configVersion: number
+  settings: {
+    state: Settings
+  }
   configs: Config
   lastShownAboutDialogVersion: string // 上次启动时自动弹出关于对话框的应用版本
 }
@@ -66,8 +68,14 @@ async function autoBackup() {
 }
 
 export function getSettings(): Settings {
-  const settings = store.get<'settings'>('settings', defaults.settings())
-  return settings
+  const configVersion = store.get('configVersion')
+  if (configVersion >= 13) {
+    const { state: settings } = store.get<'settings'>('settings', { state: defaults.settings() })
+    return settings
+  } else {
+    const settings = (store.get as any)('settings', defaults.settings())
+    return settings
+  }
 }
 
 export function getConfig(): Config {
@@ -91,7 +99,7 @@ export async function backup() {
     logger.error('skip backup because config.json is invalid.')
     return
   }
-  let now = new Date().toISOString().replace(/:/g, '_')
+  const now = new Date().toISOString().replace(/:/g, '_')
   const backupPath = path.resolve(app.getPath('userData'), `config-backup-${now}.json`)
   try {
     await fs.copy(configPath, backupPath)

@@ -36,6 +36,9 @@ import * as picUtils from '@/packages/pic_utils'
 import platform from '@/platform'
 import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
+import * as atoms from '@/stores/atoms'
+import { useSettingsStore } from '@/stores/settingsStore'
+import { useUIStore } from '@/stores/uiStore'
 import { delay } from '@/utils'
 import { featureFlags } from '@/utils/feature-flags'
 import { trackEvent } from '@/utils/track'
@@ -47,7 +50,6 @@ import {
   type ShortcutSendValue,
 } from '../../../shared/types'
 import * as dom from '../../hooks/dom'
-import * as atoms from '../../stores/atoms'
 import * as sessionActions from '../../stores/sessionActions'
 import * as toastActions from '../../stores/toastActions'
 import { FileMiniCard, ImageMiniCard, LinkMiniCard } from '../Attachments'
@@ -120,11 +122,13 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const { t } = useTranslation()
     const isSmallScreen = useIsSmallScreen()
     const { height: viewportHeight } = useViewportSize()
-    const pasteLongTextAsAFile = useAtomValue(atoms.pasteLongTextAsAFileAtom)
-    const shortcuts = useAtomValue(atoms.shortcutsAtom)
-    const widthFull = useAtomValue(atoms.widthFullAtom) || fullWidth
+    const pasteLongTextAsAFile = useSettingsStore((state) => state.pasteLongTextAsAFile)
+    const shortcuts = useSettingsStore((state) => state.shortcuts)
+    const widthFull = useUIStore((s) => s.widthFull) || fullWidth
 
     // Use atom as the source of truth for pictureKeys and attachments
+    const webBrowsingMode = useUIStore((s) => s.inputBoxWebBrowsingMode)
+    const setWebBrowsingMode = useUIStore((s) => s.setInputBoxWebBrowsingMode)
 
     const currentSessionId = sessionId
     const isNewSession = currentSessionId === 'new'
@@ -148,7 +152,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     const { knowledgeBase, setKnowledgeBase } = useKnowledgeBase({ isNewSession })
 
-    const [webBrowsingMode, setWebBrowsingMode] = useAtom(atoms.inputBoxWebBrowsingModeAtom)
     const [showCompressionModal, setShowCompressionModal] = useState(false)
 
     const [links, setLinks] = useAtom(atoms.inputBoxLinksFamily(currentSessionId || 'new'))
@@ -608,7 +611,9 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     })
 
     // 引用消息
-    const [quote, setQuote] = useAtom(atoms.quoteAtom)
+    const quote = useUIStore((state) => state.quote)
+    const setQuote = useUIStore((state) => state.setQuote)
+    // const [quote, setQuote] = useUIStore(state => [state]) useAtom(atoms.quoteAtom)
     // biome-ignore lint/correctness/useExhaustiveDependencies: todo
     useEffect(() => {
       if (quote !== '') {

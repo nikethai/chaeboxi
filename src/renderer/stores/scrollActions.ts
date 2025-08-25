@@ -1,5 +1,6 @@
 import { getDefaultStore } from 'jotai'
 import * as atoms from './atoms'
+import { uiStore } from './uiStore'
 
 // scrollToMessage 滚动到指定消息，如果消息不存在则返回 false
 export function scrollToMessage(
@@ -22,8 +23,7 @@ export function scrollToIndex(
   align: 'start' | 'center' | 'end' = 'start',
   behavior: 'auto' | 'smooth' = 'auto' // 'auto' 立即滚动到指定位置，'smooth' 平滑滚动到指定位置
 ) {
-  const store = getDefaultStore()
-  const virtuoso = store.get(atoms.messageScrollingAtom)
+  const virtuoso = uiStore.getState().messageScrolling
   virtuoso?.current?.scrollToIndex({ index, align, behavior })
 }
 
@@ -100,8 +100,7 @@ export function clearAutoScroll(id?: string) {
 }
 
 export function getMessageListViewportHeight() {
-  const store = getDefaultStore()
-  const messageListElement = store.get(atoms.messageListElementAtom)
+  const messageListElement = uiStore.getState().messageListElement
   if (!messageListElement) {
     return 0
   }

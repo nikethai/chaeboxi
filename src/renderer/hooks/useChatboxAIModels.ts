@@ -1,13 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { ModelProviderEnum, type ProviderModelInfo } from 'src/shared/types'
 import { getModelManifest } from '@/packages/remote'
-import { languageAtom } from '@/stores/atoms'
-import { useProviderSettings } from './useSettings'
+import { useLanguage, useProviderSettings } from '@/stores/settingsStore'
 
 const useChatboxAIModels = () => {
-  const language = useAtomValue(languageAtom)
+  const language = useLanguage()
   const { providerSettings: chatboxAISettings, setProviderSettings } = useProviderSettings(ModelProviderEnum.ChatboxAI)
 
   const { data, ...others } = useQuery({

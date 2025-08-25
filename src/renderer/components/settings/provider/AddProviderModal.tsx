@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ModelProviderType } from 'src/shared/types'
 import { v4 as uuidv4 } from 'uuid'
-import { useSettings } from '@/hooks/useSettings'
+import { useSettingsStore } from '@/stores/settingsStore'
 
 interface AddProviderModalProps {
   opened: boolean
@@ -14,7 +14,8 @@ interface AddProviderModalProps {
 export function AddProviderModal({ opened, onClose }: AddProviderModalProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { settings, setSettings } = useSettings()
+  const setSettings = useSettingsStore((s) => s.setSettings)
+  const customProviders = useSettingsStore((s) => s.customProviders)
   const [newProviderName, setNewProviderName] = useState('')
   const [newProviderMode] = useState(ModelProviderType.OpenAI)
 
@@ -22,7 +23,7 @@ export function AddProviderModal({ opened, onClose }: AddProviderModalProps) {
     const pid = `custom-provider-${uuidv4()}`
     setSettings({
       customProviders: [
-        ...(settings.customProviders || []),
+        ...(customProviders || []),
         {
           id: pid,
           name: newProviderName,

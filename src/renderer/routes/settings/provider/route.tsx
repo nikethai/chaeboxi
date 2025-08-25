@@ -11,7 +11,8 @@ import { ImportProviderModal } from '@/components/settings/provider/ImportProvid
 import { ProviderList } from '@/components/settings/provider/ProviderList'
 import { useProviderImport } from '@/hooks/useProviderImport'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import { useSettings } from '@/hooks/useSettings'
+import useVersion from '@/hooks/useVersion'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { add as addToast } from '@/stores/toastActions'
 import { decodeBase64 } from '@/utils/base64'
 import { parseProviderFromJson } from '@/utils/provider-config'
@@ -31,18 +32,20 @@ function RouteComponent() {
   const navigate = useNavigate()
   const isSmallScreen = useIsSmallScreen()
   const routerState = useRouterState()
-  const { settings } = useSettings()
+  const customProviders = useSettingsStore((state) => state.customProviders)
+  const providersMap = useSettingsStore((state) => state.providers)
+  const { isExceeded } = useVersion()
 
   const providers = useMemo<ProviderInfo[]>(
     () =>
       [
-        ...SystemProviders,
-        ...(settings.customProviders || []),
+        ...SystemProviders.filter((p) => !(isExceeded && p.name.toLocaleLowerCase().match(/openai|claude|gemini/i))),
+        ...(customProviders || []),
       ].map((p) => ({
         ...p,
-        ...(settings.providers?.[p.id] || {}),
+        ...(providersMap?.[p.id] || {}),
       })),
-    [settings.customProviders, settings.providers]
+    [customProviders, isExceeded, providersMap]
   )
 
   const [newProviderModalOpened, setNewProviderModalOpened] = useState(false)

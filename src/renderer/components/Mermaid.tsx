@@ -1,15 +1,14 @@
-import { useSetAtom } from 'jotai'
-import mermaid from 'mermaid'
-import { useEffect, useState, useMemo } from 'react'
-import * as atoms from '@/stores/atoms'
-import { ChartBarStacked } from 'lucide-react'
-import { Img } from './Image'
-import { copyToClipboard } from '@/packages/navigator'
-import { cn } from '@/lib/utils'
 import DataObjectIcon from '@mui/icons-material/DataObject'
-import * as toastActions from '../stores/toastActions'
+import { ChartBarStacked } from 'lucide-react'
+import mermaid from 'mermaid'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/lib/utils'
+import { copyToClipboard } from '@/packages/navigator'
 import * as picUtils from '@/packages/pic_utils'
+import { useUIStore } from '@/stores/uiStore'
+import * as toastActions from '../stores/toastActions'
+import { Img } from './Image'
 
 export function MessageMermaid(props: { source: string; theme: 'light' | 'dark'; generating?: boolean }) {
   const { source, theme, generating } = props
@@ -62,7 +61,7 @@ export function MermaidSVGPreviewDangerous(props: {
 }) {
   const { svgId, svgCode, mermaidCode, className, generating } = props
   const { t } = useTranslation()
-  const setPictureShow = useSetAtom(atoms.pictureShowAtom)
+  const setPictureShow = useUIStore((s) => s.setPictureShow)
   if (!svgCode.includes('</svg') && generating) {
     return <Loading />
   }
@@ -101,7 +100,7 @@ export function MermaidSVGPreviewDangerous(props: {
 
 export function SVGPreview(props: { xmlCode: string; className?: string; generating?: boolean }) {
   let { xmlCode, className, generating } = props
-  const setPictureShow = useSetAtom(atoms.pictureShowAtom)
+  const setPictureShow = useUIStore((s) => s.setPictureShow)
   const svgBase64 = useMemo(() => {
     if (!xmlCode.includes('</svg') && generating) {
       return ''

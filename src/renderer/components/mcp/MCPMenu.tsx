@@ -1,13 +1,13 @@
-import { useMCPServerStatus, useToggleMCPServer } from '@/hooks/mcp'
-import { useSettings } from '@/hooks/useSettings'
-import { BUILTIN_MCP_SERVERS } from '@/packages/mcp/builtin'
-import { Button, Flex, Group, Menu, Switch, Text } from '@mantine/core'
-import { Link } from '@tanstack/react-router'
+import { Button, Flex, Group, Menu, Switch } from '@mantine/core'
 import { IconSettings2 } from '@tabler/icons-react'
-import { FC, ReactNode } from 'react'
-import MCPStatus from './MCPStatus'
-import { useAutoValidate } from '@/stores/premiumActions'
+import { Link } from '@tanstack/react-router'
+import type { FC, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useMCPServerStatus, useToggleMCPServer } from '@/hooks/mcp'
+import { BUILTIN_MCP_SERVERS } from '@/packages/mcp/builtin'
+import { useAutoValidate } from '@/stores/premiumActions'
+import { useMcpSettings } from '@/stores/settingsStore'
+import MCPStatus from './MCPStatus'
 
 interface ServerItem {
   id: string
@@ -40,21 +40,23 @@ const ServerItem: FC<{
 
 const MCPMenu: FC<{ children: (enabledTools: number) => ReactNode }> = ({ children }) => {
   const { t } = useTranslation()
-  const { settings } = useSettings()
+  const mcp = useMcpSettings()
   const isPremium = useAutoValidate()
   const onEnabledChange = useToggleMCPServer()
-  const enabledToolsCount =
-    settings.mcp.servers.filter((s) => s.enabled).length + settings.mcp.enabledBuiltinServers.length
+  const enabledToolsCount = mcp.servers.filter((s) => s.enabled).length + mcp.enabledBuiltinServers.length
   return (
     <Menu
+      trigger="hover"
+      openDelay={100}
+      closeDelay={100}
       shadow="md"
       withArrow
       width={240}
       closeOnItemClick={false}
       position="top-start"
       transitionProps={{
-        transition: 'fade-up',
-        duration: 300,
+        transition: 'pop',
+        duration: 200,
       }}
     >
       <Menu.Target>{children(enabledToolsCount)}</Menu.Target>
@@ -75,7 +77,7 @@ const MCPMenu: FC<{ children: (enabledTools: number) => ReactNode }> = ({ childr
                 item={{
                   id: server.id,
                   name: server.name,
-                  enabled: settings.mcp.enabledBuiltinServers.includes(server.id),
+                  enabled: mcp.enabledBuiltinServers.includes(server.id),
                 }}
                 onEnabledChange={onEnabledChange}
               />
@@ -83,10 +85,10 @@ const MCPMenu: FC<{ children: (enabledTools: number) => ReactNode }> = ({ childr
             <Menu.Divider />
           </>
         )}
-        {settings.mcp.servers.map((server) => (
+        {mcp.servers.map((server) => (
           <ServerItem key={server.id} item={server} onEnabledChange={onEnabledChange} />
         ))}
-        {!settings.mcp.servers.length && !settings.mcp.enabledBuiltinServers.length && (
+        {!mcp.servers.length && !mcp.enabledBuiltinServers.length && (
           <Group justify="center">
             <Link to="/settings/mcp">
               <Button size="xs" my={12} variant="outline">

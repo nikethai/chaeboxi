@@ -1,39 +1,37 @@
-import { useEffect } from 'react'
-import * as remote from '../packages/remote'
-import { getDefaultStore, useAtom } from 'jotai'
-import { settingsAtom } from '../stores/atoms'
-import platform from '../platform'
-import { FetchError } from 'ofetch'
-import omit from 'lodash/omit'
 import * as Sentry from '@sentry/react'
-import { Settings } from 'src/shared/types'
+import omit from 'lodash/omit'
+import { FetchError } from 'ofetch'
+import { useEffect } from 'react'
 import { mcpController } from '@/packages/mcp/controller'
+import * as remote from '../packages/remote'
+import platform from '../platform'
+import { settingsStore, useSettingsStore } from './settingsStore'
 
 /**
  * 自动验证当前的 license 是否有效，如果无效则清除相关数据
  * @returns {boolean} whether the user has validated before
  */
 export function useAutoValidate() {
-  const [settings, setSettings] = useAtom(settingsAtom)
+  const licenseKey = useSettingsStore((state) => state.licenseKey)
+  const licenseInstances = useSettingsStore((state) => state.licenseInstances)
   const clearValidatedData = () => {
-    setSettings((settings) => ({
-      ...settings,
+    settingsStore.setState((state) => ({
       licenseKey: '',
-      licenseInstances: omit(settings.licenseInstances, settings.licenseKey || ''),
+      licenseInstances: omit(state.licenseInstances, state.licenseKey || ''),
       licenseDetail: undefined,
     }))
   }
   useEffect(() => {
     ;(async () => {
-      if (!settings.licenseKey || !settings.licenseInstances) {
+      if (!licenseKey || !licenseInstances) {
         // 这里不清除数据，因为可能是本地数据尚未加载
         return
       }
-      const instanceId = settings.licenseInstances[settings.licenseKey] || ''
+      const instanceId = licenseInstances[licenseKey] || ''
       try {
         // 在 lemonsqueezy 检查 license 是否有效，主要检查是否过期、被禁用的情况。若无效则清除相关数据
         const result = await remote.validateLicense({
-          licenseKey: settings.licenseKey,
+          licenseKey: licenseKey,
           instanceId: instanceId,
         })
         if (result.valid === false) {
@@ -52,23 +50,21 @@ export function useAutoValidate() {
         }
       }
     })()
-  }, [settings.licenseKey])
+  }, [licenseKey])
   // licenseKey 且对应的 instanceId 都存在时，表示验证通过
-  if (!settings.licenseKey || !settings.licenseInstances) {
+  if (!licenseKey || !licenseInstances) {
     return false
   }
-  return !!settings.licenseInstances[settings.licenseKey]
+  return !!licenseInstances[licenseKey]
 }
 
 /**
  * 取消激活当前的 license
  */
 export async function deactivate() {
-  const store = getDefaultStore()
-  const settings = store.get(settingsAtom)
+  const settings = settingsStore.getState()
   // 更新本地状态
-  store.set(settingsAtom, (settings) => ({
-    ...settings,
+  settingsStore.setState((settings) => ({
     licenseKey: '',
     licenseDetail: undefined,
     licenseInstances: omit(settings.licenseInstances, settings.licenseKey || ''),
@@ -98,9 +94,8 @@ export async function deactivate() {
  * @returns
  */
 export async function activate(licenseKey: string) {
-  const store = getDefaultStore()
   // 取消激活已存在的 license
-  const settings = store.get(settingsAtom)
+  const settings = settingsStore.getState()
   if (settings.licenseKey) {
     await deactivate()
   }
@@ -115,20 +110,13 @@ export async function activate(licenseKey: string) {
   // 获取 license 详情
   const licenseDetail = await remote.getLicenseDetailRealtime({ licenseKey })
   // 设置本地的 license 数据
-  store.set(settingsAtom, (settings) => {
-    const newSettings: Settings = {
-      ...settings,
-      licenseKey,
-      licenseInstances: {
-        ...(settings.licenseInstances || {}),
-        [licenseKey]: result.instanceId,
-      },
-      licenseDetail: undefined,
-    }
-    if (licenseDetail) {
-      newSettings.licenseDetail = licenseDetail
-    }
-    return newSettings
-  })
+  settingsStore.setState((settings) => ({
+    licenseKey,
+    licenseInstances: {
+      ...(settings.licenseInstances || {}),
+      [licenseKey]: result.instanceId,
+    },
+    licenseDetail: licenseDetail || undefined,
+  }))
   return result
 }

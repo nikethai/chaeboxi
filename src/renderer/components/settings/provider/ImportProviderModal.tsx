@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import type { CustomProviderBaseInfo, ModelProviderEnum, ProviderInfo, ProviderSettings } from 'src/shared/types'
 import { ModelProviderType } from 'src/shared/types'
 import { ModelList } from '@/components/ModelList'
-import { useSettings } from '@/hooks/useSettings'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { add as addToast } from '@/stores/toastActions'
 
 interface ImportProviderModalProps {
@@ -38,7 +38,9 @@ const ReadOnlyInput = ({ label, value, ...props }: { label: string; value: strin
 export function ImportProviderModal({ opened, onClose, importedConfig, existingProvider }: ImportProviderModalProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { settings, setSettings } = useSettings()
+  const setSettings = useSettingsStore((s) => s.setSettings)
+  const providers = useSettingsStore((s) => s.providers)
+  const customProviders = useSettingsStore((s) => s.customProviders)
 
   // Derive form values from props directly
   const providerName =
@@ -61,7 +63,7 @@ export function ImportProviderModal({ opened, onClose, importedConfig, existingP
     // 如果有 existing provider， 可能是 built-in 也可能是 custom provider，如果没有，一定是 custom provider
 
     const providerSettings = {
-      ...settings.providers?.[providerId],
+      ...providers?.[providerId],
       ...{
         apiHost,
         apiPath,
@@ -73,7 +75,7 @@ export function ImportProviderModal({ opened, onClose, importedConfig, existingP
       // import for built-in provder，only import provider settings
       const updatedSettings = {
         providers: {
-          ...settings.providers,
+          ...providers,
           [providerId]: providerSettings,
         },
       }
@@ -91,10 +93,10 @@ export function ImportProviderModal({ opened, onClose, importedConfig, existingP
       const updatedSettings = {
         // replace or insert custom provider info
         customProviders: existingProvider
-          ? (settings.customProviders || []).map((p) => (p.id === providerId ? { ...p, ...baseProviderInfo } : p))
-          : [...(settings.customProviders || []), baseProviderInfo],
+          ? (customProviders || []).map((p) => (p.id === providerId ? { ...p, ...baseProviderInfo } : p))
+          : [...(customProviders || []), baseProviderInfo],
         providers: {
-          ...settings.providers,
+          ...providers,
           [providerId]: providerSettings,
         },
       }
@@ -116,7 +118,8 @@ export function ImportProviderModal({ opened, onClose, importedConfig, existingP
     urls,
     uniqueModels,
     existingProvider,
-    settings,
+    providers,
+    customProviders,
     setSettings,
     navigate,
     t,

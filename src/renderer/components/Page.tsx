@@ -1,11 +1,10 @@
 import { Box, IconButton, Typography, useTheme } from '@mui/material'
-import { useAtom } from 'jotai'
 import { PanelRightClose } from 'lucide-react'
 import type { FC } from 'react'
 import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
-import * as atoms from '@/stores/atoms'
+import { useUIStore } from '@/stores/uiStore'
 
 export type PageProps = {
   children?: React.ReactNode
@@ -14,7 +13,8 @@ export type PageProps = {
 }
 
 export const Page: FC<PageProps> = ({ children, title, left }) => {
-  const [showSidebar, setShowSidebar] = useAtom(atoms.showSidebarAtom)
+  const showSidebar = useUIStore((s) => s.showSidebar)
+  const setShowSidebar = useUIStore((s) => s.setShowSidebar)
   const isSmallScreen = useIsSmallScreen()
   const theme = useTheme()
   const { needRoomForMacWindowControls } = useNeedRoomForWinControls()

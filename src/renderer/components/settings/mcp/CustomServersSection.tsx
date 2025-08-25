@@ -6,9 +6,9 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { v4 as uuid } from 'uuid'
 import { useToggleMCPServer } from '@/hooks/mcp'
-import { useImmerSettings } from '@/hooks/useSettings'
 import { mcpController } from '@/packages/mcp/controller'
 import type { MCPServerConfig } from '@/packages/mcp/types'
+import { useMcpSettings, useSettingsStore } from '@/stores/settingsStore'
 import { trackEvent } from '@/utils/track'
 import { ConfigModal } from './ConfigModal'
 import type { MCPRegistryEntry } from './registries'
@@ -52,7 +52,8 @@ type Props = {
 
 const CustomServersSection: FC<Props> = (props) => {
   const { t } = useTranslation()
-  const [settings, setSettings] = useImmerSettings()
+  const setSettings = useSettingsStore((state) => state.setSettings)
+  const mcpSettings = useMcpSettings()
   const onEnabledChange = useToggleMCPServer()
   const [modal, setModal] = useState<{ config: MCPServerConfig; mode: 'add' | 'edit' } | null>(null)
 
@@ -159,7 +160,7 @@ const CustomServersSection: FC<Props> = (props) => {
             </Text>
           </Flex>
         </Paper>
-        {settings.mcp.servers.map((server) => {
+        {mcpSettings.servers.map((server) => {
           return (
             <ServerCard
               key={server.id}

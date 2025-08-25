@@ -11,7 +11,6 @@ import {
   IconPencil,
 } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
-import { useAtomValue } from 'jotai'
 import { Fragment, type ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 import BrandGithub from '@/components/icons/BrandGithub'
@@ -23,7 +22,7 @@ import useVersion from '@/hooks/useVersion'
 import platform from '@/platform'
 import iconPNG from '@/static/icon.png'
 import IMG_WECHAT_QRCODE from '@/static/wechat_qrcode.png'
-import { languageAtom } from '@/stores/atoms'
+import { useLanguage } from '@/stores/settingsStore'
 
 export const Route = createFileRoute('/about')({
   component: RouteComponent,
@@ -32,7 +31,7 @@ export const Route = createFileRoute('/about')({
 function RouteComponent() {
   const { t, i18n: _i18n } = useTranslation()
   const version = useVersion()
-  const language = useAtomValue(languageAtom)
+  const language = useLanguage()
   const isSmallScreen = useIsSmallScreen()
 
   return (

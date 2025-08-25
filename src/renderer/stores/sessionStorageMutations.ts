@@ -12,6 +12,7 @@ import { getMessageText, migrateMessage } from '@/utils/message'
 import { migrateSession, sortSessions } from '../utils/session-utils'
 import * as atoms from './atoms'
 import { createSessionAtom } from './atoms'
+import { lastUsedModelStore } from './lastUsedModelStore'
 
 const log = getLogger('sessionStorageMutations')
 
@@ -58,13 +59,13 @@ export async function getSessionAsync(sessionId: string, timeout = 1000): Promis
 
 export async function createSession(session: Omit<Session, 'id'>, previousId?: string) {
   const store = getDefaultStore()
-  const chatSessionSettings = store.get(atoms.chatSessionSettingsAtom)
-  const pictureSessionSettings = store.get(atoms.pictureSessionSettingsAtom)
+  const { chat: lastUsedChatModel, picture: lastUsedPictureModel } = lastUsedModelStore.getState()
+
   const s = {
     ...session,
     id: uuidv4(),
     settings: {
-      ...(session.type === 'picture' ? pictureSessionSettings : chatSessionSettings),
+      ...(session.type === 'picture' ? lastUsedPictureModel : lastUsedChatModel),
       ...session.settings,
     },
   }

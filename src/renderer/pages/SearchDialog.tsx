@@ -1,24 +1,26 @@
-import { useEffect, useRef, useState } from 'react'
 import { Dialog, DialogContent, useTheme } from '@mui/material'
+import { useAtomValue } from 'jotai'
+import { Loader2, ScanSearch } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import * as sessionAction from '../stores/sessionActions'
-import * as scrollActions from '../stores/scrollActions'
-import { ScanSearch, Loader2 } from 'lucide-react'
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
-import { Message as MessageType, Session, SessionMeta } from 'src/shared/types'
-import { cn } from '@/lib/utils'
-import { useAtom, useAtomValue } from 'jotai'
-import * as atoms from '@/stores/atoms'
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import Message from '@/components/Message'
+import type { Session } from 'src/shared/types'
 import Mark from '@/components/Mark'
-import { getMessageText } from '@/utils/message'
+import Message from '@/components/Message'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { cn } from '@/lib/utils'
+import * as atoms from '@/stores/atoms'
 import { searchSessions } from '@/stores/sessionStorageMutations'
-interface Props {}
+import { useUIStore } from '@/stores/uiStore'
+import * as scrollActions from '../stores/scrollActions'
+import * as sessionAction from '../stores/sessionActions'
+
+type Props = {}
 
 export default function SearchDialog(props: Props) {
   const isSmallScreen = useIsSmallScreen()
-  const [open, setOpen] = useAtom(atoms.openSearchDialogAtom)
+  const open = useUIStore((s) => s.openSearchDialog)
+  const setOpen = useUIStore((s) => s.setOpenSearchDialog)
   const [mode, setMode] = useState<'command' | 'search-result'>('command')
   const [loading, setLoading] = useState<boolean>(false)
   const [searchInput, _setSearchInput] = useState('')

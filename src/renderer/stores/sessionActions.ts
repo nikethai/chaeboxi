@@ -1,6 +1,7 @@
 import * as Sentry from '@sentry/react'
 import { getDefaultStore } from 'jotai'
 import { identity, pickBy, throttle } from 'lodash'
+import * as defaults from 'src/shared/defaults'
 import { getModel } from 'src/shared/models'
 import type { onResultChangeWithCancel } from 'src/shared/models/types'
 import { v4 as uuidv4 } from 'uuid'
@@ -13,11 +14,10 @@ import * as localParser from '@/packages/local-parser'
 import { generateImage, generateText, streamText } from '@/packages/model-calls'
 import { getModelDisplayName } from '@/packages/model-setting-utils'
 import * as remote from '@/packages/remote'
-import { estimateTokensFromMessages } from '@/packages/token'
+import { estimateTokens, estimateTokensFromMessages } from '@/packages/token'
 import { router } from '@/router'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import { trackEvent } from '@/utils/track'
-import * as defaults from '../../shared/defaults'
 
 /**
  * 跟踪生成事件
@@ -45,8 +45,7 @@ function trackGenerateEvent(
     }
   }
 
-  const store = getDefaultStore()
-  const webBrowsing = store.get(atoms.inputBoxWebBrowsingModeAtom)
+  const webBrowsing = uiStore.getState().inputBoxWebBrowsingMode
 
   trackEvent('generate', {
     provider: providerIdentifier,
@@ -69,9 +68,7 @@ import {
   type ExportChatFormat,
   type ExportChatScope,
   type Message,
-  type MessageFile,
   type MessageImagePart,
-  type MessageLink,
   type MessagePicture,
   type ModelProvider,
   ModelProviderEnum,
@@ -83,15 +80,18 @@ import {
   type SessionType,
   type Settings,
 } from '../../shared/types'
+import { cloneMessage, countMessageWords, getMessageText, mergeMessages } from '../../shared/utils/message'
 import i18n from '../i18n'
 import * as promptFormat from '../packages/prompts'
 import platform from '../platform'
 import storage from '../storage'
-import { cloneMessage, countMessageWords, getMessageText, mergeMessages } from '../utils/message'
 import * as atoms from './atoms'
+import { lastUsedModelStore } from './lastUsedModelStore'
 import * as scrollActions from './scrollActions'
 import { clearConversations, copySession, createSession, getSession, saveSession } from './sessionStorageMutations'
 import * as settingActions from './settingActions'
+import { settingsStore } from './settingsStore'
+import { uiStore } from './uiStore'
 
 /**
  * 创建一个新的会话
@@ -316,6 +316,65 @@ export function startNewThread() {
   const store = getDefaultStore()
   const sessionId = store.get(atoms.currentSessionIdAtom)
   refreshContextAndCreateNewThread(sessionId)
+  // 自动滚动到底部并自动聚焦到输入框
+  setTimeout(() => {
+    scrollActions.scrollToBottom()
+    dom.focusMessageInput()
+  }, 100)
+}
+
+/**
+ * 压缩当前会话并创建新话题，保留压缩后的上下文
+ * @param sessionId 会话ID
+ * @param summary 压缩后的总结内容
+ */
+export function compressAndCreateThread(sessionId: string, summary: string) {
+  const session = getSession(sessionId)
+  if (!session) {
+    return
+  }
+
+  // 取消所有正在进行的消息生成
+  for (const m of session.messages) {
+    m?.cancel?.()
+  }
+
+  // 创建包含所有消息的新话题
+  const newThread: SessionThread = {
+    id: uuidv4(),
+    name: session.threadName || session.name,
+    messages: session.messages,
+    createdAt: Date.now(),
+  }
+
+  // 获取原始的系统提示（如果存在）
+  const systemPrompt = session.messages.find((m) => m.role === 'system')
+  let systemPromptText = ''
+  if (systemPrompt) {
+    systemPromptText = getMessageText(systemPrompt)
+  }
+
+  // 创建新的消息列表，包含原始系统提示和压缩后的上下文
+  const newMessages: Message[] = []
+
+  // 如果有系统提示，先添加系统提示
+  if (systemPromptText) {
+    newMessages.push(createMessage('system', systemPromptText))
+  }
+
+  // 添加压缩后的上下文作为系统消息
+  const compressionContext = `Previous conversation summary:\n\n${summary}`
+  newMessages.push(createMessage('user', compressionContext))
+
+  // 保存会话
+  saveSession({
+    ...session,
+    threads: session.threads ? [...session.threads, newThread] : [newThread],
+    messages: newMessages,
+    threadName: '',
+    messageForksHash: undefined,
+  })
+
   // 自动滚动到底部并自动聚焦到输入框
   setTimeout(() => {
     scrollActions.scrollToBottom()
@@ -552,6 +611,239 @@ export function removeMessage(sessionId: string, messageId: string) {
 }
 
 /**
+ * 预处理文件以获取内容和存储键
+ * @param file 文件对象
+ * @param settings 会话设置
+ * @param tokenLimit 每个文件的token限制
+ * @returns 预处理后的文件信息
+ */
+export async function preprocessFile(
+  file: File,
+  settings: SessionSettings
+): Promise<{
+  file: File
+  content: string
+  storageKey: string
+  tokenCount?: number
+  error?: string
+}> {
+  const remoteConfig = settingActions.getRemoteConfig()
+
+  try {
+    const isChatboxAI = settings.provider === ModelProviderEnum.ChatboxAI
+    const uniqKey = StorageKeyGenerator.fileUniqKey(file)
+
+    // 检查是否已经处理过这个文件
+    const existingContent = await storage.getBlob(uniqKey).catch(() => null)
+    if (existingContent) {
+      return {
+        file,
+        content: existingContent,
+        storageKey: uniqKey,
+        tokenCount: estimateTokens(existingContent),
+      }
+    }
+
+    if (isChatboxAI) {
+      // ChatboxAI 方案：上传文件并获取内容
+      const licenseKey = settingActions.getLicenseKey()
+      const uploadedKey = await remote.uploadAndCreateUserFile(licenseKey || '', file)
+
+      // 获取上传后的文件内容（如果可用）
+      const content = (await storage.getBlob(uploadedKey).catch(() => '')) || ''
+
+      // 将内容存储到唯一键下
+      if (content) {
+        await storage.setBlob(uniqKey, content)
+      }
+
+      return {
+        file,
+        content,
+        storageKey: uniqKey,
+        tokenCount: content ? estimateTokens(content) : 0,
+      }
+    } else {
+      // 本地方案：解析文件内容
+      const result = await platform.parseFileLocally(file)
+      if (!result.isSupported || !result.key) {
+        if (platform.type === 'mobile') {
+          throw new Error('mobile_not_support_local_file_parsing')
+        }
+        // 根据当前 IP，判断是否在错误中推荐 Chatbox AI
+        if (remoteConfig.setting_chatboxai_first) {
+          throw new Error('model_not_support_file')
+        } else {
+          throw new Error('model_not_support_file_2')
+        }
+      }
+
+      // 从临时存储中获取文件内容
+      const content = (await storage.getBlob(result.key).catch(() => '')) || ''
+
+      // 将内容存储到唯一键下
+      if (content) {
+        await storage.setBlob(uniqKey, content)
+      }
+
+      return {
+        file,
+        content,
+        storageKey: uniqKey,
+        tokenCount: content ? estimateTokens(content) : 0,
+      }
+    }
+  } catch (error) {
+    return {
+      file,
+      content: '',
+      storageKey: '',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+/**
+ * 预处理链接以获取内容
+ * @param url 链接地址
+ * @param settings 会话设置
+ * @returns 预处理后的链接信息
+ */
+export async function preprocessLink(
+  url: string,
+  settings: SessionSettings
+): Promise<{
+  url: string
+  title: string
+  content: string
+  storageKey: string
+  tokenCount?: number
+  error?: string
+}> {
+  try {
+    const isChatboxAI = settings.provider === ModelProviderEnum.ChatboxAI
+    const uniqKey = StorageKeyGenerator.linkUniqKey(url)
+
+    // 检查是否已经处理过这个链接
+    const existingContent = await storage.getBlob(uniqKey).catch(() => null)
+    if (existingContent) {
+      // 如果已经有内容，尝试从内容中提取标题
+      const titleMatch = existingContent.match(/<title[^>]*>([^<]+)<\/title>/i)
+      const title = titleMatch ? titleMatch[1] : url.replace(/^https?:\/\//, '')
+
+      return {
+        url,
+        title,
+        content: existingContent,
+        storageKey: uniqKey,
+        tokenCount: estimateTokens(existingContent),
+      }
+    }
+
+    if (isChatboxAI) {
+      // ChatboxAI 方案：使用远程解析
+      const licenseKey = settingActions.getLicenseKey()
+      const parsed = await remote.parseUserLinkPro({ licenseKey: licenseKey || '', url })
+
+      // 获取解析后的内容
+      const content = (await storage.getBlob(parsed.storageKey).catch(() => '')) || ''
+
+      // 将内容存储到唯一键下
+      if (content) {
+        await storage.setBlob(uniqKey, content)
+      }
+
+      return {
+        url,
+        title: parsed.title,
+        content,
+        storageKey: uniqKey,
+        tokenCount: content ? estimateTokens(content) : 0,
+      }
+    } else {
+      // 本地方案：解析链接内容
+      const { key, title } = await localParser.parseUrl(url)
+      const content = (await storage.getBlob(key).catch(() => '')) || ''
+
+      // 将内容存储到唯一键下
+      if (content) {
+        await storage.setBlob(uniqKey, content)
+      }
+
+      return {
+        url,
+        title,
+        content,
+        storageKey: uniqKey,
+        tokenCount: content ? estimateTokens(content) : 0,
+      }
+    }
+  } catch (error) {
+    return {
+      url,
+      title: url.replace(/^https?:\/\//, ''),
+      content: '',
+      storageKey: '',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+/**
+ * 构建用户消息，只包含元数据不包含内容
+ * @param text 消息文本
+ * @param pictureKeys 图片存储键列表
+ * @param preprocessedFiles 预处理后的文件信息
+ * @param preprocessedLinks 预处理后的链接信息
+ * @returns 构建好的消息对象
+ */
+export function constructUserMessage(
+  text: string,
+  pictureKeys: string[] = [],
+  preprocessedFiles: Array<{ file: File; content: string; storageKey: string; tokenCount?: number }> = [],
+  preprocessedLinks: Array<{
+    url: string
+    title: string
+    content: string
+    storageKey: string
+    tokenCount?: number
+  }> = []
+): Message {
+  // 只使用原始文本，不添加文件和链接内容
+  const msg = createMessage('user', text)
+
+  // 添加图片
+  if (pictureKeys.length > 0) {
+    msg.contentParts = msg.contentParts ?? []
+    msg.contentParts.push(...pictureKeys.map((k) => ({ type: 'image' as const, storageKey: k })))
+  }
+
+  // 添加附件元数据（只包含存储键，不包含内容）
+  if (preprocessedFiles.length > 0) {
+    msg.files = preprocessedFiles.map((f) => ({
+      id: f.storageKey || f.file.name,
+      name: f.file.name,
+      fileType: f.file.type,
+      storageKey: f.storageKey,
+      tokenCount: f.tokenCount,
+    }))
+  }
+
+  // 添加链接元数据（只包含存储键，不包含内容）
+  if (preprocessedLinks.length > 0) {
+    msg.links = preprocessedLinks.map((l) => ({
+      id: l.storageKey || l.url,
+      url: l.url,
+      title: l.title,
+      storageKey: l.storageKey,
+      tokenCount: l.tokenCount,
+    }))
+  }
+
+  return msg
+}
+
+/**
  * 在会话中发送新用户消息，并根据需要生成回复
  * @param params
  */
@@ -559,40 +851,21 @@ export async function submitNewUserMessage(params: {
   currentSessionId: string
   newUserMsg: Message
   needGenerating: boolean
-  attachments: File[]
-  links: { url: string }[]
 }) {
-  const { currentSessionId, newUserMsg, needGenerating, attachments, links } = params
-  const store = getDefaultStore()
-  const webBrowsing = store.get(atoms.inputBoxWebBrowsingModeAtom)
+  const { currentSessionId, newUserMsg, needGenerating } = params
+  const webBrowsing = uiStore.getState().inputBoxWebBrowsingMode
 
-  // 如果存在附件，现在发送消息中构建空白的文件信息，用于占位，等待上传完成后再修改
-  if (attachments && attachments.length > 0) {
-    newUserMsg.files = attachments.map((f, ix) => ({
-      id: ix.toString(),
-      name: f.name,
-      fileType: f.type,
-    }))
-  }
-  // 如果存在链接，现在发送消息中构建空白的链接信息，用于占位，等待解析完成后再修改
-  if (links && links.length > 0) {
-    newUserMsg.links = links.map((l, ix) => ({
-      id: ix.toString(),
-      url: l.url,
-      title: l.url.replace(/^https?:\/\//, ''),
-    }))
-  }
   // 先在聊天列表中插入发送的用户消息
   insertMessage(currentSessionId, newUserMsg)
 
   const settings = getCurrentSessionMergedSettings()
-  const globalSettings = store.get(atoms.settingsAtom)
+  const globalSettings = settingsStore.getState().getSettings()
   const isChatboxAI = settings.provider === ModelProviderEnum.ChatboxAI
   const remoteConfig = settingActions.getRemoteConfig()
 
   // 根据需要，插入空白的回复消息
   let newAssistantMsg = createMessage('assistant', '')
-  if (attachments && attachments.length > 0) {
+  if (newUserMsg.files && newUserMsg.files.length > 0) {
     if (!newAssistantMsg.status) {
       newAssistantMsg.status = []
     }
@@ -601,7 +874,7 @@ export async function submitNewUserMessage(params: {
       mode: isChatboxAI ? 'advanced' : 'local',
     })
   }
-  if (links && links.length > 0) {
+  if (newUserMsg.links && newUserMsg.links.length > 0) {
     if (!newAssistantMsg.status) {
       newAssistantMsg.status = []
     }
@@ -628,89 +901,18 @@ export async function submitNewUserMessage(params: {
       }
     }
 
-    // 如果本次发送消息携带了附件，应该在这次发送中上传文件并构造文件信息(file uuid)
-    if (attachments && attachments.length > 0) {
-      if (isChatboxAI) {
-        // Chatbox AI 方案
-        const licenseKey = settingActions.getLicenseKey()
-        const newFiles: MessageFile[] = []
-        for (const attachment of attachments || []) {
-          const storageKey = await remote.uploadAndCreateUserFile(licenseKey || '', attachment)
-          newFiles.push({
-            id: storageKey,
-            name: attachment.name,
-            fileType: attachment.type,
-            storageKey,
-          })
-        }
-        modifyMessage(currentSessionId, { ...newUserMsg, files: newFiles }, false)
-      } else {
-        // 本地方案
-        const newFiles: MessageFile[] = []
-        const tokenLimitPerFile = Math.ceil((40 * 1000) / attachments.length)
-        for (const attachment of attachments) {
-          await new Promise((resolve) => setTimeout(resolve, 3000)) // 等待一段时间，方便显示提示
-          const result = await platform.parseFileLocally(attachment, { tokenLimit: tokenLimitPerFile })
-          if (!result.isSupported || !result.key) {
-            if (platform.type === 'mobile') {
-              throw ChatboxAIAPIError.fromCodeName(
-                'mobile_not_support_local_file_parsing',
-                'mobile_not_support_local_file_parsing'
-              )
-            }
-            // 根据当前 IP，判断是否在错误中推荐 Chatbox AI
-            if (remoteConfig.setting_chatboxai_first) {
-              throw ChatboxAIAPIError.fromCodeName('model_not_support_file', 'model_not_support_file')
-            } else {
-              throw ChatboxAIAPIError.fromCodeName('model_not_support_file_2', 'model_not_support_file_2')
-            }
-          }
-          newFiles.push({
-            id: result.key,
-            name: attachment.name,
-            fileType: attachment.type,
-            storageKey: result.key,
-          })
-        }
-        modifyMessage(currentSessionId, { ...newUserMsg, files: newFiles }, false)
+    // Files and links are now preprocessed in InputBox with storage keys, so no need to process them here
+    // Just verify they have storage keys
+    if (newUserMsg.files?.length) {
+      const missingStorageKeys = newUserMsg.files.filter((f) => !f.storageKey)
+      if (missingStorageKeys.length > 0) {
+        console.warn('Files without storage keys found:', missingStorageKeys)
       }
     }
-    // 如果本次发送消息携带了链接，应该在这次发送中解析链接并构造链接信息(link uuid)
-    if (links && links.length > 0) {
-      if (isChatboxAI) {
-        // Chatbox AI 方案
-        const licenseKey = settingActions.getLicenseKey()
-        const newLinks: MessageLink[] = await Promise.all(
-          links.map(async (l) => {
-            const parsed = await remote.parseUserLinkPro({ licenseKey: licenseKey || '', url: l.url })
-            return {
-              id: parsed.key,
-              url: l.url,
-              title: parsed.title,
-              storageKey: parsed.storageKey,
-            }
-          })
-        )
-        modifyMessage(currentSessionId, { ...newUserMsg, links: newLinks }, false)
-      } else {
-        // 本地方案
-        const newLinks: MessageLink[] = []
-        for (const link of links) {
-          const { key, title } = await localParser.parseUrl(link.url)
-          newLinks.push({
-            id: key,
-            url: link.url,
-            title,
-            storageKey: key,
-          })
-          // 等待一段时间，方便显示提示
-          if (links.length === 1) {
-            await new Promise((resolve) => setTimeout(resolve, 5000))
-          } else {
-            await new Promise((resolve) => setTimeout(resolve, 2500))
-          }
-        }
-        modifyMessage(currentSessionId, { ...newUserMsg, links: newLinks }, false)
+    if (newUserMsg.links?.length) {
+      const missingStorageKeys = newUserMsg.links.filter((l) => !l.storageKey)
+      if (missingStorageKeys.length > 0) {
+        console.warn('Links without storage keys found:', missingStorageKeys)
       }
     }
   } catch (err: unknown) {
@@ -769,7 +971,7 @@ export async function generate(
 ) {
   // 获得依赖的数据
   const store = getDefaultStore()
-  const globalSettings = store.get(atoms.settingsAtom)
+  const globalSettings = settingsStore.getState().getSettings()
   const configs = await platform.getConfig()
   const session = getSession(sessionId)
   if (!session) {
@@ -826,9 +1028,9 @@ export async function generate(
   try {
     const dependencies = await createModelDependencies()
     const model = getModel(settings, globalSettings, configs, dependencies)
-    const sessionKnowledgeBaseMap = store.get(atoms.sessionKnowledgeBaseMapAtom)
+    const sessionKnowledgeBaseMap = uiStore.getState().sessionKnowledgeBaseMap
     const knowledgeBase = sessionKnowledgeBaseMap[sessionId]
-    const webBrowsing = store.get(atoms.inputBoxWebBrowsingModeAtom)
+    const webBrowsing = uiStore.getState().inputBoxWebBrowsingMode
     switch (session.type) {
       // 对话消息生成
       case 'chat':
@@ -837,14 +1039,14 @@ export async function generate(
         let firstTokenLatency: number | undefined
         const promptMsgs = await genMessageContext(settings, messages.slice(0, targetMsgIx))
         const throttledModifyMessage = throttle<onResultChangeWithCancel>((updated) => {
-          const text = getMessageText(targetMsg)
-          if (!firstTokenLatency && text.length > 0) {
+          const textLength = getMessageText(targetMsg, true, true).length
+          if (!firstTokenLatency && textLength > 0) {
             firstTokenLatency = Date.now() - startTime
           }
           targetMsg = {
             ...targetMsg,
             ...pickBy(updated, identity),
-            status: text.length > 0 ? [] : targetMsg.status,
+            status: textLength > 0 ? [] : targetMsg.status,
             firstTokenLatency,
           }
           modifyMessage(sessionId, targetMsg)
@@ -872,28 +1074,30 @@ export async function generate(
       // 图片消息生成
       case 'picture': {
         // 取当前消息之前最近的一条用户消息作为 prompt
-        let prompt = ''
-        for (let i = targetMsgIx; i >= 0; i--) {
-          if (messages[i].role === 'user') {
-            prompt = getMessageText(messages[i])
-            break
-          }
+        const userMessage = messages.slice(0, targetMsgIx).findLast((m) => m.role === 'user')
+        if (!userMessage) {
+          // 不应该找不到用户消息
+          throw new Error('No user message found')
         }
+
         const insertImage = (image: MessageImagePart) => {
           targetMsg.contentParts.push(image)
           targetMsg.status = []
           modifyMessage(sessionId, targetMsg, true)
         }
-        await generateImage(model, {
-          prompt,
-          num: settings.imageGenerateNum || 1,
-          callback: async (picBase64) => {
+        await generateImage(
+          model,
+          {
+            message: userMessage,
+            num: settings.imageGenerateNum || 1,
+          },
+          async (picBase64) => {
             const storageKey = StorageKeyGenerator.picture(`${sessionId}:${targetMsg.id}`)
             // 图片需要存储到 indexedDB，如果直接使用 OpenAI 返回的图片链接，图片链接将随着时间而失效
             await storage.setBlob(storageKey, picBase64)
             insertImage({ type: 'image', storageKey })
-          },
-        })
+          }
+        )
         targetMsg = {
           ...targetMsg,
           generating: false,
@@ -974,8 +1178,7 @@ export async function regenerateInNewFork(sessionId: string, msg: Message) {
 }
 
 async function _generateName(sessionId: string, modifyName: (sessionId: string, name: string) => void) {
-  const store = getDefaultStore()
-  const globalSettings = store.get(atoms.settingsAtom)
+  const globalSettings = settingsStore.getState().getSettings()
   const session = getSession(sessionId)
   if (!session) {
     return
@@ -1194,9 +1397,8 @@ async function genMessageContext(settings: SessionSettings, msgs: Message[]) {
 }
 
 export function initEmptyChatSession(): Omit<Session, 'id'> {
-  const store = getDefaultStore()
-  const settings = store.get(atoms.settingsAtom)
-  const chatSessionSettings = store.get(atoms.chatSessionSettingsAtom)
+  const settings = settingsStore.getState().getSettings()
+  const { chat: lastUsedChatModel } = lastUsedModelStore.getState()
   const newSession: Omit<Session, 'id'> = {
     name: 'Untitled',
     type: 'chat',
@@ -1210,7 +1412,7 @@ export function initEmptyChatSession(): Omit<Session, 'id'> {
             provider: settings.defaultChatModel.provider,
             modelId: settings.defaultChatModel.model,
           }
-        : chatSessionSettings),
+        : lastUsedChatModel),
     },
   }
   if (settings.defaultPrompt) {
@@ -1220,14 +1422,14 @@ export function initEmptyChatSession(): Omit<Session, 'id'> {
 }
 
 export function initEmptyPictureSession(): Omit<Session, 'id'> {
-  const store = getDefaultStore()
-  const pictureSessionSettings = store.get(atoms.pictureSessionSettingsAtom)
+  const { picture: lastUsedPictureModel } = lastUsedModelStore.getState()
+
   return {
     name: 'Untitled',
     type: 'picture',
     messages: [createMessage('system', i18n.t('Image Creator Intro') || '')],
     settings: {
-      ...pictureSessionSettings,
+      ...lastUsedPictureModel,
     },
   }
 }
@@ -1341,7 +1543,7 @@ export function mergeSettings(
 
 export function getCurrentSessionMergedSettings(): SessionSettings {
   const store = getDefaultStore()
-  const globalSettings = store.get(atoms.settingsAtom)
+  const globalSettings = settingsStore.getState().getSettings()
   const session = store.get(atoms.currentSessionAtom)
   if (!session || !session.settings) {
     return SessionSettingsSchema.parse(globalSettings)

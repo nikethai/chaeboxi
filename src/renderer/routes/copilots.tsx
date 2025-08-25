@@ -20,7 +20,6 @@ import {
 } from '@mui/material'
 import { IconPlus } from '@tabler/icons-react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useAtom } from 'jotai'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuidv4 } from 'uuid'
@@ -32,7 +31,7 @@ import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { trackingEvent } from '@/packages/event'
 import * as remote from '@/packages/remote'
 import platform from '@/platform'
-import * as atoms from '@/stores/atoms'
+import { useUIStore } from '@/stores/uiStore'
 import type { CopilotDetail } from '../../shared/types'
 
 export const Route = createFileRoute('/copilots')({
@@ -40,8 +39,9 @@ export const Route = createFileRoute('/copilots')({
 })
 
 function Copilots() {
-  const [open, setOpen] = useAtom(atoms.openCopilotDialogAtom)
-  const [showCopilotsInNewSession, setShowCopilotsInNewSession] = useAtom(atoms.showCopilotsInNewSessionAtom)
+  const [open, setOpen] = useState(false)
+  const showCopilotsInNewSession = useUIStore((s) => s.showCopilotsInNewSession)
+  const setShowCopilotsInNewSession = useUIStore((s) => s.setShowCopilotsInNewSession)
   const navigate = useNavigate()
 
   const { t } = useTranslation()

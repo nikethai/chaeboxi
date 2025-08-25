@@ -1,9 +1,9 @@
 import { ActionIcon, Group, Paper, Text, Tooltip } from '@mantine/core'
 import { IconArrowLeft, IconBrightnessAuto, IconHome, IconMoon, IconSun } from '@tabler/icons-react'
 import { useLocation, useNavigate } from '@tanstack/react-router'
-import { useAtom } from 'jotai'
+import { useCallback } from 'react'
 import { Theme } from 'src/shared/types'
-import * as atoms from '@/stores/atoms'
+import { settingsStore, useTheme } from '@/stores/settingsStore'
 
 interface DevHeaderProps {
   title?: string
@@ -12,7 +12,13 @@ interface DevHeaderProps {
 export function DevHeader({ title }: DevHeaderProps) {
   const navigate = useNavigate()
   const location = useLocation()
-  const [theme, setTheme] = useAtom(atoms.themeAtom)
+  const theme = useTheme()
+
+  const setTheme = useCallback((t: Theme) => {
+    settingsStore.setState((draft) => {
+      draft.theme = t
+    })
+  }, [])
 
   const isDevIndex = location.pathname === '/dev' || location.pathname === '/dev/'
 

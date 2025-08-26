@@ -1,5 +1,5 @@
-import { describe, expect, it } from '@jest/globals'
 import { ModelProviderEnum, ModelProviderType } from 'src/shared/types'
+import { describe, expect, it } from 'vitest'
 import { parseProviderFromJson, validateProviderConfig } from './provider-config'
 
 describe('provider-config', () => {

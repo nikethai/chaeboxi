@@ -82,7 +82,10 @@ export function parseProviderFromJson(
     const json = JSON.parse(text)
     return parseProviderConfig(json)
   } catch (err) {
-    console.error('Failed to parse provider config:', err)
+    // In test environment, don't log expected errors
+    if (process.env.NODE_ENV !== 'test') {
+      console.error('Failed to parse provider config:', err)
+    }
     return undefined
   }
 }
@@ -91,7 +94,10 @@ export function validateProviderConfig(config: unknown): ProviderConfig | undefi
   try {
     return ProviderConfigSchema.parse(config)
   } catch (err) {
-    console.error('Provider config validation failed:', err)
+    // In test environment, don't log expected errors
+    if (process.env.NODE_ENV !== 'test') {
+      console.error('Provider config validation failed:', err)
+    }
     return undefined
   }
 }

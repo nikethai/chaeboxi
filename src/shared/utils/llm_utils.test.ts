@@ -131,7 +131,14 @@ describe('fixMessageRoleSequence', () => {
       { id: '', role: 'user', contentParts: [{ type: 'text', text: '请问一下' }] },
     ]
     expect(fixMessageRoleSequence(messages)).toEqual([
-      { id: '', role: 'user', contentParts: [{ type: 'text', text: '你好\n\n请问一下' }] },
+      {
+        id: '',
+        role: 'user',
+        contentParts: [
+          { type: 'text', text: '你好' },
+          { type: 'text', text: '请问一下' },
+        ],
+      },
     ])
   })
 
@@ -161,7 +168,11 @@ describe('fixMessageRoleSequence', () => {
       {
         id: '',
         role: 'assistant',
-        contentParts: [{ type: 'text', text: '你好！\n\n有什么可以帮你的？\n\n请随时告诉我' }],
+        contentParts: [
+          { type: 'text', text: '你好！' },
+          { type: 'text', text: '有什么可以帮你的？' },
+          { type: 'text', text: '请随时告诉我' },
+        ],
       },
       { id: '', role: 'user', contentParts: [{ type: 'text', text: '谢谢' }] },
     ])
@@ -174,7 +185,7 @@ describe('fixMessageRoleSequence', () => {
     ]
     const expected: Message[] = [
       { id: '', role: 'system', contentParts: [{ type: 'text', text: 'System prompt' }] },
-      { id: '', role: 'user', contentParts: [{ type: 'text', text: 'OK.' }] },
+      { id: 'user_before_assistant_id', role: 'user', contentParts: [{ type: 'text', text: 'OK.' }] },
       { id: '', role: 'assistant', contentParts: [{ type: 'text', text: 'Hello' }] },
     ]
     expect(fixMessageRoleSequence(messages)).toEqual(expected)
@@ -182,7 +193,7 @@ describe('fixMessageRoleSequence', () => {
   it('应该在第一条 assistant 消息前添加 user 消息', () => {
     const messages: Message[] = [{ id: '', role: 'assistant', contentParts: [{ type: 'text', text: 'Hello' }] }]
     const expected: Message[] = [
-      { id: '', role: 'user', contentParts: [{ type: 'text', text: 'OK.' }] },
+      { id: 'user_before_assistant_id', role: 'user', contentParts: [{ type: 'text', text: 'OK.' }] },
       { id: '', role: 'assistant', contentParts: [{ type: 'text', text: 'Hello' }] },
     ]
     expect(fixMessageRoleSequence(messages)).toEqual(expected)
@@ -207,7 +218,14 @@ describe('fixMessageRoleSequence', () => {
     const expected: Message[] = [
       { id: '', role: 'system', contentParts: [{ type: 'text', text: 'System prompt' }] },
       { id: '', role: 'user', contentParts: [{ type: 'text', text: 'Hello' }] },
-      { id: '', role: 'assistant', contentParts: [{ type: 'text', text: 'Hi\n\nHow are you?' }] },
+      {
+        id: '',
+        role: 'assistant',
+        contentParts: [
+          { type: 'text', text: 'Hi' },
+          { type: 'text', text: 'How are you?' },
+        ],
+      },
       { id: '', role: 'user', contentParts: [{ type: 'text', text: 'Good' }] },
     ]
     expect(fixMessageRoleSequence(messages)).toEqual(expected)

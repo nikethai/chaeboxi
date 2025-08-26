@@ -478,7 +478,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
 
     try {
       for await (const chunk of result.fullStream) {
-        console.debug('stream chunk', chunk)
+        // console.debug('stream chunk', chunk)
 
         // Handle error chunks
         if (chunk.type === 'error') {

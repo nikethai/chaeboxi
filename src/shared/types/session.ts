@@ -6,6 +6,16 @@ import { ModelProviderEnum } from './provider'
 // Re-export for backward compatibility
 export { ModelProviderEnum } from './provider'
 
+// Token cache key schema
+export const TokenCacheKeySchema = z.enum(['default', 'deepseek'])
+export type TokenCacheKey = z.infer<typeof TokenCacheKeySchema>
+
+// Export the enum values directly for easy access
+export const TOKEN_CACHE_KEYS = TokenCacheKeySchema.enum
+
+// Token count map schema
+export const TokenCountMapSchema = z.record(TokenCacheKeySchema, z.number())
+
 // Search result schemas
 export const SearchResultItemSchema = z.object({
   title: z.string(),
@@ -25,6 +35,10 @@ export const MessageFileSchema = z.object({
   url: z.string().optional(),
   storageKey: z.string().optional(),
   chatboxAIFileUUID: z.string().optional(),
+<<<<<<< HEAD
+=======
+  tokenCountMap: TokenCountMapSchema.optional().catch(undefined),
+>>>>>>> 9ce49efa (Feat/adjust token count menu (#387))
 })
 
 export const MessageLinkSchema = z.object({
@@ -33,6 +47,10 @@ export const MessageLinkSchema = z.object({
   title: z.string(),
   storageKey: z.string().optional(),
   chatboxAILinkUUID: z.string().optional(),
+<<<<<<< HEAD
+=======
+  tokenCountMap: TokenCountMapSchema.optional(),
+>>>>>>> 9ce49efa (Feat/adjust token count menu (#387))
 })
 
 export const MessagePictureSchema = z.object({

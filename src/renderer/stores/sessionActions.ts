@@ -79,6 +79,7 @@ import {
   type SessionThread,
   type SessionType,
   type Settings,
+  TOKEN_CACHE_KEYS,
 } from '../../shared/types'
 import { cloneMessage, countMessageWords, getMessageText, mergeMessages } from '../../shared/utils/message'
 import i18n from '../i18n'
@@ -624,7 +625,7 @@ export async function preprocessFile(
   file: File
   content: string
   storageKey: string
-  tokenCount?: number
+  tokenCountMap?: Record<string, number>
   error?: string
 }> {
   const remoteConfig = settingActions.getRemoteConfig()
@@ -636,11 +637,33 @@ export async function preprocessFile(
     // 检查是否已经处理过这个文件
     const existingContent = await storage.getBlob(uniqKey).catch(() => null)
     if (existingContent) {
+      // Get existing token map or create new one
+      const existingTokenMap: Record<string, number> = (await storage.getItem(`${uniqKey}_tokenMap`, {})) as Record<
+        string,
+        number
+      >
+
+      // Calculate tokens for both tokenizers if not cached
+      if (!existingTokenMap[TOKEN_CACHE_KEYS.default]) {
+        existingTokenMap[TOKEN_CACHE_KEYS.default] = estimateTokens(existingContent)
+      }
+      if (!existingTokenMap[TOKEN_CACHE_KEYS.deepseek]) {
+        existingTokenMap[TOKEN_CACHE_KEYS.deepseek] = estimateTokens(existingContent, {
+          provider: '',
+          modelId: 'deepseek',
+        })
+      }
+
+      // Save updated token map if changes were made
+      if (!existingTokenMap[TOKEN_CACHE_KEYS.default] || !existingTokenMap[TOKEN_CACHE_KEYS.deepseek]) {
+        await storage.setItem(`${uniqKey}_tokenMap`, existingTokenMap)
+      }
+
       return {
         file,
         content: existingContent,
         storageKey: uniqKey,
-        tokenCount: estimateTokens(existingContent),
+        tokenCountMap: existingTokenMap,
       }
     }
 
@@ -657,11 +680,24 @@ export async function preprocessFile(
         await storage.setBlob(uniqKey, content)
       }
 
+      // Calculate token counts for both tokenizers
+      const tokenCountMap: Record<string, number> = content
+        ? {
+            [TOKEN_CACHE_KEYS.default]: estimateTokens(content),
+            [TOKEN_CACHE_KEYS.deepseek]: estimateTokens(content, { provider: '', modelId: 'deepseek' }),
+          }
+        : {}
+
+      // Store token map for future use
+      if (content) {
+        await storage.setItem(`${uniqKey}_tokenMap`, tokenCountMap)
+      }
+
       return {
         file,
         content,
         storageKey: uniqKey,
-        tokenCount: content ? estimateTokens(content) : 0,
+        tokenCountMap,
       }
     } else {
       // 本地方案：解析文件内容
@@ -686,11 +722,24 @@ export async function preprocessFile(
         await storage.setBlob(uniqKey, content)
       }
 
+      // Calculate token counts for both tokenizers
+      const tokenCountMap: Record<string, number> = content
+        ? {
+            [TOKEN_CACHE_KEYS.default]: estimateTokens(content),
+            [TOKEN_CACHE_KEYS.deepseek]: estimateTokens(content, { provider: '', modelId: 'deepseek' }),
+          }
+        : {}
+
+      // Store token map for future use
+      if (content) {
+        await storage.setItem(`${uniqKey}_tokenMap`, tokenCountMap)
+      }
+
       return {
         file,
         content,
         storageKey: uniqKey,
-        tokenCount: content ? estimateTokens(content) : 0,
+        tokenCountMap,
       }
     }
   } catch (error) {
@@ -717,7 +766,7 @@ export async function preprocessLink(
   title: string
   content: string
   storageKey: string
-  tokenCount?: number
+  tokenCountMap?: Record<string, number>
   error?: string
 }> {
   try {
@@ -731,12 +780,34 @@ export async function preprocessLink(
       const titleMatch = existingContent.match(/<title[^>]*>([^<]+)<\/title>/i)
       const title = titleMatch ? titleMatch[1] : url.replace(/^https?:\/\//, '')
 
+      // Get existing token map or create new one
+      const existingTokenMap: Record<string, number> = (await storage.getItem(`${uniqKey}_tokenMap`, {})) as Record<
+        string,
+        number
+      >
+
+      // Calculate tokens for both tokenizers if not cached
+      if (!existingTokenMap[TOKEN_CACHE_KEYS.default]) {
+        existingTokenMap[TOKEN_CACHE_KEYS.default] = estimateTokens(existingContent)
+      }
+      if (!existingTokenMap[TOKEN_CACHE_KEYS.deepseek]) {
+        existingTokenMap[TOKEN_CACHE_KEYS.deepseek] = estimateTokens(existingContent, {
+          provider: '',
+          modelId: 'deepseek',
+        })
+      }
+
+      // Save updated token map if changes were made
+      if (!existingTokenMap[TOKEN_CACHE_KEYS.default] || !existingTokenMap[TOKEN_CACHE_KEYS.deepseek]) {
+        await storage.setItem(`${uniqKey}_tokenMap`, existingTokenMap)
+      }
+
       return {
         url,
         title,
         content: existingContent,
         storageKey: uniqKey,
-        tokenCount: estimateTokens(existingContent),
+        tokenCountMap: existingTokenMap,
       }
     }
 
@@ -753,12 +824,25 @@ export async function preprocessLink(
         await storage.setBlob(uniqKey, content)
       }
 
+      // Calculate token counts for both tokenizers
+      const tokenCountMap: Record<string, number> = content
+        ? {
+            [TOKEN_CACHE_KEYS.default]: estimateTokens(content),
+            [TOKEN_CACHE_KEYS.deepseek]: estimateTokens(content, { provider: '', modelId: 'deepseek' }),
+          }
+        : {}
+
+      // Store token map for future use
+      if (content) {
+        await storage.setItem(`${uniqKey}_tokenMap`, tokenCountMap)
+      }
+
       return {
         url,
         title: parsed.title,
         content,
         storageKey: uniqKey,
-        tokenCount: content ? estimateTokens(content) : 0,
+        tokenCountMap,
       }
     } else {
       // 本地方案：解析链接内容
@@ -770,12 +854,25 @@ export async function preprocessLink(
         await storage.setBlob(uniqKey, content)
       }
 
+      // Calculate token counts for both tokenizers
+      const tokenCountMap: Record<string, number> = content
+        ? {
+            [TOKEN_CACHE_KEYS.default]: estimateTokens(content),
+            [TOKEN_CACHE_KEYS.deepseek]: estimateTokens(content, { provider: '', modelId: 'deepseek' }),
+          }
+        : {}
+
+      // Store token map for future use
+      if (content) {
+        await storage.setItem(`${uniqKey}_tokenMap`, tokenCountMap)
+      }
+
       return {
         url,
         title,
         content,
         storageKey: uniqKey,
-        tokenCount: content ? estimateTokens(content) : 0,
+        tokenCountMap,
       }
     }
   } catch (error) {
@@ -800,13 +897,18 @@ export async function preprocessLink(
 export function constructUserMessage(
   text: string,
   pictureKeys: string[] = [],
-  preprocessedFiles: Array<{ file: File; content: string; storageKey: string; tokenCount?: number }> = [],
+  preprocessedFiles: Array<{
+    file: File
+    content: string
+    storageKey: string
+    tokenCountMap?: Record<string, number>
+  }> = [],
   preprocessedLinks: Array<{
     url: string
     title: string
     content: string
     storageKey: string
-    tokenCount?: number
+    tokenCountMap?: Record<string, number>
   }> = []
 ): Message {
   // 只使用原始文本，不添加文件和链接内容
@@ -825,7 +927,7 @@ export function constructUserMessage(
       name: f.file.name,
       fileType: f.file.type,
       storageKey: f.storageKey,
-      tokenCount: f.tokenCount,
+      tokenCountMap: f.tokenCountMap,
     }))
   }
 
@@ -836,7 +938,7 @@ export function constructUserMessage(
       url: l.url,
       title: l.title,
       storageKey: l.storageKey,
-      tokenCount: l.tokenCount,
+      tokenCountMap: l.tokenCountMap,
     }))
   }
 

@@ -60,7 +60,6 @@ import KnowledgeBaseMenu from '../knowledge-base/KnowledgeBaseMenu'
 import ModelSelector from '../ModelSelector'
 import MCPMenu from '../mcp/MCPMenu'
 import { Keys } from '../Shortcut'
-import TokenCountMenu from '../TokenCountMenu'
 import { ImageUploadButton } from './ImageUploadButton'
 import { ImageUploadInput } from './ImageUploadInput'
 import {
@@ -74,6 +73,7 @@ import {
   storeLinkPromise,
 } from './preprocessState'
 import { SessionSettingsButton } from './SessionSettingsButton'
+import TokenCountMenu from './TokenCountMenu'
 import { WebBrowsingButton } from './WebBrowsingButton'
 
 export type InputBoxPayload = {
@@ -224,7 +224,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     // Calculate token counts
     const { currentInputTokens, contextTokens, totalTokens } = useTokenCount(
       preConstructedMessage.message,
-      isNewSession ? [] : currentMessages
+      isNewSession ? [] : currentMessages,
+      model
     )
 
     const [showSelectModelErrorTip, setShowSelectModelErrorTip] = useState(false)
@@ -417,7 +418,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
       // 异步预处理链接，失败时标记为 error，并吞掉异常避免 Promise.all reject
       const preprocessPromise = sessionActions
-        .preprocessLink(url, { provider: model?.provider || '' })
+        .preprocessLink(url, { provider: model?.provider || '', modelId: model?.modelId || '' })
         .then((preprocessedLink) => {
           setPreConstructedMessage((prev) => onLinkProcessed(prev, url, preprocessedLink, 6))
         })
@@ -448,7 +449,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
       // 异步预处理文件，失败时标记为 error，并吞掉异常避免 Promise.all reject
       const preprocessPromise = sessionActions
-        .preprocessFile(file, { provider: model?.provider || '' })
+        .preprocessFile(file, { provider: model?.provider || '', modelId: model?.modelId || '' })
         .then((preprocessedFile) => {
           setPreConstructedMessage((prev) => onFileProcessed(prev, file, preprocessedFile, 10))
         })
@@ -912,6 +913,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     contextTokens={contextTokens}
                     totalTokens={totalTokens}
                     contextWindow={modelInfo?.contextWindow}
+                    currentMessageCount={currentMessages.length}
+                    maxContextMessageCount={currentSessionMergedSettings.maxContextMessageCount}
                     onCompressClick={sessionId && !isNewSession ? () => setShowCompressionModal(true) : undefined}
                   >
                     <Flex

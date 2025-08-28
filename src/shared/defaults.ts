@@ -315,6 +315,12 @@ export const SystemProviders: ProviderBaseInfo[] = [
           maxOutput: 8_192,
         },
         {
+          modelId: 'gemini-2.5-flash-image-preview',
+          capabilities: ['vision'],
+          contextWindow: 32_768,
+          maxOutput: 8_192,
+        },
+        {
           modelId: 'gemini-2.0-flash-exp',
           capabilities: ['vision'],
           contextWindow: 1_000_000,

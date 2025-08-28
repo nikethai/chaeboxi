@@ -26,9 +26,12 @@ export default class Gemeni extends AbstractAISDKModel {
   }
 
   isSupportSystemMessage() {
-    return !['gemini-2.0-flash-exp', 'gemini-2.0-flash-thinking-exp', 'gemini-2.0-flash-exp-image-generation'].includes(
-      this.options.model.modelId
-    )
+    return ![
+      'gemini-2.0-flash-exp',
+      'gemini-2.0-flash-thinking-exp',
+      'gemini-2.0-flash-exp-image-generation',
+      'gemini-2.5-flash-image-preview',
+    ].includes(this.options.model.modelId)
   }
 
   protected getProvider() {
@@ -72,7 +75,11 @@ export default class Gemeni extends AbstractAISDKModel {
         } satisfies GoogleGenerativeAIProviderOptions,
       },
     }
-    if (['gemini-2.0-flash-preview-image-generation'].includes(this.options.model.modelId)) {
+    if (
+      ['gemini-2.0-flash-preview-image-generation', 'gemini-2.5-flash-image-preview'].includes(
+        this.options.model.modelId
+      )
+    ) {
       settings.providerOptions = {
         google: {
           ...providerParams,
@@ -105,18 +112,18 @@ export default class Gemeni extends AbstractAISDKModel {
       headers: {}
     })
     const json: Response = await res.json()
-    if (!json['models']) {
+    if (!json.models) {
       throw new ApiError(JSON.stringify(json))
     }
-    return json['models']
-      .filter((m) => m['supportedGenerationMethods'].some((method) => method.includes('generate')))
-      .filter((m) => m['name'].includes('gemini'))
+    return json.models
+      .filter((m) => m.supportedGenerationMethods.some((method) => method.includes('generate')))
+      .filter((m) => m.name.includes('gemini'))
       .map((m) => ({
-        modelId: m['name'].replace('models/', ''),
-        nickname: m['displayName'],
+        modelId: m.name.replace('models/', ''),
+        nickname: m.displayName,
         type: 'chat' as const,
-        contextWindow: m['inputTokenLimit'],
-        maxOutput: m['outputTokenLimit'],
+        contextWindow: m.inputTokenLimit,
+        maxOutput: m.outputTokenLimit,
       }))
       .sort((a, b) => a.modelId.localeCompare(b.modelId))
   }

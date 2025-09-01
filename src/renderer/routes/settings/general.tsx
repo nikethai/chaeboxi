@@ -30,7 +30,7 @@ export const Route = createFileRoute('/settings/general')({
   component: RouteComponent,
 })
 
-function RouteComponent() {
+export function RouteComponent() {
   const { t } = useTranslation()
   const { setSettings, ...settings } = useSettingsStore((state) => state)
 

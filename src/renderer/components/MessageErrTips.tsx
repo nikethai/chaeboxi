@@ -1,8 +1,8 @@
 import { Link } from '@mui/material'
 import Alert from '@mui/material/Alert'
-import { useNavigate } from '@tanstack/react-router'
 import type React from 'react'
 import { Trans } from 'react-i18next'
+import { navigateToSettings } from '@/modals/Settings'
 import { trackingEvent } from '@/packages/event'
 import platform from '@/platform'
 import { aiProviderNameHash } from '../../shared/models'
@@ -13,7 +13,6 @@ import LinkTargetBlank from './Link'
 
 export default function MessageErrTips(props: { msg: Message }) {
   const { msg } = props
-  const navigate = useNavigate()
   if (!msg.error) {
     return null
   }
@@ -42,16 +41,7 @@ export default function MessageErrTips(props: { msg: Message }) {
             <a
               className="cursor-pointer underline font-bold hover:text-blue-600 transition-colors"
               onClick={() => {
-                navigate(
-                  msg.aiProvider
-                    ? {
-                        to: '/settings/provider/$providerId',
-                        params: { providerId: msg.aiProvider },
-                      }
-                    : {
-                        to: '/settings/provider',
-                      }
-                )
+                navigateToSettings(msg.aiProvider ? `/provider/${msg.aiProvider}` : '/provider')
               }}
             />
           ),
@@ -90,9 +80,7 @@ export default function MessageErrTips(props: { msg: Message }) {
             key="link"
             className="cursor-pointer font-bold"
             onClick={() => {
-              navigate({
-                to: '/settings',
-              })
+              navigateToSettings()
             }}
           ></Link>,
         ]}
@@ -114,9 +102,7 @@ export default function MessageErrTips(props: { msg: Message }) {
               <Link
                 className="cursor-pointer italic"
                 onClick={() => {
-                  navigate({
-                    to: '/settings',
-                  })
+                  navigateToSettings()
                 }}
               ></Link>
             ),
@@ -124,9 +110,7 @@ export default function MessageErrTips(props: { msg: Message }) {
               <Link
                 className="cursor-pointer italic"
                 onClick={() => {
-                  navigate({
-                    to: '/settings/web-search',
-                  })
+                  navigateToSettings('/web-search')
                 }}
               ></Link>
             ),

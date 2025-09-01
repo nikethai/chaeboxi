@@ -10,7 +10,7 @@ export const Route = createFileRoute('/settings/web-search')({
   component: RouteComponent,
 })
 
-function RouteComponent() {
+export function RouteComponent() {
   const { t } = useTranslation()
   const setSettings = useSettingsStore((state) => state.setSettings)
   const extension = useSettingsStore((state) => state.extension)

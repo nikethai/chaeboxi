@@ -41,7 +41,7 @@ export const Route = createFileRoute('/settings/provider/chatbox-ai')({
   component: RouteComponent,
 })
 
-function RouteComponent() {
+export function RouteComponent() {
   const { t } = useTranslation()
   const language = useLanguage()
   const providerId: ModelProvider = ModelProviderEnum.ChatboxAI

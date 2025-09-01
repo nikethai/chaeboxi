@@ -27,6 +27,7 @@ import useNeedRoomForMacWinControls from './hooks/useNeedRoomForWinControls'
 import { useIsSmallScreen, useSidebarWidth } from './hooks/useScreenChange'
 import useVersion from './hooks/useVersion'
 import { cn } from './lib/utils'
+import { navigateToSettings } from './modals/Settings'
 import { trackingEvent } from './packages/event'
 import icon from './static/icon.png'
 import * as sessionActions from './stores/sessionActions'
@@ -223,12 +224,7 @@ function SidebarButtons(props: { sessionListRef: React.RefObject<HTMLDivElement>
 
       <MenuItem
         onClick={() => {
-          // setOpenSettingDialog('ai')
-          if (!routerState.location.pathname.startsWith('/settings')) {
-            navigate({
-              to: '/settings',
-            })
-          }
+          navigateToSettings()
           if (isSmallScreen) {
             setShowSidebar(false)
           }

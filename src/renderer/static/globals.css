@@ -86,3 +86,13 @@
   padding-left: var(--mantine-spacing-md);
   padding-right: var(--mantine-spacing-md);
 }
+
+.pswp__top-bar {
+  margin-top: var(--mobile-safe-area-inset-top);
+}
+html[data-need-room-for-mac-controls="true"] .pswp__counter {
+  padding-top: 1rem;
+}
+html[data-need-room-for-windows-controls="true"] .pswp__top-bar {
+  padding-right: 9rem;
+}

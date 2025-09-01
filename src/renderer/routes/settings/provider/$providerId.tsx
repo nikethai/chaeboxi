@@ -41,7 +41,7 @@ export const Route = createFileRoute('/settings/provider/$providerId')({
   component: RouteComponent,
 })
 
-function RouteComponent() {
+export function RouteComponent() {
   const { providerId } = Route.useParams()
   return <ProviderSettings key={providerId} providerId={providerId} />
 }

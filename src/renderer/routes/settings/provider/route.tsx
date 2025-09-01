@@ -27,7 +27,7 @@ export const Route = createFileRoute('/settings/provider')({
   validateSearch: zodValidator(searchSchema),
 })
 
-function RouteComponent() {
+export function RouteComponent() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const isSmallScreen = useIsSmallScreen()

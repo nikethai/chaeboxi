@@ -12,7 +12,7 @@ export const Route = createFileRoute('/settings/default-models')({
   component: RouteComponent,
 })
 
-function RouteComponent() {
+export function RouteComponent() {
   const { t } = useTranslation()
   const { setSettings, ...settings } = useSettingsStore((state) => state)
 

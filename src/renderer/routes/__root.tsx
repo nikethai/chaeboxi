@@ -43,11 +43,14 @@ import {
   Text,
   TextInput,
   Title,
+  Tooltip,
   useMantineColorScheme,
   virtualColor,
 } from '@mantine/core'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
+import SettingsModal, { navigateToSettings } from '@/modals/Settings'
 import queryClient from '@/stores/queryClient'
 import { settingsStore, useLanguage, useSettingsStore, useTheme } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
@@ -80,27 +83,9 @@ function Root() {
           const res = await NiceModal.show('welcome')
           if (res) {
             if (res === 'custom') {
-              const provider: string = await NiceModal.show('provider-selector')
-              // 用户选择Add Custom Provider的话，暂时无法直接拉起添加自定义供应商的弹窗，先跳去默认的供应商配置页
-              if (provider === 'custom') {
-                navigate({
-                  to: '/settings/provider/chatbox-ai',
-                  search: {
-                    custom: true,
-                  },
-                })
-              } else {
-                navigate({
-                  to: '/settings/provider/$providerId',
-                  params: {
-                    providerId: provider,
-                  },
-                })
-              }
+              navigateToSettings(`/provider/openai`)
             } else {
-              navigate({
-                to: '/settings/provider/chatbox-ai',
-              })
+              navigateToSettings(`/provider/chatbox-ai`)
             }
           }
 
@@ -157,6 +142,21 @@ function Root() {
     }
   }, [navigate])
 
+  const { needRoomForMacWindowControls, needRoomForWindowsWindowControls } = useNeedRoomForWinControls()
+  useEffect(() => {
+    if (needRoomForMacWindowControls) {
+      document.documentElement.setAttribute('data-need-room-for-mac-controls', 'true')
+    } else {
+      document.documentElement.removeAttribute('data-need-room-for-mac-controls')
+    }
+
+    if (needRoomForWindowsWindowControls) {
+      document.documentElement.setAttribute('data-need-room-for-windows-controls', 'true')
+    } else {
+      document.documentElement.removeAttribute('data-need-room-for-windows-controls')
+    }
+  }, [needRoomForMacWindowControls, needRoomForWindowsWindowControls])
+
   return (
     <Box className="box-border App" spellCheck={spellCheck} dir={language === 'ar' ? 'rtl' : 'ltr'}>
       {platform.type === 'desktop' && (getOS() === 'Windows' || getOS() === 'Linux') && <ExitFullscreenButton />}
@@ -203,6 +203,7 @@ function Root() {
       {/* 没有配置模型时的欢迎弹窗 */}
       {/* <WelcomeDialog /> */}
       <Toasts /> {/* mui */}
+      <SettingsModal />
     </Box>
   )
 }
@@ -557,6 +558,7 @@ const creteMantineTheme = (scale = 1) =>
       Combobox: Combobox.extend({
         defaultProps: {
           shadow: 'md',
+          zIndex: 2100,
         },
       }),
       Avatar: Avatar.extend({
@@ -565,6 +567,11 @@ const creteMantineTheme = (scale = 1) =>
             objectFit: 'contain',
           },
         }),
+      }),
+      Tooltip: Tooltip.extend({
+        defaultProps: {
+          zIndex: 3000,
+        },
       }),
     },
   })

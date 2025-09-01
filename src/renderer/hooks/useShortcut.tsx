@@ -1,5 +1,5 @@
-import { useNavigate } from '@tanstack/react-router'
 import { useEffect } from 'react'
+import { navigateToSettings } from '@/modals/Settings'
 import { router } from '@/router'
 import { uiStore } from '@/stores/uiStore'
 import { getOS } from '../packages/navigator'
@@ -8,15 +8,12 @@ import * as sessionActions from '../stores/sessionActions'
 import * as dom from './dom'
 import { useIsSmallScreen } from './useScreenChange'
 
-type NavigationCallback = (path: string) => void
-
 export default function useShortcut() {
   const isSmallScreen = useIsSmallScreen()
-  const navigate = useNavigate()
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      keyboardShortcut(e, (path) => navigate({ to: path }))
+      keyboardShortcut(e)
     }
     const cancel = platform.onWindowShow(() => {
       // 大屏幕下，窗口显示时自动聚焦输入框
@@ -29,10 +26,10 @@ export default function useShortcut() {
       cancel()
       window.removeEventListener('keydown', handleKeyDown)
     }
-  }, [isSmallScreen, navigate])
+  }, [isSmallScreen])
 }
 
-function keyboardShortcut(e: KeyboardEvent, navigate?: NavigationCallback) {
+function keyboardShortcut(e: KeyboardEvent) {
   // 这里不用 e.key 是因为 alt、 option、shift 都会改变 e.key 的值
   const ctrlOrCmd = e.ctrlKey || e.metaKey
   const shift = e.shiftKey
@@ -96,9 +93,9 @@ function keyboardShortcut(e: KeyboardEvent, navigate?: NavigationCallback) {
       uiStore.setState({ openSearchDialog: true })
     }
   }
-  if (e.key === ',' && e.metaKey && navigate) {
+  if (e.key === ',' && ctrlKey) {
     e.preventDefault()
-    navigate('/settings')
+    navigateToSettings()
     return
   }
 }

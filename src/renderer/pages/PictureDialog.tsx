@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch'
 import type { MessagePicture } from 'src/shared/types'
 import { Img } from '@/components/Image'
+import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
 import platform from '@/platform'
 import storage from '@/storage'
 import { useUIStore } from '@/stores/uiStore'
@@ -32,6 +33,7 @@ function _PictureDialog(props: {
 }) {
   const { picture, onSave, extraButtons } = props
   const theme = useTheme()
+  const { needRoomForWindowsWindowControls } = useNeedRoomForWinControls()
   const setPictureShow = useUIStore((s) => s.setPictureShow)
   const [url, setUrl] = useState(picture.url)
 
@@ -108,7 +110,7 @@ function _PictureDialog(props: {
       <div
         style={{
           position: 'absolute',
-          top: 20,
+          top: 20 + (needRoomForWindowsWindowControls ? 48 : 0),
           right: 20,
           zIndex: 1001,
           display: 'flex',

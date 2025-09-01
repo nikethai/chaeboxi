@@ -17,7 +17,7 @@ import * as migration from './stores/migration'
 import { CHATBOX_BUILD_PLATFORM, CHATBOX_BUILD_TARGET } from './variables'
 import '@mantine/spotlight/styles.css'
 import platform from './platform'
-import { delay } from './utils'
+import 'photoswipe/dist/photoswipe.css'
 
 const log = getLogger('index')
 

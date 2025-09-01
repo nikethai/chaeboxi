@@ -10,13 +10,13 @@ import {
   useCombobox,
 } from '@mantine/core'
 import { IconSearch } from '@tabler/icons-react'
-import { useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { useAtom } from 'jotai'
 import { cloneElement, forwardRef, isValidElement, type MouseEvent, type ReactElement, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ProviderModelInfo } from 'src/shared/types'
 import { useProviders } from '@/hooks/useProviders'
+import { navigateToSettings } from '@/modals/Settings'
 import { collapsedProvidersAtom } from '@/stores/atoms/uiAtoms'
 import { ProviderHeader } from './ProviderHeader'
 import { groupFavoriteModels, ModelItem, SELECTED_BG_CLASS } from './shared'
@@ -113,7 +113,6 @@ export const DesktopModelSelector = forwardRef<HTMLDivElement, DesktopModelSelec
     ref
   ) => {
     const { t } = useTranslation()
-    const navigate = useNavigate()
     const { favoritedModels, favoriteModel, unfavoriteModel, isFavoritedModel } = useProviders()
     const [collapsedProviders, setCollapsedProviders] = useAtom(collapsedProvidersAtom)
 
@@ -232,7 +231,7 @@ export const DesktopModelSelector = forwardRef<HTMLDivElement, DesktopModelSelec
                   {activeTab === 'favorite' ? t('No favorite models') : t('No eligible models available')}
                 </Text>
                 {activeTab === 'all' && (
-                  <Button variant="transparent" size="xs" onClick={() => navigate({ to: '/settings/provider' })}>
+                  <Button variant="transparent" size="xs" onClick={() => navigateToSettings('/provider')}>
                     {t('Click here to set up')}
                   </Button>
                 )}

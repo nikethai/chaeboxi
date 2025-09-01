@@ -19,7 +19,6 @@ import MenuItem from '@mui/material/MenuItem'
 import { useNavigate } from '@tanstack/react-router'
 import * as dateFns from 'date-fns'
 import { useAtomValue } from 'jotai'
-import { isEmpty } from 'lodash'
 import type React from 'react'
 import { type FC, type MouseEventHandler, memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,12 +29,18 @@ import { copyToClipboard } from '@/packages/navigator'
 import { estimateTokensFromMessages } from '@/packages/token'
 import { countWord } from '@/packages/word-count'
 import platform from '@/platform'
-import type { Message, MessageToolCallPart, SessionType } from '../../shared/types'
+import type { Message, MessagePicture, MessageToolCallPart, SessionType } from '../../shared/types'
 import { getMessageText } from '../../shared/utils/message'
 import '../static/Block.css'
 
 import { Flex, Loader } from '@mantine/core'
 import { IconInfoCircle } from '@tabler/icons-react'
+import { useQuery } from '@tanstack/react-query'
+import { concat } from 'lodash'
+import type { UIElementData } from 'photoswipe'
+import { Gallery, Item as GalleryItem } from 'react-photoswipe-gallery'
+import { navigateToSettings } from '@/modals/Settings'
+import storage from '@/storage'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 import { currentSessionAssistantAvatarKeyAtom, currentSessionPicUrlAtom } from '../stores/atoms'
@@ -45,7 +50,7 @@ import * as toastActions from '../stores/toastActions'
 import { isContainRenderableCode, MessageArtifact } from './Artifact'
 import { MessageAttachment } from './Attachments'
 import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
-import { ImageInStorage, Img } from './Image'
+import { ImageInStorage } from './Image'
 import Loading from './icons/Loading'
 import MessageErrTips from './MessageErrTips'
 import MessageStatuses from './MessageLoading'
@@ -428,9 +433,7 @@ const _Message: FC<Props> = (props) => {
                     }}
                     className="cursor-pointer"
                     onClick={() => {
-                      navigate({
-                        to: '/settings/chat',
-                      })
+                      navigateToSettings('/chat')
                     }}
                   >
                     {userAvatarKey ? (
@@ -534,15 +537,7 @@ const _Message: FC<Props> = (props) => {
                       ) : item.type === 'image' ? (
                         props.sessionType !== 'picture' && (
                           <div key={`image-${item.storageKey}`}>
-                            <div
-                              className="w-[100px] min-w-[100px] h-[100px] min-h-[100px]
-                                                    md:w-[200px] md:min-w-[200px] md:h-[200px] md:min-h-[200px]
-                                                    inline-flex items-center justify-center                                                                                                                                                  
-                                                    hover:cursor-pointer hover:border-slate-800/20 transition-all duration-200"
-                              onClick={() => showPicture(item.storageKey)}
-                            >
-                              {item.storageKey && <ImageInStorage storageKey={item.storageKey} className="w-full" />}
-                            </div>
+                            <PictureGallery key={`image-${item.storageKey}`} pictures={[item]} />
                             {item.ocrResult && (
                               <div
                                 className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded-md cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
@@ -578,39 +573,11 @@ const _Message: FC<Props> = (props) => {
                   </div>
                 )}
               </Box>
-              {props.sessionType === 'picture' && (
-                <div className="flex flex-row items-start justify-start overflow-x-auto overflow-y-hidden">
-                  {msg.contentParts
-                    .filter((p) => p.type === 'image')
-                    .map((pic) => (
-                      <div
-                        key={pic.storageKey}
-                        className="w-[100px] min-w-[100px] h-[100px] min-h-[100px]
-                                                    md:w-[200px] md:min-w-[200px] md:h-[200px] md:min-h-[200px]
-                                                    p-1.5 mr-2 mb-2 inline-flex items-center justify-center
-                                                    bg-white dark:bg-slate-800
-                                                    border-solid border-slate-400/20 rounded-md
-                                                    hover:cursor-pointer hover:border-slate-800/20 transition-all duration-200"
-                        onClick={() => {
-                          setPictureShow({
-                            picture: pic,
-                            extraButtons:
-                              msg.role === 'assistant' && platform.type === 'mobile'
-                                ? [
-                                    {
-                                      onClick: onReport,
-                                      icon: <ReportIcon />,
-                                    },
-                                  ]
-                                : undefined,
-                          })
-                        }}
-                      >
-                        {pic.storageKey && <ImageInStorage className="w-full" storageKey={pic.storageKey} />}
-                        {'url' in pic && <Img src={pic.url as string} className="w-full" />}
-                      </div>
-                    ))}
-                </div>
+              {props.sessionType === 'picture' && msg.contentParts.filter((p) => p.type === 'image').length > 0 && (
+                <PictureGallery
+                  pictures={msg.contentParts.filter((p) => p.type === 'image')}
+                  onReport={platform.type === 'mobile' ? onReport : undefined}
+                />
               )}
               {(msg.files || msg.links) && (
                 <div className="flex flex-row items-start justify-start overflow-x-auto overflow-y-hidden pb-1">
@@ -785,3 +752,142 @@ const _Message: FC<Props> = (props) => {
 }
 
 export default memo(_Message)
+
+function getBase64ImageSize(base64: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      resolve({ width: img.width, height: img.height })
+    }
+    img.onerror = (err) => {
+      reject(err)
+    }
+    img.src = base64
+  })
+}
+
+type PictureGalleryProps = {
+  pictures: MessagePicture[]
+  onReport?(picture: MessagePicture): void
+}
+
+const PictureGallery = memo(({ pictures, onReport }: PictureGalleryProps) => {
+  const uiElements: UIElementData[] = concat(
+    [
+      {
+        name: 'custom-download-button',
+        ariaLabel: 'Download',
+        order: 9,
+        isButton: true,
+        html: {
+          isCustomSVG: true,
+          inner:
+            '<path d="M20.5 14.3 17.1 18V10h-2.2v7.9l-3.4-3.6L10 16l6 6.1 6-6.1ZM23 23H9v2h14Z" id="pswp__icn-download"/>',
+          outlineID: 'pswp__icn-download',
+        },
+        appendTo: 'bar',
+        onClick: async (_e, _el, pswp) => {
+          const picture = pictures[pswp.currIndex]
+          if (picture.storageKey) {
+            const base64 = await storage.getBlob(picture.storageKey)
+            if (!base64) {
+              return
+            }
+            // storageKey中含有冒号，会在android端导致存储失败，且android端在同文件名的情况下不会再次保存图片，也无提示，可能对用户造成困扰，所以增加随机后缀
+            const filename =
+              platform.type === 'mobile'
+                ? `${picture.storageKey.replaceAll(':', '_')}_${Math.random().toString(36).substring(7)}`
+                : picture.storageKey
+            platform.exporter.exportImageFile(filename, base64)
+          } else if (picture.url) {
+            platform.exporter.exportByUrl(`image_${Math.random().toString(36).substring(7)}`, picture.url)
+          }
+        },
+      },
+    ],
+    onReport
+      ? [
+          {
+            name: 'report-button',
+            ariaLabel: 'Report',
+            order: 8,
+            isButton: true,
+            html: {
+              isCustomSVG: true,
+              inner:
+                '<path d="M 16 6 A 10 10 0 0 1 16 26 L 16 24 A 8 8 0 0 0 16 8 L 16 6 A 10 10 0 0 0 16 26 L 16 24 A 8 8 0 0 1 16 8 M 15 11 A 1 1 0 0 1 17 11 L 17 16 A 1 1 0 0 1 15 16 M 16 19 A 1.5 1.5 0 0 1 16 22 A 1.5 1.5 0 0 1 16 19 Z" id="pswp__icn-report">',
+              outlineID: 'pswp__icn-report',
+            },
+            appendTo: 'bar',
+            onClick: async (_e, _el, pswp) => {
+              const picture = pictures[pswp.currIndex]
+              pswp.close()
+              onReport(picture)
+            },
+          },
+        ]
+      : []
+  )
+  return (
+    <Gallery uiElements={uiElements}>
+      {pictures.map((p) =>
+        p.storageKey ? (
+          <ImageInStorageGalleryItem key={p.storageKey} storageKey={p.storageKey} />
+        ) : p.url ? (
+          <GalleryItem key={p.url} original={p.url} thumbnail={p.url} width={1024} height={1024}>
+            {({ ref, open }) => (
+              <div
+                ref={ref}
+                className="w-[100px] min-w-[100px] h-[100px] min-h-[100px]
+                                              md:w-[200px] md:min-w-[200px] md:h-[200px] md:min-h-[200px]
+                                              p-1.5 mr-2 mb-2 inline-flex items-center justify-center
+                                              bg-white dark:bg-slate-800
+                                              border-solid border-slate-400/20 rounded-md
+                                              hover:cursor-pointer hover:border-slate-800/20 transition-all duration-200"
+                onClick={open}
+              >
+                <img src={p.url} alt="" className="w-full h-full object-contain" />
+              </div>
+            )}
+          </GalleryItem>
+        ) : undefined
+      )}
+    </Gallery>
+  )
+})
+
+const ImageInStorageGalleryItem = ({ storageKey }: { storageKey: string }) => {
+  const { data: pic } = useQuery({
+    queryKey: ['image-in-storage-gallery-item', storageKey],
+    queryFn: async ({ queryKey: [, key] }) => {
+      const blob = await storage.getBlob(key)
+      const base64 = blob?.startsWith('data:image/') ? blob : `data:image/png;base64,${blob}`
+      const size = await getBase64ImageSize(base64)
+      return {
+        storageKey,
+        ...size,
+        data: base64,
+      }
+    },
+    staleTime: Infinity,
+  })
+
+  return pic ? (
+    <GalleryItem original={pic.data} thumbnail={pic.data} width={pic.width} height={pic.height}>
+      {({ ref, open }) => (
+        <div
+          ref={ref}
+          className="w-[100px] min-w-[100px] h-[100px] min-h-[100px]
+                                              md:w-[200px] md:min-w-[200px] md:h-[200px] md:min-h-[200px]
+                                              p-1.5 mr-2 mb-2 inline-flex items-center justify-center
+                                              bg-white dark:bg-slate-800
+                                              border-solid border-slate-400/20 rounded-md
+                                              hover:cursor-pointer hover:border-slate-800/20 transition-all duration-200"
+          onClick={open}
+        >
+          <img src={pic.data} alt="" className="w-full h-full object-contain" />
+        </div>
+      )}
+    </GalleryItem>
+  ) : null
+}

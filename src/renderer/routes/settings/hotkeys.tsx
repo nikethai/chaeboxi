@@ -7,7 +7,7 @@ export const Route = createFileRoute('/settings/hotkeys')({
   component: RouteComponent,
 })
 
-function RouteComponent() {
+export function RouteComponent() {
   const shortcuts = useSettingsStore((state) => state.shortcuts)
   const setSettings = useSettingsStore((state) => state.setSettings)
   return (

@@ -28,10 +28,21 @@ export const settingsStore = createStore<Settings & Action>()(
       name: 'settings',
       storage: createJSONStorage(() => ({
         getItem: async (key) => {
-          const res = await storage.getItem<Settings | null>(key, null)
-          return res ? JSON.stringify(res) : null
+          const res = await storage.getItem<(Settings & { __version?: number }) | null>(key, null)
+          if (res) {
+            const { __version = 0, ...state } = res
+            return JSON.stringify({
+              state,
+              version: __version,
+            })
+          }
+
+          return null
         },
-        setItem: async (name, value) => await storage.setItem(name, JSON.parse(value)),
+        setItem: async (name, value) => {
+          const { state, version } = JSON.parse(value) as { state: Settings; version?: number }
+          await storage.setItem(name, { ...state, __version: version || 0 })
+        },
         removeItem: async (name) => await storage.removeItem(name),
       })),
       version: 1,
@@ -51,8 +62,9 @@ export const settingsStore = createStore<Settings & Action>()(
         switch (version) {
           case 0:
             // fix typo
-            settings.inputBoxSendMessage = settings.inpubBoxSendMessage
-            settings.inputBoxSendMessageWithoutResponse = settings.inpubBoxSendMessageWithoutResponse
+            settings.shortcuts.inputBoxSendMessage = settings.shortcuts.inpubBoxSendMessage
+            settings.shortcuts.inputBoxSendMessageWithoutResponse =
+              settings.shortcuts.inpubBoxSendMessageWithoutResponse
             break
           default:
             break

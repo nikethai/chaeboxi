@@ -32,9 +32,7 @@ if (fs.existsSync(configPath) && !checkConfigValid(configPath)) {
 // 2) 初始化store
 interface StoreType {
   configVersion: number
-  settings: {
-    state: Settings
-  }
+  settings: Settings
   configs: Config
   lastShownAboutDialogVersion: string // 上次启动时自动弹出关于对话框的应用版本
 }
@@ -68,14 +66,8 @@ async function autoBackup() {
 }
 
 export function getSettings(): Settings {
-  const configVersion = store.get('configVersion')
-  if (configVersion >= 13) {
-    const { state: settings } = store.get<'settings'>('settings', { state: defaults.settings() })
-    return settings
-  } else {
-    const settings = (store.get as any)('settings', defaults.settings())
-    return settings
-  }
+  const settings = store.get<'settings'>('settings', defaults.settings())
+  return settings
 }
 
 export function getConfig(): Config {

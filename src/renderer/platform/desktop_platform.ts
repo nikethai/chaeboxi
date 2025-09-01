@@ -126,7 +126,9 @@ export default class DesktopPlatform implements Platform {
     })
     const json = JSON.parse(await this.ipc.invoke('getAllStoreValues'))
     for (const [key, value] of Object.entries(json)) {
-      ret[key] = value
+      if (this.needStoreInFile(key)) {
+        ret[key] = value
+      }
     }
     return ret
   }

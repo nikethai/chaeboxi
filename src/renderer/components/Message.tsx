@@ -280,7 +280,7 @@ const _Message: FC<Props> = (props) => {
       }
       setAutoScrollId(null)
     }
-  }, [msg.generating, autoScrollId, msg.id])
+  }, [msg.generating])
 
   useEffect(() => {
     if (msg.generating && autoScrollId) {
@@ -299,7 +299,7 @@ const _Message: FC<Props> = (props) => {
         scrollActions.tickAutoScroll(autoScrollId)
       }
     }
-  }, [needArtifact, autoScrollId, msg.generating, msg.id])
+  }, [msg.contentParts, msg.reasoningContent, needArtifact])
 
   const contentParts = msg.contentParts || []
 

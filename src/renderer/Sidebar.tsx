@@ -44,13 +44,7 @@ export default function Sidebar() {
 
   const sidebarWidth = useSidebarWidth()
 
-  // 小屏幕切换会话时隐藏侧边栏
   const isSmallScreen = useIsSmallScreen()
-  useEffect(() => {
-    if (isSmallScreen) {
-      setShowSidebar(false)
-    }
-  }, [isSmallScreen, setShowSidebar])
 
   const theme = useTheme()
 

@@ -107,7 +107,6 @@ export function navigateToSettings(path?: string) {
 
 const RootRoute = createRootRoute({
   component: SettingsRoot,
-  beforeLoad: (e) => console.log('beforeLoad', e),
 })
 
 const SettingsIndexRoute = createRoute({

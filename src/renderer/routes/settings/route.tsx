@@ -120,7 +120,6 @@ export function RouteComponent() {
 export function SettingsRoot() {
   const { t } = useTranslation()
   const routerState = useRouterState()
-  console.log('routerState', routerState, routerState.location.pathname)
   const key = routerState.location.pathname.split('/')[2]
   const isSmallScreen = useIsSmallScreen()
 

@@ -1,4 +1,5 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: any */
+/** biome-ignore-all lint/suspicious/noFallthroughSwitchClause: migrate */
 import deepmerge from 'deepmerge'
 import type { WritableDraft } from 'immer'
 import * as defaults from 'src/shared/defaults'
@@ -62,10 +63,11 @@ export const settingsStore = createStore<Settings & Action>()(
         switch (version) {
           case 0:
             // fix typo
-            settings.shortcuts.inputBoxSendMessage = settings.shortcuts.inpubBoxSendMessage
+            settings.shortcuts.inputBoxSendMessage =
+              settings.shortcuts.inpubBoxSendMessage || settings.shortcuts.inputBoxSendMessage
             settings.shortcuts.inputBoxSendMessageWithoutResponse =
-              settings.shortcuts.inpubBoxSendMessageWithoutResponse
-            break
+              settings.shortcuts.inpubBoxSendMessageWithoutResponse ||
+              settings.shortcuts.inputBoxSendMessageWithoutResponse
           default:
             break
         }

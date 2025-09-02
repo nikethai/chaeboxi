@@ -61,6 +61,7 @@ export const uiStore = createStore(
         },
 
         setShowSidebar: (showSidebar: boolean) => {
+          console.log('setShowSidebar:', showSidebar)
           set({ showSidebar })
         },
 

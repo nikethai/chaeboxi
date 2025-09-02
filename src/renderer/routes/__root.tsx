@@ -11,7 +11,7 @@ import Toasts from '@/components/Toasts'
 import useAppTheme from '@/hooks/useAppTheme'
 import { useSystemLanguageWhenInit } from '@/hooks/useDefaultSystemLanguage'
 import { useI18nEffect } from '@/hooks/useI18nEffect'
-import useScreenChange, { useSidebarWidth } from '@/hooks/useScreenChange'
+import { useSidebarWidth } from '@/hooks/useScreenChange'
 import useShortcut from '@/hooks/useShortcut'
 import { getOS } from '@/packages/navigator'
 import * as remote from '@/packages/remote'
@@ -582,7 +582,6 @@ export const Route = createRootRoute({
     premiumActions.useAutoValidate() // 每次启动都执行 license 检查，防止用户在lemonsqueezy管理页面中取消了当前设备的激活
     useSystemLanguageWhenInit()
     useShortcut()
-    useScreenChange()
     const theme = useAppTheme()
     const _theme = useTheme()
     const fontSize = useSettingsStore((state) => state.fontSize)

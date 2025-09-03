@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react'
-import { useMemo } from 'react'
+import debounce from 'lodash/debounce'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { estimateTokensFromMessages } from '@/packages/token'
 import type { Message } from '../../shared/types'
 
@@ -8,34 +9,41 @@ export function useTokenCount(
   messages: Message[] = [],
   model?: { provider: string; modelId: string }
 ) {
-  const stableMessages = useMemo(() => {
-    return messages.filter((msg) => !msg.generating)
-  }, [messages])
+  // Note: messages should already be filtered to exclude generating messages at the atom level
+  const contextTokens = useMemo(() => {
+    return estimateTokensFromMessages(messages, 'input', model)
+  }, [messages, model])
 
-  return useMemo(() => {
-    try {
-      // Calculate current input tokens from the constructed message
-      let currentInputTokens = 0
+  // Debounced calculation for current input tokens
+  const [currentInputTokens, setCurrentInputTokens] = useState(0)
 
-      if (constructedMessage) {
-        currentInputTokens = estimateTokensFromMessages([constructedMessage], 'input', model)
+  const debouncedCalculateInputTokens = useCallback(
+    debounce((message: Message | undefined, modelConfig?: { provider: string; modelId: string }) => {
+      try {
+        if (!message) {
+          setCurrentInputTokens(0)
+          return
+        }
+        const tokens = estimateTokensFromMessages([message], 'input', modelConfig)
+        setCurrentInputTokens(tokens)
+      } catch (e) {
+        Sentry.captureException(e)
+        setCurrentInputTokens(0)
       }
+    }, 300),
+    []
+  )
 
-      // Calculate context tokens from messages
-      const contextTokens = estimateTokensFromMessages(stableMessages, 'input', model)
-
-      return {
-        currentInputTokens,
-        contextTokens,
-        totalTokens: currentInputTokens + contextTokens,
-      }
-    } catch (e) {
-      Sentry.captureException(e)
-      return {
-        currentInputTokens: 0,
-        contextTokens: 0,
-        totalTokens: 0,
-      }
+  useEffect(() => {
+    debouncedCalculateInputTokens(constructedMessage, model)
+    return () => {
+      debouncedCalculateInputTokens.cancel()
     }
-  }, [constructedMessage, stableMessages, model])
+  }, [constructedMessage, model, debouncedCalculateInputTokens])
+
+  return {
+    currentInputTokens,
+    contextTokens,
+    totalTokens: currentInputTokens + contextTokens,
+  }
 }

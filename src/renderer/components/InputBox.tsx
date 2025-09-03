@@ -19,8 +19,7 @@ import {
 } from '@tabler/icons-react'
 import { useAtom, useAtomValue } from 'jotai'
 import _, { pick } from 'lodash'
-import type React from 'react'
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from 'src/shared/utils'
@@ -144,11 +143,20 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const currentSession = useAtomValue(atoms.currentSessionAtom)
     const currentSessionMergedSettings = useAtomValue(atoms.currentMergedSettingsAtom)
 
-    // Get current messages for token counting
+    // Get stable messages for token counting (excludes generating messages)
+    const allStableMessages = currentSession?.messages.filter((msg) => !msg.generating) || []
+
+    // Create a stable identifier for stable messages to avoid unnecessary recalculations
+    const stableMessagesId = useMemo(() => {
+      return allStableMessages.map((msg) => `${msg.id}-${msg.timestamp}`).join(',')
+    }, [allStableMessages])
+
+    // Get current messages for token counting - will only recalculate when stable messages actually change
     const currentMessages = useMemo(() => {
-      if (!currentSession || isNewSession) return []
-      return currentSession.messages.slice(-(currentSessionMergedSettings.maxContextMessageCount || 0))
-    }, [currentSession, isNewSession, currentSessionMergedSettings.maxContextMessageCount])
+      if (isNewSession) return []
+      return allStableMessages.slice(-(currentSessionMergedSettings.maxContextMessageCount || 0))
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [stableMessagesId, isNewSession, currentSessionMergedSettings.maxContextMessageCount])
 
     const { knowledgeBase, setKnowledgeBase } = useKnowledgeBase({ isNewSession })
 
@@ -221,7 +229,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       return (providerInfo?.models || providerInfo?.defaultSettings?.models)?.find((m) => m.modelId === model.modelId)
     }, [providers, model])
 
-    // Calculate token counts
+    // Calculate token counts - use stable messages to avoid recalculation during streaming
     const { currentInputTokens, contextTokens, totalTokens } = useTokenCount(
       preConstructedMessage.message,
       isNewSession ? [] : currentMessages,
@@ -1046,4 +1054,22 @@ const AttachmentMenu: React.FC<{
   )
 }
 
-export default InputBox
+// Memoize the InputBox component to prevent unnecessary re-renders during streaming
+export default React.memo(InputBox, (prevProps, nextProps) => {
+  // Return true if props are equal (no re-render needed)
+  // Return false if props are different (re-render needed)
+  return (
+    prevProps.sessionId === nextProps.sessionId &&
+    prevProps.sessionType === nextProps.sessionType &&
+    prevProps.generating === nextProps.generating &&
+    prevProps.model?.provider === nextProps.model?.provider &&
+    prevProps.model?.modelId === nextProps.model?.modelId &&
+    prevProps.fullWidth === nextProps.fullWidth &&
+    Boolean(prevProps.onClickSessionSettings) === Boolean(nextProps.onClickSessionSettings) &&
+    Boolean(prevProps.onStartNewThread) === Boolean(nextProps.onStartNewThread) &&
+    Boolean(prevProps.onRollbackThread) === Boolean(nextProps.onRollbackThread) &&
+    Boolean(prevProps.onStopGenerating) === Boolean(nextProps.onStopGenerating)
+    // Note: We intentionally don't include callback props in comparison
+    // as they might change on every render but don't affect InputBox display
+  )
+})

@@ -4,8 +4,8 @@ import ArrowCircleUpIcon from '@mui/icons-material/ArrowCircleUp'
 import { Box, ButtonGroup, IconButton } from '@mui/material'
 import { createFileRoute } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
-import { useEffect } from 'react'
-import { createMessage, type ModelProvider } from 'src/shared/types'
+import { useCallback, useEffect, useMemo } from 'react'
+import type { Message, ModelProvider } from 'src/shared/types'
 import { useStore } from 'zustand'
 import Header from '@/components/Header'
 import InputBox from '@/components/InputBox/InputBox'
@@ -56,6 +56,81 @@ function RouteComponent() {
     }
   }, [currentSession?.settings, currentSession?.type, currentSession, setLastUsedChatModel, setLastUsedPictureModel])
 
+  const onSelectModel = useCallback(
+    (provider: ModelProvider, modelId: string) => {
+      if (!currentSession) {
+        return
+      }
+      saveSession({
+        id: currentSession.id,
+        settings: {
+          ...(currentSession.settings || {}),
+          provider,
+          modelId,
+        },
+      })
+    },
+    [currentSession]
+  )
+
+  const onStartNewThread = useCallback(() => {
+    sessionActions.startNewThread()
+    return true
+  }, [])
+
+  const onRollbackThread = useCallback(() => {
+    sessionActions.removeCurrentThread(currentSessionId)
+    return true
+  }, [currentSessionId])
+
+  const onSubmit = useCallback(
+    async ({
+      constructedMessage,
+      needGenerating = true,
+    }: {
+      constructedMessage: Message
+      needGenerating?: boolean
+    }) => {
+      await sessionActions.submitNewUserMessage({
+        currentSessionId: currentSessionId,
+        newUserMsg: constructedMessage,
+        needGenerating,
+      })
+    },
+    [currentSessionId]
+  )
+
+  const onClickSessionSettings = useCallback(() => {
+    if (!currentSession) {
+      return false
+    }
+    NiceModal.show('session-settings', {
+      session: currentSession,
+    })
+    return true
+  }, [currentSession])
+
+  const onStopGenerating = useCallback(() => {
+    if (!currentSession) {
+      return false
+    }
+    if (lastMessage?.generating) {
+      lastMessage?.cancel?.()
+      sessionActions.modifyMessage(currentSession.id, { ...lastMessage, generating: false }, true)
+    }
+    return true
+  }, [currentSession, lastMessage])
+
+  const model = useMemo(() => {
+    if (!currentSession || !currentSession.settings?.modelId || !currentSession.settings?.provider) {
+      return undefined
+    }
+    return {
+      provider: currentSession.settings.provider,
+      modelId: currentSession.settings.modelId,
+    }
+  }, [currentSession])
+
   return currentSession ? (
     <div className="flex flex-col h-full">
       <Header />
@@ -68,62 +143,14 @@ function RouteComponent() {
         key={`input-box${currentSession.id}`}
         sessionId={currentSession.id}
         sessionType={currentSession.type}
-        model={
-          currentSession.settings?.provider && currentSession.settings?.modelId
-            ? {
-                provider: currentSession.settings.provider,
-                modelId: currentSession.settings.modelId,
-              }
-            : undefined
-        }
-        onStartNewThread={() => {
-          sessionActions.startNewThread()
-          return true
-        }}
-        onRollbackThread={() => {
-          sessionActions.removeCurrentThread(currentSessionId)
-          return true
-        }}
-        onSelectModel={(provider: ModelProvider, modelId: string) => {
-          if (!currentSession) {
-            return
-          }
-          saveSession({
-            id: currentSession.id,
-            settings: {
-              ...(currentSession.settings || {}),
-              provider,
-              modelId,
-            },
-          })
-        }}
-        onClickSessionSettings={() => {
-          if (!currentSession) {
-            return false
-          }
-          NiceModal.show('session-settings', {
-            session: currentSession,
-          })
-          return true
-        }}
+        model={model}
+        onStartNewThread={onStartNewThread}
+        onRollbackThread={onRollbackThread}
+        onSelectModel={onSelectModel}
+        onClickSessionSettings={onClickSessionSettings}
         generating={lastMessage?.generating}
-        onSubmit={async ({ constructedMessage, needGenerating = true }) => {
-          await sessionActions.submitNewUserMessage({
-            currentSessionId: currentSessionId,
-            newUserMsg: constructedMessage,
-            needGenerating,
-          })
-        }}
-        onStopGenerating={() => {
-          if (!currentSession) {
-            return false
-          }
-          if (lastMessage?.generating) {
-            lastMessage?.cancel?.()
-            sessionActions.modifyMessage(currentSession.id, { ...lastMessage, generating: false }, true)
-          }
-          return true
-        }}
+        onSubmit={onSubmit}
+        onStopGenerating={onStopGenerating}
       />
       {/* <InputBox /> */}
       <ThreadHistoryDrawer />

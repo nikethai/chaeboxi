@@ -4,12 +4,12 @@ import { IconChevronLeft, IconChevronRight, IconX } from '@tabler/icons-react'
 import { createFileRoute, useNavigate, useRouterState } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import clsx from 'clsx'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { type CopilotDetail, createMessage, type Session } from 'src/shared/types'
+import type { CopilotDetail, Session } from 'src/shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { z } from 'zod'
-import InputBox, { type InputBoxPayload } from '@/components/InputBox'
+import InputBox, { type InputBoxPayload } from '@/components/InputBox/InputBox'
 import HomepageIcon from '@/components/icons/HomepageIcon'
 import Page from '@/components/Page'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
@@ -108,46 +108,67 @@ function Index() {
     }
   }, [routerState.location.search])
 
-  const handleSubmit = async ({
-    needGenerating = true,
-    input = '',
-    pictureKeys = [],
-    attachments = [],
-    links = [],
-  }: InputBoxPayload) => {
-    const newSession = await createSession({
-      name: session.name,
-      type: 'chat',
-      picUrl: session.picUrl,
-      messages: session.messages,
-      copilotId: session.copilotId,
-      settings: session.settings,
+  const handleSubmit = useCallback(
+    async ({ constructedMessage, needGenerating = true }: InputBoxPayload) => {
+      const newSession = await createSession({
+        name: session.name,
+        type: 'chat',
+        picUrl: session.picUrl,
+        messages: session.messages,
+        copilotId: session.copilotId,
+        settings: session.settings,
+      })
+
+      // Ensure that the session atom is created successfully.
+      await getSessionAsync(newSession.id)
+
+      // Transfer knowledge base from newSessionState to the actual session
+      if (newSessionState.knowledgeBase) {
+        addSessionKnowledgeBase(newSession.id, newSessionState.knowledgeBase)
+        // Clear newSessionState after transfer
+        setNewSessionState({})
+      }
+
+      sessionActions.switchCurrentSession(newSession.id)
+
+      await sessionActions.submitNewUserMessage({
+        currentSessionId: newSession.id,
+        newUserMsg: constructedMessage,
+        needGenerating,
+      })
+    },
+    [
+      session,
+      addSessionKnowledgeBase,
+      newSessionState.knowledgeBase, // Clear newSessionState after transfer
+      setNewSessionState,
+    ]
+  )
+
+  const onSelectModel = useCallback((p: string, m: string) => {
+    setSession((old) => ({
+      ...old,
+      settings: {
+        ...(old.settings || {}),
+        provider: p,
+        modelId: m,
+      },
+    }))
+  }, [])
+
+  const onClickSessionSettings = useCallback(async () => {
+    const res: Session = await NiceModal.show('session-settings', {
+      session,
+      disableAutoSave: true,
     })
-
-    // Ensure that the session atom is created successfully.
-    await getSessionAsync(newSession.id)
-
-    // Transfer knowledge base from newSessionState to the actual session
-    if (newSessionState.knowledgeBase) {
-      addSessionKnowledgeBase(newSession.id, newSessionState.knowledgeBase)
-      // Clear newSessionState after transfer
-      setNewSessionState({})
+    if (res) {
+      setSession((old) => ({
+        ...old,
+        ...res,
+      }))
     }
-
-    sessionActions.switchCurrentSession(newSession.id)
-
-    const newMessage = createMessage('user', input)
-    if (pictureKeys && pictureKeys.length > 0) {
-      newMessage.contentParts.push(...pictureKeys.map((k) => ({ type: 'image' as const, storageKey: k })))
-    }
-    await sessionActions.submitNewUserMessage({
-      currentSessionId: newSession.id,
-      newUserMsg: newMessage,
-      needGenerating,
-      attachments,
-      links,
-    })
-  }
+    return true
+  }, [session])
 
   return (
     <Page title="">
@@ -191,29 +212,8 @@ function Index() {
             sessionId="new"
             model={selectedModel}
             fullWidth
-            onSelectModel={(p, m) =>
-              setSession((old) => ({
-                ...old,
-                settings: {
-                  ...(old.settings || {}),
-                  provider: p,
-                  modelId: m,
-                },
-              }))
-            }
-            onClickSessionSettings={async () => {
-              const res: Session = await NiceModal.show('session-settings', {
-                session,
-                disableAutoSave: true,
-              })
-              if (res) {
-                setSession((old) => ({
-                  ...old,
-                  ...res,
-                }))
-              }
-              return true
-            }}
+            onSelectModel={onSelectModel}
+            onClickSessionSettings={onClickSessionSettings}
             onSubmit={handleSubmit}
           />
         </Stack>

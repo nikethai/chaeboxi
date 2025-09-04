@@ -1055,21 +1055,4 @@ const AttachmentMenu: React.FC<{
 }
 
 // Memoize the InputBox component to prevent unnecessary re-renders during streaming
-export default React.memo(InputBox, (prevProps, nextProps) => {
-  // Return true if props are equal (no re-render needed)
-  // Return false if props are different (re-render needed)
-  return (
-    prevProps.sessionId === nextProps.sessionId &&
-    prevProps.sessionType === nextProps.sessionType &&
-    prevProps.generating === nextProps.generating &&
-    prevProps.model?.provider === nextProps.model?.provider &&
-    prevProps.model?.modelId === nextProps.model?.modelId &&
-    prevProps.fullWidth === nextProps.fullWidth &&
-    Boolean(prevProps.onClickSessionSettings) === Boolean(nextProps.onClickSessionSettings) &&
-    Boolean(prevProps.onStartNewThread) === Boolean(nextProps.onStartNewThread) &&
-    Boolean(prevProps.onRollbackThread) === Boolean(nextProps.onRollbackThread) &&
-    Boolean(prevProps.onStopGenerating) === Boolean(nextProps.onStopGenerating)
-    // Note: We intentionally don't include callback props in comparison
-    // as they might change on every render but don't affect InputBox display
-  )
-})
+export default React.memo(InputBox)

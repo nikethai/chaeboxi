@@ -36,7 +36,6 @@ export const SettingsModal: FC<SettingsModalProps> = (props) => {
 
   useEffect(() => {
     if (location.search.settings) {
-      console.log('location.search.settings', location.search.settings)
       settingsModalHistory.replace(location.search.settings)
     }
   }, [location.search.settings])
@@ -200,9 +199,7 @@ const routeTree = RootRoute.addChildren([
 ])
 
 const settingsModalHistory = createMemoryHistory()
-settingsModalHistory.subscribe((opts) => {
-  console.log(opts, settingsModalHistory.length, settingsModalHistory.location.href)
-})
+
 // memoryHistory.location.href = '/about'
 const modalRouter = createRouter({
   routeTree,

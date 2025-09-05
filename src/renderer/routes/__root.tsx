@@ -37,6 +37,7 @@ import {
   MantineProvider,
   Modal,
   NativeSelect,
+  Popover,
   rem,
   Select,
   Switch,
@@ -569,6 +570,11 @@ const creteMantineTheme = (scale = 1) =>
         }),
       }),
       Tooltip: Tooltip.extend({
+        defaultProps: {
+          zIndex: 3000,
+        },
+      }),
+      Popover: Popover.extend({
         defaultProps: {
           zIndex: 3000,
         },

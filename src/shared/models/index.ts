@@ -13,6 +13,7 @@ import LMStudio from './lmstudio'
 import MistralAI from './mistral-ai'
 import Ollama from './ollama'
 import OpenAI from './openai'
+import OpenRouter from './openrouter'
 import Perplexity from './perplexity'
 import SiliconFlow from './siliconflow'
 import type { ModelInterface } from './types'
@@ -214,6 +215,19 @@ export function getModel(
         dependencies
       )
 
+    case ModelProviderEnum.OpenRouter:
+      return new OpenRouter(
+        {
+          apiKey: providerSetting.apiKey || '',
+          model,
+          temperature: settings.temperature,
+          topP: settings.topP,
+          maxOutputTokens: settings.maxTokens,
+          stream: settings.stream,
+        },
+        dependencies
+      )
+
     case ModelProviderEnum.VolcEngine:
       return new VolcEngine(
         {
@@ -316,6 +330,7 @@ export const aiProviderNameHash: Record<ModelProvider, string> = {
   [ModelProviderEnum.LMStudio]: 'LM Studio API',
   [ModelProviderEnum.Perplexity]: 'Perplexity API',
   [ModelProviderEnum.XAI]: 'xAI API',
+  [ModelProviderEnum.OpenRouter]: 'OpenRouter API',
   [ModelProviderEnum.Custom]: 'Custom Provider',
 }
 
@@ -359,6 +374,11 @@ export const AIModelProviderMenuOptionList = [
   {
     value: ModelProviderEnum.SiliconFlow,
     label: aiProviderNameHash[ModelProviderEnum.SiliconFlow],
+    disabled: false,
+  },
+  {
+    value: ModelProviderEnum.OpenRouter,
+    label: aiProviderNameHash[ModelProviderEnum.OpenRouter],
     disabled: false,
   },
   {

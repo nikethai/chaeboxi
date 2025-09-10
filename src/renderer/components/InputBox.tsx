@@ -3,6 +3,7 @@ import { ActionIcon, Box, Button, Flex, Menu, Stack, Text, Textarea, Tooltip } f
 import { useViewportSize } from '@mantine/hooks'
 import {
   IconAdjustmentsHorizontal,
+  IconAlertCircle,
   IconArrowBackUp,
   IconArrowUp,
   IconCirclePlus,
@@ -279,6 +280,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     const { addInputBoxHistory, getPreviousHistoryInput, getNextHistoryInput, resetHistoryIndex } = useInputBoxHistory()
 
+    const closeSelectModelErrorTipCb = useRef<NodeJS.Timeout>()
     const handleSubmit = async (needGenerating = true) => {
       if (disableSubmit || generating || isSubmitting || isPreprocessing) {
         return
@@ -288,7 +290,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       if (!model) {
         // 如果不延时执行，会导致error tip 立即消失
         await delay(100)
+        if (closeSelectModelErrorTipCb.current) {
+          clearTimeout(closeSelectModelErrorTipCb.current)
+        }
         setShowSelectModelErrorTip(true)
+        closeSelectModelErrorTipCb.current = setTimeout(() => setShowSelectModelErrorTip(false), 5000)
         return
       }
 
@@ -940,8 +946,15 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 )}
 
                 <Tooltip
-                  label={t('Please select a model')}
-                  color="chatbox-error"
+                  label={
+                    <Flex align="center" c="white" gap="xxs">
+                      <IconAlertCircle size={12} className=" text-inherit" />
+                      <Text span size="xxs" c="white">
+                        {t('Please select a model')}
+                      </Text>
+                    </Flex>
+                  }
+                  color="dark"
                   opened={showSelectModelErrorTip}
                   withArrow
                 >

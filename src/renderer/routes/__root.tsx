@@ -2,7 +2,7 @@ import NiceModal from '@ebay/nice-modal-react'
 import { Box, Grid } from '@mui/material'
 import CssBaseline from '@mui/material/CssBaseline'
 import { ThemeProvider } from '@mui/material/styles'
-import { createRootRoute, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
+import { createRootRoute, Outlet, useLocation } from '@tanstack/react-router'
 import { useSetAtom } from 'jotai'
 import { useEffect, useMemo, useRef } from 'react'
 import { type RemoteConfig, Theme } from '@/../shared/types'
@@ -50,6 +50,7 @@ import {
 } from '@mantine/core'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { router } from '@/router'
 import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
 import SettingsModal, { navigateToSettings } from '@/modals/Settings'
 import queryClient from '@/stores/queryClient'
@@ -58,7 +59,6 @@ import { useUIStore } from '@/stores/uiStore'
 
 function Root() {
   const location = useLocation()
-  const navigate = useNavigate()
   const spellCheck = useSettingsStore((state) => state.spellCheck)
   const language = useLanguage()
   const initialized = useRef(false)
@@ -81,15 +81,7 @@ function Root() {
         // 是否需要弹出设置窗口
         initialized.current = true
         if (settingActions.needEditSetting() && location.pathname !== '/settings/mcp') {
-          const res = await NiceModal.show('welcome')
-          if (res) {
-            if (res === 'custom') {
-              navigateToSettings(`/provider/openai`)
-            } else {
-              navigateToSettings(`/provider/chatbox-ai`)
-            }
-          }
-
+          await NiceModal.show('welcome')
           return
         }
         // 是否需要弹出关于窗口（更新后首次启动）
@@ -103,7 +95,7 @@ function Root() {
     }, 2000)
 
     return () => clearTimeout(tid)
-  }, [navigate, setOpenAboutDialog, setRemoteConfig, location.pathname])
+  }, [setOpenAboutDialog, setRemoteConfig, location.pathname])
 
   const showSidebar = useUIStore((s) => s.showSidebar)
   const sidebarWidth = useSidebarWidth()
@@ -126,7 +118,7 @@ function Root() {
       const { startupPage } = settingsStore.getState()
       const sid = JSON.parse(localStorage.getItem('_currentSessionIdCachedAtom') || '""') as string
       if (sid && startupPage === 'session') {
-        navigate({
+        router.navigate({
           to: `/session/${sid}`,
           replace: true,
         })
@@ -138,10 +130,10 @@ function Root() {
     if (platform.onNavigate) {
       // 移动端和其他平台的导航监听器
       return platform.onNavigate((path) => {
-        navigate({ to: path })
+        router.navigate({ to: path })
       })
     }
-  }, [navigate])
+  }, [])
 
   const { needRoomForMacWindowControls, needRoomForWindowsWindowControls } = useNeedRoomForWinControls()
   useEffect(() => {

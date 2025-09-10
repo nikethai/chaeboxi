@@ -1,7 +1,7 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { ActionIcon, Avatar, Divider, Flex, ScrollArea, Space, Stack, Text } from '@mantine/core'
+import { ActionIcon, Avatar, Box, Button, Divider, Flex, Paper, ScrollArea, Space, Stack, Text } from '@mantine/core'
 import { IconChevronLeft, IconChevronRight, IconX } from '@tabler/icons-react'
-import { createFileRoute, useNavigate, useRouterState } from '@tanstack/react-router'
+import { createFileRoute, useRouterState } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import clsx from 'clsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -13,8 +13,10 @@ import InputBox, { type InputBoxPayload } from '@/components/InputBox/InputBox'
 import HomepageIcon from '@/components/icons/HomepageIcon'
 import Page from '@/components/Page'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
+import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import platform from '@/platform'
+import { router } from '@/router'
 import * as sessionActions from '@/stores/sessionActions'
 import { initEmptyChatSession } from '@/stores/sessionActions'
 import { createSession, getSessionAsync } from '@/stores/sessionStorageMutations'
@@ -37,11 +39,14 @@ function Index() {
   const setNewSessionState = useUIStore((s) => s.setNewSessionState)
   const addSessionKnowledgeBase = useUIStore((s) => s.addSessionKnowledgeBase)
   const showCopilotsInNewSession = useUIStore((s) => s.showCopilotsInNewSession)
+  const widthFull = useUIStore((s) => s.widthFull)
 
   const [session, setSession] = useState<Session>({
     id: 'new',
     ...initEmptyChatSession(),
   })
+
+  const { providers } = useProviders()
 
   // 理论上 initEmptyChatSession 的时候就已经读取了chatSessionSettingsAtom的值了，但是由于atom是异步的，冷启动的时候大概率会拿到一个空值，所以这里再设置一次
   // useEffect(() => {
@@ -180,27 +185,75 @@ function Index() {
           </Text>
         </Stack>
 
+        {!providers.length && (
+          <Box px="sm">
+            <Paper
+              radius="md"
+              shadow="none"
+              withBorder
+              py="md"
+              px="sm"
+              mb="md"
+              className={widthFull ? 'w-full' : 'w-full max-w-4xl mx-auto'}
+            >
+              <Stack gap="sm">
+                <Stack gap="xxs" align="center">
+                  <Text fw={600} className="text-center">
+                    {t('Select and configure an AI model provider')}
+                  </Text>
+
+                  <Text size="xs" c="chatbox-tertiary" className="text-center">
+                    {t(
+                      'To start a conversation, you need to configure at least one AI model. Click the buttons below to get started.'
+                    )}
+                  </Text>
+                </Stack>
+
+                <Flex gap="xs" justify="center" align="center">
+                  <Button
+                    size="xs"
+                    variant="light"
+                    h={32}
+                    miw={160}
+                    fw={600}
+                    flex="0 1 auto"
+                    onClick={() => {
+                      router.navigate({
+                        to: isSmallScreen ? '/settings/provider' : '/settings/provider/chatbox-ai',
+                      })
+                    }}
+                  >
+                    {t('Setup Provider')}
+                  </Button>
+                </Flex>
+              </Stack>
+            </Paper>
+          </Box>
+        )}
+
         <Stack gap="sm">
           {session.copilotId ? (
-            <Stack mx="md" gap="sm">
-              <Flex align="center" gap="sm">
-                <CopilotItem name={session.name} picUrl={session.picUrl} selected />
-                <ActionIcon
-                  size={32}
-                  radius={16}
-                  c="chatbox-tertiary"
-                  bg="#F1F3F5"
-                  onClick={() => setSession((old) => ({ ...old, copilotId: undefined }))}
-                >
-                  <IconX size={24} />
-                </ActionIcon>
-              </Flex>
+            <Box px="md">
+              <Stack gap="sm" className={widthFull ? 'w-full' : 'w-full max-w-4xl mx-auto'}>
+                <Flex align="center" gap="sm">
+                  <CopilotItem name={session.name} picUrl={session.picUrl} selected />
+                  <ActionIcon
+                    size={32}
+                    radius={16}
+                    c="chatbox-tertiary"
+                    bg="#F1F3F5"
+                    onClick={() => setSession((old) => ({ ...old, copilotId: undefined }))}
+                  >
+                    <IconX size={24} />
+                  </ActionIcon>
+                </Flex>
 
-              <Text c="chatbox-secondary" className="line-clamp-5">
-                {session.messages[0]?.contentParts?.map((part) => (part.type === 'text' ? part.text : '')).join('') ||
-                  ''}
-              </Text>
-            </Stack>
+                <Text c="chatbox-secondary" className="line-clamp-5">
+                  {session.messages[0]?.contentParts?.map((part) => (part.type === 'text' ? part.text : '')).join('') ||
+                    ''}
+                </Text>
+              </Stack>
+            </Box>
           ) : (
             showCopilotsInNewSession && (
               <CopilotPicker onSelect={(copilot) => setSession((old) => ({ ...old, copilotId: copilot?.id }))} />
@@ -211,7 +264,7 @@ function Index() {
             sessionType="chat"
             sessionId="new"
             model={selectedModel}
-            fullWidth
+            // fullWidth
             onSelectModel={onSelectModel}
             onClickSessionSettings={onClickSessionSettings}
             onSubmit={handleSubmit}
@@ -227,7 +280,7 @@ const MAX_COPILOTS_TO_SHOW = 10
 const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect?(copilot?: CopilotDetail): void }) => {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
-  const navigate = useNavigate()
+  const widthFull = useUIStore((s) => s.widthFull)
   const { copilots: myCopilots } = useMyCopilots()
   const { copilots: remoteCopilots } = useRemoteCopilots()
 
@@ -258,91 +311,98 @@ const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect
   }
 
   return (
-    <Stack gap="xs">
-      <Flex align="center" justify="space-between" mx="md">
-        <Text size="xxs" c="chatbox-tertiary">
-          {t('My Copilots').toUpperCase()}
-        </Text>
+    <Box px="md">
+      <Stack gap="xs" className={widthFull ? 'w-full' : 'w-full max-w-4xl mx-auto'}>
+        <Flex align="center" justify="space-between">
+          <Text size="xxs" c="chatbox-tertiary">
+            {t('My Copilots').toUpperCase()}
+          </Text>
 
-        {!isSmallScreen && (
-          <Flex align="center" gap="sm">
-            <ActionIcon
-              variant="transparent"
-              color="chatbox-tertiary"
-              // onClick={() => setPage((p) => Math.max(p - 1, 0))}
-              onClick={() => {
-                if (viewportRef.current) {
-                  // const scrollWidth = viewportRef.current.scrollWidth
-                  const clientWidth = viewportRef.current.clientWidth
-                  const newScrollPosition = Math.max(scrollPosition.x - clientWidth, 0)
-                  viewportRef.current.scrollTo({ left: newScrollPosition, behavior: 'smooth' })
-                  onScrollPositionChange({ x: newScrollPosition, y: 0 })
-                }
-              }}
-            >
-              <IconChevronLeft size={16} />
-            </ActionIcon>
-            <ActionIcon
-              variant="transparent"
-              color="chatbox-tertiary"
-              // onClick={() => setPage((p) => p + 1)}
-              onClick={() => {
-                if (viewportRef.current) {
-                  const scrollWidth = viewportRef.current.scrollWidth
-                  const clientWidth = viewportRef.current.clientWidth
-                  const newScrollPosition = Math.min(scrollPosition.x + clientWidth, scrollWidth - clientWidth)
-                  viewportRef.current.scrollTo({ left: newScrollPosition, behavior: 'smooth' })
-                  onScrollPositionChange({ x: newScrollPosition, y: 0 })
-                }
-              }}
-            >
-              <IconChevronRight size={16} />
-            </ActionIcon>
-          </Flex>
-        )}
-      </Flex>
-
-      <ScrollArea
-        type={platform.type === 'mobile' ? 'never' : 'scroll'}
-        scrollbars="x"
-        offsetScrollbars="x"
-        viewportRef={viewportRef}
-        onScrollPositionChange={onScrollPositionChange}
-        className="copilot-picker-scroll-area"
-      >
-        <Flex wrap="nowrap" gap="xs">
-          <Space w="xs" />
-          {copilots.map((copilot) =>
-            copilot ? (
-              <CopilotItem
-                key={copilot.id}
-                name={copilot.name}
-                picUrl={copilot.picUrl}
-                selected={selectedId === copilot.id}
+          {!isSmallScreen && (
+            <Flex align="center" gap="sm">
+              <ActionIcon
+                variant="transparent"
+                color="chatbox-tertiary"
+                // onClick={() => setPage((p) => Math.max(p - 1, 0))}
                 onClick={() => {
-                  onSelect?.(copilot)
+                  if (viewportRef.current) {
+                    // const scrollWidth = viewportRef.current.scrollWidth
+                    const clientWidth = viewportRef.current.clientWidth
+                    const newScrollPosition = Math.max(scrollPosition.x - clientWidth, 0)
+                    viewportRef.current.scrollTo({ left: newScrollPosition, behavior: 'smooth' })
+                    onScrollPositionChange({ x: newScrollPosition, y: 0 })
+                  }
                 }}
-              />
-            ) : (
-              <Divider key="divider" orientation="vertical" my="xs" mx="xxs" />
-            )
+              >
+                <IconChevronLeft size={16} />
+              </ActionIcon>
+              <ActionIcon
+                variant="transparent"
+                color="chatbox-tertiary"
+                // onClick={() => setPage((p) => p + 1)}
+                onClick={() => {
+                  if (viewportRef.current) {
+                    const scrollWidth = viewportRef.current.scrollWidth
+                    const clientWidth = viewportRef.current.clientWidth
+                    const newScrollPosition = Math.min(scrollPosition.x + clientWidth, scrollWidth - clientWidth)
+                    viewportRef.current.scrollTo({ left: newScrollPosition, behavior: 'smooth' })
+                    onScrollPositionChange({ x: newScrollPosition, y: 0 })
+                  }
+                }}
+              >
+                <IconChevronRight size={16} />
+              </ActionIcon>
+            </Flex>
           )}
-          {showMoreButton && (
-            <CopilotItem
-              name={t('View All Copilots')}
-              noAvatar={true}
-              selected={false}
-              onClick={() =>
-                navigate({
-                  to: '/copilots',
-                })
-              }
-            />
-          )}
-          <Space w="xs" />
         </Flex>
-      </ScrollArea>
-    </Stack>
+
+        <ScrollArea
+          type={platform.type === 'mobile' ? 'never' : 'scroll'}
+          mx="-md"
+          scrollbars="x"
+          offsetScrollbars="x"
+          viewportRef={viewportRef}
+          onScrollPositionChange={onScrollPositionChange}
+          className="copilot-picker-scroll-area"
+        >
+          {scrollPosition.x > 8 && (
+            <div className="absolute top-0 left-0 w-8 h-full bg-gradient-to-r from-white to-transparent"></div>
+          )}
+          <div className="absolute top-0 right-0 w-8 h-full bg-gradient-to-l from-white to-transparent"></div>
+          <Flex wrap="nowrap" gap="xs">
+            <Space w="xs" />
+            {copilots.map((copilot) =>
+              copilot ? (
+                <CopilotItem
+                  key={copilot.id}
+                  name={copilot.name}
+                  picUrl={copilot.picUrl}
+                  selected={selectedId === copilot.id}
+                  onClick={() => {
+                    onSelect?.(copilot)
+                  }}
+                />
+              ) : (
+                <Divider key="divider" orientation="vertical" my="xs" mx="xxs" />
+              )
+            )}
+            {showMoreButton && (
+              <CopilotItem
+                name={t('View All Copilots')}
+                noAvatar={true}
+                selected={false}
+                onClick={() =>
+                  router.navigate({
+                    to: '/copilots',
+                  })
+                }
+              />
+            )}
+            <Space w="xs" />
+          </Flex>
+        </ScrollArea>
+      </Stack>
+    </Box>
   )
 }
 

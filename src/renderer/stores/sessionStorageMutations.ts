@@ -185,7 +185,8 @@ export function clearConversations(keepNum: number) {
   }
 }
 
-function _searchSessions(regexp: RegExp, session: Session) {
+function _searchSessions(regexp: RegExp, s: Session) {
+  const session = migrateSession(s)
   const matchedMessages: Message[] = []
   for (let i = session.messages.length - 1; i >= 0; i--) {
     const message = session.messages[i]

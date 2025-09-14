@@ -429,6 +429,11 @@ export const SystemProviders: ProviderBaseInfo[] = [
       apiHost: 'https://api.siliconflow.cn',
       models: [
         {
+          modelId: 'deepseek-ai/DeepSeek-V3.1',
+          capabilities: ['tool_use'],
+          contextWindow: 160_000,
+        },
+        {
           modelId: 'deepseek-ai/DeepSeek-V3',
           capabilities: ['tool_use'],
           contextWindow: 64_000,
@@ -448,7 +453,16 @@ export const SystemProviders: ProviderBaseInfo[] = [
           capabilities: ['tool_use'],
           contextWindow: 64_000,
         },
-
+        {
+          modelId: 'Pro/deepseek-ai/DeepSeek-V3.1',
+          capabilities: ['tool_use'],
+          contextWindow: 160_000,
+        },
+        {
+          modelId: 'moonshotai/Kimi-K2-Instruct-0905',
+          capabilities: ['tool_use'],
+          contextWindow: 256_000,
+        },
         {
           modelId: 'Qwen/Qwen2.5-7B-Instruct',
           capabilities: ['tool_use'],

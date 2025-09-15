@@ -560,11 +560,28 @@ export function modifyMessage(sessionId: string, updated: Message, refreshCounti
 
   const updatedSession = { ...session }
   updatedSession.messages = handle(session.messages)
-  if (session.threads && !hasHandled) {
-    updatedSession.threads = session.threads.map((h) => ({
+
+  if (!hasHandled && updatedSession.threads) {
+    updatedSession.threads = updatedSession.threads.map((h) => ({
       ...h,
       messages: handle(h.messages),
     }))
+  }
+
+  if (!hasHandled && updatedSession.messageForksHash) {
+    const keys = Object.keys(updatedSession.messageForksHash)
+    for (const key of keys) {
+      updatedSession.messageForksHash = {
+        ...updatedSession.messageForksHash,
+        [key]: {
+          ...updatedSession.messageForksHash[key],
+          lists: updatedSession.messageForksHash[key].lists.map((l) => ({
+            ...l,
+            messages: handle(l.messages),
+          })),
+        },
+      }
+    }
   }
   saveSession(sessionId, updatedSession)
 }

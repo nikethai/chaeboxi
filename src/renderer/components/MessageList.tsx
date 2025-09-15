@@ -21,6 +21,7 @@ import * as sessionActions from '@/stores/sessionActions'
 import { useUIStore } from '@/stores/uiStore'
 import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
 import Message from './Message'
+import MessageNavigation from './MessageNavigation'
 import StyledMenu from './StyledMenu'
 
 const sessionScrollPositionCache = new Map<string, StateSnapshot>()
@@ -40,6 +41,43 @@ export default function MessageList(props: { className?: string; currentSession:
   const setAtTop = useUIStore((s) => s.setMessageScrollingAtTop)
   const setAtBottom = useUIStore((s) => s.setMessageScrollingAtBottom)
   const setMessageScrollingScrollPosition = useUIStore((s) => s.setMessageScrollingScrollPosition)
+
+  const [messageNavigationVisible, setMessageNavigationVisible] = useState(false)
+  const messageNavigationHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handlemessageNavigationMouseEnter = useCallback(() => {
+    if (messageNavigationHideTimerRef.current) {
+      clearTimeout(messageNavigationHideTimerRef.current)
+    }
+    setMessageNavigationVisible(true)
+  }, [])
+
+  const handleMessageNavigationMouseLeave = useCallback(() => {
+    if (messageNavigationHideTimerRef.current) {
+      clearTimeout(messageNavigationHideTimerRef.current)
+    }
+    messageNavigationHideTimerRef.current = setTimeout(() => setMessageNavigationVisible(false), 2000)
+  }, [])
+
+  const handleScroll = useCallback(() => {
+    // 为什么不合并到 onWheel 中？
+    // 实践中发现 onScroll 处理时效果会更加丝滑一些
+    if (virtuoso.current) {
+      virtuoso.current.getState((state) => {
+        if (messageListRef.current) {
+          setMessageScrollingScrollPosition(state.scrollTop + messageListRef.current.clientHeight)
+        }
+      })
+    }
+
+    if (isSmallScreen) {
+      if (messageNavigationHideTimerRef.current) {
+        clearTimeout(messageNavigationHideTimerRef.current)
+      }
+      setMessageNavigationVisible(true)
+      messageNavigationHideTimerRef.current = setTimeout(() => setMessageNavigationVisible(false), 2000)
+    }
+  }, [setMessageScrollingScrollPosition, isSmallScreen])
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 仅执行一次
   useEffect(() => {
@@ -74,7 +112,7 @@ export default function MessageList(props: { className?: string; currentSession:
 
   return (
     <div className={cn('w-full h-full mx-auto', props.className)}>
-      <div className="overflow-auto h-full pr-0 pl-1 sm:pl-0" ref={messageListRef}>
+      <div className="overflow-hidden h-full pr-0 pl-1 sm:pl-0 relative" ref={messageListRef}>
         <Virtuoso
           style={{ scrollbarGutter: 'stable' }}
           data={currentMessageList}
@@ -161,17 +199,7 @@ export default function MessageList(props: { className?: string; currentSession:
           onTouchMove={() => {
             scrollActions.clearAutoScroll() // 手机上触摸屏幕滑动时，清除自动滚动
           }}
-          onScroll={() => {
-            // 为什么不合并到 onWheel 中？
-            // 实践中发现 onScroll 处理时效果会更加丝滑一些
-            if (virtuoso.current) {
-              virtuoso.current.getState((state) => {
-                if (messageListRef.current) {
-                  setMessageScrollingScrollPosition(state.scrollTop + messageListRef.current.clientHeight)
-                }
-              })
-            }
-          }}
+          onScroll={handleScroll}
           totalListHeightChanged={() => {
             if (virtuoso.current) {
               virtuoso.current.getState((state) => {
@@ -187,6 +215,13 @@ export default function MessageList(props: { className?: string; currentSession:
           threadMenuClickedTopicId={threadMenuClickedTopicId}
           onThreadMenuClose={closeThreadMenu}
           currentSessionId={currentSession.id}
+        />
+
+        <MessageNavigation
+          visible={messageNavigationVisible}
+          messageList={currentMessageList}
+          onMouseEnter={handlemessageNavigationMouseEnter}
+          onMouseLeave={handleMessageNavigationMouseLeave}
         />
       </div>
     </div>

@@ -138,7 +138,7 @@ function RouteComponent() {
       {/* MessageList 设置 key，确保每个 session 对应新的 MessageList 实例 */}
       <MessageList key={`message-list${currentSessionId}`} currentSession={currentSession} />
 
-      <ScrollButtons />
+      {/* <ScrollButtons /> */}
       <InputBox
         key={`input-box${currentSession.id}`}
         sessionId={currentSession.id}

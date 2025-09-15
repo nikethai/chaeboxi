@@ -133,10 +133,9 @@ function _SessionItem(props: Props) {
         <MenuItem
           key={`${session.id}star`}
           onClick={() => {
-            saveSession({
-              id: session.id,
-              starred: !session.starred,
-            })
+            saveSession(session.id, (s) => ({
+              starred: !s?.starred,
+            }))
             handleMenuClose()
           }}
           disableRipple

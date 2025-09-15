@@ -517,7 +517,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           })) // 最多插入 8 个图片
         } else {
           setPreConstructedMessage((prev) => {
-            const newAttachments = [...(prev.attachments || []), file].slice(-10) // 最多插入 10 个附件
+            const newAttachments = prev.attachments.find(
+              (f) => StorageKeyGenerator.fileUniqKey(f) === StorageKeyGenerator.fileUniqKey(file)
+            )
+              ? prev.attachments
+              : [...(prev.attachments || []), file].slice(-10) // 最多插入 10 个附件
 
             // 只预处理前10个文件，避免浪费资源
             const fileIndex = newAttachments.findIndex(

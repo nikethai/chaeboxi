@@ -108,14 +108,14 @@ async function create(newSession: Omit<Session, 'id'>) {
  * 修改会话名称
  */
 export function modifyNameAndThreadName(sessionId: string, name: string) {
-  saveSession({ id: sessionId, name, threadName: name })
+  saveSession(sessionId, { name, threadName: name })
 }
 
 /**
  * 修改会话的当前话题名称
  */
 export function modifyThreadName(sessionId: string, threadName: string) {
-  saveSession({ id: sessionId, threadName })
+  saveSession(sessionId, { threadName })
 }
 
 /**
@@ -217,7 +217,7 @@ export function editThread(sessionId: string, threadId: string, newThread: Pick<
 
   // 特殊情况： 如果修改的是当前的话题，则直接修改当前会话的threadName, 而不是name
   if (threadId === sessionId) {
-    saveSession({ ...session, threadName: newThread.name })
+    saveSession(sessionId, { threadName: newThread.name })
     return
   }
 
@@ -229,7 +229,7 @@ export function editThread(sessionId: string, threadId: string, newThread: Pick<
     return { ...t, ...newThread }
   })
 
-  saveSession({ ...session, threads })
+  saveSession(sessionId, { threads })
 }
 
 /**
@@ -246,8 +246,7 @@ export function removeThread(sessionId: string, threadId: string) {
   if (!session) {
     return
   }
-  saveSession({
-    id: sessionId,
+  saveSession(sessionId, {
     threads: session.threads?.filter((t) => t.id !== threadId),
   })
 }
@@ -265,8 +264,7 @@ export function clear(sessionId: string) {
   session.messages.forEach((msg) => {
     msg?.cancel?.()
   })
-  saveSession({
-    id: sessionId,
+  saveSession(sessionId, {
     messages: session.messages.filter((m) => m.role === 'system').slice(0, 1),
     threads: undefined,
   })
@@ -304,7 +302,7 @@ export function refreshContextAndCreateNewThread(sessionId: string) {
   if (systemPrompt) {
     systemPrompt = createMessage('system', getMessageText(systemPrompt))
   }
-  saveSession({
+  saveSession(sessionId, {
     ...session,
     threads: session.threads ? [...session.threads, newThread] : [newThread],
     messages: systemPrompt ? [systemPrompt] : [createMessage('system', defaults.getDefaultPrompt())],
@@ -368,7 +366,7 @@ export function compressAndCreateThread(sessionId: string, summary: string) {
   newMessages.push(createMessage('user', compressionContext))
 
   // 保存会话
-  saveSession({
+  saveSession(sessionId, {
     ...session,
     threads: session.threads ? [...session.threads, newThread] : [newThread],
     messages: newMessages,
@@ -407,7 +405,7 @@ export function switchThread(sessionId: string, threadId: string) {
     messages: session.messages,
     createdAt: Date.now(),
   })
-  saveSession({
+  saveSession(sessionId, {
     ...session,
     threads: newThreads,
     messages: target.messages,
@@ -436,7 +434,7 @@ export function removeCurrentThread(sessionId: string) {
     updatedSession.threads = session.threads.slice(0, session.threads.length - 1)
     updatedSession.threadName = lastThread.name
   }
-  saveSession(updatedSession)
+  saveSession(sessionId, updatedSession)
 }
 
 export async function moveThreadToConversations(sessionId: string, threadId: string) {
@@ -491,10 +489,9 @@ export function insertMessage(sessionId: string, msg: Message) {
   }
   msg.wordCount = countMessageWords(msg)
   msg.tokenCount = estimateTokensFromMessages([msg])
-  saveSession({
-    ...session,
-    messages: [...session.messages, msg],
-  })
+  saveSession(sessionId, (s) => ({
+    messages: [...(s?.messages || []), msg],
+  }))
 }
 
 /**
@@ -528,7 +525,7 @@ export function insertMessageAfter(sessionId: string, msg: Message, afterMsgId: 
       messages: handle(h.messages),
     }))
   }
-  saveSession(updatedSession)
+  saveSession(sessionId, updatedSession)
 }
 
 /**
@@ -569,7 +566,7 @@ export function modifyMessage(sessionId: string, updated: Message, refreshCounti
       messages: handle(h.messages),
     }))
   }
-  saveSession(updatedSession)
+  saveSession(sessionId, updatedSession)
 }
 
 /**
@@ -608,7 +605,7 @@ export function removeMessage(sessionId: string, messageId: string) {
     updatedSession.threads = updatedSession.threads.slice(0, updatedSession.threads.length - 1)
   }
 
-  saveSession(updatedSession)
+  saveSession(sessionId, updatedSession)
 }
 
 /**
@@ -1756,8 +1753,7 @@ export async function createNewFork(forkMessageId: string) {
 
   const { data, updated } = updateFn(currentSession.messages)
   if (updated) {
-    saveSession({
-      id: currentSession.id,
+    saveSession(currentSession.id, {
       messages: data,
       messageForksHash,
     })
@@ -1768,8 +1764,7 @@ export async function createNewFork(forkMessageId: string) {
     const thread = (currentSession.threads || [])[i]
     const { data, updated } = updateFn(thread.messages)
     if (updated) {
-      saveSession({
-        id: currentSession.id,
+      saveSession(currentSession.id, {
         threads: currentSession.threads?.map((t) => (t.id === thread.id ? { ...t, messages: data } : t)),
         messageForksHash,
       })
@@ -1814,8 +1809,7 @@ export async function switchFork(forkMessageId: string, direction: 'next' | 'pre
 
   const { data, updated } = updateFn(currentSession.messages)
   if (updated) {
-    saveSession({
-      id: currentSession.id,
+    saveSession(currentSession.id, {
       messages: data,
       messageForksHash,
     })
@@ -1826,8 +1820,7 @@ export async function switchFork(forkMessageId: string, direction: 'next' | 'pre
     const thread = (currentSession.threads || [])[i]
     const { data, updated } = updateFn(thread.messages)
     if (updated) {
-      saveSession({
-        id: currentSession.id,
+      saveSession(currentSession.id, {
         threads: currentSession.threads?.map((t) => (t.id === thread.id ? { ...t, messages: data } : t)),
         messageForksHash,
       })
@@ -1878,8 +1871,7 @@ export async function deleteFork(forkMessageId: string) {
   // 更新当前消息列表，如果没有找到消息则自动更新线程消息列表
   const { data, updated } = updateFn(currentSession.messages)
   if (updated) {
-    saveSession({
-      id: currentSession.id,
+    saveSession(currentSession.id, {
       messages: data,
       messageForksHash,
     })
@@ -1889,8 +1881,7 @@ export async function deleteFork(forkMessageId: string) {
     const thread = (currentSession.threads || [])[i]
     const { data, updated } = updateFn(thread.messages)
     if (updated) {
-      saveSession({
-        id: currentSession.id,
+      saveSession(currentSession.id, {
         threads: currentSession.threads?.map((t) => (t.id === thread.id ? { ...t, messages: data } : t)),
         messageForksHash,
       })
@@ -1932,8 +1923,7 @@ export async function expandFork(forkMessageId: string) {
   // 更新当前消息列表，如果没有找到消息则自动更新线程消息列表
   const { data, updated } = updateFn(currentSession.messages)
   if (updated) {
-    saveSession({
-      id: currentSession.id,
+    saveSession(currentSession.id, {
       messages: data,
       messageForksHash,
     })
@@ -1943,8 +1933,7 @@ export async function expandFork(forkMessageId: string) {
     const thread = (currentSession.threads || [])[i]
     const { data, updated } = updateFn(thread.messages)
     if (updated) {
-      saveSession({
-        id: currentSession.id,
+      saveSession(currentSession.id, {
         threads: currentSession.threads?.map((t) => (t.id === thread.id ? { ...t, messages: data } : t)),
         messageForksHash,
       })

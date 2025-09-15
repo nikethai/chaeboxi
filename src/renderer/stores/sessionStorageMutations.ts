@@ -87,16 +87,23 @@ export async function createSession(session: Omit<Session, 'id'>, previousId?: s
 }
 
 // 所有对 session 的修改应该调用这个 function，只修改当前 session，避免其他的 session 经过 migrate 这一步
-export function saveSession(session: Partial<Session> & { id: Session['id'] }) {
+export function saveSession(
+  sessionId: string,
+  session: Partial<Session> | ((session?: Session | null) => Partial<Session>)
+) {
   const store = getDefaultStore()
-  // update session meta
-  store.set(atoms.sessionsListAtom, (sessions) => {
-    return sessions.map((s) => (s.id === session.id ? getSessionMeta({ ...s, ...session }) : s))
-  })
+
   // update session
-  const sessionAtom = createSessionAtom(session.id)
+  const sessionAtom = createSessionAtom(sessionId)
   store.set(sessionAtom, (s) => {
-    return { ...s, ...session } as Session
+    const prev = (s ?? {}) as Partial<Session>
+    const patch = (typeof session === 'function' ? session(s) : session) as Partial<Session>
+    const merged = { ...prev, ...patch, id: prev.id ?? sessionId } as Session
+    // update session meta
+    store.set(atoms.sessionsListAtom, (sessions) =>
+      sessions.map((_s) => (_s.id === sessionId ? getSessionMeta(merged) : _s))
+    )
+    return merged
   })
 }
 

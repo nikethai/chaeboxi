@@ -61,8 +61,7 @@ function RouteComponent() {
       if (!currentSession) {
         return
       }
-      saveSession({
-        id: currentSession.id,
+      saveSession(currentSession.id, {
         settings: {
           ...(currentSession.settings || {}),
           provider,

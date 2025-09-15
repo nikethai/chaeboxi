@@ -8,7 +8,7 @@ import {
   useLocation,
 } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { type FC, useCallback, useEffect } from 'react'
+import { type FC, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import SettingsKnowledgeBaseRouteComponent from '@/components/knowledge-base/KnowledgeBase'
 import { getThemeDesign } from '@/hooks/useAppTheme'
@@ -33,6 +33,7 @@ export const SettingsModal: FC<SettingsModalProps> = (props) => {
   const { t } = useTranslation()
   const location = useLocation()
   const { needRoomForMacWindowControls, needRoomForWindowsWindowControls } = useNeedRoomForWinControls()
+  const fullScreen = useMemo(() => !needRoomForWindowsWindowControls, [needRoomForWindowsWindowControls])
 
   useEffect(() => {
     if (location.search.settings) {
@@ -53,13 +54,15 @@ export const SettingsModal: FC<SettingsModalProps> = (props) => {
       opened={!!location.search.settings}
       onClose={onClose}
       // size="1200"
-      fullScreen={true}
+      fullScreen={fullScreen}
+      centered
+      size="100%"
       // title={<Title order={3}>{t('Settings')}</Title>}
       withCloseButton={false}
       classNames={{
-        content: 'h-full',
+        content: clsx('h-full', !fullScreen ? 'max-w-[1200px]' : ''),
         header: 'flex-none border-0 border-b border-[var(--mantine-color-chatbox-border-primary-outline)] border-solid',
-        body: '!p-0 flex-1  flex flex-col h-full',
+        body: clsx('!p-0 flex-1  flex flex-col h-full'),
       }}
       transitionProps={{ transition: 'fade-up' }}
     >

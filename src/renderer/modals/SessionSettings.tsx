@@ -40,7 +40,7 @@ import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { trackingEvent } from '@/packages/event'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import * as sessionActions from '@/stores/sessionActions'
-import { saveSession } from '@/stores/sessionStorageMutations'
+import { getSessionMeta, saveSession } from '@/stores/sessionStorageMutations'
 import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
 import { getMessageText } from '../../shared/utils/message'
 
@@ -106,23 +106,35 @@ const SessionSettingsModal = NiceModal.create(
       if (!session || !editingData) {
         return
       }
-      if (editingData.name === '') {
-        editingData.name = session.name
-      }
-      editingData.name = editingData.name.trim()
-      if (systemPrompt === '') {
-        editingData.messages = editingData.messages.filter((m) => m.role !== 'system')
-      } else {
-        const systemMessage = editingData.messages.find((m) => m.role === 'system')
-        if (systemMessage) {
-          systemMessage.contentParts = [{ type: 'text', text: systemPrompt.trim() }]
-        } else {
-          editingData.messages.unshift(createMessage('system', systemPrompt.trim()))
-        }
-      }
+
       if (!disableAutoSave) {
-        saveSession(editingData)
+        saveSession(editingData.id, (s) => {
+          const merged = {
+            ...(s ?? {}),
+            ...getSessionMeta(editingData),
+            settings: editingData.settings,
+          } as Session
+
+          merged.name = (merged.name ?? '').trim() || session.name
+
+          const trimmed = systemPrompt.trim()
+          const messages = Array.isArray(merged.messages) ? [...merged.messages] : []
+          if (trimmed === '') {
+            merged.messages = messages.filter((m) => m.role !== 'system')
+          } else {
+            const idx = messages.findIndex((m) => m.role === 'system')
+            if (idx >= 0) {
+              const sys = { ...messages[idx], contentParts: [{ type: 'text' as const, text: trimmed }] }
+              merged.messages = [...messages.slice(0, idx), sys, ...messages.slice(idx + 1)]
+            } else {
+              merged.messages = [createMessage('system', trimmed), ...messages]
+            }
+          }
+
+          return merged
+        })
       }
+
       // setChatConfigDialogSessionId(null)
       modal.resolve(editingData)
       modal.hide()

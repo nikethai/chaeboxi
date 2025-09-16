@@ -16,6 +16,8 @@ export const TOKEN_CACHE_KEYS = TokenCacheKeySchema.enum
 // Token count map schema
 export const TokenCountMapSchema = z.record(TokenCacheKeySchema, z.number())
 
+export type TokenCountMap = z.infer<typeof TokenCountMapSchema>
+
 // Search result schemas
 export const SearchResultItemSchema = z.object({
   title: z.string(),
@@ -35,10 +37,7 @@ export const MessageFileSchema = z.object({
   url: z.string().optional(),
   storageKey: z.string().optional(),
   chatboxAIFileUUID: z.string().optional(),
-<<<<<<< HEAD
-=======
   tokenCountMap: TokenCountMapSchema.optional().catch(undefined),
->>>>>>> 9ce49efa (Feat/adjust token count menu (#387))
 })
 
 export const MessageLinkSchema = z.object({
@@ -47,10 +46,7 @@ export const MessageLinkSchema = z.object({
   title: z.string(),
   storageKey: z.string().optional(),
   chatboxAILinkUUID: z.string().optional(),
-<<<<<<< HEAD
-=======
   tokenCountMap: TokenCountMapSchema.optional(),
->>>>>>> 9ce49efa (Feat/adjust token count menu (#387))
 })
 
 export const MessagePictureSchema = z.object({
@@ -116,6 +112,7 @@ export const StreamTextResultSchema = z.object({
   contentParts: MessageContentPartsSchema,
   reasoningContent: z.string().optional(),
   usage: z.custom<LanguageModelUsage>().optional(),
+  finishReason: z.string().optional(),
 })
 
 // Tool and provider schemas
@@ -153,7 +150,7 @@ export const MessageSchema = z.object({
   style: z.string().optional(),
   files: z.array(MessageFileSchema).optional(),
   links: z.array(MessageLinkSchema).optional(),
-  reasoningContent: z.string().optional(),
+  reasoningContent: z.string().optional().describe('deprecated, moved to contentParts'),
   contentParts: MessageContentPartsSchema,
   isStreamingMode: z.boolean().optional(),
   errorCode: z.number().optional(),
@@ -161,10 +158,12 @@ export const MessageSchema = z.object({
   errorExtra: z.record(z.string(), z.unknown()).optional(),
   status: z.array(MessageStatusSchema).optional(),
   wordCount: z.number().optional(),
-  tokenCount: z.number().optional(),
+  tokenCount: z.number().optional(), // output token count
   tokensUsed: z.number().optional(),
   timestamp: z.number().optional(),
   firstTokenLatency: z.number().optional(),
+  finishReason: z.string().optional(),
+  tokenCountMap: TokenCountMapSchema.optional(), // estimate token count as input
 })
 
 // Session schemas

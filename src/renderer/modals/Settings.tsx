@@ -60,7 +60,7 @@ export const SettingsModal: FC<SettingsModalProps> = (props) => {
       // title={<Title order={3}>{t('Settings')}</Title>}
       withCloseButton={false}
       classNames={{
-        content: clsx('h-full', !fullScreen ? 'max-w-[1200px]' : ''),
+        content: clsx('h-full', !fullScreen ? 'max-w-[1200px] mt-6' : ''),
         header: 'flex-none border-0 border-b border-[var(--mantine-color-chatbox-border-primary-outline)] border-solid',
         body: clsx('!p-0 flex-1  flex flex-col h-full'),
       }}
@@ -78,7 +78,7 @@ export const SettingsModal: FC<SettingsModalProps> = (props) => {
 
           <Modal.CloseButton onClick={onClose} className="controls" />
         </Flex>
-        <div className={clsx('flex-[1_1_0]', needRoomForWindowsWindowControls ? 'min-w-36' : '')} />
+        <div className={clsx('flex-[1_1_0]')} />
       </Flex>
       <Box flex={1} w="100%" maw={1200} mx="auto" className="overflow-auto">
         <RouterProvider router={modalRouter} />

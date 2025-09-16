@@ -2,16 +2,6 @@ import * as Sentry from '@sentry/react'
 import { Tiktoken } from 'js-tiktoken/lite'
 // @ts-ignore
 import cl100k_base from 'js-tiktoken/ranks/cl100k_base'
-<<<<<<< HEAD:src/renderer/packages/token.tsx
-import { getMessageText } from '@/utils/message'
-import { Message } from '../../shared/types'
-
-const encoding = new Tiktoken(cl100k_base)
-function estimateTokens(str: string): number {
-  str = typeof str === 'string' ? str : JSON.stringify(str)
-  const tokens = encoding.encode(str)
-  return tokens.length
-=======
 import type { Message } from '../../shared/types'
 import { TOKEN_CACHE_KEYS, type TokenCacheKey } from '../../shared/types/session'
 import { getMessageText, isEmptyMessage } from '../../shared/utils/message'
@@ -66,7 +56,7 @@ type TokenModel =
   | undefined
 
 // Check if model is DeepSeek
-function isDeepSeekModel(model?: TokenModel): boolean {
+export function isDeepSeekModel(model?: TokenModel): boolean {
   if (!model) return false
   const modelId = model.modelId?.toLowerCase() || ''
   return modelId.includes('deepseek')
@@ -108,14 +98,10 @@ export function estimateTokens(str: string, model?: TokenModel): number {
     Sentry.captureException(e)
     return 0
   }
->>>>>>> 9ce49efa (Feat/adjust token count menu (#387)):src/renderer/packages/token.ts
 }
 
 // 参考: https://github.com/pkoukk/tiktoken-go#counting-tokens-for-chat-api-calls
 // OpenAI Cookbook: https://github.com/openai/openai-cookbook/blob/main/examples/How_to_count_tokens_with_tiktoken.ipynb
-<<<<<<< HEAD:src/renderer/packages/token.tsx
-export function estimateTokensFromMessages(messages: Message[]) {
-=======
 export function estimateTokensFromMessages(
   messages: Message[],
   type = 'output' as 'output' | 'input',
@@ -124,26 +110,21 @@ export function estimateTokensFromMessages(
   if (messages.length === 0) {
     return 0
   }
->>>>>>> 9ce49efa (Feat/adjust token count menu (#387)):src/renderer/packages/token.ts
   try {
     const tokensPerMessage = 3
     const tokensPerName = 1
     let ret = 0
     for (const msg of messages) {
+      if (isEmptyMessage(msg)) {
+        continue
+      }
       ret += tokensPerMessage
-<<<<<<< HEAD:src/renderer/packages/token.tsx
-      ret += estimateTokens(getMessageText(msg))
-      ret += estimateTokens(msg.role)
-=======
       ret += estimateTokens(getMessageText(msg, false, type === 'output'), model)
       ret += estimateTokens(msg.role, model)
->>>>>>> 9ce49efa (Feat/adjust token count menu (#387)):src/renderer/packages/token.ts
       if (msg.name) {
         ret += estimateTokens(msg.name, model)
         ret += tokensPerName
       }
-<<<<<<< HEAD:src/renderer/packages/token.tsx
-=======
 
       // Add token counts from files
       if (msg.files?.length) {
@@ -164,9 +145,8 @@ export function estimateTokensFromMessages(
           }
         }
       }
->>>>>>> 9ce49efa (Feat/adjust token count menu (#387)):src/renderer/packages/token.ts
     }
-    ret += 3 // every reply is primed with <|start|>assistant<|message|>
+    // ret += 3 // every reply is primed with <|start|>assistant<|message|>
     return ret
   } catch (e) {
     Sentry.captureException(e)

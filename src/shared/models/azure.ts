@@ -38,8 +38,8 @@ export default class AzureOpenAI extends AbstractAISDKModel {
   protected getProvider() {
     return createAzure({
       apiKey: this.options.azureApikey,
-      apiVersion: this.options.azureApiVersion,
       baseURL: normalizeAzureEndpoint(this.options.azureEndpoint).endpoint,
+      useDeploymentBasedUrls: false,
     })
   }
 

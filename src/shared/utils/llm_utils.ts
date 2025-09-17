@@ -97,7 +97,7 @@ export function normalizeAzureEndpoint(endpoint: string) {
     origin = `https://${origin}.openai.azure.com`
   }
   return {
-    endpoint: origin + '/openai/deployments',
+    endpoint: `${origin}/openai`,
     apiPath: '/chat/completions',
   }
 }

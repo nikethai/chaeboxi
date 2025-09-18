@@ -121,14 +121,14 @@ function RouteComponent() {
   }, [currentSession, lastMessage])
 
   const model = useMemo(() => {
-    if (!currentSession || !currentSession.settings?.modelId || !currentSession.settings?.provider) {
+    if (!currentSession?.settings?.modelId || !currentSession?.settings?.provider) {
       return undefined
     }
     return {
       provider: currentSession.settings.provider,
       modelId: currentSession.settings.modelId,
     }
-  }, [currentSession])
+  }, [currentSession?.settings?.provider, currentSession?.settings?.modelId])
 
   return currentSession ? (
     <div className="flex flex-col h-full">

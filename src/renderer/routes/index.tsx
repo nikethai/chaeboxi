@@ -68,13 +68,13 @@ function Index() {
   // }, [chatSessionSettings, settings])
 
   const selectedModel = useMemo(() => {
-    if (session.settings?.provider && session.settings.modelId) {
+    if (session.settings?.provider && session.settings?.modelId) {
       return {
         provider: session.settings.provider,
         modelId: session.settings.modelId,
       }
     }
-  }, [session])
+  }, [session.settings?.provider, session.settings?.modelId])
 
   const { copilots: myCopilots } = useMyCopilots()
   const { copilots: remoteCopilots } = useRemoteCopilots()

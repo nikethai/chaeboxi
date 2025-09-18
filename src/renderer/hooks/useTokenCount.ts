@@ -46,14 +46,14 @@ export function useTokenCount(
     return () => {
       debouncedCalculateContextTokens.cancel()
     }
-  }, [messages, model, debouncedCalculateContextTokens])
+  }, [messages, model?.modelId, model?.provider, debouncedCalculateContextTokens])
 
   useEffect(() => {
     debouncedCalculateInputTokens(constructedMessage, model)
     return () => {
       debouncedCalculateInputTokens.cancel()
     }
-  }, [constructedMessage, model, debouncedCalculateInputTokens])
+  }, [constructedMessage, model?.modelId, model?.provider, debouncedCalculateInputTokens])
 
   return {
     currentInputTokens,

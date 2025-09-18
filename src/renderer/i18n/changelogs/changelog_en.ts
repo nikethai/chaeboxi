@@ -1,4 +1,8 @@
 const changelog = `
+## v1.16.3 - 2025.09.18
+
+1. Fix a performance issue while message generating
+
 ## v1.16.2 - 2025.09.17
 
 1. Fix Azure provider

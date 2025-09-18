@@ -1740,31 +1740,6 @@ export async function createNewFork(forkMessageId: string) {
     messageForksHash[forkMessageId] = forks
     data = data.slice(0, forkMessageIndex + 1)
 
-    // clean empty fork / LRU fork when reaching MAX_FORK_COUNT
-    const keys = Object.keys(messageForksHash)
-    const MAX_FORK_COUNT = 50
-    if (keys.length > MAX_FORK_COUNT) {
-      const forkWeights = keys.map((key) => {
-        const fork = messageForksHash[key]
-        const totalMessages = fork.lists.reduce((sum, list) => sum + list.messages.length, 0)
-        const isEmpty = totalMessages === 0
-        const daysSinceCreated = (Date.now() - fork.createdAt) / (1000 * 60 * 60 * 24)
-        let weight = totalMessages * 10 - daysSinceCreated
-        // specially handle empty forkMessages
-        if (isEmpty) {
-          weight -= 1000
-        }
-        return { key, weight, totalMessages, isEmpty, createdAt: fork.createdAt }
-      })
-
-      forkWeights.sort((a, b) => a.weight - b.weight)
-
-      const toDelete = forkWeights.slice(0, keys.length - MAX_FORK_COUNT)
-      toDelete.forEach((item) => {
-        delete messageForksHash[item.key]
-      })
-    }
-
     return { data, updated: true }
   }
 

@@ -39,7 +39,7 @@ async function parseFileToDocument(
       content: [
         {
           type: 'text',
-          text: 'OCR the following image into Markdown. Tables should be formatted as HTML. Do not sorround your output with triple backticks.',
+          text: 'OCR the following image into Markdown. Do not sorround your output with triple backticks.',
         },
         { type: 'image', image: dataUrl, mediaType: fileMeta.mimeType },
       ],

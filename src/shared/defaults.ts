@@ -350,29 +350,6 @@ export const SystemProviders: ProviderBaseInfo[] = [
           contextWindow: 1_000_000,
           maxOutput: 8_192,
         },
-        {
-          modelId: 'gemini-1.5-pro-exp-0827',
-          capabilities: ['vision'],
-          contextWindow: 2_000_000,
-          maxOutput: 8_192,
-        },
-        {
-          modelId: 'gemini-1.5-flash-exp-0827',
-          capabilities: ['vision'],
-          contextWindow: 1_000_000,
-          maxOutput: 8_192,
-        },
-        {
-          modelId: 'gemini-1.5-flash-8b-exp-0924',
-          capabilities: ['vision'],
-          contextWindow: 1_000_000,
-          maxOutput: 8_192,
-        },
-        {
-          modelId: 'gemini-pro',
-          contextWindow: 128_000,
-          maxOutput: 8_192,
-        },
       ],
     },
   },
@@ -676,10 +653,6 @@ export const SystemProviders: ProviderBaseInfo[] = [
           modelId: 'grok-2-vision-1212',
           capabilities: ['vision'],
           contextWindow: 8192,
-        },
-        {
-          modelId: 'grok-2-image-1212',
-          contextWindow: 128_000,
         },
         {
           modelId: 'grok-2-1212',

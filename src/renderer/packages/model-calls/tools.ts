@@ -2,8 +2,10 @@ import { tool } from 'ai'
 import { last } from 'lodash'
 import type { Message } from 'src/shared/types'
 import { z } from 'zod'
+import { ChatboxAIAPIError } from '../../../shared/models/errors'
 import * as promptFormat from '@/packages/prompts'
 import platform from '@/platform'
+import * as remote from '@/packages/remote'
 import * as settingActions from '@/stores/settingActions'
 import { getMessageText, sequenceMessages } from '@/utils/message'
 import type { ModelInterface } from '../../../shared/models/types'
@@ -18,6 +20,44 @@ export const webSearchTool = tool({
   }),
   execute: async (input: { query: string }, { abortSignal }: { abortSignal?: AbortSignal }) => {
     return webSearchExecutor({ query: input.query }, { abortSignal })
+  },
+})
+
+const DEFAULT_PARSE_LINK_MAX_CHARS = 12_000
+
+export const parseLinkTool = tool({
+  description:
+    'Parses the readable content of a web page. Use this when you need to extract detailed information from a specific URL shared by the user.',
+  inputSchema: z.object({
+    url: z.string().url().describe('The URL to parse. Always include the schema, e.g. https://example.com'),
+    maxLength: z
+      .number()
+      .int()
+      .min(500)
+      .max(50_000)
+      .optional()
+      .describe('Optional maximum number of characters to return from the parsed content.'),
+  }),
+  execute: async (input: { url: string; maxLength?: number }, _context: { abortSignal?: AbortSignal }) => {
+    const licenseKey = settingActions.getLicenseKey()
+    if (!licenseKey) {
+      throw ChatboxAIAPIError.fromCodeName('license_key_required', 'license_key_required')
+    }
+
+    const parsed = await remote.parseUserLinkPro({ licenseKey, url: input.url })
+    const content = ((await platform.getStoreBlob(parsed.storageKey)) || '').trim()
+
+    const maxLength = input.maxLength ?? DEFAULT_PARSE_LINK_MAX_CHARS
+    const normalizedMaxLength = Math.min(Math.max(maxLength, 500), 50_000)
+    const truncatedContent = content.slice(0, normalizedMaxLength)
+
+    return {
+      url: input.url,
+      title: parsed.title,
+      content: truncatedContent,
+      originalLength: content.length,
+      truncated: content.length > truncatedContent.length,
+    }
   },
 })
 

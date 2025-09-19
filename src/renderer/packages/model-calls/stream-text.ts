@@ -27,6 +27,7 @@ import {
   constructMessagesWithKnowledgeBaseResults,
   constructMessagesWithSearchResults,
   knowledgeBaseSearchByPromptEngineering,
+  parseLinkTool,
   searchByPromptEngineering,
   webSearchTool,
 } from './tools'
@@ -250,6 +251,9 @@ export async function streamText(
     }
     if (webBrowsing) {
       tools.web_search = webSearchTool
+      if (settingActions.isPro()) {
+        tools.parse_link = parseLinkTool
+      }
     }
     if (knowledgeBase) {
       tools = {

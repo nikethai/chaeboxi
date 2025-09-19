@@ -645,7 +645,7 @@ export async function preprocessFile(
   const remoteConfig = settingActions.getRemoteConfig()
 
   try {
-    const isChatboxAI = settings.provider === ModelProviderEnum.ChatboxAI
+    const isPro = settingActions.isPro()
     const uniqKey = StorageKeyGenerator.fileUniqKey(file)
 
     // 检查是否已经处理过这个文件
@@ -681,7 +681,7 @@ export async function preprocessFile(
       }
     }
 
-    if (isChatboxAI) {
+    if (isPro) {
       // ChatboxAI 方案：上传文件并获取内容
       const licenseKey = settingActions.getLicenseKey()
       const uploadedKey = await remote.uploadAndCreateUserFile(licenseKey || '', file)
@@ -784,7 +784,7 @@ export async function preprocessLink(
   error?: string
 }> {
   try {
-    const isChatboxAI = settings.provider === ModelProviderEnum.ChatboxAI
+    const isPro = settingActions.isPro()
     const uniqKey = StorageKeyGenerator.linkUniqKey(url)
 
     // 检查是否已经处理过这个链接
@@ -825,7 +825,7 @@ export async function preprocessLink(
       }
     }
 
-    if (isChatboxAI) {
+    if (isPro) {
       // ChatboxAI 方案：使用远程解析
       const licenseKey = settingActions.getLicenseKey()
       const parsed = await remote.parseUserLinkPro({ licenseKey: licenseKey || '', url })
@@ -976,7 +976,7 @@ export async function submitNewUserMessage(params: {
 
   const settings = getCurrentSessionMergedSettings()
   const globalSettings = settingsStore.getState().getSettings()
-  const isChatboxAI = settings.provider === ModelProviderEnum.ChatboxAI
+  const isPro = settingActions.isPro()
   const remoteConfig = settingActions.getRemoteConfig()
 
   // 根据需要，插入空白的回复消息
@@ -987,7 +987,7 @@ export async function submitNewUserMessage(params: {
     }
     newAssistantMsg.status.push({
       type: 'sending_file',
-      mode: isChatboxAI ? 'advanced' : 'local',
+      mode: isPro ? 'advanced' : 'local',
     })
   }
   if (newUserMsg.links && newUserMsg.links.length > 0) {
@@ -996,7 +996,7 @@ export async function submitNewUserMessage(params: {
     }
     newAssistantMsg.status.push({
       type: 'loading_webpage',
-      mode: isChatboxAI ? 'advanced' : 'local',
+      mode: isPro ? 'advanced' : 'local',
     })
   }
   if (needGenerating) {

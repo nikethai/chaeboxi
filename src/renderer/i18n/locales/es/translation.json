@@ -419,6 +419,7 @@
   "or": "o",
   "Or become a sponsor": "O conviértete en patrocinador",
   "Other concerns": "Otros problemas",
+  "Parse Link": "Analizar enlace",
   "Paste long text as a file": "Pegar texto largo como archivo",
   "Pasting long text will automatically insert it as a file, keeping chats clean and reducing token usage with prompt caching.": "Pegar texto largo como archivo para mantener conversaciones limpias y reducir el uso de tokens con caché de prompt.",
   "Pause": "Pausar",

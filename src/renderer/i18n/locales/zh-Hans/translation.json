@@ -419,6 +419,7 @@
   "or": "或",
   "Or become a sponsor": "或成为赞助商",
   "Other concerns": "其他问题",
+  "Parse Link": "解析链接",
   "Paste long text as a file": "粘贴长文本为文件",
   "Pasting long text will automatically insert it as a file, keeping chats clean and reducing token usage with prompt caching.": "粘贴长文本时将以文件形式插入，有助于保持聊天列表简洁，并减少在 prompt caching 可用时大幅减少 token 使用量。",
   "Pause": "暂停",

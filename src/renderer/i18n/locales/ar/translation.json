@@ -419,6 +419,7 @@
   "or": "أو",
   "Or become a sponsor": "أو تصبح راعياً",
   "Other concerns": "أخرى",
+  "Parse Link": "تحليل الرابط",
   "Paste long text as a file": "إرفاق نص طويل كملف",
   "Pasting long text will automatically insert it as a file, keeping chats clean and reducing token usage with prompt caching.": "إرفاق نص طويل سيضيفه كملف للحفاظ على المحادثات نظيفة وتقليل استخدام الرموز باستخدام تخزين المحادثات.",
   "Pause": "إيقاف مؤقت",

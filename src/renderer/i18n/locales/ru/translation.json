@@ -419,6 +419,7 @@
   "or": "или",
   "Or become a sponsor": "Или станьте спонсором",
   "Other concerns": "Другие проблемы",
+  "Parse Link": "Разобрать ссылку",
   "Paste long text as a file": "Вставить длинный текст как файл",
   "Pasting long text will automatically insert it as a file, keeping chats clean and reducing token usage with prompt caching.": "Вставление длинного текста в виде файла поможет сохранить чистоту в чат-списке и уменьшить использование токенов с помощью кэширования промптов.",
   "Pause": "Пауза",

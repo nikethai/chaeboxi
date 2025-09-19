@@ -419,6 +419,7 @@
   "or": "eller",
   "Or become a sponsor": "Eller bli sponsor",
   "Other concerns": "Andre bekymringer",
+  "Parse Link": "Tolk lenke",
   "Paste long text as a file": "Lim inn lang tekst som en fil",
   "Pasting long text will automatically insert it as a file, keeping chats clean and reducing token usage with prompt caching.": "Lim inn lang tekst som en fil for å holde samtaler rent og redusere tokenbruk med prompt-cache.",
   "Pause": "Pause",

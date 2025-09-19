@@ -28,7 +28,7 @@ export default class DeepSeek extends OpenAICompatible {
   }
 
   isSupportToolUse(scope?: 'web-browsing') {
-    if (scope === 'web-browsing') {
+    if (scope === 'web-browsing' && /deepseek-(v3|r1)$/.test(this.options.model.modelId.toLowerCase())) {
       return false
     }
     return super.isSupportToolUse()

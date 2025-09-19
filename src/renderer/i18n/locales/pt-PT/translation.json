@@ -418,6 +418,7 @@
   "or": "ou",
   "Or become a sponsor": "Ou torne-se um patrocinador",
   "Other concerns": "Outros problemas",
+  "Parse Link": "Analisar Ligação",
   "Paste long text as a file": "Colar texto longo como um ficheiro",
   "Pasting long text will automatically insert it as a file, keeping chats clean and reducing token usage with prompt caching.": "Colar texto longo como um ficheiro para manter as conversas limpas e reduzir o uso de tokens com cache de prompt.",
   "Pause": "Pausa",

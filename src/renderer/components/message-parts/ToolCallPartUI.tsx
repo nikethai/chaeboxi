@@ -11,7 +11,6 @@ import {
   IconLoader,
   IconTool,
 } from '@tabler/icons-react'
-import { Link } from '@tanstack/react-router'
 import { type FC, type ReactNode, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Message, MessageReasoningPart, MessageToolCallPart } from 'src/shared/types'
@@ -47,18 +46,48 @@ type WebBrowsingToolCallPart = MessageToolCallPart<
   { query: string; searchResults: SearchResultItem[] }
 >
 
+const getSafeExternalHref = (raw: string): string | null => {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+
+  if (!/^https?:\/\//i.test(trimmed)) {
+    return null
+  }
+
+  try {
+    return new URL(trimmed).toString()
+  } catch (_error) {
+    const encoded = trimmed.replace(/%(?![0-9A-Fa-f]{2})/g, '%25')
+    try {
+      return new URL(encoded).toString()
+    } catch (_innerError) {
+      return null
+    }
+  }
+}
+
 const SearchResultCard: FC<{ index: number; result: SearchResultItem }> = ({ index, result }) => {
+  const href = getSafeExternalHref(result.link)
+
+  const content = (
+    <Paper radius="md" p={8} bg={alpha('var(--mantine-color-gray-6)', 0.1)} maw={200} title={result.title}>
+      <Text size="sm" truncate="end" m={0}>
+        <b>{index + 1}.</b> {result.title}
+      </Text>
+      <Text size="xs" truncate="end" c="chatbox-tertiary" m={0} mt={4}>
+        {result.link}
+      </Text>
+    </Paper>
+  )
+
+  if (!href) {
+    return content
+  }
+
   return (
-    <Link to={result.link} target="_blank" className="no-underline">
-      <Paper radius="md" p={8} bg={alpha('var(--mantine-color-gray-6)', 0.1)} maw={200} title={result.title}>
-        <Text size="sm" truncate="end" m={0}>
-          <b>{index + 1}.</b> {result.title}
-        </Text>
-        <Text size="xs" truncate="end" c="chatbox-tertiary" m={0} mt={4}>
-          {result.link}
-        </Text>
-      </Paper>
-    </Link>
+    <Box component="a" href={href} target="_blank" rel="noopener noreferrer" className="no-underline">
+      {content}
+    </Box>
   )
 }
 

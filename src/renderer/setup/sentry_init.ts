@@ -10,13 +10,6 @@ import platform from '../platform'
   const version = await platform.getVersion().catch(() => 'unknown')
   Sentry.init({
     dsn: 'https://eca691c5e01ebfa05958fca1fcb487a9@sentry.midway.run/697',
-    integrations: [
-      new Sentry.BrowserTracing({
-        // Set `tracePropagationTargets` to control for which URLs distributed tracing should be enabled
-        tracePropagationTargets: ['localhost', /^https:\/\/chatboxai\.app/, /^https:\/\/chatboxapp\.xyz/],
-      }),
-      new Sentry.Replay(),
-    ],
     environment: NODE_ENV,
     // Performance Monitoring
     sampleRate: 0.1,
@@ -36,3 +29,5 @@ import platform from '../platform'
     },
   })
 })()
+
+export default Sentry

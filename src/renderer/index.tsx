@@ -1,23 +1,23 @@
+import { SplashScreen } from '@capacitor/splash-screen'
 import '@mantine/core/styles.css'
+import '@mantine/spotlight/styles.css'
 import * as Sentry from '@sentry/react'
 import { RouterProvider } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
+import 'photoswipe/dist/photoswipe.css'
 import { StrictMode, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import i18n from './i18n'
 import { getLogger } from './lib/utils'
+import platform from './platform'
 import reportWebVitals from './reportWebVitals'
 import { router } from './router'
-import { initData } from './setup/init_data'
 import './static/globals.css'
 import './static/index.css'
 import { initLogAtom, migrationProcessAtom } from './stores/atoms/utilAtoms'
 import * as migration from './stores/migration'
 import { CHATBOX_BUILD_PLATFORM, CHATBOX_BUILD_TARGET } from './variables'
-import '@mantine/spotlight/styles.css'
-import platform from './platform'
-import 'photoswipe/dist/photoswipe.css'
 
 const log = getLogger('index')
 
@@ -32,6 +32,9 @@ import './setup/global_error_handler'
 
 // GA4 初始化
 import './setup/ga_init'
+
+// Plausible 初始化
+import './setup/plausible_init'
 
 // 引入保护代码
 import './setup/protect'

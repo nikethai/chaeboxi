@@ -1,6 +1,7 @@
-import React from 'react'
 import * as Sentry from '@sentry/react'
+import React from 'react'
 import { getLogger } from '../lib/utils'
+import { router } from '../router'
 
 const log = getLogger('ErrorBoundary')
 
@@ -109,7 +110,10 @@ function DefaultErrorFallback({ error, errorInfo, retry }: DefaultErrorFallbackP
           </button>
 
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              retry()
+              router.navigate({ to: '/', replace: true })
+            }}
             className="w-full bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md transition-colors"
           >
             Reload App

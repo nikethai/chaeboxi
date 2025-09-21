@@ -2,7 +2,7 @@ import NiceModal from '@ebay/nice-modal-react'
 import ArrowCircleDownIcon from '@mui/icons-material/ArrowCircleDown'
 import ArrowCircleUpIcon from '@mui/icons-material/ArrowCircleUp'
 import { Box, ButtonGroup, IconButton } from '@mui/material'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo } from 'react'
 import type { Message, ModelProvider } from 'src/shared/types'
@@ -15,7 +15,7 @@ import * as atoms from '@/stores/atoms'
 import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 import * as scrollActions from '@/stores/scrollActions'
 import * as sessionActions from '@/stores/sessionActions'
-import { saveSession } from '@/stores/sessionStorageMutations'
+import { getSessionAsync, saveSession } from '@/stores/sessionStorageMutations'
 import { useLanguage } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 
@@ -25,12 +25,29 @@ export const Route = createFileRoute('/session/$sessionId')({
 
 function RouteComponent() {
   const { sessionId: currentSessionId } = Route.useParams()
+  const navigate = useNavigate()
   const currentSession = useAtomValue(atoms.currentSessionAtom)
   const setLastUsedChatModel = useStore(lastUsedModelStore, (state) => state.setChatModel)
   const setLastUsedPictureModel = useStore(lastUsedModelStore, (state) => state.setPictureModel)
   const lastMessage = currentSession?.messages.length
     ? currentSession.messages[currentSession.messages.length - 1]
     : null
+
+  useEffect(() => {
+    let cancelled = false
+
+    if (!currentSession && currentSessionId) {
+      getSessionAsync(currentSessionId).then((session) => {
+        if (!cancelled && !session) {
+          navigate({ to: '/', replace: true })
+        }
+      })
+    }
+
+    return () => {
+      cancelled = true
+    }
+  }, [currentSession, currentSessionId, navigate])
 
   useEffect(() => {
     setTimeout(() => {

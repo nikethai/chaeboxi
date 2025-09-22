@@ -249,7 +249,7 @@ export function RouteComponent() {
                   {/* Quota Reset & License Expiry */}
                   <Flex gap="lg">
                     {[
-                      [t('Quota Reset'), new Date(licenseDetail.token_refreshed_time).toLocaleDateString()],
+                      [t('Quota Reset'), new Date(licenseDetail.token_next_refresh_time!).toLocaleDateString()],
                       [
                         t('License Expiry'),
                         licenseDetail.token_expire_time

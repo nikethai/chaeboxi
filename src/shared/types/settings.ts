@@ -111,6 +111,7 @@ const ChatboxAILicenseDetailSchema = z.object({
   image_used_count: z.number(),
   image_total_quota: z.number(),
   token_refreshed_time: z.string(),
+  token_next_refresh_time: z.string().optional(),
   token_expire_time: z.string().nullish(),
   remaining_quota_unified: z.number(),
   expansion_pack_limit: z.number(),

@@ -2,6 +2,7 @@ import { Box } from '@mantine/core'
 import { createFileRoute, Outlet, useLocation, useNavigate } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import DevHeader from '@/components/dev/DevHeader'
+import { FORCE_ENABLE_DEV_PAGES } from '@/dev/devToolsConfig'
 
 export const Route = createFileRoute('/dev')({
   component: DevLayout,
@@ -12,16 +13,16 @@ function DevLayout() {
   const navigate = useNavigate()
 
   // Check if we're in production and redirect if so
-  const isDev = process.env.NODE_ENV !== 'production'
+  const shouldShowDevTools = FORCE_ENABLE_DEV_PAGES
 
   useEffect(() => {
-    if (!isDev) {
+    if (!shouldShowDevTools) {
       navigate({ to: '/' })
     }
-  }, [isDev, navigate])
+  }, [shouldShowDevTools, navigate])
 
   // Don't render dev UI in production
-  if (!isDev) {
+  if (!shouldShowDevTools) {
     return null
   }
 

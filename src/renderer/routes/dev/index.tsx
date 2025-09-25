@@ -13,6 +13,12 @@ const devPages = [
     description: 'Model selection component with desktop/mobile responsive views',
     tags: ['Component', 'UI'],
   },
+  {
+    path: '/dev/storage',
+    name: 'Storage Explorer',
+    description: 'Inspect key-value and blob storage entries provided by the unified platform layer',
+    tags: ['Tool', 'Storage'],
+  },
   // Add more dev pages here as they are created
 ]
 
@@ -29,7 +35,8 @@ function DevIndexPage() {
             </Badge>
           </Group>
           <Text c="dimmed">
-            Component previews and development tools. These are only available in development mode.
+            Component previews and development tools. These are available when running in development mode or when the
+            dev tools override is enabled.
           </Text>
         </div>
 
@@ -109,8 +116,8 @@ function DevIndexPage() {
               ⚠️ Note:
             </Text>
             <Text size="sm">
-              These dev tools are only visible when running in development mode (npm run dev). They will not appear in
-              production builds.
+              These dev tools are hidden in production builds unless <code>FORCE_ENABLE_DEV_PAGES</code> in{' '}
+              <code>src/renderer/dev/devToolsConfig.ts</code> is set to <code>true</code>.
             </Text>
           </Group>
         </Paper>

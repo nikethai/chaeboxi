@@ -23,6 +23,7 @@ import { PanelLeftClose } from 'lucide-react'
 import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import SessionList from './components/SessionList'
+import { FORCE_ENABLE_DEV_PAGES } from './dev/devToolsConfig'
 import useNeedRoomForMacWinControls from './hooks/useNeedRoomForWinControls'
 import { useIsSmallScreen, useSidebarWidth } from './hooks/useScreenChange'
 import useVersion from './hooks/useVersion'
@@ -238,7 +239,7 @@ function SidebarButtons(props: { sessionListRef: React.RefObject<HTMLDivElement>
       </MenuItem>
 
       {/* Show Dev menu only in development mode */}
-      {process.env.NODE_ENV === 'development' && (
+      {FORCE_ENABLE_DEV_PAGES && (
         <MenuItem
           onClick={() => {
             navigate({

@@ -219,16 +219,21 @@ function _searchSessions(regexp: RegExp, s: Session) {
 export async function searchSessions(searchInput: string, sessionId?: string, onResult?: (result: Session[]) => void) {
   const safeInput = searchInput.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
   const regexp = new RegExp(safeInput, 'i')
-  const result: Session[] = []
   let matchedMessageTotal = 0
+
+  const emitBatch = (batch: Session[]) => {
+    if (batch.length === 0) {
+      return
+    }
+    onResult?.(batch)
+  }
 
   if (sessionId) {
     const session = await storage.getItem<Session | null>(StorageKeyGenerator.session(sessionId), null)
     if (session) {
       const matchedMessages = _searchSessions(regexp, session)
-      result.push({ ...session, messages: matchedMessages })
       matchedMessageTotal += matchedMessages.length
-      onResult?.(result)
+      emitBatch([{ ...session, messages: matchedMessages }])
     }
   } else {
     const sessionsList = sortSessions(await storage.getItem<SessionMeta[]>(StorageKey.ChatSessionsList, []))
@@ -238,9 +243,8 @@ export async function searchSessions(searchInput: string, sessionId?: string, on
       if (session) {
         const messages = _searchSessions(regexp, session)
         if (messages.length > 0) {
-          result.push({ ...session, messages })
           matchedMessageTotal += messages.length
-          onResult?.(result)
+          emitBatch([{ ...session, messages }])
         }
         if (matchedMessageTotal >= 50) {
           break

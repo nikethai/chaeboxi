@@ -43,9 +43,9 @@ function keyboardShortcut(e: KeyboardEvent) {
   }
   if (e.key === 'e' && ctrlKey) {
     dom.focusMessageInput()
-    uiStore.setState((draft) => {
-      draft.inputBoxWebBrowsingMode = !draft.inputBoxWebBrowsingMode
-    })
+    uiStore.setState((state) => ({
+      inputBoxWebBrowsingMode: !state.inputBoxWebBrowsingMode,
+    }))
     return
   }
 

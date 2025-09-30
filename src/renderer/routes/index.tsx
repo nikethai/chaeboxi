@@ -118,6 +118,7 @@ function Index() {
       const newSession = await createSession({
         name: session.name,
         type: 'chat',
+        assistantAvatarKey: session.assistantAvatarKey,
         picUrl: session.picUrl,
         messages: session.messages,
         copilotId: session.copilotId,

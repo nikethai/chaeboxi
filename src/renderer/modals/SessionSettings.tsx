@@ -102,6 +102,24 @@ const SessionSettingsModal = NiceModal.create(
       modal.resolve()
       modal.hide()
     }
+
+    const applySessionChanges = (target: Session) => {
+      target.name = (target.name ?? '').trim() || session.name
+      const trimmed = systemPrompt.trim()
+      const messages = Array.isArray(target.messages) ? [...target.messages] : []
+      if (trimmed === '') {
+        target.messages = messages.filter((m) => m.role !== 'system')
+      } else {
+        const idx = messages.findIndex((m) => m.role === 'system')
+        if (idx >= 0) {
+          const sys = { ...messages[idx], contentParts: [{ type: 'text' as const, text: trimmed }] }
+          target.messages = [...messages.slice(0, idx), sys, ...messages.slice(idx + 1)]
+        } else {
+          target.messages = [createMessage('system', trimmed), ...messages]
+        }
+      }
+      return target
+    }
     const onSave = () => {
       if (!session || !editingData) {
         return
@@ -115,24 +133,10 @@ const SessionSettingsModal = NiceModal.create(
             settings: editingData.settings,
           } as Session
 
-          merged.name = (merged.name ?? '').trim() || session.name
-
-          const trimmed = systemPrompt.trim()
-          const messages = Array.isArray(merged.messages) ? [...merged.messages] : []
-          if (trimmed === '') {
-            merged.messages = messages.filter((m) => m.role !== 'system')
-          } else {
-            const idx = messages.findIndex((m) => m.role === 'system')
-            if (idx >= 0) {
-              const sys = { ...messages[idx], contentParts: [{ type: 'text' as const, text: trimmed }] }
-              merged.messages = [...messages.slice(0, idx), sys, ...messages.slice(idx + 1)]
-            } else {
-              merged.messages = [createMessage('system', trimmed), ...messages]
-            }
-          }
-
-          return merged
+          return applySessionChanges(merged)
         })
+      } else {
+        applySessionChanges(editingData)
       }
 
       // setChatConfigDialogSessionId(null)

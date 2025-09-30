@@ -1,7 +1,4 @@
 import NiceModal from '@ebay/nice-modal-react'
-import ArrowCircleDownIcon from '@mui/icons-material/ArrowCircleDown'
-import ArrowCircleUpIcon from '@mui/icons-material/ArrowCircleUp'
-import { Box, ButtonGroup, IconButton } from '@mui/material'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo } from 'react'
@@ -16,8 +13,6 @@ import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 import * as scrollActions from '@/stores/scrollActions'
 import * as sessionActions from '@/stores/sessionActions'
 import { getSessionAsync, saveSession } from '@/stores/sessionStorageMutations'
-import { useLanguage } from '@/stores/settingsStore'
-import { useUIStore } from '@/stores/uiStore'
 
 export const Route = createFileRoute('/session/$sessionId')({
   component: RouteComponent,
@@ -27,11 +22,11 @@ function RouteComponent() {
   const { sessionId: currentSessionId } = Route.useParams()
   const navigate = useNavigate()
   const currentSession = useAtomValue(atoms.currentSessionAtom)
+  const currentMessageList = useAtomValue(atoms.currentMessageListAtom)
   const setLastUsedChatModel = useStore(lastUsedModelStore, (state) => state.setChatModel)
   const setLastUsedPictureModel = useStore(lastUsedModelStore, (state) => state.setPictureModel)
-  const lastMessage = currentSession?.messages.length
-    ? currentSession.messages[currentSession.messages.length - 1]
-    : null
+
+  const lastGeneratingMessage = useMemo(() => currentMessageList.find((m) => m.generating), [currentMessageList])
 
   useEffect(() => {
     let cancelled = false
@@ -130,12 +125,12 @@ function RouteComponent() {
     if (!currentSession) {
       return false
     }
-    if (lastMessage?.generating) {
-      lastMessage?.cancel?.()
-      sessionActions.modifyMessage(currentSession.id, { ...lastMessage, generating: false }, true)
+    if (lastGeneratingMessage?.generating) {
+      lastGeneratingMessage?.cancel?.()
+      sessionActions.modifyMessage(currentSession.id, { ...lastGeneratingMessage, generating: false }, true)
     }
     return true
-  }, [currentSession, lastMessage])
+  }, [currentSession, lastGeneratingMessage])
 
   const model = useMemo(() => {
     if (!currentSession?.settings?.modelId || !currentSession?.settings?.provider) {
@@ -164,7 +159,7 @@ function RouteComponent() {
         onRollbackThread={onRollbackThread}
         onSelectModel={onSelectModel}
         onClickSessionSettings={onClickSessionSettings}
-        generating={lastMessage?.generating}
+        generating={!!lastGeneratingMessage}
         onSubmit={onSubmit}
         onStopGenerating={onStopGenerating}
       />

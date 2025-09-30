@@ -48,7 +48,7 @@ const ArtifactPreview = NiceModal.create(({ htmlCode }: ArtifactPreviewProps) =>
       }
       size="100%"
       classNames={{
-        content: clsx('flex flex-col', isSmallScreen ? '' : 'max-w-5xl h-4/5'),
+        content: clsx('flex flex-col', isSmallScreen ? '!h-[100vh] !max-h-[auto]' : 'max-w-5xl h-4/5'),
         header: 'flex-0 pt-[var(--mobile-safe-area-inset-top)] !pb-0',
         body: clsx('flex-1', isSmallScreen ? '!p-0' : ''),
       }}

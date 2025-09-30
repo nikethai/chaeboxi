@@ -1,5 +1,5 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { Box, Button, Flex } from '@mantine/core'
+import { Box, Button, Flex, Transition } from '@mantine/core'
 import AddIcon from '@mui/icons-material/AddCircleOutline'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
@@ -7,9 +7,9 @@ import EditIcon from '@mui/icons-material/Edit'
 import SegmentIcon from '@mui/icons-material/Segment'
 import SwapCallsIcon from '@mui/icons-material/SwapCalls'
 import { IconButton, MenuItem } from '@mui/material'
-import { IconArrowBackUp, IconFilePencil } from '@tabler/icons-react'
+import { IconArrowBackUp, IconArrowUp, IconFilePencil } from '@tabler/icons-react'
 import { useAtomValue, useSetAtom } from 'jotai'
-import { type FC, Fragment, memo, useCallback, useEffect, useRef, useState } from 'react'
+import { type FC, Fragment, memo, type UIEventHandler, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type StateSnapshot, Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
 import type { Session, SessionThreadBrief } from 'src/shared/types'
@@ -21,7 +21,7 @@ import * as sessionActions from '@/stores/sessionActions'
 import { useUIStore } from '@/stores/uiStore'
 import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
 import Message from './Message'
-import MessageNavigation from './MessageNavigation'
+import MessageNavigation, { ScrollToBottomButton } from './MessageNavigation'
 import StyledMenu from './StyledMenu'
 
 const sessionScrollPositionCache = new Map<string, StateSnapshot>()
@@ -38,46 +38,134 @@ export default function MessageList(props: { className?: string; currentSession:
 
   const setMessageListElement = useUIStore((s) => s.setMessageListElement)
   const setMessageScrolling = useUIStore((s) => s.setMessageScrolling)
-  const setAtTop = useUIStore((s) => s.setMessageScrollingAtTop)
-  const setAtBottom = useUIStore((s) => s.setMessageScrollingAtBottom)
   const setMessageScrollingScrollPosition = useUIStore((s) => s.setMessageScrollingScrollPosition)
 
+  // message navigation handlers
   const [messageNavigationVisible, setMessageNavigationVisible] = useState(false)
-  const messageNavigationHideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const handleMessageNavigationVisibleChanged = useCallback((v: boolean) => setMessageNavigationVisible(v), [])
 
-  const handlemessageNavigationMouseEnter = useCallback(() => {
-    if (messageNavigationHideTimerRef.current) {
-      clearTimeout(messageNavigationHideTimerRef.current)
-    }
-    setMessageNavigationVisible(true)
+  const handleScrollToTop = useCallback(() => {
+    virtuoso.current?.scrollToIndex({ index: 0, align: 'start', behavior: 'smooth' })
   }, [])
 
-  const handleMessageNavigationMouseLeave = useCallback(() => {
-    if (messageNavigationHideTimerRef.current) {
-      clearTimeout(messageNavigationHideTimerRef.current)
-    }
-    messageNavigationHideTimerRef.current = setTimeout(() => setMessageNavigationVisible(false), 2000)
+  const handleScrollToBottom = useCallback(() => {
+    virtuoso.current?.scrollTo({ top: Infinity, behavior: 'smooth' })
   }, [])
 
-  const handleScroll = useCallback(() => {
-    // 为什么不合并到 onWheel 中？
-    // 实践中发现 onScroll 处理时效果会更加丝滑一些
-    if (virtuoso.current) {
-      virtuoso.current.getState((state) => {
-        if (messageListRef.current) {
-          setMessageScrollingScrollPosition(state.scrollTop + messageListRef.current.clientHeight)
+  const handleScrollToPrev = useCallback(() => {
+    if (messageListRef?.current && virtuoso?.current) {
+      const containerRect = messageListRef.current.getBoundingClientRect()
+      for (let i = 0; i < currentMessageList.length; i++) {
+        const msg = currentMessageList[i]
+        if (msg.role !== 'user' && msg.role !== 'assistant') {
+          continue
         }
-      })
-    }
-
-    if (isSmallScreen) {
-      if (messageNavigationHideTimerRef.current) {
-        clearTimeout(messageNavigationHideTimerRef.current)
+        const msgElement = messageListRef.current.querySelector(
+          `[data-testid="virtuoso-item-list"] > [data-index="${i}"]`
+        )
+        if (msgElement) {
+          const rect = msgElement.getBoundingClientRect()
+          // 找到第一个出现在可视区域顶部的元素，滚动到上一条用户消息
+          if (rect.bottom > containerRect.top) {
+            for (let j = i - 1; j >= 0; j--) {
+              if (currentMessageList[j].role === 'user') {
+                virtuoso.current.scrollToIndex({
+                  index: j,
+                  align: 'start',
+                  offset: isSmallScreen ? -28 : 0,
+                  behavior: 'smooth',
+                })
+                return
+              }
+            }
+            // 没有上一条用户消息了，滚动到顶部
+            virtuoso.current.scrollToIndex({ index: 0, align: 'start', behavior: 'smooth' })
+            return
+          }
+        }
       }
-      setMessageNavigationVisible(true)
-      messageNavigationHideTimerRef.current = setTimeout(() => setMessageNavigationVisible(false), 2000)
     }
-  }, [setMessageScrollingScrollPosition, isSmallScreen])
+  }, [currentMessageList, isSmallScreen])
+
+  const handleScrollToNext = useCallback(() => {
+    if (messageListRef?.current && virtuoso?.current) {
+      const containerRect = messageListRef.current.getBoundingClientRect()
+      for (let i = 0; i < currentMessageList.length; i++) {
+        const msg = currentMessageList[i]
+        if (msg.role !== 'user' && msg.role !== 'assistant') {
+          continue
+        }
+        const msgElement = messageListRef.current.querySelector(
+          `[data-testid="virtuoso-item-list"] > [data-index="${i}"]`
+        )
+        if (msgElement) {
+          const rect = msgElement.getBoundingClientRect()
+          // 找到第一个出现在可视区域顶部的元素，滚动到下一条用户消息
+          if (rect.bottom > containerRect.top) {
+            for (let j = i + 1; j < currentMessageList.length; j++) {
+              if (currentMessageList[j].role === 'user') {
+                virtuoso.current.scrollToIndex({ index: j, align: 'start', behavior: 'smooth' })
+                return
+              }
+            }
+            // 没有下一条用户消息了，滚动到底部
+            virtuoso.current.scrollToIndex({ index: currentMessageList.length - 1, align: 'end', behavior: 'smooth' })
+            return
+          }
+        }
+      }
+    }
+  }, [currentMessageList])
+
+  const [atBottom, setAtBottom] = useState(false)
+  const [atTop, setAtTop] = useState(false)
+
+  const [showScrollToPrev, setShowScrollToPrev] = useState(false)
+  const lastScrollTop = useRef<number>()
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+      }
+    }
+  }, [])
+  const handleScroll = useCallback<UIEventHandler>(
+    (e) => {
+      // 为什么不合并到 onWheel 中？
+      // 实践中发现 onScroll 处理时效果会更加丝滑一些
+      if (virtuoso.current) {
+        virtuoso.current.getState((state) => {
+          if (messageListRef.current) {
+            setMessageScrollingScrollPosition(state.scrollTop + messageListRef.current.clientHeight)
+          }
+        })
+      }
+
+      const scrollTop = e.currentTarget.scrollTop
+      if (lastScrollTop.current) {
+        if (scrollTop < lastScrollTop.current) {
+          // 是向上滚动
+          setShowScrollToPrev(true)
+          if (timerRef.current) {
+            clearTimeout(timerRef.current)
+            timerRef.current = null
+          }
+          timerRef.current = setTimeout(() => setShowScrollToPrev(false), 3000)
+        } else {
+          setShowScrollToPrev(false)
+          if (timerRef.current) {
+            clearTimeout(timerRef.current)
+            timerRef.current = null
+          }
+        }
+      }
+      lastScrollTop.current = scrollTop
+    },
+    [setMessageScrollingScrollPosition]
+  )
+
+  // message navigation handlers end
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 仅执行一次
   useEffect(() => {
@@ -116,8 +204,6 @@ export default function MessageList(props: { className?: string; currentSession:
         <Virtuoso
           style={{ scrollbarGutter: 'stable' }}
           data={currentMessageList}
-          atTopStateChange={setAtTop}
-          atBottomStateChange={setAtBottom}
           ref={virtuoso}
           followOutput={true}
           {...(sessionScrollPositionCache.has(currentSession.id)
@@ -199,6 +285,9 @@ export default function MessageList(props: { className?: string; currentSession:
           onTouchMove={() => {
             scrollActions.clearAutoScroll() // 手机上触摸屏幕滑动时，清除自动滚动
           }}
+          atTopStateChange={setAtTop}
+          atBottomThreshold={100}
+          atBottomStateChange={setAtBottom}
           onScroll={handleScroll}
           totalListHeightChanged={() => {
             if (virtuoso.current) {
@@ -217,12 +306,41 @@ export default function MessageList(props: { className?: string; currentSession:
           currentSessionId={currentSession.id}
         />
 
-        <MessageNavigation
-          visible={messageNavigationVisible}
-          messageList={currentMessageList}
-          onMouseEnter={handlemessageNavigationMouseEnter}
-          onMouseLeave={handleMessageNavigationMouseLeave}
-        />
+        {!isSmallScreen ? (
+          <MessageNavigation
+            visible={messageNavigationVisible}
+            onVisibleChange={handleMessageNavigationVisibleChanged}
+            onScrollToTop={handleScrollToTop}
+            onScrollToBottom={handleScrollToBottom}
+            onScrollToPrev={handleScrollToPrev}
+            onScrollToNext={handleScrollToNext}
+          />
+        ) : (
+          <>
+            <Transition mounted={showScrollToPrev && !atTop} transition="fade-down">
+              {(transitionStyle) => (
+                <Button
+                  className="absolute top-0 left-0 right-0"
+                  size="xs"
+                  h="auto"
+                  py={6}
+                  radius={0}
+                  bd={0}
+                  bg="chatbox-background-secondary"
+                  c="chatbox-tertiary"
+                  style={transitionStyle}
+                  onClick={handleScrollToPrev}
+                  leftSection={<IconArrowUp size={16} />}
+                >
+                  {t('Tap to go to previous message')}
+                </Button>
+              )}
+            </Transition>
+            <Transition mounted={!atBottom} transition="slide-up">
+              {(transitionStyle) => <ScrollToBottomButton onClick={handleScrollToBottom} style={transitionStyle} />}
+            </Transition>
+          </>
+        )}
       </div>
     </div>
   )

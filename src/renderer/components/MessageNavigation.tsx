@@ -1,122 +1,73 @@
-import { Box, Divider, Stack } from '@mantine/core'
-import { IconChevronDown, IconChevronsDown, IconChevronsUp, IconChevronUp } from '@tabler/icons-react'
+import { Box, Button, Divider, Stack } from '@mantine/core'
+import {
+  IconArrowDown,
+  IconArrowsDown,
+  IconChevronDown,
+  IconChevronsDown,
+  IconChevronsUp,
+  IconChevronUp,
+} from '@tabler/icons-react'
 import { clsx } from 'clsx'
-import { type FC, memo, useCallback } from 'react'
-import type { Message } from 'src/shared/types'
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import { uiStore } from '@/stores/uiStore'
+import { type CSSProperties, type FC, memo, useCallback, useRef } from 'react'
 
 export type MessageNavigationProps = {
   visible: boolean
-  messageList: Message[]
-  onMouseEnter?: () => void
-  onMouseLeave?: () => void
+  onVisibleChange?: (visible: boolean) => void
+  onScrollToTop?: () => void
+  onScrollToBottom?: () => void
+  onScrollToPrev?: () => void
+  onScrollToNext?: () => void
 }
 
-export const MessageNavigation: FC<MessageNavigationProps> = ({ visible, messageList, onMouseEnter, onMouseLeave }) => {
-  const isSmallScreen = useIsSmallScreen()
+export const MessageNavigation: FC<MessageNavigationProps> = ({
+  visible,
+  onVisibleChange,
+  onScrollToTop,
+  onScrollToBottom,
+  onScrollToPrev,
+  onScrollToNext,
+}) => {
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const handleScrollToTop = useCallback(() => {
-    const virtuoso = uiStore.getState().messageScrolling
-    virtuoso?.current?.scrollToIndex({ index: 0, align: 'start', behavior: 'smooth' })
-  }, [])
-
-  const handleScrollToBottom = useCallback(() => {
-    const virtuoso = uiStore.getState().messageScrolling
-    if (messageList.length === 0) return
-    virtuoso?.current?.scrollToIndex({ index: messageList.length - 1, align: 'end', behavior: 'smooth' })
-  }, [messageList.length])
-
-  const handleScrollToPrev = useCallback(() => {
-    const virtuoso = uiStore.getState().messageScrolling
-    const messageListElement = uiStore.getState().messageListElement
-    if (messageListElement?.current && virtuoso?.current) {
-      const containerRect = messageListElement.current.getBoundingClientRect()
-      for (let i = 0; i < messageList.length; i++) {
-        const msg = messageList[i]
-        if (msg.role !== 'user' && msg.role !== 'assistant') {
-          continue
-        }
-        const msgElement = messageListElement.current.querySelector(
-          `[data-testid="virtuoso-item-list"] > [data-index="${i}"]`
-        )
-        if (msgElement) {
-          const rect = msgElement.getBoundingClientRect()
-          // 找到第一个出现在可视区域顶部的元素，滚动到上一条用户消息
-          if (rect.bottom > containerRect.top) {
-            for (let j = i - 1; j >= 0; j--) {
-              if (messageList[j].role === 'user') {
-                virtuoso.current.scrollToIndex({ index: j, align: 'start', behavior: 'smooth' })
-                return
-              }
-            }
-            // 没有上一条用户消息了，滚动到顶部
-            virtuoso.current.scrollToIndex({ index: 0, align: 'start', behavior: 'smooth' })
-            return
-          }
-        }
-      }
+  const handleMouseEnter = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
     }
-  }, [messageList])
+    onVisibleChange?.(true)
+  }, [onVisibleChange])
 
-  const handleScrollToNext = useCallback(() => {
-    const virtuoso = uiStore.getState().messageScrolling
-    const messageListElement = uiStore.getState().messageListElement
-    if (messageListElement?.current && virtuoso?.current) {
-      const containerRect = messageListElement.current.getBoundingClientRect()
-      for (let i = 0; i < messageList.length; i++) {
-        const msg = messageList[i]
-        if (msg.role !== 'user' && msg.role !== 'assistant') {
-          continue
-        }
-        const msgElement = messageListElement.current.querySelector(
-          `[data-testid="virtuoso-item-list"] > [data-index="${i}"]`
-        )
-        if (msgElement) {
-          const rect = msgElement.getBoundingClientRect()
-          // 找到第一个出现在可视区域顶部的元素，滚动到下一条用户消息
-          if (rect.bottom > containerRect.top) {
-            for (let j = i + 1; j < messageList.length; j++) {
-              if (messageList[j].role === 'user') {
-                virtuoso.current.scrollToIndex({ index: j, align: 'start', behavior: 'smooth' })
-                return
-              }
-            }
-            // 没有下一条用户消息了，滚动到底部
-            virtuoso.current.scrollToIndex({ index: messageList.length - 1, align: 'end', behavior: 'smooth' })
-            return
-          }
-        }
-      }
+  const handleMouseLeave = useCallback(() => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
     }
-  }, [messageList])
+
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null
+      onVisibleChange?.(false)
+    }, 2000)
+  }, [onVisibleChange])
 
   return (
     <div
-      className={clsx('absolute right-0 translate-x-1/2 py-6', isSmallScreen ? 'top-1/2 -translate-y-1/2' : 'bottom-0')}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
+      className={clsx(
+        'absolute right-0 py-6 pl-2 bottom-0 transition-all',
+        visible ? '-translate-x-2 opacity-100' : 'translate-x-1/2 opacity-0'
+      )}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       <Stack
-        gap={isSmallScreen ? 'xs' : 6}
-        p={isSmallScreen ? 0 : 'xxs'}
-        className={clsx(
-          'transition-all duration-300 rounded [&>.mantine-Divider-root]:border-[var(--mantine-color-chatbox-border-primary-outline)]',
-          isSmallScreen
-            ? '[&>.mantine-Divider-root]:hidden'
-            : 'shadow bg-[var(--mantine-color-chatbox-background-primary-text)]',
-          visible
-            ? clsx('opacity-100', isSmallScreen ? '-translate-x-3/4' : '-translate-x-full')
-            : 'opacity-0 translate-x-1/2 pointer-events-none'
-        )}
+        gap={6}
+        p={'xxs'}
+        className="shadow rounded bg-[var(--mantine-color-chatbox-background-primary-text)] [&>.mantine-Divider-root]:border-[var(--mantine-color-chatbox-border-primary-outline)]"
       >
-        <MessageNavigationButton icon={<IconChevronsUp />} onClick={handleScrollToTop} />
+        <MessageNavigationButton icon={<IconChevronsUp />} onClick={onScrollToTop} />
         <Divider />
-        <MessageNavigationButton icon={<IconChevronUp />} onClick={handleScrollToPrev} />
+        <MessageNavigationButton icon={<IconChevronUp />} onClick={onScrollToPrev} />
         <Divider />
-        <MessageNavigationButton icon={<IconChevronDown />} onClick={handleScrollToNext} />
+        <MessageNavigationButton icon={<IconChevronDown />} onClick={onScrollToNext} />
         <Divider />
-        <MessageNavigationButton icon={<IconChevronsDown />} onClick={handleScrollToBottom} />
+        <MessageNavigationButton icon={<IconChevronsDown />} onClick={onScrollToBottom} />
       </Stack>
     </div>
   )
@@ -124,16 +75,13 @@ export const MessageNavigation: FC<MessageNavigationProps> = ({ visible, message
 
 export default memo(MessageNavigation)
 
-const MessageNavigationButton = ({ icon, ...others }: { icon: React.ReactElement; onClick: () => void }) => {
-  const isSmallScreen = useIsSmallScreen()
-  const iconSize = isSmallScreen ? 20 : 16
+const MessageNavigationButton = ({ icon, ...others }: { icon: React.ReactElement; onClick?: () => void }) => {
+  const iconSize = 16
   return (
     <button
       className={clsx(
         'flex border-0 outline-none [-webkit-tap-highlight-color:transparent] p-0 cursor-pointer text-[var(--mantine-color-chatbox-tertiary-text)] active:translate-y-px',
-        isSmallScreen
-          ? 'p-1.5 rounded-full bg-[rgba(134,142,150,0.10)] backdrop-blur-lg active:text-[var(--mantine-color-chatbox-secondary-text)]'
-          : 'bg-transparent hover:text-[var(--mantine-color-chatbox-secondary-text)]'
+        'bg-transparent hover:text-[var(--mantine-color-chatbox-secondary-text)]'
       )}
       {...others}
     >
@@ -141,5 +89,25 @@ const MessageNavigationButton = ({ icon, ...others }: { icon: React.ReactElement
         {icon}
       </Box>
     </button>
+  )
+}
+
+export const ScrollToBottomButton = ({ onClick, style }: { onClick?(): void; style?: CSSProperties }) => {
+  return (
+    <Box className="absolute bottom-5 left-1/2 -translate-x-1/2">
+      <Button
+        w={38}
+        h={38}
+        radius={19}
+        p={0}
+        bg="chatbox-background-primary"
+        c="chatbox-primary"
+        className="shadow-xl border-[var(--mantine-color-chatbox-border-primary-outline)]"
+        onClick={onClick}
+        style={style}
+      >
+        <IconArrowDown size={20} />
+      </Button>
+    </Box>
   )
 }

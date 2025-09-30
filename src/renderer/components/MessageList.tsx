@@ -320,7 +320,7 @@ export default function MessageList(props: { className?: string; currentSession:
             <Transition mounted={showScrollToPrev && !atTop} transition="fade-down">
               {(transitionStyle) => (
                 <Button
-                  className="absolute top-0 left-0 right-0"
+                  className="absolute top-0 left-0 right-0 leading-tight"
                   size="xs"
                   h="auto"
                   py={6}

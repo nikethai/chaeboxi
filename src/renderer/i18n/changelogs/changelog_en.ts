@@ -1,4 +1,12 @@
 const changelog = `
+## v1.16.4 - 2025.10.09
+1. Fixed issue where the desktop message navigation component blocked the scrollbar
+2. Optimized the message navigation component on mobile
+3. Fixed issue where setting prompt and avatar when creating a new conversation didn't take effect
+4. Fixed issue where generation couldn't be stopped when messages were generated in the middle of the list
+5. Fixed issue where Artifact preview couldn't go full screen on some devices
+6. Fixed issue where certain data exceptions caused the app to get stuck on the error page; you can now click the Reload App button to return to the home page
+
 ## v1.16.3 - 2025.09.18
 
 1. Fix a performance issue while message generating

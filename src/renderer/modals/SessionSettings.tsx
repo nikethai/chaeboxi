@@ -25,8 +25,7 @@ import {
   ModelProviderEnum,
   type Session,
   type SessionSettings,
-  type Settings,
-} from '@/../shared/types'
+} from 'src/shared/types'
 import { Accordion, AccordionDetails, AccordionSummary } from '@/components/Accordion'
 import EditableAvatar from '@/components/EditableAvatar'
 import { handleImageInputAndSave, ImageInStorage } from '@/components/Image'
@@ -39,8 +38,8 @@ import SliderWithInput from '@/components/SliderWithInput'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { trackingEvent } from '@/packages/event'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
-import * as sessionActions from '@/stores/sessionActions'
-import { getSessionMeta, saveSession } from '@/stores/sessionStorageMutations'
+import { updateSession } from '@/stores/chatStore'
+import { getSessionMeta, mergeSettings } from '@/stores/sessionHelpers'
 import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
 import { getMessageText } from '../../shared/utils/message'
 
@@ -126,7 +125,7 @@ const SessionSettingsModal = NiceModal.create(
       }
 
       if (!disableAutoSave) {
-        saveSession(editingData.id, (s) => {
+        void updateSession(editingData.id, (s) => {
           const merged = {
             ...(s ?? {}),
             ...getSessionMeta(editingData),
@@ -670,7 +669,7 @@ export function ChatConfig({
 function PictureConfig(props: { dataEdit: Session; setDataEdit: (data: Session) => void }) {
   const { dataEdit, setDataEdit } = props
   const globalSettings = settingsStore.getState().getSettings()
-  const sessionSettings = sessionActions.mergeSettings(globalSettings, dataEdit.settings || {}, dataEdit.type || 'chat')
+  const sessionSettings = mergeSettings(globalSettings, dataEdit.settings || {}, dataEdit.type || 'chat')
   const updateSettingsEdit = (updated: Partial<SessionSettings>) => {
     setDataEdit({
       ...dataEdit,

@@ -1,21 +1,22 @@
+import type { LanguageModelV2 } from '@ai-sdk/provider'
 import {
   APICallError,
   type EmbeddingModel,
   type FinishReason,
   experimental_generateImage as generateImage,
-  generateText,
   type ImageModel,
   type JSONValue,
-  type LanguageModel,
   type LanguageModelUsage,
   type ModelMessage,
   type Provider,
+  simulateStreamingMiddleware,
   stepCountIs,
   streamText,
   type TextStreamPart,
   type ToolSet,
   type TypedToolCall,
   type TypedToolResult,
+  wrapLanguageModel,
 } from 'ai'
 import type {
   MessageContentParts,
@@ -72,7 +73,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     options: CallChatCompletionOptions
   ): Pick<Provider, 'languageModel'> & Partial<Pick<Provider, 'textEmbeddingModel' | 'imageModel'>>
 
-  protected abstract getChatModel(options: CallChatCompletionOptions): LanguageModel
+  protected abstract getChatModel(options: CallChatCompletionOptions): LanguageModelV2
 
   protected getImageModel(): ImageModel | null {
     return null
@@ -400,61 +401,8 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     return { contentParts, usage: result.usage, finishReason: result.finishReason }
   }
 
-  private async handleNonStreamingCompletion<T extends ToolSet>(
-    model: LanguageModel,
-    coreMessages: ModelMessage[],
-    options: CallChatCompletionOptions<T>,
-    callSettings: CallSettings
-  ): Promise<StreamTextResult> {
-    const contentParts: MessageContentParts = []
-
-    try {
-      const result = await generateText({
-        model,
-        messages: coreMessages,
-        stopWhen: stepCountIs(Number.MAX_SAFE_INTEGER),
-        tools: options.tools,
-        abortSignal: options.signal,
-        onStepFinish: async (event) => {
-          // Process reasoning content
-          event.reasoning?.forEach((part) => {
-            if (part.text) {
-              this.addContentPart({ type: 'reasoning', text: part.text }, contentParts, options)
-            }
-          })
-
-          // Process text content
-          if (event.text) {
-            this.addContentPart({ type: 'text', text: event.text }, contentParts, options)
-          }
-
-          // Process tool calls and results
-          if (event.toolCalls?.length) {
-            this.processToolCalls(event.toolCalls, contentParts, options)
-          }
-          if (event.toolResults?.length) {
-            this.processToolResults(event.toolResults, contentParts, options)
-          }
-
-          // Process files/images
-          for (const file of event.files || []) {
-            if (file.mediaType?.startsWith('image/') && file.base64) {
-              await this.processImageFile(file.mediaType, file.base64, contentParts)
-              options.onResultChange?.({ contentParts })
-            }
-          }
-        },
-        ...callSettings,
-      })
-
-      return this.finalizeResult(contentParts, result, options)
-    } catch (error) {
-      this.handleError(error)
-    }
-  }
-
   private async handleStreamingCompletion<T extends ToolSet>(
-    model: LanguageModel,
+    model: LanguageModelV2,
     coreMessages: ModelMessage[],
     options: CallChatCompletionOptions<T>,
     callSettings: CallSettings
@@ -519,13 +467,16 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     coreMessages: ModelMessage[],
     options: CallChatCompletionOptions<T>
   ): Promise<StreamTextResult> {
-    const model = this.getChatModel(options)
+    let model = this.getChatModel(options)
     const callSettings = this.getCallSettings(options)
 
     if (this.options.stream === false) {
-      return this.handleNonStreamingCompletion(model, coreMessages, options, callSettings)
+      model = wrapLanguageModel({
+        model,
+        middleware: simulateStreamingMiddleware(),
+      })
     }
 
-    return this.handleStreamingCompletion(model, coreMessages, options, callSettings)
+    return await this.handleStreamingCompletion(model, coreMessages, options, callSettings)
   }
 }

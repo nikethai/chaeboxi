@@ -20,19 +20,19 @@ import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type Message, type MessageContentParts, type MessageRole, MessageRoleEnum } from '@/../shared/types'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import * as sessionActions from '@/stores/sessionActions'
+import { generateMoreInNewFork, modifyMessage } from '@/stores/sessionActions'
 
 const MessageEdit = NiceModal.create((props: { sessionId: string; msg: Message }) => {
   const modal = useModal()
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
   // const [data, setData] = useAtom(atoms.messageEditDialogShowAtom)
-  const [sessionId] = useState(props.sessionId)
+
+  const sessionId = props.sessionId
   const [msg, _setMsg] = useState<Message>({ ...props.msg })
   const setMsg = useCallback((m: Partial<Message>) => {
     _setMsg((_m) => ({ ..._m, ...m }))
   }, [])
-
   // Create stable IDs for text parts to maintain focus
   // biome-ignore lint/correctness/useExhaustiveDependencies: ignore contents change
   const textPartIds = useMemo(() => {
@@ -51,22 +51,22 @@ const MessageEdit = NiceModal.create((props: { sessionId: string; msg: Message }
   }
 
   const onSave = () => {
-    if (!msg || !sessionId) {
+    if (!msg) {
       return
     }
-    sessionActions.modifyMessage(sessionId, msg, true)
+    void modifyMessage(sessionId, msg, true)
     onClose()
   }
   const onSaveAndReply = () => {
-    if (!msg || !sessionId) {
+    if (!msg) {
       return
     }
     onSave()
-    sessionActions.generateMoreInNewFork(sessionId, msg.id)
+    void generateMoreInNewFork(sessionId, msg.id)
   }
 
   const onRoleSelect = (e: SelectChangeEvent) => {
-    if (!msg || !sessionId) {
+    if (!msg) {
       return
     }
     setMsg({
@@ -74,7 +74,7 @@ const MessageEdit = NiceModal.create((props: { sessionId: string; msg: Message }
     })
   }
   const onContentPartInput = (index: number, text: string) => {
-    if (!msg || !sessionId) {
+    if (!msg) {
       return
     }
     const newContentParts: MessageContentParts = [...msg.contentParts]
@@ -138,7 +138,7 @@ const MessageEdit = NiceModal.create((props: { sessionId: string; msg: Message }
   }
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (!msg || !sessionId) {
+    if (!msg) {
       return
     }
     const ctrlOrCmd = event.ctrlKey || event.metaKey
@@ -158,7 +158,7 @@ const MessageEdit = NiceModal.create((props: { sessionId: string; msg: Message }
     }
   }
 
-  if (!msg || !sessionId) {
+  if (!msg) {
     return null
   }
 

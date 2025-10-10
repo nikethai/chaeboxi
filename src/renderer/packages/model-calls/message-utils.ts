@@ -59,14 +59,14 @@ async function convertUserContentParts(
   dependencies: ModelDependencies,
   options?: { modelSupportVision: boolean }
 ): Promise<Array<TextPart | ImagePart>> {
-  return convertContentParts<TextPart | ImagePart>(contentParts, 'image', dependencies, options)
+  return await convertContentParts<TextPart | ImagePart>(contentParts, 'image', dependencies, options)
 }
 
 async function convertAssistantContentParts(
   contentParts: MessageContentParts,
   dependencies: ModelDependencies
 ): Promise<Array<TextPart | FilePart>> {
-  return convertContentParts<TextPart | FilePart>(contentParts, 'file', dependencies)
+  return await convertContentParts<TextPart | FilePart>(contentParts, 'file', dependencies)
 }
 
 export async function convertToModelMessages(

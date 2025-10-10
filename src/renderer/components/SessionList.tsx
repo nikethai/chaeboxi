@@ -1,10 +1,10 @@
 import type { DragEndEvent } from '@dnd-kit/core'
 import {
+  closestCenter,
   DndContext,
   KeyboardSensor,
   MouseSensor,
   TouchSensor,
-  closestCenter,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
@@ -19,11 +19,10 @@ import { CSS } from '@dnd-kit/utilities'
 import NiceModal from '@ebay/nice-modal-react'
 import { IconButton, ListSubheader, MenuList } from '@mui/material'
 import { useRouterState } from '@tanstack/react-router'
-import { useAtomValue } from 'jotai'
-import { MutableRefObject } from 'react'
+import type { MutableRefObject } from 'react'
 import { useTranslation } from 'react-i18next'
-import * as atoms from '../stores/atoms'
-import { reorderSessions } from '../stores/sessionStorageMutations'
+import { useSessionList } from '@/stores/chatStore'
+import { reorderSessions } from '@/stores/sessionActions'
 import SessionItem from './SessionItem'
 
 export interface Props {
@@ -31,7 +30,7 @@ export interface Props {
 }
 
 export default function SessionList(props: Props) {
-  const sortedSessions = useAtomValue(atoms.sortedSessionsListAtom)
+  const { sessionMetaList: sortedSessions, refetch } = useSessionList()
   const sensors = useSensors(
     useSensor(TouchSensor, {
       activationConstraint: {
@@ -48,8 +47,11 @@ export default function SessionList(props: Props) {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   )
-  const onDragEnd = (event: DragEndEvent) => {
+  const onDragEnd = async (event: DragEndEvent) => {
     if (!event.over) {
+      return
+    }
+    if (!sortedSessions) {
       return
     }
     const activeId = event.active.id
@@ -57,7 +59,8 @@ export default function SessionList(props: Props) {
     if (activeId !== overId) {
       const oldIndex = sortedSessions.findIndex((s) => s.id === activeId)
       const newIndex = sortedSessions.findIndex((s) => s.id === overId)
-      reorderSessions(oldIndex, newIndex)
+      await reorderSessions(oldIndex, newIndex)
+      refetch()
     }
   }
   const routerState = useRouterState()
@@ -80,17 +83,19 @@ export default function SessionList(props: Props) {
         collisionDetection={closestCenter}
         onDragEnd={onDragEnd}
       >
-        <SortableContext items={sortedSessions} strategy={verticalListSortingStrategy}>
-          {sortedSessions.map((session, ix) => (
-            <SortableItem key={session.id} id={session.id}>
-              <SessionItem
-                key={session.id}
-                selected={routerState.location.pathname === `/session/${session.id}`}
-                session={session}
-              />
-            </SortableItem>
-          ))}
-        </SortableContext>
+        {sortedSessions && (
+          <SortableContext items={sortedSessions} strategy={verticalListSortingStrategy}>
+            {sortedSessions.map((session, ix) => (
+              <SortableItem key={session.id} id={session.id}>
+                <SessionItem
+                  key={session.id}
+                  selected={routerState.location.pathname === `/session/${session.id}`}
+                  session={session}
+                />
+              </SortableItem>
+            ))}
+          </SortableContext>
+        )}
       </DndContext>
     </MenuList>
   )

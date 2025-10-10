@@ -33,7 +33,7 @@ import PopoverConfirm from '@/components/PopoverConfirm'
 import { streamText } from '@/packages/model-calls'
 import { getModelSettingUtil } from '@/packages/model-setting-utils'
 import platform from '@/platform'
-import * as sessionActions from '@/stores/sessionActions'
+import { mergeSettings } from '@/stores/sessionHelpers'
 import { useProviderSettings, useSettingsStore } from '@/stores/settingsStore'
 import { add as addToast } from '@/stores/toastActions'
 
@@ -150,7 +150,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
       const configs = await platform.getConfig()
       const dependencies = await createModelDependencies()
       const modelInstance = getModel(
-        sessionActions.mergeSettings(settings, {
+        mergeSettings(settings, {
           provider: providerId,
           modelId: checkModel,
         }),

@@ -79,13 +79,13 @@ const GoogleParamsSchema = z.object({
   }),
 })
 
-const providerOptionsSchema = z.object({
+export const ProviderOptionsSchema = z.object({
   claude: ClaudeParamsSchema.optional(),
   openai: OpenAIParamsSchema.optional(),
   google: GoogleParamsSchema.optional(),
 })
 
-const GlobalSessionSettingsSchema = z.object({
+export const GlobalSessionSettingsSchema = z.object({
   maxContextMessageCount: z.number().optional().catch(undefined),
   temperature: z.number().optional().catch(undefined),
   topP: z.number().optional().catch(undefined),
@@ -98,7 +98,7 @@ export const SessionSettingsSchema = GlobalSessionSettingsSchema.extend({
   modelId: z.string().optional().catch(undefined),
   dalleStyle: z.enum(['vivid', 'natural']).optional().catch('vivid'),
   imageGenerateNum: z.number().optional().catch(1),
-  providerOptions: providerOptionsSchema.optional().catch(undefined),
+  providerOptions: ProviderOptionsSchema.optional().catch(undefined),
 })
 
 const ChatboxAILicenseDetailSchema = z.object({
@@ -332,7 +332,7 @@ export type CustomProviderBaseInfo = z.infer<typeof CustomProviderBaseInfoSchema
 export type ClaudeParams = z.infer<typeof ClaudeParamsSchema>
 export type OpenAIParams = z.infer<typeof OpenAIParamsSchema>
 export type GoogleParams = z.infer<typeof GoogleParamsSchema>
-export type ProviderOptions = z.infer<typeof providerOptionsSchema>
+export type ProviderOptions = z.infer<typeof ProviderOptionsSchema>
 export type GlobalSessionSettings = z.infer<typeof GlobalSessionSettingsSchema>
 export type ChatboxAILicenseDetail = z.infer<typeof ChatboxAILicenseDetailSchema>
 export type ShortcutSendValue = z.infer<typeof ShortcutSendValueSchema>

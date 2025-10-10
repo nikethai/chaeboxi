@@ -1,6 +1,7 @@
 import { getDefaultStore } from 'jotai'
 import type { Message, Session } from 'src/shared/types'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
+import { listSessionsMeta } from '@/stores/chatStore'
 import { settingsStore } from '@/stores/settingsStore'
 import platform from '../platform'
 import storage from '../storage'
@@ -24,10 +25,8 @@ export async function tickStorageTask() {
   }
   const needDeletedSet = new Set<string>(storageKeys)
 
-  const store = getDefaultStore()
-
   // 会话中还存在的图片、文件不需要删除
-  const sessions = store.get(atoms.sessionsListAtom)
+  const sessions = await listSessionsMeta()
   for (const sessionMeta of sessions) {
     // 不从 atom 中获取，避免水合状态
     const session = await storage.getItem<Session | null>(StorageKeyGenerator.session(sessionMeta.id), null)

@@ -164,7 +164,13 @@ function DefaultErrorFallback({ error, errorInfo, retry }: DefaultErrorFallbackP
 export const SentryErrorBoundary = Sentry.withErrorBoundary(
   ({ children }: { children: React.ReactNode }) => <>{children}</>,
   {
-    fallback: ({ error, resetError }) => <DefaultErrorFallback error={error} errorInfo={null} retry={resetError} />,
+    fallback: ({ error, resetError }) => (
+      <DefaultErrorFallback
+        error={error instanceof Error ? error : new Error(String(error))}
+        errorInfo={null}
+        retry={resetError}
+      />
+    ),
     beforeCapture: (scope, error, errorInfo) => {
       scope.setTag('errorBoundary', 'sentry')
       scope.setLevel('error')

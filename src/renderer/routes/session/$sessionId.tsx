@@ -1,48 +1,46 @@
 import NiceModal from '@ebay/nice-modal-react'
+import { Button } from '@mantine/core'
+import ArrowCircleDownIcon from '@mui/icons-material/ArrowCircleDown'
+import ArrowCircleUpIcon from '@mui/icons-material/ArrowCircleUp'
+import { Box, ButtonGroup, IconButton } from '@mui/material'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { Message, ModelProvider } from 'src/shared/types'
 import { useStore } from 'zustand'
 import Header from '@/components/Header'
 import InputBox from '@/components/InputBox/InputBox'
 import MessageList from '@/components/MessageList'
 import ThreadHistoryDrawer from '@/components/ThreadHistoryDrawer'
-import * as atoms from '@/stores/atoms'
+import { updateSession as updateSessionStore, useSession } from '@/stores/chatStore'
 import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 import * as scrollActions from '@/stores/scrollActions'
-import * as sessionActions from '@/stores/sessionActions'
-import { getSessionAsync, saveSession } from '@/stores/sessionStorageMutations'
+import { modifyMessage, removeCurrentThread, startNewThread, submitNewUserMessage } from '@/stores/sessionActions'
+import { getAllMessageList } from '@/stores/sessionHelpers'
+import { useLanguage } from '@/stores/settingsStore'
+import { useUIStore } from '@/stores/uiStore'
 
 export const Route = createFileRoute('/session/$sessionId')({
   component: RouteComponent,
 })
 
 function RouteComponent() {
+  const { t } = useTranslation()
   const { sessionId: currentSessionId } = Route.useParams()
   const navigate = useNavigate()
-  const currentSession = useAtomValue(atoms.currentSessionAtom)
-  const currentMessageList = useAtomValue(atoms.currentMessageListAtom)
+  const { session: currentSession } = useSession(currentSessionId)
   const setLastUsedChatModel = useStore(lastUsedModelStore, (state) => state.setChatModel)
   const setLastUsedPictureModel = useStore(lastUsedModelStore, (state) => state.setPictureModel)
 
-  const lastGeneratingMessage = useMemo(() => currentMessageList.find((m) => m.generating), [currentMessageList])
+  const currentMessageList = useMemo(() => (currentSession ? getAllMessageList(currentSession) : []), [currentSession])
+  const lastGeneratingMessage = useMemo(
+    () => currentMessageList.find((m: Message) => m.generating),
+    [currentMessageList]
+  )
 
-  useEffect(() => {
-    let cancelled = false
-
-    if (!currentSession && currentSessionId) {
-      getSessionAsync(currentSessionId).then((session) => {
-        if (!cancelled && !session) {
-          navigate({ to: '/', replace: true })
-        }
-      })
-    }
-
-    return () => {
-      cancelled = true
-    }
-  }, [currentSession, currentSessionId, navigate])
+  const goHome = useCallback(() => {
+    navigate({ to: '/', replace: true })
+  }, [navigate])
 
   useEffect(() => {
     setTimeout(() => {
@@ -73,7 +71,7 @@ function RouteComponent() {
       if (!currentSession) {
         return
       }
-      saveSession(currentSession.id, {
+      void updateSessionStore(currentSession.id, {
         settings: {
           ...(currentSession.settings || {}),
           provider,
@@ -85,14 +83,20 @@ function RouteComponent() {
   )
 
   const onStartNewThread = useCallback(() => {
-    sessionActions.startNewThread()
+    if (!currentSession) {
+      return false
+    }
+    void startNewThread(currentSession.id)
     return true
-  }, [])
+  }, [currentSession])
 
   const onRollbackThread = useCallback(() => {
-    sessionActions.removeCurrentThread(currentSessionId)
+    if (!currentSession) {
+      return false
+    }
+    void removeCurrentThread(currentSession.id)
     return true
-  }, [currentSessionId])
+  }, [currentSession])
 
   const onSubmit = useCallback(
     async ({
@@ -102,13 +106,15 @@ function RouteComponent() {
       constructedMessage: Message
       needGenerating?: boolean
     }) => {
-      await sessionActions.submitNewUserMessage({
-        currentSessionId: currentSessionId,
+      if (!currentSession) {
+        return
+      }
+      await submitNewUserMessage(currentSession.id, {
         newUserMsg: constructedMessage,
         needGenerating,
       })
     },
-    [currentSessionId]
+    [currentSession]
   )
 
   const onClickSessionSettings = useCallback(() => {
@@ -127,7 +133,7 @@ function RouteComponent() {
     }
     if (lastGeneratingMessage?.generating) {
       lastGeneratingMessage?.cancel?.()
-      sessionActions.modifyMessage(currentSession.id, { ...lastGeneratingMessage, generating: false }, true)
+      void modifyMessage(currentSession.id, { ...lastGeneratingMessage, generating: false }, true)
     }
     return true
   }, [currentSession, lastGeneratingMessage])
@@ -144,7 +150,7 @@ function RouteComponent() {
 
   return currentSession ? (
     <div className="flex flex-col h-full">
-      <Header />
+      <Header session={currentSession} />
 
       {/* MessageList 设置 key，确保每个 session 对应新的 MessageList 实例 */}
       <MessageList key={`message-list${currentSessionId}`} currentSession={currentSession} />
@@ -164,9 +170,16 @@ function RouteComponent() {
         onStopGenerating={onStopGenerating}
       />
       {/* <InputBox /> */}
-      <ThreadHistoryDrawer />
+      <ThreadHistoryDrawer session={currentSession} />
     </div>
-  ) : null
+  ) : (
+    <div className="flex flex-1 flex-col items-center justify-center min-h-[60vh]">
+      <div className="text-2xl font-semibold text-gray-700 mb-4">{t('Conversation not found')}</div>
+      <Button variant="outline" onClick={goHome}>
+        {t('Back to HomePage')}
+      </Button>
+    </div>
+  )
 }
 
 function ScrollButtons() {

@@ -1,9 +1,8 @@
 import { v4 as uuidv4 } from 'uuid'
 import { type Message, type MessageRole, MessageRoleEnum, type Session, type SessionThread } from './types/session'
 
-// export interface SearchResultItem {
-//   title: string
-//   link: string
+export type Updater<T> = Partial<T> | UpdaterFn<T>
+export type UpdaterFn<T> = (data: T | null | undefined) => T
 //   snippet: string
 // }
 

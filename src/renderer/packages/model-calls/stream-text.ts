@@ -8,7 +8,7 @@ import { getModelSettings } from 'src/shared/utils/model_settings'
 import { createModelDependencies } from '@/adapters'
 import * as settingActions from '@/stores/settingActions'
 import { settingsStore } from '@/stores/settingsStore'
-import type { ModelInterface, OnResultChange, onResultChangeWithCancel } from '../../../shared/models/types'
+import type { ModelInterface, OnResultChange, OnResultChangeWithCancel } from '../../../shared/models/types'
 import {
   type KnowledgeBase,
   type Message,
@@ -107,7 +107,7 @@ export async function streamText(
   params: {
     sessionId?: string
     messages: Message[]
-    onResultChangeWithCancel: onResultChangeWithCancel
+    onResultChangeWithCancel: OnResultChangeWithCancel
     providerOptions?: ProviderOptions
     knowledgeBase?: Pick<KnowledgeBase, 'id' | 'name'>
     webBrowsing?: boolean

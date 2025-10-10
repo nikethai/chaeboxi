@@ -32,6 +32,13 @@
       "a11y": "off",
       "correctness": {
         "useExhaustiveDependencies": "warn"
+      },
+      "suspicious": {
+        "useAwait": "warn",
+        "noArrayIndexKey": "warn"
+      },
+      "nursery": {
+        "noFloatingPromises": "warn"
       }
     },
     "includes": [

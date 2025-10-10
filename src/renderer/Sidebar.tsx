@@ -20,7 +20,7 @@ import SwipeableDrawer from '@mui/material/SwipeableDrawer'
 import { IconCode } from '@tabler/icons-react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { PanelLeftClose } from 'lucide-react'
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import SessionList from './components/SessionList'
 import { FORCE_ENABLE_DEV_PAGES } from './dev/devToolsConfig'
@@ -31,7 +31,7 @@ import { cn } from './lib/utils'
 import { navigateToSettings } from './modals/Settings'
 import { trackingEvent } from './packages/event'
 import icon from './static/icon.png'
-import * as sessionActions from './stores/sessionActions'
+import { createEmpty } from './stores/sessionActions'
 import { useLanguage } from './stores/settingsStore'
 import { useUIStore } from './stores/uiStore'
 import { CHATBOX_BUILD_PLATFORM } from './variables'
@@ -125,7 +125,6 @@ function SidebarButtons(props: { sessionListRef: React.RefObject<HTMLDivElement>
   const navigate = useNavigate()
   const setShowSidebar = useUIStore((s) => s.setShowSidebar)
   const isSmallScreen = useIsSmallScreen()
-
   const handleCreateNewSession = useCallback(() => {
     // sessionActions.createEmpty('chat')
     // if (sessionListRef.current) {
@@ -143,7 +142,7 @@ function SidebarButtons(props: { sessionListRef: React.RefObject<HTMLDivElement>
   }, [navigate, setShowSidebar, isSmallScreen])
 
   const handleCreateNewPictureSession = () => {
-    sessionActions.createEmpty('picture')
+    void createEmpty('picture')
     if (sessionListRef.current) {
       sessionListRef.current.scrollTo(0, 0)
     }

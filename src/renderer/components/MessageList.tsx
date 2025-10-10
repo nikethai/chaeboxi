@@ -1,5 +1,5 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { Box, Button, Flex, Transition } from '@mantine/core'
+import { Button, Transition } from '@mantine/core'
 import AddIcon from '@mui/icons-material/AddCircleOutline'
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
 import ChevronRightIcon from '@mui/icons-material/ChevronRight'
@@ -7,9 +7,9 @@ import EditIcon from '@mui/icons-material/Edit'
 import SegmentIcon from '@mui/icons-material/Segment'
 import SwapCallsIcon from '@mui/icons-material/SwapCalls'
 import { IconButton, MenuItem } from '@mui/material'
-import { IconArrowBackUp, IconArrowUp, IconFilePencil } from '@tabler/icons-react'
-import { useAtomValue, useSetAtom } from 'jotai'
-import { type FC, Fragment, memo, type UIEventHandler, useCallback, useEffect, useRef, useState } from 'react'
+import { IconArrowUp } from '@tabler/icons-react'
+import { useSetAtom } from 'jotai'
+import { type FC, Fragment, memo, type UIEventHandler, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type StateSnapshot, Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
 import type { Session, SessionThreadBrief } from 'src/shared/types'
@@ -17,7 +17,15 @@ import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import * as atoms from '@/stores/atoms'
 import * as scrollActions from '@/stores/scrollActions'
-import * as sessionActions from '@/stores/sessionActions'
+import {
+  deleteFork,
+  expandFork,
+  moveThreadToConversations,
+  removeThread,
+  switchFork,
+  switchThread,
+} from '@/stores/sessionActions'
+import { getAllMessageList, getCurrentThreadHistoryHash } from '@/stores/sessionHelpers'
 import { useUIStore } from '@/stores/uiStore'
 import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
 import Message from './Message'
@@ -27,12 +35,16 @@ import StyledMenu from './StyledMenu'
 const sessionScrollPositionCache = new Map<string, StateSnapshot>()
 
 export default function MessageList(props: { className?: string; currentSession: Session }) {
-  const { currentSession } = props
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
 
-  const currentMessageList = useAtomValue(atoms.currentMessageListAtom)
-  const currentThreadHash = useAtomValue(atoms.currentThreadHistoryHashAtom)
+  const { currentSession } = props
+  const currentThreadHash = useMemo(
+    () => currentSession && getCurrentThreadHistoryHash(currentSession),
+    [currentSession]
+  )
+  const currentMessageList = useMemo(() => getAllMessageList(currentSession), [currentSession])
+
   const virtuoso = useRef<VirtuosoHandle>(null)
   const messageListRef = useRef<HTMLDivElement>(null)
 
@@ -230,9 +242,15 @@ export default function MessageList(props: { className?: string; currentSession:
                   className={index === 0 ? 'pt-4' : ''}
                   collapseThreshold={msg.role === 'system' ? 150 : undefined}
                   preferCollapsedCodeBlock={index < currentMessageList.length - 10}
+                  assistantAvatarKey={currentSession.assistantAvatarKey}
+                  sessionPicUrl={currentSession.picUrl}
                 />
                 {currentSession.messageForksHash?.[msg.id] && (
-                  <ForkNav msgId={msg.id} forks={currentSession.messageForksHash?.[msg.id]} />
+                  <ForkNav
+                    sessionId={currentSession.id}
+                    msgId={msg.id}
+                    forks={currentSession.messageForksHash?.[msg.id]}
+                  />
                 )}
               </Fragment>
             )
@@ -346,8 +364,8 @@ export default function MessageList(props: { className?: string; currentSession:
   )
 }
 
-function ForkNav(props: { msgId: string; forks: NonNullable<Session['messageForksHash']>[string] }) {
-  const { msgId, forks } = props
+function ForkNav(props: { sessionId: string; msgId: string; forks: NonNullable<Session['messageForksHash']>[string] }) {
+  const { sessionId, msgId, forks } = props
   const widthFull = useUIStore((s) => s.widthFull)
   const [flash, setFlash] = useState(false)
   const prevLength = useRef(forks.lists.length)
@@ -386,7 +404,7 @@ function ForkNav(props: { msgId: string; forks: NonNullable<Session['messageFork
           aria-label="fork-left"
           size="small"
           className="hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-          onClick={() => sessionActions.switchFork(msgId, 'prev')}
+          onClick={() => void switchFork(sessionId, msgId, 'prev')}
         >
           <ChevronLeftIcon className="w-5 h-5" />
         </IconButton>
@@ -399,7 +417,7 @@ function ForkNav(props: { msgId: string; forks: NonNullable<Session['messageFork
           aria-label="fork-right"
           size="small"
           className="hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-          onClick={() => sessionActions.switchFork(msgId, 'next')}
+          onClick={() => void switchFork(sessionId, msgId, 'next')}
         >
           <ChevronRightIcon className="w-5 h-5" />
         </IconButton>
@@ -425,7 +443,7 @@ function ForkNav(props: { msgId: string; forks: NonNullable<Session['messageFork
         <MenuItem
           disableRipple
           onClick={() => {
-            sessionActions.expandFork(msgId)
+            void expandFork(sessionId, msgId)
             closeMenu()
           }}
           className="bg-white"
@@ -435,7 +453,7 @@ function ForkNav(props: { msgId: string; forks: NonNullable<Session['messageFork
         </MenuItem>
         <ConfirmDeleteMenuItem
           onDelete={() => {
-            sessionActions.deleteFork(msgId)
+            void deleteFork(sessionId, msgId)
             closeMenu()
           }}
         />
@@ -484,7 +502,6 @@ const ThreadMenu: FC<ThreadMenuProps> = memo((props) => {
   const { t } = useTranslation()
   const { threadMenuAnchorEl, threadMenuClickedTopicId, onThreadMenuClose, currentSessionId } = props
   const setShowHistoryDrawer = useSetAtom(atoms.showThreadHistoryDrawerAtom)
-
   const openHistoryDrawer = useCallback(() => {
     setShowHistoryDrawer(threadMenuClickedTopicId || true)
     onThreadMenuClose?.()
@@ -492,26 +509,26 @@ const ThreadMenu: FC<ThreadMenuProps> = memo((props) => {
 
   const onEditThreadNameClick = useCallback(() => {
     if (!threadMenuClickedTopicId) return
-    NiceModal.show('thread-name-edit', { sessionId: currentSessionId, threadId: threadMenuClickedTopicId })
+    NiceModal.show('thread-name-edit', { threadId: threadMenuClickedTopicId })
 
     onThreadMenuClose?.()
   }, [threadMenuClickedTopicId, currentSessionId, onThreadMenuClose])
 
   const onContinueThreadClick = useCallback(() => {
     if (!threadMenuClickedTopicId) return
-    sessionActions.switchThread(currentSessionId, threadMenuClickedTopicId)
+    void switchThread(currentSessionId, threadMenuClickedTopicId)
     onThreadMenuClose?.()
   }, [threadMenuClickedTopicId, currentSessionId, onThreadMenuClose])
 
   const onMoveToConversationsClick = useCallback(() => {
     if (!threadMenuClickedTopicId) return
-    sessionActions.moveThreadToConversations(currentSessionId, threadMenuClickedTopicId)
+    void moveThreadToConversations(currentSessionId, threadMenuClickedTopicId)
     onThreadMenuClose?.()
   }, [threadMenuClickedTopicId, currentSessionId, onThreadMenuClose])
 
   const onDeleteThreadClick = useCallback(() => {
     if (!threadMenuClickedTopicId) return
-    sessionActions.removeThread(currentSessionId, threadMenuClickedTopicId)
+    void removeThread(currentSessionId, threadMenuClickedTopicId)
     onThreadMenuClose?.()
   }, [threadMenuClickedTopicId, currentSessionId, onThreadMenuClose])
 

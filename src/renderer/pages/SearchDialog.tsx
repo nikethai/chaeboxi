@@ -9,11 +9,12 @@ import Message from '@/components/Message'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
-import * as atoms from '@/stores/atoms'
-import { searchSessions } from '@/stores/sessionStorageMutations'
+import { currentSessionIdAtom } from '@/stores/atoms'
+import { useSession } from '@/stores/chatStore'
+import { searchSessions } from '@/stores/sessionHelpers'
 import { useUIStore } from '@/stores/uiStore'
 import * as scrollActions from '../stores/scrollActions'
-import * as sessionAction from '../stores/sessionActions'
+import { switchCurrentSession } from '../stores/sessionActions'
 
 type Props = {}
 
@@ -29,7 +30,8 @@ export default function SearchDialog(props: Props) {
   const theme = useTheme()
   const { t } = useTranslation()
   const ref = useRef<HTMLInputElement>(null)
-  const currentSession = useAtomValue(atoms.currentSessionAtom)
+
+  const currentSessionId = useAtomValue(currentSessionIdAtom)
 
   useEffect(() => {
     if (open) {
@@ -48,11 +50,11 @@ export default function SearchDialog(props: Props) {
     setMode('search-result')
     setSearchResult([])
     setLoading(true)
-    if (!currentSession) {
+    if (!currentSessionId) {
       setLoading(false)
       return
     }
-    searchSessions(searchInput, flag === 'current-session' ? currentSession.id : undefined, (batches) => {
+    searchSessions(searchInput, flag === 'current-session' ? currentSessionId : undefined, (batches) => {
       setSearchResult((prev) => [...prev, ...batches])
     })
     setSearchResultMarks([searchInput])
@@ -163,9 +165,9 @@ export default function SearchDialog(props: Props) {
                           'bg-opacity-50'
                         )}
                         onSelect={() => {
-                          sessionAction.switchCurrentSession(result.id)
+                          switchCurrentSession(result.id)
                           setTimeout(() => {
-                            scrollActions.scrollToMessage(message.id)
+                            scrollActions.scrollToMessage(result.id, message.id)
                           }, 200)
                           setOpen(false)
                         }}
@@ -186,6 +188,8 @@ export default function SearchDialog(props: Props) {
                           hiddenButtonGroup
                           small
                           preferCollapsedCodeBlock
+                          assistantAvatarKey={result.assistantAvatarKey}
+                          sessionPicUrl={result.picUrl}
                         />
                       </CommandItem>
                     ))}

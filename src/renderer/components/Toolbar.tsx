@@ -10,13 +10,13 @@ import { MenuItem } from '@mui/material'
 import Box from '@mui/material/Box'
 import Button from '@mui/material/Button'
 import IconButton from '@mui/material/IconButton'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useSetAtom } from 'jotai'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useIsLargeScreen, useIsSmallScreen } from '@/hooks/useScreenChange'
 import platform from '@/platform'
-import * as sessionActions from '@/stores/sessionActions'
-import { removeSession } from '@/stores/sessionStorageMutations'
+import { deleteSession, useSession } from '@/stores/chatStore'
+import { clear as clearSession } from '@/stores/sessionActions'
 import { useUIStore } from '@/stores/uiStore'
 import * as atoms from '../stores/atoms'
 import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
@@ -27,14 +27,12 @@ import UpdateAvailableButton from './UpdateAvailableButton'
  * 顶部标题工具栏（右侧）
  * @returns
  */
-export default function Toolbar() {
+export default function Toolbar({ sessionId }: { sessionId: string }) {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
   const isLargeScreen = useIsLargeScreen()
 
-  const currentSession = useAtomValue(atoms.currentSessionAtom)
   const [showUpdateNotification, setShowUpdateNotification] = useState(false)
-
   const setOpenSearchDialog = useUIStore((s) => s.setOpenSearchDialog)
   const setThreadHistoryDrawerOpen = useSetAtom(atoms.showThreadHistoryDrawerAtom)
   const widthFull = useUIStore((s) => s.widthFull)
@@ -65,17 +63,11 @@ export default function Toolbar() {
     handleMoreMenuClose()
   }
   const handleSessionClean = () => {
-    if (!currentSession) {
-      return
-    }
-    sessionActions.clear(currentSession.id)
+    void clearSession(sessionId)
     handleMoreMenuClose()
   }
   const handleSessionDelete = () => {
-    if (!currentSession) {
-      return
-    }
-    removeSession(currentSession.id)
+    void deleteSession(sessionId)
     handleMoreMenuClose()
   }
 

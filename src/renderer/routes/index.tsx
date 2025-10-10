@@ -17,9 +17,9 @@ import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import platform from '@/platform'
 import { router } from '@/router'
-import * as sessionActions from '@/stores/sessionActions'
-import { initEmptyChatSession } from '@/stores/sessionActions'
-import { createSession, getSessionAsync } from '@/stores/sessionStorageMutations'
+import { createSession as createSessionStore } from '@/stores/chatStore'
+import { submitNewUserMessage, switchCurrentSession } from '@/stores/sessionActions'
+import { initEmptyChatSession } from '@/stores/sessionHelpers'
 import { useUIStore } from '@/stores/uiStore'
 
 export const Route = createFileRoute('/')({
@@ -40,7 +40,6 @@ function Index() {
   const addSessionKnowledgeBase = useUIStore((s) => s.addSessionKnowledgeBase)
   const showCopilotsInNewSession = useUIStore((s) => s.showCopilotsInNewSession)
   const widthFull = useUIStore((s) => s.widthFull)
-
   const [session, setSession] = useState<Session>({
     id: 'new',
     ...initEmptyChatSession(),
@@ -115,7 +114,7 @@ function Index() {
 
   const handleSubmit = useCallback(
     async ({ constructedMessage, needGenerating = true }: InputBoxPayload) => {
-      const newSession = await createSession({
+      const newSession = await createSessionStore({
         name: session.name,
         type: 'chat',
         assistantAvatarKey: session.assistantAvatarKey,
@@ -125,9 +124,6 @@ function Index() {
         settings: session.settings,
       })
 
-      // Ensure that the session atom is created successfully.
-      await getSessionAsync(newSession.id)
-
       // Transfer knowledge base from newSessionState to the actual session
       if (newSessionState.knowledgeBase) {
         addSessionKnowledgeBase(newSession.id, newSessionState.knowledgeBase)
@@ -135,20 +131,14 @@ function Index() {
         setNewSessionState({})
       }
 
-      sessionActions.switchCurrentSession(newSession.id)
+      switchCurrentSession(newSession.id)
 
-      await sessionActions.submitNewUserMessage({
-        currentSessionId: newSession.id,
+      void submitNewUserMessage(newSession.id, {
         newUserMsg: constructedMessage,
         needGenerating,
       })
     },
-    [
-      session,
-      addSessionKnowledgeBase,
-      newSessionState.knowledgeBase, // Clear newSessionState after transfer
-      setNewSessionState,
-    ]
+    [session, addSessionKnowledgeBase, newSessionState.knowledgeBase, setNewSessionState]
   )
 
   const onSelectModel = useCallback((p: string, m: string) => {

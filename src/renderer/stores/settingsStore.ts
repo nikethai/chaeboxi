@@ -1,11 +1,12 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: any */
 /** biome-ignore-all lint/suspicious/noFallthroughSwitchClause: migrate */
+
 import deepmerge from 'deepmerge'
 import type { WritableDraft } from 'immer'
 import * as defaults from 'src/shared/defaults'
 import { type ProviderSettings, type Settings, SettingsSchema } from 'src/shared/types'
 import { createStore, useStore } from 'zustand'
-import { createJSONStorage, persist } from 'zustand/middleware'
+import { createJSONStorage, persist, subscribeWithSelector } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import platform from '@/platform'
 import storage from '@/storage'
@@ -16,66 +17,68 @@ type Action = {
 }
 
 export const settingsStore = createStore<Settings & Action>()(
-  persist(
-    immer((set, get) => ({
-      ...SettingsSchema.parse(defaults.settings()),
-      setSettings: (val) => set(val),
-      getSettings: () => {
-        const store = get()
-        return SettingsSchema.parse(store)
-      },
-    })),
-    {
-      name: 'settings',
-      storage: createJSONStorage(() => ({
-        getItem: async (key) => {
-          const res = await storage.getItem<(Settings & { __version?: number }) | null>(key, null)
-          if (res) {
-            const { __version = 0, ...state } = res
-            return JSON.stringify({
-              state,
-              version: __version,
-            })
+  subscribeWithSelector(
+    persist(
+      immer((set, get) => ({
+        ...SettingsSchema.parse(defaults.settings()),
+        setSettings: (val) => set(val),
+        getSettings: () => {
+          const store = get()
+          return SettingsSchema.parse(store)
+        },
+      })),
+      {
+        name: 'settings',
+        storage: createJSONStorage(() => ({
+          getItem: async (key) => {
+            const res = await storage.getItem<(Settings & { __version?: number }) | null>(key, null)
+            if (res) {
+              const { __version = 0, ...state } = res
+              return JSON.stringify({
+                state,
+                version: __version,
+              })
+            }
+
+            return null
+          },
+          setItem: async (name, value) => {
+            const { state, version } = JSON.parse(value) as { state: Settings; version?: number }
+            await storage.setItem(name, { ...state, __version: version || 0 })
+          },
+          removeItem: async (name) => await storage.removeItem(name),
+        })),
+        version: 1,
+        partialize: (state) => {
+          try {
+            return SettingsSchema.parse(state)
+          } catch {
+            return state
+          }
+        },
+        migrate: (persisted: any, version) => {
+          // merge the newly added fields in defaults.settings() into the persisted values (deep merge).
+          const settings: any = deepmerge(defaults.settings(), persisted, {
+            arrayMerge: (_target, source) => source,
+          })
+
+          switch (version) {
+            case 0:
+              // fix typo
+              settings.shortcuts.inputBoxSendMessage =
+                settings.shortcuts.inpubBoxSendMessage || settings.shortcuts.inputBoxSendMessage
+              settings.shortcuts.inputBoxSendMessageWithoutResponse =
+                settings.shortcuts.inpubBoxSendMessageWithoutResponse ||
+                settings.shortcuts.inputBoxSendMessageWithoutResponse
+            default:
+              break
           }
 
-          return null
+          return SettingsSchema.parse(settings)
         },
-        setItem: async (name, value) => {
-          const { state, version } = JSON.parse(value) as { state: Settings; version?: number }
-          await storage.setItem(name, { ...state, __version: version || 0 })
-        },
-        removeItem: async (name) => await storage.removeItem(name),
-      })),
-      version: 1,
-      partialize: (state) => {
-        try {
-          return SettingsSchema.parse(state)
-        } catch {
-          return state
-        }
-      },
-      migrate: (persisted: any, version) => {
-        // merge the newly added fields in defaults.settings() into the persisted values (deep merge).
-        const settings: any = deepmerge(defaults.settings(), persisted, {
-          arrayMerge: (_target, source) => source,
-        })
-
-        switch (version) {
-          case 0:
-            // fix typo
-            settings.shortcuts.inputBoxSendMessage =
-              settings.shortcuts.inpubBoxSendMessage || settings.shortcuts.inputBoxSendMessage
-            settings.shortcuts.inputBoxSendMessageWithoutResponse =
-              settings.shortcuts.inpubBoxSendMessageWithoutResponse ||
-              settings.shortcuts.inputBoxSendMessageWithoutResponse
-          default:
-            break
-        }
-
-        return SettingsSchema.parse(settings)
-      },
-      skipHydration: true,
-    }
+        skipHydration: true,
+      }
+    )
   )
 )
 
@@ -91,7 +94,7 @@ export const initSettingsStore = async () => {
     })
   }
 
-  return _initSettingsStorePromise
+  return await _initSettingsStorePromise
 }
 
 settingsStore.subscribe((state, prevState) => {

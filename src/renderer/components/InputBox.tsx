@@ -18,7 +18,7 @@ import {
   IconSettings,
   IconVocabulary,
 } from '@tabler/icons-react'
-import { useAtom, useAtomValue } from 'jotai'
+import { useAtom } from 'jotai'
 import _, { pick } from 'lodash'
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
@@ -37,6 +37,7 @@ import platform from '@/platform'
 import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import * as atoms from '@/stores/atoms'
+import { useSession, useSessionSettings } from '@/stores/chatStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 import { delay } from '@/utils'
@@ -50,7 +51,7 @@ import {
   type ShortcutSendValue,
 } from '../../../shared/types'
 import * as dom from '../../hooks/dom'
-import * as sessionActions from '../../stores/sessionActions'
+import * as sessionHelpers from '../../stores/sessionHelpers'
 import * as toastActions from '../../stores/toastActions'
 import { FileMiniCard, ImageMiniCard, LinkMiniCard } from '../Attachments'
 import { CompressionModal } from '../CompressionModal'
@@ -141,23 +142,17 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const pictureKeys = preConstructedMessage.pictureKeys || []
     const attachments = preConstructedMessage.attachments || []
 
-    const currentSession = useAtomValue(atoms.currentSessionAtom)
-    const currentSessionMergedSettings = useAtomValue(atoms.currentMergedSettingsAtom)
-
-    // Get stable messages for token counting (excludes generating messages)
-    const allStableMessages = currentSession?.messages.filter((msg) => !msg.generating) || []
-
-    // Create a stable identifier for stable messages to avoid unnecessary recalculations
-    const stableMessagesId = useMemo(() => {
-      return allStableMessages.map((msg) => `${msg.id}-${msg.timestamp}`).join(',')
-    }, [allStableMessages])
+    const { session: currentSession } = useSession(sessionId || null)
+    const { sessionSettings: currentSessionMergedSettings } = useSessionSettings(sessionId || null)
 
     // Get current messages for token counting - will only recalculate when stable messages actually change
     const currentMessages = useMemo(() => {
-      if (isNewSession) return []
-      return allStableMessages.slice(-(currentSessionMergedSettings.maxContextMessageCount || 0))
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [stableMessagesId, isNewSession, currentSessionMergedSettings.maxContextMessageCount])
+      // Attention: do not return empty array, it will cause useTokenCount to recalculate tokens
+      if (isNewSession) return null
+      if (!currentSessionMergedSettings?.maxContextMessageCount) return null
+      if (!currentSession?.messages.length) return null
+      return currentSession.messages.slice(-(currentSessionMergedSettings.maxContextMessageCount || 0))
+    }, [isNewSession, currentSessionMergedSettings?.maxContextMessageCount, currentSession?.messages])
 
     const { knowledgeBase, setKnowledgeBase } = useKnowledgeBase({ isNewSession })
 
@@ -167,7 +162,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const [isSubmitting, setIsSubmitting] = useState(false)
 
     useEffect(() => {
-      const constructedMessage = sessionActions.constructUserMessage(
+      const constructedMessage = sessionHelpers.constructUserMessage(
         messageInput,
         pictureKeys,
         preConstructedMessage.preprocessedFiles,
@@ -233,7 +228,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     // Calculate token counts - use stable messages to avoid recalculation during streaming
     const { currentInputTokens, contextTokens, totalTokens } = useTokenCount(
       preConstructedMessage.message,
-      isNewSession ? [] : currentMessages,
+      currentMessages,
       model
     )
 
@@ -431,7 +426,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       setPreConstructedMessage((prev) => markLinkProcessing(prev, url))
 
       // 异步预处理链接，失败时标记为 error，并吞掉异常避免 Promise.all reject
-      const preprocessPromise = sessionActions
+      const preprocessPromise = sessionHelpers
         .preprocessLink(url, { provider: model?.provider || '', modelId: model?.modelId || '' })
         .then((preprocessedLink) => {
           setPreConstructedMessage((prev) => onLinkProcessed(prev, url, preprocessedLink, 6))
@@ -462,7 +457,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       setPreConstructedMessage((prevMsg) => markFileProcessing(prevMsg, file))
 
       // 异步预处理文件，失败时标记为 error，并吞掉异常避免 Promise.all reject
-      const preprocessPromise = sessionActions
+      const preprocessPromise = sessionHelpers
         .preprocessFile(file, { provider: model?.provider || '', modelId: model?.modelId || '' })
         .then((preprocessedFile) => {
           setPreConstructedMessage((prev) => onFileProcessed(prev, file, preprocessedFile, 10))
@@ -575,9 +570,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         // 保持默认的粘贴行为，这时候会粘贴从文档中复制的文本和图片。我认为应该保留图片，因为文档中的表格、图表等图片信息也很重要，很难通过文本格式来表述。
         // 仅在只粘贴图片或文件时阻止默认行为，防止插入文件或图片的名字
         let hasText = false
-        for (const item of event.clipboardData.items) {
+        for (let i = 0; i < event.clipboardData.items.length; i++) {
+          const item = event.clipboardData.items[i]
           if (item.kind === 'file') {
-            // 插入文件和图片
+            // Insert files and images
             const file = item.getAsFile()
             if (file) {
               insertFiles([file])
@@ -931,8 +927,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     contextTokens={contextTokens}
                     totalTokens={totalTokens}
                     contextWindow={modelInfo?.contextWindow}
-                    currentMessageCount={currentMessages.length}
-                    maxContextMessageCount={currentSessionMergedSettings.maxContextMessageCount}
+                    currentMessageCount={currentMessages?.length ?? 0}
+                    maxContextMessageCount={currentSessionMergedSettings?.maxContextMessageCount}
                     onCompressClick={sessionId && !isNewSession ? () => setShowCompressionModal(true) : undefined}
                   >
                     <Flex
@@ -1012,11 +1008,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             </Flex>
           </Flex>
         </Stack>
-        {sessionId && (
+        {currentSession && (
           <CompressionModal
             opened={showCompressionModal}
             onClose={() => setShowCompressionModal(false)}
-            sessionId={sessionId}
+            session={currentSession}
           />
         )}
       </Box>

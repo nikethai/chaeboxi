@@ -17,6 +17,7 @@ import './static/globals.css'
 import './static/index.css'
 import { initLogAtom, migrationProcessAtom } from './stores/atoms/utilAtoms'
 import * as migration from './stores/migration'
+import queryClient from './stores/queryClient'
 import { CHATBOX_BUILD_PLATFORM, CHATBOX_BUILD_TARGET } from './variables'
 
 const log = getLogger('index')
@@ -38,6 +39,7 @@ import './setup/plausible_init'
 
 // 引入保护代码
 import './setup/protect'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { initLastUsedModelStore } from './stores/lastUsedModelStore'
 import { initSettingsStore } from './stores/settingsStore'
 
@@ -135,12 +137,13 @@ initializeApp()
     const [settings] = await Promise.all([initSettingsStore(), initLastUsedModelStore()])
 
     i18n.changeLanguage(settings.language)
-
     // 初始化完成，可以开始渲染
     ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <StrictMode>
         <ErrorBoundary>
-          <RouterProvider router={router} />
+          <QueryClientProvider client={queryClient}>
+            <RouterProvider router={router} />
+          </QueryClientProvider>
         </ErrorBoundary>
       </StrictMode>
     )

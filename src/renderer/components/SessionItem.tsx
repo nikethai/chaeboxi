@@ -9,12 +9,16 @@ import VrpanoIcon from '@mui/icons-material/Vrpano'
 import { Avatar, IconButton, ListItemIcon, ListItemText, MenuItem, Typography, useTheme } from '@mui/material'
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { SessionMeta } from '@/../shared/types'
+import type { SessionMeta } from 'src/shared/types'
 import { ImageInStorage } from '@/components/Image'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
-import * as sessionActions from '@/stores/sessionActions'
-import { getSessionAsync, removeSession, saveSession } from '@/stores/sessionStorageMutations'
+import {
+  deleteSession as deleteSessionStore,
+  getSession,
+  updateSession as updateSessionStore,
+} from '@/stores/chatStore'
+import { copyAndSwitchSession, switchCurrentSession } from '@/stores/sessionActions'
 import { useUIStore } from '@/stores/uiStore'
 import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
 import StyledMenu from './StyledMenu'
@@ -30,6 +34,7 @@ function _SessionItem(props: Props) {
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null)
   const open = Boolean(anchorEl)
   const setShowSidebar = useUIStore((s) => s.setShowSidebar)
+
   const handleMenuClick = (event: React.MouseEvent<HTMLElement>) => {
     event.stopPropagation()
     event.preventDefault()
@@ -39,7 +44,7 @@ function _SessionItem(props: Props) {
     setAnchorEl(null)
   }
   const onClick = () => {
-    sessionActions.switchCurrentSession(session.id)
+    switchCurrentSession(session.id)
     if (isSmallScreen) {
       setShowSidebar(false)
     }
@@ -109,7 +114,7 @@ function _SessionItem(props: Props) {
           key={`${session.id}edit`}
           onClick={async () => {
             NiceModal.show('session-settings', {
-              session: await getSessionAsync(session.id),
+              session: await getSession(session.id),
             })
             handleMenuClose()
           }}
@@ -122,7 +127,7 @@ function _SessionItem(props: Props) {
         <MenuItem
           key={`${session.id}copy`}
           onClick={() => {
-            sessionActions.copy(session)
+            copyAndSwitchSession(session)
             handleMenuClose()
           }}
           disableRipple
@@ -133,9 +138,12 @@ function _SessionItem(props: Props) {
         <MenuItem
           key={`${session.id}star`}
           onClick={() => {
-            saveSession(session.id, (s) => ({
-              starred: !s?.starred,
-            }))
+            void updateSessionStore(session.id, (s) => {
+              if (!s) {
+                throw new Error(`Session ${session.id} not found`)
+              }
+              return { ...s, starred: !s?.starred }
+            })
             handleMenuClose()
           }}
           disableRipple
@@ -158,7 +166,7 @@ function _SessionItem(props: Props) {
           onDelete={() => {
             setAnchorEl(null)
             handleMenuClose()
-            removeSession(session.id)
+            void deleteSessionStore(session.id)
           }}
         />
       </StyledMenu>

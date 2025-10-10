@@ -16,17 +16,14 @@ import { Alert, ButtonGroup, Grid, IconButton, Tooltip, Typography, useTheme } f
 import Avatar from '@mui/material/Avatar'
 import Box from '@mui/material/Box'
 import MenuItem from '@mui/material/MenuItem'
-import { useNavigate } from '@tanstack/react-router'
 import * as dateFns from 'date-fns'
-import { useAtomValue } from 'jotai'
 import type React from 'react'
-import { type FC, type MouseEventHandler, memo, useEffect, useMemo, useRef, useState } from 'react'
+import { type FC, type MouseEventHandler, memo, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Markdown from '@/components/Markdown'
 import * as dom from '@/hooks/dom'
 import { cn } from '@/lib/utils'
 import { copyToClipboard } from '@/packages/navigator'
-import { estimateTokensFromMessages } from '@/packages/token'
 import { countWord } from '@/packages/word-count'
 import platform from '@/platform'
 import type { Message, MessagePicture, MessageToolCallPart, SessionType } from '../../shared/types'
@@ -43,9 +40,7 @@ import { navigateToSettings } from '@/modals/Settings'
 import storage from '@/storage'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
-import { currentSessionAssistantAvatarKeyAtom, currentSessionPicUrlAtom } from '../stores/atoms'
-import * as scrollActions from '../stores/scrollActions'
-import * as sessionActions from '../stores/sessionActions'
+import { generateMore, modifyMessage, regenerateInNewFork, removeMessage } from '../stores/sessionActions'
 import * as toastActions from '../stores/toastActions'
 import { isContainRenderableCode, MessageArtifact } from './Artifact'
 import { MessageAttachment } from './Attachments'
@@ -67,12 +62,23 @@ interface Props {
   hiddenButtonGroup?: boolean
   small?: boolean
   preferCollapsedCodeBlock?: boolean
+  assistantAvatarKey?: string
+  sessionPicUrl?: string
 }
 
 const _Message: FC<Props> = (props) => {
-  const { msg, className, collapseThreshold, hiddenButtonGroup, small, preferCollapsedCodeBlock } = props
+  const {
+    sessionId,
+    msg,
+    className,
+    collapseThreshold,
+    hiddenButtonGroup,
+    small,
+    preferCollapsedCodeBlock,
+    assistantAvatarKey,
+    sessionPicUrl,
+  } = props
 
-  const navigate = useNavigate()
   const { t } = useTranslation()
   const theme = useTheme()
   const {
@@ -90,8 +96,7 @@ const _Message: FC<Props> = (props) => {
     autoPreviewArtifacts,
     autoCollapseCodeBlock,
   } = useSettingsStore((state) => state)
-  const currentSessionAssistantAvatarKey = useAtomValue(currentSessionAssistantAvatarKeyAtom)
-  const currentSessionPicUrl = useAtomValue(currentSessionPicUrlAtom)
+
   const messageScrollingScrollPosition = useUIStore((s) => s.messageScrollingScrollPosition)
   const setPictureShow = useUIStore((s) => s.setPictureShow)
   const widthFull = useUIStore((s) => s.widthFull)
@@ -133,17 +138,16 @@ const _Message: FC<Props> = (props) => {
   }
 
   const handleStop = () => {
-    msg?.cancel?.()
-    sessionActions.modifyMessage(props.sessionId, { ...msg, generating: false }, true)
+    modifyMessage(sessionId, { ...msg, generating: false }, true)
   }
 
   const handleRefresh = () => {
     handleStop()
-    sessionActions.regenerateInNewFork(props.sessionId, msg)
+    regenerateInNewFork(sessionId, msg)
   }
 
   const onGenerateMore = () => {
-    sessionActions.generateMore(props.sessionId, msg.id)
+    generateMore(sessionId, msg.id)
   }
 
   const onCopyMsg = () => {
@@ -164,18 +168,18 @@ const _Message: FC<Props> = (props) => {
       }
     }
 
-  const onReport = () => {
+  const onReport = async () => {
     setAnchorEl(null)
-    NiceModal.show('report-content', { contentId: getMessageText(msg) || msg.id })
+    await NiceModal.show('report-content', { contentId: getMessageText(msg) || msg.id })
   }
 
   const onDelMsg = () => {
     setAnchorEl(null)
-    sessionActions.removeMessage(props.sessionId, msg.id)
+    removeMessage(sessionId, msg.id)
   }
-  const onEditClick = () => {
+  const onEditClick = async () => {
     setAnchorEl(null)
-    NiceModal.show('message-edit', { sessionId: props.sessionId, msg: msg })
+    await NiceModal.show('message-edit', { sessionId, msg: msg })
   }
 
   const tips: string[] = []
@@ -186,9 +190,9 @@ const _Message: FC<Props> = (props) => {
     }
     if (showTokenCount && !msg.generating) {
       // 兼容旧版本没有提前计算的消息
-      if (msg.tokenCount === undefined) {
-        msg.tokenCount = estimateTokensFromMessages([msg])
-      }
+      // if (msg.tokenCount === undefined) {
+      //   msg.tokenCount = estimateTokensFromMessages([msg])
+      // }
       tips.push(`token count: ${msg.tokenCount}`)
     }
     if (showTokenUsed && msg.role === 'assistant' && !msg.generating) {
@@ -268,39 +272,6 @@ const _Message: FC<Props> = (props) => {
     return isContainRenderableCode(getMessageText(msg))
   }, [msg.contentParts, msg.role, msg])
 
-  // 消息生成中自动跟踪滚动
-  useEffect(() => {
-    if (msg.generating) {
-      const autoId = scrollActions.startAutoScroll(msg.id, 'end')
-      setAutoScrollId(autoId)
-    } else {
-      if (autoScrollId) {
-        scrollActions.tickAutoScroll(autoScrollId) // 清理之前，最后再滚动一次，确保非流式生成的消息也能滚动到底部
-        scrollActions.clearAutoScroll(autoScrollId)
-      }
-      setAutoScrollId(null)
-    }
-  }, [msg.generating])
-
-  useEffect(() => {
-    if (msg.generating && autoScrollId) {
-      if (needArtifact) {
-        scrollActions.tickAutoScroll(autoScrollId)
-        return
-      }
-      const viewportHeight = scrollActions.getMessageListViewportHeight()
-      const currentHeight = ref.current?.clientHeight ?? 0
-      if (currentHeight > viewportHeight) {
-        // scrollActions.tickAutoScroll(autoScrollId)  // 清理之前，最后再滚动一次，确保非流式生成的消息也能滚动到底部
-        scrollActions.scrollToMessage(msg.id, 'start')
-        scrollActions.clearAutoScroll(autoScrollId)
-        setAutoScrollId(null)
-      } else {
-        scrollActions.tickAutoScroll(autoScrollId)
-      }
-    }
-  }, [msg.contentParts, msg.reasoningContent, needArtifact])
-
   const contentParts = msg.contentParts || []
 
   const CollapseButton = (
@@ -360,7 +331,7 @@ const _Message: FC<Props> = (props) => {
           <Box className={cn('relative', msg.role !== 'assistant' ? 'mt-1' : 'mt-2')}>
             {
               {
-                assistant: currentSessionAssistantAvatarKey ? (
+                assistant: assistantAvatarKey ? (
                   <Avatar
                     sx={{
                       backgroundColor: theme.palette.primary.main,
@@ -371,13 +342,13 @@ const _Message: FC<Props> = (props) => {
                     onClick={onClickAssistantAvatar}
                   >
                     <ImageInStorage
-                      storageKey={currentSessionAssistantAvatarKey}
+                      storageKey={assistantAvatarKey}
                       className="object-cover object-center w-full h-full"
                     />
                   </Avatar>
-                ) : currentSessionPicUrl ? (
+                ) : sessionPicUrl ? (
                   <Avatar
-                    src={currentSessionPicUrl}
+                    src={sessionPicUrl}
                     sx={{
                       width: '28px',
                       height: '28px',
@@ -593,7 +564,7 @@ const _Message: FC<Props> = (props) => {
               {needCollapse && !isCollapsed && CollapseButton}
               {needArtifact && (
                 <MessageArtifact
-                  sessionId={props.sessionId}
+                  sessionId={sessionId}
                   messageId={msg.id}
                   messageContent={getMessageText(msg)}
                   preview={previewArtifact}

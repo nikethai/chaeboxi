@@ -2,25 +2,22 @@ import NiceModal from '@ebay/nice-modal-react'
 import EditIcon from '@mui/icons-material/Edit'
 import ImageIcon from '@mui/icons-material/Image'
 import { Box, Chip, IconButton, Tooltip, Typography, useTheme } from '@mui/material'
-import { useAtomValue } from 'jotai'
 import { PanelRightClose, Settings2 } from 'lucide-react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
+import { scheduleGenerateNameAndThreadName, scheduleGenerateThreadName } from '@/stores/sessionActions'
 import { useUIStore } from '@/stores/uiStore'
-import { isChatSession, isPictureSession } from '../../shared/types'
+import { isChatSession, isPictureSession, type Session } from '../../shared/types'
 import useNeedRoomForWinControls from '../hooks/useNeedRoomForWinControls'
 import { useIsSmallScreen } from '../hooks/useScreenChange'
-import * as atoms from '../stores/atoms'
-import * as sessionActions from '../stores/sessionActions'
 import * as settingActions from '../stores/settingActions'
 import MiniButton from './MiniButton'
 import Toolbar from './Toolbar'
 
-export default function Header() {
+export default function Header(props: { session: Session }) {
   const { t } = useTranslation()
   const theme = useTheme()
-  const currentSession = useAtomValue(atoms.currentSessionAtom)
   const showSidebar = useUIStore((s) => s.showSidebar)
   const setShowSidebar = useUIStore((s) => s.setShowSidebar)
 
@@ -28,11 +25,10 @@ export default function Header() {
 
   const { needRoomForMacWindowControls, needRoomForWindowsWindowControls } = useNeedRoomForWinControls()
 
+  const { session: currentSession } = props
+
   // 会话名称自动生成
   useEffect(() => {
-    if (!currentSession) {
-      return
-    }
     const autoGenerateTitle = settingActions.getAutoGenerateTitle()
     if (!autoGenerateTitle) {
       return
@@ -48,9 +44,9 @@ export default function Header() {
 
     // 触发名称生成（在 sessionActions 中进行去重和延迟处理）
     if (currentSession.name === 'Untitled') {
-      sessionActions.scheduleGenerateNameAndThreadName(currentSession.id)
+      scheduleGenerateNameAndThreadName(currentSession.id)
     } else if (!currentSession.threadName) {
-      sessionActions.scheduleGenerateThreadName(currentSession.id)
+      scheduleGenerateThreadName(currentSession.id)
     }
   }, [currentSession])
 
@@ -163,7 +159,7 @@ export default function Header() {
           )}
         </div>
         <div className={cn('flex-shrink-0', needRoomForWindowsWindowControls ? 'mr-36' : '')}>
-          <Toolbar />
+          <Toolbar sessionId={currentSession.id} />
         </div>
       </div>
     </div>

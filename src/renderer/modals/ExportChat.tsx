@@ -1,19 +1,21 @@
 import NiceModal, { muiDialogV5, useModal } from '@ebay/nice-modal-react'
-import { useState } from 'react'
 import {
   Button,
   Dialog,
-  DialogContent,
   DialogActions,
+  DialogContent,
   DialogTitle,
-  InputLabel,
-  Select,
-  MenuItem,
   FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
 } from '@mui/material'
+import { useAtomValue } from 'jotai'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import * as sessionActions from '@/stores/sessionActions'
-import { ExportChatFormat, ExportChatScope } from '@/../shared/types'
+import type { ExportChatFormat, ExportChatScope } from '@/../shared/types'
+import { currentSessionIdAtom } from '@/stores/atoms'
+import { exportSessionChat } from '@/stores/sessionActions'
 
 const ExportChat = NiceModal.create(() => {
   const modal = useModal()
@@ -21,12 +23,16 @@ const ExportChat = NiceModal.create(() => {
   const [scope, setScope] = useState<ExportChatScope>('all_threads')
   const [format, setFormat] = useState<ExportChatFormat>('HTML')
 
+  const currentSessionId = useAtomValue(currentSessionIdAtom)
   const onCancel = () => {
     modal.resolve()
     modal.hide()
   }
   const onExport = () => {
-    sessionActions.exportCurrentSessionChat(scope, format)
+    if (!currentSessionId) {
+      return
+    }
+    void exportSessionChat(currentSessionId, scope, format)
     modal.resolve()
     modal.hide()
   }

@@ -1,5 +1,6 @@
-import { Message } from 'src/shared/types'
-import { sequenceMessages } from './message'
+import type { Message } from 'src/shared/types'
+import { describe, expect, test } from 'vitest'
+import { sequenceMessages } from '../../shared/utils/message'
 
 describe('SequenceMessages', () => {
   // Each test case

@@ -29,7 +29,7 @@ import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import * as defaults from '../../shared/defaults'
 import { getLogger } from '../lib/utils'
 import { migrationProcessAtom } from './atoms/utilAtoms'
-import { getSessionMeta, initPresetSessions } from './sessionStorageMutations'
+import { getSessionMeta, initPresetSessions } from './sessionHelpers'
 
 const log = getLogger('migration')
 

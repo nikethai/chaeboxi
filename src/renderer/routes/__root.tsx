@@ -1,30 +1,15 @@
-import NiceModal from '@ebay/nice-modal-react'
-import { Box, Grid } from '@mui/material'
-import CssBaseline from '@mui/material/CssBaseline'
-import { ThemeProvider } from '@mui/material/styles'
-import { createRootRoute, Outlet, useLocation } from '@tanstack/react-router'
-import { useSetAtom } from 'jotai'
-import { useEffect, useMemo, useRef } from 'react'
 import { type RemoteConfig, Theme } from '@/../shared/types'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import ExitFullscreenButton from '@/components/ExitFullscreenButton'
 import Toasts from '@/components/Toasts'
 import useAppTheme from '@/hooks/useAppTheme'
 import { useSystemLanguageWhenInit } from '@/hooks/useDefaultSystemLanguage'
 import { useI18nEffect } from '@/hooks/useI18nEffect'
+import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
 import { useSidebarWidth } from '@/hooks/useScreenChange'
 import useShortcut from '@/hooks/useShortcut'
-import { getOS } from '@/packages/navigator'
-import * as remote from '@/packages/remote'
-import CleanWidnow from '@/pages/CleanWindow'
-import PictureDialog from '@/pages/PictureDialog'
-import RemoteDialogWindow from '@/pages/RemoteDialogWindow'
-import SearchDialog from '@/pages/SearchDialog'
-import platform from '@/platform'
-import Sidebar from '@/Sidebar'
-import * as atoms from '@/stores/atoms'
-import * as premiumActions from '@/stores/premiumActions'
-import * as settingActions from '@/stores/settingActions'
 import '@/modals'
+import NiceModal from '@ebay/nice-modal-react'
 import {
   Avatar,
   Button,
@@ -48,12 +33,25 @@ import {
   useMantineColorScheme,
   virtualColor,
 } from '@mantine/core'
-import { QueryClientProvider } from '@tanstack/react-query'
-import { ErrorBoundary } from '@/components/ErrorBoundary'
+import { Box, Grid } from '@mui/material'
+import CssBaseline from '@mui/material/CssBaseline'
+import { ThemeProvider } from '@mui/material/styles'
+import { createRootRoute, Outlet, useLocation } from '@tanstack/react-router'
+import { useSetAtom } from 'jotai'
+import { useEffect, useMemo, useRef } from 'react'
+import SettingsModal from '@/modals/Settings'
+import { getOS } from '@/packages/navigator'
+import * as remote from '@/packages/remote'
+import PictureDialog from '@/pages/PictureDialog'
+import RemoteDialogWindow from '@/pages/RemoteDialogWindow'
+import SearchDialog from '@/pages/SearchDialog'
+import platform from '@/platform'
 import { router } from '@/router'
-import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
-import SettingsModal, { navigateToSettings } from '@/modals/Settings'
-import queryClient from '@/stores/queryClient'
+import Sidebar from '@/Sidebar'
+import * as atoms from '@/stores/atoms'
+import * as premiumActions from '@/stores/premiumActions'
+
+import * as settingActions from '@/stores/settingActions'
 import { settingsStore, useLanguage, useSettingsStore, useTheme } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 
@@ -73,6 +71,7 @@ function Root() {
     }
     // 通过定时器延迟启动，防止处理状态底层存储的异步加载前错误的初始数据
     const tid = setTimeout(() => {
+      // biome-ignore lint/nursery/noFloatingPromises: inline call
       ;(async () => {
         const remoteConfig = await remote
           .getRemoteConfig('setting_chatboxai_first')
@@ -114,7 +113,7 @@ function Root() {
   }, [_theme])
 
   useEffect(() => {
-    ;(async () => {
+    ;(() => {
       const { startupPage } = settingsStore.getState()
       const sid = JSON.parse(localStorage.getItem('_currentSessionIdCachedAtom') || '""') as string
       if (sid && startupPage === 'session') {
@@ -176,7 +175,7 @@ function Root() {
       {/* 对话列表清理 */}
       {/* <ChatConfigWindow /> */}
       {/* 似乎未使用 */}
-      <CleanWidnow />
+      {/* <CleanWidnow /> */}
       {/* 对话列表清理 */}
       {/* <ClearConversationListWindow /> */}
       {/* 导出聊天记录 */}
@@ -587,21 +586,19 @@ export const Route = createRootRoute({
     const mantineTheme = useMemo(() => creteMantineTheme(scale), [scale])
 
     return (
-      <QueryClientProvider client={queryClient}>
-        <MantineProvider
-          theme={mantineTheme}
-          defaultColorScheme={_theme === Theme.Dark ? 'dark' : _theme === Theme.Light ? 'light' : 'auto'}
-        >
-          <ThemeProvider theme={theme}>
-            <CssBaseline />
-            <NiceModal.Provider>
-              <ErrorBoundary>
-                <Root />
-              </ErrorBoundary>
-            </NiceModal.Provider>
-          </ThemeProvider>
-        </MantineProvider>
-      </QueryClientProvider>
+      <MantineProvider
+        theme={mantineTheme}
+        defaultColorScheme={_theme === Theme.Dark ? 'dark' : _theme === Theme.Light ? 'light' : 'auto'}
+      >
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <NiceModal.Provider>
+            <ErrorBoundary>
+              <Root />
+            </ErrorBoundary>
+          </NiceModal.Provider>
+        </ThemeProvider>
+      </MantineProvider>
     )
   },
 })

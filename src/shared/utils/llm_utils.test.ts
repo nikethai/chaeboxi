@@ -1,6 +1,7 @@
-import { Message } from 'src/shared/types'
+import type { Message } from 'src/shared/types'
+import { describe, expect, it } from 'vitest'
 import { normalizeOpenAIApiHostAndPath } from './llm_utils'
-import { fixMessageRoleSequence } from '@/utils/message'
+import { fixMessageRoleSequence } from './message'
 
 describe('normalizeOpenAIApiHostAndPath', () => {
   it('默认值', () => {

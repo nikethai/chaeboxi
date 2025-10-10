@@ -7,24 +7,29 @@ import { useAtom, useAtomValue } from 'jotai'
 import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
-import type { SessionThreadBrief } from 'src/shared/types'
+import type { Session, SessionThreadBrief } from 'src/shared/types'
 import StyledMenu from '@/components/StyledMenu'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
-import { currentSessionIdAtom, currentThreadHistoryHashAtom, showThreadHistoryDrawerAtom } from '@/stores/atoms'
-import { scrollToMessage } from '@/stores/scrollActions'
+import { currentSessionIdAtom, showThreadHistoryDrawerAtom } from '@/stores/atoms'
+import { scrollToIndex } from '@/stores/scrollActions'
+import { removeCurrentThread, removeThread, switchThread as switchThreadAction } from '@/stores/sessionActions'
+import { getAllMessageList, getCurrentThreadHistoryHash } from '@/stores/sessionHelpers'
 import { useLanguage } from '@/stores/settingsStore'
-import * as sessionActions from '../stores/sessionActions'
 import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
 
-export default function ThreadHistoryDrawer() {
+export default function ThreadHistoryDrawer({ session }: { session: Session }) {
   const { t } = useTranslation()
   const language = useLanguage()
   const [showDrawer, setShowDrawer] = useAtom(showThreadHistoryDrawerAtom)
-  const currentThreadHistoryHash = useAtomValue(currentThreadHistoryHashAtom)
-  const currentSessionId = useAtomValue(currentSessionIdAtom)
 
-  const threadList = useMemo(() => Object.values(currentThreadHistoryHash), [currentThreadHistoryHash])
+  const currentMessageList = useMemo(() => getAllMessageList(session), [session])
+
+  const currentThreadHistoryHash = useMemo(() => getCurrentThreadHistoryHash(session), [session])
+  const threadList = useMemo(
+    () => (currentThreadHistoryHash ? Object.values(currentThreadHistoryHash) : []),
+    [currentThreadHistoryHash]
+  )
 
   // 每次打开后自动滚动。如果选择了某个历史，则滚动到该历史；如果没有选择，则滚动到末尾
   const ref = useRef<VirtuosoHandle>(null)
@@ -55,18 +60,21 @@ export default function ThreadHistoryDrawer() {
       if (!thread) {
         return
       }
-      scrollToMessage(thread.firstMessageId, 'start')
+      const msgIndex = currentMessageList.findIndex((m) => m.id === thread.firstMessageId)
+      if (msgIndex >= 0) {
+        scrollToIndex(msgIndex, 'start', 'smooth')
+      }
       setShowDrawer(false)
     },
-    [threadList, setShowDrawer]
+    [threadList, setShowDrawer, currentMessageList]
   )
 
-  const switchThread = useCallback(
+  const handleSwitchThread = useCallback(
     (threadId: string) => {
-      sessionActions.switchThread(currentSessionId, threadId)
+      void switchThreadAction(session.id, threadId)
       setShowDrawer(false)
     },
-    [currentSessionId, setShowDrawer]
+    [session.id, setShowDrawer]
   )
 
   return (
@@ -119,7 +127,7 @@ export default function ThreadHistoryDrawer() {
                 thread={thread}
                 goto={gotoThreadMessage}
                 showHistoryDrawer={showDrawer}
-                switchThread={switchThread}
+                switchThread={handleSwitchThread}
                 lastOne={index === threadList.length - 1}
               />
             )}
@@ -147,7 +155,7 @@ function ThreadItem(props: {
   const isSmallScreen = useIsSmallScreen()
 
   const onEditButtonClick = useCallback(() => {
-    NiceModal.show('thread-name-edit', { sessionId: currentSessionId, threadId: thread.id })
+    void NiceModal.show('thread-name-edit', { threadId: thread.id })
   }, [currentSessionId, thread.id])
 
   const onSwitchButtonClick = useCallback(() => {
@@ -207,10 +215,13 @@ function ThreadItem(props: {
           onDelete={() => {
             setAnchorEl(null)
             handleMenuClose()
+            if (!currentSessionId) {
+              return
+            }
             if (lastOne) {
-              sessionActions.removeCurrentThread(currentSessionId)
+              void removeCurrentThread(currentSessionId)
             } else {
-              sessionActions.removeThread(currentSessionId, thread.id)
+              void removeThread(currentSessionId, thread.id)
             }
           }}
         />

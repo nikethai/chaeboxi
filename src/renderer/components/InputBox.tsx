@@ -146,12 +146,15 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const { sessionSettings: currentSessionMergedSettings } = useSessionSettings(sessionId || null)
 
     // Get current messages for token counting - will only recalculate when stable messages actually change
-    const currentMessages = useMemo(() => {
+    const currentContextMessageIds = useMemo(() => {
       // Attention: do not return empty array, it will cause useTokenCount to recalculate tokens
       if (isNewSession) return null
       if (!currentSessionMergedSettings?.maxContextMessageCount) return null
       if (!currentSession?.messages.length) return null
-      return currentSession.messages.slice(-(currentSessionMergedSettings.maxContextMessageCount || 0))
+      return currentSession.messages
+        .filter((m) => !m.generating)
+        .map((m) => m.id)
+        .slice(-(currentSessionMergedSettings.maxContextMessageCount || 0))
     }, [isNewSession, currentSessionMergedSettings?.maxContextMessageCount, currentSession?.messages])
 
     const { knowledgeBase, setKnowledgeBase } = useKnowledgeBase({ isNewSession })
@@ -227,8 +230,9 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     // Calculate token counts - use stable messages to avoid recalculation during streaming
     const { currentInputTokens, contextTokens, totalTokens } = useTokenCount(
+      currentSessionId || null,
       preConstructedMessage.message,
-      currentMessages,
+      currentContextMessageIds,
       model
     )
 
@@ -927,7 +931,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     contextTokens={contextTokens}
                     totalTokens={totalTokens}
                     contextWindow={modelInfo?.contextWindow}
-                    currentMessageCount={currentMessages?.length ?? 0}
+                    currentMessageCount={currentContextMessageIds?.length ?? 0}
                     maxContextMessageCount={currentSessionMergedSettings?.maxContextMessageCount}
                     onCompressClick={sessionId && !isNewSession ? () => setShowCompressionModal(true) : undefined}
                   >

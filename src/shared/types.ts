@@ -1,8 +1,17 @@
 import { v4 as uuidv4 } from 'uuid'
-import { type Message, type MessageRole, MessageRoleEnum, type Session, type SessionThread } from './types/session'
+import {
+  type Message,
+  type MessageRole,
+  MessageRoleEnum,
+  type Session,
+  type SessionThread,
+  type TokenCountMap,
+} from './types/session'
 
-export type Updater<T> = Partial<T> | UpdaterFn<T>
-export type UpdaterFn<T> = (data: T | null | undefined) => T
+export type Updater<T extends object> = Partial<T> | UpdaterFn<T>
+export type UpdaterFn<T extends object> = (data: T | null | undefined) => T
+
+export type MessageTokenCountResult = { id: string; tokenCountMap: TokenCountMap; reused: boolean }
 //   snippet: string
 // }
 

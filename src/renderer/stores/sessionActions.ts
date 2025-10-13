@@ -278,7 +278,7 @@ export async function clear(sessionId: string) {
   session.messages.forEach((msg) => {
     msg?.cancel?.()
   })
-  return await chatStore.updateSession(session.id, {
+  return await chatStore.updateSessionWithMessages(session.id, {
     messages: session.messages.filter((m) => m.role === 'system').slice(0, 1),
     threads: undefined,
   })
@@ -339,7 +339,7 @@ export async function refreshContextAndCreateNewThread(sessionId: string) {
   if (systemPrompt) {
     systemPrompt = createMessage('system', getMessageText(systemPrompt))
   }
-  await chatStore.updateSession(session.id, {
+  await chatStore.updateSessionWithMessages(session.id, {
     ...session,
     threads: session.threads ? [...session.threads, newThread] : [newThread],
     messages: systemPrompt ? [systemPrompt] : [createMessage('system', defaults.getDefaultPrompt())],
@@ -401,7 +401,7 @@ export async function compressAndCreateThread(sessionId: string, summary: string
   newMessages.push(createMessage('user', compressionContext))
 
   // 保存会话
-  await chatStore.updateSession(session.id, {
+  await chatStore.updateSessionWithMessages(session.id, {
     ...session,
     threads: session.threads ? [...session.threads, newThread] : [newThread],
     messages: newMessages,
@@ -440,7 +440,7 @@ export async function switchThread(sessionId: string, threadId: string) {
     messages: session.messages,
     createdAt: Date.now(),
   })
-  await chatStore.updateSession(session.id, {
+  await chatStore.updateSessionWithMessages(session.id, {
     ...session,
     threads: newThreads,
     messages: target.messages,
@@ -523,15 +523,7 @@ export async function insertMessage(sessionId: string, msg: Message) {
   }
   msg.wordCount = countMessageWords(msg)
   msg.tokenCount = estimateTokensFromMessages([msg])
-  return await chatStore.updateSession(session.id, (s) => {
-    if (!s) {
-      throw new Error('Session not found')
-    }
-    return {
-      ...s,
-      messages: [...(s.messages || []), msg],
-    }
-  })
+  return await chatStore.insertMessage(session.id, msg)
 }
 
 /**
@@ -547,25 +539,8 @@ export async function insertMessageAfter(sessionId: string, msg: Message, afterM
   }
   msg.wordCount = countMessageWords(msg)
   msg.tokenCount = estimateTokensFromMessages([msg])
-  let hasHandled = false
-  const handle = (msgs: Message[]) => {
-    const index = msgs.findIndex((m) => m.id === afterMsgId)
-    if (index < 0) {
-      return msgs
-    }
-    hasHandled = true
-    return [...msgs.slice(0, index + 1), msg, ...msgs.slice(index + 1)]
-  }
 
-  const updatedSession = { ...session }
-  updatedSession.messages = handle(session.messages)
-  if (session.threads && !hasHandled) {
-    updatedSession.threads = session.threads.map((h) => ({
-      ...h,
-      messages: handle(h.messages),
-    }))
-  }
-  return await chatStore.updateSession(session.id, updatedSession)
+  await chatStore.insertMessage(sessionId, msg, afterMsgId)
 }
 
 /**
@@ -587,51 +562,15 @@ export async function modifyMessage(
   if (refreshCounting) {
     updated.wordCount = countMessageWords(updated)
     updated.tokenCount = estimateTokensFromMessages([updated])
+    updated.tokenCountMap = undefined
   }
 
   // 更新消息时间戳
   updated.timestamp = Date.now()
-
-  let hasHandled = false
-  const handle = (msgs: Message[]): Message[] => {
-    return msgs.map((m) => {
-      if (m.id === updated.id) {
-        hasHandled = true
-        return { ...updated }
-      }
-      return m
-    })
-  }
-
-  const updatedSession = { ...session }
-  updatedSession.messages = handle(session.messages)
-
-  if (!hasHandled && updatedSession.threads) {
-    updatedSession.threads = updatedSession.threads.map((h) => ({
-      ...h,
-      messages: handle(h.messages),
-    }))
-  }
-
-  if (!hasHandled && updatedSession.messageForksHash) {
-    const keys = Object.keys(updatedSession.messageForksHash)
-    for (const key of keys) {
-      updatedSession.messageForksHash = {
-        ...updatedSession.messageForksHash,
-        [key]: {
-          ...updatedSession.messageForksHash[key],
-          lists: updatedSession.messageForksHash[key].lists.map((l) => ({
-            ...l,
-            messages: handle(l.messages),
-          })),
-        },
-      }
-    }
-  }
   if (updateOnlyCache) {
-    await chatStore.updateSessionCache(session.id, updatedSession)
+    await chatStore.updateMessageCache(sessionId, updated.id, updated)
   } else {
-    await chatStore.updateSession(session.id, updatedSession)
+    await chatStore.updateMessage(sessionId, updated.id, updated)
   }
 }
 
@@ -641,37 +580,7 @@ export async function modifyMessage(
  * @param messageId
  */
 export async function removeMessage(sessionId: string, messageId: string) {
-  const session = await chatStore.getSession(sessionId)
-  if (!session) {
-    return
-  }
-
-  const updatedSession = { ...session }
-  updatedSession.messages = session.messages.filter((m) => m.id !== messageId)
-
-  if (session.threads) {
-    updatedSession.threads = session.threads
-      .map((h) => ({
-        ...h,
-        messages: h.messages.filter((m) => m.id !== messageId),
-      }))
-      .filter((h) => h.messages.length > 0)
-  }
-
-  // 删除消息的同时，也触发对消息分支的清理
-  if (session.messageForksHash) {
-    updatedSession.messageForksHash = { ...session.messageForksHash }
-    delete updatedSession.messageForksHash[messageId]
-  }
-
-  // 如果某个对话的消息为空，尽量使用上一个话题的消息
-  if (updatedSession.messages.length === 0 && updatedSession.threads && updatedSession.threads.length > 0) {
-    const lastThread = updatedSession.threads[updatedSession.threads.length - 1]
-    updatedSession.messages = lastThread.messages
-    updatedSession.threads = updatedSession.threads.slice(0, updatedSession.threads.length - 1)
-  }
-
-  await chatStore.updateSession(session.id, updatedSession)
+  await chatStore.removeMessage(sessionId, messageId)
 }
 /**
  * 在会话中发送新用户消息，并根据需要生成回复
@@ -870,7 +779,7 @@ async function generate(
         const startTime = Date.now()
         let firstTokenLatency: number | undefined
         const promptMsgs = await genMessageContext(settings, messages.slice(0, targetMsgIx))
-        const throttledModifyMessage: OnResultChangeWithCancel = async (updated) => {
+        const modifyMessageCache: OnResultChangeWithCancel = async (updated) => {
           const textLength = getMessageText(targetMsg, true, true).length
           if (!firstTokenLatency && textLength > 0) {
             firstTokenLatency = Date.now() - startTime
@@ -888,7 +797,7 @@ async function generate(
         const result = await streamText(model, {
           sessionId: session.id,
           messages: promptMsgs,
-          onResultChangeWithCancel: throttledModifyMessage,
+          onResultChangeWithCancel: modifyMessageCache,
           providerOptions: settings.providerOptions,
           knowledgeBase,
           webBrowsing,
@@ -987,6 +896,7 @@ async function generate(
  */
 export async function generateMore(sessionId: string, msgId: string) {
   const newAssistantMsg = createMessage('assistant', '')
+  newAssistantMsg.generating = true // prevent estimating token count before generating done
   await insertMessageAfter(sessionId, newAssistantMsg, msgId)
   await generate(sessionId, newAssistantMsg, { operationType: 'regenerate' })
 }
@@ -1349,7 +1259,7 @@ export async function createNewFork(sessionId: string, forkMessageId: string) {
 
   const { data, updated } = updateFn(session.messages)
   if (updated) {
-    await chatStore.updateSession(session.id, {
+    await chatStore.updateSessionWithMessages(session.id, {
       messages: data,
       messageForksHash,
     })
@@ -1404,7 +1314,7 @@ export async function switchFork(sessionId: string, forkMessageId: string, direc
 
   const { data, updated } = updateFn(session.messages)
   if (updated) {
-    await chatStore.updateSession(session.id, {
+    await chatStore.updateSessionWithMessages(session.id, {
       messages: data,
       messageForksHash,
     })
@@ -1465,7 +1375,7 @@ export async function deleteFork(sessionId: string, forkMessageId: string) {
   // 更新当前消息列表，如果没有找到消息则自动更新线程消息列表
   const { data, updated } = updateFn(session.messages)
   if (updated) {
-    await chatStore.updateSession(session.id, {
+    await chatStore.updateSessionWithMessages(session.id, {
       messages: data,
       messageForksHash,
     })
@@ -1516,7 +1426,7 @@ export async function expandFork(sessionId: string, forkMessageId: string) {
   // 更新当前消息列表，如果没有找到消息则自动更新线程消息列表
   const { data, updated } = updateFn(session.messages)
   if (updated) {
-    await chatStore.updateSession(session.id, {
+    await chatStore.updateSessionWithMessages(session.id, {
       messages: data,
       messageForksHash,
     })

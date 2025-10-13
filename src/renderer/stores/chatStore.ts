@@ -5,6 +5,8 @@
 
 import { shallowEqual } from '@mantine/hooks'
 import { useQuery } from '@tanstack/react-query'
+import compact from 'lodash/compact'
+import isEmpty from 'lodash/isEmpty'
 import {
   GlobalSessionSettingsSchema,
   type Message,
@@ -52,10 +54,12 @@ let sessionListUpdateQueue: UpdateQueue<SessionMeta[]> | null = null
 
 export async function updateSessionList(updater: UpdaterFn<SessionMeta[]>) {
   if (!sessionListUpdateQueue) {
-    const sessionList = await _listSessionsMeta() // origin storage order
-    sessionListUpdateQueue = new UpdateQueue<SessionMeta[]>(sessionList, (sessions) => {
-      storage.setItemNow(StorageKey.ChatSessionsList, sessions)
-    })
+    sessionListUpdateQueue = new UpdateQueue<SessionMeta[]>(
+      () => _listSessionsMeta(),
+      (sessions) => {
+        storage.setItemNow(StorageKey.ChatSessionsList, sessions)
+      }
+    )
   }
   console.debug('chatStore', 'updateSessionList', updater)
   await sessionListUpdateQueue.set(updater)
@@ -85,11 +89,11 @@ export async function getSession(sessionId: string) {
 }
 
 export function useSession(sessionId: string | null) {
-  const { data: session } = useQuery({
+  const { data: session, ...rest } = useQuery({
     ...getSessionQueryOptions(sessionId!),
     enabled: !!sessionId,
   })
-  return { session }
+  return { session, ...rest }
 }
 
 async function invalidateSessionCache(sessionId: string) {
@@ -132,20 +136,22 @@ export async function createSession(newSession: Omit<Session, 'id'>, previousId?
 }
 
 const sessionUpdateQueues: Record<string, UpdateQueue<Session>> = {}
-// TODO: 外部调用，把messages拆分出去
-export async function updateSession(sessionId: string, updater: Updater<Session>) {
+
+export async function updateSessionWithMessages(sessionId: string, updater: Updater<Session>) {
   console.debug('chatStore', 'updateSession', sessionId, updater)
   if (!sessionUpdateQueues[sessionId]) {
-    const session = await getSession(sessionId)
-    if (!session) {
-      throw new Error(`Session ${sessionId} not found`)
-    }
-    sessionUpdateQueues[sessionId] = new UpdateQueue<Session>(session, (session) => {
-      if (session) {
-        storage.setItemNow(StorageKeyGenerator.session(sessionId), session)
+    // do not use await here to avoid data race
+    sessionUpdateQueues[sessionId] = new UpdateQueue<Session>(
+      () => getSession(sessionId),
+      (session) => {
+        if (session) {
+          console.debug('chatStore', 'persist session', sessionId)
+          storage.setItemNow(StorageKeyGenerator.session(sessionId), session)
+        }
       }
-    })
+    )
   }
+  let needUpdateSessionList = true
   const updated = await sessionUpdateQueues[sessionId].set((prev) => {
     if (!prev) {
       throw new Error(`Session ${sessionId} not found`)
@@ -153,17 +159,36 @@ export async function updateSession(sessionId: string, updater: Updater<Session>
     if (typeof updater === 'function') {
       return updater(prev)
     } else {
+      if (isEmpty(getSessionMeta(updater as SessionMeta))) {
+        needUpdateSessionList = false
+      }
       return { ...prev, ...updater }
     }
   })
-  await updateSessionList((sessions) => {
-    if (!sessions) {
-      throw new Error('Session list not found')
-    }
-    return sessions.map((session) => (session.id === sessionId ? getSessionMeta(updated) : session))
-  })
+  if (needUpdateSessionList) {
+    await updateSessionList((sessions) => {
+      if (!sessions) {
+        throw new Error('Session list not found')
+      }
+      return sessions.map((session) => (session.id === sessionId ? getSessionMeta(updated) : session))
+    })
+  }
   await invalidateSessionCache(sessionId)
   return updated
+}
+
+// 这里只能修改messages之外的字段
+export async function updateSession(sessionId: string, updater: Updater<Omit<Session, 'messages'>>) {
+  return await updateSessionWithMessages(sessionId, (session) => {
+    if (!session) {
+      throw new Error(`Session ${sessionId} not found`)
+    }
+    const updated = typeof updater === 'function' ? updater(session) : updater
+    return {
+      ...session,
+      ...updated,
+    }
+  })
 }
 
 // only update session cache without touching storage, for performance sensitive usage
@@ -255,4 +280,151 @@ export async function listMessages(sessionId?: string | null): Promise<Message[]
     return []
   }
   return session.messages
+}
+
+export async function insertMessage(sessionId: string, message: Message, previousId?: string) {
+  await updateSessionWithMessages(sessionId, (session) => {
+    if (!session) {
+      throw new Error(`session ${sessionId} not found`)
+    }
+
+    if (previousId) {
+      // try to find insert position in message list
+      let previousIndex = session.messages.findIndex((m) => m.id === previousId)
+
+      if (previousIndex >= 0) {
+        return {
+          ...session,
+          messages: [
+            ...session.messages.slice(0, previousIndex + 1),
+            message,
+            ...session.messages.slice(previousIndex + 1),
+          ],
+        } satisfies Session
+      }
+
+      // try to find insert position in threads
+      if (session.threads) {
+        for (const thread of session.threads) {
+          previousIndex = thread.messages.findIndex((m) => m.id === previousId)
+          if (previousIndex >= 0) {
+            return {
+              ...session,
+              threads: session.threads.map((th) => {
+                if (th.id === thread.id) {
+                  return {
+                    ...thread,
+                    messages: [
+                      ...thread.messages.slice(0, previousIndex + 1),
+                      message,
+                      ...thread.messages.slice(previousIndex + 1),
+                    ],
+                  }
+                }
+                return th
+              }),
+            } satisfies Session
+          }
+        }
+      }
+    }
+    // no previous message, insert to tail of current thread
+    return {
+      ...session,
+      messages: [...session.messages, message],
+    } satisfies Session
+  })
+}
+
+export async function updateMessageCache(sessionId: string, messageId: string, updater: Updater<Message>) {
+  return await updateMessage(sessionId, messageId, updater, true)
+}
+
+export async function updateMessages(sessionId: string, updater: Updater<Message[]>) {
+  return await updateSessionWithMessages(sessionId, (session) => {
+    if (!session) {
+      throw new Error(`session ${sessionId} not found`)
+    }
+    const updated = compact(typeof updater === 'function' ? updater(session.messages) : updater)
+    return {
+      ...session,
+      messages: updated,
+    }
+  })
+}
+
+export async function updateMessage(
+  sessionId: string,
+  messageId: string,
+  updater: Updater<Message>,
+  onlyUpdateCache?: boolean
+) {
+  const updateFn = onlyUpdateCache ? updateSessionCache : updateSessionWithMessages
+
+  await updateFn(sessionId, (session) => {
+    if (!session) {
+      throw new Error(`session ${sessionId} not found`)
+    }
+
+    const updateMessages = (messages: Message[]) => {
+      return messages.map((m) => {
+        if (m.id !== messageId) {
+          return m
+        }
+        const updated = typeof updater === 'function' ? updater(m) : updater
+        return {
+          ...m,
+          ...updated,
+        } satisfies Message
+      })
+    }
+    const message = session.messages.find((m) => m.id === messageId)
+    if (message) {
+      return {
+        ...session,
+        messages: updateMessages(session.messages),
+      }
+    }
+
+    // try find message in threads
+    if (session.threads) {
+      for (const thread of session.threads) {
+        const message = thread.messages.find((m) => m.id === messageId)
+        if (message) {
+          return {
+            ...session,
+            threads: session.threads.map((th) => {
+              if (th.id !== thread.id) {
+                return th
+              }
+              return {
+                ...th,
+                messages: updateMessages(th.messages),
+              }
+            }),
+          } satisfies Session
+        }
+      }
+    }
+
+    return session
+  })
+}
+
+export async function removeMessage(sessionId: string, messageId: string) {
+  return await updateSessionWithMessages(sessionId, (session) => {
+    if (!session) {
+      throw new Error(`session ${sessionId} not found`)
+    }
+    return {
+      ...session,
+      messages: session.messages.filter((m) => m.id !== messageId),
+      threads: session.threads?.map((thread) => {
+        return {
+          ...thread,
+          messages: thread.messages.filter((m) => m.id !== messageId),
+        }
+      }),
+    }
+  })
 }

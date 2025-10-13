@@ -1,5 +1,6 @@
 import { createStore } from 'zustand'
 import { combine, persist } from 'zustand/middleware'
+import { safeStorage } from './safeStorage'
 
 type State = {
   chat?: {
@@ -42,6 +43,7 @@ export const lastUsedModelStore = createStore(
       name: 'last-used-model',
       version: 0,
       skipHydration: true,
+      storage: safeStorage,
     }
   )
 )

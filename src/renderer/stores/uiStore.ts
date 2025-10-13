@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { createStore, useStore } from 'zustand'
 import { combine, persist } from 'zustand/middleware'
 import platform from '@/platform'
+import { safeStorage } from './safeStorage'
 
 // UI store for managing UI-related state
 // 不能使用immer middleware，会导致RefObject出问题
@@ -145,6 +146,7 @@ export const uiStore = createStore(
         widthFull: state.widthFull,
         showCopilotsInNewSession: state.showCopilotsInNewSession,
       }),
+      storage: safeStorage,
     }
   )
 )

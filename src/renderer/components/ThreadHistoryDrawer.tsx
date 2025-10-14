@@ -155,7 +155,7 @@ function ThreadItem(props: {
   const isSmallScreen = useIsSmallScreen()
 
   const onEditButtonClick = useCallback(() => {
-    void NiceModal.show('thread-name-edit', { threadId: thread.id })
+    void NiceModal.show('thread-name-edit', { sessionId: currentSessionId, threadId: thread.id })
   }, [currentSessionId, thread.id])
 
   const onSwitchButtonClick = useCallback(() => {

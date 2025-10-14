@@ -1622,14 +1622,3 @@ export async function expandFork(sessionId: string, forkMessageId: string) {
     }
   })
 }
-
-function useSessionActions(sessionId: string) {
-  const { refetch } = chatStore.useSession(sessionId)
-
-  async function switchForkAction(forkMessageId: string, direction: 'next' | 'prev') {
-    await switchFork(sessionId, forkMessageId, direction)
-    await refetch()
-  }
-
-  return { switchFork: switchForkAction }
-}

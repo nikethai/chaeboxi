@@ -121,7 +121,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
     try {
       setFetchedModels(undefined)
       setFetchingModels(true)
-      const modelConfig = getModelSettingUtil(baseInfo!.id)
+      const modelConfig = getModelSettingUtil(baseInfo!.id, baseInfo!.isCustom ? baseInfo!.type : undefined)
       const modelList = await modelConfig.getMergeOptionGroups({
         ...baseInfo?.defaultSettings,
         ...providerSettings,
@@ -258,10 +258,25 @@ function ProviderSettings({ providerId }: { providerId: string }) {
               </Text>
               <Select
                 value={baseInfo.type}
+                onChange={(value) => {
+                  setSettings({
+                    customProviders: settings.customProviders?.map((p) =>
+                      p.id === baseInfo.id ? { ...p, type: value as ModelProviderType } : p
+                    ),
+                  })
+                }}
                 data={[
                   {
                     value: ModelProviderType.OpenAI,
                     label: t('OpenAI API Compatible'),
+                  },
+                  {
+                    value: ModelProviderType.Claude,
+                    label: t('Claude API Compatible'),
+                  },
+                  {
+                    value: ModelProviderType.Gemini,
+                    label: t('Google Gemini API Compatible'),
                   },
                 ]}
               />
@@ -395,14 +410,20 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 </Stack>
               </Flex>
               <Text span size="xs" flex="0 1 auto" c="chatbox-secondary">
-                {normalizeOpenAIApiHostAndPath({
-                  apiHost: providerSettings?.apiHost,
-                  apiPath: providerSettings?.apiPath,
-                }).apiHost +
-                  normalizeOpenAIApiHostAndPath({
-                    apiHost: providerSettings?.apiHost,
-                    apiPath: providerSettings?.apiPath,
-                  }).apiPath}
+                {baseInfo.type === ModelProviderType.Claude
+                  ? normalizeClaudeHost(providerSettings?.apiHost || '').apiHost +
+                    normalizeClaudeHost(providerSettings?.apiHost || '').apiPath
+                  : baseInfo.type === ModelProviderType.Gemini
+                    ? normalizeGeminiHost(providerSettings?.apiHost || '').apiHost +
+                      normalizeGeminiHost(providerSettings?.apiHost || '').apiPath
+                    : normalizeOpenAIApiHostAndPath({
+                        apiHost: providerSettings?.apiHost,
+                        apiPath: providerSettings?.apiPath,
+                      }).apiHost +
+                      normalizeOpenAIApiHostAndPath({
+                        apiHost: providerSettings?.apiHost,
+                        apiPath: providerSettings?.apiPath,
+                      }).apiPath}
               </Text>
               {providerSettings?.apiHost?.includes('aihubmix.com') && (
                 <Flex align="center" gap={4}>

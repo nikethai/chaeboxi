@@ -2,7 +2,7 @@ import { SystemProviders } from 'src/shared/defaults'
 import {
   type ModelProvider,
   ModelProviderEnum,
-  ProviderBaseInfo,
+  ModelProviderType,
   type SessionSettings,
   type SessionType,
   type Settings,
@@ -11,6 +11,8 @@ import AzureSettingUtil from './azure-setting-util'
 import ChatboxAISettingUtil from './chatboxai-setting-util'
 import ChatGLMSettingUtil from './chatglm-setting-util'
 import ClaudeSettingUtil from './claude-setting-util'
+import CustomClaudeSettingUtil from './custom-claude-util'
+import CustomGeminiSettingUtil from './custom-gemini-setting-util'
 import CustomModelSettingUtil from './custom-setting-util'
 import DeepSeekSettingUtil from './deepseek-setting-util'
 import GeminiSettingUtil from './gemini-setting-util'
@@ -25,7 +27,10 @@ import SiliconFlowSettingUtil from './siliconflow-setting-util'
 import VolcEngineSettingUtil from './volcengine-setting-util'
 import XAISettingUtil from './xai-setting-util'
 
-export function getModelSettingUtil(aiProvider: ModelProvider): ModelSettingUtil {
+export function getModelSettingUtil(
+  aiProvider: ModelProvider,
+  customProviderType?: ModelProviderType
+): ModelSettingUtil {
   const hash: Record<ModelProvider, new () => ModelSettingUtil> = {
     [ModelProviderEnum.Azure]: AzureSettingUtil,
     [ModelProviderEnum.ChatboxAI]: ChatboxAISettingUtil,
@@ -44,8 +49,28 @@ export function getModelSettingUtil(aiProvider: ModelProvider): ModelSettingUtil
     [ModelProviderEnum.XAI]: XAISettingUtil,
     [ModelProviderEnum.Custom]: CustomModelSettingUtil,
   }
-  const Class = hash[aiProvider] || CustomModelSettingUtil
-  return new Class()
+
+  // If provider is in hash, use the corresponding setting util
+  if (hash[aiProvider]) {
+    return new hash[aiProvider]()
+  }
+
+  // For custom providers, determine setting util based on type
+  if (customProviderType) {
+    switch (customProviderType) {
+      case ModelProviderType.OpenAI:
+        return new CustomModelSettingUtil()
+      case ModelProviderType.Claude:
+        return new CustomClaudeSettingUtil()
+      case ModelProviderType.Gemini:
+        return new CustomGeminiSettingUtil()
+      default:
+        return new CustomModelSettingUtil()
+    }
+  }
+
+  // Fallback to CustomModelSettingUtil
+  return new CustomModelSettingUtil()
 }
 
 export async function getModelDisplayName(
@@ -56,9 +81,10 @@ export async function getModelDisplayName(
   const provider = settings.provider!
   const model = settings.modelId!
 
-  const util = getModelSettingUtil(provider)
-  const providerSettings = globalSettings.providers?.[provider]
   const providerBaseInfo =
     globalSettings.customProviders?.find((p) => p.id === provider) || SystemProviders.find((p) => p.id === provider)
+
+  const util = getModelSettingUtil(provider, providerBaseInfo?.isCustom ? providerBaseInfo.type : undefined)
+  const providerSettings = globalSettings.providers?.[provider]
   return util.getCurrentModelDisplayName(model, sessionType, providerSettings, providerBaseInfo)
 }

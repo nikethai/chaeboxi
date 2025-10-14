@@ -1,10 +1,19 @@
 import { SystemProviders } from '../defaults'
-import { type Config, type ModelProvider, ModelProviderEnum, type SessionSettings, type Settings } from '../types'
+import {
+  type Config,
+  type ModelProvider,
+  ModelProviderEnum,
+  ModelProviderType,
+  type SessionSettings,
+  type Settings,
+} from '../types'
 import type { ModelDependencies } from '../types/adapters'
 import AzureOpenAI from './azure'
 import ChatboxAI from './chatboxai'
 import ChatGLM from './chatglm'
 import Claude from './claude'
+import CustomClaude from './custom-claude'
+import CustomGemini from './custom-gemini'
 import CustomOpenAI from './custom-openai'
 import DeepSeek from './deepseek'
 import Gemini from './gemini'
@@ -294,20 +303,51 @@ export function getModel(
       )
     default:
       if (providerBaseInfo.isCustom) {
-        return new CustomOpenAI(
-          {
-            apiKey: providerSetting.apiKey || '',
-            apiHost: formattedApiHost,
-            apiPath: providerSetting.apiPath || '',
-            model,
-            temperature: settings.temperature,
-            topP: settings.topP,
-            maxOutputTokens: settings.maxTokens,
-            stream: settings.stream,
-            useProxy: providerSetting.useProxy,
-          },
-          dependencies
-        )
+        switch (providerBaseInfo.type) {
+          case ModelProviderType.Claude:
+            return new CustomClaude(
+              {
+                apiKey: providerSetting.apiKey || '',
+                apiHost: formattedApiHost,
+                model,
+                temperature: settings.temperature,
+                topP: settings.topP,
+                maxOutputTokens: settings.maxTokens,
+                stream: settings.stream,
+              },
+              dependencies
+            )
+          case ModelProviderType.Gemini:
+            return new CustomGemini(
+              {
+                apiKey: providerSetting.apiKey || '',
+                apiHost: formattedApiHost,
+                model,
+                temperature: settings.temperature,
+                topP: settings.topP,
+                maxOutputTokens: settings.maxTokens,
+                stream: settings.stream,
+              },
+              dependencies
+            )
+
+          case ModelProviderType.OpenAI:
+          default:
+            return new CustomOpenAI(
+              {
+                apiKey: providerSetting.apiKey || '',
+                apiHost: formattedApiHost,
+                apiPath: providerSetting.apiPath || '',
+                model,
+                temperature: settings.temperature,
+                topP: settings.topP,
+                maxOutputTokens: settings.maxTokens,
+                stream: settings.stream,
+                useProxy: providerSetting.useProxy,
+              },
+              dependencies
+            )
+        }
       } else {
         throw new Error(`Cannot find model with provider: ${settings.provider}`)
       }

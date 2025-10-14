@@ -906,22 +906,51 @@ export async function generateMoreInNewFork(sessionId: string, msgId: string) {
   await generateMore(sessionId, msgId)
 }
 
-export async function regenerateInNewFork(sessionId: string, msg: Message) {
+type MessageLocation = { list: Message[]; index: number }
+
+function findMessageLocation(session: Session, messageId: string): MessageLocation | null {
+  const rootIndex = session.messages.findIndex((m) => m.id === messageId)
+  if (rootIndex >= 0) {
+    return { list: session.messages, index: rootIndex }
+  }
+  if (!session.threads) {
+    return null
+  }
+  for (const thread of session.threads) {
+    const idx = thread.messages.findIndex((m) => m.id === messageId)
+    if (idx >= 0) {
+      return { list: thread.messages, index: idx }
+    }
+  }
+  return null
+}
+
+type GenerateMoreFn = (sessionId: string, msgId: string) => Promise<void>
+
+export async function regenerateInNewFork(
+  sessionId: string,
+  msg: Message,
+  options?: { runGenerateMore?: GenerateMoreFn }
+) {
+  const runGenerateMore = options?.runGenerateMore ?? generateMore
   const session = await chatStore.getSession(sessionId)
   if (!session) {
     return
   }
-  const messageList = session.messages
-  const messageIndex = messageList.findIndex((m) => m.id === msg.id)
-  const previousMessageIndex = messageIndex - 1
+  const location = findMessageLocation(session, msg.id)
+  if (!location) {
+    await generate(sessionId, msg, { operationType: 'regenerate' })
+    return
+  }
+  const previousMessageIndex = location.index - 1
   if (previousMessageIndex < 0) {
     // 如果目标消息是第一条消息，则直接重新生成
     await generate(sessionId, msg, { operationType: 'regenerate' })
     return
   }
-  const forkMessage = messageList[previousMessageIndex]
+  const forkMessage = location.list[previousMessageIndex]
   await createNewFork(sessionId, forkMessage.id)
-  return generateMore(sessionId, forkMessage.id)
+  return runGenerateMore(sessionId, forkMessage.id)
 }
 
 async function _generateName(sessionId: string, modifyName: (sessionId: string, name: string) => void) {
@@ -1214,125 +1243,344 @@ export async function exportSessionChat(sessionId: string, content: ExportChatSc
 }
 
 export async function createNewFork(sessionId: string, forkMessageId: string) {
-  const session = await chatStore.getSession(sessionId)
-  if (!session) {
-    return
-  }
-  const messageForksHash = session.messageForksHash || {}
-
-  const updateFn = (data: Message[]): { data: Message[]; updated: boolean } => {
-    const forkMessageIndex = data.findIndex((m) => m.id === forkMessageId)
-    if (forkMessageIndex < 0) {
-      return { data, updated: false }
+  await chatStore.updateSessionWithMessages(sessionId, (session) => {
+    if (!session) {
+      throw new Error('Session not found')
     }
-    const forks = messageForksHash[forkMessageId] || {
-      position: 0,
-      lists: [
-        {
-          id: `fork_list_${uuidv4()}`,
-          messages: [],
-        },
-      ],
-      createdAt: Date.now(),
+    const patch = buildCreateForkPatch(session, forkMessageId)
+    if (!patch) {
+      return session
     }
-    // 下方消息存储到当前游标位置
-    const backupMessages = data.slice(forkMessageIndex + 1)
-    if (backupMessages.length === 0) {
-      return { data, updated: false }
+    return {
+      ...session,
+      ...patch,
     }
-    forks.lists[forks.position] = {
-      id: `fork_list_${uuidv4()}`,
-      messages: backupMessages,
-    }
-    // 创建另一个新分支，作为新的游标位置
-    forks.lists.push({
-      id: `fork_list_${uuidv4()}`,
-      messages: [],
-    })
-    forks.position = forks.lists.length - 1
-
-    messageForksHash[forkMessageId] = forks
-    data = data.slice(0, forkMessageIndex + 1)
-
-    return { data, updated: true }
-  }
-
-  const { data, updated } = updateFn(session.messages)
-  if (updated) {
-    await chatStore.updateSessionWithMessages(session.id, {
-      messages: data,
-      messageForksHash,
-    })
-    // scrollActions.scrollToMessage(forkMessageId, 'start')
-    return
-  }
-  for (let i = (session.threads || []).length - 1; i >= 0; i--) {
-    const thread = (session.threads || [])[i]
-    const { data, updated } = updateFn(thread.messages)
-    if (updated) {
-      await chatStore.updateSession(session.id, {
-        threads: session.threads?.map((t) => (t.id === thread.id ? { ...t, messages: data } : t)),
-        messageForksHash,
-      })
-      // scrollActions.scrollToMessage(forkMessageId, 'start')
-      return
-    }
-  }
+  })
 }
 
 export async function switchFork(sessionId: string, forkMessageId: string, direction: 'next' | 'prev') {
-  const session = await chatStore.getSession(sessionId)
-  if (!session?.messageForksHash) {
-    return
-  }
-  const messageForksHash = session.messageForksHash
+  await chatStore.updateSessionWithMessages(sessionId, (session) => {
+    if (!session) {
+      throw new Error('Session not found')
+    }
+    const patch = buildSwitchForkPatch(session, forkMessageId, direction)
+    if (!patch) {
+      return session
+    }
+    return {
+      ...session,
+      ...patch,
+    } as typeof session
+  })
+}
 
-  const updateFn = (data: Message[]): { data: Message[]; updated: boolean } => {
-    const forks = messageForksHash[forkMessageId]
-    if (forks.lists.length === 0) {
-      return { data, updated: false }
-    }
-    const forkMessageIndex = data.findIndex((m) => m.id === forkMessageId)
-    if (forkMessageIndex < 0) {
-      return { data, updated: false }
-    }
-    const newPosition =
-      direction === 'next'
-        ? (forks.position + 1) % forks.lists.length
-        : (forks.position - 1 + forks.lists.length) % forks.lists.length
-    // 当前被分叉的消息存储在当前的游标位置
-    forks.lists[forks.position].messages = data.slice(forkMessageIndex + 1)
-    // 当前消息列表中移除被分叉的消息，并且添加新的游标位置的消息
-    data = data.slice(0, forkMessageIndex + 1).concat(forks.lists[newPosition].messages)
-    // 更新游标位置
-    forks.position = newPosition
-    // 清空新的游标位置的消息（因为已经在主分支了，所以清理以节省空间）
-    forks.lists[newPosition].messages = []
-    messageForksHash[forkMessageId] = forks
-    return { data, updated: true }
+type MessageForkEntry = NonNullable<Session['messageForksHash']>[string]
+
+function buildSwitchForkPatch(
+  session: Session,
+  forkMessageId: string,
+  direction: 'next' | 'prev'
+): Partial<Session> | null {
+  const { messageForksHash } = session
+  if (!messageForksHash) {
+    return null
   }
 
-  const { data, updated } = updateFn(session.messages)
-  if (updated) {
-    await chatStore.updateSessionWithMessages(session.id, {
-      messages: data,
-      messageForksHash,
-    })
-    // scrollActions.scrollToMessage(forkMessageId, 'start')
-    return
+  const forkEntry = messageForksHash[forkMessageId]
+  if (!forkEntry || forkEntry.lists.length === 0) {
+    return null
   }
-  for (let i = (session.threads || []).length - 1; i >= 0; i--) {
-    const thread = (session.threads || [])[i]
-    const { data, updated } = updateFn(thread.messages)
-    if (updated) {
-      await chatStore.updateSession(session.id, {
-        threads: session.threads?.map((t) => (t.id === thread.id ? { ...t, messages: data } : t)),
-        messageForksHash,
-      })
-      // scrollActions.scrollToMessage(forkMessageId, 'start')
-      return
+
+  const rootResult = switchForkInMessages(session.messages, forkEntry, forkMessageId, direction)
+  if (rootResult) {
+    const { messages, fork } = rootResult
+    return {
+      messages,
+      messageForksHash: {
+        ...messageForksHash,
+        [forkMessageId]: fork,
+      },
     }
   }
+
+  if (!session.threads?.length) {
+    return null
+  }
+
+  let updatedFork: MessageForkEntry | null = null
+  const updatedThreads = session.threads.map((thread) => {
+    if (updatedFork) {
+      return thread
+    }
+    const result = switchForkInMessages(thread.messages, forkEntry, forkMessageId, direction)
+    if (!result) {
+      return thread
+    }
+    updatedFork = result.fork
+    return {
+      ...thread,
+      messages: result.messages,
+    }
+  })
+
+  if (!updatedFork) {
+    return null
+  }
+
+  return {
+    threads: updatedThreads,
+    messageForksHash: {
+      ...messageForksHash,
+      [forkMessageId]: updatedFork,
+    },
+  }
+}
+
+function switchForkInMessages(
+  messages: Message[],
+  forkEntry: MessageForkEntry,
+  forkMessageId: string,
+  direction: 'next' | 'prev'
+): { messages: Message[]; fork: MessageForkEntry } | null {
+  const forkMessageIndex = messages.findIndex((m) => m.id === forkMessageId)
+  if (forkMessageIndex < 0) {
+    return null
+  }
+
+  const total = forkEntry.lists.length
+  const newPosition = direction === 'next' ? (forkEntry.position + 1) % total : (forkEntry.position - 1 + total) % total
+
+  const currentTail = messages.slice(forkMessageIndex + 1)
+  const branchMessages = forkEntry.lists[newPosition]?.messages ?? []
+
+  const updatedFork: MessageForkEntry = {
+    ...forkEntry,
+    position: newPosition,
+    lists: forkEntry.lists.map((list, index) => {
+      if (index === forkEntry.position && forkEntry.position !== newPosition) {
+        return {
+          ...list,
+          messages: currentTail,
+        }
+      }
+      if (index === newPosition) {
+        return {
+          ...list,
+          messages: [],
+        }
+      }
+      return list
+    }),
+  }
+
+  return {
+    messages: messages.slice(0, forkMessageIndex + 1).concat(branchMessages),
+    fork: updatedFork,
+  }
+}
+
+function buildCreateForkPatch(session: Session, forkMessageId: string): Partial<Session> | null {
+  return applyForkTransform(
+    session,
+    forkMessageId,
+    () =>
+      session.messageForksHash?.[forkMessageId] ?? {
+        position: 0,
+        lists: [
+          {
+            id: `fork_list_${uuidv4()}`,
+            messages: [],
+          },
+        ],
+        createdAt: Date.now(),
+      },
+    (messages, forkEntry) => {
+      const forkMessageIndex = messages.findIndex((m) => m.id === forkMessageId)
+      if (forkMessageIndex < 0) {
+        return null
+      }
+
+      const backupMessages = messages.slice(forkMessageIndex + 1)
+      if (backupMessages.length === 0) {
+        return null
+      }
+
+      const storedListId = `fork_list_${uuidv4()}`
+      const newBranchId = `fork_list_${uuidv4()}`
+      const lists = forkEntry.lists.map((list, index) =>
+        index === forkEntry.position
+          ? {
+              id: storedListId,
+              messages: backupMessages,
+            }
+          : list
+      )
+      const nextPosition = lists.length
+      const updatedFork: MessageForkEntry = {
+        ...forkEntry,
+        position: nextPosition,
+        lists: [
+          ...lists,
+          {
+            id: newBranchId,
+            messages: [],
+          },
+        ],
+      }
+
+      return {
+        messages: messages.slice(0, forkMessageIndex + 1),
+        forkEntry: updatedFork,
+      }
+    }
+  )
+}
+
+function buildDeleteForkPatch(session: Session, forkMessageId: string): Partial<Session> | null {
+  return applyForkTransform(
+    session,
+    forkMessageId,
+    () => session.messageForksHash?.[forkMessageId] ?? null,
+    (messages, forkEntry) => {
+      const forkMessageIndex = messages.findIndex((m) => m.id === forkMessageId)
+      if (forkMessageIndex < 0) {
+        return null
+      }
+
+      const trimmedMessages = messages.slice(0, forkMessageIndex + 1)
+      const remainingLists = forkEntry.lists.filter((_, index) => index !== forkEntry.position)
+
+      if (remainingLists.length === 0) {
+        return {
+          messages: trimmedMessages,
+          forkEntry: null,
+        }
+      }
+
+      const nextPosition = Math.min(forkEntry.position, remainingLists.length - 1)
+      const carryMessages = remainingLists[nextPosition]?.messages ?? []
+      const updatedLists = remainingLists.map((list, index) =>
+        index === nextPosition
+          ? {
+              ...list,
+              messages: [],
+            }
+          : list
+      )
+
+      return {
+        messages: trimmedMessages.concat(carryMessages),
+        forkEntry: {
+          ...forkEntry,
+          position: nextPosition,
+          lists: updatedLists,
+        },
+      }
+    }
+  )
+}
+
+function buildExpandForkPatch(session: Session, forkMessageId: string): Partial<Session> | null {
+  return applyForkTransform(
+    session,
+    forkMessageId,
+    () => session.messageForksHash?.[forkMessageId] ?? null,
+    (messages, forkEntry) => {
+      const forkMessageIndex = messages.findIndex((m) => m.id === forkMessageId)
+      if (forkMessageIndex < 0) {
+        return null
+      }
+
+      const mergedMessages = forkEntry.lists.flatMap((list) => list.messages)
+      if (mergedMessages.length === 0) {
+        return {
+          messages,
+          forkEntry: null,
+        }
+      }
+      return {
+        messages: messages.concat(mergedMessages),
+        forkEntry: null,
+      }
+    }
+  )
+}
+
+type ForkTransformResult = { messages: Message[]; forkEntry: MessageForkEntry | null }
+type ForkTransform = (messages: Message[], forkEntry: MessageForkEntry) => ForkTransformResult | null
+
+function applyForkTransform(
+  session: Session,
+  forkMessageId: string,
+  ensureForkEntry: () => MessageForkEntry | null,
+  transform: ForkTransform
+): Partial<Session> | null {
+  const tryTransform = (messages: Message[]): ForkTransformResult | null => {
+    const forkEntry = ensureForkEntry()
+    if (!forkEntry) {
+      return null
+    }
+    return transform(messages, forkEntry)
+  }
+
+  const rootResult = tryTransform(session.messages)
+  if (rootResult) {
+    return {
+      messages: rootResult.messages,
+      messageForksHash: computeNextMessageForksHash(session.messageForksHash, forkMessageId, rootResult.forkEntry),
+    }
+  }
+
+  if (!session.threads?.length) {
+    return null
+  }
+
+  let updatedFork: MessageForkEntry | null = null
+  let changed = false
+  const updatedThreads = session.threads.map((thread) => {
+    if (changed) {
+      return thread
+    }
+    const result = tryTransform(thread.messages)
+    if (!result) {
+      return thread
+    }
+    changed = true
+    updatedFork = result.forkEntry
+    return {
+      ...thread,
+      messages: result.messages,
+    }
+  })
+
+  if (!changed) {
+    return null
+  }
+
+  return {
+    threads: updatedThreads,
+    messageForksHash: computeNextMessageForksHash(session.messageForksHash, forkMessageId, updatedFork),
+  }
+}
+
+function computeNextMessageForksHash(
+  current: Session['messageForksHash'],
+  forkMessageId: string,
+  nextEntry: MessageForkEntry | null
+): Session['messageForksHash'] | undefined {
+  if (nextEntry) {
+    return {
+      ...(current ?? {}),
+      [forkMessageId]: nextEntry,
+    }
+  }
+
+  if (!current || !Object.hasOwn(current, forkMessageId)) {
+    return current
+  }
+
+  const { [forkMessageId]: _removed, ...rest } = current
+  return Object.keys(rest).length ? rest : undefined
 }
 
 /**
@@ -1340,58 +1588,19 @@ export async function switchFork(sessionId: string, forkMessageId: string, direc
  * @param forkMessageId 消息ID
  */
 export async function deleteFork(sessionId: string, forkMessageId: string) {
-  const session = await chatStore.getSession(sessionId)
-  if (!session || !session.messageForksHash) {
-    return
-  }
-  const messageForksHash = session.messageForksHash
-
-  const updateFn = (data: Message[]): { data: Message[]; updated: boolean } => {
-    const forkMessageIndex = data.findIndex((m) => m.id === forkMessageId)
-    if (forkMessageIndex < 0) {
-      return { data, updated: false } // 只有找不到消息才返回 false
+  await chatStore.updateSessionWithMessages(sessionId, (session) => {
+    if (!session) {
+      throw new Error('Session not found')
     }
-    const forks = messageForksHash[forkMessageId]
-    if (!forks) {
-      return { data, updated: true }
+    const patch = buildDeleteForkPatch(session, forkMessageId)
+    if (!patch) {
+      return session
     }
-    // 删除消息列表中当前分叉的消息
-    data = data.slice(0, forkMessageIndex + 1)
-    // 清理当前分叉
-    forks.lists = [...forks.lists.slice(0, forks.position), ...forks.lists.slice(forks.position + 1)]
-    forks.position = Math.min(forks.position, forks.lists.length - 1)
-    // 如果当前消息已经没有分支，则删除整个消息分叉信息
-    if (forks.lists.length === 0) {
-      delete messageForksHash[forkMessageId]
-      return { data, updated: true }
+    return {
+      ...session,
+      ...patch,
     }
-    // 将当前游标位置的消息添加到主消息列表中
-    data = data.concat(forks.lists[forks.position].messages)
-    forks.lists[forks.position].messages = []
-    messageForksHash[forkMessageId] = forks
-    return { data, updated: true }
-  }
-
-  // 更新当前消息列表，如果没有找到消息则自动更新线程消息列表
-  const { data, updated } = updateFn(session.messages)
-  if (updated) {
-    await chatStore.updateSessionWithMessages(session.id, {
-      messages: data,
-      messageForksHash,
-    })
-    return
-  }
-  for (let i = (session.threads || []).length - 1; i >= 0; i--) {
-    const thread = (session.threads || [])[i]
-    const { data, updated } = updateFn(thread.messages)
-    if (updated) {
-      await chatStore.updateSession(session.id, {
-        threads: session.threads?.map((t) => (t.id === thread.id ? { ...t, messages: data } : t)),
-        messageForksHash,
-      })
-      return
-    }
-  }
+  })
 }
 
 /**
@@ -1399,48 +1608,28 @@ export async function deleteFork(sessionId: string, forkMessageId: string) {
  * @deprecated
  */
 export async function expandFork(sessionId: string, forkMessageId: string) {
-  const session = await chatStore.getSession(sessionId)
-  if (!session?.messageForksHash) {
-    return
-  }
-  const messageForksHash = session.messageForksHash
+  await chatStore.updateSessionWithMessages(sessionId, (session) => {
+    if (!session) {
+      throw new Error('Session not found')
+    }
+    const patch = buildExpandForkPatch(session, forkMessageId)
+    if (!patch) {
+      return session
+    }
+    return {
+      ...session,
+      ...patch,
+    }
+  })
+}
 
-  const updateFn = (data: Message[]): { data: Message[]; updated: boolean } => {
-    const forkMessageIndex = data.findIndex((m) => m.id === forkMessageId)
-    if (forkMessageIndex < 0) {
-      return { data, updated: false } // 只有找不到消息才返回 false
-    }
-    const forks = messageForksHash[forkMessageId]
-    if (!forks) {
-      return { data, updated: true }
-    }
-    // 将当前消息的所有分叉消息添加到主消息列表中
-    for (const list of forks.lists) {
-      data = data.concat(list.messages)
-    }
-    // 删除当前消息的所有分叉
-    delete messageForksHash[forkMessageId]
-    return { data, updated: true }
+function useSessionActions(sessionId: string) {
+  const { refetch } = chatStore.useSession(sessionId)
+
+  async function switchForkAction(forkMessageId: string, direction: 'next' | 'prev') {
+    await switchFork(sessionId, forkMessageId, direction)
+    await refetch()
   }
 
-  // 更新当前消息列表，如果没有找到消息则自动更新线程消息列表
-  const { data, updated } = updateFn(session.messages)
-  if (updated) {
-    await chatStore.updateSessionWithMessages(session.id, {
-      messages: data,
-      messageForksHash,
-    })
-    return
-  }
-  for (let i = (session.threads || []).length - 1; i >= 0; i--) {
-    const thread = (session.threads || [])[i]
-    const { data, updated } = updateFn(thread.messages)
-    if (updated) {
-      await chatStore.updateSession(session.id, {
-        threads: session.threads?.map((t) => (t.id === thread.id ? { ...t, messages: data } : t)),
-        messageForksHash,
-      })
-      return
-    }
-  }
+  return { switchFork: switchForkAction }
 }

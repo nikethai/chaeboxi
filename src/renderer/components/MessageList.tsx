@@ -17,14 +17,7 @@ import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import * as atoms from '@/stores/atoms'
 import * as scrollActions from '@/stores/scrollActions'
-import {
-  deleteFork,
-  expandFork,
-  moveThreadToConversations,
-  removeThread,
-  switchFork,
-  switchThread,
-} from '@/stores/sessionActions'
+import { deleteFork, moveThreadToConversations, removeThread, switchFork, switchThread } from '@/stores/sessionActions'
 import { getAllMessageList, getCurrentThreadHistoryHash } from '@/stores/sessionHelpers'
 import { useUIStore } from '@/stores/uiStore'
 import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
@@ -440,17 +433,6 @@ function ForkNav(props: { sessionId: string; msgId: string; forks: NonNullable<S
           },
         }}
       >
-        <MenuItem
-          disableRipple
-          onClick={() => {
-            void expandFork(sessionId, msgId)
-            closeMenu()
-          }}
-          className="bg-white"
-        >
-          <SegmentIcon fontSize="small" />
-          {t('expand')}
-        </MenuItem>
         <ConfirmDeleteMenuItem
           onDelete={() => {
             void deleteFork(sessionId, msgId)

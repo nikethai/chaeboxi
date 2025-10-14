@@ -509,7 +509,7 @@ const ThreadMenu: FC<ThreadMenuProps> = memo((props) => {
 
   const onEditThreadNameClick = useCallback(() => {
     if (!threadMenuClickedTopicId) return
-    NiceModal.show('thread-name-edit', { threadId: threadMenuClickedTopicId })
+    NiceModal.show('thread-name-edit', { sessionId: currentSessionId, threadId: threadMenuClickedTopicId })
 
     onThreadMenuClose?.()
   }, [threadMenuClickedTopicId, currentSessionId, onThreadMenuClose])

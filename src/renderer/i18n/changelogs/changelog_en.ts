@@ -1,4 +1,13 @@
 const changelog = `
+## v1.17.0
+
+1. Optimized storage performance, reducing lag and crashes during message generation
+2. Fixed the issue where duplicate token estimation calculations caused lag
+3. Fixed the issue where message format errors in certain cases caused the app interface to crash
+4. Added Gemini and Claude-style APIs to custom providers
+5. Optimized the styles of sidebar, conversation page title bar, and message action area, unified default avatars
+6. Fixed the issue where some icons did not scale with the global font size
+
 ## v1.16.4 - 2025.10.09
 1. Fixed issue where the desktop message navigation component blocked the scrollbar
 2. Optimized the message navigation component on mobile

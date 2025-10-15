@@ -11,7 +11,7 @@ export function nameConversation(msgs: Message[], language: string): Message[] {
         {
           type: 'text',
           text: `Based on the chat history, give this conversation a name.
-Keep it short - 10 characters max, no quotes.
+Keep it short - 10 words max, no quotes.
 Use ${language}.
 Just provide the name, nothing else.
 

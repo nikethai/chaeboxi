@@ -2,17 +2,9 @@ import { CapacitorSQLite, SQLiteConnection, type SQLiteDBConnection } from '@cap
 import localforage from 'localforage'
 import { StorageKey } from '@/storage'
 import platform from '.'
+import type { Storage } from './interfaces'
 
-export interface OldVersionPlatformStorage {
-  setStoreValue(key: string, value: any): Promise<void>
-  getStoreValue(key: string): Promise<any>
-  delStoreValue(key: string): Promise<void>
-  getAllStoreValues(): Promise<{ [key: string]: any }>
-  getAllStoreKeys(): Promise<string[]>
-  setAllStoreValues(data: { [key: string]: any }): Promise<void>
-}
-
-export class DesktopFileStorage implements OldVersionPlatformStorage {
+export class DesktopFileStorage implements Storage {
   public ipc = window.electronAPI
 
   public async setStoreValue(key: string, value: any) {
@@ -42,7 +34,7 @@ export class DesktopFileStorage implements OldVersionPlatformStorage {
   }
 }
 
-export class LocalStorage implements OldVersionPlatformStorage {
+export class LocalStorage implements Storage {
   // 使用LocalStorage存储的最后一个版本是ConfigVersion=6，当时只有这些key
   validStorageKeys: string[] = [
     StorageKey.ConfigVersion,
@@ -234,7 +226,7 @@ class SQLiteStorage {
   }
 }
 
-export class MobileSQLiteStorage implements OldVersionPlatformStorage {
+export class MobileSQLiteStorage implements Storage {
   private sqliteStorage = new SQLiteStorage()
 
   public async setStoreValue(key: string, value: any) {
@@ -270,11 +262,62 @@ export class MobileSQLiteStorage implements OldVersionPlatformStorage {
   }
 }
 
-export function getOldVersionStorages(): OldVersionPlatformStorage[] {
+export class IndexedDBStorage implements Storage {
+  private store = localforage.createInstance({ name: 'chatboxstore' })
+
+  public async setStoreValue(key: string, value: any) {
+    // 为什么序列化成 JSON？
+    // 因为 IndexedDB 作为底层驱动时，可以直接存储对象，但是如果对象中包含函数或引用，将会直接报错
+    try {
+      await this.store.setItem(key, JSON.stringify(value))
+    } catch (error) {
+      throw new Error(`Failed to store value for key "${key}": ${(error as Error).message}`)
+    }
+  }
+  public async getStoreValue(key: string) {
+    const json = await this.store.getItem<string>(key)
+    if (!json) return null
+    try {
+      return JSON.parse(json)
+    } catch (error) {
+      console.error(`Failed to parse stored value for key "${key}":`, error)
+      return null
+    }
+  }
+  public async delStoreValue(key: string) {
+    return await this.store.removeItem(key)
+  }
+  public async getAllStoreValues(): Promise<{ [key: string]: any }> {
+    const ret: { [key: string]: any } = {}
+    await this.store.iterate((json, key) => {
+      if (typeof json === 'string') {
+        try {
+          ret[key] = JSON.parse(json)
+        } catch (error) {
+          console.error(`Failed to parse value for key "${key}":`, error)
+          ret[key] = null
+        }
+      } else {
+        ret[key] = null
+      }
+    })
+    return ret
+  }
+  public async getAllStoreKeys(): Promise<string[]> {
+    return this.store.keys()
+  }
+  public async setAllStoreValues(data: { [key: string]: any }): Promise<void> {
+    for (const [key, value] of Object.entries(data)) {
+      await this.setStoreValue(key, value)
+    }
+  }
+}
+
+export function getOldVersionStorages(): Storage[] {
   if (platform.type === 'desktop') {
     return [new DesktopFileStorage()]
   } else if (platform.type === 'mobile') {
-    return [new MobileSQLiteStorage(), new LocalStorage()]
+    return [new IndexedDBStorage(), new LocalStorage()]
   }
   return [new LocalStorage()]
 }

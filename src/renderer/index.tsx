@@ -158,6 +158,14 @@ initializeApp()
       })
       el.classList.add('splash-screen-fade-out')
     }
+
+    if (window?.navigator?.storage) {
+      navigator.storage?.persisted().then((persisted) => {
+        if (!persisted) {
+          navigator.storage?.persist()
+        }
+      })
+    }
   })
 
 // If you want to start measuring performance in your app, pass a function

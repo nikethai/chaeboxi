@@ -16,9 +16,10 @@ import {
 import { IconInfoCircle } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
 import { mapValues, uniqBy } from 'lodash'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type Language, type ProviderInfo, type Settings, Theme } from 'src/shared/types'
+import { formatFileSize } from 'src/shared/utils'
 import LazySlider from '@/components/LazySlider'
 import { languageNameMap, languages } from '@/i18n/locales'
 import platform from '@/platform'
@@ -317,10 +318,32 @@ const ImportExportDataSection = () => {
     reader.readAsText(file)
   }
 
+  const [showStorageInfo, setShowStorageInfo] = useState(false)
+  const [storagePersisted, setStoragePersisted] = useState<boolean>()
+  const [storageEstimate, setStorageEstimate] = useState<StorageEstimate>()
+  const storageInfo = useMemo(
+    () =>
+      `Storage persisted: ${storagePersisted}; Storage Estimate: { quota: ${formatFileSize(storageEstimate?.quota || 0)}, usage: ${formatFileSize(storageEstimate?.usage || 0)} }`,
+    [storagePersisted, storageEstimate]
+  )
+  useEffect(() => {
+    if (window?.navigator?.storage) {
+      window.navigator.storage?.estimate().then((res) => setStorageEstimate(res))
+      window.navigator.storage?.persisted().then((p) => setStoragePersisted(p))
+    }
+  }, [])
+
   return (
     <>
       <Stack gap="md">
-        <Title order={5}>{t('Data Backup')}</Title>
+        <Title order={5} onDoubleClick={() => setShowStorageInfo(true)}>
+          {t('Data Backup')}
+        </Title>
+        {showStorageInfo && (
+          <Text size="xs" c="chatbox-tertiary">
+            {storageInfo}
+          </Text>
+        )}
         {[
           { label: t('Settings'), value: ExportDataItem.Setting },
           { label: t('API KEY & License'), value: ExportDataItem.Key },

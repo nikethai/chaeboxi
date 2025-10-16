@@ -3,21 +3,17 @@ import * as defaults from 'src/shared/defaults'
 import type { Config, Settings, ShortcutSetting } from 'src/shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { parseLocale } from '@/i18n/parser'
-import { sliceTextByTokenLimit } from '@/packages/token'
 import { getBrowser, getOS } from '../packages/navigator'
 import type { Platform, PlatformType } from './interfaces'
 import type { KnowledgeBaseController } from './knowledge-base/interface'
+import { IndexedDBStorage } from './storages'
 import WebExporter from './web_exporter'
 import { parseTextFileLocally } from './web_platform_utils'
 
-const store = localforage.createInstance({ name: 'chatboxstore' })
-
-export default class WebPlatform implements Platform {
+export default class WebPlatform extends IndexedDBStorage implements Platform {
   public type: PlatformType = 'web'
 
   public exporter = new WebExporter()
-
-  constructor() {}
 
   public async getVersion(): Promise<string> {
     return 'web'
@@ -80,42 +76,6 @@ export default class WebPlatform implements Platform {
     return value
   }
 
-  public async setStoreValue(key: string, value: any) {
-    // 为什么序列化成 JSON？
-    // 因为 IndexedDB 作为底层驱动时，可以直接存储对象，但是如果对象中包含函数或引用，将会直接报错
-    try {
-      await store.setItem(key, JSON.stringify(value))
-    } catch (error) {
-      throw new Error(`Failed to store value for key "${key}": ${(error as Error).message}`)
-    }
-  }
-  public async getStoreValue(key: string) {
-    const json = await store.getItem<string>(key)
-    if (!json) return null
-    try {
-      return JSON.parse(json)
-    } catch (error) {
-      console.error(`Failed to parse stored value for key "${key}":`, error)
-      return null
-    }
-  }
-  public async delStoreValue(key: string) {
-    return await store.removeItem(key)
-  }
-  public async getAllStoreValues(): Promise<{ [key: string]: any }> {
-    const ret: { [key: string]: any } = {}
-    await store.iterate((json, key) => {
-      const value = typeof json === 'string' ? JSON.parse(json) : null
-      ret[key] = value
-    })
-    return ret
-  }
-  public async setAllStoreValues(data: { [key: string]: any }): Promise<void> {
-    for (const [key, value] of Object.entries(data)) {
-      await this.setStoreValue(key, value)
-    }
-  }
-
   public async getStoreBlob(key: string): Promise<string | null> {
     return localforage.getItem<string>(key)
   }
@@ -165,16 +125,10 @@ export default class WebPlatform implements Platform {
     return
   }
 
-  async parseFileLocally(
-    file: File,
-    options?: { tokenLimit?: number }
-  ): Promise<{ key?: string; isSupported: boolean }> {
+  async parseFileLocally(file: File): Promise<{ key?: string; isSupported: boolean }> {
     const result = await parseTextFileLocally(file)
     if (!result.isSupported) {
       return { isSupported: false }
-    }
-    if (options?.tokenLimit) {
-      result.text = sliceTextByTokenLimit(result.text, options.tokenLimit)
     }
     const key = `parseFile-` + uuidv4()
     await this.setStoreBlob(key, result.text)

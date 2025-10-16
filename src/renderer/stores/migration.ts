@@ -22,7 +22,7 @@ import {
   mermaidSessionEN,
 } from '@/packages/initial_data'
 import platform from '@/platform'
-import { DesktopFileStorage, getOldVersionStorages } from '@/platform/old_version_storages'
+import { DesktopFileStorage, getOldVersionStorages } from '@/platform/storages'
 import WebPlatform from '@/platform/web_platform'
 import storage, { StorageKey } from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
@@ -53,11 +53,11 @@ type MigrateStore = {
   setBlob?: (key: string, value: string) => Promise<void>
 }
 
-export const CurrentVersion = 12
+export const CurrentVersion = 13
 
 async function migrateStorage() {
   const configVersion = await storage.getItem<number>(StorageKey.ConfigVersion, 0)
-  if (configVersion === 0) {
+  if (configVersion === 0 || (platform.type === 'mobile' && configVersion < 13)) {
     // 如果当前的storage中没有读取到版本号，那么存在两种可能性
     // 1. 这是第一次运行应用。
     // 2. 刚刚切换到新的storage实现，之前的数据还没有迁移过来。
@@ -136,6 +136,7 @@ export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true)
     migrate_9_to_10,
     migrate_10_to_11,
     migrate_11_to_12,
+    migrate_12_to_13,
   ]
 
   for (; configVersion < CurrentVersion; configVersion++) {
@@ -645,7 +646,12 @@ async function migrate_10_to_11(dataStore: MigrateStore) {
   return false
 }
 
-// 占位，防止后面重复使用该版本号
+// 为桌面端和移动端从sqlite和配置文件迁移到IndexedDB占位，防止后面重复使用该版本号
 async function migrate_11_to_12(dataStore: MigrateStore) {
+  return true
+}
+
+// 为移动端从indexedDB迁移到Sqlite占位，防止后面重复使用该版本号
+async function migrate_12_to_13(dataStore: MigrateStore) {
   return true
 }

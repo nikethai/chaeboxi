@@ -4,7 +4,7 @@
  * */
 
 import { shallowEqual } from '@mantine/hooks'
-import { useQuery } from '@tanstack/react-query'
+import { CancelledError, useQuery } from '@tanstack/react-query'
 import compact from 'lodash/compact'
 import isEmpty from 'lodash/isEmpty'
 import {
@@ -98,11 +98,19 @@ export function useSession(sessionId: string | null) {
 
 async function invalidateSessionCache(sessionId: string) {
   // clear 1. session cache 2. session settings cache
-  await queryClient.invalidateQueries({
-    predicate(query) {
-      return query.queryKey.some((k) => k === sessionId)
-    },
-  })
+  try {
+    await queryClient.invalidateQueries({
+      predicate(query) {
+        return query.queryKey.some((k) => k === sessionId)
+      },
+    })
+  } catch (err) {
+    if (err instanceof CancelledError) {
+      console.debug('chatStore', 'invalidate session cache cancelled', sessionId)
+      return
+    }
+    throw err
+  }
 }
 
 // create session

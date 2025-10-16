@@ -28,7 +28,7 @@ function RouteComponent() {
   const { t } = useTranslation()
   const { sessionId: currentSessionId } = Route.useParams()
   const navigate = useNavigate()
-  const { session: currentSession } = useSession(currentSessionId)
+  const { session: currentSession, isFetching } = useSession(currentSessionId)
   const setLastUsedChatModel = useStore(lastUsedModelStore, (state) => state.setChatModel)
   const setLastUsedPictureModel = useStore(lastUsedModelStore, (state) => state.setPictureModel)
 
@@ -173,12 +173,14 @@ function RouteComponent() {
       <ThreadHistoryDrawer session={currentSession} />
     </div>
   ) : (
-    <div className="flex flex-1 flex-col items-center justify-center min-h-[60vh]">
-      <div className="text-2xl font-semibold text-gray-700 mb-4">{t('Conversation not found')}</div>
-      <Button variant="outline" onClick={goHome}>
-        {t('Back to HomePage')}
-      </Button>
-    </div>
+    !isFetching && (
+      <div className="flex flex-1 flex-col items-center justify-center min-h-[60vh]">
+        <div className="text-2xl font-semibold text-gray-700 mb-4">{t('Conversation not found')}</div>
+        <Button variant="outline" onClick={goHome}>
+          {t('Back to HomePage')}
+        </Button>
+      </div>
+    )
   )
 }
 

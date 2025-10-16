@@ -15,6 +15,7 @@ import {
   type TextStreamPart,
   type ToolSet,
   type TypedToolCall,
+  type TypedToolError,
   type TypedToolResult,
   wrapLanguageModel,
 } from 'ai'
@@ -41,6 +42,7 @@ export interface CallSettings {
 interface ToolExecutionResult {
   toolCallId: string
   result: unknown
+  isError?: boolean
 }
 
 export default abstract class AbstractAISDKModel implements ModelInterface {
@@ -211,16 +213,57 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     }
   }
 
+  private processToolErrors<T extends ToolSet>(
+    toolErrors: TypedToolError<T>[],
+    contentParts: MessageContentParts,
+    options: CallChatCompletionOptions
+  ): void {
+    for (const toolError of toolErrors) {
+      const serializedError =
+        toolError.error instanceof Error
+          ? {
+              name: toolError.error.name,
+              message: toolError.error.message,
+              stack: toolError.error.stack,
+            }
+          : toolError.error
+      const mappedResult: ToolExecutionResult = {
+        toolCallId: toolError.toolCallId,
+        result: {
+          error: serializedError,
+          input: toolError.input,
+          toolName: toolError.toolName,
+        },
+        isError: true,
+      }
+      this.updateToolResultPart(mappedResult, contentParts)
+      options.onResultChange?.({ contentParts })
+    }
+  }
+
   private updateToolResultPart(toolResult: ToolExecutionResult, contentParts: MessageContentParts): void {
     const toolCallPart = contentParts.find((p) => p.type === 'tool-call' && p.toolCallId === toolResult.toolCallId) as
       | MessageToolCallPart
       | undefined
 
     if (toolCallPart) {
-      if ((toolResult.result as unknown) instanceof Error) {
-        console.debug('mcp tool execute error', toolResult.result)
+      const isError = toolResult.isError || (toolResult.result as unknown) instanceof Error
+      if (isError) {
+        if ((toolResult.result as unknown) instanceof Error) {
+          const error = toolResult.result as Error
+          console.debug('mcp tool execute error', error)
+          toolCallPart.result = {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+          }
+        } else {
+          console.debug('mcp tool execute error', toolResult.result)
+          toolCallPart.result = toolResult.result ?? {
+            message: 'Unknown tool error',
+          }
+        }
         toolCallPart.state = 'error'
-        toolCallPart.result = JSON.parse(JSON.stringify(toolResult.result))
       } else {
         toolCallPart.state = 'result'
         toolCallPart.result = toolResult.result
@@ -331,6 +374,10 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
 
       case 'tool-result':
         this.processToolResults([chunk], contentParts, _options)
+        break
+      case 'tool-error':
+        finalizeReasoningDuration()
+        this.processToolErrors([chunk], contentParts, _options)
         break
 
       case 'file':

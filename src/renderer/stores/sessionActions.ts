@@ -778,6 +778,8 @@ async function generate(
       case undefined: {
         const startTime = Date.now()
         let firstTokenLatency: number | undefined
+        const persistInterval = 2000
+        let lastPersistTimestamp = Date.now()
         const promptMsgs = await genMessageContext(settings, messages.slice(0, targetMsgIx))
         const modifyMessageCache: OnResultChangeWithCancel = async (updated) => {
           const textLength = getMessageText(targetMsg, true, true).length
@@ -790,8 +792,12 @@ async function generate(
             status: textLength > 0 ? [] : targetMsg.status,
             firstTokenLatency,
           }
-          // only update cache here
-          await modifyMessage(sessionId, targetMsg, false, true)
+          // update cache on each chunk and persist to storage periodically
+          const shouldPersist = Date.now() - lastPersistTimestamp >= persistInterval
+          await modifyMessage(sessionId, targetMsg, false, !shouldPersist)
+          if (shouldPersist) {
+            lastPersistTimestamp = Date.now()
+          }
         }
 
         const result = await streamText(model, {

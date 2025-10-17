@@ -56,14 +56,14 @@ export async function updateSessionList(updater: UpdaterFn<SessionMeta[]>) {
   if (!sessionListUpdateQueue) {
     sessionListUpdateQueue = new UpdateQueue<SessionMeta[]>(
       () => _listSessionsMeta(),
-      (sessions) => {
-        storage.setItemNow(StorageKey.ChatSessionsList, sessions)
+      async (sessions) => {
+        await storage.setItemNow(StorageKey.ChatSessionsList, sessions)
       }
     )
   }
   console.debug('chatStore', 'updateSessionList', updater)
-  await sessionListUpdateQueue.set(updater)
-  await queryClient.invalidateQueries({ queryKey: ['chat-sessions-list'] })
+  const result = await sessionListUpdateQueue.set(updater)
+  queryClient.setQueryData(['chat-sessions-list'], sortSessions(result))
 }
 
 // MARK: session operations
@@ -151,10 +151,10 @@ export async function updateSessionWithMessages(sessionId: string, updater: Upda
     // do not use await here to avoid data race
     sessionUpdateQueues[sessionId] = new UpdateQueue<Session>(
       () => getSession(sessionId),
-      (session) => {
+      async (session) => {
         if (session) {
           console.debug('chatStore', 'persist session', sessionId)
-          storage.setItemNow(StorageKeyGenerator.session(sessionId), session)
+          await storage.setItemNow(StorageKeyGenerator.session(sessionId), session)
         }
       }
     )

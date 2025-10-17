@@ -66,7 +66,13 @@ const configuration: webpack.Configuration = {
       },
       {
         test: /\.s?(a|c)ss$/,
-        use: [MiniCssExtractPlugin.loader, 'css-loader', 'sass-loader', 'postcss-loader'],
+        use: [MiniCssExtractPlugin.loader, 'css-loader', 'sass-loader', 'postcss-loader', {
+            loader: 'string-replace-loader',
+            options: {
+              search: /(\d+)dvh/g,
+              replace: '$1vh',
+            },
+          }],
         exclude: /\.module\.s?(c|a)ss$/,
         sideEffects: true,
       },

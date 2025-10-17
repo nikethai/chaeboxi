@@ -3,6 +3,7 @@ import { IconFileZip } from '@tabler/icons-react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from 'src/shared/utils'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { ScalableIcon } from '../ScalableIcon'
 
 type Props = {
@@ -27,10 +28,11 @@ const TokenCountMenu: FC<Props> = ({
   onCompressClick,
 }) => {
   const { t } = useTranslation()
+  const isSmallScreen = useIsSmallScreen()
 
   return (
     <Menu
-      trigger="hover"
+      trigger={isSmallScreen ? 'click' : 'hover'}
       openDelay={100}
       closeDelay={100}
       position="top"

@@ -577,6 +577,9 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           }}
           title={t('Edit Model')}
           centered={true}
+          classNames={{
+            content: '!max-h-[95vh]',
+          }}
         >
           <ModelList
             models={fetchedModels || []}

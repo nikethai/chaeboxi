@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/react'
+import dayjs from 'dayjs'
 import { getDefaultStore } from 'jotai'
 import { difference, intersection, keyBy, uniq, uniqBy } from 'lodash'
 import oldStore from 'store'
@@ -66,20 +67,25 @@ async function migrateStorage() {
     let hasOldData = false
     for (const oldStorage of oldVersionStorages) {
       const oldConfigVersion = await oldStorage.getStoreValue(StorageKey.ConfigVersion)
+
       if (oldConfigVersion) {
-        // 找到老版本的数据，说明是升级，执行数据迁移操作
-        log.info('migrateStorage: old version storage found, migrating data from old storage')
-        hasOldData = true
-        const keys = await oldStorage.getAllStoreKeys()
-        for (let index = 0; index < keys.length; index++) {
-          const key = keys[index]
-          try {
-            const val = await oldStorage.getStoreValue(key)
-            await storage.setItemNow(key, val)
-            log.info(`[] migrateStorage: ${index + 1} / ${keys.length} migrated`)
-          } catch {
-            log.info(`migrateStorage: failed to migrate ${key}`)
+        const migrated = await oldStorage.getStoreValue('migrated')
+        if (!migrated) {
+          // 找到老版本的数据，说明是升级，执行数据迁移操作
+          log.info('migrateStorage: old version storage found, migrating data from old storage')
+          hasOldData = true
+          const keys = await oldStorage.getAllStoreKeys()
+          for (let index = 0; index < keys.length; index++) {
+            const key = keys[index]
+            try {
+              const val = await oldStorage.getStoreValue(key)
+              await storage.setItemNow(key, val)
+              log.info(`[] migrateStorage: ${index + 1} / ${keys.length} migrated`)
+            } catch {
+              log.info(`migrateStorage: failed to migrate ${key}`)
+            }
           }
+          await oldStorage.setStoreValue('migrated', `migrated to indexedDB on ${dayjs().format('DD/MM/YYYY')}`)
         }
         break
       }
@@ -93,6 +99,7 @@ async function migrateStorage() {
     }
   } else if (platform.type === 'desktop' && configVersion <= 11) {
     // 桌面端configVersion <= 11时，需要将除了settings、configs和ConfigVersion以外的数据迁移
+    // 桌面端不需要设置migrated标志位，因为迁移之后老数据被删除了，不会重复迁移
     log.info('migrateStorage: old version storage found')
     const oldStorage = new DesktopFileStorage()
     const kvs = await oldStorage.getAllStoreValues()
@@ -106,6 +113,16 @@ async function migrateStorage() {
         log.info(`migrateStorage: ${index + 1} / ${keys.length} migrated`)
       } catch {
         log.info(`migrateStorage: failed to migrate ${key}`)
+      }
+    }
+  } else {
+    // 不需要迁移，但是需要设置一下标志位防止后面被重复迁移
+    const oldVersionStorages = getOldVersionStorages()
+    for (const oldStorage of oldVersionStorages) {
+      try {
+        await oldStorage.setStoreValue('migrated', `migrated to indexedDB before ${dayjs().format('DD/MM/YYYY')}`)
+      } catch (e) {
+        console.error(e)
       }
     }
   }

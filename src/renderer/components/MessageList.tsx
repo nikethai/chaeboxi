@@ -11,13 +11,15 @@ import {
   IconSwitch3,
   IconTrash,
 } from '@tabler/icons-react'
-import { useSetAtom } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { type FC, memo, type UIEventHandler, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type StateSnapshot, Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
 import type { Session, SessionThreadBrief } from 'src/shared/types'
+import { platformTypeAtom } from '@/hooks/useNeedRoomForWinControls'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
+import platform from '@/platform'
 import * as atoms from '@/stores/atoms'
 import {
   deleteFork,
@@ -184,11 +186,14 @@ export default function MessageList(props: { className?: string; currentSession:
     setMessageListElement(messageListRef)
   }, [])
 
+  const platformType = useAtomValue(platformTypeAtom)
+
   return (
     <div className={cn('w-full h-full mx-auto', props.className)}>
       <div className="overflow-hidden h-full pr-0 pl-1 sm:pl-0 relative" ref={messageListRef}>
         <Virtuoso
           style={{ scrollbarGutter: 'stable' }}
+          className={platformType === 'win32' ? 'scrollbar-custom' : ''}
           data={currentMessageList}
           ref={virtuoso}
           followOutput="smooth"

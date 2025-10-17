@@ -416,6 +416,9 @@ export function RouteComponent() {
         title={t('Edit Model')}
         centered={true}
         size="lg"
+        classNames={{
+          content: '!max-h-[95vh]',
+        }}
       >
         <ModelList
           models={allChatboxAIModels}

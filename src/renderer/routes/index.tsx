@@ -48,25 +48,6 @@ function Index() {
 
   const { providers } = useProviders()
 
-  // 理论上 initEmptyChatSession 的时候就已经读取了chatSessionSettingsAtom的值了，但是由于atom是异步的，冷启动的时候大概率会拿到一个空值，所以这里再设置一次
-  // useEffect(() => {
-  //   setSession((old) => ({
-  //     ...old,
-  //     settings: {
-  //       ...old.settings,
-  //       maxContextMessageCount: settings.maxContextMessageCount || 6,
-  //       temperature: settings.temperature || undefined,
-  //       topP: settings.topP || undefined,
-  //       ...(settings.defaultChatModel
-  //         ? {
-  //             provider: settings.defaultChatModel.provider,
-  //             modelId: settings.defaultChatModel.model,
-  //           }
-  //         : chatSessionSettings),
-  //     },
-  //   }))
-  // }, [chatSessionSettings, settings])
-
   const selectedModel = useMemo(() => {
     if (session.settings?.provider && session.settings?.modelId) {
       return {

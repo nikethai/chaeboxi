@@ -2,7 +2,7 @@ import { atom, useAtomValue } from 'jotai'
 import { debounce } from 'lodash'
 import platform from '@/platform'
 
-const isFullscreenAtom = atom(false)
+export const isFullscreenAtom = atom(false)
 
 isFullscreenAtom.onMount = (set) => {
   const check = async () => {
@@ -17,7 +17,7 @@ isFullscreenAtom.onMount = (set) => {
   }
 }
 
-const platformTypeAtom = atom('')
+export const platformTypeAtom = atom('')
 
 platformTypeAtom.onMount = (set) => {
   platform.getPlatform().then((p) => {

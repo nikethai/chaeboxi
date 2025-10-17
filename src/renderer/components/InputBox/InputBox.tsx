@@ -870,7 +870,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   />
 
                   <Menu
-                    trigger="hover"
+                    trigger={isSmallScreen ? 'click' : 'hover'}
                     openDelay={100}
                     closeDelay={100}
                     keepMounted
@@ -1040,10 +1040,11 @@ const AttachmentMenu: React.FC<{
   size?: number
   iconSize?: number
 }> = ({ onImageUploadClick, onFileUploadClick, handleAttachLink, t, size = 24, iconSize = 20 }) => {
+  const isSmallScreen = useIsSmallScreen()
   return (
     <Menu
       shadow="md"
-      trigger="hover"
+      trigger={isSmallScreen ? 'click' : 'hover'}
       position="top-start"
       openDelay={100}
       closeDelay={100}

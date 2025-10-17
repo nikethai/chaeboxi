@@ -50,7 +50,6 @@ import { router } from '@/router'
 import Sidebar from '@/Sidebar'
 import * as atoms from '@/stores/atoms'
 import * as premiumActions from '@/stores/premiumActions'
-
 import * as settingActions from '@/stores/settingActions'
 import { settingsStore, useLanguage, useSettingsStore, useTheme } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
@@ -303,7 +302,7 @@ const creteMantineTheme = (scale = 1) =>
         'var(--mantine-color-white)',
         'var(--mantine-color-white)',
         'var(--mantine-color-white)',
-        'var(--mantine-color-white)',
+        'var(--mantine-color-dark-7)',
         'var(--mantine-color-white)',
       ],
       'chatbox-background-secondary': [
@@ -315,7 +314,7 @@ const creteMantineTheme = (scale = 1) =>
         'var(--mantine-color-gray-1)',
         'var(--mantine-color-gray-1)',
         'var(--mantine-color-gray-1)',
-        'var(--mantine-color-gray-1)',
+        'var(--mantine-color-dark-5)',
         'var(--mantine-color-gray-1)',
       ],
       'chatbox-background-tertiary': [

@@ -44,7 +44,7 @@ export const MessageNavigation: FC<MessageNavigationProps> = ({
     <div
       className={clsx(
         'absolute right-0 py-6 pl-2 bottom-0 transition-all',
-        visible ? '-translate-x-2 opacity-100' : 'translate-x-1/2 opacity-0'
+        visible ? '-translate-x-3 opacity-100' : 'translate-x-1/2 opacity-0'
       )}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}

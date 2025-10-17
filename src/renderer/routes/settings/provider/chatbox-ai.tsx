@@ -14,6 +14,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { type ModelProvider, ModelProviderEnum } from 'src/shared/types'
 import { ModelList } from '@/components/ModelList'
+import { ScalableIcon } from '@/components/ScalableIcon'
 import useChatboxAIModels from '@/hooks/useChatboxAIModels'
 import { trackingEvent } from '@/packages/event'
 import { getLicenseDetailRealtime } from '@/packages/remote'
@@ -119,11 +120,11 @@ export function RouteComponent() {
           h={24}
           onClick={() => platform.openLink('https://chatboxai.app')}
         >
-          <IconExternalLink size={24} />
+          <ScalableIcon icon={IconExternalLink} size={24} />
         </Button>
 
         <Flex gap="xxs" align="center" className="ml-auto" c="chatbox-brand">
-          <IconHelp size={16} />
+          <ScalableIcon icon={IconHelp} />
           <Text
             component="a"
             c="chatbox-brand"
@@ -279,7 +280,7 @@ export function RouteComponent() {
                 licenseDetail.expansion_pack_limit - licenseDetail.expansion_pack_usage <= 0 && (
                   <Alert variant="light" color="yellow" p="sm">
                     <Flex gap="xs" align="center" c="chatbox-primary">
-                      <IconExclamationCircle size={16} className="flex-shrink-0" />
+                      <ScalableIcon icon={IconExclamationCircle} className="flex-shrink-0" />
                       <Text>{t('You have no more Chatbox AI quota left this month.')}</Text>
 
                       <a
@@ -290,7 +291,7 @@ export function RouteComponent() {
                         <Text span fw={600} className="whitespace-nowrap">
                           {t('get more')}
                         </Text>
-                        <IconArrowRight size={16} />
+                        <ScalableIcon icon={IconArrowRight} />
                       </a>
                     </Flex>
                   </Alert>
@@ -335,8 +336,8 @@ export function RouteComponent() {
                       t('Ideal for work and study'),
                     ].map((item) => (
                       <Flex key={item} gap="xs" align="center">
-                        <IconCircleCheckFilled
-                          size={16}
+                        <ScalableIcon
+                          icon={IconCircleCheckFilled}
                           className=" flex-shrink-0 flex-grow-0 text-[var(--mantine-color-chatbox-brand-text)]"
                         />
                         <Text>{item}</Text>
@@ -385,7 +386,7 @@ export function RouteComponent() {
                 size="compact-xs"
                 px="sm"
                 onClick={resetModels}
-                leftSection={<IconRestore size={12} />}
+                leftSection={<ScalableIcon icon={IconRestore} size={12} />}
               >
                 {t('Reset')}
               </Button>
@@ -397,7 +398,7 @@ export function RouteComponent() {
                 size="compact-xs"
                 px="sm"
                 onClick={handleFetchModels}
-                leftSection={<IconRefresh size={12} />}
+                leftSection={<ScalableIcon icon={IconRefresh} size={12} />}
               >
                 {t('Fetch')}
               </Button>

@@ -14,6 +14,7 @@ import * as remote from '@/packages/remote'
 import platform from '@/platform'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { trackEvent } from '@/utils/track'
+import { ScalableIcon } from '../ScalableIcon'
 import KnowledgeBaseDocuments from './KnowledgeBaseDocuments'
 import {
   KnowledgeBaseChatboxAIInfo,
@@ -46,7 +47,7 @@ const ModelPill: React.FC<ModelPillProps> = ({ modelValue, formatModelName, isPr
 
   const getIcon = () => {
     if (!hasModel || isProviderAvailable(modelValue)) return null
-    return <IconAlertTriangle size={12} color="red" title={t('Provider unavailable')} />
+    return <ScalableIcon icon={IconAlertTriangle} size={12} color="red" title={t('Provider unavailable')} />
   }
 
   const maxWidth = isEmbedding ? 200 : 150
@@ -335,7 +336,7 @@ const KnowledgeBasePage: React.FC = () => {
         <Title order={5}>{t('Knowledge Base')}</Title>
         <Button variant="outline" onClick={() => setShowCreate(true)} disabled={isUnsupportedPlatform}>
           <Group gap="xs">
-            <IconPlus size={16} />
+            <ScalableIcon icon={IconPlus} size={16} />
             <Text size="sm" c="chatbox-brand" fw={400}>
               {t('Add')}
             </Text>
@@ -344,7 +345,12 @@ const KnowledgeBasePage: React.FC = () => {
       </Group>
 
       {isUnsupportedPlatform && (
-        <Alert variant="light" color="orange" title={t('Platform Not Supported')} icon={<IconInfoCircle size={16} />}>
+        <Alert
+          variant="light"
+          color="orange"
+          title={t('Platform Not Supported')}
+          icon={<ScalableIcon icon={IconInfoCircle} size={16} />}
+        >
           <Text size="sm">
             {t(
               'Knowledge Base functionality is not available on Windows ARM64 due to library compatibility issues. This feature is supported on Windows x64, macOS, and Linux.'
@@ -450,7 +456,7 @@ const KnowledgeBasePage: React.FC = () => {
           {kbList.length === 0 ? (
             <Paper withBorder p="xl" style={{ textAlign: 'center' }}>
               <Stack gap="md" align="center">
-                <IconInfoCircle size={48} color="var(--mantine-color-dimmed)" />
+                <ScalableIcon icon={IconInfoCircle} size={48} color="var(--mantine-color-dimmed)" />
                 <Stack gap="xs" align="center">
                   <Text fw={500} size="lg">
                     {t('No Knowledge Base Yet')}
@@ -463,7 +469,7 @@ const KnowledgeBasePage: React.FC = () => {
                 </Stack>
                 <Button variant="outline" onClick={() => setShowCreate(true)} size="sm">
                   <Group gap="xs">
-                    <IconPlus size={16} />
+                    <ScalableIcon icon={IconPlus} size={16} />
                     {t('Create First Knowledge Base')}
                   </Group>
                 </Button>

@@ -17,6 +17,7 @@ import BrandGithub from '@/components/icons/BrandGithub'
 import BrandRedNote from '@/components/icons/BrandRedNote'
 import BrandWechat from '@/components/icons/BrandWechat'
 import Page from '@/components/Page'
+import { ScalableIcon } from '@/components/ScalableIcon'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import useVersion from '@/hooks/useVersion'
 import platform from '@/platform'
@@ -84,7 +85,7 @@ function RouteComponent() {
           {_i18n.language === 'zh-Hans' ? (
             <Stack gap="xs" p="md" bg="var(--mantine-color-chatbox-warning-light)" className="rounded-lg">
               <Flex align="center" gap="xxs" c="chatbox-error">
-                <IconAlertTriangle size={24} className="!text-inherit" />
+                <ScalableIcon icon={IconAlertTriangle} size={24} className="!text-inherit" />
                 <Title order={5}>正版提示</Title>
               </Flex>
               <Text>
@@ -232,7 +233,7 @@ function ListItem({
               {value}
             </Text>
           )}
-          {link && <IconChevronRight size={20} className="!text-inherit" />}
+          {link && <ScalableIcon icon={IconChevronRight} size={20} className="!text-inherit" />}
         </>
       )}
     </Flex>

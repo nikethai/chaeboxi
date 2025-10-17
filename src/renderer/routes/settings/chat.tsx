@@ -1,12 +1,12 @@
-import { Box, Button, Divider, FileButton, Flex, Stack, Switch, Text, Textarea, Title, Tooltip } from '@mantine/core'
-import PersonIcon from '@mui/icons-material/Person'
-import SmartToyIcon from '@mui/icons-material/SmartToy'
+import { Button, Divider, FileButton, Flex, Stack, Switch, Text, Textarea, Title, Tooltip } from '@mantine/core'
 import { IconInfoCircle } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import { chatSessionSettings, getDefaultPrompt } from 'src/shared/defaults'
-import { handleImageInputAndSave, ImageInStorage } from '@/components/Image'
+import { AssistantAvatar, UserAvatar } from '@/components/Avatar'
+import { handleImageInputAndSave } from '@/components/Image'
 import MaxContextMessageCountSlider from '@/components/MaxContextMessageCountSlider'
+import { ScalableIcon } from '@/components/ScalableIcon'
 import SliderWithInput from '@/components/SliderWithInput'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -41,18 +41,7 @@ export function RouteComponent() {
             {t('User Avatar')}
           </Text>
           <Flex align="center" gap="xs">
-            <Box w={56} h={56} mr="xs" className=" rounded-full overflow-hidden">
-              {settings.userAvatarKey ? (
-                <ImageInStorage
-                  storageKey={settings.userAvatarKey}
-                  className="object-cover object-center w-full h-full"
-                />
-              ) : (
-                <Flex align="center" justify="center" c="white" className="w-full h-full bg-[#bdbdbd] rounded-full">
-                  <PersonIcon fontSize="medium" />
-                </Flex>
-              )}
-            </Box>
+            <UserAvatar size={56} avatarKey={settings.userAvatarKey} />
             <FileButton
               onChange={(file) => {
                 if (file) {
@@ -86,18 +75,7 @@ export function RouteComponent() {
             {t('Default Assistant Avatar')}
           </Text>
           <Flex align="center" gap="xs">
-            <Box w={56} h={56} mr="xs" className=" rounded-full overflow-hidden">
-              {settings.defaultAssistantAvatarKey ? (
-                <ImageInStorage
-                  storageKey={settings.defaultAssistantAvatarKey}
-                  className="object-cover object-center w-full h-full"
-                />
-              ) : (
-                <Flex align="center" justify="center" c="white" className="w-full h-full bg-[#bdbdbd] rounded-full">
-                  <SmartToyIcon fontSize="medium" />
-                </Flex>
-              )}
-            </Box>
+            <AssistantAvatar avatarKey={settings.defaultAssistantAvatarKey} size={56} />
             <FileButton
               onChange={(file) => {
                 if (file) {
@@ -184,7 +162,11 @@ export function RouteComponent() {
               zIndex={3000}
               events={{ hover: true, focus: true, touch: true }}
             >
-              <IconInfoCircle size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
+              <ScalableIcon
+                icon={IconInfoCircle}
+                size={20}
+                className="text-[var(--mantine-color-chatbox-tertiary-text)]"
+              />
             </Tooltip>
           </Flex>
 
@@ -204,7 +186,11 @@ export function RouteComponent() {
               zIndex={3000}
               events={{ hover: true, focus: true, touch: true }}
             >
-              <IconInfoCircle size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
+              <ScalableIcon
+                icon={IconInfoCircle}
+                size={20}
+                className="text-[var(--mantine-color-chatbox-tertiary-text)]"
+              />
             </Tooltip>
           </Flex>
 

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import type { CustomProviderBaseInfo, ModelProviderEnum, ProviderInfo, ProviderSettings } from 'src/shared/types'
 import { ModelProviderType } from 'src/shared/types'
 import { ModelList } from '@/components/ModelList'
+import { ScalableIcon } from '@/components/ScalableIcon'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { add as addToast } from '@/stores/toastActions'
 
@@ -159,7 +160,7 @@ export function ImportProviderModal({ opened, onClose, importedConfig, existingP
               borderRadius: '8px',
             }}
           >
-            <IconAlertTriangle size={16} color="var(--mantine-color-chatbox-error-5)" />
+            <ScalableIcon icon={IconAlertTriangle} color="var(--mantine-color-chatbox-error-5)" />
             <Box flex={1}>
               <Text size="sm" fw={600} c="chatbox-error">
                 {t('Provider already exists')}

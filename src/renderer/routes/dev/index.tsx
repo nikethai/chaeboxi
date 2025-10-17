@@ -1,6 +1,7 @@
 import { Badge, Button, Card, Container, Group, Paper, Stack, Text, Title } from '@mantine/core'
 import { IconCode, IconExternalLink, IconEye } from '@tabler/icons-react'
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { ScalableIcon } from '@/components/ScalableIcon'
 
 export const Route = createFileRoute('/dev/')({
   component: DevIndexPage,
@@ -44,7 +45,7 @@ function DevIndexPage() {
         <Paper shadow="xs" p="lg" radius="md">
           <Title order={3} mb="md">
             <Group gap="xs">
-              <IconEye size={20} />
+              <ScalableIcon icon={IconEye} size={20} />
               <span>Component Previews</span>
             </Group>
           </Title>
@@ -71,7 +72,7 @@ function DevIndexPage() {
                     to={page.path}
                     variant="light"
                     size="sm"
-                    rightSection={<IconExternalLink size={16} />}
+                    rightSection={<ScalableIcon icon={IconExternalLink} />}
                   >
                     Open Preview
                   </Button>
@@ -91,7 +92,7 @@ function DevIndexPage() {
         <Paper shadow="xs" p="lg" radius="md" className="bg-blue-50 dark:bg-blue-950/20">
           <Title order={4} mb="md">
             <Group gap="xs">
-              <IconCode size={18} />
+              <ScalableIcon icon={IconCode} size={18} />
               <span>How to Add New Previews</span>
             </Group>
           </Title>

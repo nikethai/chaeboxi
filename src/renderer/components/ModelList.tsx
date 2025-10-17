@@ -11,10 +11,11 @@ import {
   IconTool,
 } from '@tabler/icons-react'
 import { capitalize } from 'lodash'
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ProviderModelInfo } from 'src/shared/types'
 import { formatNumber } from 'src/shared/utils'
+import { ScalableIcon } from './ScalableIcon'
 
 interface ModelListProps {
   models: ProviderModelInfo[]
@@ -62,7 +63,7 @@ export function ModelList({
       {showSearch && models.length > 0 && (
         <TextInput
           placeholder={t('Search models...') as string}
-          leftSection={<IconSearch size={16} />}
+          leftSection={<ScalableIcon icon={IconSearch} size={16} />}
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.currentTarget.value)}
           className="px-xxs pt-xxs"
@@ -106,21 +107,21 @@ export function ModelList({
                     {model.capabilities?.includes('reasoning') && (
                       <Tooltip label={t('Reasoning')} events={{ hover: true, focus: true, touch: true }}>
                         <Text span c="chatbox-warning" className="flex items-center" style={{ opacity: 0.7 }}>
-                          <IconBulb size={14} />
+                          <ScalableIcon icon={IconBulb} size={14} />
                         </Text>
                       </Tooltip>
                     )}
                     {model.capabilities?.includes('vision') && (
                       <Tooltip label={t('Vision')} events={{ hover: true, focus: true, touch: true }}>
                         <Text span c="chatbox-brand" className="flex items-center" style={{ opacity: 0.7 }}>
-                          <IconEye size={14} />
+                          <ScalableIcon icon={IconEye} size={14} />
                         </Text>
                       </Tooltip>
                     )}
                     {model.capabilities?.includes('tool_use') && (
                       <Tooltip label={t('Tool Use')} events={{ hover: true, focus: true, touch: true }}>
                         <Text span c="chatbox-success" className="flex items-center" style={{ opacity: 0.7 }}>
-                          <IconTool size={14} />
+                          <ScalableIcon icon={IconTool} size={14} />
                         </Text>
                       </Tooltip>
                     )}
@@ -131,7 +132,7 @@ export function ModelList({
                         events={{ hover: true, focus: true, touch: true }}
                       >
                         <Flex gap={2} align="center" c="dimmed" style={{ flexShrink: 0, opacity: 0.8 }}>
-                          <IconDatabase size={11} />
+                          <ScalableIcon icon={IconDatabase} size={12} />
                           <Text size="xs" style={{ whiteSpace: 'nowrap' }}>
                             {formatTokenCount(model.contextWindow)}
                           </Text>
@@ -144,7 +145,7 @@ export function ModelList({
                         events={{ hover: true, focus: true, touch: true }}
                       >
                         <Flex gap={2} align="center" c="dimmed" style={{ flexShrink: 0, opacity: 0.8 }}>
-                          <IconLogout size={11} />
+                          <ScalableIcon icon={IconLogout} size={12} />
                           <Text size="xs" style={{ whiteSpace: 'nowrap' }}>
                             {formatTokenCount(model.maxOutput)}
                           </Text>
@@ -167,7 +168,7 @@ export function ModelList({
                       bd={0}
                       onClick={() => onEditModel(model)}
                     >
-                      <IconSettings size={20} />
+                      <ScalableIcon icon={IconSettings} size={20} />
                     </Button>
                   )}
 
@@ -181,7 +182,7 @@ export function ModelList({
                       bd={0}
                       onClick={() => onDeleteModel(model.modelId)}
                     >
-                      <IconCircleMinus size={20} />
+                      <ScalableIcon icon={IconCircleMinus} size={20} />
                     </Button>
                   )}
 
@@ -197,11 +198,19 @@ export function ModelList({
                         bd={0}
                         onClick={() => onRemoveModel(model.modelId)}
                       >
-                        <IconCircleMinus size={20} className="text-[var(--mantine-color-chatbox-error-text)]" />
+                        <ScalableIcon
+                          icon={IconCircleMinus}
+                          size={20}
+                          className="text-[var(--mantine-color-chatbox-error-text)]"
+                        />
                       </Button>
                     ) : (
                       <Button variant="transparent" p={0} h="auto" size="xs" bd={0} onClick={() => onAddModel(model)}>
-                        <IconCirclePlus size={20} className="text-[var(--mantine-color-chatbox-success-text)]" />
+                        <ScalableIcon
+                          icon={IconCirclePlus}
+                          size={20}
+                          className="text-[var(--mantine-color-chatbox-success-text)]"
+                        />
                       </Button>
                     ))}
                 </Flex>

@@ -4,6 +4,7 @@ import clsx from 'clsx'
 import { useTranslation } from 'react-i18next'
 import type { ProviderModelInfo } from 'src/shared/types'
 import ProviderIcon from '../icons/ProviderIcon'
+import { ScalableIcon } from '../ScalableIcon'
 
 // Common styles
 export const SELECTED_BG_CLASS = 'bg-blue-50 dark:bg-[var(--mantine-color-dark-5)]'
@@ -70,21 +71,21 @@ export const ModelItem = ({
       {model.capabilities?.includes('reasoning') && (
         <Tooltip label={t('Reasoning')} events={{ hover: true, focus: true, touch: true }}>
           <Text span c="chatbox-warning" className="flex items-center ml-xxs" style={{ opacity: 0.7 }}>
-            <IconBulb size={14} />
+            <ScalableIcon icon={IconBulb} size={14} />
           </Text>
         </Tooltip>
       )}
       {model.capabilities?.includes('vision') && (
         <Tooltip label={t('Vision')} events={{ hover: true, focus: true, touch: true }}>
           <Text span c="chatbox-brand" className="flex items-center ml-xxs" style={{ opacity: 0.7 }}>
-            <IconEye size={14} />
+            <ScalableIcon icon={IconEye} size={14} />
           </Text>
         </Tooltip>
       )}
       {model.capabilities?.includes('tool_use') && (
         <Tooltip label={t('Tool Use')} events={{ hover: true, focus: true, touch: true }}>
           <Text span c="chatbox-success" className="flex items-center ml-xxs" style={{ opacity: 0.7 }}>
-            <IconTool size={14} />
+            <ScalableIcon icon={IconTool} size={14} />
           </Text>
         </Tooltip>
       )}
@@ -104,9 +105,9 @@ export const ModelItem = ({
           }}
         >
           {isFavorited ? (
-            <IconStarFilled size={16} className="text-inherit" />
+            <ScalableIcon icon={IconStarFilled} className="text-inherit" />
           ) : (
-            <IconStar size={16} className="text-inherit" />
+            <ScalableIcon icon={IconStar} className="text-inherit" />
           )}
         </Flex>
       )}
@@ -166,21 +167,21 @@ export const ModelItemInDrawer = ({
       {model.capabilities?.includes('reasoning') && (
         <Tooltip label={t('Reasoning')} events={{ hover: true, focus: true, touch: true }}>
           <Text span c="chatbox-warning" className="flex items-center" style={{ opacity: 0.7 }}>
-            <IconBulb size={14} />
+            <ScalableIcon icon={IconBulb} size={14} />
           </Text>
         </Tooltip>
       )}
       {model.capabilities?.includes('vision') && (
         <Tooltip label={t('Vision')} events={{ hover: true, focus: true, touch: true }}>
           <Text span c="chatbox-brand" className="flex items-center" style={{ opacity: 0.7 }}>
-            <IconEye size={14} />
+            <ScalableIcon icon={IconEye} size={14} />
           </Text>
         </Tooltip>
       )}
       {model.capabilities?.includes('tool_use') && (
         <Tooltip label={t('Tool Use')} events={{ hover: true, focus: true, touch: true }}>
           <Text span c="chatbox-success" className="flex items-center" style={{ opacity: 0.7 }}>
-            <IconTool size={14} />
+            <ScalableIcon icon={IconTool} size={14} />
           </Text>
         </Tooltip>
       )}
@@ -200,9 +201,9 @@ export const ModelItemInDrawer = ({
           }}
         >
           {isFavorited ? (
-            <IconStarFilled size={16} className="text-inherit" />
+            <ScalableIcon icon={IconStarFilled} className="text-inherit" />
           ) : (
-            <IconStar size={16} className="text-inherit" />
+            <ScalableIcon icon={IconStar} className="text-inherit" />
           )}
         </Flex>
       )}

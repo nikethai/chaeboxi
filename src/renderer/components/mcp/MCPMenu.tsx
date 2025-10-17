@@ -1,12 +1,14 @@
-import { Button, Flex, Group, Menu, Switch } from '@mantine/core'
+import { ActionIcon, Button, Flex, Group, Menu, Switch } from '@mantine/core'
 import { IconSettings2 } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
-import type { FC, ReactNode } from 'react'
+import { type FC, type ReactNode, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMCPServerStatus, useToggleMCPServer } from '@/hooks/mcp'
+import { navigateToSettings } from '@/modals/Settings'
 import { BUILTIN_MCP_SERVERS } from '@/packages/mcp/builtin'
 import { useAutoValidate } from '@/stores/premiumActions'
 import { useMcpSettings } from '@/stores/settingsStore'
+import { ScalableIcon } from '../ScalableIcon'
 import MCPStatus from './MCPStatus'
 
 interface ServerItem {
@@ -44,11 +46,14 @@ const MCPMenu: FC<{ children: (enabledTools: number) => ReactNode }> = ({ childr
   const isPremium = useAutoValidate()
   const onEnabledChange = useToggleMCPServer()
   const enabledToolsCount = mcp.servers.filter((s) => s.enabled).length + mcp.enabledBuiltinServers.length
+  const [opened, setOpened] = useState(false)
   return (
     <Menu
       trigger="hover"
       openDelay={100}
       closeDelay={100}
+      opened={opened}
+      onChange={setOpened}
       shadow="md"
       withArrow
       width={240}
@@ -61,12 +66,19 @@ const MCPMenu: FC<{ children: (enabledTools: number) => ReactNode }> = ({ childr
     >
       <Menu.Target>{children(enabledToolsCount)}</Menu.Target>
       <Menu.Dropdown>
-        <Flex justify="space-between">
+        <Flex justify="space-between" align="center">
           <Menu.Label fw={600}>MCP</Menu.Label>
           <Menu.Label>
-            <Link to="/settings/mcp">
-              <IconSettings2 size={16} color="var(--mantine-color-chatbox-tertiary-text)" />
-            </Link>
+            <ActionIcon
+              variant="subtle"
+              size={20}
+              onClick={() => {
+                setOpened(false)
+                navigateToSettings('/mcp')
+              }}
+            >
+              <ScalableIcon icon={IconSettings2} size={16} color="var(--mantine-color-chatbox-tertiary-text)" />
+            </ActionIcon>
           </Menu.Label>
         </Flex>
         {isPremium && (

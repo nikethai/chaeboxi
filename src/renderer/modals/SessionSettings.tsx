@@ -1,19 +1,7 @@
 import NiceModal, { muiDialogV5, useModal } from '@ebay/nice-modal-react'
-import { Flex, Stack, Switch, Text, Tooltip } from '@mantine/core'
-import ImageIcon from '@mui/icons-material/Image'
-import SmartToyIcon from '@mui/icons-material/SmartToy'
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  TextField,
-  Typography,
-  useTheme,
-} from '@mui/material'
-import { IconInfoCircle } from '@tabler/icons-react'
+import { ActionIcon, FileButton, Flex, Stack, Switch, Text, Tooltip } from '@mantine/core'
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Typography } from '@mui/material'
+import { IconInfoCircle, IconTrash } from '@tabler/icons-react'
 import { pick } from 'lodash'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -27,12 +15,13 @@ import {
   type SessionSettings,
 } from 'src/shared/types'
 import { Accordion, AccordionDetails, AccordionSummary } from '@/components/Accordion'
-import EditableAvatar from '@/components/EditableAvatar'
-import { handleImageInputAndSave, ImageInStorage } from '@/components/Image'
+import { AssistantAvatar } from '@/components/Avatar'
+import { handleImageInputAndSave } from '@/components/Image'
 import ImageCountSlider from '@/components/ImageCountSlider'
 import ImageStyleSelect from '@/components/ImageStyleSelect'
 import LazyNumberInput from '@/components/LazyNumberInput'
 import MaxContextMessageCountSlider from '@/components/MaxContextMessageCountSlider'
+import { ScalableIcon } from '@/components/ScalableIcon'
 import SegmentedControl from '@/components/SegmentedControl'
 import SliderWithInput from '@/components/SliderWithInput'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
@@ -48,8 +37,6 @@ const SessionSettingsModal = NiceModal.create(
     const modal = useModal()
     const { t } = useTranslation()
     const isSmallScreen = useIsSmallScreen()
-    const defaultAssistantAvatarKey = useSettingsStore((state) => state.defaultAssistantAvatarKey)
-    const theme = useTheme()
 
     const [editingData, setEditingData] = useState<Session | null>(session || null)
     useEffect(() => {
@@ -158,56 +145,46 @@ const SessionSettingsModal = NiceModal.create(
       >
         <DialogTitle>{t('Conversation Settings')}</DialogTitle>
         <DialogContent>
-          <DialogContentText></DialogContentText>
-
-          <EditableAvatar
-            onChange={(event) => {
-              if (!event.target.files) {
-                return
-              }
-              const file = event.target.files[0]
+          <FileButton
+            accept="image/png,image/jpeg"
+            onChange={(file) => {
               if (file) {
                 const key = StorageKeyGenerator.picture(`assistant-avatar:${session?.id}`)
                 handleImageInputAndSave(file, key, () => setEditingData({ ...editingData, assistantAvatarKey: key }))
               }
             }}
-            onRemove={() => {
-              setEditingData({ ...editingData, assistantAvatarKey: undefined })
-            }}
-            removable={!!editingData.assistantAvatarKey}
-            sx={{
-              backgroundColor:
-                editingData.type === 'picture'
-                  ? theme.palette.secondary.main
-                  : editingData.picUrl
-                    ? theme.palette.background.default
-                    : theme.palette.primary.main,
-            }}
           >
-            {editingData.assistantAvatarKey ? (
-              <ImageInStorage
-                storageKey={editingData.assistantAvatarKey}
-                className="object-cover object-center w-full h-full"
-              />
-            ) : editingData.picUrl ? (
-              <img src={editingData.picUrl} className="object-cover object-center w-full h-full" />
-            ) : editingData.type === 'picture' ? (
-              <ImageIcon
-                fontSize="large"
-                sx={{
-                  width: '60px',
-                  height: '60px',
-                }}
-              />
-            ) : defaultAssistantAvatarKey ? (
-              <ImageInStorage
-                storageKey={defaultAssistantAvatarKey}
-                className="object-cover object-center w-full h-full"
-              />
-            ) : (
-              <SmartToyIcon fontSize="large" />
+            {(props) => (
+              <Flex justify="center">
+                <Flex className="relative">
+                  <AssistantAvatar
+                    size={isSmallScreen ? 64 : 80}
+                    avatarKey={editingData.assistantAvatarKey}
+                    picUrl={editingData.picUrl}
+                    sessionType={editingData.type}
+                    {...props}
+                  />
+
+                  {editingData.assistantAvatarKey && (
+                    <ActionIcon
+                      color="chatbox-error"
+                      size={24}
+                      radius="xl"
+                      bottom={0}
+                      right={0}
+                      className="absolute"
+                      onClick={() => {
+                        setEditingData({ ...editingData, assistantAvatarKey: undefined })
+                      }}
+                    >
+                      <ScalableIcon icon={IconTrash} size={18} />
+                    </ActionIcon>
+                  )}
+                </Flex>
+              </Flex>
             )}
-          </EditableAvatar>
+          </FileButton>
+
           <TextField
             autoFocus={!isSmallScreen}
             margin="dense"
@@ -390,7 +367,7 @@ function ThinkingBudgetConfig({
           zIndex={3000}
           events={{ hover: true, focus: true, touch: true }}
         >
-          <IconInfoCircle size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
+          <ScalableIcon icon={IconInfoCircle} size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
         </Tooltip>
       </Flex>
 
@@ -502,7 +479,7 @@ function OpenAIProviderConfig({
           zIndex={3000}
           events={{ hover: true, focus: true, touch: true }}
         >
-          <IconInfoCircle size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
+          <ScalableIcon icon={IconInfoCircle} size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
         </Tooltip>
       </Flex>
 
@@ -578,7 +555,11 @@ export function ChatConfig({
             zIndex={3000}
             events={{ hover: true, focus: true, touch: true }}
           >
-            <IconInfoCircle size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
+            <ScalableIcon
+              icon={IconInfoCircle}
+              size={20}
+              className="text-[var(--mantine-color-chatbox-tertiary-text)]"
+            />
           </Tooltip>
         </Flex>
 
@@ -600,7 +581,11 @@ export function ChatConfig({
             zIndex={3000}
             events={{ hover: true, focus: true, touch: true }}
           >
-            <IconInfoCircle size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
+            <ScalableIcon
+              icon={IconInfoCircle}
+              size={20}
+              className="text-[var(--mantine-color-chatbox-tertiary-text)]"
+            />
           </Tooltip>
         </Flex>
 
@@ -622,7 +607,11 @@ export function ChatConfig({
             zIndex={3000}
             events={{ hover: true, focus: true, touch: true }}
           >
-            <IconInfoCircle size={20} className="text-[var(--mantine-color-chatbox-tertiary-text)]" />
+            <ScalableIcon
+              icon={IconInfoCircle}
+              size={20}
+              className="text-[var(--mantine-color-chatbox-tertiary-text)]"
+            />
           </Tooltip>
         </Flex>
 

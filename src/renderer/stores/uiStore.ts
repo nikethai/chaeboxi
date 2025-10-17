@@ -21,7 +21,6 @@ export const uiStore = createStore(
         messageScrolling: null as RefObject<VirtuosoHandle> | null,
         messageScrollingAtTop: false,
         messageScrollingAtBottom: false,
-        messageScrollingScrollPosition: 0, // 当前视图高度位置（包含了视图的高度+视图距离顶部的偏移）
         showSidebar: platform.type !== 'mobile',
         openSearchDialog: false,
         openAboutDialog: false, // 是否展示相关信息的窗口
@@ -100,10 +99,6 @@ export const uiStore = createStore(
 
         setMessageScrollingAtBottom: (messageScrollingAtBottom: boolean) => {
           set({ messageScrollingAtBottom })
-        },
-
-        setMessageScrollingScrollPosition: (messageScrollingScrollPosition: number) => {
-          set({ messageScrollingScrollPosition })
         },
 
         addSessionKnowledgeBase: (sessionId: string, knowledgeBase: Pick<KnowledgeBase, 'id' | 'name'>) => {

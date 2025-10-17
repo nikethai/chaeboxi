@@ -1,5 +1,6 @@
 import {
   Button,
+  Collapse,
   Combobox,
   type ComboboxProps,
   Flex,
@@ -18,6 +19,7 @@ import type { ProviderModelInfo } from 'src/shared/types'
 import { useProviders } from '@/hooks/useProviders'
 import { navigateToSettings } from '@/modals/Settings'
 import { collapsedProvidersAtom } from '@/stores/atoms/uiAtoms'
+import { ScalableIcon } from '../ScalableIcon'
 import { ProviderHeader } from './ProviderHeader'
 import { groupFavoriteModels, ModelItem, SELECTED_BG_CLASS } from './shared'
 
@@ -61,7 +63,7 @@ const SearchBox = ({
   t: (key: string) => string
 }) => (
   <Flex align="center" className="px-xs py-xs">
-    <IconSearch size={16} className="text-[var(--mantine-color-dimmed)]" />
+    <ScalableIcon icon={IconSearch} className="text-[var(--mantine-color-dimmed)]" />
     <TextInput
       value={search}
       onChange={(event) => onSearchChange(event.currentTarget.value)}
@@ -171,7 +173,9 @@ export const DesktopModelSelector = forwardRef<HTMLDivElement, DesktopModelSelec
             onClick={() => toggleProviderCollapse(provider.id)}
             className="-ml-xs -mr-xs pr-sm"
           />
-          {!isCollapsed && <div className="mb-xs">{options}</div>}
+          <Collapse in={!isCollapsed}>
+            <div className="mb-xs">{options}</div>
+          </Collapse>
         </div>
       )
     })

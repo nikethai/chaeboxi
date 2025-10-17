@@ -1,10 +1,10 @@
-import { Box, Flex, Stack, Text } from '@mantine/core'
-import { IconButton, Box as MuiBox, useTheme } from '@mui/material'
+import { ActionIcon, Box, Flex, Stack, Text } from '@mantine/core'
 import {
   IconAdjustmentsHorizontal,
   IconBook,
   IconBox,
   IconCategory,
+  IconChevronLeft,
   IconChevronRight,
   IconCircleDottedLetterM,
   IconKeyboard,
@@ -13,10 +13,10 @@ import {
 } from '@tabler/icons-react'
 import { createFileRoute, Link, Outlet, useCanGoBack, useRouter, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { ChevronLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Toaster } from 'sonner'
 import Page from '@/components/Page'
+import { ScalableIcon } from '@/components/ScalableIcon'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import platform from '@/platform'
 import { featureFlags } from '@/utils/feature-flags'
@@ -86,28 +86,22 @@ export function RouteComponent() {
   const routerState = useRouterState()
   const canGoBack = useCanGoBack()
   const isSmallScreen = useIsSmallScreen()
-  const theme = useTheme()
 
   return (
     <Page
       title={t('Settings')}
       left={
         isSmallScreen && routerState.location.pathname !== '/settings' && canGoBack ? (
-          <MuiBox onClick={() => router.history.back()}>
-            <IconButton
-              sx={
-                isSmallScreen
-                  ? {
-                      borderColor: theme.palette.action.hover,
-                      borderStyle: 'solid',
-                      borderWidth: 1,
-                    }
-                  : {}
-              }
-            >
-              <ChevronLeft size="20" />
-            </IconButton>
-          </MuiBox>
+          <ActionIcon
+            className="controls"
+            variant="subtle"
+            size={28}
+            color="chatbox-secondary"
+            mr="sm"
+            onClick={() => router.history.back()}
+          >
+            <IconChevronLeft />
+          </ActionIcon>
         ) : undefined
       }
     >
@@ -129,9 +123,10 @@ export function SettingsRoot() {
         <Stack
           p={isSmallScreen ? 0 : 'xs'}
           gap={isSmallScreen ? 0 : 'xs'}
+          maw={isSmallScreen ? undefined : 256}
           className={clsx(
             'border-solid border-0 border-r overflow-auto border-[var(--mantine-color-chatbox-border-primary-outline)]',
-            isSmallScreen ? 'w-full border-r-0' : 'flex-[1_0_auto] max-w-[16rem]'
+            isSmallScreen ? 'w-full border-r-0' : 'flex-[1_0_auto]'
           )}
         >
           {ITEMS.map((item) => (
@@ -165,7 +160,11 @@ export function SettingsRoot() {
                   {t(item.label)}
                 </Text>
                 {isSmallScreen && (
-                  <IconChevronRight size={20} className="!text-[var(--mantine-color-chatbox-tertiary-outline)]" />
+                  <ScalableIcon
+                    icon={IconChevronRight}
+                    size={20}
+                    className="!text-[var(--mantine-color-chatbox-tertiary-outline)]"
+                  />
                 )}
               </Flex>
             </Link>

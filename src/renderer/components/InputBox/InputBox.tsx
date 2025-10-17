@@ -60,6 +60,7 @@ import ProviderImageIcon from '../icons/ProviderImageIcon'
 import KnowledgeBaseMenu from '../knowledge-base/KnowledgeBaseMenu'
 import ModelSelector from '../ModelSelector'
 import MCPMenu from '../mcp/MCPMenu'
+import { ScalableIcon } from '../ScalableIcon'
 import { Keys } from '../Shortcut'
 import { ImageUploadButton } from './ImageUploadButton'
 import { ImageUploadInput } from './ImageUploadInput'
@@ -757,13 +758,13 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                         enabledTools > 0 ? (
                           <Button radius="md" variant="light" h="auto" w="auto" px="xs" py={0}>
                             <Flex gap="3xs" align="center">
-                              <IconHammer strokeWidth={1.8} size={22} />
+                              <ScalableIcon icon={IconHammer} strokeWidth={1.8} size={22} />
                               <span>{enabledTools}</span>
                             </Flex>
                           </Button>
                         ) : (
-                          <ActionIcon size="24px" variant="subtle" color="chatbox-secondary">
-                            <IconHammer strokeWidth={1.8} />
+                          <ActionIcon size={24} variant="subtle" color="chatbox-secondary">
+                            <ScalableIcon icon={IconHammer} size={22} strokeWidth={1.8} />
                           </ActionIcon>
                         )
                       }
@@ -772,11 +773,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   {featureFlags.knowledgeBase && (
                     <KnowledgeBaseMenu currentKnowledgeBaseId={knowledgeBase?.id} onSelect={handleKnowledgeBaseSelect}>
                       <ActionIcon
-                        size="24px"
+                        size={24}
                         variant="subtle"
                         color={knowledgeBase ? 'chatbox-brand' : 'chatbox-secondary'}
                       >
-                        <IconVocabulary strokeWidth={1.8} />
+                        <ScalableIcon icon={IconVocabulary} size={22} strokeWidth={1.8} />
                       </ActionIcon>
                     </KnowledgeBaseMenu>
                   )}
@@ -804,8 +805,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
                   {showRollbackThreadButton ? (
                     <Tooltip label={t('Back to Previous')} withArrow position="top-start">
-                      <ActionIcon size="sm" variant="subtle" color="chatbox-secondary" onClick={rollbackThread}>
-                        <IconArrowBackUp strokeWidth={1.8} />
+                      <ActionIcon size={24} variant="subtle" color="chatbox-secondary" onClick={rollbackThread}>
+                        <ScalableIcon icon={IconArrowBackUp} size={22} strokeWidth={1.8} />
                       </ActionIcon>
                     </Tooltip>
                   ) : (
@@ -822,13 +823,13 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       position="top-start"
                     >
                       <ActionIcon
-                        size="24px"
+                        size={24}
                         variant="subtle"
                         color="chatbox-secondary"
                         disabled={!onStartNewThread}
                         onClick={startNewThread}
                       >
-                        <IconFilePencil strokeWidth={1.8} />
+                        <ScalableIcon icon={IconFilePencil} size={22} strokeWidth={1.8} />
                       </ActionIcon>
                     </Tooltip>
                   )}
@@ -845,9 +846,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 tooltipLabel={t('Customize settings for the current conversation')}
                 disabled={!onClickSessionSettings}
               />
-              {/* <ActionIcon variant="subtle" color="chatbox-secondary">
-              <IconVocabulary />
-            </ActionIcon> */}
             </Flex>
 
             <Flex className="sm:!hidden" gap="xs">
@@ -870,6 +868,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     }}
                     isMobile
                   />
+
                   <Menu
                     trigger="hover"
                     openDelay={100}
@@ -890,14 +889,17 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                         bd="none"
                         color="chatbox-secondary"
                       >
-                        <IconSettings strokeWidth={1.8} />
+                        <ScalableIcon icon={IconSettings} size={20} strokeWidth={1.8} />
                       </ActionIcon>
                     </Menu.Target>
                     <Menu.Dropdown>
-                      <Menu.Item leftSection={<IconPlus size={16} />} onClick={startNewThread}>
+                      <Menu.Item leftSection={<ScalableIcon icon={IconPlus} size={16} />} onClick={startNewThread}>
                         {t('New Thread')}
                       </Menu.Item>
-                      <Menu.Item leftSection={<IconAdjustmentsHorizontal size={16} />} onClick={onClickSessionSettings}>
+                      <Menu.Item
+                        leftSection={<ScalableIcon icon={IconAdjustmentsHorizontal} size={16} />}
+                        onClick={onClickSessionSettings}
+                      >
                         {t('Conversation Settings')}
                       </Menu.Item>
                     </Menu.Dropdown>
@@ -940,8 +942,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       gap="2"
                       className="text-xs text-[var(--mantine-color-chatbox-secondary-text)] cursor-pointer hover:text-[var(--mantine-color-chatbox-primary-text)] transition-colors"
                     >
-                      <IconArrowUp size={14} />
-                      <Text size="xs">
+                      <ScalableIcon icon={IconArrowUp} size={14} />
+                      <Text span size="xs" className="whitespace-nowrap">
                         {formatNumber(totalTokens)}
                         {!isSmallScreen && modelInfo?.contextWindow && ` / ${formatNumber(modelInfo.contextWindow)}`}
                       </Text>
@@ -952,7 +954,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 <Tooltip
                   label={
                     <Flex align="center" c="white" gap="xxs">
-                      <IconAlertCircle size={12} className=" text-inherit" />
+                      <ScalableIcon icon={IconAlertCircle} size={12} className="text-inherit" />
                       <Text span size="xxs" c="white">
                         {t('Please select a model')}
                       </Text>
@@ -966,7 +968,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     <ImageModelSelect onSelect={onSelectModel}>
                       <span className="flex items-center text-sm cursor-pointer bg-transparent h-6">
                         {providers.find((p) => p.id === model?.provider)?.name || model?.provider || t('Select Model')}
-                        <IconSelector size={16} className="opacity-50" />
+                        <ScalableIcon icon={IconSelector} size={16} className="opacity-50" />
                       </span>
                     </ImageModelSelect>
                   ) : (
@@ -985,7 +987,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                         <Text size={isSmallScreen ? 'xs' : 'sm'} className="line-clamp-1">
                           {modelSelectorDisplayText}
                         </Text>
-                        <IconSelector
+                        <ScalableIcon
+                          icon={IconSelector}
                           size={20}
                           className="flex-[0_0_auto] text-[var(--mantine-color-chatbox-tertiary-text)]"
                         />
@@ -1007,7 +1010,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     '!text-white !bg-[var(--mantine-color-chatbox-background-tertiary-text)]'
                 )}
               >
-                {generating ? <IconPlayerStopFilled size={20} /> : <IconArrowUp size={20} />}
+                {generating ? (
+                  <ScalableIcon icon={IconPlayerStopFilled} size={20} />
+                ) : (
+                  <ScalableIcon icon={IconArrowUp} size={20} />
+                )}
               </ActionIcon>
             </Flex>
           </Flex>
@@ -1053,17 +1060,17 @@ const AttachmentMenu: React.FC<{
           color="chatbox-secondary"
           {...(size === 20 ? { w: 20, h: 20, miw: 20, mih: 20, bd: 'none' } : {})}
         >
-          <IconCirclePlus strokeWidth={1.8} size={iconSize} />
+          <ScalableIcon icon={IconCirclePlus} strokeWidth={1.8} size={iconSize} />
         </ActionIcon>
       </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Item leftSection={<IconPhoto size={16} />} onClick={onImageUploadClick}>
+        <Menu.Item leftSection={<ScalableIcon icon={IconPhoto} size={16} />} onClick={onImageUploadClick}>
           {t('Attach Image')}
         </Menu.Item>
-        <Menu.Item leftSection={<IconFolder size={16} />} onClick={onFileUploadClick}>
+        <Menu.Item leftSection={<ScalableIcon icon={IconFolder} size={16} />} onClick={onFileUploadClick}>
           {t('Select File')}
         </Menu.Item>
-        <Menu.Item leftSection={<IconLink size={16} />} onClick={handleAttachLink}>
+        <Menu.Item leftSection={<ScalableIcon icon={IconLink} size={16} />} onClick={handleAttachLink}>
           {t('Attach Link')}
         </Menu.Item>
       </Menu.Dropdown>

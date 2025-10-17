@@ -3,6 +3,7 @@ import { IconFileZip } from '@tabler/icons-react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatNumber } from 'src/shared/utils'
+import { ScalableIcon } from '../ScalableIcon'
 
 type Props = {
   currentInputTokens: number
@@ -102,7 +103,11 @@ const TokenCountMenu: FC<Props> = ({
         {onCompressClick && contextTokens > 0 && (
           <>
             <Menu.Divider />
-            <Menu.Item leftSection={<IconFileZip size={16} />} onClick={onCompressClick} color="chatbox-brand">
+            <Menu.Item
+              leftSection={<ScalableIcon icon={IconFileZip} size={16} />}
+              onClick={onCompressClick}
+              color="chatbox-brand"
+            >
               {t('Compress Conversation')}
             </Menu.Item>
           </>

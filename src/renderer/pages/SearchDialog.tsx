@@ -185,7 +185,7 @@ export default function SearchDialog(props: Props) {
                           sessionType={result.type || 'chat'}
                           msg={message}
                           className="w-full"
-                          hiddenButtonGroup
+                          buttonGroup="none"
                           small
                           preferCollapsedCodeBlock
                           assistantAvatarKey={result.assistantAvatarKey}

@@ -17,7 +17,8 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import NiceModal from '@ebay/nice-modal-react'
-import { IconButton, ListSubheader, MenuList } from '@mui/material'
+import { ActionIcon, Flex, ScrollArea, Text, Tooltip } from '@mantine/core'
+import { IconArchive } from '@tabler/icons-react'
 import { useRouterState } from '@tanstack/react-router'
 import type { MutableRefObject } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -26,10 +27,11 @@ import { reorderSessions } from '@/stores/sessionActions'
 import SessionItem from './SessionItem'
 
 export interface Props {
-  sessionListRef: MutableRefObject<HTMLDivElement | null>
+  sessionListViewportRef: MutableRefObject<HTMLDivElement | null>
 }
 
 export default function SessionList(props: Props) {
+  const { t } = useTranslation()
   const { sessionMetaList: sortedSessions, refetch } = useSessionList()
   const sensors = useSensors(
     useSensor(TouchSensor, {
@@ -66,68 +68,47 @@ export default function SessionList(props: Props) {
   const routerState = useRouterState()
 
   return (
-    <MenuList
-      sx={{
-        width: '100%',
-        overflow: 'auto',
-        '& ul': { padding: 0 },
-        flexGrow: 1,
-      }}
-      subheader={<Subheader openClearWindow={() => NiceModal.show('clear-session-list')} />}
-      component="div"
-      ref={props.sessionListRef}
-    >
-      <DndContext
-        modifiers={[restrictToVerticalAxis]}
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={onDragEnd}
-      >
-        {sortedSessions && (
-          <SortableContext items={sortedSessions} strategy={verticalListSortingStrategy}>
-            {sortedSessions.map((session, ix) => (
-              <SortableItem key={session.id} id={session.id}>
-                <SessionItem
-                  key={session.id}
-                  selected={routerState.location.pathname === `/session/${session.id}`}
-                  session={session}
-                />
-              </SortableItem>
-            ))}
-          </SortableContext>
-        )}
-      </DndContext>
-    </MenuList>
-  )
-}
+    <>
+      <Flex align="center" py="xs" px="md" gap={'xs'}>
+        <Text c="chatbox-tertiary" flex={1}>
+          {t('chat')}
+        </Text>
 
-function Subheader(props: { openClearWindow: () => void }) {
-  const { t } = useTranslation()
-  return (
-    <ListSubheader
-      className="flex justify-between items-center"
-      sx={{
-        padding: '0.1rem 0.3rem 0.1rem 0.5rem',
-      }}
-    >
-      <span className="text-xs opacity-80">{t('chat')}</span>
-      <IconButton onClick={props.openClearWindow}>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={1.5}
-          stroke="currentColor"
-          className="w-4 h-4 opacity-80"
+        <Tooltip label={t('Clear Chats')} openDelay={1000} withArrow>
+          <ActionIcon
+            variant="subtle"
+            color="chatbox-tertiary"
+            size={20}
+            onClick={() => NiceModal.show('clear-session-list')}
+          >
+            <IconArchive />
+          </ActionIcon>
+        </Tooltip>
+      </Flex>
+
+      <ScrollArea className="flex-grow" viewportRef={props.sessionListViewportRef}>
+        <DndContext
+          modifiers={[restrictToVerticalAxis]}
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={onDragEnd}
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5m6 4.125l2.25 2.25m0 0l2.25 2.25M12 13.875l2.25-2.25M12 13.875l-2.25 2.25M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z"
-          />
-        </svg>
-      </IconButton>
-    </ListSubheader>
+          {sortedSessions && (
+            <SortableContext items={sortedSessions} strategy={verticalListSortingStrategy}>
+              {sortedSessions.map((session, ix) => (
+                <SortableItem key={session.id} id={session.id}>
+                  <SessionItem
+                    key={session.id}
+                    selected={routerState.location.pathname === `/session/${session.id}`}
+                    session={session}
+                  />
+                </SortableItem>
+              ))}
+            </SortableContext>
+          )}
+        </DndContext>
+      </ScrollArea>
+    </>
   )
 }
 

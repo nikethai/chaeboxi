@@ -5,6 +5,7 @@ import { type FC, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { v4 as uuid } from 'uuid'
+import { ScalableIcon } from '@/components/ScalableIcon'
 import { useToggleMCPServer } from '@/hooks/mcp'
 import { mcpController } from '@/packages/mcp/controller'
 import type { MCPServerConfig } from '@/packages/mcp/types'
@@ -153,7 +154,7 @@ const CustomServersSection: FC<Props> = (props) => {
         >
           <Flex direction="column" justify="center" align="center" h="100%" gap={4}>
             <ActionIcon variant="filled" size="sm">
-              <IconPlus size={16} />
+              <ScalableIcon icon={IconPlus} />
             </ActionIcon>
             <Text size="xs" c="chatbox-brand">
               {t('Add Server')}

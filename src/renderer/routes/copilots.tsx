@@ -1,4 +1,4 @@
-import { Button as MantineButton, Switch as MantineSwitch } from '@mantine/core'
+import { Button as MantineButton, Switch as MantineSwitch, Text } from '@mantine/core'
 import EditIcon from '@mui/icons-material/Edit'
 import MoreHorizOutlinedIcon from '@mui/icons-material/MoreHorizOutlined'
 import StarIcon from '@mui/icons-material/Star'
@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next'
 import { v4 as uuidv4 } from 'uuid'
 import { ConfirmDeleteMenuItem } from '@/components/ConfirmDeleteButton'
 import Page from '@/components/Page'
+import { ScalableIcon } from '@/components/ScalableIcon'
 import StyledMenu from '@/components/StyledMenu'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
@@ -101,17 +102,9 @@ function Copilots() {
           <>
             {/* Setting Section */}
             <Box sx={{ mb: 3 }}>
-              <Typography
-                variant="h6"
-                sx={{
-                  mb: 2,
-                  fontSize: '16px',
-                  fontWeight: 700,
-                  color: (theme) => (theme.palette.mode === 'dark' ? '#fff' : '#212529'),
-                }}
-              >
+              <Text size="md" fw={700} mb={2} c="chatbox-primary">
                 {t('Settings')}
-              </Typography>
+              </Text>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <MantineSwitch
                   checked={showCopilotsInNewSession}
@@ -123,22 +116,14 @@ function Copilots() {
 
             {/* My Copilots Section */}
             <Box sx={{ mb: 4 }}>
-              <Typography
-                variant="h6"
-                sx={{
-                  mb: 2,
-                  fontSize: '16px',
-                  fontWeight: 700,
-                  color: (theme) => (theme.palette.mode === 'dark' ? '#fff' : '#212529'),
-                }}
-              >
+              <Text size="md" fw={700} mb={2} c="chatbox-primary">
                 {t('My Copilots')}
-              </Typography>
+              </Text>
 
               <MantineButton
                 variant="light"
                 color="blue"
-                leftSection={<IconPlus size={20} />}
+                leftSection={<ScalableIcon icon={IconPlus} size={20} />}
                 mb={16}
                 onClick={() => {
                   getEmptyCopilot().then(setCopilotEdit)
@@ -179,17 +164,9 @@ function Copilots() {
 
             {/* Chatbox Featured Section */}
             <Box>
-              <Typography
-                variant="h6"
-                sx={{
-                  mb: 2,
-                  fontSize: '16px',
-                  fontWeight: 700,
-                  color: (theme) => (theme.palette.mode === 'dark' ? '#fff' : '#212529'),
-                }}
-              >
+              <Text size="md" fw={700} mb={2} c="chatbox-primary">
                 {t('Chatbox Featured')}
-              </Typography>
+              </Text>
 
               <Box
                 sx={{

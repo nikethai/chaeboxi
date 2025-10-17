@@ -6,6 +6,7 @@ import { forwardRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SystemProviders } from 'src/shared/defaults'
 import ModelSelector from '@/components/ModelSelector'
+import { ScalableIcon } from '@/components/ScalableIcon'
 import { useSettingsStore } from '@/stores/settingsStore'
 
 export const Route = createFileRoute('/settings/default-models')({
@@ -202,7 +203,7 @@ const ModelSelectContent = forwardRef<
       <Text span flex={1} className=" text-left">
         {displayText}
       </Text>
-      <IconSelector size={16} className=" text-inherit" />
+      <ScalableIcon icon={IconSelector} className=" text-inherit" />
     </Flex>
   )
 })

@@ -1,27 +1,12 @@
 import NiceModal from '@ebay/nice-modal-react'
-import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate'
-import CopyAllIcon from '@mui/icons-material/CopyAll'
-import EditIcon from '@mui/icons-material/Edit'
-import FormatQuoteIcon from '@mui/icons-material/FormatQuote'
-import ImageIcon from '@mui/icons-material/Image'
-import MoreVertIcon from '@mui/icons-material/MoreVert'
-import PersonIcon from '@mui/icons-material/Person'
-import ReplayIcon from '@mui/icons-material/Replay'
-import ReportIcon from '@mui/icons-material/Report'
-import SettingsIcon from '@mui/icons-material/Settings'
-import SmartToyIcon from '@mui/icons-material/SmartToy'
-import SouthIcon from '@mui/icons-material/South'
-import StopIcon from '@mui/icons-material/Stop'
-import { Alert, ButtonGroup, Grid, IconButton, Tooltip, Typography, useTheme } from '@mui/material'
-import Avatar from '@mui/material/Avatar'
+import { Alert, Grid, Typography, useTheme } from '@mui/material'
 import Box from '@mui/material/Box'
-import MenuItem from '@mui/material/MenuItem'
 import * as dateFns from 'date-fns'
+import { useAtomValue } from 'jotai'
 import type React from 'react'
-import { type FC, type MouseEventHandler, memo, useMemo, useRef, useState } from 'react'
+import { type FC, forwardRef, type MouseEventHandler, memo, useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Markdown from '@/components/Markdown'
-import * as dom from '@/hooks/dom'
 import { cn } from '@/lib/utils'
 import { copyToClipboard } from '@/packages/navigator'
 import { countWord } from '@/packages/word-count'
@@ -29,28 +14,42 @@ import platform from '@/platform'
 import type { Message, MessagePicture, MessageToolCallPart, SessionType } from '../../shared/types'
 import { getMessageText } from '../../shared/utils/message'
 import '../static/Block.css'
-
-import { Flex, Loader } from '@mantine/core'
-import { IconInfoCircle } from '@tabler/icons-react'
+import { ActionIcon, type ActionIconProps, Flex, Loader, Text, Tooltip as Tooltip1 } from '@mantine/core'
+import {
+  IconArrowDown,
+  IconCopy,
+  IconDotsVertical,
+  IconInfoCircle,
+  IconMessageReport,
+  IconPencil,
+  IconPhotoPlus,
+  type IconProps,
+  IconQuoteFilled,
+  IconReload,
+  IconTrash,
+} from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
+import clsx from 'clsx'
 import { concat } from 'lodash'
 import type { UIElementData } from 'photoswipe'
 import { Gallery, Item as GalleryItem } from 'react-photoswipe-gallery'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { navigateToSettings } from '@/modals/Settings'
 import storage from '@/storage'
+import { getSession } from '@/stores/chatStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 import { generateMore, modifyMessage, regenerateInNewFork, removeMessage } from '../stores/sessionActions'
 import * as toastActions from '../stores/toastActions'
+import ActionMenu, { type ActionMenuItemProps } from './ActionMenu'
 import { isContainRenderableCode, MessageArtifact } from './Artifact'
 import { MessageAttachment } from './Attachments'
-import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
-import { ImageInStorage } from './Image'
+import { AssistantAvatar, SystemAvatar, UserAvatar } from './Avatar'
 import Loading from './icons/Loading'
 import MessageErrTips from './MessageErrTips'
 import MessageStatuses from './MessageLoading'
 import { ReasoningContentUI, ToolCallPartUI } from './message-parts/ToolCallPartUI'
-import StyledMenu from './StyledMenu'
+import { ScalableIcon } from './ScalableIcon'
 
 interface Props {
   id?: string
@@ -59,7 +58,7 @@ interface Props {
   msg: Message
   className?: string
   collapseThreshold?: number // 文本长度阀值, 超过这个长度则会被折叠
-  hiddenButtonGroup?: boolean
+  buttonGroup?: 'auto' | 'always' | 'none' // 按钮组显示策略, auto: 只在 hover 时显示; always: 总是显示; none: 不显示
   small?: boolean
   preferCollapsedCodeBlock?: boolean
   assistantAvatarKey?: string
@@ -72,7 +71,7 @@ const _Message: FC<Props> = (props) => {
     msg,
     className,
     collapseThreshold,
-    hiddenButtonGroup,
+    buttonGroup = 'auto',
     small,
     preferCollapsedCodeBlock,
     assistantAvatarKey,
@@ -82,7 +81,6 @@ const _Message: FC<Props> = (props) => {
   const { t } = useTranslation()
   const theme = useTheme()
   const {
-    defaultAssistantAvatarKey,
     userAvatarKey,
     showMessageTimestamp,
     showModelName,
@@ -96,10 +94,6 @@ const _Message: FC<Props> = (props) => {
     autoPreviewArtifacts,
     autoCollapseCodeBlock,
   } = useSettingsStore((state) => state)
-
-  const messageScrollingScrollPosition = useUIStore((s) => s.messageScrollingScrollPosition)
-  const setPictureShow = useUIStore((s) => s.setPictureShow)
-  const widthFull = useUIStore((s) => s.widthFull)
 
   const [previewArtifact, setPreviewArtifact] = useState(autoPreviewArtifacts)
 
@@ -116,26 +110,16 @@ const _Message: FC<Props> = (props) => {
 
   const ref = useRef<HTMLDivElement>(null)
 
-  const [autoScrollId, setAutoScrollId] = useState<null | string>(null)
-
   const setQuote = useUIStore((state) => state.setQuote)
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
-  const open = Boolean(anchorEl)
-  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget)
-  }
-  const handleClose = () => {
-    setAnchorEl(null)
-  }
 
-  const quoteMsg = () => {
+  const quoteMsg = useCallback(() => {
     let input = getMessageText(msg)
       .split('\n')
       .map((line) => `> ${line}`)
       .join('\n')
     input += '\n\n-------------------\n\n'
     setQuote(input)
-  }
+  }, [msg, setQuote])
 
   const handleStop = () => {
     modifyMessage(sessionId, { ...msg, generating: false }, true)
@@ -153,7 +137,6 @@ const _Message: FC<Props> = (props) => {
   const onCopyMsg = () => {
     copyToClipboard(getMessageText(msg, true, false))
     toastActions.add(t('copied to clipboard'), 2000)
-    setAnchorEl(null)
   }
 
   // 复制特定 reasoning 内容
@@ -164,21 +147,18 @@ const _Message: FC<Props> = (props) => {
       if (content) {
         copyToClipboard(content)
         toastActions.add(t('copied to clipboard'))
-        setAnchorEl(null)
       }
     }
 
-  const onReport = async () => {
-    setAnchorEl(null)
+  const onReport = useCallback(async () => {
     await NiceModal.show('report-content', { contentId: getMessageText(msg) || msg.id })
-  }
+  }, [msg])
 
-  const onDelMsg = () => {
-    setAnchorEl(null)
+  const onDelMsg = useCallback(() => {
     removeMessage(sessionId, msg.id)
-  }
+  }, [msg.id, sessionId])
+
   const onEditClick = async () => {
-    setAnchorEl(null)
     await NiceModal.show('message-edit', { sessionId, msg: msg })
   }
 
@@ -234,36 +214,6 @@ const _Message: FC<Props> = (props) => {
     tips.push(`time: ${messageTimestamp}`)
   }
 
-  let fixedButtonGroup = false
-  if (ref.current) {
-    // 总共可能出现五种情况：
-    // 1. 当前消息完全在视图可见范围之上，则不固定按钮组
-    // 2. 当前消息部分在视图可见范围之外但露出尾部，则不固定按钮组
-    // 3. 当前消息完全在视图可见范围之内，则不固定按钮组
-    // 4. 当前消息部分在视图可见范围之外但露出头部，固定按钮组
-    // 5. 当前消息完全在视图可见范围之下，则不固定按钮组
-    // 因此仅考虑第4中情况
-    if (msg.generating) {
-      if (
-        // 元素的前半部分在可视范围内，且露出至少50px
-        ref.current.offsetTop + 50 < messageScrollingScrollPosition &&
-        // 元素的后半部分不在可视范围内，并且为消息生成导致的长度变化预留 50px 的空间
-        ref.current.offsetTop + ref.current.offsetHeight + 50 >= messageScrollingScrollPosition
-      ) {
-        fixedButtonGroup = true
-      }
-    } else {
-      if (
-        // 元素的前半部分在可视范围内，且露出至少50px
-        ref.current.offsetTop + 50 < messageScrollingScrollPosition &&
-        // 元素的后半部分不在可视范围内，但如果只掩盖了 40px 则无所谓
-        ref.current.offsetTop + ref.current.offsetHeight - 40 >= messageScrollingScrollPosition
-      ) {
-        fixedButtonGroup = true
-      }
-    }
-  }
-
   // 是否需要渲染 Aritfact 组件
   const needArtifact = useMemo(() => {
     if (msg.role !== 'assistant') {
@@ -283,26 +233,39 @@ const _Message: FC<Props> = (props) => {
     </span>
   )
 
-  const onClickAssistantAvatar = () => {
-    NiceModal.show('session-settings', { chatConfigDialogSessionId: props.sessionId })
-  }
-
-  function showPicture(storageKey: string) {
-    setPictureShow({
-      picture: {
-        storageKey,
-      },
-      extraButtons:
-        msg.role === 'assistant' && platform.type === 'mobile'
-          ? [
-              {
-                onClick: onReport,
-                icon: <ReportIcon />,
-              },
-            ]
-          : undefined,
+  const onClickAssistantAvatar = async () => {
+    await NiceModal.show('session-settings', {
+      session: await getSession(props.sessionId),
     })
   }
+
+  const actionMenuItems = useMemo<ActionMenuItemProps[]>(
+    () => [
+      {
+        text: t('quote'),
+        icon: IconQuoteFilled,
+        onClick: quoteMsg,
+      },
+      { divider: true },
+      ...(msg.role === 'assistant' && platform.type === 'mobile'
+        ? [
+            {
+              text: t('report'),
+              icon: IconMessageReport,
+              onClick: onReport,
+            },
+          ]
+        : []),
+      {
+        doubleCheck: true,
+        text: t('delete'),
+        icon: IconTrash,
+        onClick: onDelMsg,
+      },
+    ],
+    [t, msg.role, onReport, quoteMsg, onDelMsg]
+  )
+  const [actionMenuOpened, setActionMenuOpened] = useState(false)
 
   return (
     <Box
@@ -316,7 +279,7 @@ const _Message: FC<Props> = (props) => {
         msg.generating ? 'rendering' : 'render-done',
         { user: 'user-msg', system: 'system-msg', assistant: 'assistant-msg', tool: 'tool-msg' }[msg.role || 'user'],
         className,
-        widthFull ? 'w-full' : 'max-w-4xl mx-auto'
+        'w-full'
       )}
       sx={{
         paddingBottom: '0.1rem',
@@ -331,117 +294,22 @@ const _Message: FC<Props> = (props) => {
           <Box className={cn('relative', msg.role !== 'assistant' ? 'mt-1' : 'mt-2')}>
             {
               {
-                assistant: assistantAvatarKey ? (
-                  <Avatar
-                    sx={{
-                      backgroundColor: theme.palette.primary.main,
-                      width: '28px',
-                      height: '28px',
-                    }}
-                    className="cursor-pointer"
-                    onClick={onClickAssistantAvatar}
-                  >
-                    <ImageInStorage
-                      storageKey={assistantAvatarKey}
-                      className="object-cover object-center w-full h-full"
-                    />
-                  </Avatar>
-                ) : sessionPicUrl ? (
-                  <Avatar
-                    src={sessionPicUrl}
-                    sx={{
-                      width: '28px',
-                      height: '28px',
-                    }}
-                    className="cursor-pointer"
+                assistant: (
+                  <AssistantAvatar
+                    avatarKey={assistantAvatarKey}
+                    picUrl={sessionPicUrl}
+                    sessionType={props.sessionType}
                     onClick={onClickAssistantAvatar}
                   />
-                ) : props.sessionType === 'picture' ? (
-                  <Avatar
-                    sx={{
-                      backgroundColor: theme.palette.secondary.main,
-                      width: '28px',
-                      height: '28px',
-                    }}
-                    className="cursor-pointer"
-                    onClick={onClickAssistantAvatar}
-                  >
-                    <ImageIcon fontSize="small" />
-                  </Avatar>
-                ) : defaultAssistantAvatarKey ? (
-                  <Avatar
-                    sx={{
-                      backgroundColor: theme.palette.primary.main,
-                      width: '28px',
-                      height: '28px',
-                    }}
-                    className="cursor-pointer"
-                    onClick={onClickAssistantAvatar}
-                  >
-                    <ImageInStorage
-                      storageKey={defaultAssistantAvatarKey}
-                      className="object-cover object-center w-full h-full"
-                    />
-                  </Avatar>
-                ) : (
-                  <Avatar
-                    sx={{
-                      backgroundColor: theme.palette.primary.main,
-                      width: '28px',
-                      height: '28px',
-                    }}
-                    className="cursor-pointer"
-                    onClick={onClickAssistantAvatar}
-                  >
-                    <SmartToyIcon fontSize="small" />
-                  </Avatar>
                 ),
-                user: (
-                  <Avatar
-                    sx={{
-                      width: '28px',
-                      height: '28px',
-                    }}
-                    className="cursor-pointer"
-                    onClick={() => {
-                      navigateToSettings('/chat')
-                    }}
-                  >
-                    {userAvatarKey ? (
-                      <ImageInStorage storageKey={userAvatarKey} className="object-cover object-center w-full h-full" />
-                    ) : (
-                      <PersonIcon fontSize="small" />
-                    )}
-                  </Avatar>
-                ),
-                system:
-                  props.sessionType === 'picture' ? (
-                    <Avatar
-                      sx={{
-                        backgroundColor: theme.palette.secondary.main,
-                        width: '28px',
-                        height: '28px',
-                      }}
-                    >
-                      <ImageIcon fontSize="small" />
-                    </Avatar>
-                  ) : (
-                    <Avatar
-                      sx={{
-                        backgroundColor: theme.palette.warning.main,
-                        width: '28px',
-                        height: '28px',
-                      }}
-                    >
-                      <SettingsIcon fontSize="small" />
-                    </Avatar>
-                  ),
+                user: <UserAvatar avatarKey={userAvatarKey} onClick={() => navigateToSettings('/chat')} />,
+                system: <SystemAvatar sessionType={props.sessionType} onClick={onClickAssistantAvatar} />,
                 tool: null,
               }[msg.role]
             }
             {msg.role === 'assistant' && msg.generating && (
-              <Flex className="absolute bottom-0 left-0 p-1 -translate-x-1/3 translate-y-1/3 rounded-full bg-[var(--mantine-color-chatbox-brand-filled)]">
-                <Loader size={10} color="white" />
+              <Flex className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                <Loader size={32} className=" " classNames={{ root: "after:content-[''] after:border-[2px]" }} />
               </Flex>
             )}
           </Box>
@@ -501,7 +369,7 @@ const _Message: FC<Props> = (props) => {
                         </div>
                       ) : item.type === 'info' ? (
                         <div key={`info-${item.text}`} className="mb-2">
-                          <Alert color="info" icon={<IconInfoCircle />}>
+                          <Alert color="info" icon={<ScalableIcon icon={IconInfoCircle} />}>
                             {item.text}
                           </Alert>
                         </div>
@@ -512,9 +380,9 @@ const _Message: FC<Props> = (props) => {
                             {item.ocrResult && (
                               <div
                                 className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded-md cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                                onClick={(e) => {
+                                onClick={async (e) => {
                                   e.stopPropagation()
-                                  NiceModal.show('ocr-content-viewer', { content: item.ocrResult })
+                                  await NiceModal.show('ocr-content-viewer', { content: item.ocrResult })
                                 }}
                               >
                                 <Typography variant="caption" className="text-gray-600 dark:text-gray-400 block mb-1">
@@ -574,146 +442,59 @@ const _Message: FC<Props> = (props) => {
 
               {msg.generating && msg.contentParts.length === 0 && <Loading />}
 
-              {!msg.generating && tips.length > 0 && (
-                <Typography variant="body2" sx={{ opacity: 0.5 }} className="pb-1">
-                  {tips.join(', ')}
-                </Typography>
+              {!msg.generating && msg.role === 'assistant' && tips.length > 0 && (
+                <Text c="chatbox-tertiary">{tips.join(', ')}</Text>
               )}
             </div>
-            {!hiddenButtonGroup && (
-              <Box sx={{ height: '35px' }}>
-                {/* <Box sx={{ height: '35px' }} className='opacity-0 group-hover/message:opacity-100 delay-100 transition-all duration-100'> */}
-                {!msg.generating && (
-                  <span
-                    className={cn(
-                      !anchorEl && !msg.generating ? 'hidden group-hover/message:inline-flex' : 'inline-flex'
-                    )}
-                  >
-                    <ButtonGroup
-                      sx={{
-                        height: '35px',
-                        opacity: 1,
-                        ...(fixedButtonGroup
-                          ? {
-                              position: 'fixed',
-                              bottom: `${dom.getInputBoxHeight() + 4}px`,
-                              zIndex: 100,
-                              marginBottom: 'var(--mobile-safe-area-inset-bottom, 0px)',
-                            }
-                          : {}),
-                        backgroundColor:
-                          theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.background.paper,
-                      }}
-                      variant="contained"
-                      color={props.sessionType === 'picture' ? 'secondary' : 'primary'}
-                      aria-label="message button group"
-                    >
-                      {msg.generating && (
-                        <Tooltip title={t('stop generating')} placement="top">
-                          <IconButton aria-label="edit" color="warning" onClick={handleStop}>
-                            <StopIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                      {
-                        // 生成中的消息不显示刷新按钮，必须是助手消息
-                        !msg.generating && msg.role === 'assistant' && (
-                          <Tooltip title={t('Reply Again')} placement="top">
-                            <IconButton
-                              aria-label="Reply Again"
-                              onClick={handleRefresh}
-                              color={props.sessionType === 'picture' ? 'secondary' : 'primary'}
-                            >
-                              <ReplayIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        )
-                      }
-                      {msg.role !== 'assistant' && (
-                        <Tooltip title={t('Reply Again Below')} placement="top">
-                          <IconButton
-                            aria-label="Reply Again Below"
-                            onClick={onGenerateMore}
-                            color={props.sessionType === 'picture' ? 'secondary' : 'primary'}
-                          >
-                            <SouthIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                      {
-                        // Chatbox-AI 模型不支持编辑消息
-                        !msg.model?.startsWith('Chatbox-AI') &&
-                          // 图片会话中，助手消息无需编辑
-                          !(msg.role === 'assistant' && props.sessionType === 'picture') && (
-                            <Tooltip title={t('edit')} placement="top">
-                              <IconButton
-                                aria-label="edit"
-                                color={props.sessionType === 'picture' ? 'secondary' : 'primary'}
-                                onClick={onEditClick}
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          )
-                      }
-                      {!(props.sessionType === 'picture' && msg.role === 'assistant') && (
-                        <Tooltip title={t('copy')} placement="top">
-                          <IconButton
-                            aria-label="copy"
-                            onClick={onCopyMsg}
-                            color={props.sessionType === 'picture' ? 'secondary' : 'primary'}
-                          >
-                            <CopyAllIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                      {!msg.generating && props.sessionType === 'picture' && msg.role === 'assistant' && (
-                        <Tooltip title={t('Generate More Images Below')} placement="top">
-                          <IconButton aria-label="copy" onClick={onGenerateMore} color="secondary">
-                            <AddPhotoAlternateIcon className="mr-1" fontSize="small" />
-                            <Typography fontSize="small">{t('More Images')}</Typography>
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                      <IconButton
-                        onClick={handleClick}
-                        color={props.sessionType === 'picture' ? 'secondary' : 'primary'}
-                      >
-                        <MoreVertIcon fontSize="small" />
-                      </IconButton>
-                      <StyledMenu
-                        MenuListProps={{
-                          'aria-labelledby': 'demo-customized-button',
-                        }}
-                        anchorEl={anchorEl}
-                        open={open}
-                        onClose={handleClose}
-                        key={`${msg.id}menu`}
-                      >
-                        <MenuItem
-                          key={`${msg.id}quote`}
-                          onClick={() => {
-                            setAnchorEl(null)
-                            quoteMsg()
-                          }}
-                          disableRipple
-                          divider
-                        >
-                          <FormatQuoteIcon fontSize="small" />
-                          {t('quote')}
-                        </MenuItem>
-                        {msg.role === 'assistant' && platform.type === 'mobile' && (
-                          <MenuItem key={`${msg.id}report`} onClick={onReport} disableRipple>
-                            <ReportIcon fontSize="small" />
-                            {t('report')}
-                          </MenuItem>
-                        )}
-                        <ConfirmDeleteMenuItem onDelete={onDelMsg} />
-                      </StyledMenu>
-                    </ButtonGroup>
-                  </span>
+
+            {/* actions */}
+            {buttonGroup !== 'none' && !msg.generating && (
+              <Flex
+                gap={0}
+                m="4px -4px -4px -4px"
+                className={clsx(
+                  'group-hover/message:opacity-100 opacity-0 transition-opacity',
+                  actionMenuOpened || buttonGroup === 'always' ? 'opacity-100' : ''
                 )}
-              </Box>
+                align="center"
+              >
+                {!msg.generating && msg.role === 'assistant' && (
+                  <MessageActionIcon icon={IconReload} tooltip={t('Reply Again')} onClick={handleRefresh} />
+                )}
+
+                {msg.role !== 'assistant' && (
+                  <MessageActionIcon icon={IconArrowDown} tooltip={t('Reply Again Below')} onClick={onGenerateMore} />
+                )}
+
+                {
+                  // Chatbox-AI 模型不支持编辑消息
+                  !msg.model?.startsWith('Chatbox-AI') &&
+                    // 图片会话中，助手消息无需编辑
+                    !(msg.role === 'assistant' && props.sessionType === 'picture') && (
+                      <MessageActionIcon icon={IconPencil} tooltip={t('edit')} onClick={onEditClick} />
+                    )
+                }
+
+                {!(props.sessionType === 'picture' && msg.role === 'assistant') && (
+                  <MessageActionIcon icon={IconCopy} tooltip={t('copy')} onClick={onCopyMsg} />
+                )}
+
+                {!msg.generating && props.sessionType === 'picture' && msg.role === 'assistant' && (
+                  <MessageActionIcon
+                    icon={IconPhotoPlus}
+                    tooltip={t('Generate More Images Below')}
+                    onClick={onGenerateMore}
+                  />
+                )}
+
+                <ActionMenu
+                  items={actionMenuItems}
+                  opened={actionMenuOpened}
+                  onChange={(opened) => setActionMenuOpened(opened)}
+                >
+                  <MessageActionIcon icon={IconDotsVertical} tooltip={t('More')} />
+                </ActionMenu>
+              </Flex>
             )}
           </Grid>
         </Grid>
@@ -790,7 +571,7 @@ const PictureGallery = memo(({ pictures, onReport }: PictureGalleryProps) => {
               outlineID: 'pswp__icn-report',
             },
             appendTo: 'bar',
-            onClick: async (_e, _el, pswp) => {
+            onClick: (_e, _el, pswp) => {
               const picture = pictures[pswp.currIndex]
               pswp.close()
               onReport(picture)
@@ -862,3 +643,38 @@ const ImageInStorageGalleryItem = ({ storageKey }: { storageKey: string }) => {
     </GalleryItem>
   ) : null
 }
+
+export const MessageActionIcon = forwardRef<
+  HTMLButtonElement,
+  ActionIconProps & {
+    tooltip?: string | null
+    onClick?: MouseEventHandler<HTMLButtonElement>
+    icon: React.ElementType<IconProps>
+  }
+>(({ tooltip, icon, ...props }, ref) => {
+  const isSmallScreen = useIsSmallScreen()
+  const actionIcon = (
+    <ActionIcon
+      ref={ref}
+      variant="subtle"
+      w="auto"
+      h="auto"
+      miw="auto"
+      mih="auto"
+      p={4}
+      bd={0}
+      color="chatbox-secondary"
+      {...props}
+    >
+      <ScalableIcon icon={icon} size={isSmallScreen ? 20 : 16} />
+    </ActionIcon>
+  )
+
+  return tooltip ? (
+    <Tooltip1 label={tooltip} openDelay={1000}>
+      {actionIcon}
+    </Tooltip1>
+  ) : (
+    actionIcon
+  )
+})

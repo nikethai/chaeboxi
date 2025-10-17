@@ -1,35 +1,44 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { Button, Transition } from '@mantine/core'
-import AddIcon from '@mui/icons-material/AddCircleOutline'
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft'
-import ChevronRightIcon from '@mui/icons-material/ChevronRight'
-import EditIcon from '@mui/icons-material/Edit'
-import SegmentIcon from '@mui/icons-material/Segment'
-import SwapCallsIcon from '@mui/icons-material/SwapCalls'
-import { IconButton, MenuItem } from '@mui/material'
-import { IconArrowUp } from '@tabler/icons-react'
+import { ActionIcon, Button, Flex, Stack, Text, Transition } from '@mantine/core'
+import {
+  IconAlignRight,
+  IconArrowUp,
+  IconChevronLeft,
+  IconChevronRight,
+  IconListTree,
+  IconMessagePlus,
+  IconPencil,
+  IconSwitch3,
+  IconTrash,
+} from '@tabler/icons-react'
 import { useSetAtom } from 'jotai'
-import { type FC, Fragment, memo, type UIEventHandler, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type FC, memo, type UIEventHandler, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { type StateSnapshot, Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
 import type { Session, SessionThreadBrief } from 'src/shared/types'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import * as atoms from '@/stores/atoms'
-import * as scrollActions from '@/stores/scrollActions'
-import { deleteFork, moveThreadToConversations, removeThread, switchFork, switchThread } from '@/stores/sessionActions'
+import {
+  deleteFork,
+  expandFork,
+  moveThreadToConversations,
+  removeThread,
+  switchFork,
+  switchThread,
+} from '@/stores/sessionActions'
 import { getAllMessageList, getCurrentThreadHistoryHash } from '@/stores/sessionHelpers'
 import { useUIStore } from '@/stores/uiStore'
-import { ConfirmDeleteMenuItem } from './ConfirmDeleteButton'
+import ActionMenu from './ActionMenu'
 import Message from './Message'
 import MessageNavigation, { ScrollToBottomButton } from './MessageNavigation'
-import StyledMenu from './StyledMenu'
 
 const sessionScrollPositionCache = new Map<string, StateSnapshot>()
 
 export default function MessageList(props: { className?: string; currentSession: Session }) {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
+  const widthFull = useUIStore((s) => s.widthFull)
 
   const { currentSession } = props
   const currentThreadHash = useMemo(
@@ -43,7 +52,6 @@ export default function MessageList(props: { className?: string; currentSession:
 
   const setMessageListElement = useUIStore((s) => s.setMessageListElement)
   const setMessageScrolling = useUIStore((s) => s.setMessageScrolling)
-  const setMessageScrollingScrollPosition = useUIStore((s) => s.setMessageScrollingScrollPosition)
 
   // message navigation handlers
   const [messageNavigationVisible, setMessageNavigationVisible] = useState(false)
@@ -135,41 +143,27 @@ export default function MessageList(props: { className?: string; currentSession:
       }
     }
   }, [])
-  const handleScroll = useCallback<UIEventHandler>(
-    (e) => {
-      // 为什么不合并到 onWheel 中？
-      // 实践中发现 onScroll 处理时效果会更加丝滑一些
-      if (virtuoso.current) {
-        virtuoso.current.getState((state) => {
-          if (messageListRef.current) {
-            setMessageScrollingScrollPosition(state.scrollTop + messageListRef.current.clientHeight)
-          }
-        })
-      }
-
-      const scrollTop = e.currentTarget.scrollTop
-      if (lastScrollTop.current) {
-        if (scrollTop < lastScrollTop.current) {
-          // 是向上滚动
-          setShowScrollToPrev(true)
-          if (timerRef.current) {
-            clearTimeout(timerRef.current)
-            timerRef.current = null
-          }
-          timerRef.current = setTimeout(() => setShowScrollToPrev(false), 3000)
-        } else {
-          setShowScrollToPrev(false)
-          if (timerRef.current) {
-            clearTimeout(timerRef.current)
-            timerRef.current = null
-          }
+  const handleScroll = useCallback<UIEventHandler>((e) => {
+    const scrollTop = e.currentTarget.scrollTop
+    if (lastScrollTop.current) {
+      if (scrollTop < lastScrollTop.current) {
+        // 是向上滚动
+        setShowScrollToPrev(true)
+        if (timerRef.current) {
+          clearTimeout(timerRef.current)
+          timerRef.current = null
+        }
+        timerRef.current = setTimeout(() => setShowScrollToPrev(false), 3000)
+      } else {
+        setShowScrollToPrev(false)
+        if (timerRef.current) {
+          clearTimeout(timerRef.current)
+          timerRef.current = null
         }
       }
-      lastScrollTop.current = scrollTop
-    },
-    [setMessageScrollingScrollPosition]
-  )
-
+    }
+    lastScrollTop.current = scrollTop
+  }, [])
   // message navigation handlers end
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 仅执行一次
@@ -190,19 +184,6 @@ export default function MessageList(props: { className?: string; currentSession:
     setMessageListElement(messageListRef)
   }, [])
 
-  const [threadMenuAnchorEl, setThreadMenuAnchorEl] = useState<null | HTMLElement>(null)
-  const [threadMenuClickedTopicId, setThreadMenuClickedTopicId] = useState<null | string>(null)
-
-  const openThreadMenu = useCallback((event: React.MouseEvent<HTMLElement>, topicId: string) => {
-    setThreadMenuAnchorEl(event.currentTarget)
-    setThreadMenuClickedTopicId(topicId)
-  }, [])
-
-  const closeThreadMenu = useCallback(() => {
-    setThreadMenuAnchorEl(null)
-    setThreadMenuClickedTopicId(null)
-  }, [])
-
   return (
     <div className={cn('w-full h-full mx-auto', props.className)}>
       <div className="overflow-hidden h-full pr-0 pl-1 sm:pl-0 relative" ref={messageListRef}>
@@ -210,7 +191,7 @@ export default function MessageList(props: { className?: string; currentSession:
           style={{ scrollbarGutter: 'stable' }}
           data={currentMessageList}
           ref={virtuoso}
-          followOutput={true}
+          followOutput="smooth"
           {...(sessionScrollPositionCache.has(currentSession.id)
             ? {
                 restoreStateFrom: sessionScrollPositionCache.get(currentSession.id),
@@ -223,98 +204,43 @@ export default function MessageList(props: { className?: string; currentSession:
           increaseViewportBy={{ top: 2000, bottom: 2000 }}
           itemContent={(index, msg) => {
             return (
-              <Fragment key={msg.id}>
+              <Stack
+                key={msg.id}
+                gap={0}
+                className={widthFull ? 'w-full' : 'max-w-4xl mx-auto'}
+                pt={msg.role === 'user' ? 4 : 0}
+              >
                 {currentThreadHash[msg.id] && (
-                  <ThreadLabel thread={currentThreadHash[msg.id]} onThreadLabelClick={openThreadMenu} />
+                  <ThreadLabel thread={currentThreadHash[msg.id]} sessionId={currentSession.id} />
                 )}
                 <Message
                   id={msg.id}
                   msg={msg}
                   sessionId={currentSession.id}
                   sessionType={currentSession.type || 'chat'}
-                  className={index === 0 ? 'pt-4' : ''}
+                  className={index === 0 ? 'pt-4' : index === currentMessageList.length - 1 ? '!pb-4' : ''}
                   collapseThreshold={msg.role === 'system' ? 150 : undefined}
                   preferCollapsedCodeBlock={index < currentMessageList.length - 10}
+                  buttonGroup={index === currentMessageList.length - 1 && msg.role === 'assistant' ? 'always' : 'auto'}
                   assistantAvatarKey={currentSession.assistantAvatarKey}
                   sessionPicUrl={currentSession.picUrl}
                 />
                 {currentSession.messageForksHash?.[msg.id] && (
-                  <ForkNav
-                    sessionId={currentSession.id}
-                    msgId={msg.id}
-                    forks={currentSession.messageForksHash?.[msg.id]}
-                  />
+                  <Flex justify="flex-end" mt={-16} pr="md" mr="md" className="z-10">
+                    <ForkNav
+                      sessionId={currentSession.id}
+                      msgId={msg.id}
+                      forks={currentSession.messageForksHash?.[msg.id]}
+                    />
+                  </Flex>
                 )}
-              </Fragment>
+              </Stack>
             )
-          }}
-          components={{
-            // biome-ignore lint/nursery/noNestedComponentDefinitions: todo
-            Footer: () =>
-              isSmallScreen &&
-              currentMessageList &&
-              currentMessageList.filter((m) => m.role !== 'system').length > 0 && (
-                <Flex justify="center" align="center" gap="sm" mx="xs" pt="xxs" pb="sm">
-                  <Box h="0.5px" bg="chatbox-border-primary" flex={1} />
-                  {currentThreadHash[currentMessageList[currentMessageList.length - 1].id] ? (
-                    <Button
-                      leftSection={<IconArrowBackUp size={16} />}
-                      classNames={{
-                        root: ' shadow-sm',
-                        section: '!mr-xxs',
-                      }}
-                      size="xs"
-                      c="chatbox-tertiary"
-                      variant="default"
-                      radius="xl"
-                      onClick={() => sessionActions.removeCurrentThread(currentSession.id)}
-                    >
-                      {t('Back to Previous')}
-                    </Button>
-                  ) : (
-                    <Button
-                      leftSection={<IconFilePencil size={16} />}
-                      classNames={{
-                        section: '!mr-xxs',
-                      }}
-                      size="xs"
-                      c="chatbox-tertiary"
-                      variant="default"
-                      radius="xl"
-                      onClick={() => sessionActions.startNewThread()}
-                    >
-                      {t('Start a New Thread')}
-                    </Button>
-                  )}
-                  <Box h="0.5px" bg="chatbox-border-primary" flex={1} />
-                </Flex>
-              ),
-          }}
-          onWheel={() => {
-            scrollActions.clearAutoScroll() // 鼠标滚轮滚动时，清除自动滚动
-          }}
-          onTouchMove={() => {
-            scrollActions.clearAutoScroll() // 手机上触摸屏幕滑动时，清除自动滚动
           }}
           atTopStateChange={setAtTop}
           atBottomThreshold={100}
           atBottomStateChange={setAtBottom}
           onScroll={handleScroll}
-          totalListHeightChanged={() => {
-            if (virtuoso.current) {
-              virtuoso.current.getState((state) => {
-                if (messageListRef.current) {
-                  setMessageScrollingScrollPosition(state.scrollTop + messageListRef.current.clientHeight)
-                }
-              })
-            }
-          }}
-        />
-        <ThreadMenu
-          threadMenuAnchorEl={threadMenuAnchorEl}
-          threadMenuClickedTopicId={threadMenuClickedTopicId}
-          onThreadMenuClose={closeThreadMenu}
-          currentSessionId={currentSession.id}
         />
 
         {!isSmallScreen ? (
@@ -359,21 +285,9 @@ export default function MessageList(props: { className?: string; currentSession:
 
 function ForkNav(props: { sessionId: string; msgId: string; forks: NonNullable<Session['messageForksHash']>[string] }) {
   const { sessionId, msgId, forks } = props
-  const widthFull = useUIStore((s) => s.widthFull)
   const [flash, setFlash] = useState(false)
   const prevLength = useRef(forks.lists.length)
   const { t } = useTranslation()
-
-  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null)
-  const [, setMenuDelete] = useState<boolean>(false)
-  const openMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setMenuAnchorEl(event.currentTarget)
-    setMenuDelete(false)
-  }
-  const closeMenu = () => {
-    setMenuAnchorEl(null)
-    setMenuDelete(false)
-  }
 
   useEffect(() => {
     if (forks.lists.length > prevLength.current) {
@@ -385,168 +299,130 @@ function ForkNav(props: { sessionId: string; msgId: string; forks: NonNullable<S
   }, [forks.lists.length])
 
   return (
-    <div className={cn('flex items-center justify-end', widthFull ? 'w-full' : 'max-w-4xl mx-auto')}>
-      <div
-        className={cn(
-          'mt-[-35px] pr-4 inline-flex items-center gap-2',
-          'opacity-50 hover:opacity-100',
-          flash && 'animate-flash opacity-100 font-bold'
-        )}
+    <Flex gap="xs" align="center">
+      <ActionIcon
+        variant="subtle"
+        size={20}
+        radius="xl"
+        color={flash ? 'chatbox-secondary' : 'chatbox-tertiary'}
+        onClick={() => void switchFork(sessionId, msgId, 'prev')}
       >
-        <IconButton
-          aria-label="fork-left"
-          size="small"
-          className="hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-          onClick={() => void switchFork(sessionId, msgId, 'prev')}
-        >
-          <ChevronLeftIcon className="w-5 h-5" />
-        </IconButton>
-        <div className="flex items-center gap-1 text-xs cursor-pointer" onClick={openMenu}>
-          <span>{forks.position + 1}</span>
-          <span>/</span>
-          <span>{forks.lists.length}</span>
-        </div>
-        <IconButton
-          aria-label="fork-right"
-          size="small"
-          className="hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-          onClick={() => void switchFork(sessionId, msgId, 'next')}
-        >
-          <ChevronRightIcon className="w-5 h-5" />
-        </IconButton>
-      </div>
-      <StyledMenu
-        anchorEl={menuAnchorEl}
-        open={Boolean(menuAnchorEl)}
-        onClose={closeMenu}
-        anchorOrigin={{
-          vertical: 'bottom',
-          horizontal: 'center',
-        }}
-        transformOrigin={{
-          vertical: 'top',
-          horizontal: 'center',
-        }}
-        PaperProps={{
-          style: {
-            minWidth: '120px',
+        <IconChevronLeft />
+      </ActionIcon>
+      <ActionMenu
+        position="bottom"
+        items={[
+          {
+            text: t('expand'),
+            icon: IconAlignRight,
+            onClick: () => expandFork(sessionId, msgId),
           },
-        }}
+          {
+            divider: true,
+          },
+          {
+            doubleCheck: true,
+            text: t('delete'),
+            icon: IconTrash,
+            onClick: () => deleteFork(sessionId, msgId),
+          },
+        ]}
       >
-        <ConfirmDeleteMenuItem
-          onDelete={() => {
-            void deleteFork(sessionId, msgId)
-            closeMenu()
-          }}
-        />
-      </StyledMenu>
-    </div>
+        <Text c={flash ? 'chatbox-secondary' : 'chatbox-tertiary'} size="xs" className="cursor-pointer">
+          {forks.position + 1} / {forks.lists.length}
+        </Text>
+      </ActionMenu>
+      <ActionIcon
+        variant="subtle"
+        size={20}
+        radius="xl"
+        color={flash ? 'chatbox-secondary' : 'chatbox-tertiary'}
+        onClick={() => switchFork(sessionId, msgId, 'next')}
+      >
+        <IconChevronRight />
+      </ActionIcon>
+    </Flex>
   )
 }
 
 type ThreadLabelProps = {
+  sessionId: string
   thread: SessionThreadBrief
-  onThreadLabelClick?: (event: React.MouseEvent<HTMLElement>, threadId: string) => void
 }
-const ThreadLabel: FC<ThreadLabelProps> = memo((props) => {
+const ThreadLabel: FC<ThreadLabelProps> = memo(({ thread, sessionId }) => {
   const { t } = useTranslation()
-  const { thread, onThreadLabelClick } = props
-  const onClick = useCallback(
-    (event: React.MouseEvent<HTMLElement>) => {
-      onThreadLabelClick?.(event, thread.id)
-    },
-    [thread.id, onThreadLabelClick]
-  )
+  const setShowHistoryDrawer = useSetAtom(atoms.showThreadHistoryDrawerAtom)
+
+  const handleOpenHistoryDrawer = useCallback(() => {
+    setShowHistoryDrawer(thread.id || true)
+  }, [setShowHistoryDrawer, thread.id])
+
+  const handleEditThreadName = useCallback(async () => {
+    if (!thread.id) return
+    await NiceModal.show('thread-name-edit', { threadId: thread.id })
+  }, [thread.id])
+
+  const handleContinueThread = useCallback(() => {
+    if (!thread.id) return
+    void switchThread(sessionId, thread.id)
+  }, [sessionId, thread.id])
+
+  const handleMoveToConversations = useCallback(() => {
+    if (!thread.id) return
+    void moveThreadToConversations(sessionId, thread.id)
+  }, [sessionId, thread.id])
+
+  const handleDeleteThread = useCallback(() => {
+    if (!thread.id) return
+    void removeThread(sessionId, thread.id)
+  }, [sessionId, thread.id])
 
   return (
     <div className="text-center pb-4 pt-8">
-      <span
-        className="cursor-pointer font-bold border-solid border rounded-xxl py-2 px-3 border-slate-400/25"
-        onClick={onClick}
+      <ActionMenu
+        position="bottom"
+        items={[
+          {
+            text: t('Edit Thread Name'),
+            icon: IconPencil,
+            onClick: handleEditThreadName,
+          },
+          {
+            text: t('Show in Thread List'),
+            icon: IconListTree,
+            onClick: handleOpenHistoryDrawer,
+          },
+          {
+            text: t('Continue this thread'),
+            icon: IconSwitch3,
+            onClick: handleContinueThread,
+          },
+          {
+            text: t('Move to Conversations'),
+            icon: IconMessagePlus,
+            onClick: handleMoveToConversations,
+          },
+          { divider: true },
+          {
+            doubleCheck: true,
+            text: t('delete'),
+            icon: IconTrash,
+            onClick: handleDeleteThread,
+          },
+        ]}
       >
-        <span className="pr-1 opacity-60">#</span>
-        <span className="truncate inline-block align-bottom max-w-[calc(50%-4rem)] md:max-w-[calc(30%-4rem)]">
-          {thread.name || t('New Thread')}
+        <span
+          className="cursor-pointer font-bold border-solid border rounded-xxl py-2 px-3 border-slate-400/25"
+          onDoubleClick={handleOpenHistoryDrawer}
+          // onClick={onClick}
+        >
+          <span className="pr-1 opacity-60">#</span>
+          <span className="truncate inline-block align-bottom max-w-[calc(50%-4rem)] md:max-w-[calc(30%-4rem)]">
+            {thread.name || t('New Thread')}
+          </span>
+          {thread.createdAtLabel && <span className="pl-1 opacity-60 text-xs">{thread.createdAtLabel}</span>}
         </span>
-        {thread.createdAtLabel && <span className="pl-1 opacity-60 text-xs">{thread.createdAtLabel}</span>}
-      </span>
+      </ActionMenu>
     </div>
-  )
-})
-
-type ThreadMenuProps = {
-  threadMenuAnchorEl: null | HTMLElement
-  threadMenuClickedTopicId: null | string
-  onThreadMenuClose?: () => void
-  currentSessionId: string
-}
-const ThreadMenu: FC<ThreadMenuProps> = memo((props) => {
-  const { t } = useTranslation()
-  const { threadMenuAnchorEl, threadMenuClickedTopicId, onThreadMenuClose, currentSessionId } = props
-  const setShowHistoryDrawer = useSetAtom(atoms.showThreadHistoryDrawerAtom)
-  const openHistoryDrawer = useCallback(() => {
-    setShowHistoryDrawer(threadMenuClickedTopicId || true)
-    onThreadMenuClose?.()
-  }, [threadMenuClickedTopicId, setShowHistoryDrawer, onThreadMenuClose])
-
-  const onEditThreadNameClick = useCallback(() => {
-    if (!threadMenuClickedTopicId) return
-    NiceModal.show('thread-name-edit', { sessionId: currentSessionId, threadId: threadMenuClickedTopicId })
-
-    onThreadMenuClose?.()
-  }, [threadMenuClickedTopicId, currentSessionId, onThreadMenuClose])
-
-  const onContinueThreadClick = useCallback(() => {
-    if (!threadMenuClickedTopicId) return
-    void switchThread(currentSessionId, threadMenuClickedTopicId)
-    onThreadMenuClose?.()
-  }, [threadMenuClickedTopicId, currentSessionId, onThreadMenuClose])
-
-  const onMoveToConversationsClick = useCallback(() => {
-    if (!threadMenuClickedTopicId) return
-    void moveThreadToConversations(currentSessionId, threadMenuClickedTopicId)
-    onThreadMenuClose?.()
-  }, [threadMenuClickedTopicId, currentSessionId, onThreadMenuClose])
-
-  const onDeleteThreadClick = useCallback(() => {
-    if (!threadMenuClickedTopicId) return
-    void removeThread(currentSessionId, threadMenuClickedTopicId)
-    onThreadMenuClose?.()
-  }, [threadMenuClickedTopicId, currentSessionId, onThreadMenuClose])
-
-  return (
-    <StyledMenu
-      anchorEl={threadMenuAnchorEl}
-      open={Boolean(threadMenuAnchorEl)}
-      onClose={onThreadMenuClose}
-      onDoubleClick={openHistoryDrawer}
-      anchorOrigin={{
-        vertical: 'bottom',
-        horizontal: 'center',
-      }}
-      transformOrigin={{
-        vertical: 'top',
-        horizontal: 'center',
-      }}
-    >
-      <MenuItem disableRipple onClick={onEditThreadNameClick}>
-        <EditIcon fontSize="small" />
-        {t('Edit Thread Name')}
-      </MenuItem>
-
-      <MenuItem disableRipple onClick={openHistoryDrawer}>
-        <SegmentIcon fontSize="small" />
-        {t('Show in Thread List')}
-      </MenuItem>
-      <MenuItem disableRipple onClick={onContinueThreadClick}>
-        <SwapCallsIcon fontSize="small" />
-        {t('Continue this thread')}
-      </MenuItem>
-      <MenuItem disableRipple divider onClick={onMoveToConversationsClick}>
-        <AddIcon fontSize="small" />
-        {t('Move to Conversations')}
-      </MenuItem>
-      <ConfirmDeleteMenuItem onDelete={onDeleteThreadClick} />
-    </StyledMenu>
   )
 })

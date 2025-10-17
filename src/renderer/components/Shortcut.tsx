@@ -9,6 +9,7 @@ import {
   shortcutToggleWindowValues,
 } from '@/../shared/types'
 import { getOS } from '@/packages/navigator'
+import { ScalableIcon } from './ScalableIcon'
 
 const os = getOS()
 
@@ -243,7 +244,7 @@ function ShortcutText(props: { shortcut: string; isConflict?: boolean; className
   return (
     <Flex align="center" component="span" className={`py-0.5 text-xs ${className || ''}`} c="chatbox-error">
       <Keys keys={shortcut.split('+')} />
-      {isConflict && <IconAlertHexagon size={16} />}
+      {isConflict && <ScalableIcon icon={IconAlertHexagon} size={16} />}
     </Flex>
   )
 }

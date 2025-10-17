@@ -9,9 +9,10 @@ import { useTranslation } from 'react-i18next'
 import type { CopilotDetail, Session } from 'src/shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { z } from 'zod'
-import InputBox, { type InputBoxPayload } from '@/components/InputBox/InputBox'
+import InputBox, { type InputBoxPayload } from '@/components/InputBox'
 import HomepageIcon from '@/components/icons/HomepageIcon'
 import Page from '@/components/Page'
+import { ScalableIcon } from '@/components/ScalableIcon'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
@@ -235,7 +236,7 @@ function Index() {
                     bg="#F1F3F5"
                     onClick={() => setSession((old) => ({ ...old, copilotId: undefined }))}
                   >
-                    <IconX size={24} />
+                    <ScalableIcon icon={IconX} size={24} />
                   </ActionIcon>
                 </Flex>
 
@@ -325,7 +326,7 @@ const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect
                   }
                 }}
               >
-                <IconChevronLeft size={16} />
+                <ScalableIcon icon={IconChevronLeft} />
               </ActionIcon>
               <ActionIcon
                 variant="transparent"
@@ -341,7 +342,7 @@ const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect
                   }
                 }}
               >
-                <IconChevronRight size={16} />
+                <ScalableIcon icon={IconChevronRight} />
               </ActionIcon>
             </Flex>
           )}
@@ -356,10 +357,12 @@ const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect
           onScrollPositionChange={onScrollPositionChange}
           className="copilot-picker-scroll-area"
         >
-          {scrollPosition.x > 8 && (
-            <div className="absolute top-0 left-0 w-8 h-full bg-gradient-to-r from-white to-transparent"></div>
+          {scrollPosition.x > 8 && !isSmallScreen && (
+            <div className="absolute top-0 left-0 w-8 h-full bg-gradient-to-r from-[var(--mantine-color-chatbox-background-primary-text)] to-transparent"></div>
           )}
-          <div className="absolute top-0 right-0 w-8 h-full bg-gradient-to-l from-white to-transparent"></div>
+          {!isSmallScreen && (
+            <div className="absolute top-0 right-0 w-8 h-full bg-gradient-to-l from-[var(--mantine-color-chatbox-background-primary-text)] to-transparent"></div>
+          )}
           <Flex wrap="nowrap" gap="xs">
             <Space w="xs" />
             {copilots.map((copilot) =>

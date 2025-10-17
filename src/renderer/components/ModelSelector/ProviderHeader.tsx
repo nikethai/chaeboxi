@@ -1,6 +1,8 @@
 import { Flex, Text } from '@mantine/core'
 import { IconChevronDown, IconServer, IconStarFilled } from '@tabler/icons-react'
+import clsx from 'clsx'
 import ProviderIcon from '../icons/ProviderIcon'
+import { ScalableIcon } from '../ScalableIcon'
 import { TRANSITION_DURATION } from './shared'
 
 interface ProviderHeaderProps {
@@ -98,28 +100,24 @@ export const ProviderHeader = ({
         tabIndex={isClickable && isMobile ? 0 : undefined}
       >
         {showChevron && !isFavorite && (
-          <span
-            className="transition-transform"
-            style={{
-              transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0)',
-              transitionDuration: `${TRANSITION_DURATION}ms`,
-            }}
-          >
-            <IconChevronDown size={12} />
-          </span>
+          <ScalableIcon
+            icon={IconChevronDown}
+            size={12}
+            className={clsx('transition-transform', isCollapsed ? '-rotate-90' : '')}
+          />
         )}
         {isFavorite ? (
-          <IconStarFilled size={iconSize} className={iconClass} />
+          <ScalableIcon icon={IconStarFilled} size={iconSize} className={iconClass} />
         ) : provider.isCustom ? (
-          <IconServer size={iconSize} className={iconClass} />
+          <ScalableIcon icon={IconServer} size={iconSize} className={iconClass} />
         ) : (
-          <ProviderIcon size={iconSize} provider={provider.id} className={iconClass} />
+          <ScalableIcon icon={ProviderIcon} size={iconSize} provider={provider.id} className={iconClass} />
         )}
-        <Text c={textColor} size="sm" fw={textWeight}>
+        <Text span c={textColor} size="sm" fw={textWeight}>
           {provider.name}
         </Text>
         {(showModelCount || isMobile) && modelCount !== undefined && (
-          <Text c="dimmed" size="xs" ml="auto">
+          <Text span c="dimmed" size="xs" ml="auto">
             {modelCount}
           </Text>
         )}

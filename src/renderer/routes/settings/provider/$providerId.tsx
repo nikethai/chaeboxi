@@ -30,6 +30,7 @@ import {
 import { createModelDependencies } from '@/adapters'
 import { ModelList } from '@/components/ModelList'
 import PopoverConfirm from '@/components/PopoverConfirm'
+import { ScalableIcon } from '@/components/ScalableIcon'
 import { streamText } from '@/packages/model-calls'
 import { getModelSettingUtil } from '@/packages/model-setting-utils'
 import platform from '@/platform'
@@ -207,7 +208,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
             h={24}
             onClick={() => platform.openLink(baseInfo.urls!.website!)}
           >
-            <IconExternalLink size={24} />
+            <ScalableIcon icon={IconExternalLink} size={24} />
           </Button>
         )}
         {baseInfo.isCustom && (
@@ -224,7 +225,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
             <Button
               variant="transparent"
               size="compact-xs"
-              leftSection={<IconTrash size={24} />}
+              leftSection={<ScalableIcon icon={IconTrash} size={24} />}
               color="chatbox-error"
             ></Button>
           </PopoverConfirm>
@@ -427,7 +428,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
               </Text>
               {providerSettings?.apiHost?.includes('aihubmix.com') && (
                 <Flex align="center" gap={4}>
-                  <IconDiscount2 size={14} color="var(--mantine-color-chatbox-tertiary-text)" />
+                  <ScalableIcon icon={IconDiscount2} size={14} color="var(--mantine-color-chatbox-tertiary-text)" />
                   <Text span size="xs" c="chatbox-tertiary">
                     {t('AIHubMix integration in Chatbox offers 10% discount')}
                   </Text>
@@ -527,7 +528,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 size="compact-xs"
                 px="sm"
                 onClick={handleAddModel}
-                leftSection={<IconPlus size={12} />}
+                leftSection={<ScalableIcon icon={IconPlus} size={12} />}
               >
                 {t('New')}
               </Button>
@@ -539,7 +540,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 size="compact-xs"
                 px="sm"
                 onClick={resetModels}
-                leftSection={<IconRestore size={12} />}
+                leftSection={<ScalableIcon icon={IconRestore} size={12} />}
               >
                 {t('Reset')}
               </Button>
@@ -552,7 +553,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 size="compact-xs"
                 px="sm"
                 onClick={handleFetchModels}
-                leftSection={<IconRefresh size={12} />}
+                leftSection={<ScalableIcon icon={IconRefresh} size={12} />}
               >
                 {t('Fetch')}
               </Button>

@@ -1,12 +1,5 @@
 import { Box, Button, Divider, Stack } from '@mantine/core'
-import {
-  IconArrowDown,
-  IconArrowsDown,
-  IconChevronDown,
-  IconChevronsDown,
-  IconChevronsUp,
-  IconChevronUp,
-} from '@tabler/icons-react'
+import { IconArrowDown, IconChevronDown, IconChevronsDown, IconChevronsUp, IconChevronUp } from '@tabler/icons-react'
 import { clsx } from 'clsx'
 import { type CSSProperties, type FC, memo, useCallback, useRef } from 'react'
 
@@ -59,7 +52,7 @@ export const MessageNavigation: FC<MessageNavigationProps> = ({
       <Stack
         gap={6}
         p={'xxs'}
-        className="shadow rounded bg-[var(--mantine-color-chatbox-background-primary-text)] [&>.mantine-Divider-root]:border-[var(--mantine-color-chatbox-border-primary-outline)]"
+        className="rounded border border-solid border-[var(--mantine-color-chatbox-border-primary-outline)] bg-[var(--mantine-color-chatbox-background-primary-text)] [&>.mantine-Divider-root]:border-[var(--mantine-color-chatbox-border-primary-outline)]"
       >
         <MessageNavigationButton icon={<IconChevronsUp />} onClick={onScrollToTop} />
         <Divider />

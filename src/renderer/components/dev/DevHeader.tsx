@@ -1,9 +1,8 @@
 import { ActionIcon, Group, Paper, Text, Tooltip } from '@mantine/core'
-import { IconArrowLeft, IconBrightnessAuto, IconHome, IconMoon, IconSun } from '@tabler/icons-react'
+import { IconArrowLeft, IconHome } from '@tabler/icons-react'
 import { useLocation, useNavigate } from '@tanstack/react-router'
-import { useCallback } from 'react'
-import { Theme } from 'src/shared/types'
-import { settingsStore, useTheme } from '@/stores/settingsStore'
+import { ScalableIcon } from '../ScalableIcon'
+import ThemeSwitchButton from './ThemeSwitchButton'
 
 interface DevHeaderProps {
   title?: string
@@ -12,36 +11,8 @@ interface DevHeaderProps {
 export function DevHeader({ title }: DevHeaderProps) {
   const navigate = useNavigate()
   const location = useLocation()
-  const theme = useTheme()
-
-  const setTheme = useCallback((t: Theme) => {
-    settingsStore.setState((draft) => {
-      draft.theme = t
-    })
-  }, [])
 
   const isDevIndex = location.pathname === '/dev' || location.pathname === '/dev/'
-
-  const cycleTheme = () => {
-    // Cycle through: Light -> Dark -> Light (skip Auto for simplicity in dev)
-    if (theme === Theme.Light) {
-      setTheme(Theme.Dark)
-    } else {
-      setTheme(Theme.Light)
-    }
-  }
-
-  const getThemeIcon = () => {
-    if (theme === Theme.Light) return <IconSun size={20} />
-    if (theme === Theme.Dark) return <IconMoon size={20} />
-    return <IconBrightnessAuto size={20} />
-  }
-
-  const getThemeLabel = () => {
-    if (theme === Theme.Light) return 'Light mode (click for Dark)'
-    if (theme === Theme.Dark) return 'Dark mode (click for Light)'
-    return 'Auto mode'
-  }
 
   return (
     <Paper
@@ -61,7 +32,7 @@ export function DevHeader({ title }: DevHeaderProps) {
           {!isDevIndex && (
             <Tooltip label="Back to Dev Tools">
               <ActionIcon variant="subtle" size="lg" onClick={() => navigate({ to: '/dev' })}>
-                <IconArrowLeft size={20} />
+                <ScalableIcon icon={IconArrowLeft} size={20} />
               </ActionIcon>
             </Tooltip>
           )}
@@ -69,7 +40,7 @@ export function DevHeader({ title }: DevHeaderProps) {
           {/* Home button - always show */}
           <Tooltip label="Home">
             <ActionIcon variant="subtle" size="lg" onClick={() => navigate({ to: '/' })}>
-              <IconHome size={20} />
+              <ScalableIcon icon={IconHome} size={20} />
             </ActionIcon>
           </Tooltip>
 
@@ -83,11 +54,7 @@ export function DevHeader({ title }: DevHeaderProps) {
 
         <Group gap="xs">
           {/* Quick actions */}
-          <Tooltip label={getThemeLabel()}>
-            <ActionIcon variant="subtle" size="lg" onClick={cycleTheme}>
-              {getThemeIcon()}
-            </ActionIcon>
-          </Tooltip>
+          <ThemeSwitchButton />
         </Group>
       </Group>
     </Paper>

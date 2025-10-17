@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import type { ProviderModelInfo } from 'src/shared/types'
 import { useProviders } from '@/hooks/useProviders'
 import { collapsedProvidersAtom } from '@/stores/atoms/uiAtoms'
+import { ScalableIcon } from '../ScalableIcon'
 import { ProviderHeader } from './ProviderHeader'
 import { groupFavoriteModels, ModelItemInDrawer, SELECTED_BG_CLASS } from './shared'
 
@@ -169,7 +170,7 @@ export const MobileModelSelector = forwardRef<HTMLDivElement, MobileModelSelecto
               value={search}
               onChange={(event) => onSearchChange(event.currentTarget.value)}
               placeholder={t('Search models') as string}
-              leftSection={<IconSearch size={16} />}
+              leftSection={<ScalableIcon icon={IconSearch} />}
             />
 
             {showAuto && activeTab === 'all' && (

@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import type { Message, ModelProvider } from 'src/shared/types'
 import { useStore } from 'zustand'
 import Header from '@/components/Header'
-import InputBox from '@/components/InputBox/InputBox'
+import InputBox from '@/components/InputBox'
 import MessageList from '@/components/MessageList'
 import ThreadHistoryDrawer from '@/components/ThreadHistoryDrawer'
 import { updateSession as updateSessionStore, useSession } from '@/stores/chatStore'
@@ -181,50 +181,5 @@ function RouteComponent() {
         </Button>
       </div>
     )
-  )
-}
-
-function ScrollButtons() {
-  const atScrollTop = useUIStore((s) => s.messageScrollingAtTop)
-  const atScrollBottom = useUIStore((s) => s.messageScrollingAtBottom)
-  const language = useLanguage()
-  return (
-    <Box className="relative">
-      <ButtonGroup
-        sx={
-          language === 'ar'
-            ? {
-                position: 'absolute',
-                left: '0.4rem',
-                top: '-5.5rem',
-                opacity: 0.6,
-              }
-            : {
-                position: 'absolute',
-                right: '0.4rem',
-                top: '-5.5rem',
-                opacity: 0.6,
-              }
-        }
-        orientation="vertical"
-      >
-        <IconButton
-          onClick={() => scrollActions.scrollToTop()}
-          sx={{
-            visibility: atScrollTop ? 'hidden' : 'visible',
-          }}
-        >
-          <ArrowCircleUpIcon />
-        </IconButton>
-        <IconButton
-          onClick={() => scrollActions.scrollToBottom()}
-          sx={{
-            visibility: atScrollBottom ? 'hidden' : 'visible',
-          }}
-        >
-          <ArrowCircleDownIcon />
-        </IconButton>
-      </ButtonGroup>
-    </Box>
   )
 }

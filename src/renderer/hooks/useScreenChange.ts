@@ -1,3 +1,4 @@
+import { useMantineTheme } from '@mantine/core'
 import { useMediaQuery, useTheme } from '@mui/material'
 import { useEffect } from 'react'
 import { useUIStore } from '@/stores/uiStore'
@@ -27,21 +28,23 @@ export function useIsLargeScreen() {
 }
 
 export function useSidebarWidth() {
+  const mantineTheme = useMantineTheme()
+  const scale = mantineTheme.scale ?? 1
   const theme = useTheme()
   const sm = useMediaQuery(theme.breakpoints.up('sm'))
   const md = useMediaQuery(theme.breakpoints.up('md'))
   const lg = useMediaQuery(theme.breakpoints.up('lg'))
   const xl = useMediaQuery(theme.breakpoints.up('xl'))
   if (xl) {
-    return 280
+    return 280 * scale
   } else if (lg) {
-    return 240
+    return 240 * scale
   } else if (md) {
-    return 220
+    return 220 * scale
   } else if (sm) {
-    return 200
+    return 200 * scale
   } else {
-    return 240
+    return 240 * scale
   }
 }
 

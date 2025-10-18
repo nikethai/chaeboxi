@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useIsLargeScreen, useIsSmallScreen } from '@/hooks/useScreenChange'
 import platform from '@/platform'
+import { router } from '@/router'
 import { deleteSession } from '@/stores/chatStore'
 import { clear as clearSession } from '@/stores/sessionActions'
 import { useUIStore } from '@/stores/uiStore'
@@ -47,8 +48,13 @@ export default function Toolbar({ sessionId }: { sessionId: string }) {
   const handleSessionClean = () => {
     void clearSession(sessionId)
   }
-  const handleSessionDelete = () => {
-    void deleteSession(sessionId)
+  const handleSessionDelete = async () => {
+    try {
+      await deleteSession(sessionId)
+      router.navigate({ to: '/', replace: true })
+    } catch (error) {
+      console.error('Failed to delete session:', error)
+    }
   }
 
   return !isSmallScreen ? (

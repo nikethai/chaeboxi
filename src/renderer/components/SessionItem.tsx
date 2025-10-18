@@ -6,6 +6,7 @@ import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { SessionMeta } from 'src/shared/types'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { router } from '@/router'
 import {
   deleteSession as deleteSessionStore,
   getSession,
@@ -72,10 +73,20 @@ function SessionItem(props: Props) {
         doubleCheck: true,
         text: t('delete'),
         icon: IconTrash,
-        onClick: () => deleteSessionStore(session.id),
+        onClick: async () => {
+          try {
+            await deleteSessionStore(session.id)
+            // Only navigate if deleting the currently selected session
+            if (selected) {
+              router.navigate({ to: '/', replace: true })
+            }
+          } catch (error) {
+            console.error('Failed to delete session:', error)
+          }
+        },
       },
     ],
-    [session, t]
+    [session, selected, t]
   )
 
   return (

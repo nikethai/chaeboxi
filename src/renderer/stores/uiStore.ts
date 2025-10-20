@@ -1,4 +1,3 @@
-import { add } from 'lodash'
 import type { RefObject } from 'react'
 import type { VirtuosoHandle } from 'react-virtuoso'
 import type { KnowledgeBase, MessagePicture, Toast } from 'src/shared/types'
@@ -140,6 +139,7 @@ export const uiStore = createStore(
       partialize: (state) => ({
         widthFull: state.widthFull,
         showCopilotsInNewSession: state.showCopilotsInNewSession,
+        inputBoxWebBrowsingMode: state.inputBoxWebBrowsingMode,
       }),
       storage: safeStorage,
     }

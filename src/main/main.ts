@@ -244,17 +244,8 @@ async function createWindow() {
     // remove the default titlebar
     titleBarStyle: 'hidden',
     // expose window controlls in Windows/Linux
-    ...(process.platform !== 'darwin'
-      ? {
-          titleBarOverlay: {
-            color: nativeTheme.shouldUseDarkColors ? '#282828' : 'white',
-            symbolColor: nativeTheme.shouldUseDarkColors ? 'white' : 'black',
-            height: 47,
-          },
-        }
-      : {}),
+    frame: false,
     trafficLightPosition: { x: 10, y: 16 },
-
     width: state.width,
     height: state.height,
     x: state.x,
@@ -298,6 +289,15 @@ async function createWindow() {
 
   mainWindow.on('closed', () => {
     mainWindow = null
+  })
+
+  // Send maximized state changes to renderer
+  mainWindow.on('maximize', () => {
+    mainWindow?.webContents.send('window:maximized-changed', true)
+  })
+
+  mainWindow.on('unmaximize', () => {
+    mainWindow?.webContents.send('window:maximized-changed', false)
   })
 
   const menuBuilder = new MenuBuilder(mainWindow)
@@ -597,11 +597,31 @@ ipcMain.handle('install-update', () => {
 })
 
 ipcMain.handle('switch-theme', (event, theme: 'dark' | 'light') => {
-  if (!mainWindow || typeof mainWindow.setTitleBarOverlay !== 'function') {
+  if (!mainWindow || process.platform !== 'darwin' || typeof mainWindow.setTitleBarOverlay !== 'function') {
     return
   }
   mainWindow.setTitleBarOverlay({
     color: theme === 'dark' ? '#282828' : 'white',
     symbolColor: theme === 'dark' ? 'white' : 'black',
   })
+})
+
+ipcMain.handle('window:minimize', () => {
+  mainWindow?.minimize()
+})
+
+ipcMain.handle('window:maximize', () => {
+  mainWindow?.maximize()
+})
+
+ipcMain.handle('window:unmaximize', () => {
+  mainWindow?.unmaximize()
+})
+
+ipcMain.handle('window:close', () => {
+  mainWindow?.close()
+})
+
+ipcMain.handle('window:is-maximized', () => {
+  return mainWindow?.isMaximized()
 })

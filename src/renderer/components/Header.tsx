@@ -12,6 +12,7 @@ import { useIsSmallScreen } from '../hooks/useScreenChange'
 import * as settingActions from '../stores/settingActions'
 import { ScalableIcon } from './ScalableIcon'
 import Toolbar from './Toolbar'
+import WindowControls from './WindowControls'
 
 export default function Header(props: { session: Session }) {
   const { t } = useTranslation()
@@ -19,7 +20,7 @@ export default function Header(props: { session: Session }) {
   const setShowSidebar = useUIStore((s) => s.setShowSidebar)
 
   const isSmallScreen = useIsSmallScreen()
-  const { needRoomForMacWindowControls, needRoomForWindowsWindowControls } = useNeedRoomForWinControls()
+  const { needRoomForMacWindowControls } = useNeedRoomForWinControls()
 
   const { session: currentSession } = props
 
@@ -59,8 +60,7 @@ export default function Header(props: { session: Session }) {
       align="center"
       px="sm"
       className={clsx(
-        'title-bar border-0 border-b border-solid border-[var(--mantine-color-chatbox-border-primary-outline)]',
-        needRoomForWindowsWindowControls ? '!pr-36' : ''
+        'flex-none title-bar border-0 border-b border-solid border-[var(--mantine-color-chatbox-border-primary-outline)]'
       )}
     >
       {(!showSidebar || isSmallScreen) && (
@@ -99,6 +99,8 @@ export default function Header(props: { session: Session }) {
       </Flex>
 
       <Toolbar sessionId={currentSession.id} />
+
+      <WindowControls className="-mr-3 ml-2" />
     </Flex>
   )
 }

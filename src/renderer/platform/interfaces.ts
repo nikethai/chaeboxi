@@ -68,6 +68,19 @@ export interface Platform extends Storage {
   installUpdate(): Promise<void>
 
   getKnowledgeBaseController(): KnowledgeBaseController
+
+  // window controls
+  minimize(): Promise<void>
+
+  maximize(): Promise<void>
+
+  unmaximize(): Promise<void>
+
+  closeWindow(): Promise<void>
+
+  isMaximized(): Promise<boolean>
+
+  onMaximizedChange(callback: (isMaximized: boolean) => void): () => void
 }
 
 export interface Exporter {

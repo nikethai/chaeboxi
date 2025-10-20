@@ -154,4 +154,28 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
   public getKnowledgeBaseController(): KnowledgeBaseController {
     throw new Error('Method not implemented.')
   }
+
+  public minimize() {
+    return Promise.resolve()
+  }
+
+  public maximize() {
+    return Promise.resolve()
+  }
+
+  public unmaximize() {
+    return Promise.resolve()
+  }
+
+  public closeWindow() {
+    return Promise.resolve()
+  }
+
+  public isMaximized() {
+    return Promise.resolve(true)
+  }
+
+  public onMaximizedChange() {
+    return () => null
+  }
 }

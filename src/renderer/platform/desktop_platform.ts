@@ -2,10 +2,9 @@
 import localforage from 'localforage'
 import type { ElectronIPC } from 'src/shared/electron-types'
 import type { Config, Settings, ShortcutSetting } from 'src/shared/types'
+import { cache } from 'src/shared/utils/cache'
 import { v4 as uuidv4 } from 'uuid'
 import { parseLocale } from '@/i18n/parser'
-import { sliceTextByTokenLimit } from '@/packages/token'
-import { cache } from 'src/shared/utils/cache'
 import { getOS } from '../packages/navigator'
 import type { Platform, PlatformType } from './interfaces'
 import DesktopKnowledgeBaseController from './knowledge-base/desktop-controller'
@@ -180,10 +179,7 @@ export default class DesktopPlatform implements Platform {
     return this.ipc.invoke('ensureAutoLaunch', enable)
   }
 
-  async parseFileLocally(
-    file: File,
-    options?: { tokenLimit?: number }
-  ): Promise<{ key?: string; isSupported: boolean }> {
+  async parseFileLocally(file: File): Promise<{ key?: string; isSupported: boolean }> {
     let result: { text: string; isSupported: boolean }
     if (!file.path) {
       // 复制长文本粘贴的文件是没有 path 的
@@ -194,9 +190,6 @@ export default class DesktopPlatform implements Platform {
     }
     if (!result.isSupported) {
       return { isSupported: false }
-    }
-    if (options?.tokenLimit) {
-      result.text = sliceTextByTokenLimit(result.text, options.tokenLimit)
     }
     const key = `parseFile-` + uuidv4()
     await this.setStoreBlob(key, result.text)
@@ -229,5 +222,33 @@ export default class DesktopPlatform implements Platform {
       this._kbController = new DesktopKnowledgeBaseController(this.ipc)
     }
     return this._kbController
+  }
+
+  public minimize() {
+    return this.ipc.invoke('window:minimize')
+  }
+
+  public maximize() {
+    return this.ipc.invoke('window:maximize')
+  }
+
+  public unmaximize() {
+    return this.ipc.invoke('window:unmaximize')
+  }
+
+  public closeWindow() {
+    return this.ipc.invoke('window:close')
+  }
+
+  public isMaximized() {
+    return this.ipc.invoke('window:is-maximized')
+  }
+
+  public onMaximizedChange(callback: (isMaximized: boolean) => void): () => void {
+    const unsubscribe = this.ipc.onWindowMaximizedChanged((_, isMaximized) => {
+      callback(isMaximized)
+    })
+
+    return unsubscribe
   }
 }

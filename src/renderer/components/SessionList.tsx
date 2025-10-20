@@ -74,7 +74,7 @@ export default function SessionList(props: Props) {
           {t('chat')}
         </Text>
 
-        <Tooltip label={t('Clear Chats')} openDelay={1000} withArrow>
+        <Tooltip label={t('Clear Conversation List')} openDelay={1000} withArrow>
           <ActionIcon
             variant="subtle"
             color="chatbox-tertiary"

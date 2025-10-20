@@ -133,20 +133,14 @@ function Root() {
     }
   }, [])
 
-  const { needRoomForMacWindowControls, needRoomForWindowsWindowControls } = useNeedRoomForWinControls()
+  const { needRoomForMacWindowControls } = useNeedRoomForWinControls()
   useEffect(() => {
     if (needRoomForMacWindowControls) {
       document.documentElement.setAttribute('data-need-room-for-mac-controls', 'true')
     } else {
       document.documentElement.removeAttribute('data-need-room-for-mac-controls')
     }
-
-    if (needRoomForWindowsWindowControls) {
-      document.documentElement.setAttribute('data-need-room-for-windows-controls', 'true')
-    } else {
-      document.documentElement.removeAttribute('data-need-room-for-windows-controls')
-    }
-  }, [needRoomForMacWindowControls, needRoomForWindowsWindowControls])
+  }, [needRoomForMacWindowControls])
 
   return (
     <Box className="box-border App" spellCheck={spellCheck} dir={language === 'ar' ? 'rtl' : 'ltr'}>

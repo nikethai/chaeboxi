@@ -5,6 +5,7 @@ import type { FC } from 'react'
 import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { useUIStore } from '@/stores/uiStore'
+import WindowControls from './WindowControls'
 
 export type PageProps = {
   children?: React.ReactNode
@@ -16,7 +17,7 @@ export const Page: FC<PageProps> = ({ children, title, left }) => {
   const showSidebar = useUIStore((s) => s.showSidebar)
   const setShowSidebar = useUIStore((s) => s.setShowSidebar)
   const isSmallScreen = useIsSmallScreen()
-  const { needRoomForMacWindowControls, needRoomForWindowsWindowControls } = useNeedRoomForWinControls()
+  const { needRoomForMacWindowControls } = useNeedRoomForWinControls()
   return (
     <div className="flex flex-col h-full">
       <Flex
@@ -24,8 +25,7 @@ export const Page: FC<PageProps> = ({ children, title, left }) => {
         align="center"
         px="sm"
         className={clsx(
-          'title-bar border-0 border-b border-solid border-[var(--mantine-color-chatbox-border-primary-outline)]',
-          needRoomForWindowsWindowControls ? '!pr-36' : ''
+          'title-bar border-0 border-b border-solid border-[var(--mantine-color-chatbox-border-primary-outline)]'
         )}
       >
         {left ||
@@ -53,7 +53,7 @@ export const Page: FC<PageProps> = ({ children, title, left }) => {
             title
           )}
         </Flex>
-
+        <WindowControls className="-mr-3 ml-2" />
         {isSmallScreen && <Box w={28} />}
       </Flex>
 

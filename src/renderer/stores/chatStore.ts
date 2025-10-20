@@ -228,14 +228,14 @@ export async function deleteSession(id: string) {
 // session settings is copied from global settings when session is created, so no need to merge global settings here
 export function useSessionSettings(sessionId: string | null) {
   const { session } = useSession(sessionId)
-  const globalSettings = useSettingsStore((state) => state.getSettings())
+  const globalSettings = useSettingsStore((state) => state)
 
   const sessionSettings = useMemo(() => {
-    if (!sessionId || !session) {
+    if (!session) {
       return SessionSettingsSchema.parse(globalSettings)
     }
     return SessionSettingsSchema.parse(session.settings)
-  }, [session, sessionId, globalSettings])
+  }, [session, globalSettings])
 
   return { sessionSettings }
 }

@@ -85,6 +85,7 @@ export const ProviderOptionsSchema = z.object({
   google: GoogleParamsSchema.optional(),
 })
 
+// NOTICE: Global settings is for new session default settings, set to session when session created, changes will not affect existing sessions
 export const GlobalSessionSettingsSchema = z.object({
   maxContextMessageCount: z.number().optional().catch(undefined),
   temperature: z.number().optional().catch(undefined),

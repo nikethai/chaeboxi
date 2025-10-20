@@ -3,15 +3,15 @@
  * It uses react-query for caching.
  * */
 
-import { shallowEqual } from '@mantine/hooks'
-import { CancelledError, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import compact from 'lodash/compact'
 import isEmpty from 'lodash/isEmpty'
+import { useMemo } from 'react'
 import {
-  GlobalSessionSettingsSchema,
   type Message,
   type Session,
   type SessionMeta,
+  SessionSettingsSchema,
   type Updater,
   type UpdaterFn,
 } from 'src/shared/types'
@@ -21,9 +21,14 @@ import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import { migrateSession, sortSessions } from '../utils/session-utils'
 import { lastUsedModelStore } from './lastUsedModelStore'
 import queryClient from './queryClient'
-import { getSessionMeta, mergeSettings } from './sessionHelpers'
-import { settingsStore } from './settingsStore'
+import { getSessionMeta } from './sessionHelpers'
+import { settingsStore, useSettingsStore } from './settingsStore'
 import { UpdateQueue } from './updateQueue'
+
+const QueryKeys = {
+  ChatSessionsList: ['chat-sessions-list'],
+  ChatSession: (id: string) => ['chat-session', id],
+}
 
 // MARK: session list operations
 
@@ -36,7 +41,7 @@ async function _listSessionsMeta(): Promise<SessionMeta[]> {
 }
 
 const listSessionsMetaQueryOptions = {
-  queryKey: ['chat-sessions-list'],
+  queryKey: QueryKeys.ChatSessionsList,
   queryFn: () => _listSessionsMeta().then(sortSessions),
   staleTime: Infinity,
 }
@@ -63,7 +68,7 @@ export async function updateSessionList(updater: UpdaterFn<SessionMeta[]>) {
   }
   console.debug('chatStore', 'updateSessionList', updater)
   const result = await sessionListUpdateQueue.set(updater)
-  queryClient.setQueryData(['chat-sessions-list'], sortSessions(result))
+  queryClient.setQueryData(QueryKeys.ChatSessionsList, sortSessions(result))
 }
 
 // MARK: session operations
@@ -79,7 +84,7 @@ async function _getSessionById(id: string): Promise<Session | null> {
 }
 
 const getSessionQueryOptions = (sessionId: string) => ({
-  queryKey: ['chat-session', sessionId],
+  queryKey: QueryKeys.ChatSession(sessionId),
   queryFn: () => _getSessionById(sessionId),
   staleTime: Infinity,
 })
@@ -96,21 +101,9 @@ export function useSession(sessionId: string | null) {
   return { session, ...rest }
 }
 
-async function invalidateSessionCache(sessionId: string) {
-  // clear 1. session cache 2. session settings cache
-  try {
-    await queryClient.invalidateQueries({
-      predicate(query) {
-        return query.queryKey.some((k) => k === sessionId)
-      },
-    })
-  } catch (err) {
-    if (err instanceof CancelledError) {
-      console.debug('chatStore', 'invalidate session cache cancelled', sessionId)
-      return
-    }
-    throw err
-  }
+function _setSessionCache(sessionId: string, updated: Session | null) {
+  // 1. update session cache 2. session settings do not use cache now
+  queryClient.setQueryData(QueryKeys.ChatSession(sessionId), updated)
 }
 
 // create session
@@ -181,7 +174,7 @@ export async function updateSessionWithMessages(sessionId: string, updater: Upda
       return sessions.map((session) => (session.id === sessionId ? getSessionMeta(updated) : session))
     })
   }
-  await invalidateSessionCache(sessionId)
+  _setSessionCache(sessionId, updated)
   return updated
 }
 
@@ -206,7 +199,7 @@ export async function updateSessionCache(sessionId: string, updater: Updater<Ses
   if (!session) {
     throw new Error(`Session ${sessionId} not found`)
   }
-  queryClient.setQueryData(['chat-session', sessionId], (old: Session | undefined | null) => {
+  queryClient.setQueryData(QueryKeys.ChatSession(sessionId), (old: Session | undefined | null) => {
     if (!old) {
       return old
     }
@@ -221,7 +214,7 @@ export async function updateSessionCache(sessionId: string, updater: Updater<Ses
 export async function deleteSession(id: string) {
   console.debug('chatStore', 'deleteSession', id)
   await storage.removeItem(StorageKeyGenerator.session(id))
-  await invalidateSessionCache(id)
+  _setSessionCache(id, null)
   await updateSessionList((sessions) => {
     if (!sessions) {
       throw new Error('Session list not found')
@@ -232,47 +225,28 @@ export async function deleteSession(id: string) {
 
 // MARK: session settings operations
 
-// get session settings, merged with global settings
-async function _getSessionSettings(sessionId: string) {
-  const globalSettings = settingsStore.getState().getSettings()
-  const session = await getSession(sessionId)
-  return mergeSettings(globalSettings, session?.settings, session?.type)
-}
-
-const getSessionSettingsQueryOptions = (sessionId: string) => ({
-  queryKey: ['session-settings', sessionId],
-  queryFn: async () => _getSessionSettings(sessionId),
-  staleTime: Infinity,
-})
-
+// session settings is copied from global settings when session is created, so no need to merge global settings here
 export function useSessionSettings(sessionId: string | null) {
-  const { data: sessionSettings } = useQuery({
-    ...getSessionSettingsQueryOptions(sessionId!),
-    enabled: !!sessionId,
-  })
+  const { session } = useSession(sessionId)
+  const globalSettings = useSettingsStore((state) => state.getSettings())
+
+  const sessionSettings = useMemo(() => {
+    if (!sessionId || !session) {
+      return SessionSettingsSchema.parse(globalSettings)
+    }
+    return SessionSettingsSchema.parse(session.settings)
+  }, [session, sessionId, globalSettings])
+
   return { sessionSettings }
 }
 
-let changeWatched = false
-
-function changeWatch() {
-  if (changeWatched) {
-    return
+export async function getSessionSettings(sessionId: string) {
+  const session = await getSession(sessionId)
+  if (!session) {
+    const globalSettings = settingsStore.getState().getSettings()
+    return SessionSettingsSchema.parse(globalSettings)
   }
-  changeWatched = true
-  settingsStore.subscribe(
-    (state) => GlobalSessionSettingsSchema.parse(state),
-    () => {
-      console.debug('chat-store', 'globalSessionSettings changed, refetch session settings')
-      queryClient.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'session-settings' })
-    },
-    { equalityFn: shallowEqual }
-  )
-}
-changeWatch()
-
-export function getSessionSettings(sessionId: string) {
-  return queryClient.fetchQuery(getSessionSettingsQueryOptions(sessionId))
+  return SessionSettingsSchema.parse(session.settings)
 }
 
 // MARK: message operations

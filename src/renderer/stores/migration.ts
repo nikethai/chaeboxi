@@ -25,12 +25,13 @@ import {
 import platform from '@/platform'
 import { DesktopFileStorage, getOldVersionStorages } from '@/platform/storages'
 import WebPlatform from '@/platform/web_platform'
+import { initData } from '@/setup/init_data'
 import storage, { StorageKey } from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import * as defaults from '../../shared/defaults'
 import { getLogger } from '../lib/utils'
 import { migrationProcessAtom } from './atoms/utilAtoms'
-import { getSessionMeta, initPresetSessions } from './sessionHelpers'
+import { getSessionMeta } from './sessionHelpers'
 
 const log = getLogger('migration')
 
@@ -91,11 +92,11 @@ async function migrateStorage() {
       }
     }
 
-    if (!hasOldData) {
+    if (!hasOldData && configVersion === 0) {
       // 这是第一次运行应用，直接将ConfigVersion设置为CurrentVersion，跳过后续的数据迁移
       await storage.setItemNow(StorageKey.ConfigVersion, CurrentVersion)
       // 初始化默认会话
-      await initPresetSessions()
+      await initData()
     }
   } else if (platform.type === 'desktop' && configVersion <= 11) {
     // 桌面端configVersion <= 11时，需要将除了settings、configs和ConfigVersion以外的数据迁移

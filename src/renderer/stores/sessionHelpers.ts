@@ -12,7 +12,6 @@ import type {
 import { getMessageText, migrateMessage } from 'src/shared/utils/message'
 import i18n from '@/i18n'
 import { formatChatAsHtml, formatChatAsMarkdown, formatChatAsTxt } from '@/lib/format-chat'
-import { defaultSessionsForCN, defaultSessionsForEN } from '@/packages/initial_data'
 import * as localParser from '@/packages/local-parser'
 import * as remote from '@/packages/remote'
 import { estimateTokens } from '@/packages/token'
@@ -442,22 +441,6 @@ export function initEmptyPictureSession(): Omit<Session, 'id'> {
 
 export function getSessionMeta(session: SessionMeta) {
   return pick(session, ['id', 'name', 'starred', 'assistantAvatarKey', 'picUrl', 'type'])
-}
-
-export async function initPresetSessions() {
-  const lang = await platform.getLocale().catch((e) => 'en')
-
-  const defaultSessions = lang.startsWith('zh') ? defaultSessionsForCN : defaultSessionsForEN
-
-  for (const session of defaultSessions) {
-    await storage.setItemNow(StorageKeyGenerator.session(session.id), session)
-  }
-
-  const sessionList = defaultSessions.map(getSessionMeta)
-
-  await storage.setItemNow(StorageKey.ChatSessionsList, sessionList)
-
-  return sessionList
 }
 
 function _searchSessions(regexp: RegExp, s: Session) {

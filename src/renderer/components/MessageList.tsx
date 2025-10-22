@@ -231,7 +231,7 @@ export default function MessageList(props: { className?: string; currentSession:
                   sessionPicUrl={currentSession.picUrl}
                 />
                 {currentSession.messageForksHash?.[msg.id] && (
-                  <Flex justify="flex-end" mt={-16} pr="md" mr="md" className="z-10">
+                  <Flex justify="flex-end" mt={-16} pr="md" mr="md" className="z-10 self-end">
                     <ForkNav
                       sessionId={currentSession.id}
                       msgId={msg.id}

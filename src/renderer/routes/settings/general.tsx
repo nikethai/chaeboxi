@@ -328,8 +328,8 @@ const ImportExportDataSection = () => {
   )
   useEffect(() => {
     if (window?.navigator?.storage) {
-      window.navigator.storage?.estimate().then((res) => setStorageEstimate(res))
-      window.navigator.storage?.persisted().then((p) => setStoragePersisted(p))
+      window.navigator.storage.estimate?.().then((res) => setStorageEstimate(res))
+      window.navigator.storage.persisted?.().then((p) => setStoragePersisted(p))
     }
   }, [])
 

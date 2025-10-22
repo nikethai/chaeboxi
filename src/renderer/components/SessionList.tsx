@@ -22,6 +22,7 @@ import { IconArchive } from '@tabler/icons-react'
 import { useRouterState } from '@tanstack/react-router'
 import type { MutableRefObject } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { useSessionList } from '@/stores/chatStore'
 import { reorderSessions } from '@/stores/sessionActions'
 import SessionItem from './SessionItem'
@@ -32,6 +33,7 @@ export interface Props {
 
 export default function SessionList(props: Props) {
   const { t } = useTranslation()
+  const isSmallScreen = useIsSmallScreen()
   const { sessionMetaList: sortedSessions, refetch } = useSessionList()
   const sensors = useSensors(
     useSensor(TouchSensor, {
@@ -86,7 +88,11 @@ export default function SessionList(props: Props) {
         </Tooltip>
       </Flex>
 
-      <ScrollArea className="flex-grow" viewportRef={props.sessionListViewportRef}>
+      <ScrollArea
+        className="flex-grow"
+        viewportRef={props.sessionListViewportRef}
+        type={isSmallScreen ? 'never' : 'hover'}
+      >
         <DndContext
           modifiers={[restrictToVerticalAxis]}
           sensors={sensors}

@@ -16,7 +16,6 @@ import { ScalableIcon } from '@/components/ScalableIcon'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import platform from '@/platform'
 import { router } from '@/router'
 import { createSession as createSessionStore } from '@/stores/chatStore'
 import { submitNewUserMessage, switchCurrentSession } from '@/stores/sessionActions'
@@ -330,7 +329,7 @@ const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect
         </Flex>
 
         <ScrollArea
-          type={platform.type === 'mobile' ? 'never' : 'scroll'}
+          type={isSmallScreen ? 'never' : 'scroll'}
           mx="-md"
           scrollbars="x"
           offsetScrollbars="x"

@@ -11,6 +11,7 @@ import {
   type Message,
   type Session,
   type SessionMeta,
+  type SessionSettings,
   SessionSettingsSchema,
   type Updater,
   type UpdaterFn,
@@ -18,6 +19,7 @@ import {
 import { v4 as uuidv4 } from 'uuid'
 import storage, { StorageKey } from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
+import * as defaults from '../../shared/defaults'
 import { migrateSession, sortSessions } from '../utils/session-utils'
 import { lastUsedModelStore } from './lastUsedModelStore'
 import queryClient from './queryClient'
@@ -225,6 +227,19 @@ export async function deleteSession(id: string) {
 
 // MARK: session settings operations
 
+function mergeDefaultSessionSettings(session: Session): SessionSettings {
+  if (session.type === 'picture') {
+    return SessionSettingsSchema.parse({
+      ...defaults.pictureSessionSettings(),
+      ...session.settings,
+    })
+  } else {
+    return SessionSettingsSchema.parse({
+      ...defaults.chatSessionSettings(),
+      ...session.settings,
+    })
+  }
+}
 // session settings is copied from global settings when session is created, so no need to merge global settings here
 export function useSessionSettings(sessionId: string | null) {
   const { session } = useSession(sessionId)
@@ -234,7 +249,7 @@ export function useSessionSettings(sessionId: string | null) {
     if (!session) {
       return SessionSettingsSchema.parse(globalSettings)
     }
-    return SessionSettingsSchema.parse(session.settings)
+    return mergeDefaultSessionSettings(session)
   }, [session, globalSettings])
 
   return { sessionSettings }
@@ -246,7 +261,7 @@ export async function getSessionSettings(sessionId: string) {
     const globalSettings = settingsStore.getState().getSettings()
     return SessionSettingsSchema.parse(globalSettings)
   }
-  return SessionSettingsSchema.parse(session.settings)
+  return mergeDefaultSessionSettings(session)
 }
 
 // MARK: message operations

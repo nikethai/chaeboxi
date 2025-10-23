@@ -17,12 +17,12 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import NiceModal from '@ebay/nice-modal-react'
-import { ActionIcon, Flex, ScrollArea, Text, Tooltip } from '@mantine/core'
+import { ActionIcon, Flex, Text, Tooltip } from '@mantine/core'
 import { IconArchive } from '@tabler/icons-react'
 import { useRouterState } from '@tanstack/react-router'
 import type { MutableRefObject } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { Virtuoso } from 'react-virtuoso'
 import { useSessionList } from '@/stores/chatStore'
 import { reorderSessions } from '@/stores/sessionActions'
 import SessionItem from './SessionItem'
@@ -33,7 +33,6 @@ export interface Props {
 
 export default function SessionList(props: Props) {
   const { t } = useTranslation()
-  const isSmallScreen = useIsSmallScreen()
   const { sessionMetaList: sortedSessions, refetch } = useSessionList()
   const sensors = useSensors(
     useSensor(TouchSensor, {
@@ -88,32 +87,34 @@ export default function SessionList(props: Props) {
         </Tooltip>
       </Flex>
 
-      <ScrollArea
-        className="flex-grow"
-        viewportRef={props.sessionListViewportRef}
-        type={isSmallScreen ? 'never' : 'hover'}
+      <DndContext
+        modifiers={[restrictToVerticalAxis]}
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={onDragEnd}
       >
-        <DndContext
-          modifiers={[restrictToVerticalAxis]}
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={onDragEnd}
-        >
-          {sortedSessions && (
-            <SortableContext items={sortedSessions} strategy={verticalListSortingStrategy}>
-              {sortedSessions.map((session, ix) => (
-                <SortableItem key={session.id} id={session.id}>
+        {sortedSessions && (
+          <SortableContext items={sortedSessions} strategy={verticalListSortingStrategy}>
+            <Virtuoso
+              style={{ flex: 1 }}
+              data={sortedSessions}
+              scrollerRef={(ref) => {
+                if (ref instanceof HTMLDivElement) {
+                  props.sessionListViewportRef.current = ref
+                }
+              }}
+              itemContent={(_index, session) => (
+                <SortableItem id={session.id}>
                   <SessionItem
-                    key={session.id}
                     selected={routerState.location.pathname === `/session/${session.id}`}
                     session={session}
                   />
                 </SortableItem>
-              ))}
-            </SortableContext>
-          )}
-        </DndContext>
-      </ScrollArea>
+              )}
+            />
+          </SortableContext>
+        )}
+      </DndContext>
     </>
   )
 }

@@ -1,22 +1,10 @@
 import NiceModal from '@ebay/nice-modal-react'
+import { ActionIcon, type ActionIconProps, Flex, Loader, Text, Tooltip as Tooltip1 } from '@mantine/core'
 import { Alert, Grid, Typography, useTheme } from '@mui/material'
 import Box from '@mui/material/Box'
-import * as dateFns from 'date-fns'
-import { useAtomValue } from 'jotai'
-import type React from 'react'
-import { type FC, forwardRef, type MouseEventHandler, memo, useCallback, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Markdown from '@/components/Markdown'
-import { cn } from '@/lib/utils'
-import { copyToClipboard } from '@/packages/navigator'
-import { countWord } from '@/packages/word-count'
-import platform from '@/platform'
-import type { Message, MessagePicture, MessageToolCallPart, SessionType } from '../../shared/types'
-import { getMessageText } from '../../shared/utils/message'
-import '../static/Block.css'
-import { ActionIcon, type ActionIconProps, Flex, Loader, Text, Tooltip as Tooltip1 } from '@mantine/core'
 import {
   IconArrowDown,
+  IconBug,
   IconCopy,
   IconDotsVertical,
   IconInfoCircle,
@@ -30,15 +18,27 @@ import {
 } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import clsx from 'clsx'
+import * as dateFns from 'date-fns'
 import { concat } from 'lodash'
 import type { UIElementData } from 'photoswipe'
+import type React from 'react'
+import { type FC, forwardRef, type MouseEventHandler, memo, useCallback, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Gallery, Item as GalleryItem } from 'react-photoswipe-gallery'
+import Markdown from '@/components/Markdown'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { cn } from '@/lib/utils'
 import { navigateToSettings } from '@/modals/Settings'
+import { copyToClipboard } from '@/packages/navigator'
+import { countWord } from '@/packages/word-count'
+import platform from '@/platform'
 import storage from '@/storage'
 import { getSession } from '@/stores/chatStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
+import type { Message, MessagePicture, MessageToolCallPart, SessionType } from '../../shared/types'
+import { getMessageText } from '../../shared/utils/message'
+import '../static/Block.css'
 import { generateMore, modifyMessage, regenerateInNewFork, removeMessage } from '../stores/sessionActions'
 import * as toastActions from '../stores/toastActions'
 import ActionMenu, { type ActionMenuItemProps } from './ActionMenu'
@@ -96,6 +96,7 @@ const _Message: FC<Props> = (props) => {
   } = useSettingsStore((state) => state)
 
   const [previewArtifact, setPreviewArtifact] = useState(autoPreviewArtifacts)
+  const [shouldThrowError, setShouldThrowError] = useState(false)
 
   const contentLength = useMemo(() => {
     return getMessageText(msg).length
@@ -160,6 +161,15 @@ const _Message: FC<Props> = (props) => {
 
   const onEditClick = async () => {
     await NiceModal.show('message-edit', { sessionId, msg: msg })
+  }
+
+  // for testing: manual trigger error
+  const onTriggerError = useCallback(() => {
+    setShouldThrowError(true)
+  }, [])
+
+  if (shouldThrowError) {
+    throw new Error('Manual error triggered from Message component for testing ErrorBoundary')
   }
 
   const tips: string[] = []
@@ -256,6 +266,16 @@ const _Message: FC<Props> = (props) => {
             },
           ]
         : []),
+      // 开发环境添加测试错误按钮
+      ...(process.env.NODE_ENV === 'development'
+        ? [
+            {
+              text: 'Trigger Error (Test)',
+              icon: IconBug,
+              onClick: onTriggerError,
+            },
+          ]
+        : []),
       {
         doubleCheck: true,
         text: t('delete'),
@@ -263,7 +283,7 @@ const _Message: FC<Props> = (props) => {
         onClick: onDelMsg,
       },
     ],
-    [t, msg.role, onReport, quoteMsg, onDelMsg]
+    [t, msg.role, onReport, quoteMsg, onDelMsg, onTriggerError]
   )
   const [actionMenuOpened, setActionMenuOpened] = useState(false)
 

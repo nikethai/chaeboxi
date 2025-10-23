@@ -19,7 +19,6 @@ import type { Session, SessionThreadBrief } from 'src/shared/types'
 import { platformTypeAtom } from '@/hooks/useNeedRoomForWinControls'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
-import platform from '@/platform'
 import * as atoms from '@/stores/atoms'
 import {
   deleteFork,
@@ -32,6 +31,7 @@ import {
 import { getAllMessageList, getCurrentThreadHistoryHash } from '@/stores/sessionHelpers'
 import { useUIStore } from '@/stores/uiStore'
 import ActionMenu from './ActionMenu'
+import { ErrorBoundary } from './ErrorBoundary'
 import Message from './Message'
 import MessageNavigation, { ScrollToBottomButton } from './MessageNavigation'
 
@@ -218,18 +218,22 @@ export default function MessageList(props: { className?: string; currentSession:
                 {currentThreadHash[msg.id] && (
                   <ThreadLabel thread={currentThreadHash[msg.id]} sessionId={currentSession.id} />
                 )}
-                <Message
-                  id={msg.id}
-                  msg={msg}
-                  sessionId={currentSession.id}
-                  sessionType={currentSession.type || 'chat'}
-                  className={index === 0 ? 'pt-4' : index === currentMessageList.length - 1 ? '!pb-4' : ''}
-                  collapseThreshold={msg.role === 'system' ? 150 : undefined}
-                  preferCollapsedCodeBlock={index < currentMessageList.length - 10}
-                  buttonGroup={index === currentMessageList.length - 1 && msg.role === 'assistant' ? 'always' : 'auto'}
-                  assistantAvatarKey={currentSession.assistantAvatarKey}
-                  sessionPicUrl={currentSession.picUrl}
-                />
+                <ErrorBoundary name={`message-item`}>
+                  <Message
+                    id={msg.id}
+                    msg={msg}
+                    sessionId={currentSession.id}
+                    sessionType={currentSession.type || 'chat'}
+                    className={index === 0 ? 'pt-4' : index === currentMessageList.length - 1 ? '!pb-4' : ''}
+                    collapseThreshold={msg.role === 'system' ? 150 : undefined}
+                    preferCollapsedCodeBlock={index < currentMessageList.length - 10}
+                    buttonGroup={
+                      index === currentMessageList.length - 1 && msg.role === 'assistant' ? 'always' : 'auto'
+                    }
+                    assistantAvatarKey={currentSession.assistantAvatarKey}
+                    sessionPicUrl={currentSession.picUrl}
+                  />
+                </ErrorBoundary>
                 {currentSession.messageForksHash?.[msg.id] && (
                   <Flex justify="flex-end" mt={-16} pr="md" mr="md" className="z-10 self-end">
                     <ForkNav

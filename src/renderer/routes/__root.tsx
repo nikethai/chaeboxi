@@ -158,7 +158,9 @@ function Root() {
               : {}),
           }}
         >
-          <Outlet />
+          <ErrorBoundary name="main">
+            <Outlet />
+          </ErrorBoundary>
         </Box>
       </Grid>
       {/* 对话设置 */}

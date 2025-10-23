@@ -1,13 +1,11 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { Button } from '@mantine/core'
-import ArrowCircleDownIcon from '@mui/icons-material/ArrowCircleDown'
-import ArrowCircleUpIcon from '@mui/icons-material/ArrowCircleUp'
-import { Box, ButtonGroup, IconButton } from '@mui/material'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Message, ModelProvider } from 'src/shared/types'
 import { useStore } from 'zustand'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
 import Header from '@/components/Header'
 import InputBox from '@/components/InputBox'
 import MessageList from '@/components/MessageList'
@@ -17,8 +15,6 @@ import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 import * as scrollActions from '@/stores/scrollActions'
 import { modifyMessage, removeCurrentThread, startNewThread, submitNewUserMessage } from '@/stores/sessionActions'
 import { getAllMessageList } from '@/stores/sessionHelpers'
-import { useLanguage } from '@/stores/settingsStore'
-import { useUIStore } from '@/stores/uiStore'
 
 export const Route = createFileRoute('/session/$sessionId')({
   component: RouteComponent,
@@ -156,20 +152,21 @@ function RouteComponent() {
       <MessageList key={`message-list${currentSessionId}`} currentSession={currentSession} />
 
       {/* <ScrollButtons /> */}
-      <InputBox
-        key={`input-box${currentSession.id}`}
-        sessionId={currentSession.id}
-        sessionType={currentSession.type}
-        model={model}
-        onStartNewThread={onStartNewThread}
-        onRollbackThread={onRollbackThread}
-        onSelectModel={onSelectModel}
-        onClickSessionSettings={onClickSessionSettings}
-        generating={!!lastGeneratingMessage}
-        onSubmit={onSubmit}
-        onStopGenerating={onStopGenerating}
-      />
-      {/* <InputBox /> */}
+      <ErrorBoundary name="session-inputbox">
+        <InputBox
+          key={`input-box${currentSession.id}`}
+          sessionId={currentSession.id}
+          sessionType={currentSession.type}
+          model={model}
+          onStartNewThread={onStartNewThread}
+          onRollbackThread={onRollbackThread}
+          onSelectModel={onSelectModel}
+          onClickSessionSettings={onClickSessionSettings}
+          generating={!!lastGeneratingMessage}
+          onSubmit={onSubmit}
+          onStopGenerating={onStopGenerating}
+        />
+      </ErrorBoundary>
       <ThreadHistoryDrawer session={currentSession} />
     </div>
   ) : (

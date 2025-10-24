@@ -13,7 +13,13 @@ import {
 import clsx from 'clsx'
 import { type FC, type ReactNode, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Message, MessageReasoningPart, MessageToolCallPart } from 'src/shared/types'
+import {
+  type Message,
+  type MessageReasoningPart,
+  type MessageToolCallPart,
+  MessageToolCallPartSchema,
+} from 'src/shared/types'
+import z from 'zod'
 import { formatElapsedTime, useThinkingTimer } from '@/hooks/useThinkingTimer'
 import { cn } from '@/lib/utils'
 import { getToolName } from '@/packages/tools'
@@ -41,6 +47,25 @@ const ToolCallHeader: FC<{ part: MessageToolCallPart; action: ReactNode; onClick
     </Paper>
   )
 }
+
+const WebBrowsingToolCallPartSchema = MessageToolCallPartSchema.extend({
+  toolName: z.literal('web_search'),
+  args: z.object({
+    query: z.string(),
+  }),
+  result: z
+    .object({
+      query: z.string(),
+      searchResults: z.array(
+        z.object({
+          title: z.string(),
+          snippet: z.string(),
+          link: z.string(),
+        })
+      ),
+    })
+    .optional(),
+})
 
 type WebBrowsingToolCallPart = MessageToolCallPart<
   { query: string },
@@ -183,7 +208,10 @@ const GeneralToolCallUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
 
 export const ToolCallPartUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
   if (part.toolName === 'web_search') {
-    return <WebSearchToolCallUI part={part as WebBrowsingToolCallPart} />
+    const parsedPart = WebBrowsingToolCallPartSchema.safeParse(part)
+    if (parsedPart.success) {
+      return <WebSearchToolCallUI part={parsedPart.data as WebBrowsingToolCallPart} />
+    }
   }
   return <GeneralToolCallUI part={part} />
 }

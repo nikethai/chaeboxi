@@ -7,6 +7,10 @@ import type { Storage } from './interfaces'
 export class DesktopFileStorage implements Storage {
   public ipc = window.electronAPI
 
+  public getStorageType(): string {
+    return 'DESKTOP_FILE'
+  }
+
   public async setStoreValue(key: string, value: any) {
     // 为什么要序列化？
     // 为了实现进程通信，electron invoke 会自动对传输数据进行序列化，
@@ -43,6 +47,10 @@ export class LocalStorage implements Storage {
     StorageKey.MyCopilots,
     StorageKey.ChatSessions,
   ]
+
+  public getStorageType(): string {
+    return 'LOCAL_STORAGE'
+  }
 
   public async setStoreValue(key: string, value: any) {
     // 为什么序列化成 JSON？
@@ -227,6 +235,9 @@ class SQLiteStorage {
 }
 
 export class MobileSQLiteStorage implements Storage {
+  public getStorageType(): string {
+    return 'MOBILE_SQLITE'
+  }
   private sqliteStorage = new SQLiteStorage()
 
   public async setStoreValue(key: string, value: any) {
@@ -264,6 +275,10 @@ export class MobileSQLiteStorage implements Storage {
 
 export class IndexedDBStorage implements Storage {
   private store = localforage.createInstance({ name: 'chatboxstore' })
+
+  public getStorageType(): string {
+    return 'INDEXEDDB'
+  }
 
   public async setStoreValue(key: string, value: any) {
     // 为什么序列化成 JSON？
@@ -317,7 +332,7 @@ export function getOldVersionStorages(): Storage[] {
   if (platform.type === 'desktop') {
     return [new DesktopFileStorage()]
   } else if (platform.type === 'mobile') {
-    return [new IndexedDBStorage(), new LocalStorage()]
+    return [new IndexedDBStorage(), new MobileSQLiteStorage(), new LocalStorage()]
   }
   return [new LocalStorage()]
 }

@@ -63,13 +63,21 @@ async function migrateStorage() {
     // 如果当前的storage中没有读取到版本号，那么存在两种可能性
     // 1. 这是第一次运行应用。
     // 2. 刚刚切换到新的storage实现，之前的数据还没有迁移过来。
+
+    // 如果当前的storage读取到了版本号，说明使用过当前同样的storage (因为存在storage迁移出去又迁移回来的情况)，存在两种情况
+    // 1. 经历过迁移出去又迁移回来，这种情况只需要迁移第一个old storage
+    // 2. 没有经历过后续迁移，保留当前的storage数据即可，执行后续的数据格式变更
+
     log.info('migrateStorage: no config version found')
     const oldVersionStorages = getOldVersionStorages()
     let hasOldData = false
     for (const oldStorage of oldVersionStorages) {
       const oldConfigVersion = await oldStorage.getStoreValue(StorageKey.ConfigVersion)
-
       if (oldConfigVersion) {
+        if (oldStorage.getStorageType() === storage.getStorageType()) {
+          // 如果找到的第一个storage和当前的storage类型一致，不需要迁移
+          break
+        }
         const migrated = await oldStorage.getStoreValue('migrated')
         if (!migrated) {
           // 找到老版本的数据，说明是升级，执行数据迁移操作

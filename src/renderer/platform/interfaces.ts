@@ -5,6 +5,7 @@ import type { KnowledgeBaseController } from './knowledge-base/interface'
 export type PlatformType = 'web' | 'desktop' | 'mobile'
 
 export interface Storage {
+  getStorageType(): string
   setStoreValue(key: string, value: any): Promise<void>
   getStoreValue(key: string): Promise<any>
   delStoreValue(key: string): Promise<void>

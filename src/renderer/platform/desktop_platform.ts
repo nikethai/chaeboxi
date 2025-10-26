@@ -25,6 +25,10 @@ export default class DesktopPlatform implements Platform {
     this.ipc = ipc
   }
 
+  public getStorageType(): string {
+    return 'INDEXEDDB'
+  }
+
   public async getVersion() {
     return cache('ipc:getVersion', () => this.ipc.invoke('getVersion'), { ttl: 5 * 60 * 1000, memoryOnly: true })
   }

@@ -14,7 +14,7 @@ export default defineConfig({
     testTimeout: 10000,
     hookTimeout: 10000,
     // Suppress console output in tests
-    silent: false,
+    silent: true,
     logHeapUsage: false,
   },
   resolve: {

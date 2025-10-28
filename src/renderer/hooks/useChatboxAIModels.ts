@@ -2,17 +2,19 @@ import { useQuery } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { ModelProviderEnum, type ProviderModelInfo } from 'src/shared/types'
 import { getModelManifest } from '@/packages/remote'
-import { useLanguage, useProviderSettings } from '@/stores/settingsStore'
+import { useLanguage, useProviderSettings, useSettingsStore } from '@/stores/settingsStore'
 
 const useChatboxAIModels = () => {
   const language = useLanguage()
   const { providerSettings: chatboxAISettings, setProviderSettings } = useProviderSettings(ModelProviderEnum.ChatboxAI)
+  const licenseKey = useSettingsStore((state) => state.licenseKey)
 
   const { data, ...others } = useQuery({
     queryKey: ['chatbox-ai-models', language],
     queryFn: async () => {
       const res = await getModelManifest({
         aiProvider: ModelProviderEnum.ChatboxAI,
+        licenseKey,
         language,
       })
 

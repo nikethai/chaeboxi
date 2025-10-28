@@ -20,8 +20,8 @@ export default abstract class BaseConfig implements ModelSettingUtil {
 
   protected abstract listProviderModels(settings: ProviderSettings): Promise<ProviderModelInfo[]>
 
-  private listRemoteProviderModels(): Promise<ProviderModelInfo[]> {
-    return remote
+  private async listRemoteProviderModels(): Promise<ProviderModelInfo[]> {
+    return await remote
       .getModelManifest({
         aiProvider: this.provider,
       })

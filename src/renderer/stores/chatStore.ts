@@ -425,3 +425,49 @@ export async function removeMessage(sessionId: string, messageId: string) {
     }
   })
 }
+
+// MARK: data recovery operations
+
+/**
+ * Recover session list by scanning all session: prefixed keys in storage
+ * This will clear the current session list and rebuild it from all found sessions
+ */
+export async function recoverSessionList() {
+  console.debug('chatStore', 'recoverSessionList')
+
+  // Get all storage keys
+  const allKeys = await storage.getAllKeys()
+
+  // Filter keys that match the session: prefix
+  const sessionKeys = allKeys.filter((key) => key.startsWith('session:'))
+
+  // Fetch all sessions with their first message timestamp
+  const sessionsWithTimestamp: Array<{ meta: SessionMeta; timestamp: number }> = []
+
+  for (const key of sessionKeys) {
+    const session = await storage.getItem<Session | null>(key, null)
+    if (session) {
+      const migratedSession = migrateSession(session)
+      const firstMessageTimestamp = migratedSession.messages[0]?.timestamp || 0
+      sessionsWithTimestamp.push({
+        meta: getSessionMeta(migratedSession),
+        timestamp: firstMessageTimestamp,
+      })
+    }
+  }
+
+  // Sort by first message timestamp (older first)
+  sessionsWithTimestamp.sort((a, b) => a.timestamp - b.timestamp)
+
+  // Extract sorted session metas
+  const recoveredSessionMetas = sessionsWithTimestamp.map((item) => item.meta)
+
+  await storage.setItemNow(StorageKey.ChatSessionsList, recoveredSessionMetas)
+
+  // Update the query cache, apply additional sorting rules (pinned sessions, etc.)
+  queryClient.setQueryData(QueryKeys.ChatSessionsList, sortSessions(recoveredSessionMetas))
+
+  console.debug('chatStore', 'recoverSessionList', `Recovered ${recoveredSessionMetas.length} sessions`)
+
+  return recoveredSessionMetas.length
+}

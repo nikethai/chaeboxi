@@ -24,6 +24,7 @@ import LazySlider from '@/components/LazySlider'
 import { languageNameMap, languages } from '@/i18n/locales'
 import platform from '@/platform'
 import storage, { StorageKey } from '@/storage'
+import { recoverSessionList } from '@/stores/chatStore'
 import { migrateOnData } from '@/stores/migration'
 import { useSettingsStore } from '@/stores/settingsStore'
 
@@ -150,6 +151,11 @@ export function RouteComponent() {
 
       <Divider />
 
+      {/* Data Recovery */}
+      <DataRecoverySection />
+
+      <Divider />
+
       {/* import and export data */}
       <ImportExportDataSection />
 
@@ -208,6 +214,61 @@ export function RouteComponent() {
             />
           </Stack>
         </>
+      )}
+    </Stack>
+  )
+}
+
+const DataRecoverySection = () => {
+  const { t } = useTranslation()
+  const [isRecovering, setIsRecovering] = useState(false)
+  const [recoveryResult, setRecoveryResult] = useState<{ success: boolean; count?: number; error?: string } | null>(
+    null
+  )
+
+  const handleRecover = async () => {
+    setIsRecovering(true)
+    setRecoveryResult(null)
+    try {
+      const count = await recoverSessionList()
+      setRecoveryResult({ success: true, count })
+    } catch (error) {
+      console.error('Failed to recover session list:', error)
+      setRecoveryResult({ success: false, error: String(error) })
+    } finally {
+      setIsRecovering(false)
+    }
+  }
+
+  return (
+    <Stack gap="md">
+      <Stack gap="xxs">
+        <Title order={5}>{t('Data Recovery')}</Title>
+        <Text c="chatbox-tertiary">
+          {t('If conversations are missing from the list, use this feature to scan and recover them from storage')}
+        </Text>
+      </Stack>
+      <Button className="self-start" onClick={handleRecover} disabled={isRecovering} loading={isRecovering}>
+        {isRecovering ? t('Recovering...') : t('Recover Conversation List')}
+      </Button>
+      {recoveryResult && (
+        <Alert
+          className="self-start"
+          variant="light"
+          color={recoveryResult.success ? 'green' : 'red'}
+          title={
+            recoveryResult.success
+              ? t('Recovered {{count}} conversations', { count: recoveryResult.count })
+              : t('Recovery failed')
+          }
+          icon={<IconInfoCircle />}
+        >
+          {recoveryResult.success ? (
+            <Text size="sm">{t('The conversation list has been successfully recovered')}</Text>
+          ) : (
+            <Text size="sm">{recoveryResult.error || t('Unknown error')}</Text>
+          )}
+        </Alert>
       )}
     </Stack>
   )

@@ -36,6 +36,8 @@ export const groqProvider = defineProvider({
     return new Groq(
       {
         apiKey: config.providerSetting.apiKey || '',
+        cloudflareClientId: config.providerSetting.cloudflareClientId,
+        cloudflareClientSecret: config.providerSetting.cloudflareClientSecret,
         model: config.model,
         temperature: config.settings.temperature,
         topP: config.settings.topP,

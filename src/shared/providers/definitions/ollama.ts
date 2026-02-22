@@ -13,6 +13,8 @@ export const ollamaProvider = defineProvider({
     return new Ollama(
       {
         ollamaHost: config.formattedApiHost,
+        cloudflareClientId: config.providerSetting.cloudflareClientId,
+        cloudflareClientSecret: config.providerSetting.cloudflareClientSecret,
         model: config.model,
         temperature: config.settings.temperature,
         topP: config.settings.topP,

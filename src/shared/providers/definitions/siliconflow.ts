@@ -102,6 +102,8 @@ export const siliconFlowProvider = defineProvider({
     return new SiliconFlow(
       {
         apiKey: config.providerSetting.apiKey || '',
+        cloudflareClientId: config.providerSetting.cloudflareClientId,
+        cloudflareClientSecret: config.providerSetting.cloudflareClientSecret,
         model: config.model,
         temperature: config.settings.temperature,
         topP: config.settings.topP,

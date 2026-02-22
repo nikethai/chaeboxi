@@ -28,6 +28,8 @@ export const xaiProvider = defineProvider({
     return new XAI(
       {
         apiKey: config.providerSetting.apiKey || '',
+        cloudflareClientId: config.providerSetting.cloudflareClientId,
+        cloudflareClientSecret: config.providerSetting.cloudflareClientSecret,
         model: config.model,
         temperature: config.settings.temperature,
         topP: config.settings.topP,

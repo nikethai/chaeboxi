@@ -1,5 +1,6 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible'
 import AbstractAISDKModel from '../../../models/abstract-ai-sdk'
+import { buildCloudflareAccessHeaders } from '../../../models/utils/openai-headers'
 import type { ProviderModelInfo, ToolUseScope } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 
@@ -7,6 +8,8 @@ type FetchFunction = typeof globalThis.fetch
 
 interface Options {
   apiKey: string
+  cloudflareClientId?: string
+  cloudflareClientSecret?: string
   model: ProviderModelInfo
   temperature?: number
   topP?: number
@@ -44,6 +47,7 @@ export default class VolcEngine extends AbstractAISDKModel {
       fetch: async (_input, init) => {
         return fetch(`${Host}${Path}`, init)
       },
+      headers: buildCloudflareAccessHeaders(this.options),
     })
   }
   protected getChatModel() {

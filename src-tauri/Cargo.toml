@@ -1,7 +1,7 @@
 [package]
 description = "Tauri runtime for Chaeboxi"
 edition = "2021"
-name = "chaeboxi-tauri"
+name = "chaeboxi"
 version = "0.1.0"
 
 [build-dependencies]
@@ -9,6 +9,7 @@ tauri-build = {version = "2", features = [] }
 
 [dependencies]
 anyhow = "1"
+fix-path-env = { git = "https://github.com/tauri-apps/fix-path-env-rs", version = "0.0.0" }
 hostname = "0.4"
 http = "1"
 rmcp = {version = "0.16.0", features = [

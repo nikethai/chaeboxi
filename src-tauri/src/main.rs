@@ -1431,6 +1431,8 @@ async fn ipc_invoke(
 }
 
 fn main() {
+    let _ = fix_path_env::fix();
+
     tauri::Builder::default()
         .manage(AppState {
             next_mcp_id: AtomicU64::new(0),

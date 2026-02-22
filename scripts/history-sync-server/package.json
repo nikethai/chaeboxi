@@ -8,7 +8,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "start": "node server.mjs"
+    "start": "node server.mjs",
+    "setup:systemd": "bash ./setup-systemd.sh"
   },
   "dependencies": {
     "@libsql/client": "^0.15.6"

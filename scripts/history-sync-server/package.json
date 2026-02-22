@@ -9,7 +9,8 @@
   },
   "scripts": {
     "start": "node server.mjs",
-    "setup:systemd": "bash ./setup-systemd.sh"
+    "setup:systemd": "bash ./setup-systemd.sh",
+    "setup:openrc": "sh ./setup-openrc.sh"
   },
   "dependencies": {
     "@libsql/client": "^0.15.6"

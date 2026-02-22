@@ -52,6 +52,8 @@ export default class Ollama extends OpenAICompatible {
       {
         apiKey: 'ollama',
         apiHost,
+        cloudflareClientId: options.cloudflareClientId,
+        cloudflareClientSecret: options.cloudflareClientSecret,
         model: options.model,
         temperature: options.temperature,
         topP: options.topP,

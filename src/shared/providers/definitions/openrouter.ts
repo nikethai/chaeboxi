@@ -95,6 +95,8 @@ export const openRouterProvider = defineProvider({
     return new OpenRouter(
       {
         apiKey: config.providerSetting.apiKey || '',
+        cloudflareClientId: config.providerSetting.cloudflareClientId,
+        cloudflareClientSecret: config.providerSetting.cloudflareClientSecret,
         model: config.model,
         temperature: config.settings.temperature,
         topP: config.settings.topP,

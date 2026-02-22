@@ -2,11 +2,14 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
 import AbstractAISDKModel from '../../../models/abstract-ai-sdk'
 import { fetchRemoteModels } from '../../../models/openai-compatible'
+import { buildCloudflareAccessHeaders } from '../../../models/utils/openai-headers'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 
 interface Options {
   apiKey: string
+  cloudflareClientId?: string
+  cloudflareClientSecret?: string
   model: ProviderModelInfo
   temperature?: number
   topP?: number
@@ -38,6 +41,7 @@ export default class OpenRouter extends AbstractAISDKModel {
       headers: {
         'HTTP-Referer': 'https://chatboxai.app',
         'X-Title': 'Chatbox AI',
+        ...buildCloudflareAccessHeaders(this.options),
       },
     })
   }
@@ -55,6 +59,8 @@ export default class OpenRouter extends AbstractAISDKModel {
       {
         apiHost: 'https://openrouter.ai/api/v1',
         apiKey: this.options.apiKey,
+        cloudflareClientId: this.options.cloudflareClientId,
+        cloudflareClientSecret: this.options.cloudflareClientSecret,
         useProxy: false,
       },
       this.dependencies

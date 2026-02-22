@@ -13,6 +13,8 @@ export const lmStudioProvider = defineProvider({
     return new LMStudio(
       {
         apiHost: config.formattedApiHost,
+        cloudflareClientId: config.providerSetting.cloudflareClientId,
+        cloudflareClientSecret: config.providerSetting.cloudflareClientSecret,
         model: config.model,
         temperature: config.settings.temperature,
         topP: config.settings.topP,

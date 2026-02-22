@@ -81,9 +81,6 @@ const CustomServersSection: FC<Props> = (props) => {
   }
 
   const handleServerDelete = (id: string) => {
-    if (!window.confirm(t('Are you sure you want to delete this server?')!)) {
-      return
-    }
     setSettings((draft) => {
       draft.mcp.servers = draft.mcp.servers.filter((s) => s.id !== id)
     })
@@ -132,7 +129,7 @@ const CustomServersSection: FC<Props> = (props) => {
       draft.mcp.servers.push(...servers)
     })
     toast.success(
-      t('{{count}} MCP servers imported', { count: servers.length }) + ': ' + servers.map((s) => s.name).join(', ')
+      t('{{count}} MCP servers imported', { count: servers.length }) + ': ' + servers.map((s) => s.name).join(', '),
     )
   }
 

@@ -23,11 +23,44 @@ Small self-hosted sync service for cross-machine chat history sync.
 
 ```bash
 cd scripts/history-sync-server
-pnpm install
-SYNC_TOKEN='replace-with-strong-token' pnpm start
+npm install
+SYNC_TOKEN='replace-with-strong-token' npm start
 ```
 
-## Run with Docker (recommended for Proxmox)
+## Proxmox LXC (no Docker, systemd service)
+
+Prerequisites inside the LXC: `node` (v20+) and `npm`.
+
+Inside your LXC, copy this folder and run:
+
+```bash
+cd scripts/history-sync-server
+sudo SYNC_TOKEN='replace-with-strong-token' bash ./setup-systemd.sh
+```
+
+This installs the server to `/opt/chatbox-history-sync`, stores data in
+`/var/lib/chatbox-history-sync/history-sync.db`, and creates the service
+`chatbox-history-sync.service`.
+
+Useful commands:
+
+```bash
+sudo systemctl status chatbox-history-sync --no-pager
+sudo journalctl -u chatbox-history-sync -f
+sudo systemctl restart chatbox-history-sync
+```
+
+Optional overrides:
+
+```bash
+sudo SERVICE_NAME=chatbox-sync \
+  PORT=8899 \
+  DATA_DIR=/srv/chatbox-sync \
+  SYNC_TOKEN='replace-with-strong-token' \
+  bash ./setup-systemd.sh
+```
+
+## Docker (optional)
 
 ```bash
 cd scripts/history-sync-server

@@ -1,4 +1,4 @@
-import { Button, Flex, PasswordInput, Select, Stack, Text, Title, Tooltip } from '@mantine/core'
+import { Button, Flex, PasswordInput, Select, Stack, Text, TextInput, Title, Tooltip } from '@mantine/core'
 import { createFileRoute } from '@tanstack/react-router'
 import { ofetch } from 'ofetch'
 import { useState } from 'react'
@@ -18,8 +18,61 @@ export function RouteComponent() {
 
   const [checkingTavily, setCheckingTavily] = useState(false)
   const [tavilyAvaliable, setTavilyAvaliable] = useState<boolean>()
+  const [checkingSerper, setCheckingSerper] = useState(false)
+  const [serperAvaliable, setSerperAvaliable] = useState<boolean>()
+  const [checkingGoogle, setCheckingGoogle] = useState(false)
+  const [googleAvaliable, setGoogleAvaliable] = useState<boolean>()
+
+  const checkSerper = async () => {
+    if (extension.webSearch.serperApiKey?.trim()) {
+      setCheckingSerper(true)
+      setSerperAvaliable(undefined)
+      try {
+        await ofetch('https://google.serper.dev/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-KEY': extension.webSearch.serperApiKey.trim(),
+          },
+          body: {
+            q: 'Chatbox',
+            num: 1,
+          },
+        })
+        setSerperAvaliable(true)
+      } catch (_e) {
+        setSerperAvaliable(false)
+      } finally {
+        setCheckingSerper(false)
+      }
+    }
+  }
+
+  const checkGoogle = async () => {
+    if (extension.webSearch.googleApiKey?.trim() && extension.webSearch.googleCseId?.trim()) {
+      setCheckingGoogle(true)
+      setGoogleAvaliable(undefined)
+      try {
+        await ofetch('https://customsearch.googleapis.com/customsearch/v1', {
+          method: 'GET',
+          query: {
+            q: 'Chatbox',
+            key: extension.webSearch.googleApiKey.trim(),
+            cx: extension.webSearch.googleCseId.trim(),
+            num: 1,
+          },
+        })
+        setGoogleAvaliable(true)
+      } catch (_e) {
+        setGoogleAvaliable(false)
+      } finally {
+        setCheckingGoogle(false)
+      }
+    }
+  }
+
   const checkTavily = async () => {
-    if (extension.webSearch.tavilyApiKey) {
+    if (extension.webSearch.tavilyApiKey?.trim()) {
       setCheckingTavily(true)
       setTavilyAvaliable(undefined)
       try {
@@ -27,7 +80,7 @@ export function RouteComponent() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${extension.webSearch.tavilyApiKey}`,
+            Authorization: `Bearer ${extension.webSearch.tavilyApiKey.trim()}`,
           },
           body: {
             query: 'Chatbox',
@@ -53,6 +106,9 @@ export function RouteComponent() {
         comboboxProps={{ withinPortal: true, withArrow: true }}
         data={[
           { value: 'bing', label: 'Bing Search (Free)' },
+          { value: 'duckduckgo', label: 'DuckDuckGo Search (Free)' },
+          { value: 'serper', label: 'Serper (Google Search API)' },
+          { value: 'google', label: 'Google Custom Search API' },
           { value: 'tavily', label: 'Tavily' },
         ]}
         value={extension.webSearch.provider === 'build-in' ? 'bing' : extension.webSearch.provider}
@@ -63,7 +119,7 @@ export function RouteComponent() {
               ...extension,
               webSearch: {
                 ...extension.webSearch,
-                provider: e as 'build-in' | 'bing' | 'tavily',
+                provider: e as 'build-in' | 'bing' | 'duckduckgo' | 'serper' | 'google' | 'tavily',
               },
             },
           })
@@ -77,6 +133,160 @@ export function RouteComponent() {
             'Bing Search is provided for free use, but it may have limitations and is subject to change by Microsoft.'
           )}
         </Text>
+      )}
+      {extension.webSearch.provider === 'duckduckgo' && (
+        <Text size="xs" c="chatbox-gray">
+          {t('DuckDuckGo Search is provided for free use and may be rate-limited in some regions.')}
+        </Text>
+      )}
+      {extension.webSearch.provider === 'serper' && (
+        <Stack gap="xs">
+          <Text fw="600">{t('Serper API Key')}</Text>
+          <Flex align="center" gap="xs">
+            <PasswordInput
+              flex={1}
+              maw={320}
+              value={extension.webSearch.serperApiKey}
+              onChange={(e) => {
+                setSerperAvaliable(undefined)
+                setSettings({
+                  extension: {
+                    ...extension,
+                    webSearch: {
+                      ...extension.webSearch,
+                      serperApiKey: e.currentTarget.value,
+                    },
+                  },
+                })
+              }}
+              error={serperAvaliable === false}
+            />
+            <Button
+              color="blue"
+              variant="light"
+              onClick={checkSerper}
+              loading={checkingSerper}
+              disabled={!extension.webSearch.serperApiKey?.trim()}
+            >
+              {t('Check')}
+            </Button>
+          </Flex>
+
+          {typeof serperAvaliable === 'boolean' ? (
+            serperAvaliable ? (
+              <Text size="xs" c="chatbox-success">
+                {t('Connection successful!')}
+              </Text>
+            ) : (
+              <Text size="xs" c="chatbox-error">
+                {t('API key invalid!')}
+              </Text>
+            )
+          ) : null}
+
+          <Button
+            variant="transparent"
+            size="compact-xs"
+            px={0}
+            className="self-start"
+            onClick={() => platform.openLink('https://serper.dev')}
+          >
+            {t('Get API Key')}
+          </Button>
+        </Stack>
+      )}
+      {extension.webSearch.provider === 'google' && (
+        <Stack gap="xs">
+          <Text fw="600">{t('Google Custom Search')}</Text>
+          <Text size="xs" c="chatbox-gray">
+            {t('Google API Key')}
+          </Text>
+          <Flex align="center" gap="xs">
+            <PasswordInput
+              flex={1}
+              maw={320}
+              value={extension.webSearch.googleApiKey}
+              onChange={(e) => {
+                setGoogleAvaliable(undefined)
+                setSettings({
+                  extension: {
+                    ...extension,
+                    webSearch: {
+                      ...extension.webSearch,
+                      googleApiKey: e.currentTarget.value,
+                    },
+                  },
+                })
+              }}
+              error={googleAvaliable === false}
+            />
+          </Flex>
+          <Text size="xs" c="chatbox-gray">
+            {t('Search Engine ID (cx)')}
+          </Text>
+          <Flex align="center" gap="xs">
+            <TextInput
+              flex={1}
+              maw={320}
+              value={extension.webSearch.googleCseId}
+              onChange={(e) => {
+                setGoogleAvaliable(undefined)
+                setSettings({
+                  extension: {
+                    ...extension,
+                    webSearch: {
+                      ...extension.webSearch,
+                      googleCseId: e.currentTarget.value,
+                    },
+                  },
+                })
+              }}
+              error={googleAvaliable === false}
+            />
+            <Button
+              color="blue"
+              variant="light"
+              onClick={checkGoogle}
+              loading={checkingGoogle}
+              disabled={!extension.webSearch.googleApiKey?.trim() || !extension.webSearch.googleCseId?.trim()}
+            >
+              {t('Check')}
+            </Button>
+          </Flex>
+
+          {typeof googleAvaliable === 'boolean' ? (
+            googleAvaliable ? (
+              <Text size="xs" c="chatbox-success">
+                {t('Connection successful!')}
+              </Text>
+            ) : (
+              <Text size="xs" c="chatbox-error">
+                {t('Credentials invalid!')}
+              </Text>
+            )
+          ) : null}
+
+          <Flex gap="sm" align="center">
+            <Button
+              variant="transparent"
+              size="compact-xs"
+              px={0}
+              className="self-start"
+              onClick={() => platform.openLink('https://console.cloud.google.com/apis/library/customsearch.googleapis.com')}
+            >
+              {t('Enable API')}
+            </Button>
+            <Button
+              variant="transparent"
+              size="compact-xs"
+              px={0}
+              className="self-start"
+              onClick={() => platform.openLink('https://programmablesearchengine.google.com/about/')}
+            >
+              {t('Create Search Engine')}
+            </Button>
+          </Flex>
+        </Stack>
       )}
       {/* Tavily API Key */}
       {extension.webSearch.provider === 'tavily' && (

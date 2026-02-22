@@ -221,6 +221,18 @@ export class ChatboxAIAPIError extends BaseError {
       i18nKey:
         'You have selected Tavily as the search provider, but an API key has not been entered yet. Please <OpenExtensionSettingButton>click here to open Settings</OpenExtensionSettingButton> and enter your API key, or choose a different search provider.',
     },
+    serper_api_key_required: {
+      name: 'serper_api_key_required',
+      code: 20035,
+      i18nKey:
+        'You have selected Serper as the search provider, but an API key has not been entered yet. Please <OpenExtensionSettingButton>click here to open Settings</OpenExtensionSettingButton> and enter your API key, or choose a different search provider.',
+    },
+    google_search_credentials_required: {
+      name: 'google_search_credentials_required',
+      code: 20036,
+      i18nKey:
+        'You have selected Google Custom Search as the search provider, but the API key or Search Engine ID is missing. Please <OpenExtensionSettingButton>click here to open Settings</OpenExtensionSettingButton> and complete the configuration, or choose a different search provider.',
+    },
     model_not_support_tool_use: {
       name: 'model_not_support_tool_use',
       code: 20026,

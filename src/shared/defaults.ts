@@ -121,6 +121,9 @@ export function settings(): Settings {
     extension: {
       webSearch: {
         provider: 'bing',
+        serperApiKey: '',
+        googleApiKey: '',
+        googleCseId: '',
         tavilyApiKey: '',
       },
       knowledgeBase: {

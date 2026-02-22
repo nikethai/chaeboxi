@@ -10,10 +10,7 @@ import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useCopied } from '@/hooks/useCopied'
 import { navigateToSettings } from '@/modals/Settings'
-import { trackingEvent } from '@/packages/event'
-import platform from '@/platform'
 import * as settingActions from '@/stores/settingActions'
-import LinkTargetBlank from '../common/Link'
 
 const MAX_CHARS = 200
 const MAX_LINES = 3
@@ -33,6 +30,14 @@ function getTruncatedText(text: string): string {
     return `${lines.slice(0, MAX_LINES).join('\n')}...`
   }
   return text
+}
+
+function getProviderDisplayName(aiProvider: string | undefined): string {
+  if (!aiProvider) {
+    return 'AI Provider'
+  }
+  const providerNames = aiProviderNameHash as Record<string, string>
+  return providerNames[aiProvider] || aiProvider
 }
 
 /**
@@ -104,9 +109,9 @@ export default function MessageErrTips(props: { msg: Message }) {
   } else if (msg.error.startsWith('API Error')) {
     tips.push(
       <Trans
-        i18nKey="Connection to {{aiProvider}} failed. This typically occurs due to incorrect configuration or {{aiProvider}} account issues. Please <buttonOpenSettings>check your settings</buttonOpenSettings> and verify your {{aiProvider}} account status, or purchase a <LinkToLicensePricing>Chatbox AI License</LinkToLicensePricing> to unlock all advanced models instantly without any configuration."
+        i18nKey="Connection to {{aiProvider}} failed. This typically occurs due to incorrect configuration or {{aiProvider}} account issues. Please <buttonOpenSettings>check your settings</buttonOpenSettings> and verify your {{aiProvider}} account status."
         values={{
-          aiProvider: msg.aiProvider ? aiProviderNameHash[msg.aiProvider] : 'AI Provider',
+          aiProvider: getProviderDisplayName(msg.aiProvider),
         }}
         components={{
           buttonOpenSettings: (
@@ -117,13 +122,6 @@ export default function MessageErrTips(props: { msg: Message }) {
               }}
             />
           ),
-          LinkToLicensePricing: (
-            <LinkTargetBlank
-              className="!font-bold !text-gray-700 hover:!text-blue-600 transition-colors"
-              href="https://chatboxai.app/redirect_app/advanced_url_processing?utm_source=app&utm_content=msg_bad_provider"
-            />
-          ),
-          a: <a href={`https://chatboxai.app/redirect_app/faqs/${settingActions.getLanguage()}`} target="_blank" />,
         }}
       />
     )
@@ -145,7 +143,7 @@ export default function MessageErrTips(props: { msg: Message }) {
       <Trans
         i18nKey="ai provider no implemented paint tips"
         values={{
-          aiProvider: msg.aiProvider ? aiProviderNameHash[msg.aiProvider] : 'AI Provider',
+          aiProvider: getProviderDisplayName(msg.aiProvider),
         }}
         components={[
           <Link
@@ -190,22 +188,13 @@ export default function MessageErrTips(props: { msg: Message }) {
               <Link
                 className="cursor-pointer italic"
                 onClick={() => {
-                  platform.openLink(
-                    'https://chatboxai.app/redirect_app/view_more_plans?utm_source=app&utm_content=msg_upgrade_required'
-                  )
-                  trackingEvent('click_view_more_plans_button_from_upgrade_error_tips', {
-                    event_category: 'user',
-                  })
+                  navigateToSettings('/provider')
                 }}
               ></Link>
             ),
-            LinkToHomePage: <LinkTargetBlank href="https://chatboxai.app"></LinkTargetBlank>,
-            LinkToAdvancedFileProcessing: (
-              <LinkTargetBlank href="https://chatboxai.app/redirect_app/advanced_file_processing?utm_source=app&utm_content=msg_upgrade_required"></LinkTargetBlank>
-            ),
-            LinkToAdvancedUrlProcessing: (
-              <LinkTargetBlank href="https://chatboxai.app/redirect_app/advanced_url_processing?utm_source=app&utm_content=msg_upgrade_required"></LinkTargetBlank>
-            ),
+            LinkToHomePage: <span />,
+            LinkToAdvancedFileProcessing: <span />,
+            LinkToAdvancedUrlProcessing: <span />,
             OpenDocumentParserSettingButton: (
               <Link
                 className="cursor-pointer italic"
@@ -219,18 +208,7 @@ export default function MessageErrTips(props: { msg: Message }) {
       )
     }
   } else {
-    tips.push(
-      <Trans
-        i18nKey="unknown error tips"
-        components={[
-          <a
-            key="a"
-            href={`https://chatboxai.app/redirect_app/faqs/${settingActions.getLanguage()}?utm_source=app&utm_content=msg_error_unknown`}
-            target="_blank"
-          ></a>,
-        ]}
-      />
-    )
+    tips.push(<Trans i18nKey="unknown error tips" components={[<span key="a"></span>]} />)
   }
   return (
     <Alert icon={false} severity="error" className="message-error-tips">

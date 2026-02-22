@@ -4,6 +4,7 @@ import AbstractAISDKModel from '../../../models/abstract-ai-sdk'
 import { fetchRemoteModels } from '../../../models/openai-compatible'
 import type { CallChatCompletionOptions } from '../../../models/types'
 import { createFetchWithProxy } from '../../../models/utils/fetch-proxy'
+import { buildOpenAICompatibleHeaders } from '../../../models/utils/openai-headers'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 import { normalizeOpenAIApiHostAndPath } from '../../../utils/llm_utils'
@@ -12,6 +13,8 @@ interface Options {
   apiKey: string
   apiHost: string
   apiPath: string
+  cloudflareClientId?: string
+  cloudflareClientSecret?: string
   model: ProviderModelInfo
   temperature?: number
   topP?: number
@@ -50,16 +53,7 @@ export default class CustomOpenAI extends AbstractAISDKModel {
       apiKey: this.options.apiKey,
       baseURL: this.options.apiHost,
       fetch: fetchFunction,
-      headers: this.options.apiHost.includes('openrouter.ai')
-        ? {
-            'HTTP-Referer': 'https://chatboxai.app',
-            'X-Title': 'Chatbox AI',
-          }
-        : this.options.apiHost.includes('aihubmix.com')
-          ? {
-              'APP-Code': 'VAFU9221',
-            }
-          : undefined,
+      headers: buildOpenAICompatibleHeaders(this.options.apiHost, this.options),
     })
   }
 
@@ -79,6 +73,8 @@ export default class CustomOpenAI extends AbstractAISDKModel {
       {
         apiHost: this.options.apiHost,
         apiKey: this.options.apiKey,
+        cloudflareClientId: this.options.cloudflareClientId,
+        cloudflareClientSecret: this.options.cloudflareClientSecret,
         useProxy: this.options.useProxy,
       },
       this.dependencies

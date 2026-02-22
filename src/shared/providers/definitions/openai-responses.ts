@@ -57,6 +57,8 @@ export const openaiResponsesProvider = defineProvider({
           config.providerSetting.apiPath ||
           config.globalSettings.providers?.[config.settings.provider!]?.apiPath ||
           '/responses',
+        cloudflareClientId: config.providerSetting.cloudflareClientId,
+        cloudflareClientSecret: config.providerSetting.cloudflareClientSecret,
         model: config.model,
         temperature: config.settings.temperature,
         topP: config.settings.topP,

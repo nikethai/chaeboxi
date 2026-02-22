@@ -6,10 +6,13 @@ import AbstractAISDKModel from './abstract-ai-sdk'
 import { ApiError } from './errors'
 import type { ModelInterface } from './types'
 import { createFetchWithProxy } from './utils/fetch-proxy'
+import { buildBearerAuthHeaders, buildOpenAICompatibleHeaders } from './utils/openai-headers'
 
 export interface OpenAICompatibleSettings {
   apiKey: string
   apiHost: string
+  cloudflareClientId?: string
+  cloudflareClientSecret?: string
   model: ProviderModelInfo
   temperature?: number
   topP?: number
@@ -56,6 +59,7 @@ export default abstract class OpenAICompatible extends AbstractAISDKModel implem
       apiKey: this.options.apiKey,
       baseURL: this.options.apiHost,
       fetch: createFetchWithProxy(this.options.useProxy, this.dependencies),
+      headers: buildOpenAICompatibleHeaders(this.options.apiHost, this.options),
     })
   }
 
@@ -72,6 +76,8 @@ export default abstract class OpenAICompatible extends AbstractAISDKModel implem
       {
         apiHost: this.options.apiHost,
         apiKey: this.options.apiKey,
+        cloudflareClientId: this.options.cloudflareClientId,
+        cloudflareClientSecret: this.options.cloudflareClientSecret,
         useProxy: this.options.useProxy,
       },
       this.dependencies
@@ -116,15 +122,19 @@ interface ListModelsResponse {
 }
 
 export async function fetchRemoteModels(
-  params: { apiHost: string; apiKey: string; useProxy?: boolean },
+  params: {
+    apiHost: string
+    apiKey: string
+    cloudflareClientId?: string
+    cloudflareClientSecret?: string
+    useProxy?: boolean
+  },
   dependencies: ModelDependencies
 ) {
   const response = await dependencies.request.apiRequest({
     url: `${params.apiHost}/models`,
     method: 'GET',
-    headers: {
-      Authorization: `Bearer ${params.apiKey}`,
-    },
+    headers: buildBearerAuthHeaders(params.apiKey, params),
     useProxy: params.useProxy,
   })
   const json: ListModelsResponse = await response.json()

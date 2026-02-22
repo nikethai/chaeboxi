@@ -14,6 +14,8 @@ export default class LMStudio extends OpenAICompatible {
       {
         apiKey: '',
         apiHost,
+        cloudflareClientId: options.cloudflareClientId,
+        cloudflareClientSecret: options.cloudflareClientSecret,
         model: options.model,
         temperature: options.temperature,
         topP: options.topP,

@@ -120,6 +120,18 @@ function ProviderSettings({ providerId }: { providerId: string }) {
     })
   }
 
+  const handleCloudflareClientIdChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setProviderSettings({
+      cloudflareClientId: e.currentTarget.value,
+    })
+  }
+
+  const handleCloudflareClientSecretChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setProviderSettings({
+      cloudflareClientSecret: e.currentTarget.value,
+    })
+  }
+
   const handleAddModel = async () => {
     const newModel: ProviderModelInfo = await NiceModal.show('model-edit', { providerId })
     if (!newModel?.modelId) {
@@ -396,6 +408,34 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 </Button>
               </Tooltip>
             </Flex>
+          </Stack>
+        )}
+
+        {![ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ''].includes(baseInfo.id) && (
+          <Stack gap="xxs">
+            <Text span fw="600">
+              {t('Cloudflare Client ID')}
+            </Text>
+            <TextInput
+              flex={1}
+              value={providerSettings?.cloudflareClientId || ''}
+              placeholder="Optional"
+              onChange={handleCloudflareClientIdChange}
+            />
+          </Stack>
+        )}
+
+        {![ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ''].includes(baseInfo.id) && (
+          <Stack gap="xxs">
+            <Text span fw="600">
+              {t('Cloudflare Client Secret')}
+            </Text>
+            <PasswordInput
+              flex={1}
+              value={providerSettings?.cloudflareClientSecret || ''}
+              placeholder="Optional"
+              onChange={handleCloudflareClientSecretChange}
+            />
           </Stack>
         )}
 

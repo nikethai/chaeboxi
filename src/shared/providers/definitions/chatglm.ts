@@ -55,6 +55,8 @@ export const chatGLMProvider = defineProvider({
     return new ChatGLM(
       {
         apiKey: config.providerSetting.apiKey || '',
+        cloudflareClientId: config.providerSetting.cloudflareClientId,
+        cloudflareClientSecret: config.providerSetting.cloudflareClientSecret,
         model: config.model,
         temperature: config.settings.temperature,
         topP: config.settings.topP,

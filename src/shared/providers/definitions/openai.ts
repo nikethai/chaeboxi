@@ -85,6 +85,8 @@ export const openaiProvider = defineProvider({
       {
         apiKey: config.providerSetting.apiKey || '',
         apiHost: config.formattedApiHost,
+        cloudflareClientId: config.providerSetting.cloudflareClientId,
+        cloudflareClientSecret: config.providerSetting.cloudflareClientSecret,
         model: config.model,
         dalleStyle: config.settings.dalleStyle || 'vivid',
         temperature: config.settings.temperature,

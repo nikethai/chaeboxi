@@ -5,7 +5,6 @@ import {
   Divider,
   FileButton,
   Flex,
-  NumberInput,
   Radio,
   Select,
   Stack,
@@ -235,6 +234,55 @@ export function RouteComponent() {
   )
 }
 
+type HistorySyncFormState = {
+  enabled: boolean
+  endpoint: string
+  token: string
+  autoSync: boolean
+  intervalSeconds: number
+}
+
+const DEFAULT_HISTORY_SYNC_FORM_STATE: HistorySyncFormState = {
+  enabled: false,
+  endpoint: '',
+  token: '',
+  autoSync: false,
+  intervalSeconds: 60,
+}
+
+function clampHistorySyncIntervalSeconds(value: number): number {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_HISTORY_SYNC_FORM_STATE.intervalSeconds
+  }
+  return Math.min(3600, Math.max(15, Math.round(value)))
+}
+
+function normalizeHistorySyncFormState(
+  config: Partial<HistorySyncFormState> | undefined | null
+): HistorySyncFormState {
+  return {
+    enabled: Boolean(config?.enabled),
+    endpoint: typeof config?.endpoint === 'string' ? config.endpoint : '',
+    token: typeof config?.token === 'string' ? config.token : '',
+    autoSync: Boolean(config?.autoSync),
+    intervalSeconds: clampHistorySyncIntervalSeconds(
+      typeof config?.intervalSeconds === 'number'
+        ? config.intervalSeconds
+        : DEFAULT_HISTORY_SYNC_FORM_STATE.intervalSeconds
+    ),
+  }
+}
+
+function isSameHistorySyncFormState(a: HistorySyncFormState, b: HistorySyncFormState): boolean {
+  return (
+    a.enabled === b.enabled &&
+    a.endpoint === b.endpoint &&
+    a.token === b.token &&
+    a.autoSync === b.autoSync &&
+    a.intervalSeconds === b.intervalSeconds
+  )
+}
+
 const DataRecoverySection = () => {
   const { t } = useTranslation()
   const [isRecovering, setIsRecovering] = useState(false)
@@ -306,17 +354,11 @@ const DataRecoverySection = () => {
 
 const ImportExportDataSection = () => {
   const { t } = useTranslation()
-  const { setSettings, extension } = useSettingsStore((state) => ({
-    setSettings: state.setSettings,
-    extension: state.extension,
-  }))
-  const historySyncConfig = extension.historySync || {
-    enabled: false,
-    endpoint: '',
-    token: '',
-    autoSync: false,
-    intervalSeconds: 60,
-  }
+  const setSettings = useSettingsStore((state) => state.setSettings)
+  const storedHistorySyncConfig = useSettingsStore((state) => state.extension.historySync)
+  const [historySyncForm, setHistorySyncForm] = useState<HistorySyncFormState>(() =>
+    normalizeHistorySyncFormState(storedHistorySyncConfig)
+  )
 
   const [importTips, setImportTips] = useState('')
   const [historySyncTips, setHistorySyncTips] = useState('')
@@ -337,20 +379,29 @@ const ImportExportDataSection = () => {
     setHistorySyncStatus(state)
   }
 
-  const updateHistorySyncConfig = (next: Partial<typeof historySyncConfig>) => {
-    setSettings((state) => {
-      const current = state.extension.historySync || {
-        enabled: false,
-        endpoint: '',
-        token: '',
-        autoSync: false,
-        intervalSeconds: 60,
-      }
-      state.extension.historySync = {
+  const updateHistorySyncForm = (next: Partial<HistorySyncFormState>) => {
+    setHistorySyncForm((current) => {
+      const merged = normalizeHistorySyncFormState({
         ...current,
         ...next,
-      }
+      })
+      return isSameHistorySyncFormState(current, merged) ? current : merged
     })
+  }
+
+  const persistHistorySyncConfig = () => {
+    const normalized = normalizeHistorySyncFormState(historySyncForm)
+    setSettings((state) => {
+      const current = normalizeHistorySyncFormState(state.extension.historySync)
+
+      if (isSameHistorySyncFormState(current, normalized)) {
+        return
+      }
+
+      state.extension.historySync = normalized
+    })
+    setHistorySyncTips(t('Sync settings saved'))
+    setHistorySyncError(false)
   }
 
   const runHistorySyncAction = async (
@@ -383,8 +434,8 @@ const ImportExportDataSection = () => {
   const onTestHistorySync = async () => {
     await runHistorySyncAction('test', async () => {
       const snapshot = await testHistorySyncConnection({
-        endpoint: historySyncConfig.endpoint,
-        token: historySyncConfig.token,
+        endpoint: historySyncForm.endpoint,
+        token: historySyncForm.token,
       })
       return {
         tip: t('Connected. Remote revision {{revision}}, updated at {{updatedAt}}', {
@@ -398,8 +449,8 @@ const ImportExportDataSection = () => {
   const onPullHistorySync = async () => {
     await runHistorySyncAction('pull', async () => {
       const result = await pullHistoryFromServer({
-        endpoint: historySyncConfig.endpoint,
-        token: historySyncConfig.token,
+        endpoint: historySyncForm.endpoint,
+        token: historySyncForm.token,
       })
       return {
         tip: t('Pulled revision {{revision}}. Imported {{imported}}, updated {{updated}}, skipped {{skipped}}', {
@@ -416,8 +467,8 @@ const ImportExportDataSection = () => {
   const onPushHistorySync = async () => {
     await runHistorySyncAction('push', async () => {
       const result = await pushHistoryToServer({
-        endpoint: historySyncConfig.endpoint,
-        token: historySyncConfig.token,
+        endpoint: historySyncForm.endpoint,
+        token: historySyncForm.token,
       })
 
       const conflictSuffix = result.conflictResolved
@@ -444,8 +495,8 @@ const ImportExportDataSection = () => {
   const onSyncHistoryNow = async () => {
     await runHistorySyncAction('sync', async () => {
       const result = await syncHistoryNow({
-        endpoint: historySyncConfig.endpoint,
-        token: historySyncConfig.token,
+        endpoint: historySyncForm.endpoint,
+        token: historySyncForm.token,
       })
       const recoverFromPull = result.pull.imported > 0 || result.pull.updated > 0
       const recoverFromPushConflict =
@@ -645,9 +696,11 @@ const ImportExportDataSection = () => {
     })()
   }, [])
 
+  const storedHistorySyncForm = normalizeHistorySyncFormState(storedHistorySyncConfig)
+  const hasUnsavedHistorySyncChanges = !isSameHistorySyncFormState(historySyncForm, storedHistorySyncForm)
   const isHistorySyncPending = historySyncAction !== null
-  const hasHistorySyncCredentials = Boolean(historySyncConfig.endpoint?.trim() && historySyncConfig.token?.trim())
-  const canRunSyncAction = historySyncConfig.enabled && hasHistorySyncCredentials && !isHistorySyncPending
+  const hasHistorySyncCredentials = Boolean(historySyncForm.endpoint.trim() && historySyncForm.token.trim())
+  const canRunSyncAction = historySyncForm.enabled && hasHistorySyncCredentials && !isHistorySyncPending
   const lastSyncedAt = historySyncStatus?.lastSyncedAt
     ? dayjs(historySyncStatus.lastSyncedAt).format('YYYY-MM-DD HH:mm:ss')
     : t('Never')
@@ -702,43 +755,57 @@ const ImportExportDataSection = () => {
 
         <Switch
           label={t('Enable server sync')}
-          checked={historySyncConfig.enabled}
-          onChange={(e) => updateHistorySyncConfig({ enabled: e.currentTarget.checked })}
+          checked={historySyncForm.enabled}
+          onChange={(e) => updateHistorySyncForm({ enabled: e.currentTarget.checked })}
         />
 
         <TextInput
           maw={520}
           label={t('Sync endpoint')}
           placeholder="https://your-sync-host.example.com"
-          value={historySyncConfig.endpoint || ''}
-          onChange={(e) => updateHistorySyncConfig({ endpoint: e.currentTarget.value })}
+          value={historySyncForm.endpoint}
+          onChange={(e) => updateHistorySyncForm({ endpoint: e.currentTarget.value })}
         />
 
         <TextInput
           maw={520}
           label={t('Sync token')}
           type="password"
-          value={historySyncConfig.token || ''}
-          onChange={(e) => updateHistorySyncConfig({ token: e.currentTarget.value })}
+          value={historySyncForm.token}
+          onChange={(e) => updateHistorySyncForm({ token: e.currentTarget.value })}
         />
 
         <Flex gap="md" wrap="wrap" align="flex-end">
           <Switch
             label={t('Auto sync in background')}
-            checked={historySyncConfig.autoSync}
-            onChange={(e) => updateHistorySyncConfig({ autoSync: e.currentTarget.checked })}
+            checked={historySyncForm.autoSync}
+            onChange={(e) => updateHistorySyncForm({ autoSync: e.currentTarget.checked })}
           />
-          <NumberInput
+          <TextInput
             maw={220}
             label={t('Auto sync interval (seconds)')}
-            min={15}
-            max={3600}
-            value={historySyncConfig.intervalSeconds}
-            onChange={(value) =>
-              updateHistorySyncConfig({ intervalSeconds: typeof value === 'number' ? value : 60 })
-            }
+            type="number"
+            value={`${historySyncForm.intervalSeconds}`}
+            onChange={(e) => {
+              const parsed = Number(e.currentTarget.value)
+              if (Number.isFinite(parsed)) {
+                updateHistorySyncForm({ intervalSeconds: clampHistorySyncIntervalSeconds(parsed) })
+              }
+            }}
           />
+          <Button
+            variant="light"
+            onClick={persistHistorySyncConfig}
+            disabled={!hasUnsavedHistorySyncChanges}
+          >
+            {t('Save Sync Settings')}
+          </Button>
         </Flex>
+        {hasUnsavedHistorySyncChanges && (
+          <Text size="sm" c="chatbox-tertiary">
+            {t('You have unsaved sync settings. Save to apply background auto sync.')}
+          </Text>
+        )}
 
         <Stack gap={2}>
           <Text size="sm" c="chatbox-tertiary">

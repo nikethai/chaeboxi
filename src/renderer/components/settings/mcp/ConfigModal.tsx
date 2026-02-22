@@ -106,7 +106,7 @@ const ConfigForm: FC<{
       if (testingAbortController.current?.signal.aborted) {
         return
       }
-      setTestingResult({ config, error: err as Error, tools: [] })
+      setTestingResult({ config, error: err instanceof Error ? err : new Error(String(err)), tools: [] })
     } finally {
       setTesting(false)
     }

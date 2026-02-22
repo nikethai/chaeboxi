@@ -132,7 +132,7 @@ export class MCPServer extends Emittery<{ status: MCPServerStatus }> {
       this.tools = await this.client.tools()
     } catch (err) {
       console.error('mcp:client:start', err)
-      this.status = { state: 'idle', error: (err as Error).message }
+      this.status = { state: 'idle', error: err instanceof Error ? err.message : String(err) }
       return
     }
     this.status = { state: 'running' }

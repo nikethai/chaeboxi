@@ -132,6 +132,13 @@ export function settings(): Settings {
           rerank: undefined,
         },
       },
+      historySync: {
+        enabled: false,
+        endpoint: '',
+        token: '',
+        autoSync: false,
+        intervalSeconds: 60,
+      },
       // documentParser is NOT set here - it uses platform-specific defaults
       // Desktop: 'local', Mobile/Web: 'none'
       // See settingsStore.ts for the platform-aware initialization logic

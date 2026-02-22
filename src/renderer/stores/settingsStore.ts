@@ -18,10 +18,44 @@ const log = getLogger('settings-store')
 /**
  * Returns platform-specific default document parser configuration.
  * - Desktop: 'local' (has full Node.js environment for local parsing)
- * - Mobile/Web: 'none' (only basic text file support by default, user can enable chatbox-ai)
+ * - Mobile/Web: 'none' (only basic text file support by default)
  */
 export function getPlatformDefaultDocumentParser(): DocumentParserConfig {
   return platform.type === 'desktop' ? { type: 'local' } : { type: 'none' }
+}
+
+function stripChatboxPaidFeatures(settings: any) {
+  // Remove Chatbox AI paid auth/license state from persisted settings.
+  delete settings.licenseKey
+  delete settings.licenseInstances
+  delete settings.licenseDetail
+  delete settings.licenseActivationMethod
+  delete settings.memorizedManualLicenseKey
+
+  // Remove Chatbox AI provider-specific settings.
+  if (settings.providers && typeof settings.providers === 'object') {
+    delete settings.providers['chatbox-ai']
+  }
+
+  // Reset model selections that still point to Chatbox AI.
+  const modelSettingKeys = ['defaultChatModel', 'threadNamingModel', 'searchTermConstructionModel', 'ocrModel']
+  for (const key of modelSettingKeys) {
+    if (settings[key]?.provider === 'chatbox-ai') {
+      settings[key] = undefined
+    }
+  }
+
+  if (Array.isArray(settings.favoritedModels)) {
+    settings.favoritedModels = settings.favoritedModels.filter((m: any) => m?.provider !== 'chatbox-ai')
+  }
+
+  if (settings.extension?.webSearch?.provider === 'build-in') {
+    settings.extension.webSearch.provider = 'bing'
+  }
+
+  if (settings.extension?.documentParser?.type === 'chatbox-ai') {
+    settings.extension.documentParser = getPlatformDefaultDocumentParser()
+  }
 }
 
 type Action = {
@@ -83,11 +117,6 @@ export const settingsStore = createStore<Settings & Action>()(
               settings.shortcuts.inputBoxSendMessageWithoutResponse =
                 settings.shortcuts.inpubBoxSendMessageWithoutResponse ||
                 settings.shortcuts.inputBoxSendMessageWithoutResponse
-            case 1:
-              if (settings.licenseKey && !settings.licenseActivationMethod) {
-                settings.licenseActivationMethod = 'manual'
-                settings.memorizedManualLicenseKey = settings.licenseKey
-              }
             default:
               break
           }
@@ -99,6 +128,8 @@ export const settingsStore = createStore<Settings & Action>()(
               documentParser: getPlatformDefaultDocumentParser(),
             }
           }
+
+          stripChatboxPaidFeatures(settings)
 
           return SettingsSchema.parse(settings)
         },

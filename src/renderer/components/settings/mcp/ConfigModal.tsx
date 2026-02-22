@@ -11,6 +11,7 @@ import {
   Textarea,
   TextInput,
   Tooltip,
+  Popover,
 } from '@mantine/core'
 import { useForm } from '@mantine/form'
 import pTimeout from 'p-timeout'
@@ -71,6 +72,7 @@ const ConfigForm: FC<{
   const [testing, setTesting] = useState(false)
   const [testingResult, setTestingResult] = useState<ConnectionTestingResult | null>()
   const testingAbortController = useRef<AbortController | null>(null)
+  const [deletePopoverOpened, setDeletePopoverOpened] = useState(false)
 
   const form = useForm<MCPServerConfigFormValues>({
     mode: 'controlled',
@@ -166,9 +168,33 @@ const ConfigForm: FC<{
         )}
         <Group justify="space-between">
           {props.mode === 'edit' ? (
-            <Anchor c="chatbox-error" onClick={() => props.onDelete(props.config.id)}>
-              {t('Delete')}
-            </Anchor>
+            <Popover opened={deletePopoverOpened} onChange={setDeletePopoverOpened} withArrow>
+              <Popover.Target>
+                <Anchor c="chatbox-error" onClick={() => setDeletePopoverOpened((o) => !o)}>
+                  {t('Delete')}
+                </Anchor>
+              </Popover.Target>
+              <Popover.Dropdown>
+                <Stack gap="xs">
+                  <Text size="sm">{t('Are you sure you want to delete this server?')}</Text>
+                  <Group justify="flex-end" gap="xs">
+                    <Button size="xs" variant="default" onClick={() => setDeletePopoverOpened(false)}>
+                      {t('Cancel')}
+                    </Button>
+                    <Button
+                      size="xs"
+                      color="red"
+                      onClick={() => {
+                        setDeletePopoverOpened(false)
+                        props.onDelete(props.config.id)
+                      }}
+                    >
+                      {t('Delete')}
+                    </Button>
+                  </Group>
+                </Stack>
+              </Popover.Dropdown>
+            </Popover>
           ) : (
             <Text />
           )}

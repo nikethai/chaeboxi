@@ -166,6 +166,9 @@ initializeApp()
         }
       })
     }
+
+    // Auto history sync bootstrap (non-blocking)
+    import('./setup/history_sync')
   })
 
 // If you want to start measuring performance in your app, pass a function

@@ -5,6 +5,7 @@ import {
   Divider,
   FileButton,
   Flex,
+  NumberInput,
   Radio,
   Select,
   Stack,
@@ -27,6 +28,14 @@ import { languageNameMap, languages } from '@/i18n/locales'
 import platform from '@/platform'
 import storage, { StorageKey } from '@/storage'
 import { recoverSessionList } from '@/stores/chatStore'
+import {
+  getHistorySyncState,
+  pullHistoryFromServer,
+  pushHistoryToServer,
+  syncHistoryNow,
+  testHistorySyncConnection,
+} from '@/stores/historySync'
+import { exportHistoryTransferFile, importHistoryTransferFile } from '@/stores/historyTransfer'
 import { migrateOnData } from '@/stores/migration'
 import { useSettingsStore } from '@/stores/settingsStore'
 
@@ -297,13 +306,212 @@ const DataRecoverySection = () => {
 
 const ImportExportDataSection = () => {
   const { t } = useTranslation()
+  const { setSettings, extension } = useSettingsStore((state) => ({
+    setSettings: state.setSettings,
+    extension: state.extension,
+  }))
+  const historySyncConfig = extension.historySync || {
+    enabled: false,
+    endpoint: '',
+    token: '',
+    autoSync: false,
+    intervalSeconds: 60,
+  }
 
   const [importTips, setImportTips] = useState('')
+  const [historySyncTips, setHistorySyncTips] = useState('')
+  const [historySyncError, setHistorySyncError] = useState(false)
+  const [historySyncStatus, setHistorySyncStatus] = useState<Awaited<ReturnType<typeof getHistorySyncState>>>()
+  const [historySyncAction, setHistorySyncAction] = useState<'test' | 'pull' | 'push' | 'sync' | null>(null)
+  const [historyTransferTips, setHistoryTransferTips] = useState('')
+  const [historyTransferError, setHistoryTransferError] = useState(false)
+  const [isHistoryTransferPending, setIsHistoryTransferPending] = useState(false)
   const [exportItems, setExportItems] = useState<ExportDataItem[]>([
     ExportDataItem.Setting,
     ExportDataItem.Conversations,
     ExportDataItem.Copilot,
   ])
+
+  const refreshHistorySyncStatus = async () => {
+    const state = await getHistorySyncState()
+    setHistorySyncStatus(state)
+  }
+
+  const updateHistorySyncConfig = (next: Partial<typeof historySyncConfig>) => {
+    setSettings((state) => {
+      const current = state.extension.historySync || {
+        enabled: false,
+        endpoint: '',
+        token: '',
+        autoSync: false,
+        intervalSeconds: 60,
+      }
+      state.extension.historySync = {
+        ...current,
+        ...next,
+      }
+    })
+  }
+
+  const runHistorySyncAction = async (
+    action: 'test' | 'pull' | 'push' | 'sync',
+    runner: () => Promise<{
+      tip: string
+      recoverSessions?: boolean
+    }>
+  ) => {
+    setHistorySyncAction(action)
+    setHistorySyncTips('')
+    setHistorySyncError(false)
+    try {
+      const result = await runner()
+      if (result.recoverSessions) {
+        await recoverSessionList()
+      }
+      await refreshHistorySyncStatus()
+      setHistorySyncTips(result.tip)
+    } catch (error) {
+      console.error(`History sync ${action} failed:`, error)
+      setHistorySyncError(true)
+      setHistorySyncTips(error instanceof Error ? error.message : t('History sync failed'))
+      await refreshHistorySyncStatus()
+    } finally {
+      setHistorySyncAction(null)
+    }
+  }
+
+  const onTestHistorySync = async () => {
+    await runHistorySyncAction('test', async () => {
+      const snapshot = await testHistorySyncConnection({
+        endpoint: historySyncConfig.endpoint,
+        token: historySyncConfig.token,
+      })
+      return {
+        tip: t('Connected. Remote revision {{revision}}, updated at {{updatedAt}}', {
+          revision: snapshot.revision,
+          updatedAt: snapshot.updatedAt,
+        }),
+      }
+    })
+  }
+
+  const onPullHistorySync = async () => {
+    await runHistorySyncAction('pull', async () => {
+      const result = await pullHistoryFromServer({
+        endpoint: historySyncConfig.endpoint,
+        token: historySyncConfig.token,
+      })
+      return {
+        tip: t('Pulled revision {{revision}}. Imported {{imported}}, updated {{updated}}, skipped {{skipped}}', {
+          revision: result.revision,
+          imported: result.imported,
+          updated: result.updated,
+          skipped: result.skipped,
+        }),
+        recoverSessions: result.imported > 0 || result.updated > 0,
+      }
+    })
+  }
+
+  const onPushHistorySync = async () => {
+    await runHistorySyncAction('push', async () => {
+      const result = await pushHistoryToServer({
+        endpoint: historySyncConfig.endpoint,
+        token: historySyncConfig.token,
+      })
+
+      const conflictSuffix = result.conflictResolved
+        ? t(
+            ' (resolved conflict: imported {{imported}}, updated {{updated}}, skipped {{skipped}} conversations)',
+            {
+              imported: result.imported,
+              updated: result.updated,
+              skipped: result.skipped,
+            }
+          )
+        : ''
+
+      return {
+        tip: t('Pushed history to revision {{revision}}{{suffix}}', {
+          revision: result.revision,
+          suffix: conflictSuffix,
+        }),
+        recoverSessions: result.conflictResolved && (result.imported > 0 || result.updated > 0),
+      }
+    })
+  }
+
+  const onSyncHistoryNow = async () => {
+    await runHistorySyncAction('sync', async () => {
+      const result = await syncHistoryNow({
+        endpoint: historySyncConfig.endpoint,
+        token: historySyncConfig.token,
+      })
+      const recoverFromPull = result.pull.imported > 0 || result.pull.updated > 0
+      const recoverFromPushConflict =
+        result.push.conflictResolved && (result.push.imported > 0 || result.push.updated > 0)
+
+      return {
+        tip: t(
+          'Sync completed. Pull imported {{imported}}, updated {{updated}}, skipped {{skipped}}. Push revision: {{revision}}',
+          {
+            imported: result.pull.imported,
+            updated: result.pull.updated,
+            skipped: result.pull.skipped,
+            revision: result.push.revision,
+          }
+        ),
+        recoverSessions: recoverFromPull || recoverFromPushConflict,
+      }
+    })
+  }
+
+  const onExportHistoryTransfer = async () => {
+    setHistoryTransferTips('')
+    setHistoryTransferError(false)
+    setIsHistoryTransferPending(true)
+    try {
+      const { fileName, content, sessionCount } = await exportHistoryTransferFile()
+      await platform.exporter.exportTextFile(fileName, content)
+      setHistoryTransferTips(t('Exported {{count}} conversations for transfer', { count: sessionCount }))
+    } catch (error) {
+      console.error('Failed to export history transfer file:', error)
+      setHistoryTransferError(true)
+      setHistoryTransferTips(t('Failed to export chat history'))
+    } finally {
+      setIsHistoryTransferPending(false)
+    }
+  }
+
+  const onImportHistoryTransfer = (file: File | null) => {
+    if (!file) {
+      return
+    }
+
+    void (async () => {
+      setHistoryTransferTips('')
+      setHistoryTransferError(false)
+      setIsHistoryTransferPending(true)
+      try {
+        const text = await file.text()
+        const result = await importHistoryTransferFile(text)
+        await recoverSessionList()
+        setHistoryTransferTips(
+          t('Imported {{imported}} new, updated {{updated}}, skipped {{skipped}} conversations', {
+            imported: result.imported,
+            updated: result.updated,
+            skipped: result.skipped,
+          })
+        )
+      } catch (error) {
+        console.error('Failed to import history transfer file:', error)
+        setHistoryTransferError(true)
+        setHistoryTransferTips(error instanceof Error ? error.message : t('Failed to import chat history'))
+      } finally {
+        setIsHistoryTransferPending(false)
+      }
+    })()
+  }
 
   const onExport = async () => {
     const data = await storage.getAll()
@@ -326,6 +534,12 @@ const ImportExportDataSection = () => {
     }
     if (!exportItems.includes(ExportDataItem.Conversations)) {
       delete data[StorageKey.ChatSessions]
+      delete data[StorageKey.ChatSessionsList]
+      for (const key of Object.keys(data)) {
+        if (key.startsWith('session:')) {
+          delete data[key]
+        }
+      }
     }
     if (!exportItems.includes(ExportDataItem.Copilot)) {
       delete data[StorageKey.MyCopilots]
@@ -424,9 +638,181 @@ const ImportExportDataSection = () => {
       window.navigator.storage.persisted?.().then((p) => setStoragePersisted(p))
     }
   }, [])
+  useEffect(() => {
+    void (async () => {
+      const state = await getHistorySyncState()
+      setHistorySyncStatus(state)
+    })()
+  }, [])
+
+  const isHistorySyncPending = historySyncAction !== null
+  const hasHistorySyncCredentials = Boolean(historySyncConfig.endpoint?.trim() && historySyncConfig.token?.trim())
+  const canRunSyncAction = historySyncConfig.enabled && hasHistorySyncCredentials && !isHistorySyncPending
+  const lastSyncedAt = historySyncStatus?.lastSyncedAt
+    ? dayjs(historySyncStatus.lastSyncedAt).format('YYYY-MM-DD HH:mm:ss')
+    : t('Never')
 
   return (
     <>
+      <Stack gap="lg">
+        <Stack gap="xxs">
+          <Title order={5}>{t('Cross-device Chat History')}</Title>
+          <Text c="chatbox-tertiary">
+            {t(
+              'Export conversations from this machine and import them on another machine. Existing conversations will be merged by session id.'
+            )}
+          </Text>
+        </Stack>
+        {historyTransferTips && (
+          <Alert
+            className="self-start"
+            variant="light"
+            color={historyTransferError ? 'yellow' : 'green'}
+            title={historyTransferError ? t('History transfer failed') : t('History transfer completed')}
+            icon={<IconInfoCircle />}
+          >
+            <Text size="sm">{historyTransferTips}</Text>
+          </Alert>
+        )}
+        <Flex gap="md">
+          <Button className="self-start" onClick={onExportHistoryTransfer} loading={isHistoryTransferPending}>
+            {t('Export Chat History for Transfer')}
+          </Button>
+          <FileButton accept="application/json" onChange={onImportHistoryTransfer}>
+            {(props) => (
+              <Button {...props} className="self-start" loading={isHistoryTransferPending}>
+                {t('Import and Merge Chat History')}
+              </Button>
+            )}
+          </FileButton>
+        </Flex>
+      </Stack>
+
+      <Divider />
+
+      <Stack gap="lg">
+        <Stack gap="xxs">
+          <Title order={5}>{t('Self-hosted History Sync')}</Title>
+          <Text c="chatbox-tertiary">
+            {t(
+              'Connect to your own sync service (for example on Proxmox). The client syncs snapshots with revision conflict handling.'
+            )}
+          </Text>
+        </Stack>
+
+        <Switch
+          label={t('Enable server sync')}
+          checked={historySyncConfig.enabled}
+          onChange={(e) => updateHistorySyncConfig({ enabled: e.currentTarget.checked })}
+        />
+
+        <TextInput
+          maw={520}
+          label={t('Sync endpoint')}
+          placeholder="https://your-sync-host.example.com"
+          value={historySyncConfig.endpoint || ''}
+          onChange={(e) => updateHistorySyncConfig({ endpoint: e.currentTarget.value })}
+        />
+
+        <TextInput
+          maw={520}
+          label={t('Sync token')}
+          type="password"
+          value={historySyncConfig.token || ''}
+          onChange={(e) => updateHistorySyncConfig({ token: e.currentTarget.value })}
+        />
+
+        <Flex gap="md" wrap="wrap" align="flex-end">
+          <Switch
+            label={t('Auto sync in background')}
+            checked={historySyncConfig.autoSync}
+            onChange={(e) => updateHistorySyncConfig({ autoSync: e.currentTarget.checked })}
+          />
+          <NumberInput
+            maw={220}
+            label={t('Auto sync interval (seconds)')}
+            min={15}
+            max={3600}
+            value={historySyncConfig.intervalSeconds}
+            onChange={(value) =>
+              updateHistorySyncConfig({ intervalSeconds: typeof value === 'number' ? value : 60 })
+            }
+          />
+        </Flex>
+
+        <Stack gap={2}>
+          <Text size="sm" c="chatbox-tertiary">
+            {t('Local sync state: revision {{revision}}, last synced {{lastSyncedAt}}', {
+              revision: historySyncStatus?.revision || 0,
+              lastSyncedAt,
+            })}
+          </Text>
+          {historySyncStatus?.lastError && (
+            <Text size="sm" c="red">
+              {historySyncStatus.lastError}
+            </Text>
+          )}
+        </Stack>
+
+        {historySyncTips && (
+          <Alert
+            className="self-start"
+            variant="light"
+            color={historySyncError ? 'yellow' : 'green'}
+            title={historySyncError ? t('History sync failed') : t('History sync completed')}
+            icon={<IconInfoCircle />}
+          >
+            <Text size="sm">{historySyncTips}</Text>
+          </Alert>
+        )}
+
+        {!hasHistorySyncCredentials && (
+          <Text size="sm" c="chatbox-tertiary">
+            {t('Set endpoint and token first, then test/pull/push/sync')}
+          </Text>
+        )}
+
+        <Flex gap="md" wrap="wrap">
+          <Button
+            className="self-start"
+            variant="light"
+            onClick={onTestHistorySync}
+            loading={historySyncAction === 'test'}
+            disabled={!hasHistorySyncCredentials || isHistorySyncPending}
+          >
+            {t('Test Connection')}
+          </Button>
+          <Button
+            className="self-start"
+            variant="light"
+            onClick={onPullHistorySync}
+            loading={historySyncAction === 'pull'}
+            disabled={!canRunSyncAction}
+          >
+            {t('Pull from Server')}
+          </Button>
+          <Button
+            className="self-start"
+            variant="light"
+            onClick={onPushHistorySync}
+            loading={historySyncAction === 'push'}
+            disabled={!canRunSyncAction}
+          >
+            {t('Push to Server')}
+          </Button>
+          <Button
+            className="self-start"
+            onClick={onSyncHistoryNow}
+            loading={historySyncAction === 'sync'}
+            disabled={!canRunSyncAction}
+          >
+            {t('Sync Now')}
+          </Button>
+        </Flex>
+      </Stack>
+
+      <Divider />
+
       <Stack gap="md">
         <Title order={5} onDoubleClick={() => setShowStorageInfo(true)}>
           {t('Data Backup')}

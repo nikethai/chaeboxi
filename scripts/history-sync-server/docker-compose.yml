@@ -1,0 +1,14 @@
+services:
+  chatbox-history-sync:
+    build: .
+    container_name: chatbox-history-sync
+    restart: unless-stopped
+    environment:
+      SYNC_TOKEN: change-me
+      SYNC_DB_PATH: /data/history-sync.db
+      PORT: 8788
+      SYNC_HOST: 0.0.0.0
+    ports:
+      - '8788:8788'
+    volumes:
+      - ./data:/data

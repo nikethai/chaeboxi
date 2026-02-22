@@ -76,7 +76,7 @@ export default function Sidebar() {
       resizeStartX.current = e.clientX
       resizeStartWidth.current = sidebarWidth
     },
-    [isSmallScreen, sidebarWidth]
+    [isSmallScreen, sidebarWidth],
   )
 
   useEffect(() => {
@@ -137,15 +137,10 @@ export default function Sidebar() {
         {needRoomForMacWindowControls && <Box className="title-bar flex-[0_0_44px]" />}
         <Flex align="center" justify="space-between" px="md" py="sm">
           <Flex align="center" gap="sm">
-            <Flex
-              align="center"
-              gap="sm"
-              onClick={() => platform.openLink('https://chatboxai.app/')}
-              style={{ cursor: 'pointer' }}
-            >
+            <Flex align="center" gap="sm" onClick={() => {}} style={{ cursor: 'pointer' }}>
               <Image src={icon} w={20} h={20} />
               <Text span c="chatbox-secondary" size="xl" lh={1.2} fw="700">
-                Chatbox
+                Chaeboxi
               </Text>
             </Flex>
             {FORCE_ENABLE_DEV_PAGES && <ThemeSwitchButton size="xs" />}
@@ -249,7 +244,7 @@ export default function Sidebar() {
             onMouseDown={handleResizeStart}
             className={clsx(
               `sidebar-resizer absolute top-0 bottom-0 w-1 cursor-col-resize z-[1] bg-chatbox-border-primary opacity-0 hover:opacity-70 transition-opacity duration-200`,
-              language === 'ar' ? '-left-1' : '-right-1'
+              language === 'ar' ? '-left-1' : '-right-1',
             )}
           />
         )}

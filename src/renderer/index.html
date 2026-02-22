@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
@@ -11,46 +11,36 @@
     <meta name="theme-color" content="#000000" />
     <meta name="description" content="chatbox" />
     <link rel="apple-touch-icon" href="/logo192.png" />
-    <title>Chatbox</title>
+    <title>Chaeboxi</title>
     <!-- Google tag (gtag.js) -->
-    <script
-      async
-      src="https://www.googletagmanager.com/gtag/js?id=G-B365F44W6E"
-    ></script>
-    <script
-      defer
-      data-domain="app.chatboxai.app"
-      src="https://plausible.midway.run/js/script.local.hash.js"
-    ></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-B365F44W6E"></script>
+    <script defer data-domain="app.chatboxai.app" src="https://plausible.midway.run/js/script.local.hash.js"></script>
     <script>
       window.plausible =
         window.plausible ||
         function () {
-          (window.plausible.q = window.plausible.q || []).push(arguments);
-        };
+          ;(window.plausible.q = window.plausible.q || []).push(arguments)
+        }
     </script>
 
     <script>
-      window.dataLayer = window.dataLayer || [];
+      window.dataLayer = window.dataLayer || []
       function gtag() {
-        dataLayer.push(arguments);
+        dataLayer.push(arguments)
       }
-      gtag("js", new Date());
+      gtag('js', new Date())
 
       // gtag('config', 'G-B365F44W6E');
     </script>
     <script>
-      var initialTheme = localStorage.getItem("initial-theme");
-      if (initialTheme === "light" || initialTheme === "dark") {
-        document.documentElement.setAttribute("data-theme", initialTheme);
-        document.documentElement.setAttribute(
-          "data-mantine-color-scheme",
-          initialTheme
-        );
+      var initialTheme = localStorage.getItem('initial-theme')
+      if (initialTheme === 'light' || initialTheme === 'dark') {
+        document.documentElement.setAttribute('data-theme', initialTheme)
+        document.documentElement.setAttribute('data-mantine-color-scheme', initialTheme)
       }
     </script>
     <style>
-      html[data-theme="dark"] {
+      html[data-theme='dark'] {
         background-color: #242424;
       }
 
@@ -69,7 +59,7 @@
         background-color: #fff;
         overflow: hidden;
       }
-      html[data-theme="dark"] .splash-screen {
+      html[data-theme='dark'] .splash-screen {
         background-color: #242424;
       }
 
@@ -90,7 +80,7 @@
         display: block;
         color: #495057;
       }
-      html[data-theme="dark"] .splash-screen-logo {
+      html[data-theme='dark'] .splash-screen-logo {
         color: #ced4da;
       }
 
@@ -102,7 +92,7 @@
         transform: translate(-50%, -50%);
         color: #dee2e6;
       }
-      html[data-theme="dark"] .splash-screen-logo-bg {
+      html[data-theme='dark'] .splash-screen-logo-bg {
         color: #495057;
       }
 
@@ -183,77 +173,15 @@
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <circle
-            opacity="0.6"
-            cx="331"
-            cy="330"
-            r="229.75"
-            stroke="currentColor"
-            stroke-width="0.5"
-          />
-          <circle
-            opacity="0.5"
-            cx="330"
-            cy="330"
-            r="254.75"
-            stroke="currentColor"
-            stroke-width="0.5"
-          />
-          <circle
-            opacity="0.8"
-            cx="330"
-            cy="330"
-            r="179.75"
-            stroke="currentColor"
-            stroke-width="0.5"
-          />
-          <circle
-            opacity="0.9"
-            cx="331"
-            cy="330"
-            r="154.75"
-            stroke="currentColor"
-            stroke-width="0.5"
-          />
-          <circle
-            cx="330"
-            cy="330"
-            r="129.75"
-            stroke="currentColor"
-            stroke-width="0.5"
-          />
-          <circle
-            opacity="0.7"
-            cx="331"
-            cy="330"
-            r="204.75"
-            stroke="currentColor"
-            stroke-width="0.5"
-          />
-          <circle
-            opacity="0.4"
-            cx="331"
-            cy="330"
-            r="279.75"
-            stroke="currentColor"
-            stroke-width="0.5"
-          />
-          <circle
-            opacity="0.3"
-            cx="330"
-            cy="330"
-            r="304.75"
-            stroke="currentColor"
-            stroke-width="0.5"
-          />
-          <circle
-            opacity="0.2"
-            cx="330"
-            cy="330"
-            r="329.75"
-            stroke="currentColor"
-            stroke-width="0.5"
-          />
+          <circle opacity="0.6" cx="331" cy="330" r="229.75" stroke="currentColor" stroke-width="0.5" />
+          <circle opacity="0.5" cx="330" cy="330" r="254.75" stroke="currentColor" stroke-width="0.5" />
+          <circle opacity="0.8" cx="330" cy="330" r="179.75" stroke="currentColor" stroke-width="0.5" />
+          <circle opacity="0.9" cx="331" cy="330" r="154.75" stroke="currentColor" stroke-width="0.5" />
+          <circle cx="330" cy="330" r="129.75" stroke="currentColor" stroke-width="0.5" />
+          <circle opacity="0.7" cx="331" cy="330" r="204.75" stroke="currentColor" stroke-width="0.5" />
+          <circle opacity="0.4" cx="331" cy="330" r="279.75" stroke="currentColor" stroke-width="0.5" />
+          <circle opacity="0.3" cx="330" cy="330" r="304.75" stroke="currentColor" stroke-width="0.5" />
+          <circle opacity="0.2" cx="330" cy="330" r="329.75" stroke="currentColor" stroke-width="0.5" />
         </svg>
       </div>
       <div class="splash-screen-bottom" id="log-root"></div>
@@ -261,4 +189,3 @@
     <script type="module" src="./index.tsx"></script>
   </body>
 </html>
-

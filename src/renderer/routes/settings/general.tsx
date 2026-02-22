@@ -316,6 +316,7 @@ const ImportExportDataSection = () => {
         (data[StorageKey.Settings] as Settings).providers,
         (provider: ProviderInfo) => {
           delete provider.apiKey
+          delete provider.cloudflareClientSecret
           return provider
         }
       )

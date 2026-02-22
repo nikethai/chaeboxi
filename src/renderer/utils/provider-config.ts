@@ -16,6 +16,8 @@ const BuiltinProviderConfigSchema = z.object({
   settings: z.object({
     apiHost: z.string().optional(),
     apiKey: z.string(),
+    cloudflareClientId: z.string().optional(),
+    cloudflareClientSecret: z.string().optional(),
   }),
 })
 
@@ -37,6 +39,8 @@ const CustomProviderConfigSchema = z.object({
     apiHost: z.string(),
     apiPath: z.string().optional(),
     apiKey: z.string().optional(),
+    cloudflareClientId: z.string().optional(),
+    cloudflareClientSecret: z.string().optional(),
     models: z.array(modelInfoSchema).optional(),
   }),
 })
@@ -53,6 +57,8 @@ function parseProviderConfig(json: unknown): ProviderInfo | (ProviderSettings & 
       id: parsed.id as ModelProviderEnum,
       apiHost: parsed.settings.apiHost,
       apiKey: parsed.settings.apiKey,
+      cloudflareClientId: parsed.settings.cloudflareClientId,
+      cloudflareClientSecret: parsed.settings.cloudflareClientSecret,
     }
     return providerSettings
   } else {
@@ -76,6 +82,8 @@ function parseProviderConfig(json: unknown): ProviderInfo | (ProviderSettings & 
       apiHost: parsedCustom.settings.apiHost,
       apiPath: parsedCustom.settings.apiPath,
       apiKey: parsedCustom.settings.apiKey,
+      cloudflareClientId: parsedCustom.settings.cloudflareClientId,
+      cloudflareClientSecret: parsedCustom.settings.cloudflareClientSecret,
       models: parsedCustom.settings.models,
     }
 

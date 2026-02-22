@@ -12,6 +12,8 @@ export default class Groq extends OpenAICompatible {
       {
         apiKey: options.apiKey,
         apiHost,
+        cloudflareClientId: options.cloudflareClientId,
+        cloudflareClientSecret: options.cloudflareClientSecret,
         model: options.model,
         temperature: options.temperature,
         topP: options.topP,

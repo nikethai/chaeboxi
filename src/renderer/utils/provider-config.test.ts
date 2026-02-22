@@ -20,6 +20,8 @@ describe('provider-config', () => {
           apiHost: 'https://api.example.com',
           apiPath: '/v1/chat/completions',
           apiKey: 'test-api-key',
+          cloudflareClientId: 'cf-client-id',
+          cloudflareClientSecret: 'cf-client-secret',
           models: [
             {
               modelId: 'model-1',
@@ -52,6 +54,8 @@ describe('provider-config', () => {
       expect(result?.apiHost).toBe('https://api.example.com')
       expect(result?.apiPath).toBe('/v1/chat/completions')
       expect(result?.apiKey).toBe('test-api-key')
+      expect(result?.cloudflareClientId).toBe('cf-client-id')
+      expect(result?.cloudflareClientSecret).toBe('cf-client-secret')
       expect(result?.models).toHaveLength(1)
       expect(result?.models?.[0].modelId).toBe('model-1')
     })
@@ -62,6 +66,8 @@ describe('provider-config', () => {
         settings: {
           apiHost: 'https://api.openai.com',
           apiKey: 'sk-test-key',
+          cloudflareClientId: 'cf-client-id',
+          cloudflareClientSecret: 'cf-client-secret',
         },
       })
 
@@ -71,6 +77,8 @@ describe('provider-config', () => {
       expect(result?.id).toBe(ModelProviderEnum.OpenAI)
       expect(result?.apiHost).toBe('https://api.openai.com')
       expect(result?.apiKey).toBe('sk-test-key')
+      expect(result?.cloudflareClientId).toBe('cf-client-id')
+      expect(result?.cloudflareClientSecret).toBe('cf-client-secret')
     })
 
     it('should handle minimal valid provider config', () => {

@@ -27,9 +27,44 @@ npm install
 SYNC_TOKEN='replace-with-strong-token' npm start
 ```
 
-## Proxmox LXC (no Docker, systemd service)
+## Proxmox LXC Alpine (OpenRC, no Docker)
 
 Prerequisites inside the LXC: `node` (v20+) and `npm`.
+
+```sh
+apk add --no-cache nodejs npm
+```
+
+Inside your Alpine LXC:
+
+```sh
+cd scripts/history-sync-server
+sudo SYNC_TOKEN='replace-with-strong-token' sh ./setup-openrc.sh
+```
+
+This creates an OpenRC service named `chatbox-history-sync`.
+
+Useful commands:
+
+```sh
+sudo rc-service chatbox-history-sync status
+sudo rc-service chatbox-history-sync restart
+sudo tail -f /var/log/chatbox-history-sync.log
+```
+
+Optional overrides:
+
+```sh
+sudo SERVICE_NAME=chatbox-sync \
+  PORT=8899 \
+  DATA_DIR=/srv/chatbox-sync \
+  SYNC_TOKEN='replace-with-strong-token' \
+  sh ./setup-openrc.sh
+```
+
+## Proxmox LXC Debian/Ubuntu (systemd, no Docker)
+
+Prerequisites inside the LXC: `node` (v20+), `npm`, and `bash`.
 
 Inside your LXC, copy this folder and run:
 

@@ -26,4 +26,10 @@ function _errorI18nKeys(t: (key: string) => string) {
   t(
     'This file type requires a document parser. Please go to <OpenDocumentParserSettingButton>Settings</OpenDocumentParserSettingButton> and enable Chatbox AI document parsing.'
   )
+  t(
+    'You have selected Serper as the search provider, but an API key has not been entered yet. Please <OpenExtensionSettingButton>click here to open Settings</OpenExtensionSettingButton> and enter your API key, or choose a different search provider.'
+  )
+  t(
+    'You have selected Google Custom Search as the search provider, but the API key or Search Engine ID is missing. Please <OpenExtensionSettingButton>click here to open Settings</OpenExtensionSettingButton> and complete the configuration, or choose a different search provider.'
+  )
 }

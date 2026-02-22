@@ -6,6 +6,9 @@ import { ChatboxAIAPIError } from '../../../shared/models/errors'
 import type WebSearch from './base'
 import { BingSearch } from './bing'
 import { BingNewsSearch } from './bing-news'
+import { DuckDuckGoSearch } from './duckduckgo'
+import { GoogleSearch } from './google'
+import { SerperSearch } from './serper'
 import { TavilySearch } from './tavily'
 
 const MAX_CONTEXT_ITEMS = 10
@@ -33,13 +36,33 @@ function getSearchProviders() {
     case 'bing':
       addBingProviders()
       break
+    case 'duckduckgo':
+      selectedProviders.push(new DuckDuckGoSearch())
+      break
+    case 'serper':
+      if (!settings.webSearch.serperApiKey?.trim()) {
+        throw ChatboxAIAPIError.fromCodeName('serper_api_key_required', 'serper_api_key_required')
+      }
+      selectedProviders.push(new SerperSearch(settings.webSearch.serperApiKey.trim()))
+      break
+    case 'google':
+      if (!settings.webSearch.googleApiKey?.trim() || !settings.webSearch.googleCseId?.trim()) {
+        throw ChatboxAIAPIError.fromCodeName(
+          'google_search_credentials_required',
+          'google_search_credentials_required'
+        )
+      }
+      selectedProviders.push(
+        new GoogleSearch(settings.webSearch.googleApiKey.trim(), settings.webSearch.googleCseId.trim())
+      )
+      break
     case 'tavily':
-      if (!settings.webSearch.tavilyApiKey) {
+      if (!settings.webSearch.tavilyApiKey?.trim()) {
         throw ChatboxAIAPIError.fromCodeName('tavily_api_key_required', 'tavily_api_key_required')
       }
       selectedProviders.push(
         new TavilySearch(
-          settings.webSearch.tavilyApiKey,
+          settings.webSearch.tavilyApiKey.trim(),
           settings.webSearch.tavilySearchDepth,
           settings.webSearch.tavilyMaxResults,
           settings.webSearch.tavilyTimeRange,

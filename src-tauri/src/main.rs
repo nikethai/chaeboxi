@@ -11,6 +11,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::{
     collections::HashMap,
+    fs,
+    path::PathBuf,
     sync::{
         atomic::{AtomicI64, AtomicU64, Ordering},
         Mutex,
@@ -101,6 +103,55 @@ struct AppState {
 }
 
 type CommandResult<T> = Result<T, String>;
+
+fn get_store_path(app: &AppHandle, filename: &str) -> PathBuf {
+    let mut path = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| PathBuf::from("."));
+    path.push(filename);
+    path
+}
+
+fn load_store_from_disk(app: &AppHandle, filename: &str) -> HashMap<String, Value> {
+    let path = get_store_path(app, filename);
+    if let Ok(content) = fs::read_to_string(path) {
+        if let Ok(map) = serde_json::from_str(&content) {
+            return map;
+        }
+    }
+    HashMap::new()
+}
+
+fn load_blobs_from_disk(app: &AppHandle, filename: &str) -> HashMap<String, String> {
+    let path = get_store_path(app, filename);
+    if let Ok(content) = fs::read_to_string(path) {
+        if let Ok(map) = serde_json::from_str(&content) {
+            return map;
+        }
+    }
+    HashMap::new()
+}
+
+fn save_store_to_disk(app: &AppHandle, filename: &str, store: &HashMap<String, Value>) {
+    let path = get_store_path(app, filename);
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    if let Ok(content) = serde_json::to_string(store) {
+        let _ = fs::write(path, content);
+    }
+}
+
+fn save_blobs_to_disk(app: &AppHandle, filename: &str, blobs: &HashMap<String, String>) {
+    let path = get_store_path(app, filename);
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    if let Ok(content) = serde_json::to_string(blobs) {
+        let _ = fs::write(path, content);
+    }
+}
 
 fn now_ms() -> i64 {
     std::time::SystemTime::now()
@@ -497,20 +548,26 @@ async fn ipc_invoke(
             let key = get_arg_string(&args, 0)?;
             let data_json = get_arg_string(&args, 1)?;
             let value = serde_json::from_str::<Value>(&data_json).unwrap_or(Value::Null);
-            state
-                .store
-                .lock()
-                .map_err(|_| "store lock poisoned".to_string())?
-                .insert(key, value);
+            {
+                let mut store = state
+                    .store
+                    .lock()
+                    .map_err(|_| "store lock poisoned".to_string())?;
+                store.insert(key, value);
+                save_store_to_disk(&app, "store.json", &store);
+            }
             Ok(Value::Null)
         }
         "delStoreValue" => {
             let key = get_arg_string(&args, 0)?;
-            state
-                .store
-                .lock()
-                .map_err(|_| "store lock poisoned".to_string())?
-                .remove(&key);
+            {
+                let mut store = state
+                    .store
+                    .lock()
+                    .map_err(|_| "store lock poisoned".to_string())?;
+                store.remove(&key);
+                save_store_to_disk(&app, "store.json", &store);
+            }
             Ok(Value::Null)
         }
         "getAllStoreValues" => {
@@ -534,6 +591,7 @@ async fn ipc_invoke(
                 for (key, value) in map {
                     store.insert(key.to_string(), value.clone());
                 }
+                save_store_to_disk(&app, "store.json", &store);
             }
             Ok(Value::Null)
         }
@@ -561,20 +619,26 @@ async fn ipc_invoke(
         "setStoreBlob" => {
             let key = get_arg_string(&args, 0)?;
             let value = get_arg_string(&args, 1)?;
-            state
-                .blobs
-                .lock()
-                .map_err(|_| "blob store lock poisoned".to_string())?
-                .insert(key, value);
+            {
+                let mut blobs = state
+                    .blobs
+                    .lock()
+                    .map_err(|_| "blob store lock poisoned".to_string())?;
+                blobs.insert(key, value);
+                save_blobs_to_disk(&app, "blobs.json", &blobs);
+            }
             Ok(Value::Null)
         }
         "delStoreBlob" => {
             let key = get_arg_string(&args, 0)?;
-            state
-                .blobs
-                .lock()
-                .map_err(|_| "blob store lock poisoned".to_string())?
-                .remove(&key);
+            {
+                let mut blobs = state
+                    .blobs
+                    .lock()
+                    .map_err(|_| "blob store lock poisoned".to_string())?;
+                blobs.remove(&key);
+                save_blobs_to_disk(&app, "blobs.json", &blobs);
+            }
             Ok(Value::Null)
         }
         "listStoreBlobKeys" => {
@@ -1375,6 +1439,14 @@ fn main() {
             ..Default::default()
         })
         .setup(|app| {
+            let handle = app.handle();
+            let store = load_store_from_disk(handle, "store.json");
+            let blobs = load_blobs_from_disk(handle, "blobs.json");
+
+            let state: State<AppState> = app.state();
+            *state.store.lock().unwrap() = store;
+            *state.blobs.lock().unwrap() = blobs;
+
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.emit("window-show", json!({}));
             }

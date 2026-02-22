@@ -120,7 +120,7 @@ export function settings(): Settings {
     },
     extension: {
       webSearch: {
-        provider: 'build-in',
+        provider: 'bing',
         tavilyApiKey: '',
       },
       knowledgeBase: {
@@ -130,7 +130,7 @@ export function settings(): Settings {
         },
       },
       // documentParser is NOT set here - it uses platform-specific defaults
-      // Desktop: 'local', Mobile/Web: 'chatbox-ai'
+      // Desktop: 'local', Mobile/Web: 'none'
       // See settingsStore.ts for the platform-aware initialization logic
       documentParser: undefined,
     },
@@ -151,16 +151,16 @@ export function getDefaultPrompt() {
 
 export function chatSessionSettings(): SessionSettings {
   return {
-    provider: ModelProviderEnum.ChatboxAI,
-    modelId: 'chatboxai-4',
+    provider: ModelProviderEnum.OpenAI,
+    modelId: 'gpt-4o',
     maxContextMessageCount: Number.MAX_SAFE_INTEGER,
   }
 }
 
 export function pictureSessionSettings(): SessionSettings {
   return {
-    provider: ModelProviderEnum.ChatboxAI,
-    modelId: 'DALL-E-3',
+    provider: ModelProviderEnum.OpenAI,
+    modelId: 'gpt-image-1',
     imageGenerateNum: 1,
     dalleStyle: 'vivid',
   }

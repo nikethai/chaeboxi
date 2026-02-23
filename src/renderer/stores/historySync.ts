@@ -65,6 +65,7 @@ export type PullHistoryResult = {
 }
 
 export type PushHistoryResult = {
+  pushed: boolean
   revision: number
   conflictResolved: boolean
   imported: number
@@ -79,6 +80,17 @@ export type SyncNowResult = {
 
 const DEFAULT_SYNC_STATE: SyncState = {
   revision: 0,
+}
+
+let syncQueue: Promise<void> = Promise.resolve()
+
+async function withSyncLock<T>(runner: () => Promise<T>): Promise<T> {
+  const task = syncQueue.then(runner, runner)
+  syncQueue = task.then(
+    () => undefined,
+    () => undefined
+  )
+  return task
 }
 
 function normalizeEndpoint(endpoint: string): string {
@@ -236,11 +248,13 @@ export async function testHistorySyncConnection(config: HistorySyncConfig, deps?
   return await fetchRemoteSnapshot(normalized, resolvedDeps)
 }
 
-export async function pullHistoryFromServer(config: HistorySyncConfig, deps?: SyncDependencies): Promise<PullHistoryResult> {
+async function pullHistoryFromServerInternal(
+  config: HistorySyncConfig,
+  deps: Required<SyncDependencies>
+): Promise<PullHistoryResult> {
   const normalized = normalizeConfig(config)
-  const resolvedDeps = createDeps(deps)
-  const state = await readSyncState(resolvedDeps.store)
-  const remoteSnapshot = await fetchRemoteSnapshot(normalized, resolvedDeps)
+  const state = await readSyncState(deps.store)
+  const remoteSnapshot = await fetchRemoteSnapshot(normalized, deps)
 
   if (remoteSnapshot.revision <= state.revision) {
     return {
@@ -252,8 +266,8 @@ export async function pullHistoryFromServer(config: HistorySyncConfig, deps?: Sy
     }
   }
 
-  const importResult = await resolvedDeps.importHistory(JSON.stringify(remoteSnapshot.payload))
-  await writeSyncState(resolvedDeps.store, {
+  const importResult = await deps.importHistory(JSON.stringify(remoteSnapshot.payload))
+  await writeSyncState(deps.store, {
     revision: remoteSnapshot.revision,
     lastSyncedAt: new Date().toISOString(),
   })
@@ -265,6 +279,11 @@ export async function pullHistoryFromServer(config: HistorySyncConfig, deps?: Sy
     updated: importResult.updated,
     skipped: importResult.skipped,
   }
+}
+
+export async function pullHistoryFromServer(config: HistorySyncConfig, deps?: SyncDependencies): Promise<PullHistoryResult> {
+  const resolvedDeps = createDeps(deps)
+  return withSyncLock(() => pullHistoryFromServerInternal(config, resolvedDeps))
 }
 
 function parseConflictSnapshot(body: unknown): RemoteHistorySnapshot | null {
@@ -282,24 +301,27 @@ function parseConflictSnapshot(body: unknown): RemoteHistorySnapshot | null {
   }
 }
 
-export async function pushHistoryToServer(config: HistorySyncConfig, deps?: SyncDependencies): Promise<PushHistoryResult> {
+async function pushHistoryToServerInternal(
+  config: HistorySyncConfig,
+  deps: Required<SyncDependencies>
+): Promise<PushHistoryResult> {
   const normalized = normalizeConfig(config)
-  const resolvedDeps = createDeps(deps)
-  const state = await readSyncState(resolvedDeps.store)
+  const state = await readSyncState(deps.store)
 
-  const localPayload = await exportSyncPayload(resolvedDeps)
+  const localPayload = await exportSyncPayload(deps)
   const firstAttempt = await putRemoteSnapshot(
     normalized,
     { baseRevision: state.revision, payload: localPayload },
-    resolvedDeps
+    deps
   )
 
   if (isPutRemoteSnapshotSuccess(firstAttempt)) {
-    await writeSyncState(resolvedDeps.store, {
+    await writeSyncState(deps.store, {
       revision: firstAttempt.snapshot.revision,
       lastSyncedAt: new Date().toISOString(),
     })
     return {
+      pushed: true,
       revision: firstAttempt.snapshot.revision,
       conflictResolved: false,
       imported: 0,
@@ -317,32 +339,33 @@ export async function pushHistoryToServer(config: HistorySyncConfig, deps?: Sync
     throw formatHttpError('History push conflict without valid snapshot', firstAttempt.status, firstAttempt.body)
   }
 
-  const conflictImportResult = await resolvedDeps.importHistory(JSON.stringify(conflictSnapshot.payload))
-  await writeSyncState(resolvedDeps.store, {
+  const conflictImportResult = await deps.importHistory(JSON.stringify(conflictSnapshot.payload))
+  await writeSyncState(deps.store, {
     revision: conflictSnapshot.revision,
     lastSyncedAt: new Date().toISOString(),
   })
 
-  const mergedPayload = await exportSyncPayload(resolvedDeps)
+  const mergedPayload = await exportSyncPayload(deps)
   const secondAttempt = await putRemoteSnapshot(
     normalized,
     {
       baseRevision: conflictSnapshot.revision,
       payload: mergedPayload,
     },
-    resolvedDeps
+    deps
   )
 
   if (!isPutRemoteSnapshotSuccess(secondAttempt)) {
     throw formatHttpError('Failed to push merged history snapshot', secondAttempt.status, secondAttempt.body)
   }
 
-  await writeSyncState(resolvedDeps.store, {
+  await writeSyncState(deps.store, {
     revision: secondAttempt.snapshot.revision,
     lastSyncedAt: new Date().toISOString(),
   })
 
   return {
+    pushed: true,
     revision: secondAttempt.snapshot.revision,
     conflictResolved: true,
     imported: conflictImportResult.imported,
@@ -351,18 +374,43 @@ export async function pushHistoryToServer(config: HistorySyncConfig, deps?: Sync
   }
 }
 
+export async function pushHistoryToServer(config: HistorySyncConfig, deps?: SyncDependencies): Promise<PushHistoryResult> {
+  const resolvedDeps = createDeps(deps)
+  return withSyncLock(() => pushHistoryToServerInternal(config, resolvedDeps))
+}
+
+function createSkippedPushResult(revision: number): PushHistoryResult {
+  return {
+    pushed: false,
+    revision,
+    conflictResolved: false,
+    imported: 0,
+    updated: 0,
+    skipped: 0,
+  }
+}
+
 export async function syncHistoryNow(config: HistorySyncConfig, deps?: SyncDependencies): Promise<SyncNowResult> {
   const resolvedDeps = createDeps(deps)
-  try {
-    const pull = await pullHistoryFromServer(config, resolvedDeps)
-    const push = await pushHistoryToServer(config, resolvedDeps)
-    return { pull, push }
-  } catch (error) {
-    const state = await readSyncState(resolvedDeps.store)
-    await writeSyncState(resolvedDeps.store, {
-      ...state,
-      lastError: error instanceof Error ? error.message : String(error),
-    })
-    throw error
-  }
+  return withSyncLock(async () => {
+    try {
+      const pull = await pullHistoryFromServerInternal(config, resolvedDeps)
+      if (pull.changed) {
+        return {
+          pull,
+          push: createSkippedPushResult(pull.revision),
+        }
+      }
+
+      const push = await pushHistoryToServerInternal(config, resolvedDeps)
+      return { pull, push }
+    } catch (error) {
+      const state = await readSyncState(resolvedDeps.store)
+      await writeSyncState(resolvedDeps.store, {
+        ...state,
+        lastError: error instanceof Error ? error.message : String(error),
+      })
+      throw error
+    }
+  })
 }

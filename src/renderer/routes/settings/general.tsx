@@ -501,15 +501,18 @@ const ImportExportDataSection = () => {
       const recoverFromPull = result.pull.imported > 0 || result.pull.updated > 0
       const recoverFromPushConflict =
         result.push.conflictResolved && (result.push.imported > 0 || result.push.updated > 0)
+      const pushText = result.push.pushed
+        ? t('Push revision: {{revision}}', { revision: result.push.revision })
+        : t('Push skipped after pull merge')
 
       return {
         tip: t(
-          'Sync completed. Pull imported {{imported}}, updated {{updated}}, skipped {{skipped}}. Push revision: {{revision}}',
+          'Sync completed. Pull imported {{imported}}, updated {{updated}}, skipped {{skipped}}. {{pushText}}',
           {
             imported: result.pull.imported,
             updated: result.pull.updated,
             skipped: result.pull.skipped,
-            revision: result.push.revision,
+            pushText,
           }
         ),
         recoverSessions: recoverFromPull || recoverFromPushConflict,

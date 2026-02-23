@@ -1,4 +1,5 @@
 import { getLogger } from '@/lib/utils'
+import { recoverSessionList } from '@/stores/chatStore'
 import { syncHistoryNow } from '@/stores/historySync'
 import { settingsStore } from '@/stores/settingsStore'
 
@@ -62,10 +63,18 @@ async function runSync(reason: string) {
 
   syncInFlight = true
   try {
-    await syncHistoryNow({
+    const result = await syncHistoryNow({
       endpoint: config.endpoint,
       token: config.token,
     })
+
+    const recoverFromPull = result.pull.imported > 0 || result.pull.updated > 0
+    const recoverFromPushConflict =
+      result.push.conflictResolved && (result.push.imported > 0 || result.push.updated > 0)
+    if (recoverFromPull || recoverFromPushConflict) {
+      await recoverSessionList()
+    }
+
     log.info(`history sync succeeded (${reason})`)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)

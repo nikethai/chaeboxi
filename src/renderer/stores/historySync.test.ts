@@ -171,6 +171,7 @@ describe('historySync', () => {
     )
 
     expect(result).toEqual({
+      pushed: true,
       revision: 3,
       conflictResolved: true,
       imported: 1,
@@ -215,5 +216,63 @@ describe('historySync', () => {
     const state = await getHistorySyncState({ store: store as never })
     expect(state.revision).toBe(7)
     expect(state.lastError).toContain('Failed to fetch remote history snapshot')
+  })
+
+  it('skips push when pull already imported remote changes', async () => {
+    const store = new MemoryStore({
+      'history-sync-state': {
+        revision: 1,
+      },
+    })
+
+    const remotePayload = createPayload()
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(
+          {
+            revision: 2,
+            updatedAt: '2026-02-22T10:00:00.000Z',
+            payload: remotePayload,
+          },
+          200
+        )
+      )
+
+    const importHistory = vi.fn(async () => ({
+      totalIncoming: 1,
+      imported: 1,
+      updated: 0,
+      skipped: 0,
+    }))
+
+    const result = await syncHistoryNow(
+      {
+        endpoint: 'http://sync.local',
+        token: 'token',
+      },
+      {
+        store: store as never,
+        fetchImpl: fetchImpl as never,
+        importHistory: importHistory as never,
+      }
+    )
+
+    expect(result.pull).toEqual({
+      changed: true,
+      revision: 2,
+      imported: 1,
+      updated: 0,
+      skipped: 0,
+    })
+    expect(result.push).toEqual({
+      pushed: false,
+      revision: 2,
+      conflictResolved: false,
+      imported: 0,
+      updated: 0,
+      skipped: 0,
+    })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
   })
 })

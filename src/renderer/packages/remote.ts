@@ -404,13 +404,21 @@ export async function parseUserLinkFree(params: { url: string }) {
     text: string
   }
   const afetch = await getAfetch()
-  const res = await afetch(`https://cors-proxy.chatboxai.app/api/fetch-webpage`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  const res = await afetch(
+    `https://cors-proxy.chatboxai.app/api/fetch-webpage`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'CHATBOX-TARGET-URI': params.url,
+        ...(await getChatboxHeaders()),
+      },
+      body: JSON.stringify(params),
     },
-    body: JSON.stringify(params),
-  })
+    {
+      retry: 2,
+    }
+  )
   const json: Response = await res.json()
   return json
 }

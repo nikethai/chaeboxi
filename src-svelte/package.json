@@ -1,0 +1,42 @@
+{
+  "name": "chaeboxi-svelte",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
+  },
+  "devDependencies": {
+    "@sveltejs/adapter-static": "^3.0.8",
+    "@sveltejs/kit": "^2.21.0",
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "@tauri-apps/cli": "^2.0.0",
+    "@types/node": "^22.15.21",
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "svelte": "^5.33.0",
+    "svelte-check": "^4.1.7",
+    "tailwindcss": "^3.4.17",
+    "tailwindcss-animate": "^1.0.7",
+    "tailwind-scrollbar": "^3.1.0",
+    "tslib": "^2.8.1",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.5.0",
+    "bits-ui": "^1.1.0",
+    "clsx": "^2.1.1",
+    "highlight.js": "^11.11.1",
+    "i18next": "^24.2.3",
+    "katex": "^0.16.21",
+    "lucide-svelte": "^0.511.0",
+    "marked": "^15.0.12",
+    "mermaid": "^11.6.0",
+    "tailwind-merge": "^3.2.0",
+    "class-variance-authority": "^0.7.1"
+  }
+}

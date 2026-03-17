@@ -1,0 +1,21 @@
+{
+	"/": [
+		"src/routes/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/about": [
+		"src/routes/+layout.ts"
+	],
+	"/image-creator": [
+		"src/routes/+layout.ts"
+	],
+	"/session/[id]": [
+		"src/routes/+layout.ts"
+	],
+	"/settings": [
+		"src/routes/+layout.ts"
+	],
+	"/settings/provider": [
+		"src/routes/+layout.ts"
+	]
+}

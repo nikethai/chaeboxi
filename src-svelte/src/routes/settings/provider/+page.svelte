@@ -9,9 +9,9 @@
 	<div class="settings-content">
 		<div class="coming-soon">
 			<div class="icon">🔗</div>
-			<h2>Provider Management</h2>
-			<p>Configure AI providers and API keys.</p>
-			<p class="hint">This feature will allow you to manage multiple AI providers.</p>
+			<h2>Provider setup is not ported yet</h2>
+			<p>The Svelte shell uses real provider and model state for chat, but the provider management UI still lives in the React app.</p>
+			<p class="hint">This route stays visible only to explain that gap instead of pretending setup is complete.</p>
 		</div>
 	</div>
 </div>

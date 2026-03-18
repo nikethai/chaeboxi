@@ -1,4 +1,4 @@
-const browser = false;
+const BROWSER = false;
 export {
-  browser as b
+  BROWSER as B
 };

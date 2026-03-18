@@ -1,0 +1,1 @@
+import{W as e}from"./D32AY0fi.js";class r extends e{async startStream(t){throw console.warn("StreamHttp plugin is not implemented on web"),new Error("StreamHttp plugin is not implemented on web")}async cancelStream(t){throw console.warn("StreamHttp plugin is not implemented on web"),new Error("StreamHttp plugin is not implemented on web")}}export{r as StreamHttpWeb};

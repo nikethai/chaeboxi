@@ -1,16 +1,18 @@
-// Platform interfaces - ported from src/renderer/platform/interfaces.ts
+/* biome-ignore lint/suspicious/noExplicitAny: Mirrors the existing renderer Platform contract exactly. */
 import type { Config, Language, Settings, ShortcutSetting } from '$shared/types'
+import type { ImageGenerationStorage } from '../../../../src/renderer/storage/ImageGenerationStorage'
+import type { KnowledgeBaseController } from '../../../../src/renderer/platform/knowledge-base/interface'
 
 export type PlatformType = 'web' | 'desktop' | 'mobile'
 
 export interface Storage {
 	getStorageType(): string
-	setStoreValue(key: string, value: unknown): Promise<void>
-	getStoreValue(key: string): Promise<unknown>
+	setStoreValue(key: string, value: any): Promise<void>
+	getStoreValue(key: string): Promise<any>
 	delStoreValue(key: string): Promise<void>
-	getAllStoreValues(): Promise<Record<string, unknown>>
+	getAllStoreValues(): Promise<{ [key: string]: any }>
 	getAllStoreKeys(): Promise<string[]>
-	setAllStoreValues(data: Record<string, unknown>): Promise<void>
+	setAllStoreValues(data: { [key: string]: any }): Promise<void>
 }
 
 export interface Platform extends Storage {
@@ -39,7 +41,7 @@ export interface Platform extends Storage {
 	delStoreBlob(key: string): Promise<void>
 	listStoreBlobKeys(): Promise<string[]>
 	initTracking(): void
-	trackingEvent(name: string, params: Record<string, string>): void
+	trackingEvent(name: string, params: { [key: string]: string }): void
 	shouldShowAboutDialogWhenStartUp(): Promise<boolean>
 	appLog(level: string, message: string): Promise<void>
 	exportLogs(): Promise<string>
@@ -54,8 +56,8 @@ export interface Platform extends Storage {
 	isFullscreen(): Promise<boolean>
 	setFullscreen(enabled: boolean): Promise<void>
 	installUpdate(): Promise<void>
-	getKnowledgeBaseController(): unknown
-	getImageGenerationStorage(): unknown
+	getKnowledgeBaseController(): KnowledgeBaseController
+	getImageGenerationStorage(): ImageGenerationStorage
 	minimize(): Promise<void>
 	maximize(): Promise<void>
 	unmaximize(): Promise<void>
@@ -69,8 +71,5 @@ export interface Exporter {
 	exportTextFile: (filename: string, content: string) => Promise<void>
 	exportImageFile: (basename: string, base64: string) => Promise<void>
 	exportByUrl: (filename: string, url: string) => Promise<void>
-	exportStreamingJson: (
-		filename: string,
-		dataCallback: () => AsyncGenerator<string, void, unknown>
-	) => Promise<void>
+	exportStreamingJson: (filename: string, dataCallback: () => AsyncGenerator<string, void, unknown>) => Promise<void>
 }

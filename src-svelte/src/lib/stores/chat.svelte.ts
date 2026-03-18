@@ -67,7 +67,7 @@ class ChatStore {
 				role: 'assistant',
 				contentParts: [{ type: 'text', text: this.state.streamingContent }],
 				status: [],
-				tokenCalculatedAt: null,
+				tokenCalculatedAt: undefined,
 			})
 			this.state.streamingContent = ''
 		}

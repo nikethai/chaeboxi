@@ -1,74 +1,66 @@
 <script lang="ts">
-	import { page } from '$app/stores';
-	import { MessageList, InputBox } from '$lib/components/chat';
-	import type { Message } from '$shared/types';
+	import { page } from '$app/stores'
+	import { onMount } from 'svelte'
+	import { InputBox, MessageList } from '$lib/components/chat'
+	import { conversationStore } from '$lib/stores/conversation.svelte'
 
-	const sessionId = $derived($page.params.id);
+	let ready = $state(false)
 
-	// Demo messages - in production, load from session store
-	let messages = $state<Message[]>([
-		{
-			id: '1',
-			role: 'user',
-			contentParts: [{ type: 'text', text: 'Hello! How are you?' }],
-			status: [],
-			tokenCalculatedAt: null,
-		},
-		{
-			id: '2',
-			role: 'assistant',
-			contentParts: [
-				{
-					type: 'text',
-					text: "I'm doing great, thank you! I'm a helpful AI assistant.",
-				},
-			],
-			modelId: 'gpt-4',
-			status: [],
-			tokenCalculatedAt: null,
-		},
-	]);
+	const sessionId = $derived($page.params.id)
+	const session = $derived(
+		sessionId && conversationStore.currentSession?.id === sessionId ? conversationStore.currentSession : null
+	)
+	const messages = $derived(session ? conversationStore.messages : [])
+	const generating = $derived(Boolean(sessionId && conversationStore.lastGeneratingMessage))
 
-	function handleSubmit(message: string) {
-		// Add user message
-		const userMessage: Message = {
-			id: `msg-${Date.now()}`,
-			role: 'user',
-			contentParts: [{ type: 'text', text: message }],
-			status: [],
-			tokenCalculatedAt: null,
-		};
-		messages = [...messages, userMessage];
+	onMount(async () => {
+		await conversationStore.init()
+		ready = true
+	})
 
-		// Simulate assistant response
-		setTimeout(() => {
-			const assistantMessage: Message = {
-				id: `msg-${Date.now()}`,
-				role: 'assistant',
-				contentParts: [
-					{
-						type: 'text',
-						text: `You said: "${message}". This is a demo response from the Svelte 5 chat interface!`,
-					},
-				],
-				modelId: 'gpt-4',
-				status: [],
-				tokenCalculatedAt: null,
-			};
-			messages = [...messages, assistantMessage];
-		}, 500);
+	$effect(() => {
+		if (!ready || !sessionId) {
+			return
+		}
+
+		void conversationStore.loadSession(sessionId)
+	})
+
+	async function handleSubmit(message: string) {
+		if (!sessionId) {
+			return
+		}
+
+		await conversationStore.submitToSession(sessionId, message)
+	}
+
+	async function handleStopGenerating() {
+		if (!sessionId) {
+			return
+		}
+
+		await conversationStore.stopGenerating(sessionId)
 	}
 </script>
 
-<div class="session-page">
-	<div class="session-header">
-		<h1>Session: {sessionId}</h1>
+{#if session}
+	<div class="session-page">
+		<MessageList messages={messages} />
+
+		<InputBox
+			onSubmit={handleSubmit}
+			generating={generating}
+			onStopGenerating={handleStopGenerating}
+			placeholder="Type a message..."
+		/>
 	</div>
-
-	<MessageList {messages} />
-
-	<InputBox onSubmit={handleSubmit} placeholder="Type a message..." />
-</div>
+{:else if ready}
+	<div class="missing-session">
+		<h1>Conversation not found</h1>
+		<p>This session could not be loaded from the real store.</p>
+		<a href="/">Back to Home</a>
+	</div>
+{/if}
 
 <style>
 	.session-page {
@@ -78,16 +70,32 @@
 		background: var(--chatbox-background-primary);
 	}
 
-	.session-header {
-		padding: 1rem;
-		border-bottom: 1px solid var(--chatbox-border-primary);
-		background: var(--chatbox-background-secondary);
+	.missing-session {
+		display: flex;
+		flex: 1;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		gap: 0.5rem;
+		padding: 2rem;
+		text-align: center;
+		color: var(--chatbox-tint-secondary);
 	}
 
-	.session-header h1 {
-		font-size: 1.25rem;
-		font-weight: 600;
+	.missing-session h1 {
 		margin: 0;
+		font-size: 1.5rem;
 		color: var(--chatbox-tint-primary);
+	}
+
+	.missing-session p {
+		margin: 0;
+	}
+
+	.missing-session a {
+		margin-top: 0.5rem;
+		color: var(--chatbox-tint-brand);
+		text-decoration: none;
+		font-weight: 600;
 	}
 </style>

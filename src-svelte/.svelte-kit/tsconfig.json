@@ -25,6 +25,24 @@
 			"$shared/*": [
 				"../../src/shared/*"
 			],
+			"src": [
+				"../../src"
+			],
+			"src/*": [
+				"../../src/*"
+			],
+			"@": [
+				"../../src/renderer"
+			],
+			"@/*": [
+				"../../src/renderer/*"
+			],
+			"@shared": [
+				"../../src/shared"
+			],
+			"@shared/*": [
+				"../../src/shared/*"
+			],
 			"$app/types": [
 				"./types/index.d.ts"
 			]

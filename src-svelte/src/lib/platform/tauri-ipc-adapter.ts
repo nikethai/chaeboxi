@@ -1,22 +1,80 @@
-// Tauri IPC adapter for Svelte - uses @tauri-apps/api
-import { invoke } from '@tauri-apps/api/core'
-import { listen, type UnlistenFn } from '@tauri-apps/api/event'
-import type { DesktopAPI } from './desktop-api'
+import { invoke as tauriInvoke } from '@tauri-apps/api/core'
+import { listen as tauriListen } from '@tauri-apps/api/event'
+import type { DesktopIPC } from './desktop-api'
 
-export function isTauriRuntime(): boolean {
-	return typeof window !== 'undefined' && '__TAURI__' in window
+type Unlisten = () => void
+
+function getWindowWithTauri() {
+	return window as Window & {
+		__TAURI__?: unknown
+		__TAURI_INTERNALS__?: unknown
+	}
 }
 
-export function createTauriIPCAdapter(): DesktopAPI {
+export function isTauriRuntime(): boolean {
+	if (typeof window === 'undefined') {
+		return false
+	}
+
+	const runtimeWindow = getWindowWithTauri()
+	return Boolean(runtimeWindow.__TAURI__ || runtimeWindow.__TAURI_INTERNALS__)
+}
+
+function listenEvent(eventName: string, callback: (payload: unknown) => void): () => void {
+	let unlisten: Unlisten | null = null
+	let disposed = false
+
+	void tauriListen(eventName, (event) => {
+		if (!disposed) {
+			callback(event.payload)
+		}
+	})
+		.then((dispose) => {
+			if (disposed) {
+				dispose()
+			} else {
+				unlisten = dispose
+			}
+		})
+		.catch((error) => {
+			console.error(`[tauri-ipc] subscribe failed: ${eventName}`, error)
+		})
+
+	return () => {
+		disposed = true
+		unlisten?.()
+		unlisten = null
+	}
+}
+
+export function createTauriIPCAdapter(): DesktopIPC {
 	return {
-		invoke: async <T>(channel: string, ...args: unknown[]): Promise<T> => {
-			return await invoke<T>(channel, { args })
-		},
-		listen: async <T>(channel: string, callback: (payload: T) => void): Promise<UnlistenFn> => {
-			const unlisten = await listen<T>(channel, (event) => {
-				callback(event.payload)
+		invoke: (channel: string, ...args: unknown[]) => tauriInvoke('ipc_invoke', { channel, args }),
+		onSystemThemeChange: (callback: () => void) => listenEvent('system-theme-updated', () => callback()),
+		onWindowMaximizedChanged: (callback: (_event: unknown, windowMaximized: boolean) => void) =>
+			listenEvent('window:maximized-changed', (payload: unknown) => {
+				callback(undefined, Boolean(payload))
+			}),
+		onWindowShow: (callback: () => void) => listenEvent('window-show', () => callback()),
+		onWindowFocused: (callback: () => void) => listenEvent('window:focused', () => callback()),
+		onUpdateDownloaded: (callback: () => void) => listenEvent('update-downloaded', () => callback()),
+		addMcpStdioTransportEventListener: (transportId: string, event: string, callback?: (...args: unknown[]) => void) => {
+			const eventName = `mcp:stdio-transport:${transportId}:${event}`
+			return listenEvent(eventName, (payload: unknown) => {
+				if (Array.isArray(payload)) {
+					callback?.(...payload)
+					return
+				}
+
+				callback?.(payload)
 			})
-			return unlisten
 		},
+		onNavigate: (callback: (path: string) =>
+			void) =>
+			listenEvent('navigate-to', (payload: unknown) => {
+				if (typeof payload === 'string') {
+					callback(payload)
+				}
+			}),
 	}
 }

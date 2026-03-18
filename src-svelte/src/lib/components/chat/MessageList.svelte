@@ -14,32 +14,26 @@
 	let showScrollToBottom = $state(false)
 	let isAtBottom = $state(true)
 
-	// Scroll handling
 	function handleScroll() {
 		if (!container) return
 		const { scrollTop, scrollHeight, clientHeight } = container
 		const distanceFromBottom = scrollHeight - scrollTop - clientHeight
-
-		// Show button if not at bottom
 		showScrollToBottom = distanceFromBottom > 100
 		isAtBottom = distanceFromBottom < 50
 	}
 
-	function scrollToBottom() {
+	function scrollToBottom(smooth = false) {
 		if (!container) return
-		container.scrollTop = container.scrollHeight
+		container.scrollTo({ top: container.scrollHeight, behavior: smooth ? 'smooth' : 'auto' })
 	}
 
-	// Auto-scroll on new messages
 	$effect(() => {
-		// When messages change and we're at bottom, scroll to bottom
 		if (messages.length && isAtBottom && container) {
 			scrollToBottom()
 		}
 	})
 
 	onMount(() => {
-		// Initial scroll to bottom
 		scrollToBottom()
 	})
 </script>
@@ -47,18 +41,14 @@
 <div
 	class="message-list {className}"
 	bind:this={container}
-	onScroll={handleScroll}
+	onscroll={handleScroll}
 >
 	{#if messages.length === 0}
-		<div class="empty-state">
-			<div class="empty-icon">💬</div>
-			<p>No messages yet</p>
-			<p class="empty-hint">Start a conversation to see messages here</p>
-		</div>
+		<!-- Handled by parent page -->
 	{:else}
 		<div class="messages">
 			{#each messages as message, index (message.id)}
-				<div class="message-wrapper" data-index={index}>
+				<div class="message-wrapper">
 					<MessageComponent
 						{message}
 						showAvatar={index === 0 || messages[index - 1]?.role !== message.role}
@@ -68,9 +58,18 @@
 		</div>
 	{/if}
 
+	<!-- Scroll to bottom button (OpenWebUI feature kept) -->
 	{#if showScrollToBottom}
-		<button class="scroll-to-bottom" onclick={scrollToBottom}>
-			<span>↓</span>
+		<button
+			aria-label="Scroll to bottom"
+			class="scroll-to-bottom"
+			type="button"
+			onclick={() => scrollToBottom(true)}
+		>
+			<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+				<line x1="12" y1="5" x2="12" y2="19"></line>
+				<polyline points="19 12 12 19 5 12"></polyline>
+			</svg>
 		</button>
 	{/if}
 </div>
@@ -80,24 +79,23 @@
 		flex: 1;
 		overflow-y: auto;
 		overflow-x: hidden;
-		padding: 1rem;
 		position: relative;
+		padding: 0.5rem 0;
 	}
 
 	.messages {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
 	}
 
 	.message-wrapper {
-		animation: fadeIn 0.2s ease;
+		animation: fadeSlideIn 0.18s ease;
 	}
 
-	@keyframes fadeIn {
+	@keyframes fadeSlideIn {
 		from {
 			opacity: 0;
-			transform: translateY(10px);
+			transform: translateY(6px);
 		}
 		to {
 			opacity: 1;
@@ -105,47 +103,30 @@
 		}
 	}
 
-	.empty-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		height: 100%;
-		color: var(--chatbox-tint-secondary);
-		text-align: center;
-	}
-
-	.empty-icon {
-		font-size: 3rem;
-		margin-bottom: 1rem;
-		opacity: 0.5;
-	}
-
-	.empty-hint {
-		font-size: 0.875rem;
-		opacity: 0.7;
-	}
-
+	/* Scroll to bottom button */
 	.scroll-to-bottom {
-		position: absolute;
+		position: sticky;
 		bottom: 1rem;
-		right: 1rem;
-		width: 2.5rem;
-		height: 2.5rem;
-		border-radius: 50%;
-		background: var(--chatbox-background-brand-primary);
-		color: white;
-		border: none;
-		cursor: pointer;
+		left: 50%;
+		transform: translateX(-50%);
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-		transition: all 0.2s ease;
+		width: 30px;
+		height: 30px;
+		border-radius: 50%;
+		background: var(--chatbox-background-primary);
+		color: var(--chatbox-tint-secondary);
+		border: 1px solid var(--chatbox-border-primary);
+		cursor: pointer;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+		transition: all 0.15s ease;
+		margin: 0 auto;
 	}
 
 	.scroll-to-bottom:hover {
-		background: var(--chatbox-background-brand-primary-hover);
-		transform: scale(1.1);
+		background: var(--chatbox-background-secondary);
+		color: var(--chatbox-tint-primary);
+		box-shadow: 0 3px 12px rgba(0, 0, 0, 0.16);
 	}
 </style>

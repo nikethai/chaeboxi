@@ -1,33 +1,33 @@
 <script lang="ts">
-	import { onMount } from 'svelte'
-
 	interface Props {
 		content: string
 		displayMode?: boolean
 	}
 
 	let { content, displayMode = false }: Props = $props()
-	let container: HTMLDivElement
 	let renderedHtml = $state('')
 
-	onMount(async () => {
+	$effect(() => {
+		void renderKatex()
+	})
+
+	async function renderKatex() {
 		try {
-			// Dynamic import of katex
 			const katex = (await import('katex')).default
 			renderedHtml = katex.renderToString(content, {
 				displayMode,
 				throwOnError: false,
 				trust: true,
 			})
-		} catch (e) {
-			console.error('KaTeX render error:', e)
+		} catch (error) {
+			console.error('KaTeX render error:', error)
 			renderedHtml = content
 		}
-	})
+	}
 </script>
 
 {#if renderedHtml}
-	<span bind:this={container} class="katex" class:display-mode={displayMode}>
+	<span class="katex" class:display-mode={displayMode}>
 		{@html renderedHtml}
 	</span>
 {:else}

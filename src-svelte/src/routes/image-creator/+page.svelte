@@ -9,9 +9,9 @@
 	<div class="page-content">
 		<div class="coming-soon">
 			<div class="icon">🎨</div>
-			<h2>Image Creator</h2>
-			<p>AI-powered image generation is coming soon!</p>
-			<p class="hint">This feature will allow you to generate images using AI models.</p>
+			<h2>Image creator is not ported yet</h2>
+			<p>This rescue milestone keeps chat real and hides fake product parity.</p>
+			<p class="hint">Image generation workflows still belong to the React app for now.</p>
 		</div>
 	</div>
 </div>

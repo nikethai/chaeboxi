@@ -1,121 +1,148 @@
-// UI Store using Svelte 5 runes
 import { browser } from '$app/environment'
-
-interface Toast {
-	id: string
-	content: string
-	duration?: number
-}
+import type { KnowledgeBase } from '$shared/types'
 
 interface UIState {
-	toasts: Toast[]
 	showSidebar: boolean
-	openSearchDialog: boolean
-	openAboutDialog: boolean
 	widthFull: boolean
 	showCopilotsInNewSession: boolean
 	sidebarWidth: number | null
 	realTheme: 'light' | 'dark'
+	sessionWebBrowsingMap: Record<string, boolean | undefined>
+	newSessionState: {
+		knowledgeBase?: Pick<KnowledgeBase, 'id' | 'name'>
+		webBrowsing?: boolean
+	}
+}
+
+interface RendererUIState extends UIState {
+	setShowSidebar(showSidebar: boolean): void
+	setWidthFull(widthFull: boolean): void
+	setShowCopilotsInNewSession(showCopilotsInNewSession: boolean): void
+	setSidebarWidth(sidebarWidth: number | null): void
+}
+
+interface RendererUIStore {
+	getState(): RendererUIState
+	subscribe(listener: () => void): () => void
+	setState(partial: Partial<UIState>): void
+}
+
+interface RendererUIModule {
+	loadUIRuntime(): Promise<{
+		uiStore: RendererUIStore
+	}>
+}
+
+interface RendererUIRuntime {
+	uiStore: RendererUIStore
 }
 
 class UIStore {
 	state = $state<UIState>({
-		toasts: [],
 		showSidebar: true,
-		openSearchDialog: false,
-		openAboutDialog: false,
 		widthFull: false,
 		showCopilotsInNewSession: false,
 		sidebarWidth: null,
 		realTheme: 'light',
+		sessionWebBrowsingMap: {},
+		newSessionState: {},
 	})
+	initialized = $state(false)
+	private rendererModule: RendererUIRuntime | null = null
+	private initializing: Promise<UIState> | null = null
+	private unsubscribeRenderer: (() => void) | null = null
 
 	constructor() {
 		if (browser) {
-			// Load persisted state
-			const saved = localStorage.getItem('ui-store')
-			if (saved) {
-				try {
-					const parsed = JSON.parse(saved)
-					this.state = { ...this.state, ...parsed }
-				} catch (e) {
-					console.error('Failed to parse UI store:', e)
+			void this.init()
+		}
+	}
+
+	private syncFromRenderer() {
+		if (!this.rendererModule) {
+			return
+		}
+
+		const state = this.rendererModule.uiStore.getState()
+		this.state.showSidebar = state.showSidebar
+		this.state.widthFull = state.widthFull
+		this.state.showCopilotsInNewSession = state.showCopilotsInNewSession
+		this.state.sidebarWidth = state.sidebarWidth
+		this.state.realTheme = state.realTheme
+		this.state.sessionWebBrowsingMap = { ...state.sessionWebBrowsingMap }
+		this.state.newSessionState = { ...state.newSessionState }
+		this.initialized = true
+	}
+
+	async init(): Promise<UIState> {
+		if (!browser) {
+			return this.state
+		}
+
+		if (this.initialized && this.rendererModule) {
+			return this.state
+		}
+
+		if (!this.initializing) {
+			this.initializing = (async () => {
+				const rendererLoader = (await import('$lib/runtime/renderer-ui.js')) as RendererUIModule
+				const rendererModule = await rendererLoader.loadUIRuntime()
+				this.rendererModule = rendererModule
+				this.syncFromRenderer()
+
+				if (!this.unsubscribeRenderer) {
+					this.unsubscribeRenderer = rendererModule.uiStore.subscribe(() => {
+						this.syncFromRenderer()
+					})
 				}
-			}
-			// Detect system theme
-			this.state.realTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-			const savedTheme = localStorage.getItem('initial-theme')
-			if (savedTheme === 'dark' || savedTheme === 'light') {
-				this.state.realTheme = savedTheme
-			}
+
+				return this.state
+			})()
 		}
+
+		return this.initializing
 	}
 
-	private save() {
-		if (browser) {
-			localStorage.setItem(
-				'ui-store',
-				JSON.stringify({
-					widthFull: this.state.widthFull,
-					showCopilotsInNewSession: this.state.showCopilotsInNewSession,
-					sidebarWidth: this.state.sidebarWidth,
-				})
-			)
+	setShowSidebar(showSidebar: boolean) {
+		if (this.rendererModule) {
+			this.rendererModule.uiStore.getState().setShowSidebar(showSidebar)
+			return
 		}
-	}
-
-	// Toast management
-	addToast(content: string, duration = 3000) {
-		const id = `toast:${Date.now()}:${Math.random().toString(36).slice(2)}`
-		this.state.toasts = [...this.state.toasts, { id, content, duration }]
-		if (duration > 0) {
-			setTimeout(() => this.removeToast(id), duration)
-		}
-	}
-
-	removeToast(id: string) {
-		this.state.toasts = this.state.toasts.filter((t) => t.id !== id)
-	}
-
-	// Sidebar
-	setShowSidebar(show: boolean) {
-		this.state.showSidebar = show
+		this.state.showSidebar = showSidebar
 	}
 
 	toggleSidebar() {
-		this.state.showSidebar = !this.state.showSidebar
+		this.setShowSidebar(!this.state.showSidebar)
 	}
 
-	// Search dialog
-	setOpenSearchDialog(open: boolean) {
-		this.state.openSearchDialog = open
+	setWidthFull(widthFull: boolean) {
+		if (this.rendererModule) {
+			this.rendererModule.uiStore.getState().setWidthFull(widthFull)
+			return
+		}
+		this.state.widthFull = widthFull
 	}
 
-	// About dialog
-	setOpenAboutDialog(open: boolean) {
-		this.state.openAboutDialog = open
-	}
-
-	// Width
-	setWidthFull(full: boolean) {
-		this.state.widthFull = full
-		this.save()
-	}
-
-	// Copilots
 	setShowCopilotsInNewSession(show: boolean) {
+		if (this.rendererModule) {
+			this.rendererModule.uiStore.getState().setShowCopilotsInNewSession(show)
+			return
+		}
 		this.state.showCopilotsInNewSession = show
-		this.save()
 	}
 
-	// Sidebar width
 	setSidebarWidth(width: number | null) {
+		if (this.rendererModule) {
+			this.rendererModule.uiStore.getState().setSidebarWidth(width)
+			return
+		}
 		this.state.sidebarWidth = width
-		this.save()
 	}
 
-	// Theme
 	setRealTheme(theme: 'light' | 'dark') {
+		if (this.rendererModule) {
+			this.rendererModule.uiStore.setState({ realTheme: theme })
+		}
 		this.state.realTheme = theme
 	}
 }

@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte'
-
 	interface Props {
 		code: string
 		theme?: 'default' | 'dark'
@@ -13,8 +11,8 @@
 	let error = $state('')
 	let loading = $state(true)
 
-	onMount(async () => {
-		await renderDiagram()
+	$effect(() => {
+		void renderDiagram()
 	})
 
 	async function renderDiagram() {
@@ -66,11 +64,11 @@
 		<div class="mermaid-error">
 			<span class="error-label">Diagram Error:</span>
 			<pre class="error-message">{error}</pre>
-			<button class="retry-button" onclick={renderDiagram}>Retry</button>
+			<button class="retry-button" type="button" onclick={renderDiagram}>Retry</button>
 		</div>
 	{:else}
 		<div class="mermaid-actions">
-			<button class="action-button" onclick={downloadSvg} title="Download SVG">
+			<button class="action-button" type="button" onclick={downloadSvg} title="Download SVG">
 				Download
 			</button>
 		</div>

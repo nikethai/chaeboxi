@@ -1,63 +1,41 @@
-import "clsx";
+import { d as derived } from "../../chunks/root.js";
+import { g as goto } from "../../chunks/client.js";
 import "marked";
-import { M as MessageList, I as InputBox } from "../../chunks/InputBox.js";
-function _page($$renderer) {
-  let messages = [
-    {
-      id: "1",
-      role: "user",
-      contentParts: [{ type: "text", text: "Hello! How are you?" }],
-      status: [],
-      tokenCalculatedAt: null
-    },
-    {
-      id: "2",
-      role: "assistant",
-      contentParts: [
-        {
-          type: "text",
-          text: "I'm doing great, thank you! I'm a helpful AI assistant. Here's some code:\n\n```javascript\nconsole.log('Hello, World!');\n```\n\nAnd here's some math: $E = mc^2$"
+import { a as settingsStore, c as conversationStore } from "../../chunks/conversation.svelte.js";
+import { I as InputBox } from "../../chunks/InputBox.js";
+import "lodash";
+import { a as getAvailableProviders, p as providerCatalogStore } from "../../chunks/provider-catalog.svelte.js";
+function _page($$renderer, $$props) {
+  $$renderer.component(($$renderer2) => {
+    let isSubmitting = false;
+    const providers = derived(() => getAvailableProviders(settingsStore.settings, providerCatalogStore.systemProviders));
+    const hasProviders = derived(() => providers().length > 0);
+    async function handleSubmit(message) {
+      if (!hasProviders() || isSubmitting) {
+        return;
+      }
+      isSubmitting = true;
+      try {
+        const session = await conversationStore.createSessionAndSubmit(message, conversationStore.draftChatModel);
+        if (session) {
+          goto(`/session/${session.id}`);
         }
-      ],
-      modelId: "gpt-4",
-      status: [],
-      tokenCalculatedAt: null
+      } finally {
+        isSubmitting = false;
+      }
     }
-  ];
-  function handleSubmit(message) {
-    const userMessage = {
-      id: `msg-${Date.now()}`,
-      role: "user",
-      contentParts: [{ type: "text", text: message }],
-      status: [],
-      tokenCalculatedAt: null
-    };
-    messages = [...messages, userMessage];
-    setTimeout(
-      () => {
-        const assistantMessage = {
-          id: `msg-${Date.now()}`,
-          role: "assistant",
-          contentParts: [
-            {
-              type: "text",
-              text: `You said: "${message}". This is a demo response from the Svelte 5 chat interface!`
-            }
-          ],
-          modelId: "gpt-4",
-          status: [],
-          tokenCalculatedAt: null
-        };
-        messages = [...messages, assistantMessage];
-      },
-      500
-    );
-  }
-  $$renderer.push(`<div class="chat-page svelte-1uha8ag"><div class="chat-header svelte-1uha8ag"><h1 class="svelte-1uha8ag">Chaeboxi</h1> <p class="subtitle svelte-1uha8ag">Svelte 5 Chat Interface</p></div> `);
-  MessageList($$renderer, { messages });
-  $$renderer.push(`<!----> `);
-  InputBox($$renderer, { onSubmit: handleSubmit, placeholder: "Type a message..." });
-  $$renderer.push(`<!----></div>`);
+    $$renderer2.push(`<div class="chat-page svelte-1uha8ag"><div class="welcome-area svelte-1uha8ag"><div class="welcome-icon svelte-1uha8ag"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg></div> <p class="welcome-text svelte-1uha8ag">What can I help you with today?</p></div> `);
+    {
+      $$renderer2.push("<!--[-1-->");
+    }
+    $$renderer2.push(`<!--]--> <div class="input-area svelte-1uha8ag">`);
+    InputBox($$renderer2, {
+      onSubmit: handleSubmit,
+      disabled: !hasProviders() || isSubmitting,
+      placeholder: "Type your question here..."
+    });
+    $$renderer2.push(`<!----></div></div>`);
+  });
 }
 export {
   _page as default

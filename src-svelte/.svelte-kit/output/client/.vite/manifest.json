@@ -1,21 +1,275 @@
 {
+  "../node_modules/@capacitor-community/sqlite/dist/esm/web.js": {
+    "file": "_app/immutable/chunks/CHxuBtHf.js",
+    "name": "web",
+    "src": "../node_modules/@capacitor-community/sqlite/dist/esm/web.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_D32AY0fi.js"
+    ]
+  },
   "../node_modules/@sveltejs/kit/src/runtime/client/entry.js": {
-    "file": "_app/immutable/entry/start.BAQBCldt.js",
+    "file": "_app/immutable/entry/start.067yJEhQ.js",
     "name": "entry/start",
     "src": "../node_modules/@sveltejs/kit/src/runtime/client/entry.js",
     "isEntry": true,
     "imports": [
-      "_C9BlSXQ_.js"
+      "_CZAowopO.js"
+    ]
+  },
+  "../node_modules/capacitor-stream-http/dist/esm/web.js": {
+    "file": "_app/immutable/chunks/FcX08G33.js",
+    "name": "web",
+    "src": "../node_modules/capacitor-stream-http/dist/esm/web.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_D32AY0fi.js"
     ]
   },
   "../node_modules/highlight.js/es/index.js": {
-    "file": "_app/immutable/chunks/99P9H80g.js",
+    "file": "_app/immutable/chunks/Bn4tgoy8.js",
     "name": "index",
     "src": "../node_modules/highlight.js/es/index.js",
     "isDynamicEntry": true,
     "imports": [
-      "_gnU0ypJ3.js"
+      "_D6-XlEtG.js"
     ]
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_AMS-Regular.ttf": {
+    "file": "_app/immutable/assets/KaTeX_AMS-Regular.DRggAlZN.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_AMS-Regular.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_AMS-Regular.woff": {
+    "file": "_app/immutable/assets/KaTeX_AMS-Regular.DMm9YOAa.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_AMS-Regular.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_AMS-Regular.woff2": {
+    "file": "_app/immutable/assets/KaTeX_AMS-Regular.BQhdFMY1.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_AMS-Regular.woff2"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Caligraphic-Bold.ttf": {
+    "file": "_app/immutable/assets/KaTeX_Caligraphic-Bold.ATXxdsX0.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Caligraphic-Bold.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Caligraphic-Bold.woff": {
+    "file": "_app/immutable/assets/KaTeX_Caligraphic-Bold.BEiXGLvX.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Caligraphic-Bold.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Caligraphic-Bold.woff2": {
+    "file": "_app/immutable/assets/KaTeX_Caligraphic-Bold.Dq_IR9rO.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Caligraphic-Bold.woff2"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Caligraphic-Regular.ttf": {
+    "file": "_app/immutable/assets/KaTeX_Caligraphic-Regular.wX97UBjC.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Caligraphic-Regular.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Caligraphic-Regular.woff": {
+    "file": "_app/immutable/assets/KaTeX_Caligraphic-Regular.CTRA-rTL.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Caligraphic-Regular.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Caligraphic-Regular.woff2": {
+    "file": "_app/immutable/assets/KaTeX_Caligraphic-Regular.Di6jR-x-.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Caligraphic-Regular.woff2"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Fraktur-Bold.ttf": {
+    "file": "_app/immutable/assets/KaTeX_Fraktur-Bold.BdnERNNW.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Fraktur-Bold.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Fraktur-Bold.woff": {
+    "file": "_app/immutable/assets/KaTeX_Fraktur-Bold.BsDP51OF.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Fraktur-Bold.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Fraktur-Bold.woff2": {
+    "file": "_app/immutable/assets/KaTeX_Fraktur-Bold.CL6g_b3V.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Fraktur-Bold.woff2"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Fraktur-Regular.ttf": {
+    "file": "_app/immutable/assets/KaTeX_Fraktur-Regular.CB_wures.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Fraktur-Regular.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Fraktur-Regular.woff": {
+    "file": "_app/immutable/assets/KaTeX_Fraktur-Regular.Dxdc4cR9.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Fraktur-Regular.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Fraktur-Regular.woff2": {
+    "file": "_app/immutable/assets/KaTeX_Fraktur-Regular.CTYiF6lA.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Fraktur-Regular.woff2"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Main-Bold.ttf": {
+    "file": "_app/immutable/assets/KaTeX_Main-Bold.waoOVXN0.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Main-Bold.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Main-Bold.woff": {
+    "file": "_app/immutable/assets/KaTeX_Main-Bold.Jm3AIy58.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Main-Bold.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Main-Bold.woff2": {
+    "file": "_app/immutable/assets/KaTeX_Main-Bold.Cx986IdX.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Main-Bold.woff2"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Main-BoldItalic.ttf": {
+    "file": "_app/immutable/assets/KaTeX_Main-BoldItalic.DzxPMmG6.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Main-BoldItalic.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Main-BoldItalic.woff": {
+    "file": "_app/immutable/assets/KaTeX_Main-BoldItalic.SpSLRI95.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Main-BoldItalic.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Main-BoldItalic.woff2": {
+    "file": "_app/immutable/assets/KaTeX_Main-BoldItalic.DxDJ3AOS.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Main-BoldItalic.woff2"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Main-Italic.ttf": {
+    "file": "_app/immutable/assets/KaTeX_Main-Italic.3WenGoN9.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Main-Italic.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Main-Italic.woff": {
+    "file": "_app/immutable/assets/KaTeX_Main-Italic.BMLOBm91.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Main-Italic.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Main-Italic.woff2": {
+    "file": "_app/immutable/assets/KaTeX_Main-Italic.NWA7e6Wa.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Main-Italic.woff2"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Main-Regular.ttf": {
+    "file": "_app/immutable/assets/KaTeX_Main-Regular.ypZvNtVU.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Main-Regular.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Main-Regular.woff": {
+    "file": "_app/immutable/assets/KaTeX_Main-Regular.Dr94JaBh.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Main-Regular.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Main-Regular.woff2": {
+    "file": "_app/immutable/assets/KaTeX_Main-Regular.B22Nviop.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Main-Regular.woff2"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Math-BoldItalic.ttf": {
+    "file": "_app/immutable/assets/KaTeX_Math-BoldItalic.B3XSjfu4.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Math-BoldItalic.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Math-BoldItalic.woff": {
+    "file": "_app/immutable/assets/KaTeX_Math-BoldItalic.iY-2wyZ7.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Math-BoldItalic.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Math-BoldItalic.woff2": {
+    "file": "_app/immutable/assets/KaTeX_Math-BoldItalic.CZnvNsCZ.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Math-BoldItalic.woff2"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Math-Italic.ttf": {
+    "file": "_app/immutable/assets/KaTeX_Math-Italic.flOr_0UB.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Math-Italic.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Math-Italic.woff": {
+    "file": "_app/immutable/assets/KaTeX_Math-Italic.DA0__PXp.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Math-Italic.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Math-Italic.woff2": {
+    "file": "_app/immutable/assets/KaTeX_Math-Italic.t53AETM-.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Math-Italic.woff2"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_SansSerif-Bold.ttf": {
+    "file": "_app/immutable/assets/KaTeX_SansSerif-Bold.CFMepnvq.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_SansSerif-Bold.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_SansSerif-Bold.woff": {
+    "file": "_app/immutable/assets/KaTeX_SansSerif-Bold.DbIhKOiC.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_SansSerif-Bold.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_SansSerif-Bold.woff2": {
+    "file": "_app/immutable/assets/KaTeX_SansSerif-Bold.D1sUS0GD.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_SansSerif-Bold.woff2"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_SansSerif-Italic.ttf": {
+    "file": "_app/immutable/assets/KaTeX_SansSerif-Italic.YYjJ1zSn.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_SansSerif-Italic.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_SansSerif-Italic.woff": {
+    "file": "_app/immutable/assets/KaTeX_SansSerif-Italic.DN2j7dab.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_SansSerif-Italic.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_SansSerif-Italic.woff2": {
+    "file": "_app/immutable/assets/KaTeX_SansSerif-Italic.C3H0VqGB.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_SansSerif-Italic.woff2"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_SansSerif-Regular.ttf": {
+    "file": "_app/immutable/assets/KaTeX_SansSerif-Regular.BNo7hRIc.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_SansSerif-Regular.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_SansSerif-Regular.woff": {
+    "file": "_app/immutable/assets/KaTeX_SansSerif-Regular.CS6fqUqJ.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_SansSerif-Regular.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_SansSerif-Regular.woff2": {
+    "file": "_app/immutable/assets/KaTeX_SansSerif-Regular.DDBCnlJ7.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_SansSerif-Regular.woff2"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Script-Regular.ttf": {
+    "file": "_app/immutable/assets/KaTeX_Script-Regular.C5JkGWo-.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Script-Regular.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Script-Regular.woff": {
+    "file": "_app/immutable/assets/KaTeX_Script-Regular.D5yQViql.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Script-Regular.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Script-Regular.woff2": {
+    "file": "_app/immutable/assets/KaTeX_Script-Regular.D3wIWfF6.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Script-Regular.woff2"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Size1-Regular.ttf": {
+    "file": "_app/immutable/assets/KaTeX_Size1-Regular.Dbsnue_I.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Size1-Regular.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Size1-Regular.woff": {
+    "file": "_app/immutable/assets/KaTeX_Size1-Regular.C195tn64.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Size1-Regular.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Size1-Regular.woff2": {
+    "file": "_app/immutable/assets/KaTeX_Size1-Regular.mCD8mA8B.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Size1-Regular.woff2"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Size2-Regular.ttf": {
+    "file": "_app/immutable/assets/KaTeX_Size2-Regular.B7gKUWhC.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Size2-Regular.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Size2-Regular.woff": {
+    "file": "_app/immutable/assets/KaTeX_Size2-Regular.oD1tc_U0.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Size2-Regular.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Size2-Regular.woff2": {
+    "file": "_app/immutable/assets/KaTeX_Size2-Regular.Dy4dx90m.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Size2-Regular.woff2"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Size3-Regular.ttf": {
+    "file": "_app/immutable/assets/KaTeX_Size3-Regular.DgpXs0kz.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Size3-Regular.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Size3-Regular.woff": {
+    "file": "_app/immutable/assets/KaTeX_Size3-Regular.CTq5MqoE.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Size3-Regular.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Size4-Regular.ttf": {
+    "file": "_app/immutable/assets/KaTeX_Size4-Regular.DWFBv043.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Size4-Regular.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Size4-Regular.woff": {
+    "file": "_app/immutable/assets/KaTeX_Size4-Regular.BF-4gkZK.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Size4-Regular.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Size4-Regular.woff2": {
+    "file": "_app/immutable/assets/KaTeX_Size4-Regular.Dl5lxZxV.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Size4-Regular.woff2"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Typewriter-Regular.ttf": {
+    "file": "_app/immutable/assets/KaTeX_Typewriter-Regular.D3Ib7_Hf.ttf",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Typewriter-Regular.ttf"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Typewriter-Regular.woff": {
+    "file": "_app/immutable/assets/KaTeX_Typewriter-Regular.C0xS9mPB.woff",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Typewriter-Regular.woff"
+  },
+  "../node_modules/katex/dist/fonts/KaTeX_Typewriter-Regular.woff2": {
+    "file": "_app/immutable/assets/KaTeX_Typewriter-Regular.CO6r4hn1.woff2",
+    "src": "../node_modules/katex/dist/fonts/KaTeX_Typewriter-Regular.woff2"
   },
   "../node_modules/katex/dist/katex.mjs": {
     "file": "_app/immutable/chunks/BkgLa5T_.js",
@@ -24,429 +278,462 @@
     "isDynamicEntry": true
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/architectureDiagram-2XIMDMQ5.mjs": {
-    "file": "_app/immutable/chunks/CwApmraB.js",
+    "file": "_app/immutable/chunks/wSwts_CI.js",
     "name": "architectureDiagram-2XIMDMQ5",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/architectureDiagram-2XIMDMQ5.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_D-VjKv6y.js",
-      "_BP79P11f.js",
-      "_CDJo-E0V.js",
+      "_CuyyhV-N.js",
+      "_OIxcTKqr.js",
+      "_ulkRUT96.js",
       "_BQaXIfA_.js",
-      "_gnU0ypJ3.js"
+      "_D6-XlEtG.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/blockDiagram-WCTKOSBZ.mjs": {
-    "file": "_app/immutable/chunks/D8rA9gqb.js",
+    "file": "_app/immutable/chunks/DmVG6WZf.js",
     "name": "blockDiagram-WCTKOSBZ",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/blockDiagram-WCTKOSBZ.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_DZBTgkdn.js",
-      "_D-VjKv6y.js",
-      "_BR3tl10o.js",
-      "_XJTD_Khe.js",
-      "_Bok0ujfJ.js"
+      "_b0r9bwts.js",
+      "_CuyyhV-N.js",
+      "_oDO0hPLc.js",
+      "_BYTcLopd.js",
+      "_C4KuV9nv.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/c4Diagram-IC4MRINW.mjs": {
-    "file": "_app/immutable/chunks/CI97dnVl.js",
+    "file": "_app/immutable/chunks/dudGDcYU.js",
     "name": "c4Diagram-IC4MRINW",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/c4Diagram-IC4MRINW.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_Bbxxze2D.js",
-      "_D-VjKv6y.js"
+      "_HJg5fRFH.js",
+      "_CuyyhV-N.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/classDiagram-VBA2DB6C.mjs": {
-    "file": "_app/immutable/chunks/C0RwmC-l.js",
+    "file": "_app/immutable/chunks/DN--dleu.js",
     "name": "classDiagram-VBA2DB6C",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/classDiagram-VBA2DB6C.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_DXo6OSMP.js",
-      "_D-VjKv6y.js"
+      "_Dd-jhW-Q.js",
+      "_CuyyhV-N.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/classDiagram-v2-RAHNMMFH.mjs": {
-    "file": "_app/immutable/chunks/DM3XXmfZ.js",
+    "file": "_app/immutable/chunks/BLIfyM9h.js",
     "name": "classDiagram-v2-RAHNMMFH",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/classDiagram-v2-RAHNMMFH.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_DXo6OSMP.js",
-      "_D-VjKv6y.js"
+      "_Dd-jhW-Q.js",
+      "_CuyyhV-N.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/cose-bilkent-S5V4N54A.mjs": {
-    "file": "_app/immutable/chunks/mCG4C8gb.js",
+    "file": "_app/immutable/chunks/CWSK-Akn.js",
     "name": "cose-bilkent-S5V4N54A",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/cose-bilkent-S5V4N54A.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_D-VjKv6y.js",
+      "_CuyyhV-N.js",
       "_BQaXIfA_.js",
-      "_gnU0ypJ3.js"
+      "_D6-XlEtG.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/dagre-KLK3FWXG.mjs": {
-    "file": "_app/immutable/chunks/DeTSlKna.js",
+    "file": "_app/immutable/chunks/DCHe42Gh.js",
     "name": "dagre-KLK3FWXG",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/dagre-KLK3FWXG.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_D-VjKv6y.js",
-      "_XJTD_Khe.js",
-      "_BfU0Rset.js",
-      "_BGoKy6eV.js",
-      "_BR3tl10o.js",
-      "_B127njWp.js"
+      "_CuyyhV-N.js",
+      "_BYTcLopd.js",
+      "_DVsg5CL7.js",
+      "_uzAZj-88.js",
+      "_oDO0hPLc.js",
+      "_DG0MFWWQ.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/diagram-E7M64L7V.mjs": {
-    "file": "_app/immutable/chunks/C7bz2AZY.js",
+    "file": "_app/immutable/chunks/CyFiLLI8.js",
     "name": "diagram-E7M64L7V",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/diagram-E7M64L7V.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_D-VjKv6y.js",
-      "_CO9cgkpD.js",
-      "_BP79P11f.js",
-      "_CDJo-E0V.js",
+      "_CuyyhV-N.js",
+      "_oL_qk22u.js",
+      "_OIxcTKqr.js",
+      "_ulkRUT96.js",
       "_DX6XiGOO.js",
       "_CmKTTxBW.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/diagram-IFDJBPK2.mjs": {
-    "file": "_app/immutable/chunks/Cy-7VjOv.js",
+    "file": "_app/immutable/chunks/DgHW9tZ1.js",
     "name": "diagram-IFDJBPK2",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/diagram-IFDJBPK2.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_D-VjKv6y.js",
-      "_BP79P11f.js",
-      "_CDJo-E0V.js"
+      "_CuyyhV-N.js",
+      "_OIxcTKqr.js",
+      "_ulkRUT96.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/diagram-P4PSJMXO.mjs": {
-    "file": "_app/immutable/chunks/BL9VlXFy.js",
+    "file": "_app/immutable/chunks/FOWJiqq6.js",
     "name": "diagram-P4PSJMXO",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/diagram-P4PSJMXO.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_D-VjKv6y.js",
-      "_BP79P11f.js",
-      "_CDJo-E0V.js"
+      "_CuyyhV-N.js",
+      "_OIxcTKqr.js",
+      "_ulkRUT96.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/erDiagram-INFDFZHY.mjs": {
-    "file": "_app/immutable/chunks/Dnb43wdh.js",
+    "file": "_app/immutable/chunks/DIBfAw3h.js",
     "name": "erDiagram-INFDFZHY",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/erDiagram-INFDFZHY.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_gpVidv6i.js",
-      "_CO9cgkpD.js",
-      "_D-VjKv6y.js",
-      "_Bok0ujfJ.js"
+      "_CbYJx0YW.js",
+      "_oL_qk22u.js",
+      "_CuyyhV-N.js",
+      "_C4KuV9nv.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/flowDiagram-PKNHOUZH.mjs": {
-    "file": "_app/immutable/chunks/VMXRpr0z.js",
+    "file": "_app/immutable/chunks/DoyOqdc9.js",
     "name": "flowDiagram-PKNHOUZH",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/flowDiagram-PKNHOUZH.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_DZBTgkdn.js",
-      "_D-VjKv6y.js",
-      "_Bbxxze2D.js",
-      "_gpVidv6i.js",
-      "_CO9cgkpD.js",
-      "_Bok0ujfJ.js"
+      "_b0r9bwts.js",
+      "_CuyyhV-N.js",
+      "_HJg5fRFH.js",
+      "_CbYJx0YW.js",
+      "_oL_qk22u.js",
+      "_C4KuV9nv.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/ganttDiagram-A5KZAMGK.mjs": {
-    "file": "_app/immutable/chunks/CTrYkGRu.js",
+    "file": "_app/immutable/chunks/B8zwZ59P.js",
     "name": "ganttDiagram-A5KZAMGK",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/ganttDiagram-A5KZAMGK.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_D-VjKv6y.js",
-      "_gnU0ypJ3.js",
-      "_BwRQYVaQ.js",
+      "_CuyyhV-N.js",
+      "_C34qLuNx.js",
+      "_D6-XlEtG.js",
+      "_Bc2GXQGY.js",
       "_Gi6I4Gst.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/gitGraphDiagram-K3NZZRJ6.mjs": {
-    "file": "_app/immutable/chunks/eYGk8fC7.js",
+    "file": "_app/immutable/chunks/iy1f13mD.js",
     "name": "gitGraphDiagram-K3NZZRJ6",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/gitGraphDiagram-K3NZZRJ6.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_BP79P11f.js",
-      "_CeFouccP.js",
-      "_D-VjKv6y.js",
-      "_CDJo-E0V.js"
+      "_OIxcTKqr.js",
+      "_BTx9vJZP.js",
+      "_CuyyhV-N.js",
+      "_ulkRUT96.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/infoDiagram-LFFYTUFH.mjs": {
-    "file": "_app/immutable/chunks/DTstXo5c.js",
+    "file": "_app/immutable/chunks/DRcv0XfU.js",
     "name": "infoDiagram-LFFYTUFH",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/infoDiagram-LFFYTUFH.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_D-VjKv6y.js",
-      "_CDJo-E0V.js"
+      "_CuyyhV-N.js",
+      "_ulkRUT96.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/ishikawaDiagram-PHBUUO56.mjs": {
-    "file": "_app/immutable/chunks/DwGT__-1.js",
+    "file": "_app/immutable/chunks/CVUwZ9d1.js",
     "name": "ishikawaDiagram-PHBUUO56",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/ishikawaDiagram-PHBUUO56.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_D-VjKv6y.js"
+      "_CuyyhV-N.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/journeyDiagram-4ABVD52K.mjs": {
-    "file": "_app/immutable/chunks/C4ckV11y.js",
+    "file": "_app/immutable/chunks/BLgPImFe.js",
     "name": "journeyDiagram-4ABVD52K",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/journeyDiagram-4ABVD52K.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_DZBTgkdn.js",
-      "_Bbxxze2D.js",
-      "_D-VjKv6y.js",
-      "_qD98i_QC.js"
+      "_b0r9bwts.js",
+      "_HJg5fRFH.js",
+      "_CuyyhV-N.js",
+      "_xg7U1vFC.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/kanban-definition-K7BYSVSG.mjs": {
-    "file": "_app/immutable/chunks/CVO4XrEF.js",
+    "file": "_app/immutable/chunks/4S8kI5Kk.js",
     "name": "kanban-definition-K7BYSVSG",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/kanban-definition-K7BYSVSG.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_D-VjKv6y.js",
-      "_DZBTgkdn.js"
+      "_CuyyhV-N.js",
+      "_b0r9bwts.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/mindmap-definition-YRQLILUH.mjs": {
-    "file": "_app/immutable/chunks/C52sgO81.js",
+    "file": "_app/immutable/chunks/Croy0PWE.js",
     "name": "mindmap-definition-YRQLILUH",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/mindmap-definition-YRQLILUH.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_gpVidv6i.js",
-      "_CO9cgkpD.js",
-      "_D-VjKv6y.js"
+      "_CbYJx0YW.js",
+      "_oL_qk22u.js",
+      "_CuyyhV-N.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/pieDiagram-SKSYHLDU.mjs": {
-    "file": "_app/immutable/chunks/BQFw6gJD.js",
+    "file": "_app/immutable/chunks/Piu8DiKn.js",
     "name": "pieDiagram-SKSYHLDU",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/pieDiagram-SKSYHLDU.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_D-VjKv6y.js",
-      "_BP79P11f.js",
-      "_CDJo-E0V.js",
-      "_qD98i_QC.js",
+      "_CuyyhV-N.js",
+      "_OIxcTKqr.js",
+      "_ulkRUT96.js",
+      "_xg7U1vFC.js",
       "_CmKTTxBW.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/quadrantDiagram-337W2JSQ.mjs": {
-    "file": "_app/immutable/chunks/ZVcev0YR.js",
+    "file": "_app/immutable/chunks/DoDhissk.js",
     "name": "quadrantDiagram-337W2JSQ",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/quadrantDiagram-337W2JSQ.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_D-VjKv6y.js",
-      "_BwRQYVaQ.js"
+      "_CuyyhV-N.js",
+      "_Bc2GXQGY.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/requirementDiagram-Z7DCOOCP.mjs": {
-    "file": "_app/immutable/chunks/6pozt4I_.js",
+    "file": "_app/immutable/chunks/C0CIGPW6.js",
     "name": "requirementDiagram-Z7DCOOCP",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/requirementDiagram-Z7DCOOCP.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_gpVidv6i.js",
-      "_CO9cgkpD.js",
-      "_D-VjKv6y.js"
+      "_CbYJx0YW.js",
+      "_oL_qk22u.js",
+      "_CuyyhV-N.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/sankeyDiagram-WA2Y5GQK.mjs": {
-    "file": "_app/immutable/chunks/Bn6FmzNk.js",
+    "file": "_app/immutable/chunks/CFdx3HA1.js",
     "name": "sankeyDiagram-WA2Y5GQK",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/sankeyDiagram-WA2Y5GQK.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_D-VjKv6y.js",
+      "_CuyyhV-N.js",
       "_CmKTTxBW.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/sequenceDiagram-2WXFIKYE.mjs": {
-    "file": "_app/immutable/chunks/B1G2GavY.js",
+    "file": "_app/immutable/chunks/CvtEh5Xl.js",
     "name": "sequenceDiagram-2WXFIKYE",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/sequenceDiagram-2WXFIKYE.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_D-VjKv6y.js",
-      "_Bbxxze2D.js",
-      "_CeFouccP.js"
+      "_CuyyhV-N.js",
+      "_HJg5fRFH.js",
+      "_BTx9vJZP.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/stateDiagram-RAJIS63D.mjs": {
-    "file": "_app/immutable/chunks/D9CCnV0R.js",
+    "file": "_app/immutable/chunks/uM9ToDOq.js",
     "name": "stateDiagram-RAJIS63D",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/stateDiagram-RAJIS63D.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_DWcScOI-.js",
-      "_D-VjKv6y.js",
-      "_XJTD_Khe.js",
-      "_BfU0Rset.js"
+      "_DqFdL1fp.js",
+      "_CuyyhV-N.js",
+      "_BYTcLopd.js",
+      "_DVsg5CL7.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/stateDiagram-v2-FVOUBMTO.mjs": {
-    "file": "_app/immutable/chunks/7r9VjVs-.js",
+    "file": "_app/immutable/chunks/DwRNuirl.js",
     "name": "stateDiagram-v2-FVOUBMTO",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/stateDiagram-v2-FVOUBMTO.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_DWcScOI-.js",
-      "_D-VjKv6y.js"
+      "_DqFdL1fp.js",
+      "_CuyyhV-N.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/timeline-definition-YZTLITO2.mjs": {
-    "file": "_app/immutable/chunks/DoNTC1TE.js",
+    "file": "_app/immutable/chunks/C-gb303O.js",
     "name": "timeline-definition-YZTLITO2",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/timeline-definition-YZTLITO2.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_D-VjKv6y.js",
-      "_qD98i_QC.js"
+      "_CuyyhV-N.js",
+      "_xg7U1vFC.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/vennDiagram-LZ73GAT5.mjs": {
-    "file": "_app/immutable/chunks/C94X2mzQ.js",
+    "file": "_app/immutable/chunks/B5B2fIOC.js",
     "name": "vennDiagram-LZ73GAT5",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/vennDiagram-LZ73GAT5.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_D-VjKv6y.js"
+      "_CuyyhV-N.js"
     ]
   },
   "../node_modules/mermaid/dist/chunks/mermaid.core/xychartDiagram-JWTSCODW.mjs": {
-    "file": "_app/immutable/chunks/BU8gcTPi.js",
+    "file": "_app/immutable/chunks/Ld_N1kV3.js",
     "name": "xychartDiagram-JWTSCODW",
     "src": "../node_modules/mermaid/dist/chunks/mermaid.core/xychartDiagram-JWTSCODW.mjs",
     "isDynamicEntry": true,
     "imports": [
-      "_D-VjKv6y.js",
+      "_CuyyhV-N.js",
       "_Gi6I4Gst.js",
       "_CmKTTxBW.js",
-      "_BwRQYVaQ.js"
+      "_Bc2GXQGY.js"
     ]
   },
-  "../src/renderer/i18n/locales/ar/translation.json": {
-    "file": "_app/immutable/chunks/F6hQxawu.js",
-    "name": "translation",
-    "src": "../src/renderer/i18n/locales/ar/translation.json",
-    "isDynamicEntry": true
+  "../src/renderer/static/icon.png": {
+    "file": "_app/immutable/assets/icon.D6XyimQ5.png",
+    "src": "../src/renderer/static/icon.png"
   },
-  "../src/renderer/i18n/locales/de/translation.json": {
-    "file": "_app/immutable/chunks/CX7bUHpW.js",
-    "name": "translation",
-    "src": "../src/renderer/i18n/locales/de/translation.json",
-    "isDynamicEntry": true
+  "../src/renderer/static/icons/providers/mistral-ai.png": {
+    "file": "_app/immutable/assets/mistral-ai.CMRyv9c6.png",
+    "src": "../src/renderer/static/icons/providers/mistral-ai.png"
   },
-  "../src/renderer/i18n/locales/en/translation.json": {
-    "file": "_app/immutable/chunks/nxlQ2KPm.js",
-    "name": "translation",
-    "src": "../src/renderer/i18n/locales/en/translation.json",
-    "isDynamicEntry": true
+  "../src/renderer/static/logos/airtable.png": {
+    "file": "_app/immutable/assets/airtable.B84u4y-i.png",
+    "src": "../src/renderer/static/logos/airtable.png"
   },
-  "../src/renderer/i18n/locales/es/translation.json": {
-    "file": "_app/immutable/chunks/B6t1nKEi.js",
-    "name": "translation",
-    "src": "../src/renderer/i18n/locales/es/translation.json",
-    "isDynamicEntry": true
+  "../src/renderer/static/logos/applescript.png": {
+    "file": "_app/immutable/assets/applescript.QZgnzbW0.png",
+    "src": "../src/renderer/static/logos/applescript.png"
   },
-  "../src/renderer/i18n/locales/fr/translation.json": {
-    "file": "_app/immutable/chunks/BvMji8qI.js",
-    "name": "translation",
-    "src": "../src/renderer/i18n/locales/fr/translation.json",
-    "isDynamicEntry": true
+  "../src/renderer/static/logos/bigquery.png": {
+    "file": "_app/immutable/assets/bigquery.Caqqi3VY.png",
+    "src": "../src/renderer/static/logos/bigquery.png"
   },
-  "../src/renderer/i18n/locales/it-IT/translation.json": {
-    "file": "_app/immutable/chunks/fBsAEAve.js",
-    "name": "translation",
-    "src": "../src/renderer/i18n/locales/it-IT/translation.json",
-    "isDynamicEntry": true
+  "../src/renderer/static/logos/chroma.png": {
+    "file": "_app/immutable/assets/chroma.B-tdaRBi.png",
+    "src": "../src/renderer/static/logos/chroma.png"
   },
-  "../src/renderer/i18n/locales/ja/translation.json": {
-    "file": "_app/immutable/chunks/CPW83_Aq.js",
-    "name": "translation",
-    "src": "../src/renderer/i18n/locales/ja/translation.json",
-    "isDynamicEntry": true
+  "../src/renderer/static/logos/clickup.png": {
+    "file": "_app/immutable/assets/clickup.BwRhxRNX.png",
+    "src": "../src/renderer/static/logos/clickup.png"
   },
-  "../src/renderer/i18n/locales/ko/translation.json": {
-    "file": "_app/immutable/chunks/Bc1T63Nn.js",
-    "name": "translation",
-    "src": "../src/renderer/i18n/locales/ko/translation.json",
-    "isDynamicEntry": true
+  "../src/renderer/static/logos/e2b.png": {
+    "file": "_app/immutable/assets/e2b.BNywPRef.png",
+    "src": "../src/renderer/static/logos/e2b.png"
   },
-  "../src/renderer/i18n/locales/nb-NO/translation.json": {
-    "file": "_app/immutable/chunks/BCq4GVr1.js",
-    "name": "translation",
-    "src": "../src/renderer/i18n/locales/nb-NO/translation.json",
-    "isDynamicEntry": true
+  "../src/renderer/static/logos/exa.png": {
+    "file": "_app/immutable/assets/exa.BByn7LvE.png",
+    "src": "../src/renderer/static/logos/exa.png"
   },
-  "../src/renderer/i18n/locales/pt-PT/translation.json": {
-    "file": "_app/immutable/chunks/BqDh_AHh.js",
-    "name": "translation",
-    "src": "../src/renderer/i18n/locales/pt-PT/translation.json",
-    "isDynamicEntry": true
+  "../src/renderer/static/logos/ghost.png": {
+    "file": "_app/immutable/assets/ghost.i-orE056.png",
+    "src": "../src/renderer/static/logos/ghost.png"
   },
-  "../src/renderer/i18n/locales/ru/translation.json": {
-    "file": "_app/immutable/chunks/DKF3OfpA.js",
-    "name": "translation",
-    "src": "../src/renderer/i18n/locales/ru/translation.json",
-    "isDynamicEntry": true
+  "../src/renderer/static/logos/iterm.png": {
+    "file": "_app/immutable/assets/iterm.Btrm5pj8.png",
+    "src": "../src/renderer/static/logos/iterm.png"
   },
-  "../src/renderer/i18n/locales/sv/translation.json": {
-    "file": "_app/immutable/chunks/HdpBXQ0w.js",
-    "name": "translation",
-    "src": "../src/renderer/i18n/locales/sv/translation.json",
-    "isDynamicEntry": true
+  "../src/renderer/static/logos/lightdash.png": {
+    "file": "_app/immutable/assets/lightdash.C-DTh2_n.png",
+    "src": "../src/renderer/static/logos/lightdash.png"
   },
-  "../src/renderer/i18n/locales/zh-Hans/translation.json": {
-    "file": "_app/immutable/chunks/B685gkHH.js",
-    "name": "translation",
-    "src": "../src/renderer/i18n/locales/zh-Hans/translation.json",
-    "isDynamicEntry": true
+  "../src/renderer/static/logos/monday.png": {
+    "file": "_app/immutable/assets/monday.DTuUmT58.png",
+    "src": "../src/renderer/static/logos/monday.png"
   },
-  "../src/renderer/i18n/locales/zh-Hant/translation.json": {
-    "file": "_app/immutable/chunks/l1fcOmt-.js",
-    "name": "translation",
-    "src": "../src/renderer/i18n/locales/zh-Hant/translation.json",
-    "isDynamicEntry": true
+  "../src/renderer/static/logos/paddle.png": {
+    "file": "_app/immutable/assets/paddle.CowPVkat.png",
+    "src": "../src/renderer/static/logos/paddle.png"
+  },
+  "../src/renderer/static/logos/polar.png": {
+    "file": "_app/immutable/assets/polar.CBvg0kSv.png",
+    "src": "../src/renderer/static/logos/polar.png"
+  },
+  "../src/renderer/static/logos/pydantic.png": {
+    "file": "_app/immutable/assets/pydantic.B7hdUN9d.png",
+    "src": "../src/renderer/static/logos/pydantic.png"
+  },
+  "../src/renderer/static/logos/sentry.png": {
+    "file": "_app/immutable/assets/sentry.CObUZTea.png",
+    "src": "../src/renderer/static/logos/sentry.png"
+  },
+  "../src/renderer/static/logos/square.png": {
+    "file": "_app/immutable/assets/square.LA_u0N5U.png",
+    "src": "../src/renderer/static/logos/square.png"
+  },
+  "../src/renderer/static/logos/tavily.png": {
+    "file": "_app/immutable/assets/tavily.Mwtd9evA.png",
+    "src": "../src/renderer/static/logos/tavily.png"
+  },
+  "../src/renderer/static/logos/xero.png": {
+    "file": "_app/immutable/assets/xero.DsIzTPrr.png",
+    "src": "../src/renderer/static/logos/xero.png"
+  },
+  "../src/renderer/static/wechat_qrcode.png": {
+    "file": "_app/immutable/assets/wechat_qrcode.5wX2vvRa.png",
+    "src": "../src/renderer/static/wechat_qrcode.png"
+  },
+  "../src/renderer/stores/lastUsedModelStore.ts": {
+    "file": "_app/immutable/chunks/KNpkOyed.js",
+    "name": "lastUsedModelStore",
+    "src": "../src/renderer/stores/lastUsedModelStore.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_BeMvHgfU.js",
+      "_D30f_eiq.js"
+    ]
+  },
+  "../src/renderer/stores/settingsStore.ts": {
+    "file": "_app/immutable/chunks/BfwYT9Gq.js",
+    "name": "settingsStore",
+    "src": "../src/renderer/stores/settingsStore.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_Bm9z-GZZ.js",
+      "_D6-XlEtG.js",
+      "_BeMvHgfU.js",
+      "_D32AY0fi.js"
+    ]
+  },
+  "../src/renderer/stores/uiStore.ts": {
+    "file": "_app/immutable/chunks/2xvmvKtR.js",
+    "name": "uiStore",
+    "src": "../src/renderer/stores/uiStore.ts",
+    "isDynamicEntry": true,
+    "imports": [
+      "_BeMvHgfU.js",
+      "_D32AY0fi.js",
+      "_D30f_eiq.js",
+      "_Bm9z-GZZ.js"
+    ]
   },
   ".svelte-kit/generated/client-optimized/app.js": {
-    "file": "_app/immutable/entry/app.U-l_m2h1.js",
+    "file": "_app/immutable/entry/app.CfofuZzT.js",
     "name": "entry/app",
     "src": ".svelte-kit/generated/client-optimized/app.js",
     "isEntry": true,
     "imports": [
-      "_Dp1pzeXC.js",
-      "_Dyr1KvZn.js",
-      "_BN3vRYuL.js",
-      "_BrSQbglc.js",
-      "_CJRqNfJt.js",
-      "_E5YIsfnJ.js",
-      "_DyEsZ4jU.js"
+      "_luBUAet7.js",
+      "_BAH9MFau.js",
+      "_COM226J_.js",
+      "_gMoNbJoq.js",
+      "_BKFnkm8H.js"
     ],
     "dynamicImports": [
       ".svelte-kit/generated/client-optimized/nodes/0.js",
@@ -460,302 +747,360 @@
     ]
   },
   ".svelte-kit/generated/client-optimized/nodes/0.js": {
-    "file": "_app/immutable/nodes/0.D-P6_Zb_.js",
+    "file": "_app/immutable/nodes/0.DpeZt3sr.js",
     "name": "nodes/0",
     "src": ".svelte-kit/generated/client-optimized/nodes/0.js",
     "isEntry": true,
     "isDynamicEntry": true,
     "imports": [
-      "_BrSQbglc.js",
-      "_CJRqNfJt.js",
-      "_Dyr1KvZn.js",
-      "_E5YIsfnJ.js",
-      "_BpObh_2D.js",
-      "_ClTlcanv.js",
-      "_BN3vRYuL.js",
-      "_CuVhFhlI.js",
-      "_DsatsG88.js",
-      "_C9BlSXQ_.js"
+      "_gMoNbJoq.js",
+      "_BKFnkm8H.js",
+      "_BAH9MFau.js",
+      "_luBUAet7.js",
+      "_CZAowopO.js",
+      "_DRgZSRp9.js",
+      "_COM226J_.js",
+      "_Bm9z-GZZ.js",
+      "_--EIz3bQ.js"
     ],
     "css": [
-      "_app/immutable/assets/0.DcqwKYns.css"
+      "_app/immutable/assets/0.C0sC-dqR.css"
     ]
   },
   ".svelte-kit/generated/client-optimized/nodes/1.js": {
-    "file": "_app/immutable/nodes/1.4Iybj4cC.js",
+    "file": "_app/immutable/nodes/1.CJs3TlpF.js",
     "name": "nodes/1",
     "src": ".svelte-kit/generated/client-optimized/nodes/1.js",
     "isEntry": true,
     "isDynamicEntry": true,
     "imports": [
-      "_BrSQbglc.js",
-      "_CH_GuIgk.js",
-      "_Dyr1KvZn.js",
-      "_BN3vRYuL.js",
-      "_C9BlSXQ_.js"
+      "_gMoNbJoq.js",
+      "_B4he-IIC.js",
+      "_BAH9MFau.js",
+      "_COM226J_.js",
+      "_CZAowopO.js"
     ]
   },
   ".svelte-kit/generated/client-optimized/nodes/2.js": {
-    "file": "_app/immutable/nodes/2.ZZ-cGB1c.js",
+    "file": "_app/immutable/nodes/2.fxiVb2Qe.js",
     "name": "nodes/2",
     "src": ".svelte-kit/generated/client-optimized/nodes/2.js",
     "isEntry": true,
     "isDynamicEntry": true,
     "imports": [
-      "_BrSQbglc.js",
-      "_Dyr1KvZn.js",
-      "_Zogw9hWD.js",
-      "_DnYAehYQ.js"
+      "_gMoNbJoq.js",
+      "_BKFnkm8H.js",
+      "_BAH9MFau.js",
+      "_luBUAet7.js",
+      "_CZAowopO.js",
+      "_oAUVJoGf.js",
+      "_Bm9z-GZZ.js",
+      "_--EIz3bQ.js"
     ],
     "css": [
-      "_app/immutable/assets/2.9RT-9mmB.css"
+      "_app/immutable/assets/2.DYlasbdB.css"
     ]
   },
   ".svelte-kit/generated/client-optimized/nodes/3.js": {
-    "file": "_app/immutable/nodes/3.CCr-Kj4z.js",
+    "file": "_app/immutable/nodes/3.BTsW-8sN.js",
     "name": "nodes/3",
     "src": ".svelte-kit/generated/client-optimized/nodes/3.js",
     "isEntry": true,
     "isDynamicEntry": true,
     "imports": [
-      "_BrSQbglc.js",
-      "_CH_GuIgk.js",
-      "_DnYAehYQ.js"
+      "_gMoNbJoq.js",
+      "_B4he-IIC.js"
     ],
     "css": [
-      "_app/immutable/assets/3.C4Ae2si8.css"
+      "_app/immutable/assets/3.DvynqaA5.css"
     ]
   },
   ".svelte-kit/generated/client-optimized/nodes/4.js": {
-    "file": "_app/immutable/nodes/4.D9b5i8hZ.js",
+    "file": "_app/immutable/nodes/4.CbkEA9yM.js",
     "name": "nodes/4",
     "src": ".svelte-kit/generated/client-optimized/nodes/4.js",
     "isEntry": true,
     "isDynamicEntry": true,
     "imports": [
-      "_BrSQbglc.js",
-      "_CH_GuIgk.js"
+      "_gMoNbJoq.js",
+      "_B4he-IIC.js"
     ],
     "css": [
       "_app/immutable/assets/4.oLWSeDtK.css"
     ]
   },
   ".svelte-kit/generated/client-optimized/nodes/5.js": {
-    "file": "_app/immutable/nodes/5.YSO3g0JE.js",
+    "file": "_app/immutable/nodes/5.ifvt3Wqz.js",
     "name": "nodes/5",
     "src": ".svelte-kit/generated/client-optimized/nodes/5.js",
     "isEntry": true,
     "isDynamicEntry": true,
     "imports": [
-      "_BrSQbglc.js",
-      "_Dyr1KvZn.js",
-      "_E5YIsfnJ.js",
-      "_BN3vRYuL.js",
-      "_ClTlcanv.js",
-      "_Zogw9hWD.js"
+      "_gMoNbJoq.js",
+      "_BKFnkm8H.js",
+      "_BAH9MFau.js",
+      "_luBUAet7.js",
+      "_DRgZSRp9.js",
+      "_oAUVJoGf.js",
+      "_Bm9z-GZZ.js"
     ],
     "css": [
-      "_app/immutable/assets/5.GdpWxWoi.css"
+      "_app/immutable/assets/5.CqYm9ZqI.css"
     ]
   },
   ".svelte-kit/generated/client-optimized/nodes/6.js": {
-    "file": "_app/immutable/nodes/6.th5s-FQA.js",
+    "file": "_app/immutable/nodes/6.Bgo-3RFj.js",
     "name": "nodes/6",
     "src": ".svelte-kit/generated/client-optimized/nodes/6.js",
     "isEntry": true,
     "isDynamicEntry": true,
     "imports": [
-      "_BrSQbglc.js",
-      "_Dyr1KvZn.js",
-      "_BN3vRYuL.js",
-      "_DsatsG88.js",
-      "_BrTUFq7j.js",
-      "_DnYAehYQ.js",
-      "_CuVhFhlI.js",
-      "_Dp1pzeXC.js"
-    ],
-    "dynamicImports": [
-      "../src/renderer/i18n/locales/en/translation.json",
-      "../src/renderer/i18n/locales/zh-Hans/translation.json",
-      "../src/renderer/i18n/locales/zh-Hant/translation.json",
-      "../src/renderer/i18n/locales/ja/translation.json",
-      "../src/renderer/i18n/locales/ko/translation.json",
-      "../src/renderer/i18n/locales/fr/translation.json",
-      "../src/renderer/i18n/locales/de/translation.json",
-      "../src/renderer/i18n/locales/es/translation.json",
-      "../src/renderer/i18n/locales/it-IT/translation.json",
-      "../src/renderer/i18n/locales/pt-PT/translation.json",
-      "../src/renderer/i18n/locales/ru/translation.json",
-      "../src/renderer/i18n/locales/ar/translation.json",
-      "../src/renderer/i18n/locales/sv/translation.json",
-      "../src/renderer/i18n/locales/nb-NO/translation.json"
+      "_gMoNbJoq.js",
+      "_B4he-IIC.js"
     ],
     "css": [
-      "_app/immutable/assets/6.ChS0A3yy.css"
+      "_app/immutable/assets/6.ByKt2w5Q.css"
     ]
   },
   ".svelte-kit/generated/client-optimized/nodes/7.js": {
-    "file": "_app/immutable/nodes/7.C0WXWvrS.js",
+    "file": "_app/immutable/nodes/7.CcA8tHh6.js",
     "name": "nodes/7",
     "src": ".svelte-kit/generated/client-optimized/nodes/7.js",
     "isEntry": true,
     "isDynamicEntry": true,
     "imports": [
-      "_BrSQbglc.js",
-      "_CH_GuIgk.js"
+      "_gMoNbJoq.js",
+      "_B4he-IIC.js"
     ],
     "css": [
       "_app/immutable/assets/7.DuOdF66j.css"
     ]
   },
-  "_B127njWp.js": {
-    "file": "_app/immutable/chunks/B127njWp.js",
-    "name": "_basePickBy",
+  "_--EIz3bQ.js": {
+    "file": "_app/immutable/chunks/--EIz3bQ.js",
+    "name": "provider-catalog.svelte",
     "imports": [
-      "_BGoKy6eV.js",
-      "_D-VjKv6y.js"
+      "_Bm9z-GZZ.js",
+      "_luBUAet7.js",
+      "_BAH9MFau.js"
+    ],
+    "dynamicImports": [
+      "src/lib/runtime/shared-providers.js"
     ]
   },
-  "_BGoKy6eV.js": {
-    "file": "_app/immutable/chunks/BGoKy6eV.js",
-    "name": "_baseUniq",
+  "_B4he-IIC.js": {
+    "file": "_app/immutable/chunks/B4he-IIC.js",
+    "name": "legacy",
     "imports": [
-      "_D-VjKv6y.js"
+      "_BAH9MFau.js"
     ]
   },
-  "_BN3vRYuL.js": {
-    "file": "_app/immutable/chunks/BN3vRYuL.js",
-    "name": "render",
-    "imports": [
-      "_Dyr1KvZn.js",
-      "_BrSQbglc.js"
-    ]
+  "_BAH9MFau.js": {
+    "file": "_app/immutable/chunks/BAH9MFau.js",
+    "name": "runtime"
   },
-  "_BP79P11f.js": {
-    "file": "_app/immutable/chunks/BP79P11f.js",
-    "name": "chunk-4BX2VUAB",
+  "_BKFnkm8H.js": {
+    "file": "_app/immutable/chunks/BKFnkm8H.js",
+    "name": "index-client",
     "imports": [
-      "_D-VjKv6y.js"
+      "_BAH9MFau.js"
     ]
   },
   "_BQaXIfA_.js": {
     "file": "_app/immutable/chunks/BQaXIfA_.js",
     "name": "cytoscape.esm"
   },
-  "_BR3tl10o.js": {
-    "file": "_app/immutable/chunks/BR3tl10o.js",
-    "name": "clone",
+  "_BTx9vJZP.js": {
+    "file": "_app/immutable/chunks/BTx9vJZP.js",
+    "name": "chunk-QZHKN3VN",
     "imports": [
-      "_BGoKy6eV.js"
+      "_CuyyhV-N.js"
     ]
   },
-  "_Bbxxze2D.js": {
-    "file": "_app/immutable/chunks/Bbxxze2D.js",
-    "name": "chunk-JSJVCQXG",
+  "_BYTcLopd.js": {
+    "file": "_app/immutable/chunks/BYTcLopd.js",
+    "name": "graph",
     "imports": [
-      "_D-VjKv6y.js"
+      "_CuyyhV-N.js",
+      "_uzAZj-88.js"
     ]
   },
-  "_BfU0Rset.js": {
-    "file": "_app/immutable/chunks/BfU0Rset.js",
-    "name": "layout",
-    "imports": [
-      "_XJTD_Khe.js",
-      "_BGoKy6eV.js",
-      "_B127njWp.js",
-      "_D-VjKv6y.js"
-    ]
-  },
-  "_Bok0ujfJ.js": {
-    "file": "_app/immutable/chunks/Bok0ujfJ.js",
-    "name": "channel",
-    "imports": [
-      "_D-VjKv6y.js"
-    ]
-  },
-  "_BpObh_2D.js": {
-    "file": "_app/immutable/chunks/BpObh_2D.js",
-    "name": "class",
-    "imports": [
-      "_Dyr1KvZn.js"
-    ]
-  },
-  "_BrSQbglc.js": {
-    "file": "_app/immutable/chunks/BrSQbglc.js",
-    "name": "disclose-version",
-    "imports": [
-      "_Dyr1KvZn.js"
-    ]
-  },
-  "_BrTUFq7j.js": {
-    "file": "_app/immutable/chunks/BrTUFq7j.js",
-    "name": "attributes",
-    "imports": [
-      "_Dyr1KvZn.js"
-    ]
-  },
-  "_BwRQYVaQ.js": {
-    "file": "_app/immutable/chunks/BwRQYVaQ.js",
+  "_Bc2GXQGY.js": {
+    "file": "_app/immutable/chunks/Bc2GXQGY.js",
     "name": "linear",
     "imports": [
-      "_D-VjKv6y.js",
+      "_CuyyhV-N.js",
       "_Gi6I4Gst.js",
       "_DX6XiGOO.js"
     ]
   },
-  "_C9BlSXQ_.js": {
-    "file": "_app/immutable/chunks/C9BlSXQ_.js",
+  "_BeMvHgfU.js": {
+    "file": "_app/immutable/chunks/BeMvHgfU.js",
+    "name": "middleware"
+  },
+  "_Bm9z-GZZ.js": {
+    "file": "_app/immutable/chunks/Bm9z-GZZ.js",
+    "name": "ui.svelte",
+    "imports": [
+      "_BAH9MFau.js",
+      "_luBUAet7.js"
+    ],
+    "dynamicImports": [
+      "src/lib/runtime/renderer-settings.js",
+      "src/lib/runtime/renderer-conversation.js",
+      "src/lib/runtime/renderer-ui.js"
+    ]
+  },
+  "_BnZ7CoPF.js": {
+    "file": "_app/immutable/chunks/BnZ7CoPF.js",
+    "name": "chatStore",
+    "isDynamicEntry": true,
+    "imports": [
+      "_Bm9z-GZZ.js",
+      "_C1dt1Bd8.js",
+      "_D32AY0fi.js",
+      "_D6-XlEtG.js",
+      "_CtKnj60w.js",
+      "../src/renderer/stores/uiStore.ts",
+      "../src/renderer/stores/settingsStore.ts",
+      "_D1MFbgi6.js",
+      "_C34qLuNx.js",
+      "../src/renderer/stores/lastUsedModelStore.ts",
+      "_obCnzskE.js",
+      "_luBUAet7.js",
+      "_CuyyhV-N.js",
+      "../node_modules/katex/dist/katex.mjs",
+      "_BeMvHgfU.js"
+    ],
+    "dynamicImports": [
+      "../node_modules/capacitor-stream-http/dist/esm/web.js"
+    ],
+    "css": [
+      "_app/immutable/assets/chatStore.CpLGTaBz.css"
+    ],
+    "assets": [
+      "_app/immutable/assets/airtable.B84u4y-i.png",
+      "_app/immutable/assets/applescript.QZgnzbW0.png",
+      "_app/immutable/assets/bigquery.Caqqi3VY.png",
+      "_app/immutable/assets/chroma.B-tdaRBi.png",
+      "_app/immutable/assets/clickup.BwRhxRNX.png",
+      "_app/immutable/assets/e2b.BNywPRef.png",
+      "_app/immutable/assets/exa.BByn7LvE.png",
+      "_app/immutable/assets/ghost.i-orE056.png",
+      "_app/immutable/assets/iterm.Btrm5pj8.png",
+      "_app/immutable/assets/lightdash.C-DTh2_n.png",
+      "_app/immutable/assets/monday.DTuUmT58.png",
+      "_app/immutable/assets/paddle.CowPVkat.png",
+      "_app/immutable/assets/polar.CBvg0kSv.png",
+      "_app/immutable/assets/pydantic.B7hdUN9d.png",
+      "_app/immutable/assets/sentry.CObUZTea.png",
+      "_app/immutable/assets/square.LA_u0N5U.png",
+      "_app/immutable/assets/tavily.Mwtd9evA.png",
+      "_app/immutable/assets/xero.DsIzTPrr.png",
+      "_app/immutable/assets/mistral-ai.CMRyv9c6.png",
+      "_app/immutable/assets/icon.D6XyimQ5.png",
+      "_app/immutable/assets/wechat_qrcode.5wX2vvRa.png",
+      "_app/immutable/assets/KaTeX_AMS-Regular.BQhdFMY1.woff2",
+      "_app/immutable/assets/KaTeX_AMS-Regular.DMm9YOAa.woff",
+      "_app/immutable/assets/KaTeX_AMS-Regular.DRggAlZN.ttf",
+      "_app/immutable/assets/KaTeX_Caligraphic-Bold.Dq_IR9rO.woff2",
+      "_app/immutable/assets/KaTeX_Caligraphic-Bold.BEiXGLvX.woff",
+      "_app/immutable/assets/KaTeX_Caligraphic-Bold.ATXxdsX0.ttf",
+      "_app/immutable/assets/KaTeX_Caligraphic-Regular.Di6jR-x-.woff2",
+      "_app/immutable/assets/KaTeX_Caligraphic-Regular.CTRA-rTL.woff",
+      "_app/immutable/assets/KaTeX_Caligraphic-Regular.wX97UBjC.ttf",
+      "_app/immutable/assets/KaTeX_Fraktur-Bold.CL6g_b3V.woff2",
+      "_app/immutable/assets/KaTeX_Fraktur-Bold.BsDP51OF.woff",
+      "_app/immutable/assets/KaTeX_Fraktur-Bold.BdnERNNW.ttf",
+      "_app/immutable/assets/KaTeX_Fraktur-Regular.CTYiF6lA.woff2",
+      "_app/immutable/assets/KaTeX_Fraktur-Regular.Dxdc4cR9.woff",
+      "_app/immutable/assets/KaTeX_Fraktur-Regular.CB_wures.ttf",
+      "_app/immutable/assets/KaTeX_Main-Bold.Cx986IdX.woff2",
+      "_app/immutable/assets/KaTeX_Main-Bold.Jm3AIy58.woff",
+      "_app/immutable/assets/KaTeX_Main-Bold.waoOVXN0.ttf",
+      "_app/immutable/assets/KaTeX_Main-BoldItalic.DxDJ3AOS.woff2",
+      "_app/immutable/assets/KaTeX_Main-BoldItalic.SpSLRI95.woff",
+      "_app/immutable/assets/KaTeX_Main-BoldItalic.DzxPMmG6.ttf",
+      "_app/immutable/assets/KaTeX_Main-Italic.NWA7e6Wa.woff2",
+      "_app/immutable/assets/KaTeX_Main-Italic.BMLOBm91.woff",
+      "_app/immutable/assets/KaTeX_Main-Italic.3WenGoN9.ttf",
+      "_app/immutable/assets/KaTeX_Main-Regular.B22Nviop.woff2",
+      "_app/immutable/assets/KaTeX_Main-Regular.Dr94JaBh.woff",
+      "_app/immutable/assets/KaTeX_Main-Regular.ypZvNtVU.ttf",
+      "_app/immutable/assets/KaTeX_Math-BoldItalic.CZnvNsCZ.woff2",
+      "_app/immutable/assets/KaTeX_Math-BoldItalic.iY-2wyZ7.woff",
+      "_app/immutable/assets/KaTeX_Math-BoldItalic.B3XSjfu4.ttf",
+      "_app/immutable/assets/KaTeX_Math-Italic.t53AETM-.woff2",
+      "_app/immutable/assets/KaTeX_Math-Italic.DA0__PXp.woff",
+      "_app/immutable/assets/KaTeX_Math-Italic.flOr_0UB.ttf",
+      "_app/immutable/assets/KaTeX_SansSerif-Bold.D1sUS0GD.woff2",
+      "_app/immutable/assets/KaTeX_SansSerif-Bold.DbIhKOiC.woff",
+      "_app/immutable/assets/KaTeX_SansSerif-Bold.CFMepnvq.ttf",
+      "_app/immutable/assets/KaTeX_SansSerif-Italic.C3H0VqGB.woff2",
+      "_app/immutable/assets/KaTeX_SansSerif-Italic.DN2j7dab.woff",
+      "_app/immutable/assets/KaTeX_SansSerif-Italic.YYjJ1zSn.ttf",
+      "_app/immutable/assets/KaTeX_SansSerif-Regular.DDBCnlJ7.woff2",
+      "_app/immutable/assets/KaTeX_SansSerif-Regular.CS6fqUqJ.woff",
+      "_app/immutable/assets/KaTeX_SansSerif-Regular.BNo7hRIc.ttf",
+      "_app/immutable/assets/KaTeX_Script-Regular.D3wIWfF6.woff2",
+      "_app/immutable/assets/KaTeX_Script-Regular.D5yQViql.woff",
+      "_app/immutable/assets/KaTeX_Script-Regular.C5JkGWo-.ttf",
+      "_app/immutable/assets/KaTeX_Size1-Regular.mCD8mA8B.woff2",
+      "_app/immutable/assets/KaTeX_Size1-Regular.C195tn64.woff",
+      "_app/immutable/assets/KaTeX_Size1-Regular.Dbsnue_I.ttf",
+      "_app/immutable/assets/KaTeX_Size2-Regular.Dy4dx90m.woff2",
+      "_app/immutable/assets/KaTeX_Size2-Regular.oD1tc_U0.woff",
+      "_app/immutable/assets/KaTeX_Size2-Regular.B7gKUWhC.ttf",
+      "_app/immutable/assets/KaTeX_Size3-Regular.CTq5MqoE.woff",
+      "_app/immutable/assets/KaTeX_Size3-Regular.DgpXs0kz.ttf",
+      "_app/immutable/assets/KaTeX_Size4-Regular.Dl5lxZxV.woff2",
+      "_app/immutable/assets/KaTeX_Size4-Regular.BF-4gkZK.woff",
+      "_app/immutable/assets/KaTeX_Size4-Regular.DWFBv043.ttf",
+      "_app/immutable/assets/KaTeX_Typewriter-Regular.CO6r4hn1.woff2",
+      "_app/immutable/assets/KaTeX_Typewriter-Regular.C0xS9mPB.woff",
+      "_app/immutable/assets/KaTeX_Typewriter-Regular.D3Ib7_Hf.ttf"
+    ]
+  },
+  "_C1dt1Bd8.js": {
+    "file": "_app/immutable/chunks/C1dt1Bd8.js",
+    "name": "queryClient",
+    "isDynamicEntry": true
+  },
+  "_C34qLuNx.js": {
+    "file": "_app/immutable/chunks/C34qLuNx.js",
+    "name": "dayjs.min",
+    "imports": [
+      "_D6-XlEtG.js"
+    ]
+  },
+  "_C4KuV9nv.js": {
+    "file": "_app/immutable/chunks/C4KuV9nv.js",
+    "name": "channel",
+    "imports": [
+      "_CuyyhV-N.js"
+    ]
+  },
+  "_COM226J_.js": {
+    "file": "_app/immutable/chunks/COM226J_.js",
+    "name": "render",
+    "imports": [
+      "_BAH9MFau.js",
+      "_gMoNbJoq.js"
+    ]
+  },
+  "_CZAowopO.js": {
+    "file": "_app/immutable/chunks/CZAowopO.js",
     "name": "entry",
     "imports": [
-      "_Dyr1KvZn.js",
-      "_CJRqNfJt.js"
+      "_BAH9MFau.js",
+      "_BKFnkm8H.js"
     ]
   },
-  "_CDJo-E0V.js": {
-    "file": "_app/immutable/chunks/CDJo-E0V.js",
-    "name": "treemap-KZPCXAKY",
+  "_CbYJx0YW.js": {
+    "file": "_app/immutable/chunks/CbYJx0YW.js",
+    "name": "chunk-55IACEB6",
     "imports": [
-      "_Dp1pzeXC.js",
-      "_D-VjKv6y.js",
-      "_BGoKy6eV.js",
-      "_B127njWp.js",
-      "_BR3tl10o.js",
-      "_gnU0ypJ3.js"
-    ]
-  },
-  "_CH_GuIgk.js": {
-    "file": "_app/immutable/chunks/CH_GuIgk.js",
-    "name": "legacy",
-    "imports": [
-      "_Dyr1KvZn.js"
-    ]
-  },
-  "_CJRqNfJt.js": {
-    "file": "_app/immutable/chunks/CJRqNfJt.js",
-    "name": "index-client",
-    "imports": [
-      "_Dyr1KvZn.js"
-    ]
-  },
-  "_CO9cgkpD.js": {
-    "file": "_app/immutable/chunks/CO9cgkpD.js",
-    "name": "chunk-KX2RTZJC",
-    "imports": [
-      "_D-VjKv6y.js"
-    ]
-  },
-  "_CeFouccP.js": {
-    "file": "_app/immutable/chunks/CeFouccP.js",
-    "name": "chunk-QZHKN3VN",
-    "imports": [
-      "_D-VjKv6y.js"
-    ]
-  },
-  "_ClTlcanv.js": {
-    "file": "_app/immutable/chunks/ClTlcanv.js",
-    "name": "stores",
-    "imports": [
-      "_C9BlSXQ_.js"
+      "_CuyyhV-N.js"
     ]
   },
   "_CmKTTxBW.js": {
@@ -765,20 +1110,20 @@
       "_Gi6I4Gst.js"
     ]
   },
-  "_CuVhFhlI.js": {
-    "file": "_app/immutable/chunks/CuVhFhlI.js",
-    "name": "theme.svelte",
+  "_CtKnj60w.js": {
+    "file": "_app/immutable/chunks/CtKnj60w.js",
+    "name": "message",
     "imports": [
-      "_Dyr1KvZn.js"
+      "_D6-XlEtG.js"
     ]
   },
-  "_D-VjKv6y.js": {
-    "file": "_app/immutable/chunks/D-VjKv6y.js",
+  "_CuyyhV-N.js": {
+    "file": "_app/immutable/chunks/CuyyhV-N.js",
     "name": "mermaid.core",
     "isDynamicEntry": true,
     "imports": [
-      "_Dp1pzeXC.js",
-      "_gnU0ypJ3.js"
+      "_luBUAet7.js",
+      "_C34qLuNx.js"
     ],
     "dynamicImports": [
       "../node_modules/katex/dist/katex.mjs",
@@ -815,131 +1160,250 @@
       "../node_modules/mermaid/dist/chunks/mermaid.core/diagram-E7M64L7V.mjs"
     ]
   },
-  "_DWcScOI-.js": {
-    "file": "_app/immutable/chunks/DWcScOI-.js",
-    "name": "chunk-NQ4KR5QH",
+  "_D1MFbgi6.js": {
+    "file": "_app/immutable/chunks/D1MFbgi6.js",
+    "name": "index",
+    "isDynamicEntry": true,
     "imports": [
-      "_gpVidv6i.js",
-      "_CO9cgkpD.js",
-      "_D-VjKv6y.js"
+      "_Bm9z-GZZ.js",
+      "_obCnzskE.js"
+    ]
+  },
+  "_D30f_eiq.js": {
+    "file": "_app/immutable/chunks/D30f_eiq.js",
+    "name": "safeStorage"
+  },
+  "_D32AY0fi.js": {
+    "file": "_app/immutable/chunks/D32AY0fi.js",
+    "name": "utils",
+    "imports": [
+      "_D6-XlEtG.js",
+      "_C34qLuNx.js",
+      "_luBUAet7.js",
+      "_BeMvHgfU.js",
+      "_obCnzskE.js",
+      "_Bm9z-GZZ.js"
+    ],
+    "dynamicImports": [
+      "../node_modules/@capacitor-community/sqlite/dist/esm/web.js"
+    ]
+  },
+  "_D6-XlEtG.js": {
+    "file": "_app/immutable/chunks/D6-XlEtG.js",
+    "name": "_commonjsHelpers"
+  },
+  "_DG0MFWWQ.js": {
+    "file": "_app/immutable/chunks/DG0MFWWQ.js",
+    "name": "_basePickBy",
+    "imports": [
+      "_uzAZj-88.js",
+      "_CuyyhV-N.js"
+    ]
+  },
+  "_DRgZSRp9.js": {
+    "file": "_app/immutable/chunks/DRgZSRp9.js",
+    "name": "stores",
+    "imports": [
+      "_CZAowopO.js"
+    ]
+  },
+  "_DVsg5CL7.js": {
+    "file": "_app/immutable/chunks/DVsg5CL7.js",
+    "name": "layout",
+    "imports": [
+      "_BYTcLopd.js",
+      "_uzAZj-88.js",
+      "_DG0MFWWQ.js",
+      "_CuyyhV-N.js"
     ]
   },
   "_DX6XiGOO.js": {
     "file": "_app/immutable/chunks/DX6XiGOO.js",
     "name": "defaultLocale"
   },
-  "_DXo6OSMP.js": {
-    "file": "_app/immutable/chunks/DXo6OSMP.js",
+  "_Dd-jhW-Q.js": {
+    "file": "_app/immutable/chunks/Dd-jhW-Q.js",
     "name": "chunk-WL4C6EOR",
     "imports": [
-      "_DZBTgkdn.js",
-      "_Bbxxze2D.js",
-      "_gpVidv6i.js",
-      "_CO9cgkpD.js",
-      "_D-VjKv6y.js"
+      "_b0r9bwts.js",
+      "_HJg5fRFH.js",
+      "_CbYJx0YW.js",
+      "_oL_qk22u.js",
+      "_CuyyhV-N.js"
     ]
   },
-  "_DZBTgkdn.js": {
-    "file": "_app/immutable/chunks/DZBTgkdn.js",
-    "name": "chunk-FMBD7UC4",
+  "_DqFdL1fp.js": {
+    "file": "_app/immutable/chunks/DqFdL1fp.js",
+    "name": "chunk-NQ4KR5QH",
     "imports": [
-      "_D-VjKv6y.js"
-    ]
-  },
-  "_DnYAehYQ.js": {
-    "file": "_app/immutable/chunks/DnYAehYQ.js",
-    "name": "settings.svelte",
-    "imports": [
-      "_Dyr1KvZn.js"
-    ]
-  },
-  "_Dp1pzeXC.js": {
-    "file": "_app/immutable/chunks/Dp1pzeXC.js",
-    "name": "preload-helper"
-  },
-  "_DsatsG88.js": {
-    "file": "_app/immutable/chunks/DsatsG88.js",
-    "name": "each",
-    "imports": [
-      "_Dyr1KvZn.js"
-    ]
-  },
-  "_DyEsZ4jU.js": {
-    "file": "_app/immutable/chunks/DyEsZ4jU.js",
-    "name": "this",
-    "imports": [
-      "_Dyr1KvZn.js"
-    ]
-  },
-  "_Dyr1KvZn.js": {
-    "file": "_app/immutable/chunks/Dyr1KvZn.js",
-    "name": "runtime"
-  },
-  "_E5YIsfnJ.js": {
-    "file": "_app/immutable/chunks/E5YIsfnJ.js",
-    "name": "props",
-    "imports": [
-      "_Dyr1KvZn.js",
-      "_CJRqNfJt.js"
+      "_CbYJx0YW.js",
+      "_oL_qk22u.js",
+      "_CuyyhV-N.js"
     ]
   },
   "_Gi6I4Gst.js": {
     "file": "_app/immutable/chunks/Gi6I4Gst.js",
     "name": "init"
   },
-  "_InputBox.B-jV0dX_.css": {
-    "file": "_app/immutable/assets/InputBox.B-jV0dX_.css",
-    "src": "_InputBox.B-jV0dX_.css"
-  },
-  "_XJTD_Khe.js": {
-    "file": "_app/immutable/chunks/XJTD_Khe.js",
-    "name": "graph",
+  "_HJg5fRFH.js": {
+    "file": "_app/immutable/chunks/HJg5fRFH.js",
+    "name": "chunk-JSJVCQXG",
     "imports": [
-      "_D-VjKv6y.js",
-      "_BGoKy6eV.js"
+      "_CuyyhV-N.js"
     ]
   },
-  "_Zogw9hWD.js": {
-    "file": "_app/immutable/chunks/Zogw9hWD.js",
+  "_InputBox.z0h9w4kr.css": {
+    "file": "_app/immutable/assets/InputBox.z0h9w4kr.css",
+    "src": "_InputBox.z0h9w4kr.css"
+  },
+  "_OIxcTKqr.js": {
+    "file": "_app/immutable/chunks/OIxcTKqr.js",
+    "name": "chunk-4BX2VUAB",
+    "imports": [
+      "_CuyyhV-N.js"
+    ]
+  },
+  "_b0r9bwts.js": {
+    "file": "_app/immutable/chunks/b0r9bwts.js",
+    "name": "chunk-FMBD7UC4",
+    "imports": [
+      "_CuyyhV-N.js"
+    ]
+  },
+  "_chatStore.CpLGTaBz.css": {
+    "file": "_app/immutable/assets/chatStore.CpLGTaBz.css",
+    "src": "_chatStore.CpLGTaBz.css"
+  },
+  "_gMoNbJoq.js": {
+    "file": "_app/immutable/chunks/gMoNbJoq.js",
+    "name": "disclose-version",
+    "imports": [
+      "_BAH9MFau.js"
+    ]
+  },
+  "_luBUAet7.js": {
+    "file": "_app/immutable/chunks/luBUAet7.js",
+    "name": "preload-helper",
+    "imports": [
+      "_BAH9MFau.js",
+      "_BKFnkm8H.js"
+    ]
+  },
+  "_oAUVJoGf.js": {
+    "file": "_app/immutable/chunks/oAUVJoGf.js",
     "name": "InputBox",
     "imports": [
-      "_BrSQbglc.js",
-      "_CJRqNfJt.js",
-      "_Dyr1KvZn.js",
-      "_BN3vRYuL.js",
-      "_E5YIsfnJ.js",
-      "_DsatsG88.js",
-      "_BrTUFq7j.js",
-      "_BpObh_2D.js",
-      "_DyEsZ4jU.js",
-      "_DnYAehYQ.js",
-      "_Dp1pzeXC.js"
+      "_gMoNbJoq.js",
+      "_BKFnkm8H.js",
+      "_BAH9MFau.js",
+      "_COM226J_.js",
+      "_luBUAet7.js",
+      "_Bm9z-GZZ.js",
+      "_CtKnj60w.js"
     ],
     "dynamicImports": [
       "../node_modules/highlight.js/es/index.js",
       "../node_modules/katex/dist/katex.mjs",
-      "_D-VjKv6y.js"
+      "_CuyyhV-N.js"
     ],
     "css": [
-      "_app/immutable/assets/InputBox.B-jV0dX_.css"
+      "_app/immutable/assets/InputBox.z0h9w4kr.css"
     ]
   },
-  "_gnU0ypJ3.js": {
-    "file": "_app/immutable/chunks/gnU0ypJ3.js",
-    "name": "_commonjsHelpers"
-  },
-  "_gpVidv6i.js": {
-    "file": "_app/immutable/chunks/gpVidv6i.js",
-    "name": "chunk-55IACEB6",
+  "_oDO0hPLc.js": {
+    "file": "_app/immutable/chunks/oDO0hPLc.js",
+    "name": "clone",
     "imports": [
-      "_D-VjKv6y.js"
+      "_uzAZj-88.js"
     ]
   },
-  "_qD98i_QC.js": {
-    "file": "_app/immutable/chunks/qD98i_QC.js",
+  "_oL_qk22u.js": {
+    "file": "_app/immutable/chunks/oL_qk22u.js",
+    "name": "chunk-KX2RTZJC",
+    "imports": [
+      "_CuyyhV-N.js"
+    ]
+  },
+  "_obCnzskE.js": {
+    "file": "_app/immutable/chunks/obCnzskE.js",
+    "name": "errors"
+  },
+  "_ulkRUT96.js": {
+    "file": "_app/immutable/chunks/ulkRUT96.js",
+    "name": "treemap-KZPCXAKY",
+    "imports": [
+      "_luBUAet7.js",
+      "_CuyyhV-N.js",
+      "_uzAZj-88.js",
+      "_DG0MFWWQ.js",
+      "_oDO0hPLc.js",
+      "_D6-XlEtG.js"
+    ]
+  },
+  "_uzAZj-88.js": {
+    "file": "_app/immutable/chunks/uzAZj-88.js",
+    "name": "_baseUniq",
+    "imports": [
+      "_CuyyhV-N.js"
+    ]
+  },
+  "_xg7U1vFC.js": {
+    "file": "_app/immutable/chunks/xg7U1vFC.js",
     "name": "arc",
     "imports": [
-      "_D-VjKv6y.js"
+      "_CuyyhV-N.js"
+    ]
+  },
+  "src/lib/runtime/renderer-conversation.js": {
+    "file": "_app/immutable/chunks/CnIgVEMt.js",
+    "name": "renderer-conversation",
+    "src": "src/lib/runtime/renderer-conversation.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_luBUAet7.js"
+    ],
+    "dynamicImports": [
+      "_BnZ7CoPF.js",
+      "../src/renderer/stores/lastUsedModelStore.ts",
+      "_C1dt1Bd8.js",
+      "_BnZ7CoPF.js",
+      "_BnZ7CoPF.js"
+    ]
+  },
+  "src/lib/runtime/renderer-settings.js": {
+    "file": "_app/immutable/chunks/Dl1wcLRt.js",
+    "name": "renderer-settings",
+    "src": "src/lib/runtime/renderer-settings.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_luBUAet7.js"
+    ],
+    "dynamicImports": [
+      "../src/renderer/stores/settingsStore.ts"
+    ]
+  },
+  "src/lib/runtime/renderer-ui.js": {
+    "file": "_app/immutable/chunks/BiMgr3N0.js",
+    "name": "renderer-ui",
+    "src": "src/lib/runtime/renderer-ui.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_luBUAet7.js"
+    ],
+    "dynamicImports": [
+      "../src/renderer/stores/uiStore.ts"
+    ]
+  },
+  "src/lib/runtime/shared-providers.js": {
+    "file": "_app/immutable/chunks/DJ4hdtEN.js",
+    "name": "shared-providers",
+    "src": "src/lib/runtime/shared-providers.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "_luBUAet7.js"
+    ],
+    "dynamicImports": [
+      "_D1MFbgi6.js"
     ]
   }
 }

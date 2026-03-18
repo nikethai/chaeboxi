@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte'
-
 	interface Props {
 		code: string
 		language?: string
@@ -11,29 +9,29 @@
 	let { code, language = 'text', showLineNumbers = false, collapsed = false }: Props = $props()
 
 	let copied = $state(false)
-	let isCollapsed = $state(collapsed)
+	let isCollapsed = $state(false)
 	let highlightedHtml = $state('')
 
 	const CODE_COLLAPSE_THRESHOLD = 7
 	const shouldCollapse = $derived(code.split('\n').length > CODE_COLLAPSE_THRESHOLD)
 
-	onMount(async () => {
-		await highlightCode()
+	$effect(() => {
+		isCollapsed = collapsed && shouldCollapse
+	})
+
+	$effect(() => {
+		void highlightCode()
 	})
 
 	async function highlightCode() {
 		try {
 			const hljs = (await import('highlight.js')).default
-			const lang = language.toLowerCase()
-
-			// Check if language is supported
-			if (hljs.getLanguage(lang)) {
-				highlightedHtml = hljs.highlight(code, { language: lang }).value
-			} else {
-				highlightedHtml = hljs.highlightAuto(code).value
-			}
-		} catch (e) {
-			console.error('Highlight error:', e)
+			const normalizedLanguage = language.toLowerCase()
+			highlightedHtml = hljs.getLanguage(normalizedLanguage)
+				? hljs.highlight(code, { language: normalizedLanguage }).value
+				: hljs.highlightAuto(code).value
+		} catch (error) {
+			console.error('Highlight error:', error)
 			highlightedHtml = code
 		}
 	}
@@ -41,7 +39,9 @@
 	async function copyCode() {
 		await navigator.clipboard.writeText(code)
 		copied = true
-		setTimeout(() => (copied = false), 2000)
+		setTimeout(() => {
+			copied = false
+		}, 1500)
 	}
 
 	function toggleCollapse() {
@@ -49,26 +49,26 @@
 	}
 </script>
 
-<div class="code-block" data-language={language}>
+<div class="code-block" data-language={language} data-line-numbers={showLineNumbers}>
 	<div class="code-header">
 		<div class="code-info">
 			<span class="code-language">{language}</span>
 			{#if shouldCollapse}
-				<button class="collapse-button" onclick={toggleCollapse}>
+				<button class="collapse-button" type="button" onclick={toggleCollapse}>
 					{isCollapsed ? 'Expand' : 'Collapse'}
 				</button>
 			{/if}
 		</div>
-		<button class="copy-button" onclick={copyCode}>
+		<button class="copy-button" type="button" onclick={copyCode}>
 			{copied ? 'Copied!' : 'Copy'}
 		</button>
 	</div>
 
 	{#if shouldCollapse && isCollapsed}
-		<div class="collapsed-preview" onclick={toggleCollapse}>
+		<button class="collapsed-preview" type="button" onclick={toggleCollapse}>
 			{code.split('\n').slice(0, 3).join('\n')}...
 			<span class="expand-hint">(click to expand)</span>
-		</div>
+		</button>
 	{:else}
 		<div class="code-content">
 			{#if highlightedHtml}
@@ -84,17 +84,18 @@
 	.code-block {
 		position: relative;
 		background: var(--chatbox-background-secondary);
-		border-radius: var(--chatbox-radius-md);
+		border-radius: 14px;
 		overflow: hidden;
-		margin: 1em 0;
+		margin: 0.95em 0;
+		border: 1px solid var(--chatbox-border-primary);
 	}
 
 	.code-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		background: var(--chatbox-background-tertiary);
-		padding: 0.5em 1em;
+		background: color-mix(in srgb, var(--chatbox-background-secondary), var(--chatbox-background-primary) 35%);
+		padding: 0.55rem 0.875rem;
 		border-bottom: 1px solid var(--chatbox-border-primary);
 	}
 
@@ -105,45 +106,34 @@
 	}
 
 	.code-language {
-		font-size: 0.75rem;
+		font-size: 0.72rem;
 		color: var(--chatbox-tint-secondary);
 		text-transform: uppercase;
-		font-weight: 500;
+		font-weight: 700;
+		letter-spacing: 0.04em;
 	}
 
-	.collapse-button {
-		background: transparent;
-		border: none;
-		color: var(--chatbox-tint-brand);
-		cursor: pointer;
-		font-size: 0.75rem;
-		padding: 0.25em 0.5em;
-		border-radius: var(--chatbox-radius-sm);
-	}
-
-	.collapse-button:hover {
-		background: var(--chatbox-background-secondary);
-	}
-
+	.collapse-button,
 	.copy-button {
 		background: transparent;
 		border: 1px solid var(--chatbox-border-primary);
-		padding: 0.25em 0.75em;
-		border-radius: var(--chatbox-radius-sm);
+		color: var(--chatbox-tint-secondary);
 		cursor: pointer;
 		font-size: 0.75rem;
-		color: var(--chatbox-tint-secondary);
-		transition: all 0.2s ease;
+		padding: 0.25rem 0.55rem;
+		border-radius: 999px;
+		transition: all 0.15s ease;
 	}
 
+	.collapse-button:hover,
 	.copy-button:hover {
-		background: var(--chatbox-background-secondary);
+		background: var(--chatbox-background-primary);
 		color: var(--chatbox-tint-primary);
 	}
 
 	.code-content {
 		overflow-x: auto;
-		padding: 1em;
+		padding: 0.95rem 1rem;
 	}
 
 	.code-content pre {
@@ -154,26 +144,29 @@
 	.code-content code {
 		font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Courier New', monospace;
 		font-size: 0.875rem;
-		line-height: 1.5;
+		line-height: 1.55;
 	}
 
 	.collapsed-preview {
-		padding: 1em;
+		width: 100%;
+		padding: 1rem;
 		color: var(--chatbox-tint-secondary);
-		font-family: monospace;
-		font-size: 0.875rem;
+		font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Courier New', monospace;
+		font-size: 0.85rem;
 		white-space: pre-wrap;
 		cursor: pointer;
+		background: transparent;
+		border: none;
+		text-align: left;
 	}
 
 	.expand-hint {
 		display: block;
 		color: var(--chatbox-tint-brand);
-		margin-top: 0.5em;
+		margin-top: 0.5rem;
 		font-size: 0.75rem;
 	}
 
-	/* highlight.js theme integration */
 	:global(.hljs) {
 		background: transparent !important;
 	}

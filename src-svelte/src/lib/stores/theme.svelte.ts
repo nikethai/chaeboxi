@@ -1,53 +1,76 @@
-// Theme store using Svelte 5 runes
 import { browser } from '$app/environment'
-
-type Theme = 'light' | 'dark' | 'system'
+import { Theme } from '$shared/types'
+import platform from '$lib/platform'
+import { settingsStore } from './settings.svelte'
+import { uiStore } from './ui.svelte'
 
 class ThemeStore {
-	theme = $state<Theme>('system')
+	theme = $state<Theme>(Theme.System)
 	resolvedTheme = $state<'light' | 'dark'>('light')
+	private initialized = false
+	private unsubscribeSettings: (() => void) | null = null
+	private unsubscribeSystemTheme: (() => void) | null = null
 
 	constructor() {
 		if (browser) {
-			const saved = localStorage.getItem('initial-theme') as Theme | null
-			if (saved === 'light' || saved === 'dark') {
-				this.theme = saved
-			} else if (saved === 'system') {
-				this.theme = 'system'
-			}
-			this.updateResolvedTheme()
+			void this.init()
 		}
 	}
 
-	private updateResolvedTheme() {
-		if (this.theme === 'system') {
-			this.resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-		} else {
-			this.resolvedTheme = this.theme
+	async init() {
+		if (!browser || this.initialized) {
+			return
 		}
+
+		await Promise.all([settingsStore.init(), uiStore.init()])
+		this.theme = settingsStore.settings.theme
+		await this.updateResolvedTheme()
+
+		if (!this.unsubscribeSettings) {
+			this.unsubscribeSettings = settingsStore.subscribe(() => {
+				this.theme = settingsStore.settings.theme
+				void this.updateResolvedTheme()
+			})
+		}
+
+		if (!this.unsubscribeSystemTheme) {
+			this.unsubscribeSystemTheme = platform.onSystemThemeChange(() => {
+				if (this.theme === Theme.System) {
+					void this.updateResolvedTheme()
+				}
+			})
+		}
+
+		this.initialized = true
+	}
+
+	private async updateResolvedTheme() {
+		if (this.theme === Theme.Dark) {
+			this.resolvedTheme = 'dark'
+		} else if (this.theme === Theme.Light) {
+			this.resolvedTheme = 'light'
+		} else {
+			this.resolvedTheme = (await platform.shouldUseDarkColors()) ? 'dark' : 'light'
+		}
+
 		this.applyTheme()
 	}
 
 	private applyTheme() {
 		if (!browser) return
 		document.documentElement.setAttribute('data-theme', this.resolvedTheme)
-		if (this.resolvedTheme === 'dark') {
-			document.documentElement.classList.add('dark')
-		} else {
-			document.documentElement.classList.remove('dark')
-		}
+		document.documentElement.classList.toggle('dark', this.resolvedTheme === 'dark')
+		uiStore.setRealTheme(this.resolvedTheme)
 	}
 
 	setTheme(newTheme: Theme) {
 		this.theme = newTheme
-		if (browser) {
-			localStorage.setItem('initial-theme', newTheme)
-		}
-		this.updateResolvedTheme()
+		settingsStore.update({ theme: newTheme })
+		void this.updateResolvedTheme()
 	}
 
 	toggle() {
-		this.setTheme(this.resolvedTheme === 'dark' ? 'light' : 'dark')
+		this.setTheme(this.resolvedTheme === 'dark' ? Theme.Light : Theme.Dark)
 	}
 }
 

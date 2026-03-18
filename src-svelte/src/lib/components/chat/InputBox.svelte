@@ -1,168 +1,184 @@
 <script lang="ts">
-	import { onMount } from 'svelte'
-
 	interface Props {
 		placeholder?: string
-		onSubmit?: (message: string) => void
 		disabled?: boolean
+		generating?: boolean
 		class?: string
+		onSubmit?: (message: string) => void
+		onStopGenerating?: () => void
 	}
 
-	let { placeholder = 'Type a message...', onSubmit, disabled = false, class: className = '' }: Props = $props()
+	let {
+		placeholder = 'Type your question here...',
+		disabled = false,
+		generating = false,
+		class: className = '',
+		onSubmit,
+		onStopGenerating,
+	}: Props = $props()
 
-	let input = $state('')
+	let value = $state('')
 	let textarea: HTMLTextAreaElement
-	let isFocused = $state(false)
 
-	// Auto-resize textarea
-	function resize() {
-		if (!textarea) return
-		textarea.style.height = 'auto'
-		textarea.style.height = Math.min(textarea.scrollHeight, 200) + 'px'
-	}
-
-	// Handle input changes
 	function handleInput() {
-		resize()
+		if (textarea) {
+			textarea.style.height = 'auto'
+			textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`
+		}
 	}
 
-	// Handle submit
 	function handleSubmit() {
-		const message = input.trim()
-		if (!message || disabled) return
-
-		onSubmit?.(message)
-		input = ''
-		resize()
+		const trimmed = value.trim()
+		if (!trimmed || disabled || generating) return
+		onSubmit?.(trimmed)
+		value = ''
+		if (textarea) {
+			textarea.style.height = 'auto'
+		}
 	}
 
-	// Handle keydown
-	function handleKeydown(e: KeyboardEvent) {
-		// Enter to send, Shift+Enter for newline
-		if (e.key === 'Enter' && !e.shiftKey) {
-			e.preventDefault()
+	function handleKeyDown(event: KeyboardEvent) {
+		if (event.key === 'Enter' && !event.shiftKey) {
+			event.preventDefault()
 			handleSubmit()
 		}
 	}
 
-	onMount(() => {
-		resize()
-	})
+	const canSubmit = $derived(value.trim().length > 0 && !disabled && !generating)
 </script>
 
-<div class="input-box {className}" class:focused={isFocused} class:disabled>
-	<div class="input-wrapper">
-		<textarea
-			bind:this={textarea}
-			bind:value={input}
-			onInput={handleInput}
-			onKeydown={handleKeydown}
-			onFocus={() => (isFocused = true)}
-			onBlur={() => (isFocused = false)}
-			{placeholder}
-			{disabled}
-			rows="1"
-			class="input-textarea"
-		></textarea>
+<div class="input-container {className}">
+	<div class="input-box-outer">
+		<div class="input-box">
+			<textarea
+				bind:this={textarea}
+				bind:value
+				{placeholder}
+				{disabled}
+				rows="1"
+				oninput={handleInput}
+				onkeydown={handleKeyDown}
+			></textarea>
 
-		<button
-			class="send-button"
-			onclick={handleSubmit}
-			disabled={disabled || !input.trim()}
-			aria-label="Send message"
-		>
-			<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-				<path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-			</svg>
-		</button>
-	</div>
+			{#if generating}
+				<button
+					class="send-btn stop-btn"
+					type="button"
+					onclick={onStopGenerating}
+					aria-label="Stop generating"
+				>
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+						<rect x="6" y="6" width="12" height="12" rx="2"></rect>
+					</svg>
+				</button>
+			{:else}
+				<button
+					class="send-btn"
+					class:active={canSubmit}
+					type="button"
+					onclick={handleSubmit}
+					disabled={!canSubmit}
+					aria-label="Send message"
+				>
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+						<line x1="12" y1="19" x2="12" y2="5"></line>
+						<polyline points="5 12 12 5 19 12"></polyline>
+					</svg>
+				</button>
+			{/if}
+		</div>
 
-	<div class="input-hint">
-		<span>Enter to send</span>
-		<span>Shift+Enter for new line</span>
+		<p class="disclaimer">AI can make mistakes. Double-check important information.</p>
 	</div>
 </div>
 
 <style>
+	.input-container {
+		padding: 0 0.75rem 0.75rem;
+	}
+
+	.input-box-outer {
+		display: flex;
+		flex-direction: column;
+		gap: 0.375rem;
+		max-width: 56rem;
+		margin: 0 auto;
+		width: 100%;
+	}
+
 	.input-box {
-		padding: 0.75rem 1rem;
-		background: var(--chatbox-background-primary);
-		border-top: 1px solid var(--chatbox-border-primary);
-	}
-
-	.input-box.focused {
-		background: var(--chatbox-background-secondary);
-	}
-
-	.input-wrapper {
 		display: flex;
 		align-items: flex-end;
 		gap: 0.5rem;
-		background: var(--chatbox-background-tertiary);
-		border-radius: var(--chatbox-radius-lg);
-		padding: 0.5rem;
+		background: var(--chatbox-background-primary);
 		border: 1px solid var(--chatbox-border-primary);
-		transition: all 0.2s ease;
+		border-radius: 18px;
+		padding: 0.625rem 0.75rem;
+		transition: border-color 0.15s ease, box-shadow 0.15s ease;
+		min-height: 64px;
 	}
 
-	.focused .input-wrapper {
+	.input-box:focus-within {
 		border-color: var(--chatbox-border-brand);
 		box-shadow: 0 0 0 2px var(--chatbox-background-brand-secondary);
 	}
 
-	.input-textarea {
+	textarea {
 		flex: 1;
 		background: transparent;
 		border: none;
 		outline: none;
 		resize: none;
-		font-family: inherit;
 		font-size: 0.9375rem;
-		line-height: 1.5;
+		line-height: 1.45;
 		color: var(--chatbox-tint-primary);
+		padding: 0.25rem 0.375rem;
 		max-height: 200px;
-		min-height: 1.5em;
-		padding: 0.25rem 0;
+		overflow-y: auto;
+		font-family: inherit;
 	}
 
-	.input-textarea::placeholder {
-		color: var(--chatbox-tint-placeholder);
+	textarea::placeholder {
+		color: var(--chatbox-tint-tertiary);
 	}
 
-	.send-button {
+	.send-btn {
 		flex-shrink: 0;
-		width: 2.25rem;
-		height: 2.25rem;
-		border-radius: var(--chatbox-radius-md);
-		background: var(--chatbox-background-brand-primary);
-		color: white;
+		width: 32px;
+		height: 32px;
+		border-radius: 50%;
 		border: none;
 		cursor: pointer;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		transition: all 0.2s ease;
+		transition: background 0.15s ease, opacity 0.15s ease;
+		background: var(--chatbox-background-secondary);
+		color: white;
+		margin-bottom: 2px;
 	}
 
-	.send-button:hover:not(:disabled) {
-		background: var(--chatbox-background-brand-primary-hover);
+	.send-btn.active {
+		background: var(--chatbox-background-brand-primary);
 	}
 
-	.send-button:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
+	.send-btn:disabled {
+		cursor: default;
+		opacity: 1;
 	}
 
-	.input-hint {
-		display: flex;
-		justify-content: center;
-		gap: 1rem;
-		margin-top: 0.5rem;
+	.stop-btn {
+		background: var(--chatbox-background-error-primary);
+	}
+
+	.stop-btn:hover {
+		background: var(--chatbox-background-error-primary-hover);
+	}
+
+	.disclaimer {
 		font-size: 0.7rem;
 		color: var(--chatbox-tint-tertiary);
-	}
-
-	.disabled .input-textarea {
-		opacity: 0.5;
+		text-align: center;
+		margin: 0;
 	}
 </style>

@@ -8,18 +8,38 @@ export const nodes = [
 	() => import('./nodes/4'),
 	() => import('./nodes/5'),
 	() => import('./nodes/6'),
-	() => import('./nodes/7')
+	() => import('./nodes/7'),
+	() => import('./nodes/8'),
+	() => import('./nodes/9'),
+	() => import('./nodes/10'),
+	() => import('./nodes/11'),
+	() => import('./nodes/12'),
+	() => import('./nodes/13'),
+	() => import('./nodes/14'),
+	() => import('./nodes/15'),
+	() => import('./nodes/16'),
+	() => import('./nodes/17'),
+	() => import('./nodes/18')
 ];
 
 export const server_loads = [];
 
 export const dictionary = {
-		"/": [2],
-		"/about": [3],
-		"/image-creator": [4],
-		"/session/[id]": [5],
-		"/settings": [6],
-		"/settings/provider": [7]
+		"/": [4],
+		"/about": [5],
+		"/image-creator": [6],
+		"/session/[id]": [7],
+		"/settings": [8,[2]],
+		"/settings/chat": [9,[2]],
+		"/settings/default-models": [10,[2]],
+		"/settings/document-parser": [11,[2]],
+		"/settings/general": [12,[2]],
+		"/settings/hotkeys": [13,[2]],
+		"/settings/knowledge-base": [14,[2]],
+		"/settings/mcp": [15,[2]],
+		"/settings/provider": [16,[2,3]],
+		"/settings/provider/[providerId]": [17,[2,3]],
+		"/settings/web-search": [18,[2]]
 	};
 
 export const hooks = {

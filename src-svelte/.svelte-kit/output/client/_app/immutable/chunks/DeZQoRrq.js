@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./agfQAURl.js","./B7-huVXX.js","./Dp1pzeXC.js","./JTSF1W6W.js","./D6-XlEtG.js","./BeMvHgfU.js","./DDAyJ4L6.js","./C34qLuNx.js","./pxrULMxU.js","./obCnzskE.js","./-slrSOi7.js"])))=>i.map(i=>d[i]);
+import{_ as t}from"./Dp1pzeXC.js";const e=Object.assign({"../../../../src/renderer/stores/settingsStore.ts":()=>t(()=>import("./agfQAURl.js"),__vite__mapDeps([0,1,2,3,4,5,6,7,8,9,10]),import.meta.url)});async function s(){return await e["../../../../src/renderer/stores/settingsStore.ts"]()}export{s as loadSettingsRuntime};

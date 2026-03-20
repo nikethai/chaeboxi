@@ -10,8 +10,14 @@ type OutputDataShape<T> = MaybeWithVoid<Omit<App.PageData, RequiredKeys<T>> & Pa
 type EnsureDefined<T> = T extends null | undefined ? {} : T;
 type OptionalUnion<U extends Record<string, any>, A extends keyof U = U extends U ? keyof U : never> = U extends unknown ? { [P in Exclude<A, keyof U>]?: never } & U : never;
 export type Snapshot<T = any> = Kit.Snapshot<T>;
-type PageParentData = EnsureDefined<import('../$types.js').LayoutData>;
+type PageParentData = Omit<EnsureDefined<import('../$types.js').LayoutData>, keyof LayoutData> & EnsureDefined<LayoutData>;
+type LayoutRouteId = RouteId | "/settings" | "/settings/chat" | "/settings/default-models" | "/settings/document-parser" | "/settings/general" | "/settings/hotkeys" | "/settings/knowledge-base" | "/settings/mcp" | "/settings/provider" | "/settings/provider/[providerId]" | "/settings/web-search"
+type LayoutParams = RouteParams & { providerId?: string }
+type LayoutParentData = EnsureDefined<import('../$types.js').LayoutData>;
 
 export type PageServerData = null;
 export type PageData = Expand<PageParentData>;
 export type PageProps = { params: RouteParams; data: PageData }
+export type LayoutServerData = null;
+export type LayoutData = Expand<LayoutParentData>;
+export type LayoutProps = { params: LayoutParams; data: LayoutData; children: import("svelte").Snippet }

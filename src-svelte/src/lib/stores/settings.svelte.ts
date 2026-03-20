@@ -93,13 +93,21 @@ class SettingsStore {
 		return this.initializing
 	}
 
-	update(partial: Partial<Settings>) {
+	update(nextStateOrUpdater: Partial<Settings> | ((state: Settings) => void)) {
 		if (this.rendererModule) {
-			this.rendererModule.settingsStore.getState().setSettings(partial)
+			this.rendererModule.settingsStore.getState().setSettings(nextStateOrUpdater)
 			return
 		}
 
-		this.settings = { ...this.settings, ...partial }
+		if (typeof nextStateOrUpdater === 'function') {
+			const draft = structuredClone(this.settings)
+			nextStateOrUpdater(draft)
+			this.settings = draft
+			this.notify()
+			return
+		}
+
+		this.settings = { ...this.settings, ...nextStateOrUpdater }
 		this.notify()
 	}
 

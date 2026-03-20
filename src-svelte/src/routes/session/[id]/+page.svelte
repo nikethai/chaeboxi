@@ -12,6 +12,7 @@
 	)
 	const messages = $derived(session ? conversationStore.messages : [])
 	const generating = $derived(Boolean(sessionId && conversationStore.lastGeneratingMessage))
+	const composerLabel = $derived(session ? 'Reply in conversation' : 'Conversation')
 
 	onMount(async () => {
 		await conversationStore.init()
@@ -48,6 +49,8 @@
 		<MessageList messages={messages} />
 
 		<InputBox
+			label={composerLabel}
+			helperText={generating ? 'Assistant response in progress' : 'Messages are sent through the real session store'}
 			onSubmit={handleSubmit}
 			generating={generating}
 			onStopGenerating={handleStopGenerating}

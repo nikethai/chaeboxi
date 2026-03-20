@@ -51,6 +51,9 @@
 	const selectedLabel = $derived(
 		providers.length ? getSelectedModelLabel(providers, selected) : 'No models configured'
 	)
+	const selectedProviderName = $derived(
+		selected ? providers.find((provider) => provider.id === selected.provider)?.name || selected.provider : 'Model'
+	)
 
 	function toggleDropdown() {
 		if (disabled || !providers.length) {
@@ -87,7 +90,10 @@
 		disabled={disabled || !providers.length}
 		aria-label="Select model"
 	>
-		<span class="model-name">{selectedLabel}</span>
+		<span class="label-stack">
+			<span class="provider-name">{selectedProviderName}</span>
+			<span class="model-name">{selectedLabel}</span>
+		</span>
 		<svg
 			class="chevron"
 			class:open={isOpen}
@@ -137,28 +143,47 @@
 <style>
 	.model-selector {
 		position: relative;
+		min-width: 0;
 	}
 
 	.selector-trigger {
 		display: flex;
 		align-items: center;
-		gap: 0.375rem;
-		padding: 0.375rem 0.625rem;
-		background: transparent;
+		gap: 0.5rem;
+		padding: 0.42rem 0.72rem;
+		background: color-mix(in srgb, var(--chatbox-background-primary), var(--chatbox-background-secondary) 55%);
 		border: 1px solid var(--chatbox-border-primary);
 		border-radius: 999px;
 		cursor: pointer;
 		transition: all 0.2s ease;
-		max-width: min(32rem, calc(100vw - 10rem));
+		max-width: min(22rem, calc(100vw - 9rem));
+		min-width: 0;
 	}
 
 	.selector-trigger:hover {
 		background: var(--chatbox-background-secondary);
+		border-color: var(--chatbox-border-secondary);
 	}
 
 	.selector-trigger:disabled {
 		cursor: default;
 		opacity: 0.72;
+	}
+
+	.label-stack {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		min-width: 0;
+	}
+
+	.provider-name {
+		font-size: 0.64rem;
+		line-height: 1.05;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--chatbox-tint-tertiary);
 	}
 
 	.model-name {
@@ -168,6 +193,7 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+		max-width: 100%;
 	}
 
 	.chevron {
@@ -183,8 +209,7 @@
 	.dropdown {
 		position: absolute;
 		top: calc(100% + 0.375rem);
-		left: 50%;
-		transform: translateX(-50%);
+		left: 0;
 		min-width: min(20rem, calc(100vw - 2rem));
 		max-width: min(26rem, calc(100vw - 2rem));
 		background: var(--chatbox-background-primary);
@@ -269,5 +294,15 @@
 		text-align: center;
 		color: var(--chatbox-tint-secondary);
 		font-size: 0.875rem;
+	}
+
+	@media (max-width: 720px) {
+		.selector-trigger {
+			max-width: min(16rem, calc(100vw - 8rem));
+		}
+
+		.provider-name {
+			display: none;
+		}
 	}
 </style>

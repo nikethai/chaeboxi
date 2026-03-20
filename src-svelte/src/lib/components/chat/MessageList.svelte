@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
-	import MessageComponent from './Message.svelte'
 	import type { Message } from '$shared/types'
+	import MessageComponent from './Message.svelte'
 
 	interface Props {
 		messages?: Message[]
@@ -18,8 +18,8 @@
 		if (!container) return
 		const { scrollTop, scrollHeight, clientHeight } = container
 		const distanceFromBottom = scrollHeight - scrollTop - clientHeight
-		showScrollToBottom = distanceFromBottom > 100
-		isAtBottom = distanceFromBottom < 50
+		showScrollToBottom = distanceFromBottom > 140
+		isAtBottom = distanceFromBottom < 60
 	}
 
 	function scrollToBottom(smooth = false) {
@@ -38,27 +38,22 @@
 	})
 </script>
 
-<div
-	class="message-list {className}"
-	bind:this={container}
-	onscroll={handleScroll}
->
-	{#if messages.length === 0}
-		<!-- Handled by parent page -->
-	{:else}
-		<div class="messages">
-			{#each messages as message, index (message.id)}
-				<div class="message-wrapper">
-					<MessageComponent
-						{message}
-						showAvatar={index === 0 || messages[index - 1]?.role !== message.role}
-					/>
-				</div>
-			{/each}
+<div class="message-list {className}" bind:this={container} onscroll={handleScroll}>
+	{#if messages.length > 0}
+		<div class="messages-shell">
+			<div class="messages">
+				{#each messages as message, index (message.id)}
+					<div class="message-wrapper">
+						<MessageComponent
+							{message}
+							showAvatar={index === 0 || messages[index - 1]?.role !== message.role}
+						/>
+					</div>
+				{/each}
+			</div>
 		</div>
 	{/if}
 
-	<!-- Scroll to bottom button (OpenWebUI feature kept) -->
 	{#if showScrollToBottom}
 		<button
 			aria-label="Scroll to bottom"
@@ -80,12 +75,20 @@
 		overflow-y: auto;
 		overflow-x: hidden;
 		position: relative;
-		padding: 0.5rem 0;
+		padding: 0.9rem 0 1rem;
+	}
+
+	.messages-shell {
+		display: flex;
+		justify-content: center;
+		padding: 0 0.85rem;
 	}
 
 	.messages {
 		display: flex;
 		flex-direction: column;
+		width: min(100%, 56rem);
+		gap: 0.42rem;
 	}
 
 	.message-wrapper {
@@ -103,7 +106,6 @@
 		}
 	}
 
-	/* Scroll to bottom button */
 	.scroll-to-bottom {
 		position: sticky;
 		bottom: 1rem;
@@ -112,14 +114,14 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 30px;
-		height: 30px;
+		width: 34px;
+		height: 34px;
 		border-radius: 50%;
 		background: var(--chatbox-background-primary);
 		color: var(--chatbox-tint-secondary);
 		border: 1px solid var(--chatbox-border-primary);
 		cursor: pointer;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+		box-shadow: 0 8px 24px rgba(15, 23, 42, 0.16);
 		transition: all 0.15s ease;
 		margin: 0 auto;
 	}
@@ -127,6 +129,6 @@
 	.scroll-to-bottom:hover {
 		background: var(--chatbox-background-secondary);
 		color: var(--chatbox-tint-primary);
-		box-shadow: 0 3px 12px rgba(0, 0, 0, 0.16);
+		box-shadow: 0 10px 28px rgba(15, 23, 42, 0.2);
 	}
 </style>

@@ -112,6 +112,27 @@ class ConversationStore {
 		return null
 	}
 
+	get currentDisplayTitle(): string {
+		if (!this.currentSession) {
+			return 'New chat'
+		}
+
+		return this.currentSession.threadName || this.currentSession.name || 'Untitled'
+	}
+
+	get currentDisplaySubtitle(): string {
+		if (!this.currentSession) {
+			return this.sessions.length > 0 ? `${this.sessions.length} conversations available` : 'Start a real conversation'
+		}
+
+		if (this.currentSession.threadName && this.currentSession.threadName !== this.currentSession.name) {
+			return this.currentSession.name
+		}
+
+		const messageCount = this.messages.length
+		return messageCount === 0 ? 'No messages yet' : `${messageCount} message${messageCount === 1 ? '' : 's'}`
+	}
+
 	private syncSessionsFromCache() {
 		if (!this.queryClientModule) {
 			return
@@ -243,6 +264,28 @@ class ConversationStore {
 		})
 
 		this.lastUsedModelModule?.lastUsedModelStore.getState().setChatModel(model.provider, model.modelId)
+	}
+
+	async renameSession(sessionId: string, name: string) {
+		await this.init()
+		if (!this.chatModule) {
+			return
+		}
+
+		const trimmedName = name.trim() || 'Untitled'
+		await this.chatModule.updateSession(sessionId, { name: trimmedName, threadName: trimmedName })
+
+		this.sessions = this.sessions.map((session) =>
+			session.id === sessionId ? { ...session, name: trimmedName } : session
+		)
+
+		if (this.currentSession?.id === sessionId) {
+			this.currentSession = {
+				...this.currentSession,
+				name: trimmedName,
+				threadName: trimmedName,
+			}
+		}
 	}
 
 	async createSessionAndSubmit(messageText: string, model?: SelectedModel | null) {

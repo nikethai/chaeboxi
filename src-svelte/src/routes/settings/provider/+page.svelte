@@ -1,73 +1,78 @@
 <script lang="ts">
+	import { goto } from '$app/navigation'
+	import { onMount } from 'svelte'
+	import { getPreferredProviderId } from '$lib/stores/provider-settings'
+	import { providerCatalogStore } from '$lib/stores/provider-catalog.svelte'
+	import { settingsStore } from '$lib/stores/settings.svelte'
+
+	let redirecting = $state(false)
+
+	onMount(async () => {
+		await Promise.all([settingsStore.init(), providerCatalogStore.init()])
+
+		const isCompact = window.matchMedia('(max-width: 920px)').matches
+		if (isCompact) {
+			return
+		}
+
+		const providerId = getPreferredProviderId(settingsStore.settings, providerCatalogStore.systemProviders)
+		if (!providerId) {
+			return
+		}
+
+		redirecting = true
+		await goto(`/settings/provider/${providerId}`, { replaceState: true })
+	})
 </script>
 
-<div class="settings-page">
-	<header class="settings-header">
-		<h1>Provider Settings</h1>
-	</header>
-
-	<div class="settings-content">
-		<div class="coming-soon">
-			<div class="icon">🔗</div>
-			<h2>Provider setup is not ported yet</h2>
-			<p>The Svelte shell uses real provider and model state for chat, but the provider management UI still lives in the React app.</p>
-			<p class="hint">This route stays visible only to explain that gap instead of pretending setup is complete.</p>
-		</div>
+<section class="provider-entry">
+	<div class="entry-card">
+		<p class="eyebrow">Provider Setup</p>
+		<h1>{redirecting ? 'Opening your provider editor…' : 'Choose a provider to start setup'}</h1>
+		<p>
+			On desktop this route opens the first useful provider editor automatically. On smaller screens the provider list stays
+			as the entrypoint and drills into detail routes.
+		</p>
 	</div>
-</div>
+</section>
 
 <style>
-	.settings-page {
-		min-height: 100vh;
-		background: var(--chatbox-background-primary);
+	.provider-entry {
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		padding: 1rem;
 	}
 
-	.settings-header {
-		padding: 1.5rem;
-		border-bottom: 1px solid var(--chatbox-border-primary);
-		background: var(--chatbox-background-secondary);
+	.entry-card {
+		max-width: 28rem;
+		padding: 1.15rem 1.2rem;
+		border: 1px solid var(--chatbox-border-primary);
+		border-radius: 22px;
+		background: color-mix(in srgb, var(--chatbox-background-secondary), transparent 10%);
 	}
 
-	.settings-header h1 {
-		font-size: 1.5rem;
-		font-weight: 600;
+	.eyebrow {
+		margin: 0 0 0.25rem;
+		font-size: 0.68rem;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: var(--chatbox-tint-tertiary);
+	}
+
+	h1 {
 		margin: 0;
+		font-size: 1.15rem;
+		line-height: 1.2;
 		color: var(--chatbox-tint-primary);
 	}
 
-	.settings-content {
-		max-width: 800px;
-		margin: 0 auto;
-		padding: 1.5rem;
-	}
-
-	.coming-soon {
-		text-align: center;
-		padding: 3rem;
-		background: var(--chatbox-background-secondary);
-		border-radius: var(--chatbox-radius-lg);
-	}
-
-	.icon {
-		font-size: 3rem;
-		margin-bottom: 1rem;
-	}
-
-	.coming-soon h2 {
-		font-size: 1.25rem;
-		font-weight: 600;
-		margin: 0 0 0.5rem;
-		color: var(--chatbox-tint-primary);
-	}
-
-	.coming-soon p {
+	p:last-child {
+		margin: 0.55rem 0 0;
+		font-size: 0.86rem;
+		line-height: 1.55;
 		color: var(--chatbox-tint-secondary);
-		margin: 0;
-	}
-
-	.hint {
-		margin-top: 0.5rem !important;
-		font-size: 0.875rem;
-		color: var(--chatbox-tint-tertiary) !important;
 	}
 </style>

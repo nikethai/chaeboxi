@@ -1,5 +1,6 @@
 <script lang="ts">
 	import '../app.css'
+	import { browser } from '$app/environment'
 	import { goto } from '$app/navigation'
 	import { page } from '$app/stores'
 	import { onMount } from 'svelte'
@@ -18,13 +19,16 @@
 	const pathname = $derived($page.url.pathname)
 	const currentSessionId = $derived(pathname.startsWith('/session/') ? $page.params.id : null)
 	const isChatRoute = $derived(pathname === '/' || pathname.startsWith('/session/'))
+	const currentSession = $derived(
+		currentSessionId && conversationStore.currentSession?.id === currentSessionId ? conversationStore.currentSession : null
+	)
 	const providers = $derived(getAvailableProviders(settingsStore.settings, providerCatalogStore.systemProviders))
 	const selectedModel = $derived(
-		currentSessionId && conversationStore.currentSession?.id === currentSessionId
-			? conversationStore.currentSession?.settings?.provider && conversationStore.currentSession?.settings?.modelId
+		currentSessionId && currentSession
+			? currentSession?.settings?.provider && currentSession?.settings?.modelId
 				? {
-						provider: conversationStore.currentSession.settings.provider,
-						modelId: conversationStore.currentSession.settings.modelId,
+						provider: currentSession.settings.provider,
+						modelId: currentSession.settings.modelId,
 					}
 				: null
 			: conversationStore.draftChatModel
@@ -54,6 +58,15 @@
 		conversationStore.clearCurrentSession()
 	})
 
+	$effect(() => {
+		if (!browser) {
+			return
+		}
+
+		const nextFontSize = settingsStore.settings.fontSize ?? 14
+		document.documentElement.style.setProperty('--chatbox-base-font-size', `${nextFontSize}px`)
+	})
+
 	function handleSelectModel(provider: string, modelId: string) {
 		if (currentSessionId) {
 			void conversationStore.updateSessionModel(currentSessionId, { provider, modelId })
@@ -81,8 +94,12 @@
 			<Header
 				providers={providers}
 				selectedModel={selectedModel}
+				title={conversationStore.currentDisplayTitle}
+				subtitle={conversationStore.currentDisplaySubtitle}
+				sessionId={currentSessionId}
 				currentTheme={themeStore.resolvedTheme}
 				sidebarOpen={uiStore.state.showSidebar}
+				onRenameSession={(name) => (currentSessionId ? conversationStore.renameSession(currentSessionId, name) : undefined)}
 				onToggleSidebar={() => uiStore.toggleSidebar()}
 				onToggleTheme={() => themeStore.toggle()}
 				onSelectModel={handleSelectModel}

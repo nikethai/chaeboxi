@@ -19,10 +19,9 @@
 	const isSystem = $derived(role === 'system')
 	const isAssistant = $derived(role === 'assistant')
 	const isGenerating = $derived(Boolean(message.generating))
-	const showModelLabel = $derived(
-		Boolean(settingsStore.settings.showModelName && isAssistant && message.model)
-	)
+	const showModelLabel = $derived(Boolean(settingsStore.settings.showModelName && isAssistant && message.model))
 	const copyText = $derived(getMessageText(message, true, true) || '[non-text content]')
+	const roleLabel = $derived(isUser ? 'You' : isSystem ? 'System' : 'Assistant')
 
 	let copied = $state(false)
 
@@ -48,11 +47,13 @@
 		<div class="avatar" class:user-avatar={isUser} class:assistant-avatar={isAssistant}>
 			{#if isUser}
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+					<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+					<circle cx="12" cy="7" r="4" />
 				</svg>
 			{:else if isSystem}
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.74 9a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+					<circle cx="12" cy="12" r="3" />
+					<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.74 9a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
 				</svg>
 			{:else}
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -65,16 +66,34 @@
 	{/if}
 
 	<div class="message-content">
-		{#if showModelLabel || isGenerating}
+		<div class="message-header">
 			<div class="message-meta">
+				<span class="role-label">{roleLabel}</span>
 				{#if showModelLabel}
-					<div class="model-label">{message.model}</div>
+					<span class="meta-pill">{message.model}</span>
 				{/if}
 				{#if isGenerating}
-					<div class="status-pill">Generating</div>
+					<span class="meta-pill generating-pill">Generating</span>
 				{/if}
 			</div>
-		{/if}
+
+			{#if !isUser && showActions}
+				<div class="message-actions" class:visible={isGenerating}>
+					<button class="action-btn" type="button" onclick={copyMessage} title={copied ? 'Copied!' : 'Copy'} aria-label="Copy message">
+						{#if copied}
+							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+								<polyline points="20 6 9 17 4 12"></polyline>
+							</svg>
+						{:else}
+							<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+								<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+							</svg>
+						{/if}
+					</button>
+				</div>
+			{/if}
+		</div>
 
 		<div class="message-bubble" class:user-bubble={isUser} class:system-bubble={isSystem} class:compact={compact}>
 			{#if message.contentParts?.length}
@@ -105,9 +124,9 @@
 								<pre>{formatPayload(part.result ?? part.args)}</pre>
 							</div>
 						{:else if part.type === 'image'}
-							<div class="part-card">
-								<div class="part-label">Image</div>
-								<div class="part-body">Image content is not rendered in this rescue pass.</div>
+							<div class="part-card unsupported-card">
+								<div class="part-label">Unsupported part</div>
+								<div class="part-body">Image content is not rendered in this Svelte revamp pass.</div>
 							</div>
 						{/if}
 					</div>
@@ -123,22 +142,6 @@
 				<div class="error-note">{message.error}</div>
 			{/if}
 		</div>
-
-		{#if !isUser && showActions}
-			<div class="message-actions" class:visible={isGenerating}>
-				<button class="action-btn" type="button" onclick={copyMessage} title={copied ? 'Copied!' : 'Copy'} aria-label="Copy message">
-					{#if copied}
-						<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-							<polyline points="20 6 9 17 4 12"></polyline>
-						</svg>
-					{:else}
-						<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-						</svg>
-					{/if}
-				</button>
-			</div>
-		{/if}
 	</div>
 </div>
 
@@ -146,15 +149,15 @@
 	.message-row {
 		display: flex;
 		gap: 0.75rem;
-		padding: 0.5rem 1rem;
+		padding: 0.2rem 0;
 		width: 100%;
 	}
 
 	.avatar,
 	.avatar-spacer {
 		flex-shrink: 0;
-		width: 28px;
-		height: 28px;
+		width: 30px;
+		height: 30px;
 	}
 
 	.avatar {
@@ -162,7 +165,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		margin-top: 2px;
+		margin-top: 0.15rem;
 	}
 
 	.user-avatar {
@@ -180,34 +183,52 @@
 		min-width: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 0.25rem;
+		gap: 0.28rem;
+	}
+
+	.message-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 0.5rem;
 	}
 
 	.message-meta {
 		display: flex;
 		align-items: center;
-		gap: 0.375rem;
+		gap: 0.4rem;
 		flex-wrap: wrap;
+		min-width: 0;
 	}
 
-	.model-label,
-	.status-pill {
+	.role-label {
+		font-size: 0.78rem;
+		font-weight: 700;
+		color: var(--chatbox-tint-primary);
+	}
+
+	.meta-pill {
 		display: inline-flex;
 		align-items: center;
-		font-size: 0.7rem;
-		font-weight: 700;
-		letter-spacing: 0.04em;
-		text-transform: uppercase;
-		color: var(--chatbox-tint-tertiary);
+		padding: 0.2rem 0.46rem;
+		border-radius: 999px;
+		border: 1px solid var(--chatbox-border-primary);
+		background: var(--chatbox-background-secondary);
+		font-size: 0.68rem;
+		font-weight: 600;
+		color: var(--chatbox-tint-secondary);
 	}
 
-	.status-pill {
+	.generating-pill {
+		border-color: var(--chatbox-border-brand);
+		background: var(--chatbox-background-brand-secondary);
 		color: var(--chatbox-tint-brand);
 	}
 
 	.message-bubble {
 		line-height: 1.6;
 		word-break: break-word;
+		padding-right: 0.25rem;
 	}
 
 	.message-bubble.compact {
@@ -216,22 +237,24 @@
 
 	.user-bubble {
 		display: inline-block;
-		background: var(--chatbox-background-secondary);
-		padding: 0.625rem 0.875rem;
-		border-radius: 14px;
-		max-width: min(90%, 44rem);
+		background: color-mix(in srgb, var(--chatbox-background-secondary), var(--chatbox-background-primary) 15%);
+		padding: 0.72rem 0.92rem;
+		border-radius: 18px;
+		max-width: min(90%, 42rem);
+		border: 1px solid var(--chatbox-border-primary);
 	}
 
 	.system-bubble {
-		background: var(--chatbox-background-secondary);
-		padding: 0.625rem 0.875rem;
-		border-radius: 14px;
+		background: color-mix(in srgb, var(--chatbox-background-secondary), var(--chatbox-background-primary) 10%);
+		padding: 0.7rem 0.9rem;
+		border-radius: 16px;
 		font-style: italic;
 		color: var(--chatbox-tint-secondary);
+		border: 1px solid var(--chatbox-border-primary);
 	}
 
 	.content-part + .content-part {
-		margin-top: 0.625rem;
+		margin-top: 0.75rem;
 	}
 
 	.user-text,
@@ -243,9 +266,13 @@
 
 	.part-card {
 		border: 1px solid var(--chatbox-border-primary);
-		border-radius: 12px;
-		background: var(--chatbox-background-secondary);
-		padding: 0.75rem;
+		border-radius: 14px;
+		background: color-mix(in srgb, var(--chatbox-background-secondary), transparent 10%);
+		padding: 0.8rem 0.9rem;
+	}
+
+	.unsupported-card {
+		background: var(--chatbox-background-warning-secondary);
 	}
 
 	.part-label {
@@ -258,14 +285,14 @@
 	}
 
 	.part-body {
-		font-size: 0.875rem;
+		font-size: 0.88rem;
 		color: var(--chatbox-tint-primary);
 		white-space: pre-wrap;
 	}
 
 	.part-card pre {
-		margin: 0.625rem 0 0;
-		padding: 0.625rem;
+		margin: 0.65rem 0 0;
+		padding: 0.65rem;
 		background: var(--chatbox-background-primary);
 		border-radius: 10px;
 		overflow-x: auto;
@@ -301,8 +328,8 @@
 	}
 
 	.error-note {
-		margin-top: 0.625rem;
-		padding: 0.625rem 0.75rem;
+		margin-top: 0.7rem;
+		padding: 0.7rem 0.8rem;
 		border-radius: 12px;
 		background: var(--chatbox-background-error-secondary);
 		color: var(--chatbox-tint-error);
@@ -314,7 +341,6 @@
 		gap: 0.25rem;
 		opacity: 0;
 		transition: opacity 0.15s ease;
-		margin-top: 0.125rem;
 	}
 
 	.message-actions.visible,

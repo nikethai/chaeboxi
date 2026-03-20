@@ -1,6 +1,25 @@
 import "clsx";
+import { I as IncompleteState } from "../../../chunks/IncompleteState.js";
 function _page($$renderer) {
-  $$renderer.push(`<div class="about-page svelte-cwls5q"><header class="about-header svelte-cwls5q"><h1 class="svelte-cwls5q">About Chaeboxi</h1></header> <div class="about-content svelte-cwls5q"><section class="about-section incomplete-card svelte-cwls5q"><div class="app-info svelte-cwls5q"><div class="app-icon svelte-cwls5q">💬</div> <h2 class="svelte-cwls5q">About is still partial</h2> <p class="version svelte-cwls5q">The React app remains the source of truth for app metadata and release details.</p> <p class="tech svelte-cwls5q">This route stays available only as an explicit incomplete-state page during the rescue pass.</p></div> <a href="https://github.com/chaeboxi/chaeboxi" target="_blank" rel="noopener noreferrer" class="svelte-cwls5q">View Repository</a></section></div></div>`);
+  const notes = [
+    "The repository link remains real.",
+    "Version details and richer release UI still need a proper Svelte implementation."
+  ];
+  const links = [
+    {
+      href: "https://github.com/chaeboxi/chaeboxi",
+      label: "View repository",
+      external: true
+    },
+    { href: "/", label: "Back to chat" }
+  ];
+  IncompleteState($$renderer, {
+    eyebrow: "About",
+    title: "About is still a partial status surface",
+    description: "Release metadata and richer application details still come from the React app. This route remains available as a clear incomplete-state page during the revamp.",
+    notes,
+    links
+  });
 }
 export {
   _page as default

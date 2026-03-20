@@ -22,6 +22,9 @@
 	--chatbox-spacing-lg: 1.25rem;
 	--chatbox-spacing-xl: 1.5rem;
 	--chatbox-spacing-xxl: 2rem;
+
+	/* typography */
+	--chatbox-base-font-size: 14px;
 }
 
 :root {
@@ -170,6 +173,7 @@ body {
 
 html {
 	background: var(--chatbox-background-primary);
+	font-size: calc(var(--chatbox-base-font-size) * 0.875);
 }
 
 body {
@@ -191,6 +195,40 @@ body {
 	overscroll-behavior: none;
 	background: var(--chatbox-background-primary);
 	color: var(--chatbox-tint-primary);
+	font-size: 1rem;
+	line-height: 1.4;
+}
+
+code,
+pre {
+	font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Courier New', monospace;
+}
+
+button,
+input,
+textarea,
+select {
+	font: inherit;
+}
+
+select {
+	appearance: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+	background-image:
+		linear-gradient(45deg, transparent 50%, var(--chatbox-tint-tertiary) 50%),
+		linear-gradient(135deg, var(--chatbox-tint-tertiary) 50%, transparent 50%);
+	background-position:
+		calc(100% - 1rem) calc(50% - 0.125rem),
+		calc(100% - 0.7rem) calc(50% - 0.125rem);
+	background-size: 0.34rem 0.34rem, 0.34rem 0.34rem;
+	background-repeat: no-repeat;
+	padding-right: 2rem;
+	box-shadow: none;
+}
+
+select::-ms-expand {
+	display: none;
 }
 
 body > div {
@@ -215,9 +253,12 @@ body > div {
 	padding-left: var(--mobile-safe-area-inset-left, 0px);
 }
 
-html[data-theme='dark'],
-html[data-theme='light'] {
-	color-scheme: light dark;
+.app-shell:has(.disclaimer-safe-area) {
+	padding-bottom: 0;
+}
+
+html[data-theme='dark'] {
+	color-scheme: dark;
 }
 
 html[data-theme='dark'] a {
@@ -226,6 +267,46 @@ html[data-theme='dark'] a {
 
 html[data-theme='light'] a {
 	color: #333;
+}
+
+html[data-theme='light'] {
+	color-scheme: light;
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar,
+html[data-theme='light'] ::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+	background: transparent;
+	border-radius: 6px;
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar-track,
+html[data-theme='light'] ::-webkit-scrollbar-track {
+	border-radius: 6px;
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar-button,
+html[data-theme='light'] ::-webkit-scrollbar-button {
+	display: none;
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar-thumb {
+	background: #b1b1b1;
+	border-radius: 6px;
+}
+
+html[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+	background: #8c8c8c;
+}
+
+html[data-theme='light'] ::-webkit-scrollbar-thumb {
+	background: #c6c6c6;
+	border-radius: 6px;
+}
+
+html[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
+	background: #a0a0a0;
 }
 
 /* KaTeX styles */

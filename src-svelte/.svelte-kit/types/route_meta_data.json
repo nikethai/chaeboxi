@@ -13,9 +13,38 @@
 		"src/routes/+layout.ts"
 	],
 	"/settings": [
+		"src/routes/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/settings/chat": [
+		"src/routes/+layout.ts"
+	],
+	"/settings/default-models": [
+		"src/routes/+layout.ts"
+	],
+	"/settings/document-parser": [
+		"src/routes/+layout.ts"
+	],
+	"/settings/general": [
+		"src/routes/+layout.ts"
+	],
+	"/settings/hotkeys": [
+		"src/routes/+layout.ts"
+	],
+	"/settings/knowledge-base": [
+		"src/routes/+layout.ts"
+	],
+	"/settings/mcp": [
 		"src/routes/+layout.ts"
 	],
 	"/settings/provider": [
+		"src/routes/+layout.ts",
+		"src/routes/+layout.ts"
+	],
+	"/settings/provider/[providerId]": [
+		"src/routes/+layout.ts"
+	],
+	"/settings/web-search": [
 		"src/routes/+layout.ts"
 	]
 }

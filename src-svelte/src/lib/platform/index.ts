@@ -1,6 +1,10 @@
 import { settings as createDefaultSettings, newConfigs } from '$shared/defaults'
 import type { Config, Language, Settings, ShortcutSetting } from '$shared/types'
-import type { ImageGenerationStorage } from '../../../../src/renderer/storage/ImageGenerationStorage'
+import localforage from 'localforage'
+import {
+	IndexedDBImageGenerationStorage,
+	type ImageGenerationStorage,
+} from '../../../../src/renderer/storage/ImageGenerationStorage'
 import type { KnowledgeBaseController } from '../../../../src/renderer/platform/knowledge-base/interface'
 import type { Exporter, Platform } from './interfaces'
 
@@ -123,27 +127,7 @@ const knowledgeBaseController: KnowledgeBaseController = {
 	},
 }
 
-const imageGenerationStorage: ImageGenerationStorage = {
-	async initialize() {},
-	async create() {
-		throw new Error('Image generation storage is not implemented in the Svelte rescue shell.')
-	},
-	async update() {
-		throw new Error('Image generation storage is not implemented in the Svelte rescue shell.')
-	},
-	async getById() {
-		throw new Error('Image generation storage is not implemented in the Svelte rescue shell.')
-	},
-	async delete() {
-		throw new Error('Image generation storage is not implemented in the Svelte rescue shell.')
-	},
-	async getPage() {
-		throw new Error('Image generation storage is not implemented in the Svelte rescue shell.')
-	},
-	async getTotal() {
-		throw new Error('Image generation storage is not implemented in the Svelte rescue shell.')
-	},
-}
+const imageGenerationStorage = new IndexedDBImageGenerationStorage()
 
 function createMediaQueryListener(callback: () => void) {
 	if (!canUseDOM() || !window.matchMedia) {
@@ -259,17 +243,16 @@ const platform: Platform = {
 		return createDefaultSettings()
 	},
 	async getStoreBlob(key: string) {
-		return (await this.getStoreValue(`blob:${key}`)) as string | null
+		return (await localforage.getItem<string>(key)) ?? null
 	},
 	async setStoreBlob(key: string, value: string) {
-		await this.setStoreValue(`blob:${key}`, value)
+		await localforage.setItem(key, value)
 	},
 	async delStoreBlob(key: string) {
-		await this.delStoreValue(`blob:${key}`)
+		await localforage.removeItem(key)
 	},
 	async listStoreBlobKeys() {
-		const keys = await this.getAllStoreKeys()
-		return keys.filter((key) => key.startsWith('blob:'))
+		return await localforage.keys()
 	},
 	initTracking() {},
 	trackingEvent() {},

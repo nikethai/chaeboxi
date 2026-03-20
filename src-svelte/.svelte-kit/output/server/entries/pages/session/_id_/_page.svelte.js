@@ -1,10 +1,13 @@
-import { b as attr, e as escape_html, d as derived, a as attr_class, f as ensure_array_like, j as element, s as stringify, g as store_get, u as unsubscribe_stores } from "../../../../chunks/root.js";
-import { u as uiStore, p as page } from "../../../../chunks/ui.svelte.js";
+import { b as attr, e as escape_html, d as derived, a as attr_class, f as ensure_array_like, j as element, s as stringify, g as store_get, u as unsubscribe_stores } from "../../../../chunks/index2.js";
+import { p as page } from "../../../../chunks/stores.js";
 import { Lexer, marked } from "marked";
-import { a as settingsStore, c as conversationStore } from "../../../../chunks/conversation.svelte.js";
+import "../../../../chunks/defaults.js";
 import { I as InputBox } from "../../../../chunks/InputBox.js";
 import "lodash";
+import { u as uiStore } from "../../../../chunks/ui.svelte.js";
+import { s as settingsStore } from "../../../../chunks/settings.svelte.js";
 import "clsx";
+import { c as conversationStore } from "../../../../chunks/conversation.svelte.js";
 function html(value) {
   var html2 = String(value ?? "");
   var open = "<!---->";
@@ -374,6 +377,7 @@ function Message($$renderer, $$props) {
     const isAssistant = derived(() => role() === "assistant");
     const isGenerating = derived(() => Boolean(message.generating));
     const showModelLabel = derived(() => Boolean(settingsStore.settings.showModelName && isAssistant() && message.model));
+    const roleLabel = derived(() => isUser() ? "You" : isSystem() ? "System" : "Assistant");
     function formatPayload(value) {
       try {
         return JSON.stringify(value, null, 2);
@@ -404,28 +408,33 @@ function Message($$renderer, $$props) {
       $$renderer2.push("<!--[-1-->");
       $$renderer2.push(`<div class="avatar-spacer svelte-1rf1are"></div>`);
     }
-    $$renderer2.push(`<!--]--> <div class="message-content svelte-1rf1are">`);
-    if (showModelLabel() || isGenerating()) {
+    $$renderer2.push(`<!--]--> <div class="message-content svelte-1rf1are"><div class="message-header svelte-1rf1are"><div class="message-meta svelte-1rf1are"><span class="role-label svelte-1rf1are">${escape_html(roleLabel())}</span> `);
+    if (showModelLabel()) {
       $$renderer2.push("<!--[0-->");
-      $$renderer2.push(`<div class="message-meta svelte-1rf1are">`);
-      if (showModelLabel()) {
-        $$renderer2.push("<!--[0-->");
-        $$renderer2.push(`<div class="model-label svelte-1rf1are">${escape_html(message.model)}</div>`);
-      } else {
-        $$renderer2.push("<!--[-1-->");
-      }
-      $$renderer2.push(`<!--]--> `);
-      if (isGenerating()) {
-        $$renderer2.push("<!--[0-->");
-        $$renderer2.push(`<div class="status-pill svelte-1rf1are">Generating</div>`);
-      } else {
-        $$renderer2.push("<!--[-1-->");
-      }
-      $$renderer2.push(`<!--]--></div>`);
+      $$renderer2.push(`<span class="meta-pill svelte-1rf1are">${escape_html(message.model)}</span>`);
     } else {
       $$renderer2.push("<!--[-1-->");
     }
-    $$renderer2.push(`<!--]--> <div${attr_class("message-bubble svelte-1rf1are", void 0, {
+    $$renderer2.push(`<!--]--> `);
+    if (isGenerating()) {
+      $$renderer2.push("<!--[0-->");
+      $$renderer2.push(`<span class="meta-pill generating-pill svelte-1rf1are">Generating</span>`);
+    } else {
+      $$renderer2.push("<!--[-1-->");
+    }
+    $$renderer2.push(`<!--]--></div> `);
+    if (!isUser() && showActions) {
+      $$renderer2.push("<!--[0-->");
+      $$renderer2.push(`<div${attr_class("message-actions svelte-1rf1are", void 0, { "visible": isGenerating() })}><button class="action-btn svelte-1rf1are" type="button"${attr("title", "Copy")} aria-label="Copy message">`);
+      {
+        $$renderer2.push("<!--[-1-->");
+        $$renderer2.push(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svelte-1rf1are"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" class="svelte-1rf1are"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" class="svelte-1rf1are"></path></svg>`);
+      }
+      $$renderer2.push(`<!--]--></button></div>`);
+    } else {
+      $$renderer2.push("<!--[-1-->");
+    }
+    $$renderer2.push(`<!--]--></div> <div${attr_class("message-bubble svelte-1rf1are", void 0, {
       "user-bubble": isUser(),
       "system-bubble": isSystem(),
       "compact": compact
@@ -464,7 +473,7 @@ function Message($$renderer, $$props) {
           $$renderer2.push(`<div class="part-card svelte-1rf1are"><div class="part-label svelte-1rf1are">Tool ${escape_html(part.state)}</div> <div class="part-body svelte-1rf1are">${escape_html(part.toolName)}</div> <pre class="svelte-1rf1are">${escape_html(formatPayload(part.result ?? part.args))}</pre></div>`);
         } else if (part.type === "image") {
           $$renderer2.push("<!--[4-->");
-          $$renderer2.push(`<div class="part-card svelte-1rf1are"><div class="part-label svelte-1rf1are">Image</div> <div class="part-body svelte-1rf1are">Image content is not rendered in this rescue pass.</div></div>`);
+          $$renderer2.push(`<div class="part-card unsupported-card svelte-1rf1are"><div class="part-label svelte-1rf1are">Unsupported part</div> <div class="part-body svelte-1rf1are">Image content is not rendered in this Svelte revamp pass.</div></div>`);
         } else {
           $$renderer2.push("<!--[-1-->");
         }
@@ -484,30 +493,16 @@ function Message($$renderer, $$props) {
     } else {
       $$renderer2.push("<!--[-1-->");
     }
-    $$renderer2.push(`<!--]--></div> `);
-    if (!isUser() && showActions) {
-      $$renderer2.push("<!--[0-->");
-      $$renderer2.push(`<div${attr_class("message-actions svelte-1rf1are", void 0, { "visible": isGenerating() })}><button class="action-btn svelte-1rf1are" type="button"${attr("title", "Copy")} aria-label="Copy message">`);
-      {
-        $$renderer2.push("<!--[-1-->");
-        $$renderer2.push(`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="svelte-1rf1are"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" class="svelte-1rf1are"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" class="svelte-1rf1are"></path></svg>`);
-      }
-      $$renderer2.push(`<!--]--></button></div>`);
-    } else {
-      $$renderer2.push("<!--[-1-->");
-    }
-    $$renderer2.push(`<!--]--></div></div>`);
+    $$renderer2.push(`<!--]--></div></div></div>`);
   });
 }
 function MessageList($$renderer, $$props) {
   $$renderer.component(($$renderer2) => {
     let { messages = [], class: className = "" } = $$props;
     $$renderer2.push(`<div${attr_class(`message-list ${stringify(className)}`, "svelte-26wxji")}>`);
-    if (messages.length === 0) {
+    if (messages.length > 0) {
       $$renderer2.push("<!--[0-->");
-    } else {
-      $$renderer2.push("<!--[-1-->");
-      $$renderer2.push(`<div class="messages svelte-26wxji"><!--[-->`);
+      $$renderer2.push(`<div class="messages-shell svelte-26wxji"><div class="messages svelte-26wxji"><!--[-->`);
       const each_array = ensure_array_like(messages);
       for (let index = 0, $$length = each_array.length; index < $$length; index++) {
         let message = each_array[index];
@@ -518,7 +513,9 @@ function MessageList($$renderer, $$props) {
         });
         $$renderer2.push(`<!----></div>`);
       }
-      $$renderer2.push(`<!--]--></div>`);
+      $$renderer2.push(`<!--]--></div></div>`);
+    } else {
+      $$renderer2.push("<!--[-1-->");
     }
     $$renderer2.push(`<!--]--> `);
     {
@@ -534,6 +531,7 @@ function _page($$renderer, $$props) {
     const session = derived(() => sessionId() && conversationStore.currentSession?.id === sessionId() ? conversationStore.currentSession : null);
     const messages = derived(() => session() ? conversationStore.messages : []);
     const generating = derived(() => Boolean(sessionId() && conversationStore.lastGeneratingMessage));
+    const composerLabel = derived(() => session() ? "Reply in conversation" : "Conversation");
     async function handleSubmit(message) {
       if (!sessionId()) {
         return;
@@ -552,6 +550,8 @@ function _page($$renderer, $$props) {
       MessageList($$renderer2, { messages: messages() });
       $$renderer2.push(`<!----> `);
       InputBox($$renderer2, {
+        label: composerLabel(),
+        helperText: generating() ? "Assistant response in progress" : "Messages are sent through the real session store",
         onSubmit: handleSubmit,
         generating: generating(),
         onStopGenerating: handleStopGenerating,

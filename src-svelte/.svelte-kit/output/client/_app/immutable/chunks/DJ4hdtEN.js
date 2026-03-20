@@ -1,2 +1,0 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["./D1MFbgi6.js","./Bm9z-GZZ.js","./BAH9MFau.js","./luBUAet7.js","./BKFnkm8H.js","./obCnzskE.js"])))=>i.map(i=>d[i]);
-import{_ as e}from"./luBUAet7.js";const s=Object.assign({"../../../../src/shared/providers/index.ts":()=>e(()=>import("./D1MFbgi6.js").then(r=>r.u),__vite__mapDeps([0,1,2,3,4,5]),import.meta.url)});async function t(){return{getSystemProviders:(await s["../../../../src/shared/providers/index.ts"]()).getSystemProviders}}export{t as loadSharedProvidersRuntime};

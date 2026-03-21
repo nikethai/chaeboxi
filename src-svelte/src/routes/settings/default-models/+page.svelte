@@ -100,18 +100,20 @@
 	.settings-page {
 		height: 100%;
 		overflow-y: auto;
-		padding: 1rem;
+		width: min(100%, 920px);
+		margin: 0 auto;
+		padding: 0.85rem 0.9rem 1rem;
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 0.8rem;
 	}
 
 	.page-header,
 	.card {
 		border: 1px solid var(--chatbox-border-primary);
-		border-radius: 18px;
+		border-radius: 16px;
 		background: color-mix(in srgb, var(--chatbox-background-secondary), transparent 10%);
-		padding: 1rem;
+		padding: 0.85rem 0.9rem;
 	}
 
 	.eyebrow {
@@ -130,41 +132,35 @@
 	}
 
 	h1 {
-		font-size: 1.1rem;
+		font-size: 1rem;
 		line-height: 1.16;
 	}
 
 	h2 {
-		font-size: 0.94rem;
+		font-size: 0.9rem;
 	}
 
 	.page-header p:last-child,
 	.card p {
-		margin: 0.38rem 0 0;
-		font-size: 0.8rem;
-		line-height: 1.45;
+		margin: 0.28rem 0 0;
+		font-size: 0.74rem;
+		line-height: 1.4;
 		color: var(--chatbox-tint-secondary);
 	}
 
 	.card-grid {
 		display: grid;
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 1rem;
+		grid-template-columns: repeat(auto-fit, minmax(16.5rem, 1fr));
+		gap: 0.8rem;
 	}
 
 	.card :global(.select-menu) {
-		margin-top: 0.8rem;
-	}
-
-	@media (max-width: 960px) {
-		.card-grid {
-			grid-template-columns: minmax(0, 1fr);
-		}
+		margin-top: 0.68rem;
 	}
 
 	@media (max-width: 720px) {
 		.settings-page {
-			padding: 0.85rem;
+			padding: 0.8rem 0.78rem 0.95rem;
 		}
 	}
 </style>

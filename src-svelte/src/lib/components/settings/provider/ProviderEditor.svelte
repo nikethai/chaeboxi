@@ -679,10 +679,10 @@
 	.provider-editor {
 		height: 100%;
 		overflow-y: auto;
-		padding: 0.9rem;
+		padding: 0.75rem;
 		display: flex;
 		flex-direction: column;
-		gap: 0.9rem;
+		gap: 0.75rem;
 		background: var(--chatbox-background-primary);
 	}
 
@@ -698,12 +698,12 @@
 	.hero,
 	.warning-card,
 	.scope-footnote {
-		padding: 0.88rem 0.95rem;
+		padding: 0.76rem 0.84rem;
 	}
 
 	.hero {
 		display: flex;
-		align-items: flex-start;
+		align-items: center;
 		justify-content: space-between;
 		gap: 0.8rem;
 	}
@@ -732,12 +732,12 @@
 	}
 
 	h1 {
-		font-size: clamp(1.05rem, 1.8vw, 1.35rem);
+		font-size: clamp(0.98rem, 1.4vw, 1.18rem);
 		line-height: 1.15;
 	}
 
 	h2 {
-		font-size: 0.94rem;
+		font-size: 0.9rem;
 	}
 
 	h3 {
@@ -750,9 +750,9 @@
 	.scope-footnote p,
 	.editor-header p,
 	.empty-models p {
-		margin: 0.4rem 0 0;
-		font-size: 0.78rem;
-		line-height: 1.5;
+		margin: 0.28rem 0 0;
+		font-size: 0.72rem;
+		line-height: 1.4;
 		color: var(--chatbox-tint-secondary);
 	}
 
@@ -778,7 +778,7 @@
 	.row-actions {
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: 0.4rem;
 		flex-wrap: wrap;
 	}
 
@@ -794,17 +794,17 @@
 	.editor-grid {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
-		gap: 0.9rem;
+		gap: 0.75rem;
 	}
 
 	.card {
-		padding: 0.88rem 0.95rem;
+		padding: 0.78rem 0.84rem;
 	}
 
 	.card-header,
 	.editor-header {
 		display: flex;
-		align-items: flex-start;
+		align-items: center;
 		justify-content: space-between;
 		gap: 0.75rem;
 	}
@@ -812,8 +812,8 @@
 	.fields {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
-		margin-top: 0.8rem;
+		gap: 0.65rem;
+		margin-top: 0.68rem;
 	}
 
 	.field-row {
@@ -839,7 +839,7 @@
 	}
 
 	.field input {
-		padding: 0.68rem 0.8rem;
+		padding: 0.48rem 0.72rem;
 		border-radius: 12px;
 		border: 1px solid var(--chatbox-border-primary);
 		background: var(--chatbox-background-primary);
@@ -882,8 +882,8 @@
 		display: flex;
 		flex-direction: column;
 		gap: 0.35rem;
-		padding: 0.68rem 0.78rem;
-		border-radius: 14px;
+		padding: 0.62rem 0.72rem;
+		border-radius: 13px;
 		background: var(--chatbox-background-primary);
 		border: 1px dashed var(--chatbox-border-primary);
 	}
@@ -906,24 +906,24 @@
 	.model-list {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5rem;
-		margin-top: 0.8rem;
+		gap: 0.45rem;
+		margin-top: 0.68rem;
 	}
 
 	.model-row,
 	.empty-models,
 	.model-editor {
 		border: 1px solid var(--chatbox-border-primary);
-		border-radius: 16px;
+		border-radius: 14px;
 		background: var(--chatbox-background-primary);
 	}
 
 	.model-row {
 		display: flex;
-		align-items: flex-start;
+		align-items: center;
 		justify-content: space-between;
-		gap: 0.75rem;
-		padding: 0.75rem 0.82rem;
+		gap: 0.65rem;
+		padding: 0.64rem 0.72rem;
 	}
 
 	.model-copy {
@@ -939,13 +939,13 @@
 	}
 
 	.model-title-row strong {
-		font-size: 0.84rem;
+		font-size: 0.8rem;
 		line-height: 1.25;
 		color: var(--chatbox-tint-primary);
 	}
 
 	.model-id {
-		font-size: 0.7rem;
+		font-size: 0.66rem;
 		color: var(--chatbox-tint-tertiary);
 		word-break: break-word;
 	}
@@ -974,17 +974,17 @@
 	}
 
 	.empty-models {
-		padding: 0.9rem;
+		padding: 0.8rem;
 	}
 
 	.empty-models strong {
 		display: block;
-		font-size: 0.84rem;
+		font-size: 0.8rem;
 		color: var(--chatbox-tint-primary);
 	}
 
 	.model-editor {
-		padding: 0.9rem;
+		padding: 0.8rem;
 	}
 
 	.capability-grid {
@@ -997,11 +997,11 @@
 		display: flex;
 		align-items: center;
 		gap: 0.55rem;
-		padding: 0.62rem 0.72rem;
+		padding: 0.54rem 0.66rem;
 		border-radius: 12px;
 		border: 1px solid var(--chatbox-border-primary);
 		background: var(--chatbox-background-primary);
-		font-size: 0.76rem;
+		font-size: 0.72rem;
 		font-weight: 600;
 		color: var(--chatbox-tint-secondary);
 	}
@@ -1027,10 +1027,10 @@
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		min-height: 2.15rem;
-		padding: 0.48rem 0.82rem;
+		min-height: 1.95rem;
+		padding: 0.34rem 0.72rem;
 		border-radius: 999px;
-		font-size: 0.76rem;
+		font-size: 0.72rem;
 		font-weight: 700;
 		text-decoration: none;
 		cursor: pointer;
@@ -1067,8 +1067,8 @@
 
 	.ghost-btn.compact,
 	.danger-ghost.compact {
-		min-height: 1.82rem;
-		padding-inline: 0.68rem;
+		min-height: 1.72rem;
+		padding-inline: 0.6rem;
 	}
 
 	.danger-btn,

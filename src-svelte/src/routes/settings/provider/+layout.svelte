@@ -69,9 +69,9 @@
 	}
 
 	.list-pane {
-		width: min(300px, 30vw);
-		min-width: 264px;
-		max-width: 332px;
+		width: clamp(240px, 25vw, 292px);
+		min-width: 240px;
+		max-width: 292px;
 		border-right: 1px solid var(--chatbox-border-primary);
 		background: var(--chatbox-background-primary);
 	}

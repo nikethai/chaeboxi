@@ -121,11 +121,7 @@
 		<aside class="settings-nav-pane">
 			<div class="settings-nav-header">
 				<p class="eyebrow">Settings</p>
-				<h1>Core settings now live in the Svelte shell.</h1>
-				<p>
-					Provider, general, chat, default-model, and web-search settings now use the real shared store. Remaining areas stay
-					explicitly partial until they are actually ported.
-				</p>
+				<h1>Settings</h1>
 			</div>
 
 			<nav class="settings-nav">
@@ -163,25 +159,22 @@
 		background: var(--chatbox-background-primary);
 	}
 
-	.settings-nav-pane {
-		width: min(312px, 32vw);
-		min-width: 264px;
-		max-width: 344px;
+		.settings-nav-pane {
+			width: clamp(184px, 18vw, 216px);
+			min-width: 184px;
+			max-width: 216px;
 		display: flex;
 		flex-direction: column;
-		gap: 0.8rem;
-		padding: 0.9rem;
+		gap: 0.65rem;
+		padding: 0.75rem;
 		border-right: 1px solid var(--chatbox-border-primary);
 		background: color-mix(in srgb, var(--chatbox-background-secondary), transparent 82%);
 		overflow-y: auto;
 	}
 
-	.settings-nav-header {
-		padding: 0.95rem 1rem;
-		border: 1px solid var(--chatbox-border-primary);
-		border-radius: 18px;
-		background: color-mix(in srgb, var(--chatbox-background-secondary), transparent 8%);
-	}
+		.settings-nav-header {
+			padding: 0.2rem 0.1rem 0.35rem;
+		}
 
 	.eyebrow {
 		margin: 0 0 0.22rem;
@@ -192,35 +185,28 @@
 		color: var(--chatbox-tint-tertiary);
 	}
 
-	h1 {
-		margin: 0;
-		font-size: 1.06rem;
-		line-height: 1.16;
-		color: var(--chatbox-tint-primary);
-	}
+		h1 {
+			margin: 0;
+			font-size: 0.88rem;
+			line-height: 1.1;
+			color: var(--chatbox-tint-primary);
+		}
 
-	.settings-nav-header p:last-child {
-		margin: 0.45rem 0 0;
-		font-size: 0.8rem;
-		line-height: 1.45;
-		color: var(--chatbox-tint-secondary);
-	}
-
-	.settings-nav {
-		display: flex;
-		flex-direction: column;
-		gap: 0.4rem;
-	}
+		.settings-nav {
+			display: flex;
+			flex-direction: column;
+			gap: 0.24rem;
+		}
 
 	.settings-nav-item {
 		display: flex;
 		align-items: center;
-		gap: 0.75rem;
-		padding: 0.8rem 0.9rem;
-		border: 1px solid transparent;
-		border-radius: 16px;
-		text-decoration: none;
-		color: inherit;
+			gap: 0.5rem;
+			padding: 0.54rem 0.62rem;
+			border: 1px solid transparent;
+			border-radius: 12px;
+			text-decoration: none;
+			color: inherit;
 		transition:
 			background 0.15s ease,
 			border-color 0.15s ease,
@@ -250,12 +236,12 @@
 		min-width: 0;
 	}
 
-	.item-title {
-		font-size: 0.88rem;
-		font-weight: 700;
-		line-height: 1.2;
-		color: var(--chatbox-tint-primary);
-	}
+		.item-title {
+			font-size: 0.78rem;
+			font-weight: 700;
+			line-height: 1.2;
+			color: var(--chatbox-tint-primary);
+		}
 
 	.item-badge {
 		display: inline-flex;
@@ -269,18 +255,15 @@
 		flex-shrink: 0;
 	}
 
-	.item-copy p {
-		margin: 0.3rem 0 0;
-		font-size: 0.76rem;
-		line-height: 1.4;
-		color: var(--chatbox-tint-secondary);
-	}
+		.item-copy p {
+			display: none;
+		}
 
-	.item-chevron {
-		font-size: 1rem;
-		color: var(--chatbox-tint-tertiary);
-		flex-shrink: 0;
-	}
+		.item-chevron {
+			font-size: 0.88rem;
+			color: var(--chatbox-tint-tertiary);
+			flex-shrink: 0;
+		}
 
 	.settings-detail-pane {
 		flex: 1;
@@ -290,10 +273,10 @@
 		background: var(--chatbox-background-primary);
 	}
 
-	@media (max-width: 960px) {
-		.settings-layout {
-			display: block;
-		}
+		@media (max-width: 960px) {
+			.settings-layout {
+				display: block;
+			}
 
 		.settings-nav-pane,
 		.settings-detail-pane {
@@ -303,13 +286,24 @@
 			height: 100%;
 		}
 
-		.settings-nav-pane {
-			padding: 0.85rem;
-			border-right: 0;
-		}
+			.settings-nav-pane {
+				padding: 0.85rem;
+				border-right: 0;
+			}
 
-		.settings-nav-header {
-			padding: 0.9rem;
+			.settings-nav-header {
+				padding: 0.9rem;
+				border: 1px solid var(--chatbox-border-primary);
+				border-radius: 16px;
+				background: color-mix(in srgb, var(--chatbox-background-secondary), transparent 8%);
+			}
+
+			.item-copy p {
+				display: block;
+				margin: 0.24rem 0 0;
+				font-size: 0.72rem;
+				line-height: 1.35;
+				color: var(--chatbox-tint-secondary);
+			}
 		}
-	}
 </style>

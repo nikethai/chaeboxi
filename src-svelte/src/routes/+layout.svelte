@@ -23,6 +23,9 @@
 		currentSessionId && conversationStore.currentSession?.id === currentSessionId ? conversationStore.currentSession : null
 	)
 	const providers = $derived(getAvailableProviders(settingsStore.settings, providerCatalogStore.systemProviders))
+	const shellSidebarWidth = $derived(
+		isChatRoute ? (uiStore.state.sidebarWidth ?? 264) : Math.min(uiStore.state.sidebarWidth ?? 220, 220)
+	)
 	const selectedModel = $derived(
 		currentSessionId && currentSession
 			? currentSession?.settings?.provider && currentSession?.settings?.modelId
@@ -80,7 +83,8 @@
 <div class="app-shell app-container">
 	<Sidebar
 		open={uiStore.state.showSidebar}
-		width={uiStore.state.sidebarWidth ?? 280}
+		width={shellSidebarWidth}
+		chatMode={isChatRoute}
 		sessions={conversationStore.sessions}
 		{currentSessionId}
 		onToggleSidebar={() => uiStore.toggleSidebar()}

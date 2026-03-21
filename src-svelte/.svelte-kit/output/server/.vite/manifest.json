@@ -399,6 +399,10 @@
       "_app/immutable/assets/InputBox.Bo1ZUGfK.css"
     ]
   },
+  "_SelectMenu.BaYJ1PnD.css": {
+    "file": "_app/immutable/assets/SelectMenu.BaYJ1PnD.css",
+    "src": "_SelectMenu.BaYJ1PnD.css"
+  },
   "_SelectMenu.js": {
     "file": "chunks/SelectMenu.js",
     "name": "SelectMenu",
@@ -406,12 +410,8 @@
       "_index2.js"
     ],
     "css": [
-      "_app/immutable/assets/SelectMenu.tSHfJsS3.css"
+      "_app/immutable/assets/SelectMenu.BaYJ1PnD.css"
     ]
-  },
-  "_SelectMenu.tSHfJsS3.css": {
-    "file": "_app/immutable/assets/SelectMenu.tSHfJsS3.css",
-    "src": "_SelectMenu.tSHfJsS3.css"
   },
   "_client.js": {
     "file": "chunks/client.js",
@@ -575,7 +575,7 @@
       "_ui.svelte.js"
     ],
     "css": [
-      "_app/immutable/assets/_layout.D2Qk58zG.css"
+      "_app/immutable/assets/_layout.dzpri8DR.css"
     ]
   },
   "src/routes/+layout.ts": {
@@ -658,7 +658,7 @@
       "_defaults.js"
     ],
     "css": [
-      "_app/immutable/assets/_layout.DbXIUy6R.css"
+      "_app/immutable/assets/_layout.BvP8XcWG.css"
     ]
   },
   "src/routes/settings/+page.svelte": {
@@ -684,7 +684,7 @@
       "_settings.svelte.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.Cg36nrAE.css"
+      "_app/immutable/assets/_page.TyDlQrS3.css"
     ]
   },
   "src/routes/settings/default-models/+page.svelte": {
@@ -700,7 +700,7 @@
       "_settings.svelte.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.DfN4RMtG.css"
+      "_app/immutable/assets/_page.B92AD59o.css"
     ]
   },
   "src/routes/settings/document-parser/+page.svelte": {
@@ -726,7 +726,7 @@
       "_index3.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.CU5NXDyn.css"
+      "_app/immutable/assets/_page.CFPQMh4M.css"
     ]
   },
   "src/routes/settings/hotkeys/+page.svelte": {
@@ -774,8 +774,8 @@
       "_settings.svelte.js"
     ],
     "css": [
-      "_app/immutable/assets/_layout.BXRGlmv8.css",
-      "_app/immutable/assets/SelectMenu.tSHfJsS3.css"
+      "_app/immutable/assets/_layout.E7q45fbV.css",
+      "_app/immutable/assets/SelectMenu.BaYJ1PnD.css"
     ]
   },
   "src/routes/settings/provider/+page.svelte": {
@@ -815,7 +815,7 @@
       "_SelectMenu.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.Dt-LTBso.css"
+      "_app/immutable/assets/_page.DICzeCpD.css"
     ]
   },
   "src/routes/settings/web-search/+page.svelte": {
@@ -829,7 +829,7 @@
       "_settings.svelte.js"
     ],
     "css": [
-      "_app/immutable/assets/_page.B_BgZMLE.css"
+      "_app/immutable/assets/_page.BtDlQYl4.css"
     ]
   }
 }

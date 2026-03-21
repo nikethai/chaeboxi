@@ -196,7 +196,7 @@ function _layout($$renderer, $$props) {
     $$renderer2.push(`<div class="app-shell app-container svelte-12qhfyh">`);
     Sidebar($$renderer2, {
       open: uiStore.state.showSidebar,
-      width: uiStore.state.sidebarWidth ?? 280,
+      width: uiStore.state.sidebarWidth ?? 264,
       sessions: conversationStore.sessions,
       currentSessionId: currentSessionId(),
       onResizeSidebar: (width) => uiStore.setSidebarWidth(width)

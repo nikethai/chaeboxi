@@ -173,7 +173,7 @@ body {
 
 html {
 	background: var(--chatbox-background-primary);
-	font-size: calc(var(--chatbox-base-font-size) * 0.875);
+	font-size: calc(var(--chatbox-base-font-size) * 0.84);
 }
 
 body {

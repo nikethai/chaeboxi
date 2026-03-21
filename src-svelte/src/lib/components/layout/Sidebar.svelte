@@ -8,6 +8,7 @@
 		currentSessionId?: string | null
 		open?: boolean
 		width?: number
+		chatMode?: boolean
 		onSelectSession?: (id: string) => void
 		onNewSession?: () => void
 		onToggleSidebar?: () => void
@@ -20,6 +21,7 @@
 		currentSessionId = null,
 		open = true,
 		width = 280,
+		chatMode = true,
 		onSelectSession,
 		onNewSession,
 		onToggleSidebar,
@@ -59,7 +61,7 @@
 		resizeStartWidth = width
 
 		const handleMouseMove = (moveEvent: MouseEvent) => {
-			const nextWidth = Math.max(220, Math.min(420, resizeStartWidth + moveEvent.clientX - resizeStartX))
+			const nextWidth = Math.max(216, Math.min(360, resizeStartWidth + moveEvent.clientX - resizeStartX))
 			onResizeSidebar?.(nextWidth)
 		}
 
@@ -77,6 +79,7 @@
 <aside
 	class="sidebar {className}"
 	class:collapsed={!open}
+	class:non-chat={!chatMode}
 	class:resizing={isResizing}
 	style={`width: ${open ? `${width}px` : '0px'};`}
 >
@@ -111,37 +114,39 @@
 		</button>
 	</div>
 
-	<div class="section-heading">
-		<span>Conversations</span>
-		<span class="section-count">{sessions.length}</span>
-	</div>
+	{#if chatMode}
+		<div class="section-heading">
+			<span>Conversations</span>
+			<span class="section-count">{sessions.length}</span>
+		</div>
 
-	<div class="sessions-list">
-		{#if sessions.length === 0}
-			<div class="empty-sessions">
-				<p class="empty-title">No conversations yet</p>
-				<p class="empty-copy">Start from the real `/` route and new sessions will appear here.</p>
-			</div>
-		{:else}
-			{#each sessions as session (session.id)}
-				<button
-					class="session-item"
-					class:active={session.id === currentSessionId}
-					type="button"
-					onclick={() => handleSelect(session.id)}
-				>
-					<svg class="session-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-					</svg>
+		<div class="sessions-list">
+			{#if sessions.length === 0}
+				<div class="empty-sessions">
+					<p class="empty-title">No conversations yet</p>
+					<p class="empty-copy">Start from the real `/` route and new sessions will appear here.</p>
+				</div>
+			{:else}
+				{#each sessions as session (session.id)}
+					<button
+						class="session-item"
+						class:active={session.id === currentSessionId}
+						type="button"
+						onclick={() => handleSelect(session.id)}
+					>
+						<svg class="session-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+						</svg>
 
-					<div class="session-info">
-						<span class="session-title">{session.name || 'Untitled'}</span>
-						<span class="session-subtitle">{session.id === currentSessionId ? 'Current conversation' : 'Open conversation'}</span>
-					</div>
-				</button>
-			{/each}
-		{/if}
-	</div>
+						<div class="session-info">
+							<span class="session-title">{session.name || 'Untitled'}</span>
+							<span class="session-subtitle">{session.id === currentSessionId ? 'Current conversation' : 'Open conversation'}</span>
+						</div>
+					</button>
+				{/each}
+			{/if}
+		</div>
+	{/if}
 
 	<div class="sidebar-footer">
 		<div class="section-heading section-heading-footer">
@@ -208,11 +213,15 @@
 		user-select: none;
 	}
 
+	.sidebar.non-chat {
+		background: color-mix(in srgb, var(--chatbox-background-secondary), transparent 88%);
+	}
+
 	.sidebar-header {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 0.95rem 0.9rem 0.7rem;
+		padding: 0.8rem 0.78rem 0.58rem;
 		flex-shrink: 0;
 	}
 
@@ -224,9 +233,9 @@
 	}
 
 	.brand-icon {
-		width: 30px;
-		height: 30px;
-		border-radius: 9px;
+		width: 28px;
+		height: 28px;
+		border-radius: 8px;
 		background: var(--chatbox-background-brand-primary);
 		color: white;
 		display: flex;
@@ -242,14 +251,14 @@
 	}
 
 	.brand-name {
-		font-size: 0.96rem;
+		font-size: 0.9rem;
 		font-weight: 700;
 		color: var(--chatbox-tint-primary);
 		white-space: nowrap;
 	}
 
 	.brand-subtitle {
-		font-size: 0.7rem;
+		font-size: 0.66rem;
 		color: var(--chatbox-tint-tertiary);
 		white-space: nowrap;
 	}
@@ -277,7 +286,7 @@
 	.primary-action,
 	.section-heading,
 	.sidebar-footer {
-		padding-inline: 0.625rem;
+		padding-inline: 0.55rem;
 	}
 
 	.primary-action {
@@ -290,13 +299,13 @@
 		justify-content: center;
 		gap: 0.5rem;
 		width: 100%;
-		padding: 0.64rem 0.875rem;
+		padding: 0.56rem 0.78rem;
 		background: var(--chatbox-background-secondary);
 		color: var(--chatbox-tint-primary);
 		border: 1px solid var(--chatbox-border-primary);
-		border-radius: 12px;
+		border-radius: 11px;
 		cursor: pointer;
-		font-size: 0.875rem;
+		font-size: 0.82rem;
 		font-weight: 600;
 		transition: background 0.15s ease, border-color 0.15s ease;
 		text-align: left;
@@ -311,7 +320,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding-bottom: 0.35rem;
+		padding-bottom: 0.28rem;
 		font-size: 0.7rem;
 		font-weight: 700;
 		letter-spacing: 0.08em;
@@ -337,7 +346,7 @@
 	.sessions-list {
 		flex: 1;
 		overflow-y: auto;
-		padding: 0 0.5rem 0.75rem;
+		padding: 0 0.45rem 0.62rem;
 	}
 
 	.session-item {
@@ -345,10 +354,10 @@
 		display: flex;
 		align-items: center;
 		gap: 0.5rem;
-		padding: 0.55rem 0.7rem;
+		padding: 0.48rem 0.62rem;
 		background: transparent;
 		border: 1px solid transparent;
-		border-radius: 12px;
+		border-radius: 11px;
 		cursor: pointer;
 		text-align: left;
 		transition: background 0.15s ease, border-color 0.15s ease;
@@ -379,7 +388,7 @@
 	}
 
 	.session-title {
-		font-size: 0.84rem;
+		font-size: 0.8rem;
 		font-weight: 600;
 		white-space: nowrap;
 		overflow: hidden;
@@ -387,14 +396,14 @@
 	}
 
 	.session-subtitle {
-		font-size: 0.7rem;
+		font-size: 0.66rem;
 		color: var(--chatbox-tint-tertiary);
 		margin-top: 0.12rem;
 	}
 
 	.empty-sessions {
-		padding: 1.4rem 0.75rem;
-		border-radius: 16px;
+		padding: 1rem 0.68rem;
+		border-radius: 14px;
 		border: 1px dashed var(--chatbox-border-primary);
 		background: color-mix(in srgb, var(--chatbox-background-secondary), transparent 30%);
 		text-align: left;
@@ -402,26 +411,32 @@
 
 	.empty-title {
 		margin: 0;
-		font-size: 0.88rem;
+		font-size: 0.82rem;
 		font-weight: 700;
 		color: var(--chatbox-tint-primary);
 	}
 
 	.empty-copy {
-		margin: 0.35rem 0 0;
+		margin: 0.28rem 0 0;
 		color: var(--chatbox-tint-tertiary);
-		font-size: 0.78rem;
-		line-height: 1.5;
+		font-size: 0.72rem;
+		line-height: 1.4;
 	}
 
 	.sidebar-footer {
 		flex-shrink: 0;
-		padding-top: 0.75rem;
-		padding-bottom: 0.75rem;
+		padding-top: 0.62rem;
+		padding-bottom: 0.68rem;
 		border-top: 1px solid var(--chatbox-border-primary);
 		display: flex;
 		flex-direction: column;
 		gap: 0.625rem;
+		margin-top: auto;
+	}
+
+	.sidebar.non-chat .sidebar-footer {
+		border-top: 0;
+		padding-top: 0.25rem;
 	}
 
 	.nav-links {
@@ -434,11 +449,11 @@
 		display: flex;
 		align-items: center;
 		gap: 0.625rem;
-		padding: 0.58rem 0.72rem;
+		padding: 0.52rem 0.64rem;
 		color: var(--chatbox-tint-secondary);
 		text-decoration: none;
-		border-radius: 12px;
-		font-size: 0.82rem;
+		border-radius: 11px;
+		font-size: 0.78rem;
 		transition: all 0.15s ease;
 		border: 1px solid transparent;
 	}

@@ -99,18 +99,20 @@
 	.settings-page {
 		height: 100%;
 		overflow-y: auto;
-		padding: 1rem;
+		width: min(100%, 920px);
+		margin: 0 auto;
+		padding: 0.85rem 0.9rem 1rem;
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 0.8rem;
 	}
 
 	.page-header,
 	.card {
 		border: 1px solid var(--chatbox-border-primary);
-		border-radius: 18px;
+		border-radius: 16px;
 		background: color-mix(in srgb, var(--chatbox-background-secondary), transparent 10%);
-		padding: 1rem;
+		padding: 0.85rem 0.9rem;
 	}
 
 	.eyebrow {
@@ -129,32 +131,32 @@
 	}
 
 	h1 {
-		font-size: 1.1rem;
+		font-size: 1rem;
 		line-height: 1.16;
 	}
 
 	h2 {
-		font-size: 0.95rem;
+		font-size: 0.9rem;
 	}
 
 	.page-header p:last-child,
 	.card-header p,
 	.note {
-		margin: 0.38rem 0 0;
-		font-size: 0.8rem;
-		line-height: 1.45;
+		margin: 0.28rem 0 0;
+		font-size: 0.74rem;
+		line-height: 1.4;
 		color: var(--chatbox-tint-secondary);
 	}
 
 	.card-header {
-		margin-bottom: 0.85rem;
+		margin-bottom: 0.72rem;
 	}
 
 	.field-stack {
 		display: flex;
 		flex-direction: column;
-		gap: 0.8rem;
-		margin-top: 0.85rem;
+		gap: 0.68rem;
+		margin-top: 0.72rem;
 	}
 
 	.field {
@@ -171,8 +173,8 @@
 
 	.field input {
 		width: 100%;
-		min-height: 2.5rem;
-		padding: 0.55rem 0.75rem;
+		min-height: 2.2rem;
+		padding: 0.48rem 0.72rem;
 		border-radius: 12px;
 		border: 1px solid var(--chatbox-border-primary);
 		background: var(--chatbox-background-primary);
@@ -182,12 +184,12 @@
 	}
 
 	.note {
-		margin-top: 0.75rem;
+		margin-top: 0.68rem;
 	}
 
 	@media (max-width: 720px) {
 		.settings-page {
-			padding: 0.85rem;
+			padding: 0.8rem 0.78rem 0.95rem;
 		}
 	}
 </style>

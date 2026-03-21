@@ -152,16 +152,16 @@
 		flex-direction: column;
 		min-height: 0;
 		height: 100%;
-		padding: 0.8rem;
-		gap: 0.8rem;
+		padding: 0.72rem;
+		gap: 0.65rem;
 		background: var(--chatbox-background-primary);
 	}
 
 	.provider-list-header {
-		display: flex;
-		align-items: flex-start;
-		justify-content: space-between;
-		gap: 0.75rem;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		align-items: start;
+		gap: 0.6rem;
 	}
 
 	.eyebrow {
@@ -175,24 +175,24 @@
 
 	h2 {
 		margin: 0;
-		font-size: 0.94rem;
+		font-size: 0.9rem;
 		line-height: 1.2;
 		color: var(--chatbox-tint-primary);
 	}
 
 	.copy {
-		margin: 0.28rem 0 0;
-		font-size: 0.76rem;
-		line-height: 1.45;
+		margin: 0.22rem 0 0;
+		font-size: 0.72rem;
+		line-height: 1.35;
 		color: var(--chatbox-tint-secondary);
-		max-width: 24rem;
+		max-width: 18rem;
 	}
 
 	.create-panel,
 	.scope-note {
-		padding: 0.75rem;
+		padding: 0.68rem;
 		border: 1px solid var(--chatbox-border-primary);
-		border-radius: 14px;
+		border-radius: 13px;
 		background: color-mix(in srgb, var(--chatbox-background-secondary), transparent 10%);
 	}
 
@@ -214,7 +214,7 @@
 	.field input {
 		width: 100%;
 		min-height: 2.2rem;
-		padding: 0.6rem 0.7rem;
+		padding: 0.48rem 0.7rem;
 		border-radius: 12px;
 		border: 1px solid var(--chatbox-border-primary);
 		background: var(--chatbox-background-primary);
@@ -224,6 +224,7 @@
 
 	.panel-actions {
 		display: flex;
+		align-items: center;
 		justify-content: flex-end;
 		flex-wrap: wrap;
 		gap: 0.5rem;
@@ -242,9 +243,9 @@
 	.provider-row {
 		display: flex;
 		align-items: center;
-		gap: 0.7rem;
-		padding: 0.72rem 0.78rem;
-		border-radius: 14px;
+		gap: 0.6rem;
+		padding: 0.64rem 0.7rem;
+		border-radius: 13px;
 		border: 1px solid transparent;
 		background: transparent;
 		color: inherit;
@@ -268,9 +269,9 @@
 	}
 
 	.provider-avatar {
-		width: 2.1rem;
-		height: 2.1rem;
-		border-radius: 12px;
+		width: 1.95rem;
+		height: 1.95rem;
+		border-radius: 11px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -299,7 +300,7 @@
 	}
 
 	.provider-name {
-		font-size: 0.84rem;
+		font-size: 0.8rem;
 		font-weight: 700;
 		line-height: 1.2;
 		color: var(--chatbox-tint-primary);
@@ -337,9 +338,9 @@
 	}
 
 	.description {
-		font-size: 0.72rem;
+		font-size: 0.68rem;
 		color: var(--chatbox-tint-tertiary);
-		line-height: 1.35;
+		line-height: 1.3;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -365,17 +366,17 @@
 
 	.scope-note p {
 		margin: 0;
-		font-size: 0.74rem;
-		line-height: 1.4;
+		font-size: 0.7rem;
+		line-height: 1.35;
 		color: var(--chatbox-tint-secondary);
 	}
 
 	.primary-btn,
 	.ghost-btn {
-		min-height: 2.15rem;
-		padding: 0.48rem 0.8rem;
+		min-height: 1.95rem;
+		padding: 0.34rem 0.72rem;
 		border-radius: 999px;
-		font-size: 0.76rem;
+		font-size: 0.72rem;
 		font-weight: 700;
 		cursor: pointer;
 		border: 1px solid transparent;
@@ -411,12 +412,10 @@
 
 	@media (max-width: 960px) {
 		.provider-list {
-			padding: 0.75rem;
+			padding: 0.7rem;
 		}
 
-		.provider-list-header,
 		.field-grid {
-			flex-direction: column;
 			grid-template-columns: minmax(0, 1fr);
 		}
 	}

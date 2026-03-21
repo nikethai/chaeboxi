@@ -126,13 +126,15 @@
 		align-items: center;
 		justify-content: space-between;
 		gap: 0.75rem;
-		min-height: 2.5rem;
-		padding: 0.55rem 0.75rem;
+		min-height: 2.2rem;
+		padding: 0.44rem 0.7rem;
 		border-radius: 12px;
 		border: 1px solid var(--chatbox-border-primary);
 		background: var(--chatbox-background-primary);
 		color: var(--chatbox-tint-primary);
+		font: inherit;
 		text-align: left;
+		box-sizing: border-box;
 		cursor: pointer;
 		transition:
 			background 0.15s ease,

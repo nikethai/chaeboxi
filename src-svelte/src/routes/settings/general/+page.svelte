@@ -180,22 +180,24 @@
 	.settings-page {
 		height: 100%;
 		overflow-y: auto;
-		padding: 1rem;
+		width: min(100%, 920px);
+		margin: 0 auto;
+		padding: 0.85rem 0.9rem 1rem;
 		display: flex;
 		flex-direction: column;
-		gap: 1rem;
+		gap: 0.8rem;
 	}
 
 	.page-header,
 	.card {
 		border: 1px solid var(--chatbox-border-primary);
-		border-radius: 18px;
+		border-radius: 16px;
 		background: color-mix(in srgb, var(--chatbox-background-secondary), transparent 10%);
 	}
 
 	.page-header,
 	.card {
-		padding: 1rem;
+		padding: 0.85rem 0.9rem;
 	}
 
 	.eyebrow {
@@ -214,31 +216,31 @@
 	}
 
 	h1 {
-		font-size: 1.1rem;
+		font-size: 1rem;
 		line-height: 1.16;
 	}
 
 	h2 {
-		font-size: 0.95rem;
+		font-size: 0.9rem;
 	}
 
 	.page-header p:last-child,
 	.card-header p,
 	.switch-copy p {
-		margin: 0.38rem 0 0;
-		font-size: 0.8rem;
-		line-height: 1.45;
+		margin: 0.28rem 0 0;
+		font-size: 0.74rem;
+		line-height: 1.4;
 		color: var(--chatbox-tint-secondary);
 	}
 
 	.settings-grid {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
-		gap: 1rem;
+		gap: 0.8rem;
 	}
 
 	.card-header {
-		margin-bottom: 0.9rem;
+		margin-bottom: 0.72rem;
 	}
 
 	.field-grid {
@@ -251,13 +253,13 @@
 	.switch-stack {
 		display: flex;
 		flex-direction: column;
-		gap: 0.75rem;
+		gap: 0.6rem;
 	}
 
 	.field + .field,
 	.field-grid + .field,
 	.switch-row + .switch-row {
-		margin-top: 0.8rem;
+		margin-top: 0.65rem;
 	}
 
 	.field span {
@@ -268,8 +270,8 @@
 
 	.field input[type='text'] {
 		width: 100%;
-		min-height: 2.5rem;
-		padding: 0.55rem 0.75rem;
+		min-height: 2.2rem;
+		padding: 0.48rem 0.72rem;
 		border-radius: 12px;
 		border: 1px solid var(--chatbox-border-primary);
 		background: var(--chatbox-background-primary);
@@ -280,12 +282,12 @@
 
 	.range-field,
 	.switch-row {
-		display: flex;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
 		align-items: center;
-		justify-content: space-between;
-		gap: 0.9rem;
-		padding: 0.8rem 0.9rem;
-		border-radius: 14px;
+		gap: 0.75rem;
+		padding: 0.64rem 0.76rem;
+		border-radius: 13px;
 		border: 1px solid var(--chatbox-border-primary);
 		background: var(--chatbox-background-primary);
 	}
@@ -316,12 +318,12 @@
 	.segment-group {
 		display: inline-flex;
 		flex-wrap: wrap;
-		gap: 0.45rem;
+		gap: 0.4rem;
 	}
 
 	.segment-btn {
-		min-height: 2.2rem;
-		padding: 0.45rem 0.8rem;
+		min-height: 1.95rem;
+		padding: 0.32rem 0.7rem;
 		border-radius: 999px;
 		border: 1px solid var(--chatbox-border-primary);
 		background: var(--chatbox-background-primary);
@@ -344,18 +346,25 @@
 
 	.switch-copy strong {
 		display: block;
-		font-size: 0.84rem;
+		font-size: 0.8rem;
 		color: var(--chatbox-tint-primary);
 	}
 
 	.switch-row input {
-		width: 1rem;
-		height: 1rem;
+		width: 1.05rem;
+		height: 1.05rem;
 		flex-shrink: 0;
+		accent-color: var(--chatbox-background-brand-primary);
+		align-self: center;
+	}
+
+	@media (max-width: 1120px) {
+		.settings-grid {
+			grid-template-columns: minmax(0, 1fr);
+		}
 	}
 
 	@media (max-width: 960px) {
-		.settings-grid,
 		.field-grid {
 			grid-template-columns: minmax(0, 1fr);
 		}
@@ -363,13 +372,13 @@
 
 	@media (max-width: 720px) {
 		.settings-page {
-			padding: 0.85rem;
+			padding: 0.8rem 0.78rem 0.95rem;
 		}
 
 		.range-field,
 		.switch-row {
-			align-items: flex-start;
-			flex-direction: column;
+			grid-template-columns: minmax(0, 1fr);
+			align-items: start;
 		}
 
 		.range-meta {

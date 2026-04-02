@@ -60,3 +60,35 @@ export function formatElapsedTime(milliseconds: number): string {
 
   return `${minutes}m ${remainingSeconds}s`
 }
+
+/**
+ * Format elapsed time in a humanized, natural language format
+ * @param milliseconds - Time in milliseconds
+ * @returns Humanized time string (e.g., "less than a second", "12 seconds", "1 minute 23 seconds")
+ */
+export function formatHumanizedDuration(milliseconds: number): string {
+  if (milliseconds < 1000) {
+    return 'less than a second'
+  }
+
+  const totalSeconds = Math.round(milliseconds / 1000)
+
+  if (totalSeconds === 1) {
+    return '1 second'
+  }
+
+  if (totalSeconds < 60) {
+    return `${totalSeconds} seconds`
+  }
+
+  const minutes = Math.floor(totalSeconds / 60)
+  const remainingSeconds = totalSeconds % 60
+  const minuteStr = minutes === 1 ? '1 minute' : `${minutes} minutes`
+
+  if (remainingSeconds === 0) {
+    return minuteStr
+  }
+
+  const secondStr = remainingSeconds === 1 ? '1 second' : `${remainingSeconds} seconds`
+  return `${minuteStr} ${secondStr}`
+}

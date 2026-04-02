@@ -102,6 +102,7 @@ module.exports = {
       animation: {
         'fade-in': 'fadeIn 1s ease-out',
         flash: 'flash 0.5s ease-in-out 2',
+        shimmer: 'shimmer 2s infinite linear',
       },
       keyframes: {
         fadeIn: {
@@ -111,6 +112,10 @@ module.exports = {
         flash: {
           '0%, 100%': { opacity: '1' },
           '50%': { opacity: '0.3' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '-200% 0' },
+          '100%': { backgroundPosition: '200% 0' },
         },
       },
     },

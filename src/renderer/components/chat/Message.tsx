@@ -47,6 +47,7 @@ import { isContainRenderableCode, MessageArtifact } from '../Artifact'
 import { AssistantAvatar, SystemAvatar, UserAvatar } from '../common/Avatar'
 import { ScalableIcon } from '../common/ScalableIcon'
 import Loading from '../icons/Loading'
+import { ThinkingGroupUI } from '../message-parts/ThinkingGroupUI'
 import { ReasoningContentUI, ToolCallPartUI } from '../message-parts/ToolCallPartUI'
 import { MessageAttachmentGrid } from './MessageAttachmentGrid'
 import MessageErrTips from './MessageErrTips'
@@ -239,6 +240,52 @@ const _Message: FC<Props> = (props) => {
 
   const contentParts = msg.contentParts || []
 
+  // Group consecutive reasoning + tool-call parts into thinking groups
+  const groupedParts = useMemo(() => {
+    if (contentParts.length === 0) return []
+
+    type GroupItem =
+      | { type: 'thinking-group'; parts: typeof contentParts; startIndex: number }
+      | { type: 'single'; part: (typeof contentParts)[number]; index: number }
+
+    const groups: GroupItem[] = []
+    let currentGroup: typeof contentParts = []
+    let groupStartIndex = 0
+
+    for (let i = 0; i < contentParts.length; i++) {
+      const part = contentParts[i]
+      if (part.type === 'reasoning' || part.type === 'tool-call') {
+        if (currentGroup.length === 0) {
+          groupStartIndex = i
+        }
+        currentGroup.push(part)
+      } else {
+        // Flush any pending thinking group
+        if (currentGroup.length > 0) {
+          if (currentGroup.length > 1) {
+            groups.push({ type: 'thinking-group', parts: [...currentGroup], startIndex: groupStartIndex })
+          } else {
+            groups.push({ type: 'single', part: currentGroup[0], index: groupStartIndex })
+          }
+          currentGroup = []
+        }
+        groups.push({ type: 'single', part, index: i })
+      }
+    }
+    // Flush remaining
+    if (currentGroup.length > 0) {
+      if (currentGroup.length > 1) {
+        groups.push({ type: 'thinking-group', parts: [...currentGroup], startIndex: groupStartIndex })
+      } else {
+        groups.push({ type: 'single', part: currentGroup[0], index: groupStartIndex })
+      }
+    }
+
+    return groups
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- contentParts may be mutated in place during streaming;
+    // include length and generating flag so the memo recomputes when parts are pushed or generation ends
+  }, [contentParts, contentParts.length, msg.generating])
+
   const CollapseButton = (
     <span
       className="cursor-pointer inline-block font-bold text-blue-500 hover:text-white hover:bg-blue-500"
@@ -413,37 +460,47 @@ const _Message: FC<Props> = (props) => {
                   // 正常情况下，应该考虑优化 msg-content 的样式。现在这里是一个临时的偷懒方式。
                   getMessageText(msg, true, true).trim() === '' && <p></p>
                 }
-                {contentParts && contentParts.length > 0 && (
+                {groupedParts.length > 0 && (
                   <div>
-                    {contentParts.map((item, index) =>
-                      item.type === 'reasoning' ? (
-                        <div key={`reasoning-${msg.id}-${index}`}>
+                    {groupedParts.map((group, groupIndex) =>
+                      group.type === 'thinking-group' ? (
+                        <div key={`thinking-group-${msg.id}-${group.startIndex}`}>
+                          <ThinkingGroupUI
+                            message={msg}
+                            parts={group.parts}
+                            isLastGroup={groupIndex === groupedParts.length - 1}
+                          />
+                        </div>
+                      ) : group.part.type === 'reasoning' ? (
+                        <div key={`reasoning-${msg.id}-${group.index}`}>
                           <ReasoningContentUI
                             message={msg}
-                            part={item}
+                            part={group.part}
                             onCopyReasoningContent={onCopyReasoningContent}
                           />
                         </div>
-                      ) : item.type === 'text' ? (
-                        <div key={`text-${msg.id}-${index}`}>
+                      ) : group.part.type === 'text' ? (
+                        <div key={`text-${msg.id}-${group.index}`}>
                           {enableMarkdownRendering && !isCollapsed ? (
                             <Markdown
-                              uniqueId={`${msg.id}-${index}`}
+                              uniqueId={`${msg.id}-${group.index}`}
                               enableLaTeXRendering={enableLaTeXRendering}
                               enableMermaidRendering={enableMermaidRendering}
                               generating={msg.generating}
                             >
-                              {item.text || ''}
+                              {group.part.text || ''}
                             </Markdown>
                           ) : (
                             <div className="break-words whitespace-pre-line">
-                              {needCollapse && isCollapsed ? `${item.text.slice(0, collapseThreshold)}...` : item.text}
+                              {needCollapse && isCollapsed
+                                ? `${group.part.text.slice(0, collapseThreshold)}...`
+                                : group.part.text}
                               {needCollapse && isCollapsed && CollapseButton}
                             </div>
                           )}
                         </div>
-                      ) : item.type === 'info' ? (
-                        <Flex key={`info-${item.text}`} className="mb-2 ">
+                      ) : group.part.type === 'info' ? (
+                        <Flex key={`info-${group.part.text}`} className="mb-2 ">
                           <Flex
                             className="bg-chatbox-background-brand-secondary border-0 border-l-2 border-solid border-chatbox-tint-brand rounded-r-md"
                             align="center"
@@ -457,38 +514,41 @@ const _Message: FC<Props> = (props) => {
                             />
 
                             <Text size="xs" c="chatbox-brand">
-                              {item.text}
+                              {group.part.text}
                             </Text>
                           </Flex>
                         </Flex>
-                      ) : item.type === 'image' ? (
+                      ) : group.part.type === 'image' ? (
                         props.sessionType !== 'picture' && (
-                          <div key={`image-${item.storageKey}`} className="mt-2">
+                          <div key={`image-${group.part.storageKey}`} className="mt-2">
                             <PictureGallery
-                              key={`image-${item.storageKey}`}
-                              pictures={[item]}
+                              key={`image-${group.part.storageKey}`}
+                              pictures={[group.part]}
                               compact={msg.role === 'user'}
                             />
-                            {item.ocrResult && (
+                            {group.part.ocrResult && (
                               <div
                                 className="my-2 p-2 bg-chatbox-background-brand-secondary rounded-md cursor-pointer hover:bg-chatbox-background-brand-secondary-hover transition-colors"
                                 onClick={async (e) => {
                                   e.stopPropagation()
                                   await NiceModal.show('content-viewer', {
                                     title: t('OCR Text Content'),
-                                    content: item.ocrResult,
+                                    content: group.part.ocrResult,
                                   })
                                 }}
                               >
-                                <Typography variant="caption" className="text-gray-600 dark:text-gray-400 block mb-1">
-                                  {t('OCR Text')} ({item.ocrResult.length} {t('characters')})
+                                <Typography
+                                  variant="caption"
+                                  className="text-gray-600 dark:text-gray-400 block mb-1"
+                                >
+                                  {t('OCR Text')} ({group.part.ocrResult.length} {t('characters')})
                                 </Typography>
                                 <Typography
                                   variant="body2"
                                   className="line-clamp-2 text-gray-700 dark:text-gray-300"
-                                  title={item.ocrResult}
+                                  title={group.part.ocrResult}
                                 >
-                                  {item.ocrResult}
+                                  {group.part.ocrResult}
                                 </Typography>
                                 <Typography
                                   variant="caption"
@@ -500,8 +560,8 @@ const _Message: FC<Props> = (props) => {
                             )}
                           </div>
                         )
-                      ) : item.type === 'tool-call' ? (
-                        <ToolCallPartUI key={item.toolCallId} part={item as MessageToolCallPart} />
+                      ) : group.part.type === 'tool-call' ? (
+                        <ToolCallPartUI key={group.part.toolCallId} part={group.part as MessageToolCallPart} />
                       ) : null
                     )}
                   </div>

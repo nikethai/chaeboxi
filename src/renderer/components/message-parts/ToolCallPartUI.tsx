@@ -20,11 +20,11 @@ import clsx from 'clsx'
 import { type FC, type ReactNode, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import z from 'zod'
-import { formatElapsedTime, useThinkingTimer } from '@/hooks/useThinkingTimer'
-import { cn } from '@/lib/utils'
+import { formatElapsedTime, formatHumanizedDuration, useThinkingTimer } from '@/hooks/useThinkingTimer'
 import { getToolName } from '@/packages/tools'
 import type { SearchResultItem } from '@/packages/web-search'
 import { ScalableIcon } from '../common/ScalableIcon'
+import Markdown from '@/components/Markdown'
 
 const ToolCallHeader: FC<{ part: MessageToolCallPart; action: ReactNode; onClick: () => void }> = (props) => {
   return (
@@ -246,6 +246,7 @@ export const ReasoningContentUI: FC<{
   // This ensures the timer stops immediately when thinking ends and persists the final duration
   const displayTime =
     part?.duration && part.duration > 0 ? part.duration : isThinking && elapsedTime > 0 ? elapsedTime : 0
+  const shouldRenderMarkdown = isExpanded && message.generating !== true && reasoningContent.length > 0
 
   const toggleExpanded = useCallback(() => {
     setIsExpanded((prev) => !prev)
@@ -255,12 +256,18 @@ export const ReasoningContentUI: FC<{
     <Paper withBorder radius="md" mb="xs">
       <Box onClick={toggleExpanded} className="cursor-pointer group">
         <Group px="xs" justify="space-between" className="w-full">
-          <Group gap="xs" className={cn(isThinking ? 'animate-pulse' : '')}>
+          <Group gap="xs">
             <ScalableIcon icon={IconBulb} color="var(--chatbox-tint-warning)" />
-            <Text fw={600} size="sm">
-              {isThinking ? t('Thinking') : t('Deeply thought')}
+            <Text fw={600} size="sm" className={isThinking ? 'animate-shimmer shimmer-text' : ''}>
+              {isThinking
+                ? t('Thinking')
+                : shouldShowTimer && displayTime > 0
+                  ? displayTime < 1000
+                    ? t('Thought for less than a second')
+                    : t('Thought for {{duration}}', { duration: formatHumanizedDuration(displayTime) })
+                  : t('Thought')}
             </Text>
-            {reasoningContent.length > 0 && shouldShowTimer && (
+            {isThinking && reasoningContent.length > 0 && shouldShowTimer && (
               <Text size="xs" c="chatbox-tertiary">
                 ({formatElapsedTime(displayTime)})
               </Text>
@@ -295,9 +302,23 @@ export const ReasoningContentUI: FC<{
             borderTop: '1px solid var(--paper-border-color)',
           }}
         >
-          <Text size="sm" px={'sm'} style={{ whiteSpace: 'pre-line', lineHeight: 1.5 }}>
-            {reasoningContent}
-          </Text>
+          <Box px="sm" className="reasoning-content" style={{ opacity: 0.85 }}>
+            {shouldRenderMarkdown ? (
+              <Markdown
+                enableLaTeXRendering={false}
+                enableMermaidRendering={false}
+                hiddenCodeCopyButton={false}
+                className="text-sm"
+                generating={false}
+              >
+                {reasoningContent}
+              </Markdown>
+            ) : (
+              <Text size="sm" m={0} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {reasoningContent}
+              </Text>
+            )}
+          </Box>
         </Box>
       </Collapse>
     </Paper>

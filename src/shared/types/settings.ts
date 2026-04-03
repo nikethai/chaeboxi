@@ -335,6 +335,9 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
   showModelName: z.boolean().optional().catch(undefined),
   showMessageTimestamp: z.boolean().optional().catch(undefined),
   showFirstTokenLatency: z.boolean().optional().catch(undefined),
+  showTokenSpeed: z.boolean().optional().catch(undefined),
+
+  accentColor: z.string().optional().catch(undefined),
 
   theme: z.nativeEnum(Theme),
   language: z.enum([

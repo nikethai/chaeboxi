@@ -1,31 +1,31 @@
-import { Button as MantineButton, Switch as MantineSwitch, Text } from '@mantine/core'
+import { Button as MantineButton, Flex, Stack, Switch as MantineSwitch, Text, Tooltip } from '@mantine/core'
 import EditIcon from '@mui/icons-material/Edit'
 import MoreHorizOutlinedIcon from '@mui/icons-material/MoreHorizOutlined'
 import StarIcon from '@mui/icons-material/Star'
 import StarOutlineIcon from '@mui/icons-material/StarOutline'
-import {
-  Avatar,
-  Box,
-  Button,
-  ButtonGroup,
-  Divider,
-  FormControlLabel,
-  FormGroup,
-  IconButton,
-  MenuItem,
-  Switch,
-  TextField,
-  Typography,
-  useTheme,
-} from '@mui/material'
-import { IconPlus } from '@tabler/icons-react'
+import Avatar from '@mui/material/Avatar'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import ButtonGroup from '@mui/material/ButtonGroup'
+import Divider from '@mui/material/Divider'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import FormGroup from '@mui/material/FormGroup'
+import IconButton from '@mui/material/IconButton'
+import MenuItem from '@mui/material/MenuItem'
+import Switch from '@mui/material/Switch'
+import TextField from '@mui/material/TextField'
+import Typography from '@mui/material/Typography'
+import { useTheme } from '@mui/material/styles'
+import { IconInfoCircle, IconPlus } from '@tabler/icons-react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuidv4 } from 'uuid'
 import { ConfirmDeleteMenuItem } from '@/components/common/ConfirmDeleteButton'
 import Page from '@/components/layout/Page'
+import LazyNumberInput from '@/components/common/LazyNumberInput'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
+import SliderWithInput from '@/components/common/SliderWithInput'
 import StyledMenu from '@/components/StyledMenu'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
@@ -253,9 +253,12 @@ function MiniItem(props: MiniItemProps) {
           width: '28px',
           height: '28px',
           backgroundColor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#e9ecef'),
+          fontSize: '16px',
         }}
-        src={props.detail.picUrl}
-      />
+        src={props.detail.emojiAvatar ? undefined : props.detail.picUrl}
+      >
+        {props.detail.emojiAvatar || undefined}
+      </Avatar>
       <Box
         sx={{
           marginLeft: '12px',
@@ -388,6 +391,9 @@ function CopilotForm(props: CopilotFormProps) {
     if (copilotEdit.picUrl) {
       copilotEdit.picUrl = copilotEdit.picUrl.trim()
     }
+    if (copilotEdit.emojiAvatar) {
+      copilotEdit.emojiAvatar = copilotEdit.emojiAvatar.trim()
+    }
     if (copilotEdit.name.length === 0) {
       setHelperTexts({
         ...helperTexts,
@@ -405,6 +411,17 @@ function CopilotForm(props: CopilotFormProps) {
     props.save(copilotEdit)
     trackingEvent('create_copilot', { event_category: 'user' })
   }
+
+  const updateModelSettings = (patch: Partial<CopilotDetail['modelSettings'] & object>) => {
+    setCopilotEdit((prev) => ({
+      ...prev,
+      modelSettings: {
+        ...prev.modelSettings,
+        ...patch,
+      },
+    }))
+  }
+
   return (
     <Box
       sx={{
@@ -437,16 +454,147 @@ function CopilotForm(props: CopilotFormProps) {
         onChange={inputHandler('prompt')}
         helperText={helperTexts.prompt}
       />
-      <TextField
-        margin="dense"
-        label={t('Copilot Avatar URL')}
-        placeholder="http://xxxxx/xxx.png"
-        fullWidth
-        variant="outlined"
-        value={copilotEdit.picUrl}
-        onChange={inputHandler('picUrl')}
-      />
-      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+
+      {/* Avatar section: emoji avatar + URL */}
+      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', mt: 1 }}>
+        <TextField
+          margin="dense"
+          label={t('Emoji Avatar')}
+          placeholder="🔬"
+          variant="outlined"
+          sx={{ width: '120px', flexShrink: 0 }}
+          value={copilotEdit.emojiAvatar ?? ''}
+          onChange={inputHandler('emojiAvatar')}
+          inputProps={{ maxLength: 4 }}
+        />
+        <TextField
+          margin="dense"
+          label={t('Copilot Avatar URL')}
+          placeholder="http://xxxxx/xxx.png"
+          fullWidth
+          variant="outlined"
+          value={copilotEdit.picUrl ?? ''}
+          onChange={inputHandler('picUrl')}
+          helperText={copilotEdit.emojiAvatar ? t('Emoji avatar takes priority over URL') : undefined}
+        />
+      </Box>
+
+      {/* Model Settings section */}
+      <Box
+        sx={{
+          mt: 2,
+          mb: 1,
+          border: '1px solid',
+          borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
+          borderRadius: '8px',
+          overflow: 'hidden',
+        }}
+      >
+        <Box
+          sx={{
+            px: 2,
+            py: 1.5,
+            borderBottom: '1px solid',
+            borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
+          }}
+        >
+          <Typography variant="body2" fontWeight={700}>
+            {t('Model Settings Override')}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {t('Leave blank to use session defaults')}
+          </Typography>
+        </Box>
+        <Box sx={{ px: 2, py: 1.5 }}>
+          <Stack gap="md">
+            {/* Temperature */}
+            <Stack gap="xs">
+              <Flex align="center" gap="xs">
+                <Text size="sm" fw="600">
+                  {t('Temperature')}
+                </Text>
+                <Tooltip
+                  label={t(
+                    'Modify the creativity of AI responses; the higher the value, the more random and intriguing the answers become, while a lower value ensures greater stability and reliability.'
+                  )}
+                  withArrow
+                  maw={320}
+                  className="!whitespace-normal"
+                  zIndex={3000}
+                  events={{ hover: true, focus: true, touch: true }}
+                >
+                  <ScalableIcon icon={IconInfoCircle} size={18} className="text-chatbox-tint-tertiary" />
+                </Tooltip>
+              </Flex>
+              <SliderWithInput
+                value={copilotEdit.modelSettings?.temperature}
+                onChange={(v) => updateModelSettings({ temperature: v })}
+                max={2}
+                step={0.1}
+              />
+            </Stack>
+
+            {/* Top P */}
+            <Stack gap="xs">
+              <Flex align="center" gap="xs">
+                <Text size="sm" fw="600">
+                  Top P
+                </Text>
+                <Tooltip
+                  label={t(
+                    'The topP parameter controls the diversity of AI responses: lower values make the output more focused and predictable, while higher values allow for more varied and creative replies.'
+                  )}
+                  withArrow
+                  maw={320}
+                  className="!whitespace-normal"
+                  zIndex={3000}
+                  events={{ hover: true, focus: true, touch: true }}
+                >
+                  <ScalableIcon icon={IconInfoCircle} size={18} className="text-chatbox-tint-tertiary" />
+                </Tooltip>
+              </Flex>
+              <SliderWithInput
+                value={copilotEdit.modelSettings?.topP}
+                onChange={(v) => updateModelSettings({ topP: v })}
+                max={1}
+                step={0.05}
+              />
+            </Stack>
+
+            {/* Max Tokens */}
+            <Flex justify="space-between" align="center">
+              <Flex align="center" gap="xs">
+                <Text size="sm" fw="600">
+                  {t('Max Output Tokens')}
+                </Text>
+                <Tooltip
+                  label={t(
+                    'Set the maximum number of tokens for model output. Please set it within the acceptable range of the model, otherwise errors may occur.'
+                  )}
+                  withArrow
+                  maw={320}
+                  className="!whitespace-normal"
+                  zIndex={3000}
+                  events={{ hover: true, focus: true, touch: true }}
+                >
+                  <ScalableIcon icon={IconInfoCircle} size={18} className="text-chatbox-tint-tertiary" />
+                </Tooltip>
+              </Flex>
+              <LazyNumberInput
+                width={96}
+                value={copilotEdit.modelSettings?.maxTokens}
+                onChange={(v) => updateModelSettings({ maxTokens: typeof v === 'number' ? v : undefined })}
+                min={0}
+                step={1024}
+                allowDecimal={false}
+                placeholder={t('Not set') || ''}
+              />
+            </Flex>
+          </Stack>
+        </Box>
+      </Box>
+
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
         <FormGroup row>
           <FormControlLabel
             control={<Switch />}

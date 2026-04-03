@@ -210,6 +210,7 @@ export const MessageSchema = z.object({
   usage: MessageUsageSchema.optional().catch(undefined),
   timestamp: z.number().optional(),
   firstTokenLatency: z.number().optional(),
+  tokenSpeed: z.number().optional(), // final tokens/sec after streaming completes
   finishReason: z.string().optional(),
   tokenCountMap: TokenCountMapSchema.optional(), // estimate token count as input
   tokenCalculatedAt: TokenCalculatedAtSchema,

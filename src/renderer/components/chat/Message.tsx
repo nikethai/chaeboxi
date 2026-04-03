@@ -1,7 +1,9 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { ActionIcon, type ActionIconProps, Flex, Image as Img, Loader, Text, Tooltip as Tooltip1 } from '@mantine/core'
-import { Grid, Typography, useTheme } from '@mui/material'
 import Box from '@mui/material/Box'
+import Grid from '@mui/material/Grid'
+import Typography from '@mui/material/Typography'
+import { useTheme } from '@mui/material/styles'
 import type { Message, MessagePicture, MessageToolCallPart, SessionType } from '@shared/types'
 import { getMessageText } from '@shared/utils/message'
 import {
@@ -89,6 +91,7 @@ const _Message: FC<Props> = (props) => {
     showWordCount,
     showTokenUsed,
     showFirstTokenLatency,
+    showTokenSpeed,
     enableMarkdownRendering,
     enableLaTeXRendering,
     enableMermaidRendering,
@@ -197,6 +200,10 @@ const _Message: FC<Props> = (props) => {
     if (showFirstTokenLatency && msg.role === 'assistant' && !msg.generating) {
       const latency = msg.firstTokenLatency ? `${msg.firstTokenLatency}ms` : 'unknown'
       tips.push(`first token latency: ${latency}`)
+    }
+    if (showTokenSpeed && msg.role === 'assistant' && !msg.generating) {
+      const speed = msg.tokenSpeed !== undefined ? `${msg.tokenSpeed} tok/s` : 'unknown'
+      tips.push(`token speed: ${speed}`)
     }
     if (showModelName && props.msg.role === 'assistant') {
       tips.push(`model: ${props.msg.model || 'unknown'}`)
@@ -577,6 +584,12 @@ const _Message: FC<Props> = (props) => {
               {needCollapse && !isCollapsed && CollapseButton}
 
               {msg.generating && msg.contentParts.length === 0 && <Loading />}
+
+              {msg.generating && msg.role === 'assistant' && showTokenSpeed && msg.tokenSpeed !== undefined && (
+                <Text size="xs" c="chatbox-tertiary" className="mt-0.5">
+                  ⚡ {msg.tokenSpeed} tok/s
+                </Text>
+              )}
 
               {!msg.generating && msg.role === 'assistant' && tips.length > 0 && (
                 <Text c="chatbox-tertiary">{tips.join(', ')}</Text>

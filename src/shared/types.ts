@@ -71,16 +71,24 @@ export interface SponsorAboutBanner {
   description: string
 }
 
+export interface CopilotModelSettings {
+  temperature?: number
+  topP?: number
+  maxTokens?: number
+}
+
 export interface CopilotDetail {
   id: string
   name: string
   picUrl?: string
+  emojiAvatar?: string
   prompt: string
   demoQuestion?: string
   demoAnswer?: string
   starred?: boolean
   usedCount: number
   shared?: boolean
+  modelSettings?: CopilotModelSettings
 }
 
 export interface Toast {

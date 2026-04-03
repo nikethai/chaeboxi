@@ -69,7 +69,7 @@ function Index() {
   useEffect(() => {
     setSession((old) => ({
       ...old,
-      picUrl: selectedCopilot?.picUrl,
+      picUrl: selectedCopilot?.emojiAvatar ? undefined : selectedCopilot?.picUrl,
       name: selectedCopilot?.name || 'Untitled',
       messages: selectedCopilot
         ? [
@@ -227,7 +227,7 @@ function Index() {
             <Box px="md">
               <Stack gap="sm" className={widthFull ? 'w-full' : 'w-full max-w-4xl mx-auto'}>
                 <Flex align="center" gap="sm">
-                  <CopilotItem name={session.name} picUrl={session.picUrl} selected />
+                  <CopilotItem name={session.name} picUrl={session.picUrl} emojiAvatar={selectedCopilot?.emojiAvatar} selected />
                   <ActionIcon
                     size={32}
                     radius={16}
@@ -370,6 +370,7 @@ const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect
                   key={copilot.id}
                   name={copilot.name}
                   picUrl={copilot.picUrl}
+                  emojiAvatar={copilot.emojiAvatar}
                   selected={selectedId === copilot.id}
                   onClick={() => {
                     onSelect?.(copilot)
@@ -402,12 +403,14 @@ const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect
 const CopilotItem = ({
   name,
   picUrl,
+  emojiAvatar,
   selected,
   onClick,
   noAvatar = false,
 }: {
   name: string
   picUrl?: string
+  emojiAvatar?: string
   selected?: boolean
   onClick?(): void
   noAvatar?: boolean
@@ -428,8 +431,8 @@ const CopilotItem = ({
       onClick={onClick}
     >
       {!noAvatar && (
-        <Avatar src={picUrl} color="chatbox-brand" size={isSmallScreen ? 20 : 24}>
-          {name.slice(0, 1)}
+        <Avatar src={emojiAvatar ? undefined : picUrl} color="chatbox-brand" size={isSmallScreen ? 20 : 24}>
+          {emojiAvatar || name.slice(0, 1)}
         </Avatar>
       )}
       <Text fw="600" c={selected ? 'chatbox-brand' : 'chatbox-primary'}>

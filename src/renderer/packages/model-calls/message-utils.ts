@@ -6,6 +6,19 @@ import { compact } from 'lodash'
 import { createModelDependencies } from '@/adapters'
 import { cloneMessage, getMessageText } from '@/utils/message'
 
+/**
+ * Replace copilot template variables in a system prompt string.
+ * Supported variables:
+ *   {{CURRENT_DATE}} → YYYY-MM-DD
+ *   {{CURRENT_TIME}} → HH:MM
+ */
+export function replaceCopilotTemplateVars(text: string): string {
+  const now = dayjs()
+  return text
+    .replace(/\{\{CURRENT_DATE\}\}/g, now.format('YYYY-MM-DD'))
+    .replace(/\{\{CURRENT_TIME\}\}/g, now.format('HH:mm'))
+}
+
 async function convertContentParts<T extends TextPart | ImagePart | FilePart>(
   contentParts: MessageContentParts,
   imageType: 'image' | 'file',
@@ -80,7 +93,7 @@ export async function convertToModelMessages(
         case 'system':
           return {
             role: 'system' as const,
-            content: getMessageText(m),
+            content: replaceCopilotTemplateVars(getMessageText(m)),
           }
         case 'user': {
           const contentParts = await convertUserContentParts(m.contentParts || [], dependencies, options)

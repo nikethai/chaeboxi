@@ -62,13 +62,16 @@ import {
 } from '@/packages/context-management'
 import { trackingEvent } from '@/packages/event'
 import { getModelContextWindowSync } from '@/packages/model-context'
+import { replacePromptTemplateVars } from '@/packages/model-calls/message-utils'
 import * as picUtils from '@/packages/pic_utils'
 import platform from '@/platform'
 import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
+import { navigateToSettings } from '@/modals/Settings'
 import * as atoms from '@/stores/atoms'
 import { compactionUIStateMapAtom } from '@/stores/atoms/compactionAtoms'
 import * as chatStore from '@/stores/chatStore'
+import { usePromptPresets } from '@/stores/promptPresetsStore'
 import { useSession, useSessionSettings } from '@/stores/chatStore'
 import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
@@ -99,6 +102,7 @@ import {
   storeLinkPromise,
 } from './preprocessState'
 import TokenCountMenu from './TokenCountMenu'
+import PresetPicker, { filterPresets } from './PresetPicker'
 
 export type InputBoxPayload = {
   constructedMessage: Message
@@ -182,6 +186,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     )
 
     const { messageInput, setMessageInput, clearDraft } = useMessageInput('', { isNewSession })
+    const { promptPresets } = usePromptPresets()
 
     // Pre-constructed message state (scoped by session)
     const [preConstructedMessage, setPreConstructedMessage] = useAtom(
@@ -432,6 +437,38 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     )
 
     const { addInputBoxHistory, getPreviousHistoryInput, getNextHistoryInput, resetHistoryIndex } = useInputBoxHistory()
+    const [presetHighlightIndex, setPresetHighlightIndex] = useState(0)
+    const showPresetPicker = useMemo(
+      () => sessionType === 'chat' && messageInput.startsWith('/') && !messageInput.includes('\n'),
+      [messageInput, sessionType]
+    )
+    const presetQuery = useMemo(() => (showPresetPicker ? messageInput.slice(1) : ''), [messageInput, showPresetPicker])
+    const filteredPresets = useMemo(
+      () => filterPresets(promptPresets, presetQuery).slice(0, 8),
+      [presetQuery, promptPresets]
+    )
+
+    useEffect(() => {
+      setPresetHighlightIndex(0)
+    }, [presetQuery])
+
+    const handlePresetSelect = useCallback(
+      async (presetId: string) => {
+        const preset = filteredPresets.find((item) => item.id === presetId)
+        if (!preset) {
+          return
+        }
+
+        const nextValue = await replacePromptTemplateVars(preset.content, { readClipboard: true })
+        setMessageInput(nextValue)
+        resetHistoryIndex()
+        dom.focusMessageInput()
+        setTimeout(() => {
+          dom.setMessageInputCursorToEnd()
+        }, 0)
+      },
+      [filteredPresets, resetHistoryIndex, setMessageInput]
+    )
 
     const closeSelectModelErrorTipCb = useRef<NodeJS.Timeout>()
     const handleSubmit = async (needGenerating = true) => {
@@ -519,6 +556,43 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     )
 
     const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (showPresetPicker) {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault()
+          if (filteredPresets.length > 0) {
+            setPresetHighlightIndex((index) => (index + 1) % filteredPresets.length)
+          }
+          return
+        }
+
+        if (event.key === 'ArrowUp') {
+          event.preventDefault()
+          if (filteredPresets.length > 0) {
+            setPresetHighlightIndex((index) => (index - 1 + filteredPresets.length) % filteredPresets.length)
+          }
+          return
+        }
+
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          setMessageInput('')
+          return
+        }
+
+        if (
+          event.key === 'Enter' &&
+          !event.shiftKey &&
+          !event.ctrlKey &&
+          !event.altKey &&
+          !event.metaKey &&
+          filteredPresets[presetHighlightIndex]
+        ) {
+          event.preventDefault()
+          void handlePresetSelect(filteredPresets[presetHighlightIndex].id)
+          return
+        }
+      }
+
       const isPressedHash: Record<ShortcutSendValue, boolean> = {
         '': false,
         Enter: event.keyCode === 13 && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey,
@@ -877,12 +951,25 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           {currentSessionId && <CompactionStatus sessionId={currentSessionId} />}
           <Stack
             className={cn(
-              'rounded-md bg-chatbox-background-secondary justify-between px-3 py-2',
+              'relative rounded-md bg-chatbox-background-secondary justify-between px-3 py-2',
               !isSmallScreen && 'min-h-[92px]'
             )}
             style={{ border: '1px solid var(--chatbox-border-primary)' }}
             gap="xs"
           >
+            {showPresetPicker && (
+              <PresetPicker
+                highlightedIndex={presetHighlightIndex}
+                onHighlightChange={setPresetHighlightIndex}
+                onManage={() => navigateToSettings('/chat')}
+                onSelect={(preset) => {
+                  void handlePresetSelect(preset.id)
+                }}
+                presets={promptPresets}
+                query={presetQuery}
+              />
+            )}
+
             {/* Input Row */}
             <Flex align="flex-end" gap={4}>
               <Textarea

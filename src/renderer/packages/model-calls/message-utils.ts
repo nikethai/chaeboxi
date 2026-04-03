@@ -19,6 +19,27 @@ export function replaceCopilotTemplateVars(text: string): string {
     .replace(/\{\{CURRENT_TIME\}\}/g, now.format('HH:mm'))
 }
 
+export async function replacePromptTemplateVars(
+  text: string,
+  options: {
+    readClipboard?: boolean
+  } = {}
+): Promise<string> {
+  let nextText = replaceCopilotTemplateVars(text)
+
+  if (options.readClipboard && nextText.includes('{{CLIPBOARD}}')) {
+    let clipboardText = ''
+    try {
+      clipboardText = await navigator.clipboard.readText()
+    } catch (error) {
+      console.warn('Failed to read clipboard for prompt template vars:', error)
+    }
+    nextText = nextText.replace(/\{\{CLIPBOARD\}\}/g, clipboardText)
+  }
+
+  return nextText
+}
+
 async function convertContentParts<T extends TextPart | ImagePart | FilePart>(
   contentParts: MessageContentParts,
   imageType: 'image' | 'file',
@@ -118,7 +139,7 @@ export async function convertToModelMessages(
       }
     })
   )
-  
+
   // Filter out null values manually instead of using compact
   return results.filter((result): result is ModelMessage => result !== null)
 }

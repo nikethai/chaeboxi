@@ -247,6 +247,14 @@ export const SessionThreadSchema = z.object({
   compactionPoints: z.array(CompactionPointSchema).optional(),
 })
 
+export const FolderSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  emoji: z.string().optional(),
+  defaultCopilotId: z.string().optional(),
+  order: z.number(),
+})
+
 export const SessionSchema = z.object({
   id: z.string(),
   type: SessionTypeSchema.optional(),
@@ -256,6 +264,9 @@ export const SessionSchema = z.object({
   starred: z.boolean().optional(),
   hidden: z.boolean().optional(), // Hidden from session list (e.g., migrated picture sessions)
   copilotId: z.string().optional(),
+  folderId: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  archived: z.boolean().optional(),
   assistantAvatarKey: z.string().optional(),
   settings: SessionSettingsSchema.optional(),
   threads: z.array(SessionThreadSchema).optional(),
@@ -269,6 +280,9 @@ export const SessionMetaSchema = SessionSchema.pick({
   name: true,
   starred: true,
   hidden: true,
+  folderId: true,
+  tags: true,
+  archived: true,
   assistantAvatarKey: true,
   picUrl: true,
   type: true,
@@ -305,6 +319,7 @@ export type MessageStatus = z.infer<typeof MessageStatusSchema>
 export type Message = z.infer<typeof MessageSchema>
 export type SessionType = z.infer<typeof SessionTypeSchema>
 export type CompactionPoint = z.infer<typeof CompactionPointSchema>
+export type Folder = z.infer<typeof FolderSchema>
 export type Session = z.infer<typeof SessionSchema>
 export type SessionMeta = z.infer<typeof SessionMetaSchema>
 export type SessionThread = z.infer<typeof SessionThreadSchema>

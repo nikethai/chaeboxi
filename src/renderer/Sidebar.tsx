@@ -1,8 +1,10 @@
-import { ActionIcon, Box, Button, Flex, Image, NavLink, Stack, Text, Tooltip } from '@mantine/core'
+import { ActionIcon, Box, Button, Flex, Image, NavLink, Stack, Text, TextInput, Tooltip } from '@mantine/core'
 import SwipeableDrawer from '@mui/material/SwipeableDrawer'
 import {
+  IconArchive,
   IconCirclePlus,
   IconCode,
+  IconFolder,
   IconInfoCircle,
   IconLayoutSidebarLeftCollapse,
   IconMessageChatbot,
@@ -15,9 +17,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from './components/common/Divider'
 import { ScalableIcon } from './components/common/ScalableIcon'
+import { AdaptiveModal } from './components/common/AdaptiveModal'
 import ThemeSwitchButton from './components/dev/ThemeSwitchButton'
 import SessionList from './components/session/SessionList'
 import { FORCE_ENABLE_DEV_PAGES } from './dev/devToolsConfig'
+import { useFolders } from './hooks/useFolders'
 import useNeedRoomForMacWinControls from './hooks/useNeedRoomForWinControls'
 import { useIsSmallScreen, useSidebarWidth } from './hooks/useScreenChange'
 import useVersion from './hooks/useVersion'
@@ -34,6 +38,7 @@ export default function Sidebar() {
   const versionHook = useVersion()
   const language = useLanguage()
   const navigate = useNavigate()
+  const { addFolder } = useFolders()
   const showSidebar = useUIStore((s) => s.showSidebar)
   const setShowSidebar = useUIStore((s) => s.setShowSidebar)
   const setSidebarWidth = useUIStore((s) => s.setSidebarWidth)
@@ -45,6 +50,10 @@ export default function Sidebar() {
   const isSmallScreen = useIsSmallScreen()
 
   const [isResizing, setIsResizing] = useState(false)
+  const [showArchived, setShowArchived] = useState(false)
+  const [folderModalOpened, setFolderModalOpened] = useState(false)
+  const [folderName, setFolderName] = useState('')
+  const [folderEmoji, setFolderEmoji] = useState('')
   const resizeStartX = useRef<number>(0)
   const resizeStartWidth = useRef<number>(0)
 
@@ -76,7 +85,7 @@ export default function Sidebar() {
       resizeStartX.current = e.clientX
       resizeStartWidth.current = sidebarWidth
     },
-    [isSmallScreen, sidebarWidth],
+    [isSmallScreen, sidebarWidth]
   )
 
   useEffect(() => {
@@ -102,110 +111,111 @@ export default function Sidebar() {
     }
   }, [isResizing, language, setSidebarWidth])
 
+  const handleCreateFolder = () => {
+    if (!folderName.trim()) {
+      return
+    }
+
+    addFolder({
+      name: folderName.trim(),
+      emoji: folderEmoji.trim() || undefined,
+    })
+    setFolderName('')
+    setFolderEmoji('')
+    setFolderModalOpened(false)
+  }
+
   return (
-    <SwipeableDrawer
-      anchor={language === 'ar' ? 'right' : 'left'}
-      variant={isSmallScreen ? 'temporary' : 'persistent'}
-      open={showSidebar}
-      onClose={() => setShowSidebar(false)}
-      onOpen={() => setShowSidebar(true)}
-      ModalProps={{
-        keepMounted: true, // Better open performance on mobile.
-      }}
-      sx={{
-        '& .MuiDrawer-paper': {
-          backgroundImage: 'none',
-          boxSizing: 'border-box',
-          width: isSmallScreen ? '75vw' : sidebarWidth,
-          maxWidth: '75vw',
-        },
-      }}
-      SlideProps={language === 'ar' ? { direction: 'left' } : undefined}
-      PaperProps={
-        language === 'ar' ? { sx: { direction: 'rtl', overflowY: 'initial' } } : { sx: { overflowY: 'initial' } }
-      }
-      disableSwipeToOpen={CHATBOX_BUILD_PLATFORM !== 'ios'} // 只在iOS设备上启用SwipeToOpen
-      disableEnforceFocus={true} // 关闭 focus trap，避免在侧边栏打开时弹出的 modal 中 input 无法点击
-    >
-      <Stack
-        h="100%"
-        gap={0}
-        pt="var(--mobile-safe-area-inset-top, 0px)"
-        pb="var(--mobile-safe-area-inset-bottom, 0px)"
-        className="relative"
+    <>
+      <SwipeableDrawer
+        anchor={language === 'ar' ? 'right' : 'left'}
+        variant={isSmallScreen ? 'temporary' : 'persistent'}
+        open={showSidebar}
+        onClose={() => setShowSidebar(false)}
+        onOpen={() => setShowSidebar(true)}
+        ModalProps={{
+          keepMounted: true, // Better open performance on mobile.
+        }}
+        sx={{
+          '& .MuiDrawer-paper': {
+            backgroundImage: 'none',
+            boxSizing: 'border-box',
+            width: isSmallScreen ? '75vw' : sidebarWidth,
+            maxWidth: '75vw',
+          },
+        }}
+        SlideProps={language === 'ar' ? { direction: 'left' } : undefined}
+        PaperProps={
+          language === 'ar' ? { sx: { direction: 'rtl', overflowY: 'initial' } } : { sx: { overflowY: 'initial' } }
+        }
+        disableSwipeToOpen={CHATBOX_BUILD_PLATFORM !== 'ios'} // 只在iOS设备上启用SwipeToOpen
+        disableEnforceFocus={true} // 关闭 focus trap，避免在侧边栏打开时弹出的 modal 中 input 无法点击
       >
-        {needRoomForMacWindowControls && <Box className="title-bar flex-[0_0_44px]" />}
-        <Flex align="center" justify="space-between" px="md" py="sm">
-          <Flex align="center" gap="sm">
-            <Flex align="center" gap="sm" onClick={() => {}} style={{ cursor: 'pointer' }}>
-              <Image src={icon} w={20} h={20} />
-              <Text span c="chatbox-secondary" size="xl" lh={1.2} fw="700">
-                Chaeboxi
-              </Text>
+        <Stack
+          h="100%"
+          gap={0}
+          pt="var(--mobile-safe-area-inset-top, 0px)"
+          pb="var(--mobile-safe-area-inset-bottom, 0px)"
+          className="relative"
+        >
+          {needRoomForMacWindowControls && <Box className="title-bar flex-[0_0_44px]" />}
+          <Flex align="center" justify="space-between" px="md" py="sm">
+            <Flex align="center" gap="sm">
+              <Flex align="center" gap="sm" onClick={() => {}} style={{ cursor: 'pointer' }}>
+                <Image src={icon} w={20} h={20} />
+                <Text span c="chatbox-secondary" size="xl" lh={1.2} fw="700">
+                  Chaeboxi
+                </Text>
+              </Flex>
+              {FORCE_ENABLE_DEV_PAGES && <ThemeSwitchButton size="xs" />}
             </Flex>
-            {FORCE_ENABLE_DEV_PAGES && <ThemeSwitchButton size="xs" />}
+
+            <Tooltip label={t('Collapse')} openDelay={1000} withArrow>
+              <ActionIcon variant="subtle" color="chatbox-tertiary" size={20} onClick={() => setShowSidebar(false)}>
+                <IconLayoutSidebarLeftCollapse />
+              </ActionIcon>
+            </Tooltip>
           </Flex>
 
-          <Tooltip label={t('Collapse')} openDelay={1000} withArrow>
-            <ActionIcon variant="subtle" color="chatbox-tertiary" size={20} onClick={() => setShowSidebar(false)}>
-              <IconLayoutSidebarLeftCollapse />
-            </ActionIcon>
-          </Tooltip>
-        </Flex>
-
-        <SessionList sessionListViewportRef={sessionListViewportRef} />
-
-        <Stack gap={0} px="xs" pb="xs">
-          <Divider />
-          <Stack gap="xs" pt="xs" mb="xs">
-            <Button variant="light" fullWidth onClick={handleCreateNewSession}>
-              <ScalableIcon icon={IconCirclePlus} className="mr-2" />
-              {t('New Chat')}
+          <Flex px="md" pb="xs" gap="xs">
+            <Button variant="light" flex={1} onClick={() => setFolderModalOpened(true)}>
+              <ScalableIcon icon={IconFolder} className="mr-2" />
+              {t('New Folder')}
             </Button>
-            <Button variant="light" fullWidth onClick={handleCreateNewPictureSession}>
-              <ScalableIcon icon={IconPhotoPlus} className="mr-2" />
-              {t('Create Image')}
-            </Button>
-          </Stack>
-          <NavLink
-            c="chatbox-secondary"
-            className="rounded"
-            label={t('My Copilots')}
-            leftSection={<ScalableIcon icon={IconMessageChatbot} size={20} />}
-            onClick={() => {
-              navigate({
-                to: '/copilots',
-              })
-              if (isSmallScreen) {
-                setShowSidebar(false)
-              }
-            }}
-            variant="light"
-            p="xs"
-          />
-          <NavLink
-            c="chatbox-secondary"
-            className="rounded"
-            label={t('Settings')}
-            leftSection={<ScalableIcon icon={IconSettingsFilled} size={20} />}
-            onClick={() => {
-              navigateToSettings()
-              if (isSmallScreen) {
-                setShowSidebar(false)
-              }
-            }}
-            variant="light"
-            p="xs"
-          />
-          {FORCE_ENABLE_DEV_PAGES && (
+            <Tooltip label={showArchived ? t('Show Active Chats') : t('Show Archived Chats')} withArrow>
+              <ActionIcon
+                size={36}
+                variant={showArchived ? 'filled' : 'light'}
+                color={showArchived ? 'chatbox-brand' : 'chatbox-gray'}
+                onClick={() => setShowArchived((value) => !value)}
+              >
+                <IconArchive size={18} />
+              </ActionIcon>
+            </Tooltip>
+          </Flex>
+
+          <SessionList sessionListViewportRef={sessionListViewportRef} showArchived={showArchived} />
+
+          <Stack gap={0} px="xs" pb="xs">
+            <Divider />
+            <Stack gap="xs" pt="xs" mb="xs">
+              <Button variant="light" fullWidth onClick={handleCreateNewSession}>
+                <ScalableIcon icon={IconCirclePlus} className="mr-2" />
+                {t('New Chat')}
+              </Button>
+              <Button variant="light" fullWidth onClick={handleCreateNewPictureSession}>
+                <ScalableIcon icon={IconPhotoPlus} className="mr-2" />
+                {t('Create Image')}
+              </Button>
+            </Stack>
             <NavLink
               c="chatbox-secondary"
               className="rounded"
-              label="Dev Tools"
-              leftSection={<ScalableIcon icon={IconCode} size={20} />}
+              label={t('My Copilots')}
+              leftSection={<ScalableIcon icon={IconMessageChatbot} size={20} />}
               onClick={() => {
                 navigate({
-                  to: '/dev',
+                  to: '/copilots',
                 })
                 if (isSmallScreen) {
                   setShowSidebar(false)
@@ -214,41 +224,98 @@ export default function Sidebar() {
               variant="light"
               p="xs"
             />
-          )}
-          <NavLink
-            c="chatbox-tertiary"
-            className="rounded"
-            label={
-              <Flex align="center" gap={6}>
-                <span>{`${t('About')} ${/\d/.test(versionHook.version) ? `(${versionHook.version})` : ''}`}</span>
-                {CHATBOX_BUILD_PLATFORM === 'android' && versionHook.needCheckUpdate && (
-                  <Box w={8} h={8} miw={8} bg="chatbox-brand" style={{ borderRadius: '50%' }} />
-                )}
-              </Flex>
-            }
-            leftSection={<ScalableIcon icon={IconInfoCircle} size={20} />}
-            onClick={() => {
-              navigate({
-                to: '/about',
-              })
-              if (isSmallScreen) {
-                setShowSidebar(false)
-              }
-            }}
-            variant="light"
-            p="xs"
-          />
-        </Stack>
-        {!isSmallScreen && (
-          <Box
-            onMouseDown={handleResizeStart}
-            className={clsx(
-              `sidebar-resizer absolute top-0 bottom-0 w-1 cursor-col-resize z-[1] bg-chatbox-border-primary opacity-0 hover:opacity-70 transition-opacity duration-200`,
-              language === 'ar' ? '-left-1' : '-right-1',
+            <NavLink
+              c="chatbox-secondary"
+              className="rounded"
+              label={t('Settings')}
+              leftSection={<ScalableIcon icon={IconSettingsFilled} size={20} />}
+              onClick={() => {
+                navigateToSettings()
+                if (isSmallScreen) {
+                  setShowSidebar(false)
+                }
+              }}
+              variant="light"
+              p="xs"
+            />
+            {FORCE_ENABLE_DEV_PAGES && (
+              <NavLink
+                c="chatbox-secondary"
+                className="rounded"
+                label="Dev Tools"
+                leftSection={<ScalableIcon icon={IconCode} size={20} />}
+                onClick={() => {
+                  navigate({
+                    to: '/dev',
+                  })
+                  if (isSmallScreen) {
+                    setShowSidebar(false)
+                  }
+                }}
+                variant="light"
+                p="xs"
+              />
             )}
-          />
-        )}
-      </Stack>
-    </SwipeableDrawer>
+            <NavLink
+              c="chatbox-tertiary"
+              className="rounded"
+              label={
+                <Flex align="center" gap={6}>
+                  <span>{`${t('About')} ${/\d/.test(versionHook.version) ? `(${versionHook.version})` : ''}`}</span>
+                  {CHATBOX_BUILD_PLATFORM === 'android' && versionHook.needCheckUpdate && (
+                    <Box w={8} h={8} miw={8} bg="chatbox-brand" style={{ borderRadius: '50%' }} />
+                  )}
+                </Flex>
+              }
+              leftSection={<ScalableIcon icon={IconInfoCircle} size={20} />}
+              onClick={() => {
+                navigate({
+                  to: '/about',
+                })
+                if (isSmallScreen) {
+                  setShowSidebar(false)
+                }
+              }}
+              variant="light"
+              p="xs"
+            />
+          </Stack>
+          {!isSmallScreen && (
+            <Box
+              onMouseDown={handleResizeStart}
+              className={clsx(
+                `sidebar-resizer absolute top-0 bottom-0 w-1 cursor-col-resize z-[1] bg-chatbox-border-primary opacity-0 hover:opacity-70 transition-opacity duration-200`,
+                language === 'ar' ? '-left-1' : '-right-1'
+              )}
+            />
+          )}
+        </Stack>
+      </SwipeableDrawer>
+
+      <AdaptiveModal
+        opened={folderModalOpened}
+        onClose={() => setFolderModalOpened(false)}
+        title={t('New Folder')}
+        centered
+      >
+        <TextInput
+          label={t('Folder Name')}
+          value={folderName}
+          onChange={(event) => setFolderName(event.currentTarget.value)}
+        />
+        <TextInput
+          mt="sm"
+          label={t('Folder Emoji')}
+          placeholder="📁"
+          value={folderEmoji}
+          onChange={(event) => setFolderEmoji(event.currentTarget.value)}
+        />
+
+        <AdaptiveModal.Actions>
+          <AdaptiveModal.CloseButton onClick={() => setFolderModalOpened(false)} />
+          <Button onClick={handleCreateFolder}>{t('Create')}</Button>
+        </AdaptiveModal.Actions>
+      </AdaptiveModal>
+    </>
   )
 }

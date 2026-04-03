@@ -91,6 +91,14 @@ export interface CopilotDetail {
   modelSettings?: CopilotModelSettings
 }
 
+export interface PromptPreset {
+  id: string
+  name: string
+  content: string
+  category?: string
+  tags?: string[]
+}
+
 export interface Toast {
   id: string
   content: string

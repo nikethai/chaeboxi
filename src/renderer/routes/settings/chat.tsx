@@ -1,16 +1,33 @@
-import { Button, FileButton, Flex, Slider, Stack, Switch, Text, Textarea, Title, Tooltip } from '@mantine/core'
+import {
+  ActionIcon,
+  Button,
+  FileButton,
+  Flex,
+  Slider,
+  Stack,
+  Switch,
+  Text,
+  Textarea,
+  TextInput,
+  Title,
+  Tooltip,
+} from '@mantine/core'
 import { chatSessionSettings, getDefaultPrompt } from '@shared/defaults'
-import { IconInfoCircle } from '@tabler/icons-react'
+import type { PromptPreset } from '@shared/types'
+import { IconEdit, IconInfoCircle, IconPlus, IconTrash } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useMemo } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AssistantAvatar, UserAvatar } from '@/components/common/Avatar'
 import MaxContextMessageCountSlider from '@/components/common/MaxContextMessageCountSlider'
+import { AdaptiveModal } from '@/components/common/AdaptiveModal'
 import SliderWithInput from '@/components/common/SliderWithInput'
 import { Divider } from '@/components/common/Divider'
 import { handleImageInputAndSave } from '@/components/Image'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
+import { usePromptPresets } from '@/stores/promptPresetsStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { add as addToast } from '@/stores/toastActions'
 
@@ -386,8 +403,175 @@ export function RouteComponent() {
 
       <Divider />
 
+      <PromptPresetsSection />
+
+      <Divider />
+
       {/* Context Management */}
       <ContextManagementSection />
+    </Stack>
+  )
+}
+
+function PromptPresetsSection() {
+  const { t } = useTranslation()
+  const { promptPresets, addOrUpdatePreset, removePreset } = usePromptPresets()
+  const [editingPreset, setEditingPreset] = useState<PromptPreset | null>(null)
+  const [presetName, setPresetName] = useState('')
+  const [presetCategory, setPresetCategory] = useState('')
+  const [presetTags, setPresetTags] = useState('')
+  const [presetContent, setPresetContent] = useState('')
+
+  const groupedPresets = useMemo(() => {
+    const groups = new Map<string, PromptPreset[]>()
+
+    for (const preset of promptPresets) {
+      const category = preset.category?.trim() || t('Uncategorized')
+      groups.set(category, [...(groups.get(category) || []), preset])
+    }
+
+    return Array.from(groups.entries())
+  }, [promptPresets, t])
+
+  const openEditor = (preset?: PromptPreset) => {
+    setEditingPreset(preset || ({ id: '', name: '', content: '' } as PromptPreset))
+    setPresetName(preset?.name || '')
+    setPresetCategory(preset?.category || '')
+    setPresetTags((preset?.tags || []).join(', '))
+    setPresetContent(preset?.content || '')
+  }
+
+  const closeEditor = () => {
+    setEditingPreset(null)
+    setPresetName('')
+    setPresetCategory('')
+    setPresetTags('')
+    setPresetContent('')
+  }
+
+  const savePreset = () => {
+    if (!presetName.trim() || !presetContent.trim()) {
+      return
+    }
+
+    addOrUpdatePreset({
+      id: editingPreset?.id || undefined,
+      name: presetName.trim(),
+      category: presetCategory.trim() || undefined,
+      tags: presetTags
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+      content: presetContent,
+    })
+    closeEditor()
+  }
+
+  return (
+    <Stack gap="md">
+      <Flex align="center" justify="space-between">
+        <Text fw="600">{t('Prompt Presets')}</Text>
+        <Button
+          variant="light"
+          size="xs"
+          leftSection={<ScalableIcon icon={IconPlus} size={16} />}
+          onClick={() => openEditor()}
+        >
+          {t('Add Preset')}
+        </Button>
+      </Flex>
+
+      <Text size="xs" c="chatbox-tertiary">
+        {t(
+          "Type '/' in the chat box to insert a saved preset. Supports {{CURRENT_DATE}}, {{CURRENT_TIME}}, and {{CLIPBOARD}}."
+        )}
+      </Text>
+
+      {groupedPresets.length > 0 ? (
+        <Stack gap="sm">
+          {groupedPresets.map(([category, presets]) => (
+            <Stack key={category} gap="xs">
+              <Text size="xs" c="chatbox-tertiary">
+                {category}
+              </Text>
+              {presets.map((preset) => (
+                <Flex
+                  key={preset.id}
+                  align="flex-start"
+                  justify="space-between"
+                  gap="sm"
+                  p="sm"
+                  style={{ border: '1px solid var(--chatbox-border-primary)', borderRadius: 8 }}
+                >
+                  <Stack gap={2} flex={1}>
+                    <Text fw={600}>{preset.name}</Text>
+                    <Text size="xs" c="chatbox-tertiary">
+                      {preset.content.split('\n')[0]}
+                    </Text>
+                    {!!preset.tags?.length && (
+                      <Text size="xs" c="chatbox-secondary">
+                        {preset.tags.join(', ')}
+                      </Text>
+                    )}
+                  </Stack>
+                  <Flex gap="xs">
+                    <ActionIcon variant="subtle" color="chatbox-tertiary" onClick={() => openEditor(preset)}>
+                      <IconEdit size={16} />
+                    </ActionIcon>
+                    <ActionIcon variant="subtle" color="chatbox-error" onClick={() => removePreset(preset.id)}>
+                      <IconTrash size={16} />
+                    </ActionIcon>
+                  </Flex>
+                </Flex>
+              ))}
+            </Stack>
+          ))}
+        </Stack>
+      ) : (
+        <Text size="sm" c="chatbox-tertiary">
+          {t('No prompt presets yet')}
+        </Text>
+      )}
+
+      <AdaptiveModal
+        opened={!!editingPreset}
+        onClose={closeEditor}
+        title={editingPreset?.id ? t('Edit Prompt Preset') : t('New Prompt Preset')}
+        centered
+      >
+        <TextInput
+          label={t('Preset Name')}
+          value={presetName}
+          onChange={(event) => setPresetName(event.currentTarget.value)}
+        />
+        <TextInput
+          mt="sm"
+          label={t('Category')}
+          value={presetCategory}
+          onChange={(event) => setPresetCategory(event.currentTarget.value)}
+        />
+        <TextInput
+          mt="sm"
+          label={t('Tags')}
+          placeholder={t('Comma-separated tags')}
+          value={presetTags}
+          onChange={(event) => setPresetTags(event.currentTarget.value)}
+        />
+        <Textarea
+          mt="sm"
+          autosize
+          minRows={6}
+          maxRows={16}
+          label={t('Content')}
+          value={presetContent}
+          onChange={(event) => setPresetContent(event.currentTarget.value)}
+        />
+
+        <AdaptiveModal.Actions>
+          <AdaptiveModal.CloseButton onClick={closeEditor} />
+          <Button onClick={savePreset}>{t('Save')}</Button>
+        </AdaptiveModal.Actions>
+      </AdaptiveModal>
     </Stack>
   )
 }

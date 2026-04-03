@@ -72,6 +72,9 @@ function getSessionMeta(session: Session): SessionMeta {
     name: session.name,
     starred: session.starred,
     hidden: session.hidden,
+    folderId: session.folderId,
+    tags: session.tags,
+    archived: session.archived,
     assistantAvatarKey: session.assistantAvatarKey,
     picUrl: session.picUrl,
     type: session.type,
@@ -226,7 +229,13 @@ function mergeSessionMetaList(options: {
     }
   }
 
-  const merged = dedupedExisting.map((meta) => importedMetaById.get(meta.id) || meta)
+  // Only use imported metadata for sessions that were actually imported or updated.
+  // Skipped (duplicate) sessions keep their local metadata to avoid clobbering
+  // folder, archive, tags, and other organization fields.
+  const updatedIds = new Set([...options.importedSessions, ...options.updatedSessions].map((s) => s.id))
+  const merged = dedupedExisting.map((meta) =>
+    updatedIds.has(meta.id) ? importedMetaById.get(meta.id) || meta : meta
+  )
 
   const newSessions = [...options.importedSessions, ...options.updatedSessions]
     .filter((session) => !existingIds.has(session.id))

@@ -1,4 +1,5 @@
 {
+  "Accent Color": "Accent Color",
   " for free now!": " for free now!",
   "(Trial)": "(Trial)",
   "[Ctrl+Enter] Save, [Ctrl+Shift+Enter] Save and Resend": "[Ctrl+Enter] Save, [Ctrl+Shift+Enter] Save and Resend",
@@ -663,6 +664,7 @@
   "Show all attachments": "Show all attachments",
   "Show Copilots in New Session": "Show Copilots in New Session",
   "show first token latency": "show first token latency",
+  "show token speed": "show token speed",
   "Show History": "Show History",
   "Show in Thread List": "Show in Thread List",
   "show message timestamp": "show message timestamp",

@@ -246,7 +246,7 @@ export const ReasoningContentUI: FC<{
   // This ensures the timer stops immediately when thinking ends and persists the final duration
   const displayTime =
     part?.duration && part.duration > 0 ? part.duration : isThinking && elapsedTime > 0 ? elapsedTime : 0
-  const shouldRenderMarkdown = isExpanded && message.generating !== true && reasoningContent.length > 0
+  const shouldRenderMarkdown = isExpanded && reasoningContent.length > 0
 
   const toggleExpanded = useCallback(() => {
     setIsExpanded((prev) => !prev)
@@ -309,7 +309,7 @@ export const ReasoningContentUI: FC<{
                 enableMermaidRendering={false}
                 hiddenCodeCopyButton={false}
                 className="text-sm"
-                generating={false}
+                generating={isThinking}
               >
                 {reasoningContent}
               </Markdown>

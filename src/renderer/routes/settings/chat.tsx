@@ -271,6 +271,16 @@ export function RouteComponent() {
               })
             }
           />
+
+          <Switch
+            label={t('show token speed')}
+            checked={settings.showTokenSpeed}
+            onChange={() =>
+              setSettings({
+                showTokenSpeed: !settings.showTokenSpeed,
+              })
+            }
+          />
         </Stack>
 
         {/* Function */}

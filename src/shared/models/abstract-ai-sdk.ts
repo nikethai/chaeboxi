@@ -452,6 +452,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     result: {
       usage?: LanguageModelUsage
       finishReason?: FinishReason
+      tokenSpeed?: number
     },
     options: CallChatCompletionOptions
   ): StreamTextResult {
@@ -469,6 +470,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       contentParts,
       tokenCount: result.usage?.outputTokens,
       tokensUsed: result.usage?.totalTokens,
+      tokenSpeed: result.tokenSpeed,
     })
     return { contentParts, usage: result.usage, finishReason: result.finishReason }
   }
@@ -492,6 +494,10 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     let currentTextPart: MessageTextPart | undefined
     let currentReasoningPart: MessageReasoningPart | undefined
 
+    // Token speed tracking
+    let streamStartTime: number | undefined
+    let outputTokenCount = 0
+
     try {
       for await (const chunk of result.fullStream) {
         // console.debug('stream chunk', chunk)
@@ -499,6 +505,15 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
         // Handle error chunks
         if (chunk.type === 'error') {
           this.handleError(chunk.error)
+        }
+
+        // Count text and reasoning tokens for speed calculation
+        if (chunk.type === 'text-delta' || chunk.type === 'reasoning-delta') {
+          if (streamStartTime === undefined) {
+            streamStartTime = Date.now()
+          }
+          // Approximate token count: split on spaces + punctuation, similar to common tokenizers
+          outputTokenCount += chunk.text.split(/\s+/).filter(Boolean).length
         }
 
         const chunkResult = await this.processStreamChunk(
@@ -511,7 +526,10 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
         currentTextPart = chunkResult.currentTextPart
         currentReasoningPart = chunkResult.currentReasoningPart
 
-        options.onResultChange?.({ contentParts })
+        // Emit live token speed with each content update
+        const elapsedSec = streamStartTime !== undefined ? (Date.now() - streamStartTime) / 1000 : 0
+        const liveSpeed = elapsedSec > 0 ? Math.round(outputTokenCount / elapsedSec) : undefined
+        options.onResultChange?.({ contentParts, tokenSpeed: liveSpeed })
       }
     } catch (error) {
       // Ensure reasoning parts get their duration set even if streaming is interrupted
@@ -521,11 +539,16 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       throw error
     }
 
+    // Compute final token speed for persistence
+    const finalElapsedSec = streamStartTime !== undefined ? (Date.now() - streamStartTime) / 1000 : 0
+    const finalTokenSpeed = finalElapsedSec > 0 ? Math.round(outputTokenCount / finalElapsedSec) : undefined
+
     return this.finalizeResult(
       contentParts,
       {
         usage: await result.totalUsage,
         finishReason: await result.finishReason,
+        tokenSpeed: finalTokenSpeed,
       },
       options
     )

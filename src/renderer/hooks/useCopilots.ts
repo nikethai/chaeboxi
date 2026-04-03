@@ -6,7 +6,7 @@ import * as remote from '@/packages/remote'
 import storage, { StorageKey } from '@/storage'
 import { useLanguage } from '@/stores/settingsStore'
 
-const myCopilotsAtom = atomWithStorage<CopilotDetail[]>(StorageKey.MyCopilots, [], storage)
+export const myCopilotsAtom = atomWithStorage<CopilotDetail[]>(StorageKey.MyCopilots, [], storage)
 
 export function useMyCopilots() {
   const [copilots, setCopilots] = useAtom(myCopilotsAtom)

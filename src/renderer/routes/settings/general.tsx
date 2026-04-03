@@ -19,7 +19,8 @@ import { IconInfoCircle } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
 import dayjs from 'dayjs'
 import { mapValues, uniqBy } from 'lodash'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { HexColorPicker } from 'react-colorful'
 import { useTranslation } from 'react-i18next'
 import { AdaptiveSelect } from '@/components/AdaptiveSelect'
 import LazySlider from '@/components/common/LazySlider'
@@ -126,6 +127,9 @@ export function RouteComponent() {
           />
         </Stack>
 
+        {/* Accent Color */}
+        <AccentColorPicker />
+
         {/* Startup Page */}
         <Stack>
           <Text>{t('Startup Page')}</Text>
@@ -229,6 +233,126 @@ export function RouteComponent() {
             />
           </Stack>
         </>
+      )}
+    </Stack>
+  )
+}
+
+const DEFAULT_ACCENT_COLOR = '#228be6'
+
+const AccentColorPicker = () => {
+  const { t } = useTranslation()
+  const { setSettings, accentColor } = useSettingsStore((state) => state)
+
+  // Local draft state so the picker preview is snappy while typing in the hex input
+  const [draft, setDraft] = useState<string>(accentColor ?? DEFAULT_ACCENT_COLOR)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  // containerRef wraps the entire accent-color section (swatch + hex input + picker
+  // popover) so that clicks on any of these elements are treated as "inside" and
+  // don't trigger the outside-click handler.
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // Keep draft in sync when settings change externally (e.g. on import)
+  useEffect(() => {
+    setDraft(accentColor ?? DEFAULT_ACCENT_COLOR)
+  }, [accentColor])
+
+  // Close picker when clicking outside the entire accent-color widget
+  useEffect(() => {
+    if (!pickerOpen) return
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setPickerOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [pickerOpen])
+
+  const isValidHex = (value: string) => /^#[0-9a-fA-F]{6}$/.test(value)
+
+  const commit = (value: string) => {
+    if (isValidHex(value)) {
+      setSettings({ accentColor: value })
+    }
+  }
+
+  const handlePickerChange = (value: string) => {
+    setDraft(value)
+    commit(value)
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.currentTarget.value
+    setDraft(value)
+    if (isValidHex(value)) {
+      commit(value)
+    }
+  }
+
+  const handleReset = () => {
+    setDraft(DEFAULT_ACCENT_COLOR)
+    setSettings({ accentColor: undefined })
+  }
+
+  const currentColor = accentColor ?? DEFAULT_ACCENT_COLOR
+
+  return (
+    <Stack gap="xs" ref={containerRef}>
+      <Text>{t('Accent Color')}</Text>
+      <Flex gap="xs" align="center">
+        {/* Color swatch — clicking opens/closes the picker */}
+        <div
+          onClick={() => setPickerOpen((v) => !v)}
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 6,
+            backgroundColor: currentColor,
+            border: '1px solid var(--chatbox-border-primary)',
+            cursor: 'pointer',
+            flexShrink: 0,
+          }}
+          aria-label={t('Accent Color')}
+        />
+
+        {/* Hex value text input */}
+        <TextInput
+          maw={120}
+          size="sm"
+          value={draft}
+          onChange={handleInputChange}
+          onBlur={() => {
+            // Revert draft to committed value if input is invalid on blur
+            if (!isValidHex(draft)) {
+              setDraft(currentColor)
+            }
+          }}
+          styles={{ input: { fontFamily: 'monospace' } }}
+        />
+
+        {/* Reset button — only shown when a custom color is set */}
+        {accentColor && (
+          <Button variant="subtle" size="xs" color="chatbox-gray" onClick={handleReset}>
+            {t('Reset to Default')}
+          </Button>
+        )}
+      </Flex>
+
+      {/* Floating color picker popover */}
+      {pickerOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            zIndex: 3500,
+            marginTop: 4,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+            borderRadius: 8,
+            overflow: 'hidden',
+          }}
+        >
+          <HexColorPicker color={draft} onChange={handlePickerChange} />
+        </div>
       )}
     </Stack>
   )

@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/react'
+import { getDefaultStore } from 'jotai'
 import { getModel } from '@shared/models'
 import { AIProviderNoImplementedPaintError, ApiError, BaseError, NetworkError, OCRError } from '@shared/models/errors'
 import type { OnResultChangeWithCancel } from '@shared/models/types'
@@ -16,6 +17,7 @@ import { cloneMessage, getMessageText, mergeMessages } from '@shared/utils/messa
 import { identity, pickBy } from 'lodash'
 import { createModelDependencies } from '@/adapters'
 import * as appleAppStore from '@/packages/apple_app_store'
+import { myCopilotsAtom } from '@/hooks/useCopilots'
 import { buildContextForAI } from '@/packages/context-management'
 import {
   buildAttachmentWrapperPrefix,
@@ -35,6 +37,28 @@ import { settingsStore } from '../settingsStore'
 import { uiStore } from '../uiStore'
 import { createNewFork, findMessageLocation } from './forks'
 import { insertMessageAfter, modifyMessage } from './messages'
+
+/**
+ * Retrieve copilot model-settings overrides from the live Jotai atom.
+ *
+ * Reading from `getDefaultStore().get(myCopilotsAtom)` gives us the value
+ * that Jotai holds in memory right now, which is always up-to-date regardless
+ * of whether the underlying debounced storage write has flushed yet.  This
+ * avoids the race condition where a user edits copilot settings and immediately
+ * sends a message before the debounced write completes.
+ */
+function getCopilotSettings(
+  copilotId: string | undefined
+): { temperature?: number; topP?: number; maxTokens?: number } | null {
+  if (!copilotId) return null
+  try {
+    const copilots = getDefaultStore().get(myCopilotsAtom)
+    const copilot = copilots.find((c) => c.id === copilotId)
+    return copilot?.modelSettings ?? null
+  } catch {
+    return null
+  }
+}
 
 /**
  * Get session-level web browsing setting
@@ -120,8 +144,20 @@ export async function generate(
     return
   }
 
+  // Overlay copilot model settings (temperature, topP, maxTokens) if the
+  // session has a linked copilot that defines overrides.
+  const copilotOverrides = getCopilotSettings(session.copilotId)
+  const effectiveSettings: SessionSettings = copilotOverrides
+    ? {
+        ...settings,
+        temperature: copilotOverrides.temperature ?? settings.temperature,
+        topP: copilotOverrides.topP ?? settings.topP,
+        maxTokens: copilotOverrides.maxTokens ?? settings.maxTokens,
+      }
+    : settings
+
   // Track generation event
-  trackGenerateEvent(sessionId, settings, globalSettings, session.type, options)
+  trackGenerateEvent(sessionId, effectiveSettings, globalSettings, session.type, options)
 
   // Reset message state to initial state
   targetMsg = {
@@ -129,9 +165,9 @@ export async function generate(
     // FIXME: For picture message generation, need to show placeholder
     // pictures: session.type === 'picture' ? createLoadingPictures(settings.imageGenerateNum) : targetMsg.pictures,
     cancel: undefined,
-    aiProvider: settings.provider,
-    model: await getModelDisplayName(settings, globalSettings, session.type || 'chat'),
-    style: session.type === 'picture' ? settings.dalleStyle : undefined,
+    aiProvider: effectiveSettings.provider,
+    model: await getModelDisplayName(effectiveSettings, globalSettings, session.type || 'chat'),
+    style: session.type === 'picture' ? effectiveSettings.dalleStyle : undefined,
     generating: true,
     errorCode: undefined,
     error: undefined,
@@ -139,7 +175,7 @@ export async function generate(
     status: [],
     firstTokenLatency: undefined,
     // Set isStreamingMode once during Message initialization (constant property)
-    isStreamingMode: settings.stream !== false,
+    isStreamingMode: effectiveSettings.stream !== false,
   }
 
   await modifyMessage(sessionId, targetMsg)
@@ -168,20 +204,21 @@ export async function generate(
 
   try {
     const dependencies = await createModelDependencies()
-    const model = getModel(settings, globalSettings, configs, dependencies)
+    const model = getModel(effectiveSettings, globalSettings, configs, dependencies)
     const sessionKnowledgeBaseMap = uiStore.getState().sessionKnowledgeBaseMap
     const knowledgeBase = sessionKnowledgeBaseMap[sessionId]
-    const webBrowsing = getSessionWebBrowsing(sessionId, settings.provider)
+    const webBrowsing = getSessionWebBrowsing(sessionId, effectiveSettings.provider)
     switch (session.type) {
       // Chat message generation
       case 'chat':
       case undefined: {
         const startTime = Date.now()
         let firstTokenLatency: number | undefined
+        let lastTokenSpeed: number | undefined
         const persistInterval = 2000
         let lastPersistTimestamp = Date.now()
         const promptMsgs = await genMessageContext(
-          settings,
+          effectiveSettings,
           messages.slice(0, targetMsgIx),
           model.isSupportToolUse('read-file'),
           { compactionPoints: session.compactionPoints }
@@ -191,11 +228,15 @@ export async function generate(
           if (!firstTokenLatency && textLength > 0) {
             firstTokenLatency = Date.now() - startTime
           }
+          if (updated.tokenSpeed !== undefined) {
+            lastTokenSpeed = updated.tokenSpeed
+          }
           targetMsg = {
             ...targetMsg,
             ...pickBy(updated, identity),
             status: textLength > 0 ? [] : targetMsg.status,
             firstTokenLatency,
+            tokenSpeed: lastTokenSpeed,
           }
           // update cache on each chunk and persist to storage periodically
           const shouldPersist = Date.now() - lastPersistTimestamp >= persistInterval
@@ -216,7 +257,7 @@ export async function generate(
             }
             void modifyMessage(sessionId, targetMsg, false, true)
           },
-          providerOptions: settings.providerOptions,
+          providerOptions: effectiveSettings.providerOptions,
           knowledgeBase,
           webBrowsing,
         })
@@ -228,6 +269,7 @@ export async function generate(
           status: [],
           finishReason: result.finishReason,
           usage: result.usage,
+          tokenSpeed: lastTokenSpeed ?? targetMsg.tokenSpeed,
         }
         await modifyMessage(sessionId, targetMsg, true)
         break
@@ -250,7 +292,7 @@ export async function generate(
           model,
           {
             message: userMessage,
-            num: settings.imageGenerateNum || 1,
+            num: effectiveSettings.imageGenerateNum || 1,
           },
           async (picBase64) => {
             const storageKey = StorageKeyGenerator.picture(`${session.id}:${targetMsg.id}`)
@@ -298,7 +340,7 @@ export async function generate(
       errorCode: ocrError ? (causeError instanceof BaseError ? causeError.code : errorCode) : errorCode,
       error: `${error.message}`,
       errorExtra: {
-        aiProvider: ocrError ? ocrError.ocrProvider : settings.provider,
+        aiProvider: ocrError ? ocrError.ocrProvider : effectiveSettings.provider,
         host:
           error instanceof NetworkError ? error.host : causeError instanceof NetworkError ? causeError.host : undefined,
         responseBody:

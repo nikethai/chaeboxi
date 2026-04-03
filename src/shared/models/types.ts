@@ -53,6 +53,7 @@ export interface ResultChange {
   contentParts?: MessageContentParts
   tokenCount?: number // 当前消息的 token 数量
   tokensUsed?: number // 生成当前消息的 token 使用量
+  tokenSpeed?: number // tokens per second (live during streaming, final when done)
 }
 
 export type OnResultChangeWithCancel = (data: ResultChange & { cancel?: () => void }) => void

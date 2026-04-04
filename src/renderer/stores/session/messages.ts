@@ -16,7 +16,9 @@ import { estimateTokensFromMessages } from '@/packages/token'
 import platform from '@/platform'
 import * as chatStore from '../chatStore'
 import { settingsStore } from '../settingsStore'
+import { getAllMessageList } from '../sessionHelpers'
 import { uiStore } from '../uiStore'
+import { messageQueueStore } from './messageQueue'
 
 /**
  * Get session-level web browsing setting
@@ -118,6 +120,12 @@ export async function submitNewUserMessage(
   const session = await chatStore.getSession(sessionId)
   const settings = await chatStore.getSessionSettings(sessionId)
   if (!session || !settings) {
+    return
+  }
+
+  if (getAllMessageList(session).some((message) => message.generating)) {
+    messageQueueStore.getState().enqueueMessage(sessionId, params.newUserMsg, params.needGenerating)
+    params.onUserMessageReady?.()
     return
   }
 

@@ -4,7 +4,13 @@ import Box from '@mui/material/Box'
 import Grid from '@mui/material/Grid'
 import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
-import type { Message, MessagePicture, MessageToolCallPart, SessionType } from '@shared/types'
+import {
+  createMessage,
+  type Message,
+  type MessagePicture,
+  type MessageToolCallPart,
+  type SessionType,
+} from '@shared/types'
 import { getMessageText } from '@shared/utils/message'
 import {
   IconArrowDown,
@@ -42,7 +48,13 @@ import { getSession } from '@/stores/chatStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 import '../../static/Block.css'
-import { generateMore, modifyMessage, regenerateInNewFork, removeMessage } from '@/stores/sessionActions'
+import {
+  generateMore,
+  modifyMessage,
+  regenerateInNewFork,
+  removeMessage,
+  submitNewUserMessage,
+} from '@/stores/sessionActions'
 import * as toastActions from '@/stores/toastActions'
 import ActionMenu, { type ActionMenuItemProps } from '../ActionMenu'
 import { isContainRenderableCode, MessageArtifact } from '../Artifact'
@@ -54,6 +66,7 @@ import { ReasoningContentUI, ToolCallPartUI } from '../message-parts/ToolCallPar
 import { MessageAttachmentGrid } from './MessageAttachmentGrid'
 import MessageErrTips from './MessageErrTips'
 import MessageStatuses from './MessageLoading'
+import TextSelectionToolbar from './TextSelectionToolbar'
 
 interface Props {
   id?: string
@@ -101,6 +114,7 @@ const _Message: FC<Props> = (props) => {
 
   const [previewArtifact, setPreviewArtifact] = useState(autoPreviewArtifacts)
   const [shouldThrowError, setShouldThrowError] = useState(false)
+  const [selectionToolbar, setSelectionToolbar] = useState<{ text: string; x: number; y: number } | null>(null)
 
   const contentLength = useMemo(() => {
     return getMessageText(msg).length
@@ -114,6 +128,7 @@ const _Message: FC<Props> = (props) => {
   const [isCollapsed, setIsCollapsed] = useState(needCollapse)
 
   const ref = useRef<HTMLDivElement>(null)
+  const messageContentRef = useRef<HTMLDivElement>(null)
 
   const setQuote = useUIStore((state) => state.setQuote)
 
@@ -175,6 +190,88 @@ const _Message: FC<Props> = (props) => {
   const onViewMessageJson = useCallback(async () => {
     await NiceModal.show('json-viewer', { title: t('Message Raw JSON'), data: msg })
   }, [msg, t])
+
+  const clearSelectionToolbar = useCallback(() => {
+    setSelectionToolbar(null)
+  }, [])
+
+  const sendSelectionPrompt = useCallback(
+    async (prompt: string) => {
+      if (!prompt.trim()) {
+        return
+      }
+      await submitNewUserMessage(sessionId, {
+        newUserMsg: createMessage('user', prompt),
+        needGenerating: true,
+      })
+      window.getSelection()?.removeAllRanges()
+      clearSelectionToolbar()
+    },
+    [clearSelectionToolbar, sessionId]
+  )
+
+  const onExplainSelection = useCallback(() => {
+    if (!selectionToolbar?.text) {
+      return
+    }
+    void sendSelectionPrompt(`${t('Explain this')}: ${selectionToolbar.text}`)
+  }, [selectionToolbar?.text, sendSelectionPrompt, t])
+
+  const onTranslateSelection = useCallback(() => {
+    if (!selectionToolbar?.text) {
+      return
+    }
+    void sendSelectionPrompt(`${t('Translate')}: ${selectionToolbar.text}`)
+  }, [selectionToolbar?.text, sendSelectionPrompt, t])
+
+  const onCopySelection = useCallback(async () => {
+    if (!selectionToolbar?.text) {
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(selectionToolbar.text)
+    } catch {
+      copyToClipboard(selectionToolbar.text)
+    }
+    toastActions.add(t('copied to clipboard'), 2000)
+    clearSelectionToolbar()
+  }, [clearSelectionToolbar, selectionToolbar?.text, t])
+
+  const handleSelectionMouseUp = useCallback(() => {
+    if (msg.role !== 'assistant' || !messageContentRef.current) {
+      return
+    }
+
+    const selection = window.getSelection()
+    const text = selection?.toString().trim()
+    if (!selection || !text || selection.rangeCount === 0 || selection.isCollapsed) {
+      clearSelectionToolbar()
+      return
+    }
+
+    const range = selection.getRangeAt(0)
+    const commonAncestor =
+      range.commonAncestorContainer.nodeType === Node.TEXT_NODE
+        ? range.commonAncestorContainer.parentElement
+        : (range.commonAncestorContainer as HTMLElement)
+
+    if (!commonAncestor || !messageContentRef.current.contains(commonAncestor)) {
+      clearSelectionToolbar()
+      return
+    }
+
+    const rect = range.getBoundingClientRect()
+    if (!rect.width && !rect.height) {
+      clearSelectionToolbar()
+      return
+    }
+
+    setSelectionToolbar({
+      text,
+      x: Math.min(Math.max(rect.left + rect.width / 2, 72), window.innerWidth - 72),
+      y: Math.max(rect.top - 12, 16),
+    })
+  }, [clearSelectionToolbar, msg.role])
 
   if (shouldThrowError) {
     throw new Error('Manual error triggered from Message component for testing ErrorBoundary')
@@ -456,8 +553,10 @@ const _Message: FC<Props> = (props) => {
               )}
             >
               <Box
+                ref={messageContentRef}
                 className={cn('msg-content', { 'msg-content-small': small })}
                 sx={small ? { fontSize: theme.typography.body2.fontSize } : {}}
+                onMouseUp={handleSelectionMouseUp}
               >
                 {msg.reasoningContent && (
                   <ReasoningContentUI message={msg} onCopyReasoningContent={onCopyReasoningContent} />
@@ -544,10 +643,7 @@ const _Message: FC<Props> = (props) => {
                                   })
                                 }}
                               >
-                                <Typography
-                                  variant="caption"
-                                  className="text-gray-600 dark:text-gray-400 block mb-1"
-                                >
+                                <Typography variant="caption" className="text-gray-600 dark:text-gray-400 block mb-1">
                                   {t('OCR Text')} ({group.part.ocrResult.length} {t('characters')})
                                 </Typography>
                                 <Typography
@@ -595,6 +691,14 @@ const _Message: FC<Props> = (props) => {
                 <Text c="chatbox-tertiary">{tips.join(', ')}</Text>
               )}
             </div>
+            <TextSelectionToolbar
+              opened={!!selectionToolbar}
+              position={selectionToolbar ? { x: selectionToolbar.x, y: selectionToolbar.y } : null}
+              onExplain={onExplainSelection}
+              onTranslate={onTranslateSelection}
+              onCopy={onCopySelection}
+              onClose={clearSelectionToolbar}
+            />
             {(msg.files || msg.links) && <MessageAttachmentGrid files={msg.files} links={msg.links} />}
 
             {/* actions */}

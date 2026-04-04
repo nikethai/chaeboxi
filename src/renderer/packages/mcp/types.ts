@@ -3,4 +3,5 @@ export type {
   MCPServerConfig,
   MCPTransportConfig,
   MCPServerStatus,
+  ToolRiskTier,
 } from '../../../shared/types/mcp'

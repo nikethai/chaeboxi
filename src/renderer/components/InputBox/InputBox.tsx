@@ -72,6 +72,7 @@ import * as atoms from '@/stores/atoms'
 import { compactionUIStateMapAtom } from '@/stores/atoms/compactionAtoms'
 import * as chatStore from '@/stores/chatStore'
 import { usePromptPresets } from '@/stores/promptPresetsStore'
+import { useQueuedMessageCount } from '@/stores/session/messageQueue'
 import { useSession, useSessionSettings } from '@/stores/chatStore'
 import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
@@ -213,6 +214,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     const [links, setLinks] = useAtom(atoms.inputBoxLinksFamily(currentSessionId || 'new'))
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const queuedMessageCount = useQueuedMessageCount(currentSessionId)
 
     useEffect(() => {
       const constructedMessage = sessionHelpers.constructUserMessage(
@@ -472,7 +474,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     const closeSelectModelErrorTipCb = useRef<NodeJS.Timeout>()
     const handleSubmit = async (needGenerating = true) => {
-      if (disableSubmit || generating || isSubmitting || isPreprocessing) {
+      if (disableSubmit || isSubmitting || isPreprocessing) {
         return
       }
 
@@ -998,25 +1000,32 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
               {/* Send Button */}
               <ActionIcon
-                disabled={(disableSubmit || isPreprocessing || isSubmitting || isCompactionRunning) && !generating}
+                disabled={
+                  generating
+                    ? disableSubmit
+                      ? false
+                      : isPreprocessing || isSubmitting || isCompactionRunning
+                    : disableSubmit || isPreprocessing || isSubmitting || isCompactionRunning
+                }
                 size={32}
                 variant="filled"
-                color={generating ? 'dark' : 'chatbox-brand'}
+                color={generating && disableSubmit ? 'dark' : 'chatbox-brand'}
                 radius="xl"
-                onClick={generating ? onStopGenerating : () => handleSubmit()}
+                onClick={generating && disableSubmit ? onStopGenerating : () => handleSubmit()}
                 className={cn(
                   'shrink-0 mb-1',
-                  !generating &&
+                  !(generating && disableSubmit) &&
                     (disableSubmit || isPreprocessing || isSubmitting || isCompactionRunning) &&
                     'disabled:!opacity-100 !text-white'
                 )}
                 style={
-                  !generating && (disableSubmit || isPreprocessing || isSubmitting || isCompactionRunning)
+                  !(generating && disableSubmit) &&
+                  (disableSubmit || isPreprocessing || isSubmitting || isCompactionRunning)
                     ? { backgroundColor: 'rgba(222, 226, 230, 1)' }
                     : undefined
                 }
               >
-                {generating ? (
+                {generating && disableSubmit ? (
                   <ScalableIcon icon={IconPlayerStopFilled} size={16} />
                 ) : (
                   <ScalableIcon icon={IconArrowUp} size={16} />
@@ -1258,6 +1267,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
               {/* Right Group: Token Count + Model Selector */}
               <Flex align="center" gap={0}>
+                {queuedMessageCount > 0 && (
+                  <Text size="xs" c="chatbox-tertiary" mr="xs">
+                    {t('Queued ({{count}})', { count: queuedMessageCount })}
+                  </Text>
+                )}
                 <TokenCountMenu
                   currentInputTokens={currentInputTokens}
                   contextTokens={contextTokens}

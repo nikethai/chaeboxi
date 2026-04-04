@@ -8,6 +8,8 @@ export enum StorageKey {
   Configs = 'configs',
   Settings = 'settings',
   MyCopilots = 'myCopilots',
+  MyFolders = 'myFolders',
+  PromptPresets = 'promptPresets',
   ConfigVersion = 'configVersion',
   RemoteConfig = 'remoteConfig',
   ChatSessionsList = 'chat-sessions-list',

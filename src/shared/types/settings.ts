@@ -385,6 +385,7 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
 
   autoCompaction: z.boolean().default(true),
   compactionThreshold: z.number().min(0.4).max(0.9).default(0.6),
+  contextOverflowBehavior: z.enum(['ask', 'auto-compact', 'truncate']).default('ask'),
 
   autoLaunch: z.boolean().default(false),
   autoUpdate: z.boolean().default(true), // 是否自动检查更新

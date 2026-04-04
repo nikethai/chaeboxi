@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next'
 import { AssistantAvatar, UserAvatar } from '@/components/common/Avatar'
 import MaxContextMessageCountSlider from '@/components/common/MaxContextMessageCountSlider'
 import { AdaptiveModal } from '@/components/common/AdaptiveModal'
+import { AdaptiveSelect } from '@/components/AdaptiveSelect'
 import SliderWithInput from '@/components/common/SliderWithInput'
 import { Divider } from '@/components/common/Divider'
 import { handleImageInputAndSave } from '@/components/Image'
@@ -626,6 +627,40 @@ function ContextManagementSection() {
         <Text c="chatbox-tertiary" size="xs">
           {t('When enabled, conversations will be automatically summarized to manage context window usage.')}
         </Text>
+      </Stack>
+
+      {/* Context Overflow Behavior */}
+      <Stack gap="sm">
+        <Flex align="center" gap="xs">
+          <Text size="sm">{t('Context Overflow Behavior')}</Text>
+          <Tooltip
+            label={t(
+              'Choose what happens when the conversation context exceeds the compaction threshold. "Ask" shows a dialog so you can decide each time.'
+            )}
+            withArrow={true}
+            maw={320}
+            className="!whitespace-normal"
+            zIndex={3000}
+            events={{ hover: true, focus: true, touch: true }}
+          >
+            <ScalableIcon icon={IconInfoCircle} size={20} className="text-chatbox-tint-tertiary" />
+          </Tooltip>
+        </Flex>
+        <AdaptiveSelect
+          maw={320}
+          comboboxProps={{ withinPortal: true }}
+          value={settings.contextOverflowBehavior ?? 'ask'}
+          data={[
+            { value: 'ask', label: t('Ask every time') },
+            { value: 'auto-compact', label: t('Auto compact') },
+            { value: 'truncate', label: t('Truncate oldest messages') },
+          ]}
+          onChange={(val) => {
+            if (val) {
+              setSettings({ contextOverflowBehavior: val as 'ask' | 'auto-compact' | 'truncate' })
+            }
+          }}
+        />
       </Stack>
 
       {/* Compaction Threshold Slider */}

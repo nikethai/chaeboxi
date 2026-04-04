@@ -1,12 +1,14 @@
+import NiceModal from '@ebay/nice-modal-react'
 import type { CompactionPoint, Message, SessionSettings, Settings } from '@shared/types'
 import { createMessage } from '@shared/types'
+import type { ContextOverflowAction } from '@/modals/ContextOverflow'
 import { getTokenizerType } from '@/packages/token-estimation'
 import { setCompactionUIState } from '@/stores/atoms/compactionAtoms'
 import * as chatStore from '@/stores/chatStore'
 import queryClient from '@/stores/queryClient'
 import { settingsStore } from '@/stores/settingsStore'
 import { sumCachedTokensFromMessages } from '../token'
-import { checkOverflow } from './compaction-detector'
+import { checkOverflow, type OverflowCheckResult } from './compaction-detector'
 import { buildContextForAI } from './context-builder'
 import {
   type ContextTokensCacheValue,
@@ -52,25 +54,35 @@ export function isCompactionInProgress(sessionId: string): boolean {
 }
 
 export async function needsCompaction(sessionId: string): Promise<boolean> {
+  return (await checkSessionOverflow(sessionId)).isOverflow
+}
+
+/**
+ * Returns the full overflow check result for a session.
+ * Returns isOverflow=false if compaction is disabled or model is unknown.
+ */
+async function checkSessionOverflow(sessionId: string): Promise<OverflowCheckResult> {
+  const noOverflow: OverflowCheckResult = { isOverflow: false, contextWindow: null, thresholdTokens: null, currentTokens: 0 }
+
   // ===== Keep existing early returns (do not modify) =====
   const session = await chatStore.getSession(sessionId)
   if (!session) {
     console.log('[DEBUG needsCompaction] session not found')
-    return false
+    return noOverflow
   }
 
   const globalSettings = settingsStore.getState().getSettings()
 
   if (!isAutoCompactionEnabled(session.settings, globalSettings)) {
     console.log('[DEBUG needsCompaction] auto compaction disabled')
-    return false
+    return noOverflow
   }
 
   const providerId = session.settings?.provider ?? globalSettings.defaultChatModel?.provider
   const modelId = session.settings?.modelId ?? globalSettings.defaultChatModel?.model
   if (!modelId) {
     console.log('[DEBUG needsCompaction] no modelId')
-    return false
+    return noOverflow
   }
 
   // ===== NEW: Get merged settings =====
@@ -106,19 +118,17 @@ export async function needsCompaction(sessionId: string): Promise<boolean> {
       modelId,
       settings: { compactionThreshold: globalSettings.compactionThreshold },
       contextWindow,
-    }).isOverflow
+    })
   }
 
   // ===== Keep existing: checkOverflow call (only replace tokens source) =====
   const contextWindow = getModelContextWindowFromSettings(providerId, modelId, globalSettings)
-  const overflowResult = checkOverflow({
+  return checkOverflow({
     tokens: cachedResult.contextTokens, // ← Changed: from cache
     modelId,
     settings: { compactionThreshold: globalSettings.compactionThreshold },
     contextWindow,
   })
-
-  return overflowResult.isOverflow
 }
 
 export async function runCompactionWithUIState(
@@ -126,10 +136,34 @@ export async function runCompactionWithUIState(
   options: CompactionOptions = {}
 ): Promise<CompactionResult> {
   if (!options.force) {
-    const shouldCompact = await needsCompaction(sessionId)
-    if (!shouldCompact) {
+    const overflowResult = await checkSessionOverflow(sessionId)
+    if (!overflowResult.isOverflow) {
       return { success: true, compacted: false }
     }
+
+    // Determine how to handle the overflow based on global settings
+    const globalSettings = settingsStore.getState().getSettings()
+    const behavior = globalSettings.contextOverflowBehavior ?? 'ask'
+
+    if (behavior === 'ask') {
+      // Show the modal and wait for user choice
+      const action: ContextOverflowAction = await NiceModal.show('context-overflow', {
+        currentTokens: overflowResult.currentTokens,
+        thresholdTokens: overflowResult.thresholdTokens ?? overflowResult.currentTokens,
+        contextWindow: overflowResult.contextWindow ?? overflowResult.currentTokens,
+      })
+
+      if (action === 'continue' || action === 'truncate') {
+        // User chose to continue without compaction or truncate —
+        // context-builder will naturally drop oldest messages when building the prompt
+        return { success: true, compacted: false }
+      }
+      // action === 'compact' → fall through to run compaction below
+    } else if (behavior === 'truncate') {
+      // Silently skip compaction; context-builder handles truncation
+      return { success: true, compacted: false }
+    }
+    // behavior === 'auto-compact' → fall through to run compaction below
   }
 
   setCompactionUIState(sessionId, { status: 'running', error: null, streamingText: '' })

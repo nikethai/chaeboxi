@@ -1,15 +1,13 @@
-import {
-  Box,
-  Button,
-  Checkbox,
-  FormControlLabel,
-  FormGroup,
-  Switch,
-  Tab,
-  Tabs,
-  Typography,
-  useTheme,
-} from '@mui/material'
+import Box from '@mui/material/Box'
+import Button from '@mui/material/Button'
+import Checkbox from '@mui/material/Checkbox'
+import FormControlLabel from '@mui/material/FormControlLabel'
+import FormGroup from '@mui/material/FormGroup'
+import Switch from '@mui/material/Switch'
+import Tab from '@mui/material/Tab'
+import Tabs from '@mui/material/Tabs'
+import Typography from '@mui/material/Typography'
+import { useTheme } from '@mui/material/styles'
 import type { Settings } from '@shared/types'
 import { uniqBy } from 'lodash'
 import { useRef, useState } from 'react'

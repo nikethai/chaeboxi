@@ -1,5 +1,6 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { Tooltip, Typography } from '@mui/material'
+import Tooltip from '@mui/material/Tooltip'
+import Typography from '@mui/material/Typography'
 import { ChatboxAIAPIError } from '@shared/models/errors'
 import { AlertCircle, CheckCircle, Eye, Link, Link2, Loader2, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'

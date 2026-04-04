@@ -1,5 +1,5 @@
 import { sanitizeUrl } from '@braintree/sanitize-url'
-import { useTheme } from '@mui/material'
+import { useTheme } from '@mui/material/styles'
 import {
   createContext,
   type ElementType,

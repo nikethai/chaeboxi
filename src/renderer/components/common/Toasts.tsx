@@ -1,4 +1,4 @@
-import { Snackbar } from '@mui/material'
+import Snackbar from '@mui/material/Snackbar'
 import {} from 'react'
 import { useStore } from 'zustand'
 import { uiStore } from '@/stores/uiStore'

@@ -1,5 +1,6 @@
 import { useMantineTheme } from '@mantine/core'
-import { useMediaQuery, useTheme } from '@mui/material'
+import useMediaQuery from '@mui/material/useMediaQuery'
+import { useTheme } from '@mui/material/styles'
 import { useEffect } from 'react'
 import { useUIStore } from '../stores/uiStore'
 

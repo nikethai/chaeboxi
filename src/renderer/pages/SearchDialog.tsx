@@ -1,4 +1,6 @@
-import { Dialog, DialogContent, useTheme } from '@mui/material'
+import Dialog from '@mui/material/Dialog'
+import DialogContent from '@mui/material/DialogContent'
+import { useTheme } from '@mui/material/styles'
 import type { Session } from '@shared/types'
 import { useAtomValue } from 'jotai'
 import { Loader2, ScanSearch } from 'lucide-react'

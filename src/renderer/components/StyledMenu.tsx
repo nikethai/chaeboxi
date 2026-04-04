@@ -1,4 +1,4 @@
-import { Menu, type MenuProps } from '@mui/material'
+import Menu, { type MenuProps } from '@mui/material/Menu'
 import 'katex/dist/katex.min.css'
 import { alpha, styled } from '@mui/material/styles'
 import { useLanguage } from '@/stores/settingsStore'

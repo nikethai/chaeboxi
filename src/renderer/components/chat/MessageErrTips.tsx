@@ -1,6 +1,6 @@
 import { ActionIcon, Collapse, Flex, Tooltip } from '@mantine/core'
-import { Link } from '@mui/material'
 import Alert from '@mui/material/Alert'
+import Link from '@mui/material/Link'
 import { aiProviderNameHash } from '@shared/models'
 import { ChatboxAIAPIError } from '@shared/models/errors'
 import type { Message } from '@shared/types'

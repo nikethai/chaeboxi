@@ -1,6 +1,7 @@
 import CloseIcon from '@mui/icons-material/Close'
 import SaveIcon from '@mui/icons-material/Save'
-import { Fab, useTheme } from '@mui/material'
+import Fab from '@mui/material/Fab'
+import { useTheme } from '@mui/material/styles'
 import type { MessagePicture } from '@shared/types'
 import { useCallback, useEffect, useState } from 'react'
 import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch'

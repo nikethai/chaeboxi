@@ -1,6 +1,6 @@
 import CampaignOutlinedIcon from '@mui/icons-material/CampaignOutlined'
 import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined'
-import { Chip } from '@mui/material'
+import Chip from '@mui/material/Chip'
 import { useAtomValue } from 'jotai'
 import { useState } from 'react'
 import { currentSessionIdAtom } from '@/stores/atoms'

@@ -544,7 +544,18 @@ export function initEmptyPictureSession(): Omit<Session, 'id'> {
 }
 
 export function getSessionMeta(session: SessionMeta) {
-  return pick(session, ['id', 'name', 'starred', 'assistantAvatarKey', 'picUrl', 'type'])
+  return pick(session, [
+    'id',
+    'name',
+    'starred',
+    'hidden',
+    'folderId',
+    'tags',
+    'archived',
+    'assistantAvatarKey',
+    'picUrl',
+    'type',
+  ])
 }
 
 function _searchSessions(regexp: RegExp, s: Session) {

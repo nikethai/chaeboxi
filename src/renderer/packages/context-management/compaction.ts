@@ -40,6 +40,8 @@ export interface CompactionResult {
   compacted: boolean
   error?: Error
   summaryMessageId?: string
+  overflowAction?: 'truncate' | 'continue'
+  truncateTokenLimit?: number
 }
 
 export function isAutoCompactionEnabled(sessionSettings?: SessionSettings, globalSettings?: Settings): boolean {
@@ -153,15 +155,26 @@ export async function runCompactionWithUIState(
         contextWindow: overflowResult.contextWindow ?? overflowResult.currentTokens,
       })
 
-      if (action === 'continue' || action === 'truncate') {
-        // User chose to continue without compaction or truncate —
-        // context-builder will naturally drop oldest messages when building the prompt
-        return { success: true, compacted: false }
+      if (action === 'continue') {
+        return { success: true, compacted: false, overflowAction: 'continue' }
+      }
+      if (action === 'truncate') {
+        return {
+          success: true,
+          compacted: false,
+          overflowAction: 'truncate',
+          truncateTokenLimit: overflowResult.thresholdTokens ?? overflowResult.currentTokens,
+        }
       }
       // action === 'compact' → fall through to run compaction below
     } else if (behavior === 'truncate') {
-      // Silently skip compaction; context-builder handles truncation
-      return { success: true, compacted: false }
+      // Silently truncate by token budget
+      return {
+        success: true,
+        compacted: false,
+        overflowAction: 'truncate',
+        truncateTokenLimit: overflowResult.thresholdTokens ?? overflowResult.currentTokens,
+      }
     }
     // behavior === 'auto-compact' → fall through to run compaction below
   }

@@ -105,6 +105,7 @@ function Index() {
         picUrl: session.picUrl,
         messages: session.messages,
         copilotId: session.copilotId,
+        agentMode: session.agentMode,
         settings: session.settings,
       })
 
@@ -227,7 +228,12 @@ function Index() {
             <Box px="md">
               <Stack gap="sm" className={widthFull ? 'w-full' : 'w-full max-w-4xl mx-auto'}>
                 <Flex align="center" gap="sm">
-                  <CopilotItem name={session.name} picUrl={session.picUrl} emojiAvatar={selectedCopilot?.emojiAvatar} selected />
+                  <CopilotItem
+                    name={session.name}
+                    picUrl={session.picUrl}
+                    emojiAvatar={selectedCopilot?.emojiAvatar}
+                    selected
+                  />
                   <ActionIcon
                     size={32}
                     radius={16}
@@ -255,8 +261,10 @@ function Index() {
             sessionType="chat"
             sessionId="new"
             model={selectedModel}
+            agentMode={session.agentMode ?? false}
             // fullWidth
             onSelectModel={onSelectModel}
+            onToggleAgentMode={(agentMode) => setSession((old) => ({ ...old, agentMode }))}
             onClickSessionSettings={onClickSessionSettings}
             onSubmit={handleSubmit}
           />

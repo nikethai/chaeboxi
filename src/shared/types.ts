@@ -83,6 +83,7 @@ export interface CopilotDetail {
   picUrl?: string
   emojiAvatar?: string
   prompt: string
+  builtIn?: boolean
   demoQuestion?: string
   demoAnswer?: string
   starred?: boolean

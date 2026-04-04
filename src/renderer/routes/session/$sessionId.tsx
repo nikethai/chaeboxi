@@ -164,9 +164,13 @@ function RouteComponent() {
           sessionId={currentSession.id}
           sessionType={currentSession.type}
           model={model}
+          agentMode={currentSession.agentMode ?? false}
           onStartNewThread={onStartNewThread}
           onRollbackThread={onRollbackThread}
           onSelectModel={onSelectModel}
+          onToggleAgentMode={(agentMode) => {
+            void updateSessionStore(currentSession.id, { agentMode })
+          }}
           onClickSessionSettings={onClickSessionSettings}
           generating={!!lastGeneratingMessage}
           onSubmit={onSubmit}

@@ -3,10 +3,11 @@ import ReplayOutlinedIcon from '@mui/icons-material/ReplayOutlined'
 import StopCircleOutlinedIcon from '@mui/icons-material/StopCircleOutlined'
 import ButtonGroup from '@mui/material/ButtonGroup'
 import IconButton from '@mui/material/IconButton'
-import type { Message } from '@shared/types/session'
+import type { Message, MessageArtifact as MessageArtifactRecord } from '@shared/types/session'
 import { debounce } from 'lodash'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuidv4 } from 'uuid'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import { getMessageThreadContext } from '@/stores/sessionActions'
@@ -32,6 +33,61 @@ export function isContainRenderableCode(markdown: string): boolean {
 
 export function isRenderableCodeLanguage(language: string): boolean {
   return !!language && RENDERABLE_CODE_LANGUAGES.includes(language.toLowerCase() as RenderableCodeLanguage)
+}
+
+export function deriveMessageArtifacts(
+  messageContent: string,
+  options?: {
+    existingArtifacts?: MessageArtifactRecord[]
+    previousArtifact?: MessageArtifactRecord
+  }
+): MessageArtifactRecord[] | undefined {
+  if (!isContainRenderableCode(messageContent)) {
+    return undefined
+  }
+
+  const existingArtifact = options?.existingArtifacts?.[0]
+  if (existingArtifact && existingArtifact.content === messageContent) {
+    return options?.existingArtifacts
+  }
+
+  const previousArtifact = options?.previousArtifact
+  return [
+    {
+      id: existingArtifact?.id ?? uuidv4(),
+      type: 'html',
+      title: 'HTML Artifact',
+      language: 'html',
+      content: messageContent,
+      version: existingArtifact?.version ?? (previousArtifact?.version ?? 0) + 1,
+      previousVersionId: existingArtifact?.previousVersionId ?? previousArtifact?.id,
+      timestamp: Date.now(),
+    },
+  ]
+}
+
+export async function getPreviousArtifactVersion(
+  sessionId: string,
+  messageId: string
+): Promise<MessageArtifactRecord | undefined> {
+  const messageList = await getMessageThreadContext(sessionId, messageId)
+  const messageIndex = messageList.findIndex((message) => message.id === messageId)
+  if (messageIndex <= 0) {
+    return undefined
+  }
+
+  for (let index = messageIndex - 1; index >= 0; index -= 1) {
+    const artifact = messageList[index].artifacts?.[0]
+    if (artifact) {
+      return artifact
+    }
+    const previousMessageText = getMessageText(messageList[index])
+    if (messageList[index].role === 'assistant' && isContainRenderableCode(previousMessageText)) {
+      return deriveMessageArtifacts(previousMessageText)?.[0]
+    }
+  }
+
+  return undefined
 }
 
 export function MessageArtifact(props: {

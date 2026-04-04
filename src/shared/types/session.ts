@@ -186,6 +186,23 @@ const MessageUsageSchema = z.object({
   cachedInputTokens: z.number().optional().catch(undefined),
 })
 
+export const MessageFeedbackSchema = z.object({
+  rating: z.enum(['up', 'down']),
+  text: z.string().optional(),
+  timestamp: z.number(),
+})
+
+export const MessageArtifactSchema = z.object({
+  id: z.string(),
+  type: z.enum(['html']),
+  title: z.string().optional(),
+  language: z.string().optional(),
+  content: z.string(),
+  version: z.number().optional(),
+  previousVersionId: z.string().optional(),
+  timestamp: z.number(),
+})
+
 export const MessageSchema = z.object({
   id: z.string(),
   role: z.nativeEnum(MessageRoleEnum),
@@ -216,6 +233,8 @@ export const MessageSchema = z.object({
   tokenCalculatedAt: TokenCalculatedAtSchema,
   updatedAt: z.number().optional(),
   isSummary: z.boolean().optional(), // Marks message as a compaction summary
+  feedback: MessageFeedbackSchema.optional().catch(undefined),
+  artifacts: z.array(MessageArtifactSchema).optional().catch(undefined),
 })
 
 // Compaction point schema (for context management)
@@ -268,6 +287,7 @@ export const SessionSchema = z.object({
   tags: z.array(z.string()).optional(),
   archived: z.boolean().optional(),
   assistantAvatarKey: z.string().optional(),
+  agentMode: z.boolean().optional().default(false),
   settings: SessionSettingsSchema.optional(),
   threads: z.array(SessionThreadSchema).optional(),
   threadName: z.string().optional(),
@@ -316,6 +336,8 @@ export type StreamTextResult = z.infer<typeof StreamTextResultSchema>
 export type ToolUseScope = z.infer<typeof ToolUseScopeSchema>
 export type ModelProvider = z.infer<typeof ModelProviderSchema>
 export type MessageStatus = z.infer<typeof MessageStatusSchema>
+export type MessageFeedback = z.infer<typeof MessageFeedbackSchema>
+export type MessageArtifact = z.infer<typeof MessageArtifactSchema>
 export type Message = z.infer<typeof MessageSchema>
 export type SessionType = z.infer<typeof SessionTypeSchema>
 export type CompactionPoint = z.infer<typeof CompactionPointSchema>

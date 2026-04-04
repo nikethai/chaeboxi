@@ -17,7 +17,7 @@ import { cloneMessage, getMessageText, mergeMessages } from '@shared/utils/messa
 import { identity, pickBy } from 'lodash'
 import { createModelDependencies } from '@/adapters'
 import * as appleAppStore from '@/packages/apple_app_store'
-import { myCopilotsAtom } from '@/hooks/useCopilots'
+import { getBuiltInCopilotById, myCopilotsAtom } from '@/hooks/useCopilots'
 import { buildContextForAI } from '@/packages/context-management'
 import {
   buildAttachmentWrapperPrefix,
@@ -72,9 +72,9 @@ function getCopilotSettings(
   try {
     const copilots = getDefaultStore().get(myCopilotsAtom)
     const copilot = copilots.find((c) => c.id === copilotId)
-    return copilot?.modelSettings ?? null
+    return copilot?.modelSettings ?? getBuiltInCopilotById(copilotId)?.modelSettings ?? null
   } catch {
-    return null
+    return getBuiltInCopilotById(copilotId)?.modelSettings ?? null
   }
 }
 
@@ -227,6 +227,7 @@ export async function generate(
     const sessionKnowledgeBaseMap = uiStore.getState().sessionKnowledgeBaseMap
     const knowledgeBase = sessionKnowledgeBaseMap[sessionId]
     const webBrowsing = getSessionWebBrowsing(sessionId, effectiveSettings.provider)
+    const maxSteps = session.agentMode ? 5 : undefined
     switch (session.type) {
       // Chat message generation
       case 'chat':
@@ -279,6 +280,7 @@ export async function generate(
           providerOptions: effectiveSettings.providerOptions,
           knowledgeBase,
           webBrowsing,
+          maxSteps,
         })
         targetMsg = {
           ...targetMsg,

@@ -144,6 +144,7 @@ function Copilots() {
                     key={`${item.id}_${ix}`}
                     mode="local"
                     detail={item}
+                    canDelete={!item.builtIn}
                     selectMe={() => selectCopilot(item)}
                     switchStarred={() => {
                       store.addOrUpdate({
@@ -191,6 +192,7 @@ type MiniItemProps =
   | {
       mode: 'local'
       detail: CopilotDetail
+      canDelete?: boolean
       selectMe(): void
       switchStarred(): void
       editMe(): void
@@ -345,13 +347,15 @@ function MiniItem(props: MiniItemProps) {
 
             <Divider sx={{ my: 0.5 }} />
 
-            <ConfirmDeleteMenuItem
-              onDelete={() => {
-                setAnchorEl(null)
-                closeMenu()
-                props.deleteMe()
-              }}
-            />
+            {props.canDelete !== false && (
+              <ConfirmDeleteMenuItem
+                onDelete={() => {
+                  setAnchorEl(null)
+                  closeMenu()
+                  props.deleteMe()
+                }}
+              />
+            )}
           </StyledMenu>
         </>
       )}

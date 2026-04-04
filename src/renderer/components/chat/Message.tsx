@@ -1,5 +1,14 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { ActionIcon, type ActionIconProps, Flex, Image as Img, Loader, Text, Tooltip as Tooltip1 } from '@mantine/core'
+import {
+  ActionIcon,
+  type ActionIconProps,
+  Flex,
+  Image as Img,
+  Loader,
+  Text,
+  Textarea,
+  Tooltip as Tooltip1,
+} from '@mantine/core'
 import Box from '@mui/material/Box'
 import Grid from '@mui/material/Grid'
 import Typography from '@mui/material/Typography'
@@ -7,6 +16,7 @@ import { useTheme } from '@mui/material/styles'
 import {
   createMessage,
   type Message,
+  type MessageArtifact as MessageArtifactRecord,
   type MessagePicture,
   type MessageToolCallPart,
   type SessionType,
@@ -25,15 +35,29 @@ import {
   type IconProps,
   IconQuoteFilled,
   IconReload,
+  IconThumbDown,
+  IconThumbDownFilled,
+  IconThumbUp,
+  IconThumbUpFilled,
   IconTrash,
 } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import clsx from 'clsx'
 import * as dateFns from 'date-fns'
-import { concat } from 'lodash'
+import { concat, isEqual } from 'lodash'
 import type { UIElementData } from 'photoswipe'
 import type React from 'react'
-import { type FC, forwardRef, type MouseEventHandler, memo, useCallback, useMemo, useRef, useState } from 'react'
+import {
+  type FC,
+  forwardRef,
+  type MouseEventHandler,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { Gallery, Item as GalleryItem } from 'react-photoswipe-gallery'
 import Markdown from '@/components/Markdown'
@@ -57,7 +81,12 @@ import {
 } from '@/stores/sessionActions'
 import * as toastActions from '@/stores/toastActions'
 import ActionMenu, { type ActionMenuItemProps } from '../ActionMenu'
-import { isContainRenderableCode, MessageArtifact } from '../Artifact'
+import {
+  deriveMessageArtifacts,
+  getPreviousArtifactVersion,
+  isContainRenderableCode,
+  MessageArtifact as InlineArtifact,
+} from '../Artifact'
 import { AssistantAvatar, SystemAvatar, UserAvatar } from '../common/Avatar'
 import { ScalableIcon } from '../common/ScalableIcon'
 import Loading from '../icons/Loading'
@@ -115,10 +144,13 @@ const _Message: FC<Props> = (props) => {
   const [previewArtifact, setPreviewArtifact] = useState(autoPreviewArtifacts)
   const [shouldThrowError, setShouldThrowError] = useState(false)
   const [selectionToolbar, setSelectionToolbar] = useState<{ text: string; x: number; y: number } | null>(null)
+  const [feedbackText, setFeedbackText] = useState(msg.feedback?.text ?? '')
+
+  const messageText = useMemo(() => getMessageText(msg), [msg])
 
   const contentLength = useMemo(() => {
-    return getMessageText(msg).length
-  }, [msg])
+    return messageText.length
+  }, [messageText])
 
   const needCollapse =
     collapseThreshold &&
@@ -129,6 +161,35 @@ const _Message: FC<Props> = (props) => {
 
   const ref = useRef<HTMLDivElement>(null)
   const messageContentRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    setFeedbackText(msg.feedback?.text ?? '')
+  }, [msg.feedback?.text, msg.id])
+
+  useEffect(() => {
+    if (msg.role !== 'assistant' || msg.generating) {
+      return
+    }
+
+    let cancelled = false
+    void (async () => {
+      const previousArtifact = await getPreviousArtifactVersion(sessionId, msg.id)
+      const nextArtifacts = deriveMessageArtifacts(messageText, {
+        existingArtifacts: msg.artifacts,
+        previousArtifact,
+      })
+
+      if (cancelled || isEqual(msg.artifacts, nextArtifacts)) {
+        return
+      }
+
+      await modifyMessage(sessionId, { ...msg, artifacts: nextArtifacts }, false)
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [messageText, msg, sessionId])
 
   const setQuote = useUIStore((state) => state.setQuote)
 
@@ -237,6 +298,51 @@ const _Message: FC<Props> = (props) => {
     clearSelectionToolbar()
   }, [clearSelectionToolbar, selectionToolbar?.text, t])
 
+  const currentArtifact = useMemo<MessageArtifactRecord | undefined>(() => msg.artifacts?.[0], [msg.artifacts])
+
+  const persistFeedback = useCallback(
+    (feedback?: Message['feedback']) => {
+      void modifyMessage(sessionId, { ...msg, feedback }, false)
+    },
+    [msg, sessionId]
+  )
+
+  const toggleFeedbackRating = useCallback(
+    (rating: 'up' | 'down') => {
+      if (msg.feedback?.rating === rating) {
+        setFeedbackText('')
+        persistFeedback(undefined)
+        return
+      }
+
+      const nextFeedback: Message['feedback'] = {
+        rating,
+        text: rating === 'down' ? msg.feedback?.text?.trim() || undefined : undefined,
+        timestamp: Date.now(),
+      }
+      setFeedbackText(nextFeedback.text ?? '')
+      persistFeedback(nextFeedback)
+    },
+    [msg.feedback, persistFeedback]
+  )
+
+  const saveFeedbackText = useCallback(() => {
+    if (msg.feedback?.rating !== 'down') {
+      return
+    }
+
+    const trimmed = feedbackText.trim()
+    if ((msg.feedback?.text ?? '') === trimmed) {
+      return
+    }
+
+    persistFeedback({
+      rating: 'down',
+      text: trimmed || undefined,
+      timestamp: Date.now(),
+    })
+  }, [feedbackText, msg.feedback, persistFeedback])
+
   const handleSelectionMouseUp = useCallback(() => {
     if (msg.role !== 'assistant' || !messageContentRef.current) {
       return
@@ -339,8 +445,8 @@ const _Message: FC<Props> = (props) => {
     if (msg.role !== 'assistant') {
       return false
     }
-    return isContainRenderableCode(getMessageText(msg))
-  }, [msg.contentParts, msg.role, msg])
+    return isContainRenderableCode(messageText)
+  }, [messageText, msg.role])
 
   const contentParts = msg.contentParts || []
 
@@ -676,6 +782,22 @@ const _Message: FC<Props> = (props) => {
                   onReport={platform.type === 'mobile' ? onReport : undefined}
                 />
               )}
+              {needArtifact && (
+                <Flex direction="column" gap={4} mt="sm">
+                  {currentArtifact?.version && (
+                    <Text size="xs" c="chatbox-tertiary">
+                      {t('Artifact v{{version}}', { version: currentArtifact.version })}
+                    </Text>
+                  )}
+                  <InlineArtifact
+                    sessionId={sessionId}
+                    messageId={msg.id}
+                    messageContent={messageText}
+                    preview={previewArtifact}
+                    setPreview={setPreviewArtifact}
+                  />
+                </Flex>
+              )}
               <MessageErrTips msg={msg} />
               {needCollapse && !isCollapsed && CollapseButton}
 
@@ -742,6 +864,24 @@ const _Message: FC<Props> = (props) => {
                     <MessageActionIcon icon={IconCopy} tooltip={t('copy')} onClick={onCopyMsg} />
                   )}
 
+                  {msg.role === 'assistant' && (
+                    <MessageActionIcon
+                      icon={msg.feedback?.rating === 'up' ? IconThumbUpFilled : IconThumbUp}
+                      tooltip={t('Thumbs Up')}
+                      color={msg.feedback?.rating === 'up' ? 'chatbox-success' : 'chatbox-secondary'}
+                      onClick={() => toggleFeedbackRating('up')}
+                    />
+                  )}
+
+                  {msg.role === 'assistant' && (
+                    <MessageActionIcon
+                      icon={msg.feedback?.rating === 'down' ? IconThumbDownFilled : IconThumbDown}
+                      tooltip={t('Thumbs Down')}
+                      color={msg.feedback?.rating === 'down' ? 'chatbox-error' : 'chatbox-secondary'}
+                      onClick={() => toggleFeedbackRating('down')}
+                    />
+                  )}
+
                   {!msg.generating && props.sessionType === 'picture' && msg.role === 'assistant' && (
                     <MessageActionIcon
                       icon={IconPhotoPlus}
@@ -759,6 +899,23 @@ const _Message: FC<Props> = (props) => {
                   </ActionMenu>
                 </Flex>
               </Flex>
+            )}
+            {msg.role === 'assistant' && msg.feedback?.rating === 'down' && (
+              <Textarea
+                mt="xs"
+                autosize
+                minRows={2}
+                maxRows={4}
+                value={feedbackText}
+                placeholder={t('Optional feedback')}
+                onChange={(event) => setFeedbackText(event.currentTarget.value)}
+                onBlur={saveFeedbackText}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                    event.currentTarget.blur()
+                  }
+                }}
+              />
             )}
           </Grid>
         </Grid>

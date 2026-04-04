@@ -50,13 +50,14 @@ async function handleSearchResult(
   coreMessages: ModelMessage[],
   controller: AbortController,
   onResultChange: OnResultChange,
-  params: { providerOptions?: ProviderOptions; onStatusChange?: OnStatusChange }
+  params: { providerOptions?: ProviderOptions; onStatusChange?: OnStatusChange; maxSteps?: number }
 ) {
   if (!result?.searchResults?.length || result.type === 'none') {
     const chatResult = await model.chat(coreMessages, {
       signal: controller.signal,
       onResultChange,
       onStatusChange: params.onStatusChange,
+      maxSteps: params.maxSteps,
     })
     return { result: chatResult, coreMessages }
   }
@@ -87,6 +88,7 @@ async function handleSearchResult(
     },
     onStatusChange: params.onStatusChange,
     providerOptions: params.providerOptions,
+    maxSteps: params.maxSteps,
   })
   return { result: chatResult, coreMessages }
 }
@@ -247,6 +249,7 @@ export async function streamText(
     providerOptions?: ProviderOptions
     knowledgeBase?: Pick<KnowledgeBase, 'id' | 'name'>
     webBrowsing?: boolean
+    maxSteps?: number
   },
   signal?: AbortSignal
 ): Promise<{ result: StreamTextResult; coreMessages: ModelMessage[] }> {
@@ -436,6 +439,7 @@ export async function streamText(
       onStatusChange: params.onStatusChange,
       providerOptions: params.providerOptions,
       tools,
+      maxSteps: params.maxSteps,
     })
 
     return { result, coreMessages }

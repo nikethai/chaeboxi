@@ -444,7 +444,7 @@ const BlockCode = memo(
             )}
 
             {isRenderableCode && (
-              <Tooltip label={t('Preview')} withArrow openDelay={1000}>
+              <Tooltip label={t('Open as Artifact')} withArrow openDelay={1000}>
                 <ActionIcon variant="transparent" color="chatbox-tertiary" size={20} onClick={onClickArtifact}>
                   <IconPlayerPlayFilled />
                 </ActionIcon>

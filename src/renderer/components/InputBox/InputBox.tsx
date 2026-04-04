@@ -35,6 +35,7 @@ import {
   IconPhoto,
   IconPlayerStopFilled,
   IconPlus,
+  IconRobot,
   IconSettings,
   IconVocabulary,
   IconWorldWww,
@@ -130,6 +131,8 @@ export type InputBoxProps = {
   onStartNewThread?(): boolean
   onRollbackThread?(): boolean
   onClickSessionSettings?(): boolean | Promise<boolean>
+  agentMode?: boolean
+  onToggleAgentMode?(enabled: boolean): void
 }
 
 const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
@@ -146,6 +149,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       onStartNewThread,
       onRollbackThread,
       onClickSessionSettings,
+      agentMode: controlledAgentMode,
+      onToggleAgentMode,
     },
     ref
   ) => {
@@ -198,6 +203,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     const { session: currentSession } = useSession(sessionId || null)
     const { sessionSettings: currentSessionMergedSettings } = useSessionSettings(sessionId || null)
+    const agentMode = controlledAgentMode ?? currentSession?.agentMode ?? false
+
+    const toggleAgentMode = useCallback(() => {
+      onToggleAgentMode?.(!agentMode)
+      dom.focusMessageInput()
+    }, [agentMode, onToggleAgentMode])
 
     // Get current messages for token counting - will only recalculate when stable messages actually change
     // Uses getContextMessageIds to respect compaction points
@@ -1183,6 +1194,28 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   </UnstyledButton>
                 </Tooltip>
 
+                {sessionType === 'chat' && (
+                  <Tooltip
+                    label={t('Agent Mode: Enables autonomous multi-step tool use')}
+                    position="top"
+                    withArrow
+                    disabled={isSmallScreen}
+                  >
+                    <UnstyledButton
+                      onClick={toggleAgentMode}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors"
+                    >
+                      <IconRobot
+                        size={toolbarIconSize}
+                        strokeWidth={1.8}
+                        className={
+                          agentMode ? 'text-[var(--chatbox-tint-brand)]' : 'text-[var(--chatbox-tint-secondary)]'
+                        }
+                      />
+                    </UnstyledButton>
+                  </Tooltip>
+                )}
+
                 {!isSmallScreen &&
                   (showRollbackThreadButton ? (
                     <Tooltip label={t('Rollback Thread')} position="top" withArrow>
@@ -1254,6 +1287,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       <Menu.Item leftSection={<ScalableIcon icon={IconPlus} size={16} />} onClick={startNewThread}>
                         {t('New Thread')}
                       </Menu.Item>
+                      {sessionType === 'chat' && (
+                        <Menu.Item leftSection={<ScalableIcon icon={IconRobot} size={16} />} onClick={toggleAgentMode}>
+                          {t('Agent Mode')}
+                        </Menu.Item>
+                      )}
                       <Menu.Item
                         leftSection={<ScalableIcon icon={IconAdjustmentsHorizontal} size={16} />}
                         onClick={onClickSessionSettings}

@@ -5,6 +5,12 @@ export type MCPServerConfig<TransportConfig = MCPTransportConfig> = {
   transport: TransportConfig
 }
 
+export enum ToolRiskTier {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high',
+}
+
 export type MCPTransportConfig =
   | {
       type: 'stdio'
@@ -21,4 +27,4 @@ export type MCPTransportConfig =
 export type MCPServerStatus = {
   state: 'idle' | 'starting' | 'running' | 'stopping'
   error?: string
-} 
+}

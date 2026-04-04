@@ -1,12 +1,16 @@
 import { getModel } from '@shared/models'
 import { ChatboxAIAPIError, OCRError } from '@shared/models/errors'
+import { ToolRiskTier } from '@shared/types/mcp'
 import { sequenceMessages } from '@shared/utils/message'
 import { getModelSettings } from '@shared/utils/model_settings'
 import type { ModelMessage, ToolSet } from 'ai'
+import NiceModal from '@ebay/nice-modal-react'
 import { t } from 'i18next'
 import { uniqueId } from 'lodash'
 import { createModelDependencies } from '@/adapters'
+import type { ToolApprovalModalResult } from '@/modals/ToolApproval'
 import { settingsStore } from '@/stores/settingsStore'
+import { getToolApproval, toolApprovalStore } from '@/stores/toolApprovalStore'
 import type {
   ModelInterface,
   OnResultChange,
@@ -109,6 +113,125 @@ async function ocrMessages(messages: Message[]) {
   } catch (err) {
     throw new OCRError(ocrProviderName, err instanceof Error ? err : new Error(`${err}`))
   }
+}
+
+function getToolRiskTier(toolName: string, description?: string): ToolRiskTier {
+  const text = `${toolName} ${description || ''}`.toLowerCase()
+
+  if (
+    /(exec|execute|command|shell|terminal|script|python|bash|run|write|save|create|delete|remove|update|edit|modify)/.test(
+      text
+    )
+  ) {
+    return ToolRiskTier.HIGH
+  }
+
+  if (
+    /(fetch|http|request|download|browse|open url|url|web|page|file|filesystem|directory|read_file|read file)/.test(
+      text
+    )
+  ) {
+    return ToolRiskTier.MEDIUM
+  }
+
+  if (/(search|query|find|lookup|list|get|inspect|read)/.test(text)) {
+    return ToolRiskTier.LOW
+  }
+
+  return ToolRiskTier.MEDIUM
+}
+
+function createToolDeniedResult(toolName: string, riskTier: ToolRiskTier) {
+  return {
+    denied: true,
+    toolName,
+    riskTier,
+    message: t('Tool execution denied by user.'),
+  }
+}
+
+function wrapMCPToolsWithApproval(sessionId: string | undefined, tools: ToolSet): ToolSet {
+  if (!sessionId) {
+    return tools
+  }
+
+  return Object.fromEntries(
+    Object.entries(tools).map(([toolName, definition]) => {
+      const riskTier = getToolRiskTier(toolName, definition?.description)
+
+      return [
+        toolName,
+        {
+          ...definition,
+          execute: async (args: unknown) => {
+            const existingApproval = getToolApproval(sessionId, toolName)
+            const canAutoApprove =
+              existingApproval?.scope === 'session' &&
+              existingApproval.riskTier === riskTier &&
+              riskTier !== ToolRiskTier.HIGH
+
+            if (canAutoApprove) {
+              toolApprovalStore.getState().addAuditEntry({
+                sessionId,
+                toolName,
+                riskTier,
+                scope: existingApproval.scope,
+                decision: 'auto-approve',
+                timestamp: Date.now(),
+                args,
+              })
+              return definition.execute?.(args)
+            }
+
+            const decision = (await NiceModal.show('tool-approval', {
+              toolName,
+              description: definition?.description,
+              riskTier,
+              parameters: args,
+            })) as ToolApprovalModalResult | undefined
+
+            if (!decision || decision === 'deny') {
+              toolApprovalStore.getState().addAuditEntry({
+                sessionId,
+                toolName,
+                riskTier,
+                scope: 'none',
+                decision: 'deny',
+                timestamp: Date.now(),
+                args,
+              })
+              return createToolDeniedResult(toolName, riskTier)
+            }
+
+            const approval = {
+              toolName,
+              riskTier,
+              scope: decision,
+              timestamp: Date.now(),
+            }
+            toolApprovalStore.getState().addApproval(sessionId, approval)
+            toolApprovalStore.getState().addAuditEntry({
+              sessionId,
+              toolName,
+              riskTier,
+              scope: decision,
+              decision: 'allow',
+              timestamp: approval.timestamp,
+              args,
+            })
+
+            try {
+              return await definition.execute?.(args)
+            } finally {
+              if (decision === 'once') {
+                toolApprovalStore.getState().removeApproval(sessionId, toolName)
+              }
+            }
+          },
+        },
+      ]
+    })
+  ) as ToolSet
 }
 
 /**
@@ -285,9 +408,7 @@ export async function streamText(
     }
 
     // 4. construct tool set
-    let tools: ToolSet = {
-      ...mcpController.getAvailableTools(),
-    }
+    let tools: ToolSet = wrapMCPToolsWithApproval(sessionId, mcpController.getAvailableTools())
     if (webBrowsing) {
       tools.web_search = webSearchTool
       tools.parse_link = parseLinkTool

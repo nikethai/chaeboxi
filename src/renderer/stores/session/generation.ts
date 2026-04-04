@@ -36,7 +36,8 @@ import * as chatStore from '../chatStore'
 import { settingsStore } from '../settingsStore'
 import { uiStore } from '../uiStore'
 import { createNewFork, findMessageLocation } from './forks'
-import { insertMessageAfter, modifyMessage } from './messages'
+import { insertMessageAfter, modifyMessage, submitNewUserMessage } from './messages'
+import { messageQueueStore } from './messageQueue'
 import { runCompactionWithUIState } from '@/packages/context-management'
 
 /**
@@ -152,6 +153,7 @@ export async function generate(
   targetMsg: Message,
   options?: { operationType?: 'send_message' | 'regenerate'; truncateTokenLimit?: number }
 ) {
+  let shouldProcessQueuedMessages = false
   // Get dependent data
   const session = await chatStore.getSession(sessionId)
   const settings = await chatStore.getSessionSettings(sessionId)
@@ -289,6 +291,7 @@ export async function generate(
           tokenSpeed: lastTokenSpeed ?? targetMsg.tokenSpeed,
         }
         await modifyMessage(sessionId, targetMsg, true)
+        shouldProcessQueuedMessages = true
         break
       }
       // Picture message generation
@@ -325,6 +328,7 @@ export async function generate(
           status: [],
         }
         await modifyMessage(sessionId, targetMsg, true)
+        shouldProcessQueuedMessages = true
         break
       }
       default:
@@ -370,6 +374,25 @@ export async function generate(
       status: [],
     }
     await modifyMessage(sessionId, targetMsg, true)
+    shouldProcessQueuedMessages = true
+  }
+
+  if (shouldProcessQueuedMessages) {
+    while (messageQueueStore.getState().getQueuedCount(sessionId) > 0) {
+      const nextQueuedMessage = messageQueueStore.getState().dequeueMessage(sessionId)
+      if (!nextQueuedMessage) {
+        break
+      }
+
+      await submitNewUserMessage(sessionId, {
+        newUserMsg: nextQueuedMessage.message,
+        needGenerating: nextQueuedMessage.needGenerating,
+      })
+
+      if (nextQueuedMessage.needGenerating) {
+        break
+      }
+    }
   }
 }
 

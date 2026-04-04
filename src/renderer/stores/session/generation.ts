@@ -37,6 +37,23 @@ import { settingsStore } from '../settingsStore'
 import { uiStore } from '../uiStore'
 import { createNewFork, findMessageLocation } from './forks'
 import { insertMessageAfter, modifyMessage } from './messages'
+import { runCompactionWithUIState } from '@/packages/context-management'
+
+/**
+ * Run overflow handling and return truncateTokenLimit if applicable.
+ * Used by regenerate flows to apply the same truncation as send-message.
+ */
+async function getOverflowTruncateLimit(sessionId: string): Promise<number | undefined> {
+  const session = await chatStore.getSession(sessionId)
+  if (!session || (session.type !== 'chat' && session.type !== undefined)) {
+    return undefined
+  }
+  const compactionResult = await runCompactionWithUIState(sessionId)
+  if (!compactionResult.success) {
+    throw compactionResult.error ?? new Error('Compaction failed')
+  }
+  return compactionResult.truncateTokenLimit
+}
 
 /**
  * Retrieve copilot model-settings overrides from the live Jotai atom.
@@ -133,7 +150,7 @@ export function createLoadingPictures(n: number): MessagePicture[] {
 export async function generate(
   sessionId: string,
   targetMsg: Message,
-  options?: { operationType?: 'send_message' | 'regenerate' }
+  options?: { operationType?: 'send_message' | 'regenerate'; truncateTokenLimit?: number }
 ) {
   // Get dependent data
   const session = await chatStore.getSession(sessionId)
@@ -221,7 +238,7 @@ export async function generate(
           effectiveSettings,
           messages.slice(0, targetMsgIx),
           model.isSupportToolUse('read-file'),
-          { compactionPoints: session.compactionPoints }
+          { compactionPoints: session.compactionPoints, truncateTokenLimit: options?.truncateTokenLimit }
         )
         const modifyMessageCache: OnResultChangeWithCancel = async (updated) => {
           const textLength = getMessageText(targetMsg, true, true).length
@@ -365,7 +382,8 @@ export async function generateMore(sessionId: string, msgId: string) {
   const newAssistantMsg = createMessage('assistant', '')
   newAssistantMsg.generating = true // prevent estimating token count before generating done
   await insertMessageAfter(sessionId, newAssistantMsg, msgId)
-  await generate(sessionId, newAssistantMsg, { operationType: 'regenerate' })
+  const truncateTokenLimit = await getOverflowTruncateLimit(sessionId)
+  await generate(sessionId, newAssistantMsg, { operationType: 'regenerate', truncateTokenLimit })
 }
 
 export async function generateMoreInNewFork(sessionId: string, msgId: string) {
@@ -387,13 +405,15 @@ export async function regenerateInNewFork(
   }
   const location = findMessageLocation(session, msg.id)
   if (!location) {
-    await generate(sessionId, msg, { operationType: 'regenerate' })
+    const truncateTokenLimit = await getOverflowTruncateLimit(sessionId)
+    await generate(sessionId, msg, { operationType: 'regenerate', truncateTokenLimit })
     return
   }
   const previousMessageIndex = location.index - 1
   if (previousMessageIndex < 0) {
     // If target message is the first message, regenerate directly
-    await generate(sessionId, msg, { operationType: 'regenerate' })
+    const truncateTokenLimit = await getOverflowTruncateLimit(sessionId)
+    await generate(sessionId, msg, { operationType: 'regenerate', truncateTokenLimit })
     return
   }
   const forkMessage = location.list[previousMessageIndex]
@@ -424,10 +444,12 @@ export async function genMessageContext(
   options?: {
     storageAdapter?: { getBlob: (key: string) => Promise<string> }
     compactionPoints?: CompactionPoint[]
+    truncateTokenLimit?: number
   }
 ) {
   const storageAdapter = options?.storageAdapter
   const compactionPoints = options?.compactionPoints
+  const truncateTokenLimit = options?.truncateTokenLimit
   const storageGetBlob = storageAdapter?.getBlob ?? ((key: string) => storage.getBlob(key).catch(() => ''))
   const {
     // openaiMaxContextTokens,
@@ -491,7 +513,33 @@ export async function genMessageContext(
     if (msg.error || msg.errorCode) {
       continue
     }
-    const size = (msg.tokenCount ?? estimateTokensFromMessages([msg])) + 20 // 20 as estimated error compensation
+    const baseSize = (msg.tokenCount ?? estimateTokensFromMessages([msg])) + 20 // 20 as estimated error compensation
+    // When truncating, always add attachment payload estimates since msg.tokenCount
+    // may be stale or text-only and not reflect freshly attached files/links.
+    let attachmentTokens = 0
+    if (truncateTokenLimit !== undefined) {
+      if (msg.files) {
+        for (const file of msg.files) {
+          if (file.storageKey) {
+            const content = blobContents.get(file.storageKey)
+            if (content) {
+              attachmentTokens += Math.ceil(content.length / 4) // rough ~4 chars per token
+            }
+          }
+        }
+      }
+      if (msg.links) {
+        for (const link of msg.links) {
+          if (link.storageKey) {
+            const content = blobContents.get(link.storageKey)
+            if (content) {
+              attachmentTokens += Math.ceil(content.length / 4)
+            }
+          }
+        }
+      }
+    }
+    const size = baseSize + attachmentTokens
     // Only OpenAI supports context tokens limit
     if (settings.provider === 'openai') {
       // if (size + totalLen > openaiMaxContextTokens) {
@@ -502,6 +550,10 @@ export async function genMessageContext(
       maxContextMessageCount < Number.MAX_SAFE_INTEGER &&
       prompts.length >= maxContextMessageCount + 1 // +1 to keep user's last input message
     ) {
+      break
+    }
+    // Token-budget truncation: stop adding older messages when we'd exceed the limit
+    if (truncateTokenLimit !== undefined && prompts.length > 0 && _totalLen + size > truncateTokenLimit) {
       break
     }
 

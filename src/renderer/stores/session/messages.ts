@@ -123,10 +123,18 @@ export async function submitNewUserMessage(
 
   // Run compaction check before sending message (blocking)
   // Only for chat sessions with auto-compaction enabled
+  let truncateTokenLimit: number | undefined
   if (session.type === 'chat' || session.type === undefined) {
     const compactionResult = await runCompactionWithUIState(sessionId)
     if (!compactionResult.success) {
       throw compactionResult.error ?? new Error('Compaction failed')
+    }
+    truncateTokenLimit = compactionResult.truncateTokenLimit
+    // Reserve space for the outgoing user message so the truncation budget
+    // accounts for tokens that will be added after this check.
+    if (truncateTokenLimit) {
+      const userMsgTokens = estimateTokensFromMessages([params.newUserMsg])
+      truncateTokenLimit = Math.max(0, truncateTokenLimit - userMsgTokens)
     }
   }
 
@@ -226,6 +234,6 @@ export async function submitNewUserMessage(
   }
   // 根据需要，生成这条回复消息
   if (needGenerating) {
-    return generate(sessionId, newAssistantMsg, { operationType: 'send_message' })
+    return generate(sessionId, newAssistantMsg, { operationType: 'send_message', truncateTokenLimit })
   }
 }

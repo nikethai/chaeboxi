@@ -49,10 +49,12 @@ export const messageQueueStore = createStore<MessageQueueState>((set, get) => ({
   },
 }))
 
+const EMPTY_QUEUE: QueuedMessageEntry[] = []
+
 export function useQueuedMessageCount(sessionId?: string | null) {
   return useStore(messageQueueStore, (state) => (sessionId ? state.messageQueue.get(sessionId)?.length || 0 : 0))
 }
 
 export function useQueuedMessages(sessionId?: string | null): QueuedMessageEntry[] {
-  return useStore(messageQueueStore, (state) => (sessionId ? state.messageQueue.get(sessionId) || [] : []))
+  return useStore(messageQueueStore, (state) => (sessionId ? state.messageQueue.get(sessionId) ?? EMPTY_QUEUE : EMPTY_QUEUE))
 }

@@ -386,8 +386,9 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
         }
 
       case 'reasoning-delta':
-        // 部分提供方会随文本返回空的reasoning，防止分割正常的content
-        if (chunk.text.trim()) {
+        // Some providers may emit empty reasoning chunks; ignore only truly empty deltas.
+        // Keep whitespace-only chunks (e.g. '\n') so formatting is preserved in the UI.
+        if (chunk.text.length > 0) {
           return {
             currentTextPart: undefined,
             currentReasoningPart: this.createOrUpdateReasoningPart(chunk.text, contentParts, currentReasoningPart),

@@ -242,6 +242,6 @@ export async function submitNewUserMessage(
   }
   // 根据需要，生成这条回复消息
   if (needGenerating) {
-    return generate(sessionId, newAssistantMsg, { operationType: 'send_message', truncateTokenLimit })
+    await generate(sessionId, newAssistantMsg, { operationType: 'send_message', truncateTokenLimit })
   }
 }

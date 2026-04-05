@@ -7,11 +7,14 @@ import type WebSearch from './base'
 import { BingSearch } from './bing'
 import { BingNewsSearch } from './bing-news'
 import { DuckDuckGoSearch } from './duckduckgo'
+import { ExaSearch } from './exa'
 import { GoogleSearch } from './google'
+import { scrapePage } from './jina-reader'
 import { SerperSearch } from './serper'
 import { TavilySearch } from './tavily'
 
 const MAX_CONTEXT_ITEMS = 10
+const SCRAPE_RESULT_COUNT = 3
 
 // 根据配置的搜索提供方来选择搜索服务
 function getSearchProviders() {
@@ -47,10 +50,7 @@ function getSearchProviders() {
       break
     case 'google':
       if (!settings.webSearch.googleApiKey?.trim() || !settings.webSearch.googleCseId?.trim()) {
-        throw ChatboxAIAPIError.fromCodeName(
-          'google_search_credentials_required',
-          'google_search_credentials_required'
-        )
+        throw ChatboxAIAPIError.fromCodeName('google_search_credentials_required', 'google_search_credentials_required')
       }
       selectedProviders.push(
         new GoogleSearch(settings.webSearch.googleApiKey.trim(), settings.webSearch.googleCseId.trim())
@@ -70,6 +70,12 @@ function getSearchProviders() {
         )
       )
       break
+    case 'exa':
+      if (!settings.webSearch.exaApiKey?.trim()) {
+        throw ChatboxAIAPIError.fromCodeName('exa_api_key_required', 'exa_api_key_required')
+      }
+      selectedProviders.push(new ExaSearch(settings.webSearch.exaApiKey.trim()))
+      break
     default:
       throw new Error(`Unsupported search provider: ${provider}`)
   }
@@ -78,6 +84,7 @@ function getSearchProviders() {
 }
 
 async function _searchRelatedResults(query: string, signal?: AbortSignal) {
+  const settings = getExtensionSettings()
   const providers = getSearchProviders()
   const results = await Promise.all(
     providers.map(async (provider) => {
@@ -112,12 +119,30 @@ async function _searchRelatedResults(query: string, signal?: AbortSignal) {
 
   console.debug('web search items', items)
 
-  return items.map((item) => ({
+  const normalizedItems = items.map((item) => ({
     title: item.title,
     snippet: truncate(item.snippet, { length: 150 }),
     link: item.link,
     rawContent: item.rawContent,
   }))
+
+  if (settings.webSearch.scrapeTopResults) {
+    await Promise.all(
+      normalizedItems.slice(0, SCRAPE_RESULT_COUNT).map(async (item) => {
+        if (item.rawContent || !item.link) {
+          return
+        }
+
+        try {
+          item.rawContent = await scrapePage(item.link, signal)
+        } catch (error) {
+          console.debug(`Failed to scrape ${item.link} with Jina Reader`, error)
+        }
+      })
+    )
+  }
+
+  return normalizedItems
 }
 
 const cache = new Map()
@@ -126,9 +151,18 @@ export const webSearchExecutor = async (
   { query }: { query: string },
   { abortSignal }: { abortSignal?: AbortSignal }
 ) => {
+  const { webSearch } = getExtensionSettings()
+  const cacheSettings = {
+    provider: webSearch.provider,
+    tavilySearchDepth: webSearch.tavilySearchDepth,
+    tavilyMaxResults: webSearch.tavilyMaxResults,
+    tavilyTimeRange: webSearch.tavilyTimeRange,
+    tavilyIncludeRawContent: webSearch.tavilyIncludeRawContent,
+    scrapeTopResults: webSearch.scrapeTopResults,
+  }
   const searchResults = await cachified({
     cache,
-    key: `search-context:${query}`,
+    key: `search-context:${query}:${JSON.stringify(cacheSettings)}`,
     ttl: 1000 * 60 * 5,
     getFreshValue: () => _searchRelatedResults(query, abortSignal),
   })

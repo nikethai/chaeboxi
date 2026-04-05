@@ -127,6 +127,9 @@ export function settings(): Settings {
         googleApiKey: '',
         googleCseId: '',
         tavilyApiKey: '',
+        exaApiKey: '',
+        useGoogleGroundingForGemini: true,
+        scrapeTopResults: false,
       },
       knowledgeBase: {
         models: {

@@ -92,6 +92,7 @@ import { ScalableIcon } from '../common/ScalableIcon'
 import Loading from '../icons/Loading'
 import { ThinkingGroupUI } from '../message-parts/ThinkingGroupUI'
 import { ReasoningContentUI, ToolCallPartUI } from '../message-parts/ToolCallPartUI'
+import { SourceCardList } from '../search/SourceCardList'
 import { MessageAttachmentGrid } from './MessageAttachmentGrid'
 import MessageErrTips from './MessageErrTips'
 import MessageStatuses from './MessageLoading'
@@ -664,6 +665,7 @@ const _Message: FC<Props> = (props) => {
                 sx={small ? { fontSize: theme.typography.body2.fontSize } : {}}
                 onMouseUp={handleSelectionMouseUp}
               >
+                {msg.citations?.length ? <SourceCardList citations={msg.citations} /> : null}
                 {msg.reasoningContent && (
                   <ReasoningContentUI message={msg} onCopyReasoningContent={onCopyReasoningContent} />
                 )}
@@ -699,6 +701,7 @@ const _Message: FC<Props> = (props) => {
                               enableLaTeXRendering={enableLaTeXRendering}
                               enableMermaidRendering={enableMermaidRendering}
                               generating={msg.generating}
+                              citations={msg.citations}
                             >
                               {group.part.text || ''}
                             </Markdown>

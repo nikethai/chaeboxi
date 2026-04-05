@@ -1,5 +1,7 @@
+import { google } from '@ai-sdk/google'
 import { getModel } from '@shared/models'
 import { ChatboxAIAPIError, OCRError } from '@shared/models/errors'
+import { searchResultsToCitations } from '@shared/utils/search'
 import { ToolRiskTier } from '@shared/types/mcp'
 import { sequenceMessages } from '@shared/utils/message'
 import { getModelSettings } from '@shared/utils/model_settings'
@@ -23,6 +25,7 @@ import type {
   MessageInfoPart,
   MessageToolCallPart,
   ProviderOptions,
+  SearchResultItem,
   StreamTextResult,
 } from '../../../shared/types'
 import { mcpController } from '../mcp/controller'
@@ -38,6 +41,38 @@ import {
 import fileToolSet from './toolsets/file'
 import { getToolSet } from './toolsets/knowledge-base'
 import websearchToolSet, { parseLinkTool, webSearchTool } from './toolsets/web-search'
+
+function extractSearchMetadataFromToolCalls(result: StreamTextResult): Partial<StreamTextResult> {
+  if (result.citations?.length) {
+    return {}
+  }
+
+  const webSearchToolCallParts = result.contentParts.filter(
+    (part): part is MessageToolCallPart<{ query?: string }, { query?: string; searchResults?: SearchResultItem[] }> =>
+      part.type === 'tool-call' && part.toolName === 'web_search' && part.state === 'result'
+  )
+  const latestWebSearchCall = webSearchToolCallParts.at(-1)
+  const searchResults = webSearchToolCallParts
+    .flatMap((part) => part.result?.searchResults || [])
+    .filter((result, index, results) => results.findIndex((candidate) => candidate.link === result.link) === index)
+
+  if (!searchResults.length) {
+    return {}
+  }
+
+  return {
+    citations: searchResultsToCitations(searchResults, 'builtin'),
+    searchQuery: latestWebSearchCall?.result?.query || latestWebSearchCall?.args?.query,
+    searchProvider: settingsStore.getState().extension.webSearch.provider,
+  }
+}
+
+function withSearchMetadata(result: StreamTextResult): StreamTextResult {
+  return {
+    ...result,
+    ...extractSearchMetadataFromToolCalls(result),
+  }
+}
 
 /**
  * 处理搜索结果并返回模型响应的通用函数
@@ -59,7 +94,7 @@ async function handleSearchResult(
       onStatusChange: params.onStatusChange,
       maxSteps: params.maxSteps,
     })
-    return { result: chatResult, coreMessages }
+    return { result: withSearchMetadata(chatResult), coreMessages }
   }
 
   const toolCallPart: MessageToolCallPart = {
@@ -90,7 +125,7 @@ async function handleSearchResult(
     providerOptions: params.providerOptions,
     maxSteps: params.maxSteps,
   })
-  return { result: chatResult, coreMessages }
+  return { result: withSearchMetadata(chatResult), coreMessages }
 }
 
 async function ocrMessages(messages: Message[]) {
@@ -165,7 +200,7 @@ function wrapMCPToolsWithApproval(sessionId: string | undefined, tools: ToolSet)
         toolName,
         {
           ...definition,
-          execute: async (args: unknown) => {
+          execute: async (args: unknown, context) => {
             const existingApproval = getToolApproval(sessionId, toolName)
             const canAutoApprove =
               existingApproval?.scope === 'session' &&
@@ -182,7 +217,7 @@ function wrapMCPToolsWithApproval(sessionId: string | undefined, tools: ToolSet)
                 timestamp: Date.now(),
                 args,
               })
-              return definition.execute?.(args)
+              return definition.execute?.(args, context)
             }
 
             const decision = (await NiceModal.show('tool-approval', {
@@ -223,7 +258,7 @@ function wrapMCPToolsWithApproval(sessionId: string | undefined, tools: ToolSet)
             })
 
             try {
-              return await definition.execute?.(args)
+              return await definition.execute?.(args, context)
             } finally {
               if (decision === 'once') {
                 toolApprovalStore.getState().removeApproval(sessionId, toolName)
@@ -249,11 +284,12 @@ export async function streamText(
     providerOptions?: ProviderOptions
     knowledgeBase?: Pick<KnowledgeBase, 'id' | 'name'>
     webBrowsing?: boolean
+    nativeWebSearch?: 'gemini-grounding'
     maxSteps?: number
   },
   signal?: AbortSignal
 ): Promise<{ result: StreamTextResult; coreMessages: ModelMessage[] }> {
-  const { knowledgeBase, webBrowsing, sessionId } = params
+  const { knowledgeBase, webBrowsing, sessionId, nativeWebSearch } = params
   const hasFileOrLink = params.messages.some((m) => m.files?.length || m.links?.length)
 
   const controller = new AbortController()
@@ -283,13 +319,17 @@ export async function streamText(
       console.error('Failed to load knowledge base toolset:', err)
     }
   }
+  const mcpTools = wrapMCPToolsWithApproval(sessionId, mcpController.getAvailableTools())
+  const hasFunctionTools = Object.keys(mcpTools).length > 0 || Boolean(kbToolSet) || Boolean(needFileToolSet)
+  const useGeminiGrounding = nativeWebSearch === 'gemini-grounding' && webBrowsing && !hasFunctionTools
+
   if (kbToolSet && !kbNotSupported) {
     toolSetInstructions += kbToolSet.description
   }
   if (needFileToolSet) {
     toolSetInstructions += fileToolSet.description
   }
-  if (webBrowsing && !webNotSupported) {
+  if (webBrowsing && !webNotSupported && !useGeminiGrounding) {
     toolSetInstructions += websearchToolSet.description
   }
 
@@ -411,8 +451,13 @@ export async function streamText(
     }
 
     // 4. construct tool set
-    let tools: ToolSet = wrapMCPToolsWithApproval(sessionId, mcpController.getAvailableTools())
-    if (webBrowsing) {
+    let tools: ToolSet = { ...mcpTools }
+    if (useGeminiGrounding) {
+      tools.google_search = google.tools.googleSearch({
+        mode: 'MODE_DYNAMIC',
+        dynamicThreshold: 0.3,
+      })
+    } else if (webBrowsing) {
       tools.web_search = webSearchTool
       tools.parse_link = parseLinkTool
     }
@@ -432,15 +477,17 @@ export async function streamText(
 
     console.debug('tools', tools)
 
-    result = await model.chat(coreMessages, {
-      sessionId,
-      signal: controller.signal,
-      onResultChange,
-      onStatusChange: params.onStatusChange,
-      providerOptions: params.providerOptions,
-      tools,
-      maxSteps: params.maxSteps,
-    })
+    result = withSearchMetadata(
+      await model.chat(coreMessages, {
+        sessionId,
+        signal: controller.signal,
+        onResultChange,
+        onStatusChange: params.onStatusChange,
+        providerOptions: params.providerOptions,
+        tools,
+        maxSteps: params.maxSteps,
+      })
+    )
 
     return { result, coreMessages }
   } catch (err) {

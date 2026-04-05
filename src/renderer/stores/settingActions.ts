@@ -19,6 +19,7 @@ export function needEditSetting() {
         (key) =>
           (key === ModelProviderEnum.Ollama ||
             key === ModelProviderEnum.LMStudio ||
+            key === ModelProviderEnum.OpenClaw ||
             key.startsWith('custom-provider')) &&
           providers[key].models?.length
       ).length > 0

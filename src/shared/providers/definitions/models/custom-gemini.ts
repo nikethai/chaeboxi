@@ -9,6 +9,7 @@ import type { ModelDependencies } from '../../../types/adapters'
 import { normalizeGeminiHost } from '../../../utils/llm_utils'
 
 const GEMINI_IMAGE_MODELS = ['gemini-2.5-flash-image', 'gemini-3-pro-image-preview']
+type GeminiAspectRatio = NonNullable<NonNullable<GoogleGenerativeAIProviderOptions['imageConfig']>['aspectRatio']>
 
 interface Options {
   apiKey: string
@@ -121,7 +122,7 @@ export default class CustomGemini extends AbstractAISDKModel {
         responseModalities: ['TEXT', 'IMAGE'],
       }
       if (params.aspectRatio && params.aspectRatio !== 'auto') {
-        providerOptions.imageConfig = { aspectRatio: params.aspectRatio }
+        providerOptions.imageConfig = { aspectRatio: params.aspectRatio as GeminiAspectRatio }
       }
 
       const result = await generateText({

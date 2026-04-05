@@ -1,6 +1,8 @@
 import type { ModelMessage, ToolSet } from 'ai'
 import {
   type MessageContentParts,
+  type GroundingMetadata,
+  type SearchCitation,
   type MessageStatus,
   type ProviderOptions,
   ProviderOptionsSchema,
@@ -51,6 +53,10 @@ export interface ResultChange {
   // reasoningContent?: string
   // toolCalls?: MessageToolCalls
   contentParts?: MessageContentParts
+  citations?: SearchCitation[]
+  searchQuery?: string
+  searchProvider?: string
+  groundingMetadata?: GroundingMetadata
   tokenCount?: number // 当前消息的 token 数量
   tokensUsed?: number // 生成当前消息的 token 使用量
   tokenSpeed?: number // tokens per second (live during streaming, final when done)

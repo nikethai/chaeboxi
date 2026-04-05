@@ -22,6 +22,7 @@ export const aiProviderNameHash: Record<ModelProviderEnum, string> = {
   [ModelProviderEnum.Perplexity]: 'Perplexity API',
   [ModelProviderEnum.XAI]: 'xAI API',
   [ModelProviderEnum.OpenRouter]: 'OpenRouter API',
+  [ModelProviderEnum.OpenClaw]: 'OpenClaw',
   [ModelProviderEnum.Custom]: 'Custom Provider',
 }
 
@@ -69,6 +70,11 @@ export const AIModelProviderMenuOptionList = [
   {
     value: ModelProviderEnum.OpenRouter,
     label: aiProviderNameHash[ModelProviderEnum.OpenRouter],
+    disabled: false,
+  },
+  {
+    value: ModelProviderEnum.OpenClaw,
+    label: aiProviderNameHash[ModelProviderEnum.OpenClaw],
     disabled: false,
   },
   {

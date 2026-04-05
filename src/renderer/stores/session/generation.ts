@@ -9,6 +9,7 @@ import {
   type Message,
   type MessageImagePart,
   type MessagePicture,
+  ModelProviderEnum,
   type SessionSettings,
   type SessionType,
   type Settings,
@@ -70,7 +71,8 @@ function getCopilotSettings(
 ): { temperature?: number; topP?: number; maxTokens?: number } | null {
   if (!copilotId) return null
   try {
-    const copilots = getDefaultStore().get(myCopilotsAtom)
+    const storedCopilots = getDefaultStore().get(myCopilotsAtom)
+    const copilots = Array.isArray(storedCopilots) ? storedCopilots : []
     const copilot = copilots.find((c) => c.id === copilotId)
     return copilot?.modelSettings ?? getBuiltInCopilotById(copilotId)?.modelSettings ?? null
   } catch {
@@ -227,6 +229,10 @@ export async function generate(
     const sessionKnowledgeBaseMap = uiStore.getState().sessionKnowledgeBaseMap
     const knowledgeBase = sessionKnowledgeBaseMap[sessionId]
     const webBrowsing = getSessionWebBrowsing(sessionId, effectiveSettings.provider)
+    const useGeminiGrounding =
+      webBrowsing &&
+      effectiveSettings.provider === ModelProviderEnum.Gemini &&
+      globalSettings.extension.webSearch.useGoogleGroundingForGemini !== false
     const maxSteps = session.agentMode ? 5 : undefined
     switch (session.type) {
       // Chat message generation
@@ -280,6 +286,7 @@ export async function generate(
           providerOptions: effectiveSettings.providerOptions,
           knowledgeBase,
           webBrowsing,
+          nativeWebSearch: useGeminiGrounding ? 'gemini-grounding' : undefined,
           maxSteps,
         })
         targetMsg = {
@@ -291,6 +298,11 @@ export async function generate(
           finishReason: result.finishReason,
           usage: result.usage,
           tokenSpeed: lastTokenSpeed ?? targetMsg.tokenSpeed,
+          // Persist search citations extracted from tool calls or Gemini grounding
+          citations: result.citations ?? targetMsg.citations,
+          searchQuery: result.searchQuery ?? targetMsg.searchQuery,
+          searchProvider: result.searchProvider ?? targetMsg.searchProvider,
+          groundingMetadata: result.groundingMetadata ?? targetMsg.groundingMetadata,
         }
         await modifyMessage(sessionId, targetMsg, true)
         shouldProcessQueuedMessages = true
@@ -523,7 +535,10 @@ export async function genMessageContext(
     const keys = Array.from(allStorageKeys)
     const contents = await Promise.all(keys.map((key) => storageGetBlob(key)))
     keys.forEach((key, index) => {
-      blobContents.set(key, contents[index])
+      const content = contents[index]
+      if (content !== null) {
+        blobContents.set(key, content)
+      }
     })
   }
 

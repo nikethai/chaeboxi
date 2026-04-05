@@ -18,6 +18,7 @@ import './definitions/mistral-ai'
 import './definitions/perplexity'
 import './definitions/volcengine'
 import './definitions/chatglm'
+import './definitions/openclaw'
 import {
   clearProviderRegistry,
   defineProvider,

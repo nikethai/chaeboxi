@@ -9,6 +9,7 @@ import {
   type LanguageModelUsage,
   type ModelMessage,
   type Provider,
+  type ProviderMetadata,
   simulateStreamingMiddleware,
   stepCountIs,
   streamText,
@@ -21,14 +22,17 @@ import {
 } from 'ai'
 import { createRetryable, isErrorAttempt, type RetryContext } from 'ai-retry'
 import type {
+  GroundingMetadata,
   MessageContentParts,
   MessageReasoningPart,
   MessageTextPart,
   MessageToolCallPart,
   ProviderModelInfo,
+  SearchCitation,
   StreamTextResult,
 } from '../types'
 import type { ModelDependencies } from '../types/adapters'
+import { annotateTextWithGrounding, groundingMetadataToCitations } from '../utils/search'
 import { ApiError, ChatboxAIAPIError } from './errors'
 import type { CallChatCompletionOptions, ModelInterface } from './types'
 
@@ -70,6 +74,8 @@ interface ToolExecutionResult {
   result: unknown
   isError?: boolean
 }
+
+type FinalResultMetadata = Pick<StreamTextResult, 'citations' | 'searchProvider' | 'searchQuery' | 'groundingMetadata'>
 
 export default abstract class AbstractAISDKModel implements ModelInterface {
   public name = 'AI SDK Model'
@@ -454,6 +460,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       finishReason?: FinishReason
       tokenSpeed?: number
     },
+    finalResultMetadata: FinalResultMetadata,
     options: CallChatCompletionOptions
   ): StreamTextResult {
     // Fallback: Set final duration for any reasoning parts that don't have it yet
@@ -468,11 +475,53 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
 
     options.onResultChange?.({
       contentParts,
+      citations: finalResultMetadata.citations,
+      searchProvider: finalResultMetadata.searchProvider,
+      searchQuery: finalResultMetadata.searchQuery,
+      groundingMetadata: finalResultMetadata.groundingMetadata,
       tokenCount: result.usage?.outputTokens,
       tokensUsed: result.usage?.totalTokens,
       tokenSpeed: result.tokenSpeed,
     })
-    return { contentParts, usage: result.usage, finishReason: result.finishReason }
+    return {
+      contentParts,
+      usage: result.usage,
+      finishReason: result.finishReason,
+      citations: finalResultMetadata.citations,
+      searchProvider: finalResultMetadata.searchProvider,
+      searchQuery: finalResultMetadata.searchQuery,
+      groundingMetadata: finalResultMetadata.groundingMetadata,
+    }
+  }
+
+  private extractFinalResultMetadata(
+    contentParts: MessageContentParts,
+    providerMetadata?: ProviderMetadata
+  ): FinalResultMetadata {
+    const googleProviderMetadata = providerMetadata?.google as
+      | {
+          groundingMetadata?: GroundingMetadata | null
+        }
+      | undefined
+    const groundingMetadata = googleProviderMetadata?.groundingMetadata
+
+    if (!groundingMetadata) {
+      return {}
+    }
+
+    const citations = groundingMetadataToCitations(groundingMetadata)
+    const firstTextPart = contentParts.find((part): part is MessageTextPart => part.type === 'text')
+
+    if (firstTextPart) {
+      firstTextPart.text = annotateTextWithGrounding(firstTextPart.text, groundingMetadata)
+    }
+
+    return {
+      citations,
+      searchProvider: 'gemini-grounding',
+      searchQuery: groundingMetadata.webSearchQueries?.[0] || groundingMetadata.retrievalQueries?.[0],
+      groundingMetadata,
+    }
   }
 
   private async handleStreamingCompletion<T extends ToolSet>(
@@ -542,6 +591,8 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     // Compute final token speed for persistence
     const finalElapsedSec = streamStartTime !== undefined ? (Date.now() - streamStartTime) / 1000 : 0
     const finalTokenSpeed = finalElapsedSec > 0 ? Math.round(outputTokenCount / finalElapsedSec) : undefined
+    const providerMetadata = await result.providerMetadata
+    const finalResultMetadata = this.extractFinalResultMetadata(contentParts, providerMetadata)
 
     return this.finalizeResult(
       contentParts,
@@ -550,6 +601,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
         finishReason: await result.finishReason,
         tokenSpeed: finalTokenSpeed,
       },
+      finalResultMetadata,
       options
     )
   }

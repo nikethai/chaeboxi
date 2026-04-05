@@ -9,6 +9,7 @@ import type { ModelDependencies } from '../../../types/adapters'
 import { normalizeGeminiHost } from '../../../utils/llm_utils'
 
 const GEMINI_IMAGE_MODELS = ['gemini-2.5-flash-image', 'gemini-3-pro-image-preview']
+type GeminiAspectRatio = NonNullable<NonNullable<GoogleGenerativeAIProviderOptions['imageConfig']>['aspectRatio']>
 
 interface Options {
   geminiAPIKey: string
@@ -23,7 +24,10 @@ interface Options {
 export default class Gemini extends AbstractAISDKModel {
   public name = 'Google Gemini'
 
-  constructor(public options: Options, dependencies: ModelDependencies) {
+  constructor(
+    public options: Options,
+    dependencies: ModelDependencies
+  ) {
     super(options, dependencies)
     this.injectDefaultMetadata = false
   }
@@ -59,11 +63,11 @@ export default class Gemini extends AbstractAISDKModel {
         { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
         { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
       ],
+      ...(options.providerOptions?.google || {}),
     }
     if (isModelSupportThinking) {
       providerParams = {
         ...providerParams,
-        ...(options.providerOptions?.google || {}),
         thinkingConfig: {
           ...(options.providerOptions?.google?.thinkingConfig || {}),
           includeThoughts: true,
@@ -115,7 +119,7 @@ export default class Gemini extends AbstractAISDKModel {
         responseModalities: ['TEXT', 'IMAGE'],
       }
       if (params.aspectRatio && params.aspectRatio !== 'auto') {
-        providerOptions.imageConfig = { aspectRatio: params.aspectRatio }
+        providerOptions.imageConfig = { aspectRatio: params.aspectRatio as GeminiAspectRatio }
       }
 
       const result = await generateText({
@@ -156,7 +160,7 @@ export default class Gemini extends AbstractAISDKModel {
     const res = await this.dependencies.request.apiRequest({
       url: `${this.options.geminiAPIHost}/v1beta/models?key=${this.options.geminiAPIKey}`,
       method: 'GET',
-      headers: {}
+      headers: {},
     })
     const json: Response = await res.json()
     if (!json.models) {

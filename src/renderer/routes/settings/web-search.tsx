@@ -1,4 +1,4 @@
-import { Button, Flex, PasswordInput, Select, Stack, Text, TextInput, Title, Tooltip } from '@mantine/core'
+import { Button, Flex, PasswordInput, Select, Stack, Switch, Text, TextInput, Title, Tooltip } from '@mantine/core'
 import { createFileRoute } from '@tanstack/react-router'
 import { ofetch } from 'ofetch'
 import { useState } from 'react'
@@ -22,6 +22,8 @@ export function RouteComponent() {
   const [serperAvaliable, setSerperAvaliable] = useState<boolean>()
   const [checkingGoogle, setCheckingGoogle] = useState(false)
   const [googleAvaliable, setGoogleAvaliable] = useState<boolean>()
+  const [checkingExa, setCheckingExa] = useState(false)
+  const [exaAvailable, setExaAvailable] = useState<boolean>()
 
   const checkSerper = async () => {
     if (extension.webSearch.serperApiKey?.trim()) {
@@ -98,6 +100,38 @@ export function RouteComponent() {
     }
   }
 
+  const checkExa = async () => {
+    if (extension.webSearch.exaApiKey?.trim()) {
+      setCheckingExa(true)
+      setExaAvailable(undefined)
+      try {
+        await ofetch('https://api.exa.ai/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': extension.webSearch.exaApiKey.trim(),
+          },
+          body: {
+            query: 'Chatbox',
+            type: 'neural',
+            useAutoprompt: true,
+            numResults: 1,
+            contents: {
+              text: {
+                maxCharacters: 200,
+              },
+            },
+          },
+        })
+        setExaAvailable(true)
+      } catch (_e) {
+        setExaAvailable(false)
+      } finally {
+        setCheckingExa(false)
+      }
+    }
+  }
+
   return (
     <Stack p="md" gap="xxl">
       <Title order={5}>{t('Web Search')}</Title>
@@ -110,6 +144,7 @@ export function RouteComponent() {
           { value: 'serper', label: 'Serper (Google Search API)' },
           { value: 'google', label: 'Google Custom Search API' },
           { value: 'tavily', label: 'Tavily' },
+          { value: 'exa', label: 'Exa' },
         ]}
         value={extension.webSearch.provider === 'build-in' ? 'bing' : extension.webSearch.provider}
         onChange={(e) =>
@@ -119,13 +154,43 @@ export function RouteComponent() {
               ...extension,
               webSearch: {
                 ...extension.webSearch,
-                provider: e as 'build-in' | 'bing' | 'duckduckgo' | 'serper' | 'google' | 'tavily',
+                provider: e as 'build-in' | 'bing' | 'duckduckgo' | 'serper' | 'google' | 'tavily' | 'exa',
               },
             },
           })
         }
         label={t('Search Provider')}
         maw={320}
+      />
+      <Switch
+        label={t('Use Google Grounding when Gemini models are selected')}
+        checked={extension.webSearch.useGoogleGroundingForGemini !== false}
+        onChange={(event) =>
+          setSettings({
+            extension: {
+              ...extension,
+              webSearch: {
+                ...extension.webSearch,
+                useGoogleGroundingForGemini: event.currentTarget.checked,
+              },
+            },
+          })
+        }
+      />
+      <Switch
+        label={t('Scrape top results for deeper context')}
+        checked={extension.webSearch.scrapeTopResults || false}
+        onChange={(event) =>
+          setSettings({
+            extension: {
+              ...extension,
+              webSearch: {
+                ...extension.webSearch,
+                scrapeTopResults: event.currentTarget.checked,
+              },
+            },
+          })
+        }
       />
       {extension.webSearch.provider === 'bing' && (
         <Text size="xs" c="chatbox-gray">
@@ -138,6 +203,66 @@ export function RouteComponent() {
         <Text size="xs" c="chatbox-gray">
           {t('DuckDuckGo Search is provided for free use and may be rate-limited in some regions.')}
         </Text>
+      )}
+      {extension.webSearch.provider === 'exa' && (
+        <Stack gap="xs">
+          <Text fw="600">{t('Exa API Key')}</Text>
+          <Flex align="center" gap="xs">
+            <PasswordInput
+              flex={1}
+              maw={320}
+              value={extension.webSearch.exaApiKey}
+              onChange={(e) => {
+                setExaAvailable(undefined)
+                setSettings({
+                  extension: {
+                    ...extension,
+                    webSearch: {
+                      ...extension.webSearch,
+                      exaApiKey: e.currentTarget.value,
+                    },
+                  },
+                })
+              }}
+              error={exaAvailable === false}
+            />
+            <Button
+              color="blue"
+              variant="light"
+              onClick={checkExa}
+              loading={checkingExa}
+              disabled={!extension.webSearch.exaApiKey?.trim()}
+            >
+              {t('Check')}
+            </Button>
+          </Flex>
+
+          {typeof exaAvailable === 'boolean' ? (
+            exaAvailable ? (
+              <Text size="xs" c="chatbox-success">
+                {t('Connection successful!')}
+              </Text>
+            ) : (
+              <Text size="xs" c="chatbox-error">
+                {t('API key invalid!')}
+              </Text>
+            )
+          ) : null}
+
+          <Text size="xs" c="chatbox-gray">
+            {t('Exa uses neural search with autoprompting for semantically relevant results.')}
+          </Text>
+
+          <Button
+            variant="transparent"
+            size="compact-xs"
+            px={0}
+            className="self-start"
+            onClick={() => platform.openLink('https://dashboard.exa.ai/api-keys')}
+          >
+            {t('Get API Key')}
+          </Button>
+        </Stack>
       )}
       {extension.webSearch.provider === 'serper' && (
         <Stack gap="xs">
@@ -272,7 +397,9 @@ export function RouteComponent() {
               size="compact-xs"
               px={0}
               className="self-start"
-              onClick={() => platform.openLink('https://console.cloud.google.com/apis/library/customsearch.googleapis.com')}
+              onClick={() =>
+                platform.openLink('https://console.cloud.google.com/apis/library/customsearch.googleapis.com')
+              }
             >
               {t('Enable API')}
             </Button>

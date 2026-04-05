@@ -1,8 +1,7 @@
 import { Button, Group } from '@mantine/core'
 import { IconSparkles } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
-import type { SearchCitation } from '@shared/types'
-import { createMessage } from '@shared/utils/message'
+import { createMessage, type SearchCitation } from '@shared/types'
 import { submitNewUserMessage } from '@/stores/session/messages'
 
 interface FollowUpSuggestionsProps {

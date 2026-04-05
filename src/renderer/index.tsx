@@ -25,14 +25,14 @@ const log = getLogger('index')
 // 按需加载 polyfill
 import './setup/load_polyfill'
 
-// Sentry 初始化
-import './setup/sentry_init'
+// Sentry initialization disabled
+// import './setup/sentry_init'
 
 // 全局错误处理
 import './setup/global_error_handler'
 
-// GA4 初始化
-import './setup/ga_init'
+// GA4 initialization disabled
+// import './setup/ga_init'
 
 // 引入保护代码
 import './setup/protect'

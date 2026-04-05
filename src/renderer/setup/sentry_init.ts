@@ -9,6 +9,8 @@ void (async () => {
   }
 
   const version = await platform.getVersion().catch(() => 'unknown')
+  // Sentry has been disabled to prevent unsolicited data sends to upstream infrastructure.
+  /*
   Sentry.init({
     dsn: 'https://eca691c5e01ebfa05958fca1fcb487a9@sentry.midway.run/697',
     environment: NODE_ENV,
@@ -45,6 +47,7 @@ void (async () => {
       return null
     },
   })
+  */
 })()
 
 export default Sentry

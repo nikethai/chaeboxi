@@ -22,6 +22,10 @@ export const aiProviderNameHash: Record<ModelProviderEnum, string> = {
   [ModelProviderEnum.Perplexity]: 'Perplexity API',
   [ModelProviderEnum.XAI]: 'xAI API',
   [ModelProviderEnum.OpenRouter]: 'OpenRouter API',
+  [ModelProviderEnum.MiniMax]: 'MiniMax API',
+  [ModelProviderEnum.MiniMaxCN]: 'MiniMax CN API',
+  [ModelProviderEnum.Moonshot]: 'Moonshot API',
+  [ModelProviderEnum.Qwen]: 'Qwen API',
   [ModelProviderEnum.OpenClaw]: 'OpenClaw',
   [ModelProviderEnum.Custom]: 'Custom Provider',
 }
@@ -105,6 +109,26 @@ export const AIModelProviderMenuOptionList = [
   {
     value: ModelProviderEnum.ChatGLM6B,
     label: aiProviderNameHash[ModelProviderEnum.ChatGLM6B],
+    disabled: false,
+  },
+  {
+    value: ModelProviderEnum.MiniMax,
+    label: aiProviderNameHash[ModelProviderEnum.MiniMax],
+    disabled: false,
+  },
+  {
+    value: ModelProviderEnum.MiniMaxCN,
+    label: aiProviderNameHash[ModelProviderEnum.MiniMaxCN],
+    disabled: false,
+  },
+  {
+    value: ModelProviderEnum.Moonshot,
+    label: aiProviderNameHash[ModelProviderEnum.Moonshot],
+    disabled: false,
+  },
+  {
+    value: ModelProviderEnum.Qwen,
+    label: aiProviderNameHash[ModelProviderEnum.Qwen],
     disabled: false,
   },
   // {

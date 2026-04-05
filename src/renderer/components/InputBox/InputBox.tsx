@@ -73,7 +73,7 @@ import * as atoms from '@/stores/atoms'
 import { compactionUIStateMapAtom } from '@/stores/atoms/compactionAtoms'
 import * as chatStore from '@/stores/chatStore'
 import { usePromptPresets } from '@/stores/promptPresetsStore'
-import { useQueuedMessageCount } from '@/stores/session/messageQueue'
+import QueuedMessageList from './QueuedMessageList'
 import { useSession, useSessionSettings } from '@/stores/chatStore'
 import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
@@ -225,7 +225,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     const [links, setLinks] = useAtom(atoms.inputBoxLinksFamily(currentSessionId || 'new'))
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const queuedMessageCount = useQueuedMessageCount(currentSessionId)
+
 
     useEffect(() => {
       const constructedMessage = sessionHelpers.constructUserMessage(
@@ -962,6 +962,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         <input className="hidden" {...getInputProps()} />
         <Stack className={cn(widthFull ? 'w-full' : 'max-w-4xl mx-auto')} gap="xs">
           {currentSessionId && <CompactionStatus sessionId={currentSessionId} />}
+          {currentSessionId && <QueuedMessageList sessionId={currentSessionId} />}
           <Stack
             className={cn(
               'relative rounded-md bg-chatbox-background-secondary justify-between px-3 py-2',
@@ -1305,11 +1306,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
               {/* Right Group: Token Count + Model Selector */}
               <Flex align="center" gap={0}>
-                {queuedMessageCount > 0 && (
-                  <Text size="xs" c="chatbox-tertiary" mr="xs">
-                    {t('Queued ({{count}})', { count: queuedMessageCount })}
-                  </Text>
-                )}
                 <TokenCountMenu
                   currentInputTokens={currentInputTokens}
                   contextTokens={contextTokens}

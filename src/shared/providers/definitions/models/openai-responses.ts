@@ -21,6 +21,10 @@ interface Options {
   maxOutputTokens?: number
   stream?: boolean
   useProxy?: boolean
+  customFetch?: typeof globalThis.fetch
+  listModelsFallback?: ProviderModelInfo[]
+  skipRemoteModelList?: boolean
+  forceStatelessResponses?: boolean
 }
 
 type FetchFunction = typeof globalThis.fetch
@@ -37,12 +41,23 @@ export default class OpenAIResponses extends AbstractAISDKModel {
     this.options = { ...options, apiHost, apiPath }
   }
 
-  protected getCallSettings() {
+  protected getCallSettings(options: CallChatCompletionOptions) {
+    const openaiProviderOptions = options.providerOptions?.openai
+
     return {
       temperature: this.options.temperature,
       topP: this.options.topP,
       maxOutputTokens: this.options.maxOutputTokens,
       stream: this.options.stream,
+      providerOptions:
+        openaiProviderOptions || this.options.forceStatelessResponses
+          ? {
+              openai: {
+                ...openaiProviderOptions,
+                ...(this.options.forceStatelessResponses ? { store: false } : {}),
+              },
+            }
+          : undefined,
     }
   }
 
@@ -54,15 +69,17 @@ export default class OpenAIResponses extends AbstractAISDKModel {
     return createOpenAI({
       apiKey: this.options.apiKey,
       baseURL: this.options.apiHost,
-      fetch: fetchFunction,
+      fetch: fetchFunction || this.options.customFetch,
       headers: buildOpenAICompatibleHeaders(this.options.apiHost, this.options),
     })
   }
 
   protected getChatModel(options: CallChatCompletionOptions) {
     const { apiHost, apiPath } = this.options
-    const provider = this.getProvider(options, (_input, init) =>
-      createFetchWithProxy(this.options.useProxy, this.dependencies)(`${apiHost}${apiPath}`, init)
+    const provider = this.getProvider(
+      options,
+      this.options.customFetch ||
+        ((_input, init) => createFetchWithProxy(this.options.useProxy, this.dependencies)(`${apiHost}${apiPath}`, init))
     )
     return wrapLanguageModel({
       model: provider.responses(this.options.model.modelId),
@@ -71,6 +88,9 @@ export default class OpenAIResponses extends AbstractAISDKModel {
   }
 
   public listModels() {
+    if (this.options.skipRemoteModelList && this.options.listModelsFallback) {
+      return Promise.resolve(this.options.listModelsFallback)
+    }
     return fetchRemoteModels(
       {
         apiHost: this.options.apiHost,
@@ -80,7 +100,16 @@ export default class OpenAIResponses extends AbstractAISDKModel {
         useProxy: this.options.useProxy,
       },
       this.dependencies
-    )
+    ).catch((error) => {
+      if (this.options.listModelsFallback) {
+        console.warn(
+          `[OpenAIResponses] Failed to fetch remote models for ${this.options.apiHost}, using fallback.`,
+          error
+        )
+        return this.options.listModelsFallback
+      }
+      throw error
+    })
   }
 
   protected getImageModel() {

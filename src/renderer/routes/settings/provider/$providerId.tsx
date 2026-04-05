@@ -102,6 +102,16 @@ function ProviderSettings({ providerId }: { providerId: string }) {
   const { providerSettings, setProviderSettings } = useProviderSettings(providerId)
 
   const displayModels = providerSettings?.models || baseInfo?.defaultSettings?.models || []
+  const isNoApiKeyProvider = [ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ModelProviderEnum.OpenClaw].includes(
+    baseInfo?.id as ModelProviderEnum
+  )
+  const isBuiltinOpenAICompatible =
+    !!baseInfo && !baseInfo.isCustom && baseInfo.type === ModelProviderType.OpenAI && baseInfo.id !== ModelProviderEnum.Azure
+  const showBuiltinApiHostSection =
+    isBuiltinOpenAICompatible ||
+    [ModelProviderEnum.OpenAIResponses, ModelProviderEnum.Claude, ModelProviderEnum.Gemini].includes(
+      baseInfo?.id as ModelProviderEnum
+    )
 
   const handleApiKeyChange = (e: ChangeEvent<HTMLInputElement>) => {
     setProviderSettings({
@@ -406,9 +416,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         )}
 
         {/* API Key */}
-        {![ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ModelProviderEnum.OpenClaw, ''].includes(
-          baseInfo.id
-        ) && (
+        {!isNoApiKeyProvider && (
           <Stack gap="xxs">
             <Text span fw="600">
               {t('API Key')}
@@ -438,9 +446,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           </Stack>
         )}
 
-        {![ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ModelProviderEnum.OpenClaw, ''].includes(
-          baseInfo.id
-        ) && (
+        {!isNoApiKeyProvider && (
           <Stack gap="xxs">
             <Text span fw="600">
               {t('Cloudflare Client ID')}
@@ -454,9 +460,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           </Stack>
         )}
 
-        {![ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ModelProviderEnum.OpenClaw, ''].includes(
-          baseInfo.id
-        ) && (
+        {!isNoApiKeyProvider && (
           <Stack gap="xxs">
             <Text span fw="600">
               {t('Cloudflare Client Secret')}
@@ -471,16 +475,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         )}
 
         {/* API Host */}
-        {[
-          ModelProviderEnum.OpenAI,
-          ModelProviderEnum.OpenAIResponses,
-          ModelProviderEnum.Claude,
-          ModelProviderEnum.Gemini,
-          ModelProviderEnum.Ollama,
-          ModelProviderEnum.LMStudio,
-          ModelProviderEnum.OpenClaw,
-          '',
-        ].includes(baseInfo.id) && (
+        {showBuiltinApiHostSection && (
           <Stack gap="xxs">
             <Flex justify="space-between" align="flex-end" gap="md">
               <Text span fw="600" className=" whitespace-nowrap">
@@ -499,13 +494,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
               />
             </Flex>
             <Text span size="xs" flex="0 1 auto" c="chatbox-secondary">
-              {[
-                ModelProviderEnum.OpenAI,
-                ModelProviderEnum.Ollama,
-                ModelProviderEnum.LMStudio,
-                ModelProviderEnum.OpenClaw,
-                '',
-              ].includes(baseInfo.id)
+              {isBuiltinOpenAICompatible
                 ? normalizeOpenAIApiHostAndPath({
                     apiHost: providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost,
                     apiPath:

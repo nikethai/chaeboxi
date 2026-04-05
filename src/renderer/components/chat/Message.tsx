@@ -131,7 +131,6 @@ const _Message: FC<Props> = (props) => {
     userAvatarKey,
     showMessageTimestamp,
     showModelName,
-    showTokenCount,
     showWordCount,
     showTokenUsed,
     showFirstTokenLatency,
@@ -390,13 +389,6 @@ const _Message: FC<Props> = (props) => {
     if (showWordCount && !msg.generating) {
       // 兼容旧版本没有提前计算的消息
       tips.push(`word count: ${msg.wordCount !== undefined ? msg.wordCount : countWord(getMessageText(msg))}`)
-    }
-    if (showTokenCount && !msg.generating) {
-      // 兼容旧版本没有提前计算的消息
-      // if (msg.tokenCount === undefined) {
-      //   msg.tokenCount = estimateTokensFromMessages([msg])
-      // }
-      tips.push(`token count: ${msg.tokenCount}`)
     }
     if (showTokenUsed && msg.role === 'assistant' && !msg.generating) {
       tips.push(`tokens used: ${msg.usage?.totalTokens ? msg.usage.totalTokens : msg.tokensUsed || 'unknown'}`)

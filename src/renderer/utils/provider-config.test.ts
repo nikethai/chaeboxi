@@ -81,6 +81,23 @@ describe('provider-config', () => {
       expect(result?.cloudflareClientSecret).toBe('cf-client-secret')
     })
 
+    it('should parse a valid builtin qwen provider config', () => {
+      const configJson = JSON.stringify({
+        id: ModelProviderEnum.Qwen,
+        settings: {
+          apiHost: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+          apiKey: 'qwen-test-key',
+        },
+      })
+
+      const result = parseProviderFromJson(configJson)
+
+      expect(result).toBeDefined()
+      expect(result?.id).toBe(ModelProviderEnum.Qwen)
+      expect(result?.apiHost).toBe('https://dashscope.aliyuncs.com/compatible-mode/v1')
+      expect(result?.apiKey).toBe('qwen-test-key')
+    })
+
     it('should handle minimal valid provider config', () => {
       const configJson = JSON.stringify({
         id: 'minimal-provider',

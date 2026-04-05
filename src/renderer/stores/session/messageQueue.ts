@@ -52,3 +52,7 @@ export const messageQueueStore = createStore<MessageQueueState>((set, get) => ({
 export function useQueuedMessageCount(sessionId?: string | null) {
   return useStore(messageQueueStore, (state) => (sessionId ? state.messageQueue.get(sessionId)?.length || 0 : 0))
 }
+
+export function useQueuedMessages(sessionId?: string | null): QueuedMessageEntry[] {
+  return useStore(messageQueueStore, (state) => (sessionId ? state.messageQueue.get(sessionId) || [] : []))
+}

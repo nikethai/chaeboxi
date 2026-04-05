@@ -93,6 +93,7 @@ import Loading from '../icons/Loading'
 import { ThinkingGroupUI } from '../message-parts/ThinkingGroupUI'
 import { ReasoningContentUI, ToolCallPartUI } from '../message-parts/ToolCallPartUI'
 import { SourceCardList } from '../search/SourceCardList'
+import FollowUpSuggestions from '../search/FollowUpSuggestions'
 import { MessageAttachmentGrid } from './MessageAttachmentGrid'
 import MessageErrTips from './MessageErrTips'
 import MessageStatuses from './MessageLoading'
@@ -920,6 +921,13 @@ const _Message: FC<Props> = (props) => {
                 }}
               />
             )}
+            {msg.role === 'assistant' && !msg.generating && msg.citations?.length ? (
+              <FollowUpSuggestions
+                sessionId={sessionId}
+                citations={msg.citations}
+                searchQuery={msg.searchQuery}
+              />
+            ) : null}
           </Grid>
         </Grid>
       </Grid>

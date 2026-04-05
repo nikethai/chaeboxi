@@ -82,6 +82,9 @@ function remarkAddCodeIndex() {
 }
 
 function remarkTransformCitationLinks(citations: SearchCitation[]) {
+  if (!citations?.length) {
+    return () => {}
+  }
   const citationIndexSet = new Set(citations.map((citation) => citation.index))
 
   // biome-ignore lint/suspicious/noExplicitAny: remark AST nodes lack a friendly type here
@@ -98,11 +101,12 @@ function remarkTransformCitationLinks(citations: SearchCitation[]) {
 
       const replacementNodes: any[] = []
       for (const part of parts) {
+        if (!part) {
+          continue
+        }
         const match = /^\[(\d+)\]$/.exec(part)
         if (!match) {
-          if (part) {
-            replacementNodes.push({ type: 'text', value: part })
-          }
+          replacementNodes.push({ type: 'text', value: part })
           continue
         }
 
@@ -121,8 +125,10 @@ function remarkTransformCitationLinks(citations: SearchCitation[]) {
         )
       }
 
-      parent.children.splice(index, 1, ...replacementNodes)
-      return index + replacementNodes.length
+      if (replacementNodes.length > 0) {
+        parent.children.splice(index, 1, ...replacementNodes)
+        return index + replacementNodes.length
+      }
     })
   }
 }

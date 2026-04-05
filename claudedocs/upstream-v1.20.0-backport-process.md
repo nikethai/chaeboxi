@@ -148,3 +148,37 @@ Proceed to commit only the intended backport files (exclude unrelated dirty file
 - Targeted tests: **pass** (34 tests).
 - Renderer production build: **pass**.
 - Existing build warnings (circular chunk warnings / large chunk warnings) remain pre-existing and non-blocking for this backport scope.
+
+## 10. Post-Phase-2 Commit Status
+
+### Committed
+- Branch: `feat/upstream-v1-20-phase2-backport`
+- Commit: `1d5dc1ad`
+- Includes all Phase 2 files listed in sections 8-9.
+
+### Remaining Modified/Untracked Files (not in Phase 2 commit)
+- `src-tauri/Cargo.lock`
+- `src/renderer/components/ImageModelSelect.tsx`
+- `src/renderer/components/chat/SummaryMessage.tsx`
+- `src/renderer/routes/image-creator/-components/constants.ts`
+- `src/renderer/setup/mcp_bootstrap.ts`
+- `src/renderer/setup/sentry_init.ts`
+- `src/shared/providers/definitions/gemini.ts`
+- `src/shared/providers/definitions/models/custom-gemini.ts`
+- `src/shared/providers/definitions/models/gemini.ts`
+- `src/shared/providers/definitions/models/openai-responses.ts`
+- `vite.renderer.config.ts`
+- `.claude/` (untracked)
+
+## 11. Remaining Work Checklist
+
+1. Commit Phase 1 backport file set (Gemini image updates, bootstrap/Sentry init, OpenAI Responses updates, Vite web domain replacement).
+2. Keep `src-tauri/Cargo.lock` and `.claude/` out of backport commits unless explicitly intended.
+3. Run targeted regression/build checks again before final PR squash/changelog summary.
+
+## 12. Intentionally Excluded Items (Current Scope)
+- OAuth/provider auth mode restoration.
+- `qwen-portal` integration.
+- Full models.dev registry migration.
+- ChatboxAI async image-task pipeline migration.
+- Paid/pro task-mode feature restoration.

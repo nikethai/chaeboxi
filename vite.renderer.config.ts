@@ -20,6 +20,15 @@ function injectBaseTag(): Plugin {
   }
 }
 
+function replacePlausibleDomain(): Plugin {
+  return {
+    name: 'replace-plausible-domain',
+    transformIndexHtml(html) {
+      return html.replace('data-domain="app.chatboxai.app"', 'data-domain="web.chatboxai.app"')
+    },
+  }
+}
+
 function dvhToVh(): Plugin {
   return {
     name: 'dvh-to-vh',
@@ -66,6 +75,7 @@ export default defineConfig(({ mode }) => {
       react({}),
       dvhToVh(),
       isWeb ? injectBaseTag() : undefined,
+      isWeb ? replacePlausibleDomain() : undefined,
       process.env.SENTRY_AUTH_TOKEN
         ? sentryVitePlugin({
             authToken: process.env.SENTRY_AUTH_TOKEN,

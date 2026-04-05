@@ -19,6 +19,10 @@ export enum ModelProviderEnum {
   Perplexity = 'perplexity',
   XAI = 'xAI',
   OpenRouter = 'openrouter',
+  MiniMax = 'minimax',
+  MiniMaxCN = 'minimax-cn',
+  Moonshot = 'moonshot',
+  Qwen = 'qwen',
   OpenClaw = 'openclaw',
   Custom = 'custom',
 }

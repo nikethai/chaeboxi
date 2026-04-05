@@ -1,5 +1,6 @@
 import { settings as getDefaultSettings, newConfigs } from 'src/shared/defaults'
 import { getModel } from 'src/shared/providers'
+import OpenAI from 'src/shared/providers/definitions/models/openai'
 import OpenAIResponses from 'src/shared/providers/definitions/models/openai-responses'
 import { ModelProviderEnum, type SessionSettings, type Settings } from 'src/shared/types'
 import type { ModelDependencies } from 'src/shared/types/adapters'
@@ -54,5 +55,33 @@ describe('getModel', () => {
     const model = getModel(sessionSettings, globalSettings, newConfigs(), mockDependencies)
 
     expect(model).toBeInstanceOf(OpenAIResponses)
+  })
+
+  it('returns OpenAI-compatible model when provider is MiniMax', () => {
+    const sessionSettings: SessionSettings = {
+      provider: ModelProviderEnum.MiniMax,
+      modelId: 'MiniMax-M2.5',
+      temperature: 0.7,
+      topP: 0.9,
+      maxTokens: 2048,
+      stream: true,
+    }
+
+    const defaultSettings = getDefaultSettings()
+    const globalSettings: Settings = {
+      ...defaultSettings,
+      providers: {
+        ...defaultSettings.providers,
+        [ModelProviderEnum.MiniMax]: {
+          apiKey: 'test-key',
+          apiHost: 'https://api.minimax.io/v1',
+          models: [{ modelId: 'MiniMax-M2.5' }],
+        },
+      },
+    }
+
+    const model = getModel(sessionSettings, globalSettings, newConfigs(), mockDependencies)
+
+    expect(model).toBeInstanceOf(OpenAI)
   })
 })

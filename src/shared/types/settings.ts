@@ -209,15 +209,18 @@ const HistorySyncConfigSchema = z.object({
 
 const ExtensionSettingsSchema = z.object({
   webSearch: z.object({
-    provider: z.enum(['build-in', 'bing', 'duckduckgo', 'serper', 'google', 'tavily']),
-    serperApiKey: z.string().optional(),
-    googleApiKey: z.string().optional(),
-    googleCseId: z.string().optional(),
-    tavilyApiKey: z.string().optional(),
-    tavilySearchDepth: z.string().optional(),
-    tavilyMaxResults: z.number().optional(),
-    tavilyTimeRange: z.string().optional(),
-    tavilyIncludeRawContent: z.string().optional(),
+    provider: z.enum(['build-in', 'bing', 'duckduckgo', 'serper', 'google', 'tavily', 'exa']),
+    serperApiKey: z.string().optional().catch(undefined),
+    googleApiKey: z.string().optional().catch(undefined),
+    googleCseId: z.string().optional().catch(undefined),
+    tavilyApiKey: z.string().optional().catch(undefined),
+    tavilySearchDepth: z.string().optional().catch(undefined),
+    tavilyMaxResults: z.number().optional().catch(undefined),
+    tavilyTimeRange: z.string().optional().catch(undefined),
+    tavilyIncludeRawContent: z.string().optional().catch(undefined),
+    exaApiKey: z.string().optional().catch(undefined),
+    useGoogleGroundingForGemini: z.boolean().optional().catch(undefined),
+    scrapeTopResults: z.boolean().optional().catch(undefined),
   }),
   knowledgeBase: z
     .object({

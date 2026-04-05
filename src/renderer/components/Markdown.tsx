@@ -1,5 +1,6 @@
 import { sanitizeUrl } from '@braintree/sanitize-url'
 import { useTheme } from '@mui/material/styles'
+import type { SearchCitation } from '@shared/types'
 import {
   createContext,
   type ElementType,
@@ -60,6 +61,7 @@ import { visit } from 'unist-util-visit'
 import { useCopied } from '@/hooks/useCopied'
 import { deployHtmlToEdgeOne } from '../packages/edgeone'
 import * as toastActions from '../stores/toastActions'
+import { CitationBadge } from './search/CitationBadge'
 import IconDart from './icons/Dart'
 import IconJava from './icons/Java'
 import { MessageMermaid, SVGPreview } from './Mermaid'
@@ -79,6 +81,52 @@ function remarkAddCodeIndex() {
   }
 }
 
+function remarkTransformCitationLinks(citations: SearchCitation[]) {
+  const citationIndexSet = new Set(citations.map((citation) => citation.index))
+
+  // biome-ignore lint/suspicious/noExplicitAny: remark AST nodes lack a friendly type here
+  return (tree: any) => {
+    visit(tree, 'text', (node, index, parent) => {
+      if (!parent || typeof index !== 'number' || !node.value || !citationIndexSet.size) {
+        return
+      }
+
+      const parts = String(node.value).split(/(\[\d+\])/g)
+      if (parts.length <= 1) {
+        return
+      }
+
+      const replacementNodes: any[] = []
+      for (const part of parts) {
+        const match = /^\[(\d+)\]$/.exec(part)
+        if (!match) {
+          if (part) {
+            replacementNodes.push({ type: 'text', value: part })
+          }
+          continue
+        }
+
+        const citationIndex = Number(match[1])
+        if (!citationIndexSet.has(citationIndex)) {
+          replacementNodes.push({ type: 'text', value: part })
+          continue
+        }
+
+        replacementNodes.push(
+          {
+            type: 'link',
+            url: `citation:${citationIndex}`,
+            children: [{ type: 'text', value: part }],
+          }
+        )
+      }
+
+      parent.children.splice(index, 1, ...replacementNodes)
+      return index + replacementNodes.length
+    })
+  }
+}
+
 function Markdown(props: {
   children: string
   uniqueId?: string
@@ -88,6 +136,7 @@ function Markdown(props: {
   className?: string
   generating?: boolean
   forceColorScheme?: 'light' | 'dark'
+  citations?: SearchCitation[]
 }) {
   const {
     children,
@@ -98,17 +147,19 @@ function Markdown(props: {
     className,
     generating,
     forceColorScheme,
+    citations = [],
   } = props
 
   const codeFences = useMemo(() => (children.match(/```/g) || []).length, [children])
   const generatingCodeIndex = useMemo(() => (codeFences % 2 === 0 ? -1 : Math.floor(codeFences / 2)), [codeFences])
+  const citationMap = useMemo(() => new Map(citations.map((citation) => [citation.index, citation])), [citations])
 
   return (
     <ReactMarkdown
       remarkPlugins={
         enableLaTeXRendering
-          ? [remarkGfm, remarkMath, remarkBreaks, remarkAddCodeIndex]
-          : [remarkGfm, remarkBreaks, remarkAddCodeIndex]
+          ? [remarkGfm, remarkMath, remarkBreaks, remarkAddCodeIndex, remarkTransformCitationLinks(citations)]
+          : [remarkGfm, remarkBreaks, remarkAddCodeIndex, remarkTransformCitationLinks(citations)]
       }
       rehypePlugins={[rehypeKatex]}
       className={`break-words ${className || ''}`}
@@ -131,18 +182,38 @@ function Markdown(props: {
               />
             )
           },
-          a: ({ node, ...props }) => (
-            <a
-              {...props}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => {
-                e.stopPropagation()
-              }}
-            />
-          ),
+          a: ({ node, ...props }) =>
+            props.href?.startsWith('citation:') ? (
+              (() => {
+                const citationIndex = Number(props.href.replace('citation:', ''))
+                const citation = citationMap.get(citationIndex)
+
+                if (!citation) {
+                  return <span>{props.children}</span>
+                }
+
+                return <CitationBadge citation={citation} />
+              })()
+            ) : (
+              <a
+                {...props}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => {
+                  e.stopPropagation()
+                }}
+              />
+            ),
         }),
-        [uniqueId, hiddenCodeCopyButton, enableMermaidRendering, generating, generatingCodeIndex, forceColorScheme]
+        [
+          citationMap,
+          uniqueId,
+          hiddenCodeCopyButton,
+          enableMermaidRendering,
+          generating,
+          generatingCodeIndex,
+          forceColorScheme,
+        ]
       )}
     >
       {enableLaTeXRendering ? latex.processLaTeX(children) : children}

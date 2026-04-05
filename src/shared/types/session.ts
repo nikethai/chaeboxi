@@ -42,6 +42,95 @@ export const SearchResultSchema = z.object({
   items: z.array(SearchResultItemSchema),
 })
 
+export interface SearchCitation {
+  index: number
+  url: string
+  title: string
+  snippet?: string
+  favicon?: string
+  source: 'builtin' | 'gemini-grounding' | 'openclaw' | 'mcp'
+  accessedAt: number
+  relevanceScore?: number
+}
+
+export const SearchCitationSchema: z.ZodType<SearchCitation> = z.object({
+  index: z.number(),
+  url: z.string(),
+  title: z.string(),
+  snippet: z.string().optional().catch(undefined),
+  favicon: z.string().optional().catch(undefined),
+  source: z.enum(['builtin', 'gemini-grounding', 'openclaw', 'mcp']),
+  accessedAt: z.number(),
+  relevanceScore: z.number().optional().catch(undefined),
+})
+
+export interface GroundingMetadata {
+  webSearchQueries?: string[]
+  retrievalQueries?: string[]
+  searchEntryPoint?: {
+    renderedContent?: string
+  }
+  groundingChunks?: Array<{
+    web?: {
+      uri: string
+      title?: string
+    }
+  }>
+  groundingSupports?: Array<{
+    segment?: {
+      startIndex?: number
+      endIndex?: number
+      text?: string
+    }
+    groundingChunkIndices?: number[]
+    confidenceScores?: number[]
+  }>
+}
+
+export const GroundingMetadataSchema: z.ZodType<GroundingMetadata> = z
+  .object({
+    webSearchQueries: z.array(z.string()).optional().catch(undefined),
+    retrievalQueries: z.array(z.string()).optional().catch(undefined),
+    searchEntryPoint: z
+      .object({
+        renderedContent: z.string().optional().catch(undefined),
+      })
+      .optional()
+      .catch(undefined),
+    groundingChunks: z
+      .array(
+        z.object({
+          web: z
+            .object({
+              uri: z.string(),
+              title: z.string().optional().catch(undefined),
+            })
+            .optional()
+            .catch(undefined),
+        })
+      )
+      .optional()
+      .catch(undefined),
+    groundingSupports: z
+      .array(
+        z.object({
+          segment: z
+            .object({
+              startIndex: z.number().optional().catch(undefined),
+              endIndex: z.number().optional().catch(undefined),
+              text: z.string().optional().catch(undefined),
+            })
+            .optional()
+            .catch(undefined),
+          groundingChunkIndices: z.array(z.number()).optional().catch(undefined),
+          confidenceScores: z.array(z.number()).optional().catch(undefined),
+        })
+      )
+      .optional()
+      .catch(undefined),
+  })
+  .passthrough()
+
 // Message file schemas
 export const MessageFileSchema = z.object({
   id: z.string(),
@@ -132,6 +221,10 @@ export const StreamTextResultSchema = z.object({
   reasoningContent: z.string().optional(),
   usage: z.custom<LanguageModelUsage>().optional(),
   finishReason: z.string().optional(),
+  citations: z.array(SearchCitationSchema).optional().catch(undefined),
+  searchQuery: z.string().optional().catch(undefined),
+  searchProvider: z.string().optional().catch(undefined),
+  groundingMetadata: GroundingMetadataSchema.optional().catch(undefined),
 })
 
 // Tool and provider schemas
@@ -229,6 +322,10 @@ export const MessageSchema = z.object({
   firstTokenLatency: z.number().optional(),
   tokenSpeed: z.number().optional(), // final tokens/sec after streaming completes
   finishReason: z.string().optional(),
+  citations: z.array(SearchCitationSchema).optional().catch(undefined),
+  searchQuery: z.string().optional().catch(undefined),
+  searchProvider: z.string().optional().catch(undefined),
+  groundingMetadata: GroundingMetadataSchema.optional().catch(undefined),
   tokenCountMap: TokenCountMapSchema.optional(), // estimate token count as input
   tokenCalculatedAt: TokenCalculatedAtSchema,
   updatedAt: z.number().optional(),

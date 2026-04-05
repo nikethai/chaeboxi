@@ -35,6 +35,7 @@ import {
 } from '@tabler/icons-react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { uniq } from 'lodash'
+import { ofetch } from 'ofetch'
 import { type ChangeEvent, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createModelDependencies } from '@/adapters'
@@ -60,7 +61,7 @@ type ModelTestResult = ModelTestState & {
 
 function normalizeAPIHost(
   providerSettings: any,
-  providerType: ModelProviderType,
+  providerType: ModelProviderType
 ): {
   apiHost: string
   apiPath: string
@@ -199,8 +200,32 @@ function ProviderSettings({ providerId }: { providerId: string }) {
   const [selectedTestModel, setSelectedTestModel] = useState<string>()
   const [showTestModelSelector, setShowTestModelSelector] = useState(false)
   const [modelTestResult, setModelTestResult] = useState<ModelTestResult | null>(null)
+  const [checkingOpenClawHealth, setCheckingOpenClawHealth] = useState(false)
+  const [openClawHealthy, setOpenClawHealthy] = useState<boolean>()
   const checkModel =
     selectedTestModel || baseInfo?.defaultSettings?.models?.[0]?.modelId || providerSettings?.models?.[0]?.modelId
+
+  const defaultApiHost = baseInfo?.defaultSettings?.apiHost
+
+  const checkOpenClawHealth = useCallback(async () => {
+    const apiHost = providerSettings?.apiHost || defaultApiHost
+    if (!apiHost) {
+      return
+    }
+
+    setCheckingOpenClawHealth(true)
+    setOpenClawHealthy(undefined)
+    try {
+      await ofetch(`${apiHost.replace(/\/+$/, '')}/health`, {
+        method: 'GET',
+      })
+      setOpenClawHealthy(true)
+    } catch {
+      setOpenClawHealthy(false)
+    } finally {
+      setCheckingOpenClawHealth(false)
+    }
+  }, [defaultApiHost, providerSettings?.apiHost])
 
   const handleCheckApiKey = async (modelId?: string) => {
     const testModel = modelId || checkModel
@@ -254,12 +279,12 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           models: displayModels.map((m) =>
             m.modelId === model.modelId
               ? { ...m, capabilities: uniq([...(m.capabilities || []), ...capabilitiesToAdd]) }
-              : m,
+              : m
           ),
         })
       }
     },
-    [displayModels, setProviderSettings, providerId],
+    [displayModels, setProviderSettings, providerId]
   )
 
   if (!baseInfo) {
@@ -328,7 +353,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 onChange={(e) => {
                   setSettings({
                     customProviders: settings.customProviders?.map((p) =>
-                      p.id === baseInfo.id ? { ...p, name: e.currentTarget.value } : p,
+                      p.id === baseInfo.id ? { ...p, name: e.currentTarget.value } : p
                     ),
                   })
                 }}
@@ -344,7 +369,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 onChange={(value) => {
                   setSettings({
                     customProviders: settings.customProviders?.map((p) =>
-                      p.id === baseInfo.id ? { ...p, type: value as ModelProviderType } : p,
+                      p.id === baseInfo.id ? { ...p, type: value as ModelProviderType } : p
                     ),
                   })
                 }}
@@ -381,7 +406,9 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         )}
 
         {/* API Key */}
-        {![ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ''].includes(baseInfo.id) && (
+        {![ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ModelProviderEnum.OpenClaw, ''].includes(
+          baseInfo.id
+        ) && (
           <Stack gap="xxs">
             <Text span fw="600">
               {t('API Key')}
@@ -411,7 +438,9 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           </Stack>
         )}
 
-        {![ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ''].includes(baseInfo.id) && (
+        {![ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ModelProviderEnum.OpenClaw, ''].includes(
+          baseInfo.id
+        ) && (
           <Stack gap="xxs">
             <Text span fw="600">
               {t('Cloudflare Client ID')}
@@ -425,7 +454,9 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           </Stack>
         )}
 
-        {![ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ''].includes(baseInfo.id) && (
+        {![ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ModelProviderEnum.OpenClaw, ''].includes(
+          baseInfo.id
+        ) && (
           <Stack gap="xxs">
             <Text span fw="600">
               {t('Cloudflare Client Secret')}
@@ -447,6 +478,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           ModelProviderEnum.Gemini,
           ModelProviderEnum.Ollama,
           ModelProviderEnum.LMStudio,
+          ModelProviderEnum.OpenClaw,
           '',
         ].includes(baseInfo.id) && (
           <Stack gap="xxs">
@@ -467,14 +499,26 @@ function ProviderSettings({ providerId }: { providerId: string }) {
               />
             </Flex>
             <Text span size="xs" flex="0 1 auto" c="chatbox-secondary">
-              {[ModelProviderEnum.OpenAI, ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ''].includes(
-                baseInfo.id,
-              )
+              {[
+                ModelProviderEnum.OpenAI,
+                ModelProviderEnum.Ollama,
+                ModelProviderEnum.LMStudio,
+                ModelProviderEnum.OpenClaw,
+                '',
+              ].includes(baseInfo.id)
                 ? normalizeOpenAIApiHostAndPath({
                     apiHost: providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost,
+                    apiPath:
+                      baseInfo.id === ModelProviderEnum.OpenClaw
+                        ? providerSettings?.apiPath || baseInfo.defaultSettings?.apiPath
+                        : undefined,
                   }).apiHost +
                   normalizeOpenAIApiHostAndPath({
                     apiHost: providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost,
+                    apiPath:
+                      baseInfo.id === ModelProviderEnum.OpenClaw
+                        ? providerSettings?.apiPath || baseInfo.defaultSettings?.apiPath
+                        : undefined,
                   }).apiPath
                 : ''}
               {baseInfo.id === ModelProviderEnum.OpenAIResponses
@@ -495,6 +539,27 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 ? normalizeGeminiHost(providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost || '').apiHost +
                   normalizeGeminiHost(providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost || '').apiPath
                 : ''}
+            </Text>
+          </Stack>
+        )}
+
+        {baseInfo.id === ModelProviderEnum.OpenClaw && (
+          <Stack gap="xxs">
+            <Text span fw="600">
+              {t('OpenClaw Health Check')}
+            </Text>
+            <Flex gap="xs" align="center">
+              <Button variant="light" onClick={checkOpenClawHealth} loading={checkingOpenClawHealth}>
+                {t('Check Health')}
+              </Button>
+              {typeof openClawHealthy === 'boolean' ? (
+                <Badge color={openClawHealthy ? 'green' : 'red'} variant="light">
+                  {openClawHealthy ? t('Running') : t('Unavailable')}
+                </Badge>
+              ) : null}
+            </Flex>
+            <Text size="xs" c="chatbox-secondary">
+              {t('Uses the local OpenClaw health endpoint at /health.')}
             </Text>
           </Stack>
         )}

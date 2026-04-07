@@ -303,4 +303,12 @@ export default class DesktopPlatform implements Platform {
 
     return unsubscribe
   }
+
+  public async executeCommand(
+    command: string,
+    cwd?: string,
+    timeoutMs?: number
+  ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
+    return this.ipc.invoke('execute_command', JSON.stringify({ command, cwd, timeoutMs }))
+  }
 }

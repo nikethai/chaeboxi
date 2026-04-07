@@ -100,6 +100,13 @@ export interface Platform extends Storage {
   isMaximized(): Promise<boolean>
 
   onMaximizedChange(callback: (isMaximized: boolean) => void): () => void
+
+  // Terminal command execution (Desktop only)
+  executeCommand?(
+    command: string,
+    cwd?: string,
+    timeoutMs?: number
+  ): Promise<{ exitCode: number; stdout: string; stderr: string }>
 }
 
 export interface Exporter {

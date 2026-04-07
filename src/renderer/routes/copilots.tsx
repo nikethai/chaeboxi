@@ -33,7 +33,12 @@ import { trackingEvent } from '@/packages/event'
 import * as remote from '@/packages/remote'
 import platform from '@/platform'
 import { useUIStore } from '@/stores/uiStore'
-import type { CopilotDetail } from '../../shared/types'
+import {
+  COPILOT_MAX_STEPS_DEFAULT,
+  COPILOT_MAX_STEPS_MAX,
+  COPILOT_MAX_STEPS_MIN,
+  type CopilotDetail,
+} from '../../shared/types'
 
 export const Route = createFileRoute('/copilots')({
   component: Copilots,
@@ -594,6 +599,67 @@ function CopilotForm(props: CopilotFormProps) {
                 placeholder={t('Not set') || ''}
               />
             </Flex>
+          </Stack>
+        </Box>
+      </Box>
+
+      {/* Agent Settings section */}
+      <Box
+        sx={{
+          mt: 2,
+          mb: 1,
+          border: '1px solid',
+          borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
+          borderRadius: '8px',
+          overflow: 'hidden',
+        }}
+      >
+        <Box
+          sx={{
+            px: 2,
+            py: 1.5,
+            borderBottom: '1px solid',
+            borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
+          }}
+        >
+          <Typography variant="body2" fontWeight={700}>
+            {t('Agent Settings')}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {t('Configure agent mode behavior')}
+          </Typography>
+        </Box>
+        <Box sx={{ px: 2, py: 1.5 }}>
+          <Stack gap="xs">
+            <Flex align="center" gap="xs">
+              <Text size="sm" fw="600">
+                {t('Max Steps')}
+              </Text>
+              <Tooltip
+                label={t(
+                  'Maximum number of autonomous tool-use steps the agent can take per message. Higher values allow more complex tasks but use more tokens.'
+                )}
+                withArrow
+                maw={320}
+                className="!whitespace-normal"
+                zIndex={3000}
+                events={{ hover: true, focus: true, touch: true }}
+              >
+                <ScalableIcon icon={IconInfoCircle} size={18} className="text-chatbox-tint-tertiary" />
+              </Tooltip>
+            </Flex>
+            <SliderWithInput
+              value={copilotEdit.maxSteps ?? COPILOT_MAX_STEPS_DEFAULT}
+              onChange={(v) =>
+                setCopilotEdit((prev) => ({
+                  ...prev,
+                  maxSteps: v ?? COPILOT_MAX_STEPS_DEFAULT,
+                }))
+              }
+              min={COPILOT_MAX_STEPS_MIN}
+              max={COPILOT_MAX_STEPS_MAX}
+              step={1}
+            />
           </Stack>
         </Box>
       </Box>

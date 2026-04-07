@@ -670,6 +670,7 @@
   "Selected document parser is currently only supported in Knowledge Base. For chat file attachments, please go to <OpenDocumentParserSettingButton>Settings</OpenDocumentParserSettingButton> and switch to Local or Chatbox AI.": "Selected document parser is currently only supported in Knowledge Base. For chat file attachments, please go to <OpenDocumentParserSettingButton>Settings</OpenDocumentParserSettingButton> and switch to Local or Chatbox AI.",
   "Selected Key": "Selected Key",
   "Send": "Send",
+  "Send to Image Creator": "Send to Image Creator",
   "Send Without Generating Response": "Send Without Generating Response",
   "Server parse failed": "Server parse failed",
   "Server parsing will consume compute credits. Please be cautious with large files.": "Server parsing will consume compute credits. Please be cautious with large files.",

@@ -2,14 +2,17 @@ import * as Sentry from '@sentry/react'
 import { getDefaultStore } from 'jotai'
 import { getModel } from '@shared/models'
 import { AIProviderNoImplementedPaintError, ApiError, BaseError, NetworkError, OCRError } from '@shared/models/errors'
+import type { ToolSet } from 'ai'
 import type { OnResultChangeWithCancel } from '@shared/models/types'
 import {
   COPILOT_MAX_STEPS_DEFAULT,
   type CompactionPoint,
+  type CopilotHook,
   createMessage,
   type Message,
   type MessageImagePart,
   type MessagePicture,
+  type PlanPhase,
   ModelProviderEnum,
   type SessionSettings,
   type SessionType,
@@ -28,6 +31,9 @@ import {
   PREVIEW_LINES,
 } from '@/packages/context-management/attachment-payload'
 import { generateImage, streamText } from '@/packages/model-calls'
+import { getToolSet } from '@/packages/model-calls/toolsets/knowledge-base'
+import websearchToolSet, { webSearchTool } from '@/packages/model-calls/toolsets/web-search'
+import fileToolSet from '@/packages/model-calls/toolsets/file'
 import { getModelDisplayName } from '@/packages/model-setting-utils'
 import { estimateTokensFromMessages } from '@/packages/token'
 import platform from '@/platform'
@@ -41,6 +47,91 @@ import { createNewFork, findMessageLocation } from './forks'
 import { insertMessageAfter, modifyMessage, submitNewUserMessage } from './messages'
 import { messageQueueStore } from './messageQueue'
 import { runCompactionWithUIState } from '@/packages/context-management'
+import { executePostHooks, executePreHooks } from '@/packages/copilot-hooks'
+import type { MessagePlanPart } from '@shared/types'
+
+// Planning phase system prompt instruction
+const PLANNING_SYSTEM_PROMPT = `
+You are in PLANNING MODE. Your task is to analyze the user's request and create a structured execution plan.
+
+## Your Output Format
+You MUST output a MessagePlanPart with your plan. The plan should:
+1. Break down the task into clear, actionable steps
+2. Identify which tools will be needed for each step
+3. Consider potential risks or issues
+4. Be specific enough for execution
+
+## Tools Available in Planning Mode
+You have access to read-only tools: web_search, read_file, search_file_content, and knowledge_base search.
+Use these to gather information needed for your plan.
+
+## Important
+- Do NOT execute the task - only create a plan
+- Be thorough in your analysis
+- Consider edge cases and error handling
+- Output your plan in a structured format
+
+When you have completed your plan, include it in your response as a plan part.
+`
+
+/**
+ * Construct read-only tools for planning phase.
+ * Only includes: web_search, read_file, search_file_content, and knowledge_base tools.
+ * MCP tools are excluded from planning phase.
+ */
+async function getReadOnlyToolsForPlanning(
+  knowledgeBase?: Pick<{ id: number; name: string }, 'id' | 'name'>
+): Promise<{ tools: ToolSet; instructions: string }> {
+  const tools: ToolSet = {}
+
+  // Add web search tools
+  if (websearchToolSet?.tools) {
+    if (websearchToolSet.tools.web_search) {
+      tools.web_search = websearchToolSet.tools.web_search
+    }
+    if (websearchToolSet.tools.parse_link) {
+      tools.parse_link = websearchToolSet.tools.parse_link
+    }
+  }
+
+  // Add file tools
+  if (fileToolSet?.tools) {
+    if (fileToolSet.tools.read_file) {
+      tools.read_file = fileToolSet.tools.read_file
+    }
+    if (fileToolSet.tools.search_file_content) {
+      tools.search_file_content = fileToolSet.tools.search_file_content
+    }
+  }
+
+  // Add knowledge base tools
+  let kbInstructions = ''
+  if (knowledgeBase) {
+    try {
+      const kbToolSet = await getToolSet(knowledgeBase.id, knowledgeBase.name)
+      if (kbToolSet?.tools) {
+        Object.assign(tools, kbToolSet.tools)
+      }
+      kbInstructions = kbToolSet?.description ?? ''
+    } catch (err) {
+      console.error('Failed to load knowledge base toolset for planning:', err)
+    }
+  }
+
+  // Build instructions string
+  let instructions = PLANNING_SYSTEM_PROMPT
+  if (websearchToolSet?.description) {
+    instructions += '\n\n' + websearchToolSet.description
+  }
+  if (fileToolSet?.description) {
+    instructions += '\n\n' + fileToolSet.description
+  }
+  if (kbInstructions) {
+    instructions += '\n\n' + kbInstructions
+  }
+
+  return { tools, instructions }
+}
 
 /**
  * Run overflow handling and return truncateTokenLimit if applicable.
@@ -69,7 +160,7 @@ async function getOverflowTruncateLimit(sessionId: string): Promise<number | und
  */
 function getCopilotSettings(
   copilotId: string | undefined
-): { temperature?: number; topP?: number; maxTokens?: number; maxSteps?: number } | null {
+): { temperature?: number; topP?: number; maxTokens?: number; maxSteps?: number; toolAccess?: CopilotToolAccess; hooks?: { preTurn?: CopilotHook[]; postTurn?: CopilotHook[] } } | null {
   if (!copilotId) return null
   try {
     const storedCopilots = getDefaultStore().get(myCopilotsAtom)
@@ -77,11 +168,11 @@ function getCopilotSettings(
     const copilot = copilots.find((c) => c.id === copilotId)
     const detail = copilot ?? getBuiltInCopilotById(copilotId)
     if (!detail) return null
-    return { ...detail.modelSettings, maxSteps: detail.maxSteps }
+    return { ...detail.modelSettings, maxSteps: detail.maxSteps, toolAccess: detail.toolAccess, hooks: detail.hooks }
   } catch {
     const detail = getBuiltInCopilotById(copilotId)
     if (!detail) return null
-    return { ...detail.modelSettings, maxSteps: detail.maxSteps }
+    return { ...detail.modelSettings, maxSteps: detail.maxSteps, toolAccess: detail.toolAccess, hooks: detail.hooks }
   }
 }
 
@@ -254,6 +345,30 @@ export async function generate(
           model.isSupportToolUse('read-file'),
           { compactionPoints: session.compactionPoints, truncateTokenLimit: options?.truncateTokenLimit }
         )
+
+        // Execute pre-turn hooks and prepend context to messages
+        const preHookContext = copilotOverrides?.hooks?.preTurn
+          ? await executePreHooks(copilotOverrides.hooks.preTurn)
+          : ''
+        if (preHookContext) {
+          promptMsgs.unshift(createMessage('system', preHookContext))
+        }
+
+        // Check for existing plan in targetMsg (for 2-phase execution)
+        const existingPlanPart = targetMsg.contentParts.find(
+          (part): part is MessagePlanPart => part.type === 'plan'
+        )
+        const isExecutionPhase = existingPlanPart?.status === 'approved'
+
+        // If we have an approved plan, inject it into the prompt for context
+        if (isExecutionPhase && existingPlanPart) {
+          const planInjection = createMessage(
+            'system',
+            `## APPROVED EXECUTION PLAN\n\n${existingPlanPart.planText}\n\nProceed with executing this plan using all available tools.`
+          )
+          promptMsgs.unshift(planInjection)
+        }
+
         const modifyMessageCache: OnResultChangeWithCancel = async (updated) => {
           const textLength = getMessageText(targetMsg, true, true).length
           if (!firstTokenLatency && textLength > 0) {
@@ -277,6 +392,29 @@ export async function generate(
           }
         }
 
+        // 2-phase execution: if planMode and not yet approved, generate plan first
+        const isPlanMode = session.agentMode && effectiveSettings.planMode
+        const isPendingPlan = existingPlanPart?.status === 'pending'
+
+        // Determine which tools to use based on phase
+        let toolsToUse: ToolSet | undefined
+        let planningToolsInstructions = ''
+
+        if (isPlanMode && !isExecutionPhase) {
+          // Planning phase: use read-only tools
+          const readonlyTools = await getReadOnlyToolsForPlanning(
+            knowledgeBase ? { id: knowledgeBase.id, name: knowledgeBase.name } : undefined
+          )
+          toolsToUse = readonlyTools.tools
+          planningToolsInstructions = readonlyTools.instructions
+        }
+
+        // Inject planning tools instructions into system prompt if in planning phase
+        if (planningToolsInstructions) {
+          const planningSystemMsg = createMessage('system', planningToolsInstructions)
+          promptMsgs.unshift(planningSystemMsg)
+        }
+
         const { result } = await streamText(model, {
           sessionId: session.id,
           messages: promptMsgs,
@@ -293,11 +431,45 @@ export async function generate(
           webBrowsing,
           nativeWebSearch: useGeminiGrounding ? 'gemini-grounding' : undefined,
           maxSteps,
+          tools: toolsToUse,
         })
+
+        // Extract plan text from result if in planning phase
+        const planTextFromResult = result.text ?? ''
+
+        // Determine final plan status
+        // If we already had an approved plan, keep it approved (execution phase)
+        // If we just got a pending plan, mark it pending
+        // If we're in execution phase with no existing plan, no plan part needed
+        let finalPlanPart: MessagePlanPart | undefined
+        if (isPlanMode) {
+          if (isExecutionPhase) {
+            // Keep existing approved plan
+            finalPlanPart = existingPlanPart
+          } else if (!isPendingPlan) {
+            // New pending plan from this generation
+            finalPlanPart = {
+              type: 'plan',
+              planText: planTextFromResult,
+              status: 'pending',
+            }
+          } else {
+            // This shouldn't happen - pending plan should already exist
+            finalPlanPart = existingPlanPart
+          }
+        }
+
+        // Build final content parts - remove any existing plan part and add the final one
+        const finalContentParts = targetMsg.contentParts.filter((part) => part.type !== 'plan')
+        if (finalPlanPart) {
+          finalContentParts.push(finalPlanPart)
+        }
+
         targetMsg = {
           ...targetMsg,
           generating: false,
           cancel: undefined,
+          contentParts: finalContentParts,
           tokensUsed: targetMsg.tokensUsed ?? estimateTokensFromMessages([...promptMsgs, targetMsg]),
           status: [],
           finishReason: result.finishReason,
@@ -310,6 +482,19 @@ export async function generate(
           groundingMetadata: result.groundingMetadata ?? targetMsg.groundingMetadata,
         }
         await modifyMessage(sessionId, targetMsg, true)
+
+        // Execute post-turn hooks after generation (only in execution phase or non-plan mode)
+        if (copilotOverrides?.hooks?.postTurn) {
+          const outputText = result.text ?? ''
+          await executePostHooks(copilotOverrides.hooks.postTurn, outputText)
+        }
+
+        // In plan mode with pending plan, don't process queued messages yet - wait for approval
+        if (isPlanMode && !isExecutionPhase && !isPendingPlan) {
+          // Planning phase just completed with pending plan - wait for user approval
+          return
+        }
+
         shouldProcessQueuedMessages = true
         break
       }

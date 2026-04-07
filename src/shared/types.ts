@@ -81,6 +81,20 @@ export const COPILOT_MAX_STEPS_MIN = 1
 export const COPILOT_MAX_STEPS_MAX = 25
 export const COPILOT_MAX_STEPS_DEFAULT = 5
 
+export interface CopilotToolAccess {
+  mode: 'allowlist' | 'denylist'
+  tools: string[]
+  /** When false, excludes all MCP tools. Defaults to true. */
+  includeMcp?: boolean
+}
+
+export type CopilotHook =
+  | { type: 'inject-context'; content: string }
+  | { type: 'inject-datetime' }
+  | { type: 'inject-system-info' }
+  | { type: 'web-fetch'; url: string; extractAs: 'text' | 'json' }
+  | { type: 'validate-format'; format: 'markdown' | 'json' | 'code' }
+
 export interface CopilotDetail {
   id: string
   name: string
@@ -96,6 +110,13 @@ export interface CopilotDetail {
   modelSettings?: CopilotModelSettings
   /** Maximum autonomous tool-use steps in agent mode (1-25, default 5). */
   maxSteps?: number
+  /** Tool access control for this copilot. */
+  toolAccess?: CopilotToolAccess
+  /** Pre-turn and post-turn hook actions. */
+  hooks?: {
+    preTurn?: CopilotHook[]
+    postTurn?: CopilotHook[]
+  }
 }
 
 export interface PromptPreset {

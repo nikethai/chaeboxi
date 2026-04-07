@@ -169,6 +169,18 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
     return this.imageGenerationStorage
   }
 
+  public async readFileByPath(_path: string): Promise<string> {
+    throw new Error('Filesystem read is not supported in the web platform.')
+  }
+
+  public async writeFile(_path: string, _content: string): Promise<void> {
+    throw new Error('Filesystem write is not supported in the web platform.')
+  }
+
+  public async deleteFile(_path: string): Promise<void> {
+    throw new Error('Filesystem delete is not supported in the web platform.')
+  }
+
   public minimize() {
     return Promise.resolve()
   }

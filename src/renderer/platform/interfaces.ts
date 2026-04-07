@@ -88,6 +88,12 @@ export interface Platform extends Storage {
 
   getImageGenerationStorage(): ImageGenerationStorage
 
+  // Filesystem operations (real filesystem, not blob storage)
+
+  readFileByPath(path: string): Promise<string>
+  writeFile(path: string, content: string): Promise<void>
+  deleteFile(path: string): Promise<void>
+
   // window controls
   minimize(): Promise<void>
 

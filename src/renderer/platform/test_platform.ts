@@ -116,6 +116,7 @@ export default class TestPlatform implements Platform {
 
   private storage = new InMemoryStorage()
   private blobs = new Map<string, string>()
+  private files = new Map<string, string>()
   private configs: Config | null = null
   private settings: Settings | null = null
 
@@ -315,6 +316,27 @@ export default class TestPlatform implements Platform {
     return new IndexedDBImageGenerationStorage()
   }
 
+  // ============ Filesystem operations ============
+
+  public async readFileByPath(path: string): Promise<string> {
+    const content = this.files.get(path)
+    if (content === undefined) {
+      throw new Error(`File not found: ${path}`)
+    }
+    return content
+  }
+
+  public async writeFile(path: string, content: string): Promise<void> {
+    this.files.set(path, content)
+  }
+
+  public async deleteFile(path: string): Promise<void> {
+    if (!this.files.has(path)) {
+      throw new Error(`File not found: ${path}`)
+    }
+    this.files.delete(path)
+  }
+
   public async minimize(): Promise<void> {
     // no-op
   }
@@ -377,6 +399,7 @@ export default class TestPlatform implements Platform {
   public clear(): void {
     this.storage.clear()
     this.blobs.clear()
+    this.files.clear()
     this.exporter.clear()
     this.configs = null
     this.settings = null

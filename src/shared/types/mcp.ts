@@ -9,6 +9,7 @@ export enum ToolRiskTier {
   LOW = 'low',
   MEDIUM = 'medium',
   HIGH = 'high',
+  CRITICAL = 'critical',
 }
 
 export type MCPTransportConfig =

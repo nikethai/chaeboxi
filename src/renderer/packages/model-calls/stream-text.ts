@@ -3,6 +3,7 @@ import { getModel } from '@shared/models'
 import { ChatboxAIAPIError, OCRError } from '@shared/models/errors'
 import { searchResultsToCitations } from '@shared/utils/search'
 import { ToolRiskTier } from '@shared/types/mcp'
+import { getToolRiskTier } from '../tools/risk-engine'
 import { sequenceMessages } from '@shared/utils/message'
 import { getModelSettings } from '@shared/utils/model_settings'
 import type { ModelMessage, ToolSet } from 'ai'
@@ -20,6 +21,7 @@ import type {
   OnStatusChange,
 } from '../../../shared/models/types'
 import type {
+  CopilotToolAccess,
   KnowledgeBase,
   Message,
   MessageInfoPart,
@@ -153,32 +155,6 @@ async function ocrMessages(messages: Message[]) {
   }
 }
 
-function getToolRiskTier(toolName: string, description?: string): ToolRiskTier {
-  const text = `${toolName} ${description || ''}`.toLowerCase()
-
-  if (
-    /(exec|execute|command|shell|terminal|script|python|bash|run|write|save|create|delete|remove|update|edit|modify)/.test(
-      text
-    )
-  ) {
-    return ToolRiskTier.HIGH
-  }
-
-  if (
-    /(fetch|http|request|download|browse|open url|url|web|page|file|filesystem|directory|read_file|read file)/.test(
-      text
-    )
-  ) {
-    return ToolRiskTier.MEDIUM
-  }
-
-  if (/(search|query|find|lookup|list|get|inspect|read)/.test(text)) {
-    return ToolRiskTier.LOW
-  }
-
-  return ToolRiskTier.MEDIUM
-}
-
 function createToolDeniedResult(toolName: string, riskTier: ToolRiskTier) {
   return {
     denied: true,
@@ -272,6 +248,49 @@ function wrapMCPToolsWithApproval(sessionId: string | undefined, tools: ToolSet)
   ) as ToolSet
 }
 
+const MCP_TOOL_PREFIX = 'mcp__'
+
+/**
+ * Filter tools based on copilot's toolAccess configuration.
+ * - allowlist: only include tools whose names are in the tools array
+ * - denylist: exclude tools whose names are in the tools array
+ * - includeMcp: when false, excludes all MCP tools regardless of allowlist/denylist
+ */
+function filterToolsByAccess(tools: ToolSet, toolAccess?: CopilotToolAccess): ToolSet {
+  if (!toolAccess) {
+    return tools
+  }
+
+  const { mode, tools: accessTools, includeMcp = true } = toolAccess
+
+  // If includeMcp is false, filter out all MCP tools first
+  let filteredTools = tools
+  if (includeMcp === false) {
+    filteredTools = Object.fromEntries(
+      Object.entries(tools).filter(([name]) => !name.startsWith(MCP_TOOL_PREFIX))
+    )
+  }
+
+  // If no access tools specified, return filtered tools as-is
+  if (!accessTools || accessTools.length === 0) {
+    return filteredTools
+  }
+
+  const accessSet = new Set(accessTools)
+
+  if (mode === 'allowlist') {
+    // Only include tools that are in the access list
+    return Object.fromEntries(
+      Object.entries(filteredTools).filter(([name]) => accessSet.has(name))
+    )
+  } else {
+    // denylist: exclude tools that are in the access list
+    return Object.fromEntries(
+      Object.entries(filteredTools).filter(([name]) => !accessSet.has(name))
+    )
+  }
+}
+
 /**
  * 这里是供UI层调用，集中处理了模型的联网搜索、工具调用、系统消息等逻辑
  */
@@ -287,10 +306,11 @@ export async function streamText(
     webBrowsing?: boolean
     nativeWebSearch?: 'gemini-grounding'
     maxSteps?: number
+    toolAccess?: CopilotToolAccess
   },
   signal?: AbortSignal
 ): Promise<{ result: StreamTextResult; coreMessages: ModelMessage[] }> {
-  const { knowledgeBase, webBrowsing, sessionId, nativeWebSearch } = params
+  const { knowledgeBase, webBrowsing, sessionId, nativeWebSearch, toolAccess } = params
   const hasFileOrLink = params.messages.some((m) => m.files?.length || m.links?.length)
 
   const controller = new AbortController()
@@ -488,6 +508,9 @@ export async function streamText(
         ...taskTrackingToolSet.tools,
       }
     }
+
+    // Apply copilot tool access filtering
+    tools = filterToolsByAccess(tools, toolAccess)
 
     console.debug('tools', tools)
 

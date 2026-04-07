@@ -19,6 +19,7 @@ import {
   type MessageArtifact as MessageArtifactRecord,
   type MessagePicture,
   type MessageToolCallPart,
+  ModelProviderEnum,
   type SessionType,
 } from '@shared/types'
 import { getMessageText } from '@shared/utils/message'
@@ -31,6 +32,7 @@ import {
   IconInfoCircle,
   IconMessageReport,
   IconPencil,
+  IconPhoto,
   IconPhotoPlus,
   type IconProps,
   IconQuoteFilled,
@@ -42,6 +44,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
 import * as dateFns from 'date-fns'
 import { concat, isEqual } from 'lodash'
@@ -147,6 +150,11 @@ const _Message: FC<Props> = (props) => {
   const [selectionToolbar, setSelectionToolbar] = useState<{ text: string; x: number; y: number } | null>(null)
   const [feedbackText, setFeedbackText] = useState(msg.feedback?.text ?? '')
 
+  const navigate = useNavigate()
+  const isComfyUIReady = useSettingsStore(
+    (state) => !!state.providers?.[ModelProviderEnum.ComfyUI]?.comfyuiCheckpoint
+  )
+
   const messageText = useMemo(() => getMessageText(msg), [msg])
 
   const contentLength = useMemo(() => {
@@ -220,6 +228,10 @@ const _Message: FC<Props> = (props) => {
     copyToClipboard(getMessageText(msg, true, false))
     toastActions.add(t('copied to clipboard'), 2000)
   }, [msg, t])
+
+  const handleSendToImageCreator = useCallback(() => {
+    navigate({ to: '/image-creator', search: { prompt: messageText } })
+  }, [navigate, messageText])
 
   // 复制特定 reasoning 内容
   const onCopyReasoningContent =
@@ -875,6 +887,14 @@ const _Message: FC<Props> = (props) => {
                       tooltip={t('Thumbs Down')}
                       color={msg.feedback?.rating === 'down' ? 'chatbox-error' : 'chatbox-secondary'}
                       onClick={() => toggleFeedbackRating('down')}
+                    />
+                  )}
+
+                  {msg.role === 'assistant' && isComfyUIReady && (
+                    <MessageActionIcon
+                      icon={IconPhoto}
+                      tooltip={t('Send to Image Creator')}
+                      onClick={handleSendToImageCreator}
                     />
                   )}
 

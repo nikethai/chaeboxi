@@ -40,6 +40,7 @@ import {
 } from './tools'
 import fileToolSet from './toolsets/file'
 import { getToolSet } from './toolsets/knowledge-base'
+import taskTrackingToolSet from './toolsets/task-tracking'
 import websearchToolSet, { parseLinkTool, webSearchTool } from './toolsets/web-search'
 
 function extractSearchMetadataFromToolCalls(result: StreamTextResult): Partial<StreamTextResult> {
@@ -333,6 +334,11 @@ export async function streamText(
     toolSetInstructions += websearchToolSet.description
   }
 
+  // Task tracking tools are always available when the model supports tool use
+  if (model.isSupportToolUse()) {
+    toolSetInstructions += taskTrackingToolSet.description
+  }
+
   params.messages = injectModelSystemPrompt(
     model.modelId,
     params.messages,
@@ -472,6 +478,14 @@ export async function streamText(
       tools = {
         ...tools,
         ...fileToolSet.tools,
+      }
+    }
+
+    // Task tracking tools are always available when the model supports tool use
+    if (model.isSupportToolUse()) {
+      tools = {
+        ...tools,
+        ...taskTrackingToolSet.tools,
       }
     }
 

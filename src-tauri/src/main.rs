@@ -1426,6 +1426,72 @@ async fn ipc_invoke(
         })),
         "parser:cancel-mineru-parse" => Ok(json!({ "success": true })),
 
+        "execute_command" => {
+            let params_json = get_arg_string(&args, 0)?;
+            let params: Value = serde_json::from_str(&params_json)
+                .map_err(|err| format!("invalid execute_command params: {err}"))?;
+
+            let command_str = params
+                .get("command")
+                .and_then(Value::as_str)
+                .ok_or_else(|| "missing 'command' parameter".to_string())?
+                .to_string();
+
+            let cwd = params
+                .get("cwd")
+                .and_then(Value::as_str)
+                .filter(|s| !s.is_empty())
+                .map(std::string::ToString::to_string);
+
+            let timeout_ms = params
+                .get("timeoutMs")
+                .and_then(Value::as_u64)
+                .unwrap_or(30_000);
+
+            let shell = if cfg!(target_os = "windows") {
+                "cmd"
+            } else {
+                "sh"
+            };
+            let shell_arg = if cfg!(target_os = "windows") {
+                "/C"
+            } else {
+                "-c"
+            };
+
+            let mut cmd = Command::new(shell);
+            cmd.arg(shell_arg).arg(&command_str);
+
+            if let Some(ref dir) = cwd {
+                cmd.current_dir(dir);
+            }
+
+            cmd.stdout(std::process::Stdio::piped());
+            cmd.stderr(std::process::Stdio::piped());
+
+            let child = cmd
+                .spawn()
+                .map_err(|err| format!("failed to spawn command: {err}"))?;
+
+            let output = tokio::time::timeout(
+                std::time::Duration::from_millis(timeout_ms),
+                child.wait_with_output(),
+            )
+            .await
+            .map_err(|_| format!("command timed out after {timeout_ms}ms"))?
+            .map_err(|err| format!("command execution failed: {err}"))?;
+
+            let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+            let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+            let exit_code = output.status.code().unwrap_or(-1);
+
+            Ok(json!({
+                "exitCode": exit_code,
+                "stdout": stdout,
+                "stderr": stderr
+            }))
+        }
+
         _ => Err(format!("unknown ipc channel: {channel}")),
     }
 }

@@ -4,6 +4,7 @@ import { getModel } from '@shared/models'
 import { AIProviderNoImplementedPaintError, ApiError, BaseError, NetworkError, OCRError } from '@shared/models/errors'
 import type { OnResultChangeWithCancel } from '@shared/models/types'
 import {
+  COPILOT_MAX_STEPS_DEFAULT,
   type CompactionPoint,
   createMessage,
   type Message,
@@ -68,15 +69,19 @@ async function getOverflowTruncateLimit(sessionId: string): Promise<number | und
  */
 function getCopilotSettings(
   copilotId: string | undefined
-): { temperature?: number; topP?: number; maxTokens?: number } | null {
+): { temperature?: number; topP?: number; maxTokens?: number; maxSteps?: number } | null {
   if (!copilotId) return null
   try {
     const storedCopilots = getDefaultStore().get(myCopilotsAtom)
     const copilots = Array.isArray(storedCopilots) ? storedCopilots : []
     const copilot = copilots.find((c) => c.id === copilotId)
-    return copilot?.modelSettings ?? getBuiltInCopilotById(copilotId)?.modelSettings ?? null
+    const detail = copilot ?? getBuiltInCopilotById(copilotId)
+    if (!detail) return null
+    return { ...detail.modelSettings, maxSteps: detail.maxSteps }
   } catch {
-    return getBuiltInCopilotById(copilotId)?.modelSettings ?? null
+    const detail = getBuiltInCopilotById(copilotId)
+    if (!detail) return null
+    return { ...detail.modelSettings, maxSteps: detail.maxSteps }
   }
 }
 
@@ -233,7 +238,7 @@ export async function generate(
       webBrowsing &&
       effectiveSettings.provider === ModelProviderEnum.Gemini &&
       globalSettings.extension.webSearch.useGoogleGroundingForGemini !== false
-    const maxSteps = session.agentMode ? 5 : undefined
+    const maxSteps = session.agentMode ? (copilotOverrides?.maxSteps ?? COPILOT_MAX_STEPS_DEFAULT) : undefined
     switch (session.type) {
       // Chat message generation
       case 'chat':

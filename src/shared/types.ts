@@ -77,6 +77,10 @@ export interface CopilotModelSettings {
   maxTokens?: number
 }
 
+export const COPILOT_MAX_STEPS_MIN = 1
+export const COPILOT_MAX_STEPS_MAX = 25
+export const COPILOT_MAX_STEPS_DEFAULT = 5
+
 export interface CopilotDetail {
   id: string
   name: string
@@ -90,6 +94,8 @@ export interface CopilotDetail {
   usedCount: number
   shared?: boolean
   modelSettings?: CopilotModelSettings
+  /** Maximum autonomous tool-use steps in agent mode (1-25, default 5). */
+  maxSteps?: number
 }
 
 export interface PromptPreset {

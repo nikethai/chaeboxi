@@ -1425,7 +1425,6 @@ async fn ipc_invoke(
           "error": "MinerU parser is not configured in Tauri runtime yet"
         })),
         "parser:cancel-mineru-parse" => Ok(json!({ "success": true })),
-
         "execute_command" => {
             let params_json = get_arg_string(&args, 0)?;
             let params: Value = serde_json::from_str(&params_json)
@@ -1490,6 +1489,31 @@ async fn ipc_invoke(
                 "stdout": stdout,
                 "stderr": stderr
             }))
+        }
+        // Filesystem operations for copilot file tools
+        "fs:read-file" => {
+            let file_path = get_arg_string(&args, 0)?;
+            let content = fs::read_to_string(&file_path)
+                .map_err(|err| format!("failed to read file '{}': {}", file_path, err))?;
+            Ok(Value::String(content))
+        }
+        "fs:write-file" => {
+            let file_path = get_arg_string(&args, 0)?;
+            let content = get_arg_string(&args, 1)?;
+            let path = PathBuf::from(&file_path);
+            if let Some(parent) = path.parent() {
+                fs::create_dir_all(parent)
+                    .map_err(|err| format!("failed to create directories for '{}': {}", file_path, err))?;
+            }
+            fs::write(&file_path, &content)
+                .map_err(|err| format!("failed to write file '{}': {}", file_path, err))?;
+            Ok(Value::Null)
+        }
+        "fs:delete-file" => {
+            let file_path = get_arg_string(&args, 0)?;
+            fs::remove_file(&file_path)
+                .map_err(|err| format!("failed to delete file '{}': {}", file_path, err))?;
+            Ok(Value::Null)
         }
 
         _ => Err(format!("unknown ipc channel: {channel}")),

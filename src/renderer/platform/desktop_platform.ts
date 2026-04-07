@@ -276,6 +276,18 @@ export default class DesktopPlatform implements Platform {
     return this._imageGenerationStorage
   }
 
+  public async readFileByPath(path: string): Promise<string> {
+    return this.ipc.invoke('fs:read-file', path)
+  }
+
+  public async writeFile(path: string, content: string): Promise<void> {
+    return this.ipc.invoke('fs:write-file', path, content)
+  }
+
+  public async deleteFile(path: string): Promise<void> {
+    return this.ipc.invoke('fs:delete-file', path)
+  }
+
   public minimize() {
     return this.ipc.invoke('window:minimize')
   }

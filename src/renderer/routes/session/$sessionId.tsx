@@ -1,15 +1,19 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { Button } from '@mantine/core'
+import { ActionIcon, Button, Flex, Tooltip } from '@mantine/core'
 import type { Message, ModelProvider } from '@shared/types'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { ForwardedRef, useCallback, useEffect, useMemo, useRef } from 'react'
+import { IconShield } from '@tabler/icons-react'
+import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from 'zustand'
 import MessageList, { type MessageListRef } from '@/components/chat/MessageList'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
+import { CostDashboard } from '@/components/CostDashboard'
 import InputBox from '@/components/InputBox/InputBox'
 import Header from '@/components/layout/Header'
 import ThreadHistoryDrawer from '@/components/session/ThreadHistoryDrawer'
+import { ToolAuditPanel } from '@/components/ToolAuditPanel'
+import { TaskProgress } from '@/components/TaskProgress/TaskProgress'
 import { updateSession as updateSessionStore, useSession } from '@/stores/chatStore'
 import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 import * as scrollActions from '@/stores/scrollActions'
@@ -27,6 +31,7 @@ function RouteComponent() {
   const { session: currentSession, isFetching } = useSession(currentSessionId)
   const setLastUsedChatModel = useStore(lastUsedModelStore, (state) => state.setChatModel)
   const setLastUsedPictureModel = useStore(lastUsedModelStore, (state) => state.setPictureModel)
+  const [showToolAudit, setShowToolAudit] = useState(false)
 
   const currentMessageList = useMemo(() => (currentSession ? getAllMessageList(currentSession) : []), [currentSession])
   const lastGeneratingMessage = useMemo(
@@ -158,6 +163,20 @@ function RouteComponent() {
       <MessageList ref={messageListRef} key={`message-list${currentSessionId}`} currentSession={currentSession} />
 
       {/* <ScrollButtons /> */}
+      <TaskProgress sessionId={currentSession.id} />
+      <Flex justify="flex-end" px="sm" py="xs">
+        <Tooltip label={t('Tool Audit')}>
+          <ActionIcon
+            variant={showToolAudit ? 'filled' : 'subtle'}
+            size="sm"
+            color={showToolAudit ? 'chatbox-primary' : 'chatbox-tertiary'}
+            onClick={() => setShowToolAudit((v) => !v)}
+          >
+            <IconShield size={16} />
+          </ActionIcon>
+        </Tooltip>
+      </Flex>
+      {showToolAudit && <ToolAuditPanel sessionId={currentSession.id} />}
       <ErrorBoundary name="session-inputbox">
         <InputBox
           key={`input-box${currentSession.id}`}
@@ -177,6 +196,7 @@ function RouteComponent() {
           onStopGenerating={onStopGenerating}
         />
       </ErrorBoundary>
+      <CostDashboard messages={currentMessageList} />
       <ThreadHistoryDrawer session={currentSession} />
     </div>
   ) : (

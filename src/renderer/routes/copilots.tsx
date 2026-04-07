@@ -1,4 +1,4 @@
-import { Button as MantineButton, Flex, Stack, Switch as MantineSwitch, Text, Tooltip } from '@mantine/core'
+import { Button as MantineButton, Checkbox, Flex, MultiSelect, Radio, Select, Stack, Switch as MantineSwitch, Text, Tooltip } from '@mantine/core'
 import EditIcon from '@mui/icons-material/Edit'
 import MoreHorizOutlinedIcon from '@mui/icons-material/MoreHorizOutlined'
 import StarIcon from '@mui/icons-material/Star'
@@ -16,6 +16,7 @@ import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
+import DeleteIcon from '@mui/icons-material/Delete'
 import { IconInfoCircle, IconPlus } from '@tabler/icons-react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import React, { useEffect, useState } from 'react'
@@ -31,6 +32,7 @@ import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { trackingEvent } from '@/packages/event'
 import * as remote from '@/packages/remote'
+import { CopilotHookSchema } from '@/packages/copilot-hooks'
 import platform from '@/platform'
 import { useUIStore } from '@/stores/uiStore'
 import {
@@ -38,11 +40,43 @@ import {
   COPILOT_MAX_STEPS_MAX,
   COPILOT_MAX_STEPS_MIN,
   type CopilotDetail,
+  type CopilotHook,
+  type CopilotToolAccess,
 } from '../../shared/types'
 
 export const Route = createFileRoute('/copilots')({
   component: Copilots,
 })
+
+/** Built-in tool names available for tool access configuration. */
+const BUILT_IN_TOOLS = [
+  { value: 'web_search', label: 'Web Search' },
+  { value: 'parse_link', label: 'Parse Link' },
+  { value: 'file_read', label: 'File Read' },
+  { value: 'file_write', label: 'File Write' },
+  { value: 'query_knowledge_base', label: 'Knowledge Base Query' },
+  { value: 'upload_file', label: 'Upload File' },
+  { value: 'task_create', label: 'Task Create' },
+  { value: 'task_update', label: 'Task Update' },
+  { value: 'task_list', label: 'Task List' },
+  { value: 'task_get', label: 'Task Get' },
+  { value: 'task_delete', label: 'Task Delete' },
+]
+
+/** Available hook types for copilot configuration. */
+const HOOK_TYPES = [
+  { value: 'inject-context', label: 'Inject Context' },
+  { value: 'inject-datetime', label: 'Inject DateTime' },
+  { value: 'inject-system-info', label: 'Inject System Info' },
+  { value: 'web-fetch', label: 'Web Fetch' },
+  { value: 'validate-format', label: 'Validate Format' },
+]
+
+const FORMAT_OPTIONS = [
+  { value: 'markdown', label: 'Markdown' },
+  { value: 'json', label: 'JSON' },
+  { value: 'code', label: 'Code' },
+]
 
 function Copilots() {
   const [open, setOpen] = useState(false)
@@ -664,6 +698,174 @@ function CopilotForm(props: CopilotFormProps) {
         </Box>
       </Box>
 
+      {/* Tool Access Settings section */}
+      <Box
+        sx={{
+          mt: 2,
+          mb: 1,
+          border: '1px solid',
+          borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
+          borderRadius: '8px',
+          overflow: 'hidden',
+        }}
+      >
+        <Box
+          sx={{
+            px: 2,
+            py: 1.5,
+            borderBottom: '1px solid',
+            borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
+          }}
+        >
+          <Typography variant="body2" fontWeight={700}>
+            {t('Tool Access')}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {t('Control which tools this copilot can use')}
+          </Typography>
+        </Box>
+        <Box sx={{ px: 2, py: 1.5 }}>
+          <Stack gap="md">
+            {/* Mode selection */}
+            <Stack gap="xs">
+              <Text size="sm" fw="600">
+                {t('Access Mode')}
+              </Text>
+              <Radio.Group
+                value={copilotEdit.toolAccess?.mode ?? 'allowlist'}
+                onChange={(value) =>
+                  setCopilotEdit((prev) => ({
+                    ...prev,
+                    toolAccess: {
+                      mode: value as 'allowlist' | 'denylist',
+                      tools: prev.toolAccess?.tools ?? [],
+                      includeMcp: prev.toolAccess?.includeMcp ?? true,
+                    },
+                  }))
+                }
+              >
+                <Stack gap="xs" mt="xs">
+                  <Radio value="allowlist" label={t('Allowlist - only use selected tools')} />
+                  <Radio value="denylist" label={t('Denylist - use all except selected tools')} />
+                </Stack>
+              </Radio.Group>
+            </Stack>
+
+            {/* Include MCP tools checkbox */}
+            <Checkbox
+              checked={copilotEdit.toolAccess?.includeMcp ?? true}
+              onChange={(event) =>
+                setCopilotEdit((prev) => ({
+                  ...prev,
+                  toolAccess: {
+                    mode: prev.toolAccess?.mode ?? 'allowlist',
+                    tools: prev.toolAccess?.tools ?? [],
+                    includeMcp: event.currentTarget.checked,
+                  },
+                }))
+              }
+              label={t('Include MCP tools')}
+            />
+
+            {/* Tool selection */}
+            <Stack gap="xs">
+              <Text size="sm" fw="600">
+                {t('Select Tools')}
+              </Text>
+              <MultiSelect
+                data={BUILT_IN_TOOLS}
+                value={copilotEdit.toolAccess?.tools ?? []}
+                onChange={(value) =>
+                  setCopilotEdit((prev) => ({
+                    ...prev,
+                    toolAccess: {
+                      mode: prev.toolAccess?.mode ?? 'allowlist',
+                      tools: value,
+                      includeMcp: prev.toolAccess?.includeMcp ?? true,
+                    },
+                  }))
+                }
+                placeholder={t('Select tools...')}
+                searchable
+                clearable
+              />
+              <Text size="xs" c="dimmed">
+                {t('For MCP tools, enter tool names manually (e.g., mcp__server__tool_name)')}
+              </Text>
+            </Stack>
+          </Stack>
+        </Box>
+      </Box>
+
+      {/* Hooks Settings section */}
+      <Box
+        sx={{
+          mt: 2,
+          mb: 1,
+          border: '1px solid',
+          borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
+          borderRadius: '8px',
+          overflow: 'hidden',
+        }}
+      >
+        <Box
+          sx={{
+            px: 2,
+            py: 1.5,
+            borderBottom: '1px solid',
+            borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
+          }}
+        >
+          <Typography variant="body2" fontWeight={700}>
+            {t('Hooks')}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {t('Configure pre-turn and post-turn hook actions')}
+          </Typography>
+        </Box>
+        <Box sx={{ px: 2, py: 1.5 }}>
+          <Stack gap="md">
+            {/* Pre-turn hooks */}
+            <Stack gap="xs">
+              <Text size="sm" fw="600">
+                {t('Pre-Turn Hooks')}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {t('Run before each generation to inject context or fetch data')}
+              </Text>
+              <HookList
+                hooks={copilotEdit.hooks?.preTurn ?? []}
+                onChange={(hooks) =>
+                  setCopilotEdit((prev) => ({
+                    ...prev,
+                    hooks: { ...prev.hooks, preTurn: hooks },
+                  }))
+                }
+              />
+            </Stack>
+
+            {/* Post-turn hooks */}
+            <Stack gap="xs">
+              <Text size="sm" fw="600">
+                {t('Post-Turn Hooks')}
+              </Text>
+              <Text size="xs" c="dimmed">
+                {t('Run after each generation to validate or process output')}
+              </Text>
+              <HookList
+                hooks={copilotEdit.hooks?.postTurn ?? []}
+                onChange={(hooks) =>
+                  setCopilotEdit((prev) => ({
+                    ...prev,
+                    hooks: { ...prev.hooks, postTurn: hooks },
+                  }))
+                }
+              />
+            </Stack>
+          </Stack>
+        </Box>
+      </Box>
+
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
         <FormGroup row>
           <FormControlLabel
@@ -682,6 +884,175 @@ function CopilotForm(props: CopilotFormProps) {
           </Button>
         </ButtonGroup>
       </Box>
+    </Box>
+  )
+}
+
+/**
+ * Hook list editor component
+ */
+interface HookListProps {
+  hooks: CopilotHook[]
+  onChange(hooks: CopilotHook[]): void
+}
+
+function HookList({ hooks, onChange }: HookListProps) {
+  const { t } = useTranslation()
+
+  const addHook = () => {
+    const newHook: CopilotHook = { type: 'inject-context', content: '' }
+    onChange([...hooks, newHook])
+  }
+
+  const updateHook = (index: number, updates: Partial<CopilotHook>) => {
+    const updated = hooks.map((h, i) => (i === index ? { ...h, ...updates } : h))
+    onChange(updated)
+  }
+
+  const removeHook = (index: number) => {
+    onChange(hooks.filter((_, i) => i !== index))
+  }
+
+  return (
+    <Stack gap="xs">
+      {hooks.map((hook, index) => (
+        <HookEditor
+          key={index}
+          hook={hook}
+          onChange={(updates) => updateHook(index, updates)}
+          onRemove={() => removeHook(index)}
+        />
+      ))}
+      <MantineButton
+        variant="light"
+        color="blue"
+        size="xs"
+        leftSection={<ScalableIcon icon={IconPlus} size={14} />}
+        onClick={addHook}
+      >
+        {t('Add Hook')}
+      </MantineButton>
+    </Stack>
+  )
+}
+
+/**
+ * Single hook editor component
+ */
+interface HookEditorProps {
+  hook: CopilotHook
+  onChange(updates: Partial<CopilotHook>): void
+  onRemove(): void
+}
+
+function HookEditor({ hook, onChange, onRemove }: HookEditorProps) {
+  const { t } = useTranslation()
+  const theme = useTheme()
+
+  const handleTypeChange = (type: string) => {
+    // Reset hook data when type changes
+    switch (type) {
+      case 'inject-context':
+        onChange({ type: 'inject-context' as const, content: '' })
+        break
+      case 'inject-datetime':
+        onChange({ type: 'inject-datetime' as const })
+        break
+      case 'inject-system-info':
+        onChange({ type: 'inject-system-info' as const })
+        break
+      case 'web-fetch':
+        onChange({ type: 'web-fetch' as const, url: '', extractAs: 'text' as const })
+        break
+      case 'validate-format':
+        onChange({ type: 'validate-format' as const, format: 'markdown' as const })
+        break
+      default:
+        break
+    }
+  }
+
+  return (
+    <Box
+      sx={{
+        p: 1.5,
+        border: '1px solid',
+        borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
+        borderRadius: '6px',
+        backgroundColor: theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.2)' : '#f8f9fa',
+      }}
+    >
+      <Flex gap="xs" align="flex-start">
+        <Select
+          size="xs"
+          style={{ width: 140 }}
+          data={HOOK_TYPES}
+          value={hook.type}
+          onChange={(value) => value && handleTypeChange(value)}
+        />
+        <IconButton size="small" onClick={onRemove} sx={{ mt: 0.5 }}>
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      </Flex>
+
+      {hook.type === 'inject-context' && (
+        <TextField
+          size="small"
+          fullWidth
+          placeholder={t('Context content to inject...')}
+          value={(hook as { content: string }).content}
+          onChange={(e) => onChange({ content: e.target.value })}
+          multiline
+          minRows={2}
+          maxRows={4}
+          sx={{ mt: 1 }}
+        />
+      )}
+
+      {hook.type === 'web-fetch' && (
+        <Stack gap="xs" mt={1}>
+          <TextField
+            size="small"
+            fullWidth
+            placeholder={t('URL to fetch...')}
+            value={(hook as { url: string }).url}
+            onChange={(e) => onChange({ url: e.target.value })}
+          />
+          <Select
+            size="xs"
+            label={t('Extract as')}
+            data={[
+              { value: 'text', label: 'Text' },
+              { value: 'json', label: 'JSON' },
+            ]}
+            value={(hook as { extractAs: string }).extractAs}
+            onChange={(value) => value && onChange({ extractAs: value as 'text' | 'json' })}
+          />
+        </Stack>
+      )}
+
+      {hook.type === 'validate-format' && (
+        <Select
+          size="xs"
+          label={t('Format')}
+          data={FORMAT_OPTIONS}
+          value={(hook as { format: string }).format}
+          onChange={(value) => value && onChange({ format: value as 'markdown' | 'json' | 'code' })}
+          mt={1}
+        />
+      )}
+
+      {hook.type === 'inject-datetime' && (
+        <Typography variant="caption" c="dimmed" sx={{ mt: 1 }}>
+          {t('Injects current datetime (ISO 8601 format)')}
+        </Typography>
+      )}
+
+      {hook.type === 'inject-system-info' && (
+        <Typography variant="caption" c="dimmed" sx={{ mt: 1 }}>
+          {t('Injects OS and platform information')}
+        </Typography>
+      )}
     </Box>
   )
 }

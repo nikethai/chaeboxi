@@ -1,4 +1,16 @@
-import { Button as MantineButton, Flex, Stack, Switch as MantineSwitch, Text, Tooltip } from '@mantine/core'
+import {
+  ActionIcon,
+  Button as MantineButton,
+  Flex,
+  MultiSelect,
+  Radio,
+  Select,
+  Stack,
+  Switch as MantineSwitch,
+  Text,
+  TextInput,
+  Tooltip,
+} from '@mantine/core'
 import EditIcon from '@mui/icons-material/Edit'
 import MoreHorizOutlinedIcon from '@mui/icons-material/MoreHorizOutlined'
 import StarIcon from '@mui/icons-material/Star'
@@ -16,7 +28,7 @@ import Switch from '@mui/material/Switch'
 import TextField from '@mui/material/TextField'
 import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
-import { IconInfoCircle, IconPlus } from '@tabler/icons-react'
+import { IconInfoCircle, IconPlus, IconTrash } from '@tabler/icons-react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -33,7 +45,7 @@ import { trackingEvent } from '@/packages/event'
 import * as remote from '@/packages/remote'
 import platform from '@/platform'
 import { useUIStore } from '@/stores/uiStore'
-import type { CopilotDetail } from '../../shared/types'
+import type { CopilotDetail, CopilotHook } from '../../shared/types'
 
 export const Route = createFileRoute('/copilots')({
   component: Copilots,
@@ -426,6 +438,71 @@ function CopilotForm(props: CopilotFormProps) {
     }))
   }
 
+  // Hook management functions
+  const updateHooks = (patch: Partial<CopilotDetail['hooks']>) => {
+    setCopilotEdit((prev) => ({
+      ...prev,
+      hooks: {
+        preTurn: prev.hooks?.preTurn ?? [],
+        postTurn: prev.hooks?.postTurn ?? [],
+        ...patch,
+      },
+    }))
+  }
+
+  const addPreTurnHook = (hook: CopilotHook) => {
+    updateHooks({
+      preTurn: [...(copilotEdit.hooks?.preTurn ?? []), hook],
+    })
+  }
+
+  const addPostTurnHook = (hook: CopilotHook) => {
+    updateHooks({
+      postTurn: [...(copilotEdit.hooks?.postTurn ?? []), hook],
+    })
+  }
+
+  const removePreTurnHook = (index: number) => {
+    const newHooks = [...(copilotEdit.hooks?.preTurn ?? [])]
+    newHooks.splice(index, 1)
+    updateHooks({ preTurn: newHooks })
+  }
+
+  const removePostTurnHook = (index: number) => {
+    const newHooks = [...(copilotEdit.hooks?.postTurn ?? [])]
+    newHooks.splice(index, 1)
+    updateHooks({ postTurn: newHooks })
+  }
+
+  const updatePreTurnHook = (index: number, hook: CopilotHook) => {
+    const newHooks = [...(copilotEdit.hooks?.preTurn ?? [])]
+    newHooks[index] = hook
+    updateHooks({ preTurn: newHooks })
+  }
+
+  const updatePostTurnHook = (index: number, hook: CopilotHook) => {
+    const newHooks = [...(copilotEdit.hooks?.postTurn ?? [])]
+    newHooks[index] = hook
+    updateHooks({ postTurn: newHooks })
+  }
+
+  const getHookTypeLabel = (type: CopilotHook['type']): string => {
+    switch (type) {
+      case 'inject-context':
+        return t('Inject Context')
+      case 'inject-datetime':
+        return t('Inject DateTime')
+      case 'inject-system-info':
+        return t('Inject System Info')
+      case 'web-fetch':
+        return t('Web Fetch')
+      case 'validate-format':
+        return t('Validate Format')
+      default:
+        return type
+    }
+  }
+
   return (
     <Box
       sx={{
@@ -598,6 +675,77 @@ function CopilotForm(props: CopilotFormProps) {
         </Box>
       </Box>
 
+      {/* Hooks section */}
+      <Box
+        sx={{
+          mt: 2,
+          mb: 1,
+          border: '1px solid',
+          borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
+          borderRadius: '8px',
+          overflow: 'hidden',
+        }}
+      >
+        <Box
+          sx={{
+            px: 2,
+            py: 1.5,
+            borderBottom: '1px solid',
+            borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
+          }}
+        >
+          <Typography variant="body2" fontWeight={700}>
+            {t('Hook Configuration')}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {t('Configure pre-turn and post-turn hook actions')}
+          </Typography>
+        </Box>
+        <Box sx={{ px: 2, py: 1.5 }}>
+          <Stack gap="md">
+            {/* Pre-Turn Hooks */}
+            <Box>
+              <Text size="sm" fw="600" mb="xs">
+                {t('Pre-Turn Hooks')}
+              </Text>
+              <Text size="xs" c="dimmed" mb="sm">
+                {t('These hooks run before the model generates a response')}
+              </Text>
+              {(copilotEdit.hooks?.preTurn ?? []).map((hook, index) => (
+                <HookItem
+                  key={`pre-${index}`}
+                  hook={hook}
+                  onUpdate={(h) => updatePreTurnHook(index, h)}
+                  onRemove={() => removePreTurnHook(index)}
+                  getTypeLabel={getHookTypeLabel}
+                />
+              ))}
+              <AddHookButton onAdd={addPreTurnHook} label={t('Add Pre-Turn Hook')} />
+            </Box>
+
+            {/* Post-Turn Hooks */}
+            <Box>
+              <Text size="sm" fw="600" mb="xs">
+                {t('Post-Turn Hooks')}
+              </Text>
+              <Text size="xs" c="dimmed" mb="sm">
+                {t('These hooks run after the model generates a response')}
+              </Text>
+              {(copilotEdit.hooks?.postTurn ?? []).map((hook, index) => (
+                <HookItem
+                  key={`post-${index}`}
+                  hook={hook}
+                  onUpdate={(h) => updatePostTurnHook(index, h)}
+                  onRemove={() => removePostTurnHook(index)}
+                  getTypeLabel={getHookTypeLabel}
+                />
+              ))}
+              <AddHookButton onAdd={addPostTurnHook} label={t('Add Post-Turn Hook')} />
+            </Box>
+          </Stack>
+        </Box>
+      </Box>
+
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
         <FormGroup row>
           <FormControlLabel
@@ -616,6 +764,214 @@ function CopilotForm(props: CopilotFormProps) {
           </Button>
         </ButtonGroup>
       </Box>
+    </Box>
+  )
+}
+
+interface HookItemProps {
+  hook: CopilotHook
+  onUpdate: (hook: CopilotHook) => void
+  onRemove: () => void
+  getTypeLabel: (type: CopilotHook['type']) => string
+}
+
+function HookItem({ hook, onUpdate, onRemove, getTypeLabel }: HookItemProps) {
+  const { t } = useTranslation()
+
+  const handleTypeChange = (type: string) => {
+    switch (type) {
+      case 'inject-context':
+        onUpdate({ type: 'inject-context', content: '' })
+        break
+      case 'inject-datetime':
+        onUpdate({ type: 'inject-datetime' })
+        break
+      case 'inject-system-info':
+        onUpdate({ type: 'inject-system-info' })
+        break
+      case 'web-fetch':
+        onUpdate({ type: 'web-fetch', url: '', extractAs: 'text' })
+        break
+      case 'validate-format':
+        onUpdate({ type: 'validate-format', format: 'markdown' })
+        break
+    }
+  }
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        p: 2,
+        mb: 1,
+        borderRadius: '4px',
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        border: '1px solid',
+        borderColor: 'divider',
+      }}
+    >
+      <Flex align="center" gap="xs">
+        <Select
+          size="xs"
+          value={hook.type}
+          onChange={(value) => value && handleTypeChange(value)}
+          data={[
+            { value: 'inject-context', label: t('Inject Context') },
+            { value: 'inject-datetime', label: t('Inject DateTime') },
+            { value: 'inject-system-info', label: t('Inject System Info') },
+            { value: 'web-fetch', label: t('Web Fetch') },
+            { value: 'validate-format', label: t('Validate Format') },
+          ]}
+          style={{ flex: 1 }}
+        />
+        <ActionIcon color="red" variant="subtle" onClick={onRemove}>
+          <IconTrash size={16} />
+        </ActionIcon>
+      </Flex>
+
+      {/* Hook-specific fields */}
+      {hook.type === 'inject-context' && (
+        <TextInput
+          size="xs"
+          label={t('Content')}
+          value={hook.content}
+          onChange={(e) => onUpdate({ type: 'inject-context', content: e.target.value })}
+          placeholder={t('Context content to inject') || ''}
+        />
+      )}
+
+      {hook.type === 'web-fetch' && (
+        <>
+          <TextInput
+            size="xs"
+            label={t('URL')}
+            value={hook.url}
+            onChange={(e) => onUpdate({ type: 'web-fetch', url: e.target.value, extractAs: hook.extractAs })}
+            placeholder={t('https://example.com') || ''}
+          />
+          <Select
+            size="xs"
+            label={t('Extract As')}
+            value={hook.extractAs}
+            onChange={(value) =>
+              value && onUpdate({ type: 'web-fetch', url: hook.url, extractAs: value as 'text' | 'json' })
+            }
+            data={[
+              { value: 'text', label: t('Text') },
+              { value: 'json', label: t('JSON') },
+            ]}
+          />
+        </>
+      )}
+
+      {hook.type === 'validate-format' && (
+        <Select
+          size="xs"
+          label={t('Format')}
+          value={hook.format}
+          onChange={(value) =>
+            value && onUpdate({ type: 'validate-format', format: value as 'markdown' | 'json' | 'code' })
+          }
+          data={[
+            { value: 'markdown', label: t('Markdown') },
+            { value: 'json', label: t('JSON') },
+            { value: 'code', label: t('Code') },
+          ]}
+        />
+      )}
+
+      {hook.type === 'inject-datetime' && (
+        <Text size="xs" c="dimmed">
+          {t('Current date and time will be injected automatically')}
+        </Text>
+      )}
+
+      {hook.type === 'inject-system-info' && (
+        <Text size="xs" c="dimmed">
+          {t('System information (user agent, platform, language) will be injected automatically')}
+        </Text>
+      )}
+    </Box>
+  )
+}
+
+interface AddHookButtonProps {
+  onAdd: (hook: CopilotHook) => void
+  label: string
+}
+
+function AddHookButton({ onAdd, label }: AddHookButtonProps) {
+  const { t } = useTranslation()
+  const [opened, setOpened] = useState(false)
+  const [selectedType, setSelectedType] = useState<string | null>(null)
+
+  const handleAdd = () => {
+    if (!selectedType) return
+    switch (selectedType) {
+      case 'inject-context':
+        onAdd({ type: 'inject-context', content: '' })
+        break
+      case 'inject-datetime':
+        onAdd({ type: 'inject-datetime' })
+        break
+      case 'inject-system-info':
+        onAdd({ type: 'inject-system-info' })
+        break
+      case 'web-fetch':
+        onAdd({ type: 'web-fetch', url: '', extractAs: 'text' })
+        break
+      case 'validate-format':
+        onAdd({ type: 'validate-format', format: 'markdown' })
+        break
+    }
+    setSelectedType(null)
+    setOpened(false)
+  }
+
+  if (!opened) {
+    return (
+      <MantineButton variant="light" size="xs" leftSection={<IconPlus size={14} />} onClick={() => setOpened(true)}>
+        {label}
+      </MantineButton>
+    )
+  }
+
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px',
+        p: 2,
+        borderRadius: '4px',
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        border: '1px solid',
+        borderColor: 'divider',
+      }}
+    >
+      <Select
+        size="xs"
+        placeholder={t('Select hook type') || ''}
+        value={selectedType}
+        onChange={setSelectedType}
+        data={[
+          { value: 'inject-context', label: t('Inject Context') },
+          { value: 'inject-datetime', label: t('Inject DateTime') },
+          { value: 'inject-system-info', label: t('Inject System Info') },
+          { value: 'web-fetch', label: t('Web Fetch') },
+          { value: 'validate-format', label: t('Validate Format') },
+        ]}
+      />
+      <Flex gap="xs">
+        <MantineButton size="xs" onClick={handleAdd} disabled={!selectedType}>
+          {t('Add')}
+        </MantineButton>
+        <MantineButton size="xs" variant="subtle" onClick={() => { setOpened(false); setSelectedType(null) }}>
+          {t('cancel')}
+        </MantineButton>
+      </Flex>
     </Box>
   )
 }

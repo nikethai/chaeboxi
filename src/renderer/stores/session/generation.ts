@@ -6,6 +6,7 @@ import type { OnResultChangeWithCancel } from '@shared/models/types'
 import {
   type CompactionPoint,
   createMessage,
+  type CopilotHook,
   type Message,
   type MessageImagePart,
   type MessagePicture,
@@ -18,6 +19,7 @@ import { cloneMessage, getMessageText, mergeMessages } from '@shared/utils/messa
 import { identity, pickBy } from 'lodash'
 import { createModelDependencies } from '@/adapters'
 import * as appleAppStore from '@/packages/apple_app_store'
+import { executePostHooks, executePreHooks } from '@/packages/copilot-hooks'
 import { getBuiltInCopilotById, myCopilotsAtom } from '@/hooks/useCopilots'
 import { buildContextForAI } from '@/packages/context-management'
 import {
@@ -77,6 +79,21 @@ function getCopilotSettings(
     return copilot?.modelSettings ?? getBuiltInCopilotById(copilotId)?.modelSettings ?? null
   } catch {
     return getBuiltInCopilotById(copilotId)?.modelSettings ?? null
+  }
+}
+
+/**
+ * Retrieve copilot hooks (preTurn and postTurn) from the live Jotai atom.
+ */
+function getCopilotHooks(copilotId: string | undefined): { preTurn?: CopilotHook[]; postTurn?: CopilotHook[] } | undefined {
+  if (!copilotId) return undefined
+  try {
+    const storedCopilots = getDefaultStore().get(myCopilotsAtom)
+    const copilots = Array.isArray(storedCopilots) ? storedCopilots : []
+    const copilot = copilots.find((c) => c.id === copilotId)
+    return copilot?.hooks ?? getBuiltInCopilotById(copilotId)?.hooks ?? undefined
+  } catch {
+    return getBuiltInCopilotById(copilotId)?.hooks ?? undefined
   }
 }
 
@@ -177,6 +194,9 @@ export async function generate(
       }
     : settings
 
+  // Get copilot hooks for pre/post turn actions
+  const copilotHooks = getCopilotHooks(session.copilotId)
+
   // Track generation event
   trackGenerateEvent(sessionId, effectiveSettings, globalSettings, session.type, options)
 
@@ -249,6 +269,18 @@ export async function generate(
           model.isSupportToolUse('read-file'),
           { compactionPoints: session.compactionPoints, truncateTokenLimit: options?.truncateTokenLimit }
         )
+
+        // Execute pre-turn hooks and inject context as a system message
+        let finalPromptMsgs = promptMsgs
+        if (copilotHooks?.preTurn && copilotHooks.preTurn.length > 0) {
+          const hookContext = await executePreHooks(copilotHooks.preTurn)
+          if (hookContext) {
+            const hookSystemMsg = createMessage('system', hookContext)
+            hookSystemMsg.tokenCount = hookContext.length // rough estimate
+            finalPromptMsgs = [hookSystemMsg, ...promptMsgs]
+          }
+        }
+
         const modifyMessageCache: OnResultChangeWithCancel = async (updated) => {
           const textLength = getMessageText(targetMsg, true, true).length
           if (!firstTokenLatency && textLength > 0) {
@@ -274,7 +306,7 @@ export async function generate(
 
         const { result } = await streamText(model, {
           sessionId: session.id,
-          messages: promptMsgs,
+          messages: finalPromptMsgs,
           onResultChangeWithCancel: modifyMessageCache,
           onStatusChange: (status) => {
             targetMsg = {
@@ -293,7 +325,7 @@ export async function generate(
           ...targetMsg,
           generating: false,
           cancel: undefined,
-          tokensUsed: targetMsg.tokensUsed ?? estimateTokensFromMessages([...promptMsgs, targetMsg]),
+          tokensUsed: targetMsg.tokensUsed ?? estimateTokensFromMessages([...finalPromptMsgs, targetMsg]),
           status: [],
           finishReason: result.finishReason,
           usage: result.usage,
@@ -305,6 +337,13 @@ export async function generate(
           groundingMetadata: result.groundingMetadata ?? targetMsg.groundingMetadata,
         }
         await modifyMessage(sessionId, targetMsg, true)
+
+        // Execute post-turn hooks after successful generation
+        const outputText = getMessageText(targetMsg, true, true)
+        if (copilotHooks?.postTurn && copilotHooks.postTurn.length > 0 && outputText) {
+          await executePostHooks(copilotHooks.postTurn, outputText)
+        }
+
         shouldProcessQueuedMessages = true
         break
       }

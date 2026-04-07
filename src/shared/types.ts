@@ -77,6 +77,13 @@ export interface CopilotModelSettings {
   maxTokens?: number
 }
 
+export type CopilotHook =
+  | { type: 'inject-context'; content: string }
+  | { type: 'inject-datetime' }
+  | { type: 'inject-system-info' }
+  | { type: 'web-fetch'; url: string; extractAs: 'text' | 'json' }
+  | { type: 'validate-format'; format: 'markdown' | 'json' | 'code' }
+
 export interface CopilotDetail {
   id: string
   name: string
@@ -90,6 +97,10 @@ export interface CopilotDetail {
   usedCount: number
   shared?: boolean
   modelSettings?: CopilotModelSettings
+  hooks?: {
+    preTurn?: CopilotHook[]
+    postTurn?: CopilotHook[]
+  }
 }
 
 export interface PromptPreset {

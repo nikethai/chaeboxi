@@ -5,6 +5,89 @@ import path from 'path'
 import type { Plugin } from 'vite'
 import { defineConfig } from 'vite'
 
+const COMFYUI_PROXY_PREFIX = '/comfyui-proxy'
+const COMFYUI_PROXY_TARGET_FALLBACK = 'http://127.0.0.1:8188'
+
+function parseComfyUIProxyPath(requestPath?: string) {
+  const match = requestPath?.match(/^\/comfyui-proxy\/([^/]+)(.*)$/)
+  if (!match) return null
+
+  try {
+    const realHost = decodeURIComponent(match[1])
+    const parsed = new URL(realHost)
+    return {
+      target: parsed.origin,
+      path: match[2] || '/',
+    }
+  } catch (error) {
+    console.error('[comfyui-proxy] Failed to parse host:', error)
+    return null
+  }
+}
+
+function comfyUIProxy(): Plugin {
+  return {
+    name: 'comfyui-dev-proxy',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url?.startsWith(`${COMFYUI_PROXY_PREFIX}/`)) {
+          next()
+          return
+        }
+
+        const parsedProxyPath = parseComfyUIProxyPath(req.url)
+        if (!parsedProxyPath) {
+          res.statusCode = 400
+          res.end('Invalid ComfyUI proxy URL')
+          return
+        }
+
+        try {
+          const headers = new Headers()
+          for (const [key, value] of Object.entries(req.headers)) {
+            if (!value || key.toLowerCase() === 'host') continue
+            headers.set(key, Array.isArray(value) ? value.join(', ') : value)
+          }
+
+          const requestInit: RequestInit = {
+            method: req.method,
+            headers,
+          }
+
+          if (req.method && !['GET', 'HEAD'].includes(req.method.toUpperCase())) {
+            const chunks: ArrayBuffer[] = []
+            for await (const chunk of req) {
+              const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+              chunks.push(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer)
+            }
+            requestInit.body = new Blob(chunks)
+          }
+
+          const response = await fetch(`${parsedProxyPath.target}${parsedProxyPath.path}`, requestInit)
+
+          res.statusCode = response.status
+          response.headers.forEach((value, key) => {
+            if (key.toLowerCase() === 'transfer-encoding') return
+            res.setHeader(key, value)
+          })
+
+          if (!response.body) {
+            res.end()
+            return
+          }
+
+          const body = Buffer.from(await response.arrayBuffer())
+          res.end(body)
+        } catch (error) {
+          console.error('[comfyui-proxy] Request failed:', error)
+          res.statusCode = 502
+          res.end('Failed to reach ComfyUI server')
+        }
+      })
+    },
+  }
+}
+
 function injectBaseTag(): Plugin {
   return {
     name: 'inject-base-tag',
@@ -72,6 +155,7 @@ export default defineConfig(({ mode }) => {
         routesDirectory: './src/renderer/routes',
         generatedRouteTree: './src/renderer/routeTree.gen.ts',
       }),
+      comfyUIProxy(),
       react({}),
       dvhToVh(),
       isWeb ? injectBaseTag() : undefined,

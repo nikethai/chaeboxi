@@ -11,6 +11,24 @@ export const ImageGenerationModelSchema = z.object({
 })
 export type ImageGenerationModel = z.infer<typeof ImageGenerationModelSchema>
 
+// ComfyUI generation params stored for retry
+export const ComfyUIStoredParamsSchema = z
+  .object({
+    checkpoint: z.string().optional(),
+    lora: z.string().optional(),
+    loraStrength: z.number().optional(),
+    negativePrompt: z.string().optional(),
+    steps: z.number().optional(),
+    cfg: z.number().optional(),
+    samplerName: z.string().optional(),
+    scheduler: z.string().optional(),
+    orientation: z.enum(['vertical', 'horizontal']).optional(),
+    upscale: z.boolean().optional(),
+    seed: z.number().optional(),
+  })
+  .optional()
+  .catch(undefined)
+
 // Image generation record schema
 export const ImageGenerationSchema = z.object({
   id: z.string(),
@@ -21,6 +39,8 @@ export const ImageGenerationSchema = z.object({
   model: ImageGenerationModelSchema,
   dalleStyle: z.enum(['vivid', 'natural']).optional(),
   imageGenerateNum: z.number().optional(),
+  aspectRatio: z.string().optional(),
+  comfyuiParams: ComfyUIStoredParamsSchema,
   status: ImageGenerationStatusSchema,
   parentIds: z.array(z.string()).optional(), // for tracking iteration DAG (multiple parents possible)
   error: z.string().optional(),

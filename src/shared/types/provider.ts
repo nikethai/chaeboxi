@@ -24,6 +24,7 @@ export enum ModelProviderEnum {
   Moonshot = 'moonshot',
   Qwen = 'qwen',
   OpenClaw = 'openclaw',
+  ComfyUI = 'comfyui',
   Custom = 'custom',
 }
 
@@ -33,4 +34,5 @@ export enum ModelProviderType {
   Gemini = 'gemini',
   Claude = 'claude',
   OpenAIResponses = 'openai-responses',
+  ComfyUI = 'comfyui',
 }

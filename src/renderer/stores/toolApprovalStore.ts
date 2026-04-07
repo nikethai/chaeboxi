@@ -1,5 +1,7 @@
 import type { ToolRiskTier } from '@shared/types/mcp'
 import { createStore, useStore } from 'zustand'
+import { combine, persist } from 'zustand/middleware'
+import { safeStorage } from './safeStorage'
 
 export type ToolApprovalScope = 'once' | 'session'
 export type ToolApprovalAuditDecision = 'allow' | 'deny' | 'auto-approve'
@@ -34,36 +36,72 @@ function getApprovalKey(sessionId: string, toolName: string) {
   return `${sessionId}:${toolName}`
 }
 
-export const toolApprovalStore = createStore<ToolApprovalState>((set) => ({
-  approvedTools: new Map(),
-  auditLog: [],
-  addApproval: (sessionId, approval) =>
-    set((state) => {
-      const approvedTools = new Map(state.approvedTools)
-      approvedTools.set(getApprovalKey(sessionId, approval.toolName), approval)
-      return { approvedTools }
-    }),
-  removeApproval: (sessionId, toolName) =>
-    set((state) => {
-      const approvedTools = new Map(state.approvedTools)
-      approvedTools.delete(getApprovalKey(sessionId, toolName))
-      return { approvedTools }
-    }),
-  clearSessionApprovals: (sessionId) =>
-    set((state) => {
-      const approvedTools = new Map(state.approvedTools)
-      for (const key of approvedTools.keys()) {
-        if (key.startsWith(`${sessionId}:`)) {
-          approvedTools.delete(key)
+function serializeMap(map: Map<string, ToolApprovalRecord>): Record<string, ToolApprovalRecord> {
+  const obj: Record<string, ToolApprovalRecord> = {}
+  map.forEach((value, key) => {
+    obj[key] = value
+  })
+  return obj
+}
+
+function deserializeMap(obj: Record<string, ToolApprovalRecord>): Map<string, ToolApprovalRecord> {
+  return new Map(Object.entries(obj))
+}
+
+export const toolApprovalStore = createStore(
+  persist(
+    combine(
+      {
+        approvedTools: new Map<string, ToolApprovalRecord>(),
+        auditLog: [] as ToolApprovalAuditEntry[],
+      },
+      (set, get) => ({
+        addApproval: (sessionId, approval) =>
+          set((state) => {
+            const approvedTools = new Map(state.approvedTools)
+            approvedTools.set(getApprovalKey(sessionId, approval.toolName), approval)
+            return { approvedTools }
+          }),
+        removeApproval: (sessionId, toolName) =>
+          set((state) => {
+            const approvedTools = new Map(state.approvedTools)
+            approvedTools.delete(getApprovalKey(sessionId, toolName))
+            return { approvedTools }
+          }),
+        clearSessionApprovals: (sessionId) =>
+          set((state) => {
+            const approvedTools = new Map(state.approvedTools)
+            for (const key of approvedTools.keys()) {
+              if (key.startsWith(`${sessionId}:`)) {
+                approvedTools.delete(key)
+              }
+            }
+            return { approvedTools }
+          }),
+        addAuditEntry: (entry) =>
+          set((state) => ({
+            auditLog: [...state.auditLog, entry],
+          })),
+      })
+    ),
+    {
+      name: 'tool-approval-store',
+      version: 0,
+      partialize: (state) => ({
+        auditLog: state.auditLog,
+        approvedTools: serializeMap(state.approvedTools),
+      }),
+      merge: (persistedState: unknown, currentState) => {
+        const persisted = persistedState as { approvedTools?: Record<string, ToolApprovalRecord> } | undefined
+        return {
+          ...currentState,
+          ...(persisted?.approvedTools ? { approvedTools: deserializeMap(persisted.approvedTools) } : {}),
         }
-      }
-      return { approvedTools }
-    }),
-  addAuditEntry: (entry) =>
-    set((state) => ({
-      auditLog: [...state.auditLog, entry],
-    })),
-}))
+      },
+      storage: safeStorage,
+    }
+  )
+)
 
 export function getToolApproval(sessionId: string, toolName: string) {
   return toolApprovalStore.getState().approvedTools.get(getApprovalKey(sessionId, toolName))

@@ -23,7 +23,9 @@ import {
   IconPlus,
   IconSparkles,
 } from '@tabler/icons-react'
+import { zodValidator } from '@tanstack/zod-adapter'
 import { createFileRoute } from '@tanstack/react-router'
+import { z } from 'zod'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ImageModelSelect } from '@/components/ImageModelSelect'
@@ -69,6 +71,11 @@ const log = getLogger('image-creator')
 
 export const Route = createFileRoute('/image-creator/')({
   component: ImageCreatorPage,
+  validateSearch: zodValidator(
+    z.object({
+      prompt: z.string().optional(),
+    })
+  ),
 })
 
 /* ============================================
@@ -249,12 +256,20 @@ function ImageCreatorPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Restore last used model on mount
+  // When navigating from a chat message's "Send to Image Creator" action,
+  // search params take priority over last-used model
+  const searchParams = Route.useSearch()
   useEffect(() => {
-    const lastUsed = lastUsedModelStore.getState().picture
-    if (lastUsed) {
-      setSelectedProvider(lastUsed.provider)
-      setSelectedModel(lastUsed.modelId)
+    if (searchParams.prompt) {
+      setPrompt(searchParams.prompt)
+      setSelectedProvider(ModelProviderEnum.ComfyUI)
+      setSelectedModel(COMFYUI_IMAGE_MODEL_IDS[0])
+    } else {
+      const lastUsed = lastUsedModelStore.getState().picture
+      if (lastUsed) {
+        setSelectedProvider(lastUsed.provider)
+        setSelectedModel(lastUsed.modelId)
+      }
     }
   }, [])
 

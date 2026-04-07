@@ -1,4 +1,5 @@
 import type { ModelMessage, ToolSet } from 'ai'
+import type { ComfyUIGenerationParams } from '../providers/definitions/models/comfyui-types'
 import {
   type MessageContentParts,
   type GroundingMetadata,
@@ -24,6 +25,7 @@ export interface ModelInterface {
       images?: { imageUrl: string }[]
       num: number
       aspectRatio?: string
+      comfyuiParams?: ComfyUIGenerationParams
     },
     signal?: AbortSignal,
     callback?: (picBase64: string) => void

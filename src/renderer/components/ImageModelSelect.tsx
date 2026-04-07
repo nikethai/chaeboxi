@@ -16,6 +16,7 @@ const GEMINI_IMAGE_MODEL_IDS = [
   'gemini-3.1-flash-image-preview',
   'gemini-3.1-flash-image',
 ]
+const COMFYUI_IMAGE_MODEL_IDS = ['comfyui-txt2img']
 
 const IMAGE_MODEL_FALLBACK_NAMES: Record<string, string> = {
   'gpt-image-1': 'GPT Image 1',
@@ -25,6 +26,7 @@ const IMAGE_MODEL_FALLBACK_NAMES: Record<string, string> = {
   'gemini-3-pro-image': 'Nano Banana Pro',
   'gemini-3.1-flash-image-preview': 'Nano Banana 2',
   'gemini-3.1-flash-image': 'Nano Banana 2',
+  'comfyui-txt2img': 'txt2img',
 }
 
 function getAvailableImageModels(provider: ProviderInfo, imageModelIds: string[]): ImageModel[] {
@@ -79,6 +81,13 @@ export const ImageModelSelect = forwardRef<HTMLButtonElement, ImageModelSelectPr
           imageModels: getAvailableImageModels(provider, GEMINI_IMAGE_MODEL_IDS),
         }))
         .filter((item) => item.imageModels.length > 0)
+    }, [providers])
+
+    const comfyuiProvider = useMemo(() => {
+      const provider = providers.find((p) => p.id === ModelProviderEnum.ComfyUI)
+      if (!provider) return null
+      const imageModels = getAvailableImageModels(provider, COMFYUI_IMAGE_MODEL_IDS)
+      return imageModels.length > 0 ? { provider, imageModels } : null
     }, [providers])
 
     const combobox = useCombobox({
@@ -167,6 +176,26 @@ export const ImageModelSelect = forwardRef<HTMLButtonElement, ImageModelSelectPr
                 </Combobox.Group>
               </div>
             ))}
+
+            {comfyuiProvider && (
+              <>
+                <Divider my="xs" />
+                <Combobox.Group
+                  label="ComfyUI"
+                  classNames={{ groupLabel: '!text-xs !font-semibold !uppercase tracking-wide' }}
+                >
+                  {comfyuiProvider.imageModels.map((model) => (
+                    <Combobox.Option
+                      key={`${ModelProviderEnum.ComfyUI}:${model.modelId}`}
+                      value={`${ModelProviderEnum.ComfyUI}:${model.modelId}`}
+                      className="!rounded-lg"
+                    >
+                      <Text size="sm">{model.displayName}</Text>
+                    </Combobox.Option>
+                  ))}
+                </Combobox.Group>
+              </>
+            )}
           </Combobox.Options>
         </Combobox.Dropdown>
       </Combobox>

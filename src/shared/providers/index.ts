@@ -22,6 +22,7 @@ import './definitions/perplexity'
 import './definitions/volcengine'
 import './definitions/chatglm'
 import './definitions/openclaw'
+import './definitions/comfyui'
 import {
   clearProviderRegistry,
   defineProvider,

@@ -4,11 +4,14 @@ import {
   Button,
   Flex,
   Loader,
+  NumberInput,
   PasswordInput,
   Select,
+  Slider,
   Stack,
   Switch,
   Text,
+  Textarea,
   TextInput,
   Title,
   Tooltip,
@@ -49,6 +52,8 @@ import platform from '@/platform'
 import { useLanguage, useProviderSettings, useSettingsStore } from '@/stores/settingsStore'
 import { add as addToast } from '@/stores/toastActions'
 import { type ModelTestState, testModelCapabilities } from '@/utils/model-tester'
+import { useComfyUIInfo } from '@/hooks/useComfyUIInfo'
+import { ComfyUIClient } from '@shared/providers/definitions/models/comfyui-client'
 
 export const Route = createFileRoute('/settings/provider/$providerId')({
   component: RouteComponent,
@@ -102,7 +107,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
   const { providerSettings, setProviderSettings } = useProviderSettings(providerId)
 
   const displayModels = providerSettings?.models || baseInfo?.defaultSettings?.models || []
-  const isNoApiKeyProvider = [ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ModelProviderEnum.OpenClaw].includes(
+  const isNoApiKeyProvider = [ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ModelProviderEnum.OpenClaw, ModelProviderEnum.ComfyUI].includes(
     baseInfo?.id as ModelProviderEnum
   )
   const isBuiltinOpenAICompatible =
@@ -684,6 +689,13 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           </>
         )}
 
+        {baseInfo.id === ModelProviderEnum.ComfyUI && (
+          <ComfyUISettingsSection
+            providerSettings={providerSettings}
+            setProviderSettings={setProviderSettings}
+          />
+        )}
+
         {/* Models */}
         <Stack gap="xxs">
           <Flex justify="space-between" align="center">
@@ -903,5 +915,235 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         </AdaptiveModal>
       </Stack>
     </Stack>
+  )
+}
+
+/* ============================================
+   ComfyUI Settings Section
+   ============================================ */
+
+function ComfyUISettingsSection({
+  providerSettings,
+  setProviderSettings,
+}: {
+  providerSettings: any
+  setProviderSettings: (val: any) => void
+}) {
+  const { t } = useTranslation()
+  const { checkpoints, loras, samplers, schedulers, isLoading, refetch } = useComfyUIInfo()
+  const [testingConnection, setTestingConnection] = useState(false)
+  const [connectionStatus, setConnectionStatus] = useState<boolean | null>(null)
+
+  const handleTestConnection = async () => {
+    const apiHost = providerSettings?.apiHost || 'http://127.0.0.1:8188'
+    setTestingConnection(true)
+    setConnectionStatus(null)
+    try {
+      const client = new ComfyUIClient(apiHost)
+      const ok = await client.testConnection()
+      setConnectionStatus(ok)
+      if (ok) {
+        refetch()
+      }
+    } catch {
+      setConnectionStatus(false)
+    } finally {
+      setTestingConnection(false)
+    }
+  }
+
+  return (
+    <>
+      {/* Server URL */}
+      <Stack gap="xxs">
+        <Text span fw="600">
+          {t('ComfyUI Server URL')}
+        </Text>
+        <Flex gap="xs" align="center">
+          <TextInput
+            flex={1}
+            value={providerSettings?.apiHost || ''}
+            placeholder="http://192.168.1.100:8188"
+            onChange={(e) => setProviderSettings({ apiHost: e.currentTarget.value })}
+          />
+          <Button
+            size="sm"
+            loading={testingConnection}
+            onClick={handleTestConnection}
+          >
+            {t('Test Connection')}
+          </Button>
+        </Flex>
+        <Flex align="center" gap="xs">
+          {connectionStatus === true && (
+            <Badge color="green" variant="light" size="sm">
+              {t('Connected')}
+            </Badge>
+          )}
+          {connectionStatus === false && (
+            <Badge color="red" variant="light" size="sm">
+              {t('Connection failed')}
+            </Badge>
+          )}
+          <Text size="xs" c="chatbox-tertiary">
+            {t('Web mode requires ComfyUI started with --enable-cors-header')}
+          </Text>
+        </Flex>
+      </Stack>
+
+      {/* Checkpoint */}
+      <Stack gap="xxs">
+        <Text span fw="600">
+          {t('Checkpoint')}
+        </Text>
+        {checkpoints.length > 0 ? (
+          <Select
+            value={providerSettings?.comfyuiCheckpoint || ''}
+            data={checkpoints}
+            onChange={(val) => setProviderSettings({ comfyuiCheckpoint: val })}
+            searchable
+            placeholder={t('Select checkpoint')}
+          />
+        ) : (
+          <TextInput
+            value={providerSettings?.comfyuiCheckpoint || ''}
+            placeholder="waiNSFWIllustrious_v140.safetensors"
+            onChange={(e) => setProviderSettings({ comfyuiCheckpoint: e.currentTarget.value })}
+          />
+        )}
+        {isLoading && (
+          <Text size="xs" c="chatbox-tertiary">
+            {t('Loading available checkpoints from server...')}
+          </Text>
+        )}
+      </Stack>
+
+      {/* LoRA */}
+      <Stack gap="xxs">
+        <Text span fw="600">
+          {t('LoRA')}
+        </Text>
+        <Flex gap="sm" align="flex-end">
+          <Stack gap="xxs" flex={3}>
+            {loras.length > 1 ? (
+              <Select
+                value={providerSettings?.comfyuiLora || 'none'}
+                data={loras}
+                onChange={(val) => setProviderSettings({ comfyuiLora: val })}
+                searchable
+                placeholder={t('Select LoRA')}
+              />
+            ) : (
+              <TextInput
+                value={providerSettings?.comfyuiLora || ''}
+                placeholder="none"
+                onChange={(e) => setProviderSettings({ comfyuiLora: e.currentTarget.value })}
+              />
+            )}
+          </Stack>
+          <Stack gap="xxs" flex={2}>
+            <Text size="xs" c="chatbox-tertiary">
+              {t('LoRA Strength')}
+            </Text>
+            <Slider
+              min={0}
+              max={2}
+              step={0.05}
+              value={providerSettings?.comfyuiLoraStrength ?? 1}
+              onChange={(val) => setProviderSettings({ comfyuiLoraStrength: val })}
+              marks={[
+                { value: 0, label: '0' },
+                { value: 1, label: '1' },
+                { value: 2, label: '2' },
+              ]}
+              label={(v) => v.toFixed(2)}
+              style={{ paddingBottom: 16 }}
+            />
+          </Stack>
+        </Flex>
+      </Stack>
+
+      {/* Default Negative Prompt */}
+      <Stack gap="xxs">
+        <Text span fw="600">
+          {t('Default Negative Prompt')}
+        </Text>
+        <Textarea
+          value={providerSettings?.comfyuiNegativePrompt || ''}
+          placeholder="worst quality, low quality, watermark..."
+          onChange={(e) => setProviderSettings({ comfyuiNegativePrompt: e.currentTarget.value })}
+          minRows={2}
+          maxRows={4}
+          autosize
+        />
+      </Stack>
+
+      {/* Default Generation Params */}
+      <Stack gap="xxs">
+        <Text span fw="600">
+          {t('Default Generation Settings')}
+        </Text>
+        <Flex gap="sm">
+          <NumberInput
+            label={t('Steps')}
+            flex={1}
+            min={1}
+            max={100}
+            value={providerSettings?.comfyuiDefaultSteps ?? 29}
+            onChange={(val) =>
+              setProviderSettings({ comfyuiDefaultSteps: typeof val === 'number' ? val : 29 })
+            }
+          />
+          <NumberInput
+            label={t('CFG Scale')}
+            flex={1}
+            min={1}
+            max={30}
+            step={0.1}
+            decimalScale={1}
+            value={providerSettings?.comfyuiDefaultCfg ?? 4.9}
+            onChange={(val) =>
+              setProviderSettings({ comfyuiDefaultCfg: typeof val === 'number' ? val : 4.9 })
+            }
+          />
+        </Flex>
+        <Flex gap="sm">
+          {samplers.length > 0 ? (
+            <Select
+              label={t('Sampler')}
+              flex={1}
+              data={samplers}
+              value={providerSettings?.comfyuiDefaultSampler || 'euler_ancestral'}
+              onChange={(val) => setProviderSettings({ comfyuiDefaultSampler: val })}
+              searchable
+            />
+          ) : (
+            <TextInput
+              label={t('Sampler')}
+              flex={1}
+              value={providerSettings?.comfyuiDefaultSampler || 'euler_ancestral'}
+              onChange={(e) => setProviderSettings({ comfyuiDefaultSampler: e.currentTarget.value })}
+            />
+          )}
+          {schedulers.length > 0 ? (
+            <Select
+              label={t('Scheduler')}
+              flex={1}
+              data={schedulers}
+              value={providerSettings?.comfyuiDefaultScheduler || 'simple'}
+              onChange={(val) => setProviderSettings({ comfyuiDefaultScheduler: val })}
+              searchable
+            />
+          ) : (
+            <TextInput
+              label={t('Scheduler')}
+              flex={1}
+              value={providerSettings?.comfyuiDefaultScheduler || 'simple'}
+              onChange={(e) => setProviderSettings({ comfyuiDefaultScheduler: e.currentTarget.value })}
+            />
+          )}
+        </Flex>
+      </Stack>
+    </>
   )
 }

@@ -11,6 +11,7 @@ import {
   Textarea,
   UnstyledButton,
 } from '@mantine/core'
+import type { ComfyUIGenerationParams } from '@shared/providers/definitions/models/comfyui-types'
 import type { ImageGeneration } from '@shared/types'
 import { ModelProviderEnum, ModelProviderType } from '@shared/types'
 import {
@@ -46,6 +47,7 @@ import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 import { queryClient } from '@/stores/queryClient'
 import {
   blobToDataUrl,
+  COMFYUI_IMAGE_MODEL_IDS,
   GEMINI_IMAGE_MODEL_IDS,
   getRatioOptionsForModel,
   HISTORY_PANEL_WIDTH,
@@ -53,6 +55,7 @@ import {
   MAX_REFERENCE_IMAGES,
   OPENAI_IMAGE_MODEL_IDS,
 } from './-components/constants'
+import { ComfyUIControls } from './-components/ComfyUIControls'
 import { EmptyState } from './-components/EmptyState'
 import { GeneratedImagesGallery } from './-components/GeneratedImagesGallery'
 import { HistoryPanel } from './-components/HistoryPanel'
@@ -218,6 +221,9 @@ function ImageCreatorPage() {
   const [selectedRatio, setSelectedRatio] = useState<string>('auto')
   const [showModelDrawer, setShowModelDrawer] = useState(false)
   const [showRatioDrawer, setShowRatioDrawer] = useState(false)
+  const [comfyuiParams, setComfyuiParams] = useState<ComfyUIGenerationParams>({})
+
+  const isComfyUI = selectedProvider === ModelProviderEnum.ComfyUI
 
   // Get ratio options based on selected model
   const ratioOptions = getRatioOptionsForModel(selectedModel)
@@ -307,6 +313,7 @@ function ImageCreatorPage() {
         imageGenerateNum: 1,
         aspectRatio: selectedRatio,
         parentIds: parentIds.length > 0 ? parentIds : undefined,
+        comfyuiParams: isComfyUI ? comfyuiParams : undefined,
       })
 
       setPrompt('')
@@ -314,7 +321,7 @@ function ImageCreatorPage() {
     } catch (error) {
       log.error('Failed to generate image:', error)
     }
-  }, [prompt, referenceImages, selectedProvider, selectedModel, selectedRatio, isCurrentlyGenerating])
+  }, [prompt, referenceImages, selectedProvider, selectedModel, selectedRatio, isCurrentlyGenerating, isComfyUI, comfyuiParams])
 
   const handleQuickPromptSubmit = useCallback(
     async (quickPrompt: string) => {
@@ -433,6 +440,16 @@ function ImageCreatorPage() {
           groups.push({ label: provider.name, providerId: provider.id, models })
         }
       })
+
+    // ComfyUI
+    const comfyuiProvider = providers.find((p) => p.id === ModelProviderEnum.ComfyUI)
+    if (comfyuiProvider) {
+      const providerModels = comfyuiProvider.models || comfyuiProvider.defaultSettings?.models || []
+      const models = getAvailableImageModels(providerModels, COMFYUI_IMAGE_MODEL_IDS)
+      if (models.length > 0) {
+        groups.push({ label: 'ComfyUI', providerId: ModelProviderEnum.ComfyUI, models })
+      }
+    }
 
     return groups
   }, [providers, getAvailableImageModels])
@@ -567,6 +584,11 @@ function ImageCreatorPage() {
                 style={{ border: '1px solid var(--chatbox-border-primary)' }}
               >
                 <Stack gap="xs">
+                  {/* ComfyUI Advanced Controls */}
+                  {isComfyUI && (
+                    <ComfyUIControls params={comfyuiParams} onChange={setComfyuiParams} />
+                  )}
+
                   {/* Input Row */}
                   <Flex align="flex-end" gap={4}>
                     <Textarea

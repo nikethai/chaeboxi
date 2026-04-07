@@ -27,6 +27,7 @@ export const aiProviderNameHash: Record<ModelProviderEnum, string> = {
   [ModelProviderEnum.Moonshot]: 'Moonshot API',
   [ModelProviderEnum.Qwen]: 'Qwen API',
   [ModelProviderEnum.OpenClaw]: 'OpenClaw',
+  [ModelProviderEnum.ComfyUI]: 'ComfyUI',
   [ModelProviderEnum.Custom]: 'Custom Provider',
 }
 

@@ -1,5 +1,6 @@
 import { getModel } from '@shared/models'
 import { AIProviderNoImplementedPaintError, ChatboxAIAPIError } from '@shared/models/errors'
+import type { ComfyUIGenerationParams } from '@shared/providers/definitions/models/comfyui-types'
 import type { ImageGeneration, ImageGenerationModel } from '@shared/types'
 import { createModelDependencies } from '@/adapters'
 import { getLogger } from '@/lib/utils'
@@ -29,6 +30,7 @@ export interface GenerateImageParams {
   imageGenerateNum?: number
   aspectRatio?: string
   parentIds?: string[]
+  comfyuiParams?: ComfyUIGenerationParams
 }
 
 export function isGenerating(): boolean {
@@ -49,6 +51,8 @@ export async function createAndGenerate(params: GenerateImageParams): Promise<st
     dalleStyle: params.dalleStyle,
     imageGenerateNum: params.imageGenerateNum,
     parentIds: params.parentIds,
+    aspectRatio: params.aspectRatio,
+    comfyuiParams: params.comfyuiParams,
   })
 
   store.setCurrentGeneratingId(record.id)
@@ -107,6 +111,7 @@ async function generateImages(recordId: string, params: GenerateImageParams): Pr
         images: referenceImageUrls.length > 0 ? referenceImageUrls : undefined,
         num: params.imageGenerateNum || 1,
         aspectRatio: params.aspectRatio,
+        comfyuiParams: params.comfyuiParams,
       },
       undefined,
       async (picBase64: string) => {
@@ -187,6 +192,8 @@ export async function retryGeneration(recordId: string): Promise<void> {
     model: record.model,
     dalleStyle: record.dalleStyle,
     imageGenerateNum: record.imageGenerateNum,
+    aspectRatio: record.aspectRatio,
+    comfyuiParams: record.comfyuiParams,
   }
 
   void generateImages(recordId, params).finally(() => {

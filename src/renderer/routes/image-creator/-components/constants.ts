@@ -11,6 +11,7 @@ export const IMAGE_MODEL_FALLBACK_NAMES: Record<string, string> = {
   'gemini-3-pro-image': 'Nano Banana Pro',
   'gemini-3.1-flash-image-preview': 'Nano Banana 2',
   'gemini-3.1-flash-image': 'Nano Banana 2',
+  'comfyui-txt2img': 'txt2img',
 }
 
 export const CHATBOXAI_IMAGE_MODEL_IDS = [
@@ -28,12 +29,14 @@ export const GEMINI_IMAGE_MODEL_IDS = [
   'gemini-3.1-flash-image-preview',
   'gemini-3.1-flash-image',
 ]
+export const COMFYUI_IMAGE_MODEL_IDS = ['comfyui-txt2img']
 
-type ImageModelFamily = 'gpt' | 'gemini' | 'default'
+type ImageModelFamily = 'gpt' | 'gemini' | 'comfyui' | 'default'
 
 const RATIO_OPTIONS: Record<ImageModelFamily, string[]> = {
   gpt: ['auto', '1:1', '3:2', '2:3'],
   gemini: ['auto', '1:1', '3:2', '2:3', '4:3', '3:4', '4:5', '5:4', '16:9', '9:16', '21:9'],
+  comfyui: ['vertical', 'horizontal'],
   default: ['auto', '1:1', '3:2', '2:3'],
 }
 
@@ -51,10 +54,16 @@ export function getRatioOptionsForModel(modelId: string): string[] {
     case 'gemini-3.1-flash-image':
       return RATIO_OPTIONS.gemini
 
+    case 'comfyui-txt2img':
+      return RATIO_OPTIONS.comfyui
+
     default:
       // Check if it's a Gemini-like model by name pattern
       if (modelId.includes('gemini') && modelId.includes('image')) {
         return RATIO_OPTIONS.gemini
+      }
+      if (modelId.includes('comfyui')) {
+        return RATIO_OPTIONS.comfyui
       }
       return RATIO_OPTIONS.default
   }

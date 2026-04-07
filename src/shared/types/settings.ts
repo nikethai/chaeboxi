@@ -59,6 +59,16 @@ export const ProviderSettingsSchema = z.object({
   deploymentName: z.string().optional().catch(undefined),
   dalleDeploymentName: z.string().optional().catch(undefined),
   apiVersion: z.string().optional().catch(undefined),
+
+  // comfyui
+  comfyuiCheckpoint: z.string().optional().catch(undefined),
+  comfyuiLora: z.string().optional().catch(undefined),
+  comfyuiLoraStrength: z.number().optional().catch(undefined),
+  comfyuiNegativePrompt: z.string().optional().catch(undefined),
+  comfyuiDefaultSteps: z.number().optional().catch(undefined),
+  comfyuiDefaultCfg: z.number().optional().catch(undefined),
+  comfyuiDefaultSampler: z.string().optional().catch(undefined),
+  comfyuiDefaultScheduler: z.string().optional().catch(undefined),
 })
 
 const BuiltinProviderBaseInfoSchema = z.object({

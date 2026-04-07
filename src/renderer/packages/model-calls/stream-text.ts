@@ -496,9 +496,10 @@ export async function streamText(
     }
 
     if (needFileToolSet) {
+      const wrappedFileTools = wrapMCPToolsWithApproval(sessionId, fileToolSet.tools as ToolSet)
       tools = {
         ...tools,
-        ...fileToolSet.tools,
+        ...wrappedFileTools,
       }
     }
 

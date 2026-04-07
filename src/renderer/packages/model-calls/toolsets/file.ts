@@ -26,6 +26,8 @@ const formatLineWithNumber = (line: string, lineNumber: number) => {
 
 const GREP_MAX_RESULTS = 100
 
+const toErrorMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err))
+
 const toolSetDescription = `
 Use these tools to read and search large user-uploaded files (marked with <ATTACHMENT_FILE></ATTACHMENT_FILE>).
 
@@ -47,6 +49,23 @@ Searches for text patterns within a file.
 - Use \`beforeContextLines\` / \`afterContextLines\` to include surrounding lines
 - Returns up to ${GREP_MAX_RESULTS} matches maximum
 - Call in parallel when searching multiple files
+
+## create_file
+Creates or overwrites a file on the local filesystem.
+- Requires an absolute file path and the full file content
+- Parent directories are created automatically if they don't exist
+- WARNING: This will overwrite existing files without confirmation
+
+## edit_file
+Edits a file by replacing a specific string with a new string.
+- Uses exact string matching (old_string must appear in the file)
+- Replaces only the first occurrence by default
+- The old_string must be unique enough to match the intended location
+
+## delete_file
+Deletes a file from the local filesystem.
+- Requires an absolute file path
+- The file must exist or the operation will fail
 `
 
 const readFileTool = tool({
@@ -160,10 +179,75 @@ const searchFileTool = tool({
   },
 })
 
+const createFileTool = tool({
+  description: 'Creates or overwrites a file at the given absolute path with the provided content.',
+  inputSchema: z.object({
+    path: z.string().describe('The absolute file path to create or overwrite.'),
+    content: z.string().describe('The full content to write to the file.'),
+  }),
+  execute: async (input: { path: string; content: string }) => {
+    try {
+      await platform.writeFile(input.path, input.content)
+      return { success: true, message: `File created successfully: ${input.path}` }
+    } catch (err) {
+      return { success: false, message: `Failed to create file: ${toErrorMessage(err)}` }
+    }
+  },
+})
+
+const editFileTool = tool({
+  description:
+    'Edits a file by replacing the first occurrence of old_string with new_string. The old_string must exist in the file.',
+  inputSchema: z.object({
+    path: z.string().describe('The absolute file path to edit.'),
+    old_string: z.string().min(1).describe('The exact string to find and replace. Must not be empty.'),
+    new_string: z.string().describe('The replacement string.'),
+  }),
+  execute: async (input: { path: string; old_string: string; new_string: string }) => {
+    try {
+      const content = await platform.readFileByPath(input.path)
+      if (!content.includes(input.old_string)) {
+        return {
+          success: false,
+          message: `old_string not found in file: ${input.path}`,
+          changes_made: 0,
+        }
+      }
+      const newContent = content.replace(input.old_string, input.new_string)
+      await platform.writeFile(input.path, newContent)
+      return {
+        success: true,
+        message: `File edited successfully: ${input.path}`,
+        changes_made: 1,
+      }
+    } catch (err) {
+      return { success: false, message: `Failed to edit file: ${toErrorMessage(err)}`, changes_made: 0 }
+    }
+  },
+})
+
+const deleteFileTool = tool({
+  description: 'Deletes a file at the given absolute path.',
+  inputSchema: z.object({
+    path: z.string().describe('The absolute file path to delete.'),
+  }),
+  execute: async (input: { path: string }) => {
+    try {
+      await platform.deleteFile(input.path)
+      return { success: true, message: `File deleted successfully: ${input.path}` }
+    } catch (err) {
+      return { success: false, message: `Failed to delete file: ${toErrorMessage(err)}` }
+    }
+  },
+})
+
 export default {
   description: toolSetDescription,
   tools: {
     read_file: readFileTool,
     search_file_content: searchFileTool,
+    create_file: createFileTool,
+    edit_file: editFileTool,
+    delete_file: deleteFileTool,
   },
 }

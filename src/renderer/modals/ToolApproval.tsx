@@ -35,6 +35,8 @@ const ToolApprovalModal = NiceModal.create((props: ToolApprovalModalProps) => {
         return 'yellow'
       case 'high':
         return 'red'
+      case 'critical':
+        return 'grape'
       default:
         return 'gray'
     }
@@ -48,6 +50,8 @@ const ToolApprovalModal = NiceModal.create((props: ToolApprovalModalProps) => {
         return t('Medium risk')
       case 'high':
         return t('High risk')
+      case 'critical':
+        return t('Critical risk')
       default:
         return props.riskTier
     }
@@ -98,7 +102,7 @@ const ToolApprovalModal = NiceModal.create((props: ToolApprovalModalProps) => {
         <Button variant="default" onClick={() => onClose('deny')}>
           {t('Deny')}
         </Button>
-        {props.riskTier !== 'high' && (
+        {props.riskTier !== 'high' && props.riskTier !== 'critical' && (
           <Button variant="light" onClick={() => onClose('session')}>
             {t('Allow for this session')}
           </Button>

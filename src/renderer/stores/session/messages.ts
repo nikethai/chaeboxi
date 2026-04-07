@@ -242,6 +242,11 @@ export async function submitNewUserMessage(
   }
   // 根据需要，生成这条回复消息
   if (needGenerating) {
+    // If plan mode is enabled, set planPhase to 'planning' before generation
+    const freshSession = await chatStore.getSession(sessionId)
+    if (freshSession?.planMode && freshSession?.agentMode && !freshSession?.planPhase) {
+      await chatStore.updateSession(sessionId, { planPhase: 'planning' })
+    }
     await generate(sessionId, newAssistantMsg, { operationType: 'send_message', truncateTokenLimit })
   }
 }

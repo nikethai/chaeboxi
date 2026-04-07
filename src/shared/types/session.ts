@@ -206,12 +206,23 @@ export const MessageToolCallPartSchema = z.object({
   result: z.unknown().optional(),
 })
 
+export const MessagePlanPartSchema = z.object({
+  type: z.literal('plan'),
+  planText: z.string(),
+  status: z.enum(['pending', 'approved', 'rejected']).default('pending'),
+})
+
+// Plan phase for 2-phase agent execution
+export const PlanPhaseEnum = z.enum(['planning', 'awaiting_approval', 'executing'])
+export type PlanPhase = z.infer<typeof PlanPhaseEnum>
+
 export const MessageContentPartSchema = z.discriminatedUnion('type', [
   MessageTextPartSchema,
   MessageImagePartSchema,
   MessageInfoPartSchema,
   MessageReasoningPartSchema,
   MessageToolCallPartSchema,
+  MessagePlanPartSchema,
 ])
 
 export const MessageContentPartsSchema = z.array(MessageContentPartSchema)
@@ -443,3 +454,5 @@ export type Session = z.infer<typeof SessionSchema>
 export type SessionMeta = z.infer<typeof SessionMetaSchema>
 export type SessionThread = z.infer<typeof SessionThreadSchema>
 export type SessionThreadBrief = z.infer<typeof SessionThreadBriefSchema>
+export type MessagePlanPart = z.infer<typeof MessagePlanPartSchema>
+export type PlanPhase = z.infer<typeof PlanPhaseEnum>

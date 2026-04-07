@@ -307,10 +307,11 @@ export async function streamText(
     nativeWebSearch?: 'gemini-grounding'
     maxSteps?: number
     toolAccess?: CopilotToolAccess
+    allowedTools?: string[]
   },
   signal?: AbortSignal
 ): Promise<{ result: StreamTextResult; coreMessages: ModelMessage[] }> {
-  const { knowledgeBase, webBrowsing, sessionId, nativeWebSearch, toolAccess } = params
+  const { knowledgeBase, webBrowsing, sessionId, nativeWebSearch, toolAccess, allowedTools } = params
   const hasFileOrLink = params.messages.some((m) => m.files?.length || m.links?.length)
 
   const controller = new AbortController()
@@ -511,6 +512,12 @@ export async function streamText(
 
     // Apply copilot tool access filtering
     tools = filterToolsByAccess(tools, toolAccess)
+
+    // Apply allowedTools filtering (for planning phase - only allow specific tools)
+    if (allowedTools && allowedTools.length > 0) {
+      const allowedSet = new Set(allowedTools)
+      tools = Object.fromEntries(Object.entries(tools).filter(([name]) => allowedSet.has(name)))
+    }
 
     console.debug('tools', tools)
 

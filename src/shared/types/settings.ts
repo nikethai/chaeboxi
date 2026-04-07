@@ -130,6 +130,7 @@ export const SessionSettingsSchema = GlobalSessionSettingsSchema.extend({
   imageGenerateNum: z.number().optional().catch(1),
   providerOptions: ProviderOptionsSchema.optional().catch(undefined),
   autoCompaction: z.boolean().optional().catch(undefined),
+  planMode: z.boolean().optional().catch(undefined),
 })
 
 const UnifiedTokenUsageDetailSchema = z.object({

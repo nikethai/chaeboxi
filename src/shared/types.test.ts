@@ -1,5 +1,7 @@
+import * as defaults from './defaults'
 import { describe, expect, it } from 'vitest'
 import { copyMessagesWithMapping, copyThreads, createMessage } from './types'
+import { ProviderSettingsSchema, SettingsSchema } from './types/settings'
 import type { CompactionPoint, SessionThread } from './types/session'
 
 describe('copyMessagesWithMapping', () => {
@@ -336,5 +338,32 @@ describe('copyThreads with compactionPoints', () => {
     expect(newCp.boundaryMessageId).toBe(newSessionMsgId)
     const threadMsgMapping = newThread.messages.find((m) => m.role === 'assistant')
     expect(newCp.summaryMessageId).toBe(threadMsgMapping?.id)
+  })
+})
+
+describe('provider settings schema', () => {
+  it('parses image prompt prepend fields', () => {
+    const parsed = ProviderSettingsSchema.parse({
+      imagePromptCharacterPrepend: '1girl, blue hair',
+      imagePromptPositiveTagsPrepend: 'masterpiece, best quality',
+    })
+
+    expect(parsed.imagePromptCharacterPrepend).toBe('1girl, blue hair')
+    expect(parsed.imagePromptPositiveTagsPrepend).toBe('masterpiece, best quality')
+  })
+
+  it('preserves image prompt prepend fields through settings validation', () => {
+    const parsed = SettingsSchema.parse({
+      ...defaults.settings(),
+      providers: {
+        openai: {
+          imagePromptCharacterPrepend: 'hero character, red scarf',
+          imagePromptPositiveTagsPrepend: 'best quality, cinematic lighting',
+        },
+      },
+    })
+
+    expect(parsed.providers?.openai?.imagePromptCharacterPrepend).toBe('hero character, red scarf')
+    expect(parsed.providers?.openai?.imagePromptPositiveTagsPrepend).toBe('best quality, cinematic lighting')
   })
 })

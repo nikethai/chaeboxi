@@ -4,6 +4,14 @@ import { copyMessagesWithMapping, copyThreads, createMessage } from './types'
 import { ProviderSettingsSchema, SettingsSchema } from './types/settings'
 import type { CompactionPoint, SessionThread } from './types/session'
 
+describe('defaults', () => {
+  it('registers built-in system providers before SystemProviders is read', () => {
+    const providers = defaults.SystemProviders()
+    expect(providers.length).toBeGreaterThan(0)
+    expect(providers.some((provider) => provider.id === 'comfyui')).toBe(true)
+  })
+})
+
 describe('copyMessagesWithMapping', () => {
   it('should return messages with new IDs and mapping', () => {
     const messages = [createMessage('user', 'Hello'), createMessage('assistant', 'Hi')]

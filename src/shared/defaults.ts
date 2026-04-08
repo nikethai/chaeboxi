@@ -181,6 +181,5 @@ export function pictureSessionSettings(): SessionSettings {
   }
 }
 
-// SystemProviders is now generated from the provider registry
-// Re-export getSystemProviders as SystemProviders for backward compatibility
-export { getSystemProviders as SystemProviders } from './providers/registry'
+// Re-export through ./providers so built-in definitions register before reads.
+export { getSystemProviders as SystemProviders } from './providers'

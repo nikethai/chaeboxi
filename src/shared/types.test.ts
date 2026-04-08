@@ -374,4 +374,33 @@ describe('provider settings schema', () => {
     expect(parsed.providers?.openai?.imagePromptCharacterPrepend).toBe('hero character, red scarf')
     expect(parsed.providers?.openai?.imagePromptPositiveTagsPrepend).toBe('best quality, cinematic lighting')
   })
+
+  it('parses comfyui agent image flow settings', () => {
+    const parsed = ProviderSettingsSchema.parse({
+      agentImageFlowEnabled: true,
+      agentImageResearchDomains: ['danbooru.donmai.us', 'pixiv.net'],
+      agentImageNormalizationPrompt: 'Output only comma-separated tags.',
+    })
+
+    expect(parsed.agentImageFlowEnabled).toBe(true)
+    expect(parsed.agentImageResearchDomains).toEqual(['danbooru.donmai.us', 'pixiv.net'])
+    expect(parsed.agentImageNormalizationPrompt).toBe('Output only comma-separated tags.')
+  })
+
+  it('preserves comfyui agent image flow settings through settings validation', () => {
+    const parsed = SettingsSchema.parse({
+      ...defaults.settings(),
+      providers: {
+        comfyui: {
+          agentImageFlowEnabled: true,
+          agentImageResearchDomains: ['danbooru.donmai.us', 'pixiv.net'],
+          agentImageNormalizationPrompt: 'Keep only reusable Danbooru-style tags.',
+        },
+      },
+    })
+
+    expect(parsed.providers?.comfyui?.agentImageFlowEnabled).toBe(true)
+    expect(parsed.providers?.comfyui?.agentImageResearchDomains).toEqual(['danbooru.donmai.us', 'pixiv.net'])
+    expect(parsed.providers?.comfyui?.agentImageNormalizationPrompt).toBe('Keep only reusable Danbooru-style tags.')
+  })
 })

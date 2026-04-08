@@ -32,6 +32,7 @@ import {
 } from '@/packages/context-management/attachment-payload'
 import { generateImage, streamText } from '@/packages/model-calls'
 import { getToolSet } from '@/packages/model-calls/toolsets/knowledge-base'
+import { startComfyUIAgentGeneration } from '@/packages/model-calls/toolsets/generate-image'
 import websearchToolSet, { webSearchTool } from '@/packages/model-calls/toolsets/web-search'
 import fileToolSet from '@/packages/model-calls/toolsets/file'
 import { getModelDisplayName } from '@/packages/model-setting-utils'
@@ -48,7 +49,157 @@ import { insertMessageAfter, modifyMessage, submitNewUserMessage } from './messa
 import { messageQueueStore } from './messageQueue'
 import { runCompactionWithUIState } from '@/packages/context-management'
 import { executePostHooks, executePreHooks } from '@/packages/copilot-hooks'
-import type { MessagePlanPart } from '@shared/types'
+import type { MessagePlanPart, MessageToolCallPart } from '@shared/types'
+import {
+  COMFYUI_AGENT_DEFAULT_RESEARCH_DOMAINS,
+  COMFYUI_AGENT_DEFAULT_NORMALIZATION_PROMPT,
+} from '@shared/providers/definitions/comfyui'
+
+function buildAgentImageFlowInstruction(settings: Settings): string | undefined {
+  const comfyuiSettings = settings.providers?.[ModelProviderEnum.ComfyUI]
+  if (!comfyuiSettings?.agentImageFlowEnabled) {
+    return undefined
+  }
+
+  const domains = comfyuiSettings.agentImageResearchDomains?.length
+    ? comfyuiSettings.agentImageResearchDomains
+    : COMFYUI_AGENT_DEFAULT_RESEARCH_DOMAINS
+  const normalizationPrompt =
+    comfyuiSettings.agentImageNormalizationPrompt || COMFYUI_AGENT_DEFAULT_NORMALIZATION_PROMPT
+
+  return [
+    '## COMFYUI AGENT IMAGE FLOW',
+    'You are allowed to perform a research-to-image workflow for anime art references.',
+    `Research only these domains: ${domains.join(', ')}.`,
+    'Always call `web_search` with `includeDomains` set to exactly that list. Use concise English search queries focused on current or trending anime art styles.',
+    'When promising results are found, use `parse_link` on the strongest links. If parsing fails or content is sparse, fall back to the available snippets.',
+    'Extract only reusable visual traits. Do not keep character names, franchise names, artist names, copyrighted identifiers, or body-specific traits.',
+    `Normalization rules: ${normalizationPrompt}`,
+    'When you are ready, call `generate_image` with the final normalized comma-separated tags. Do not ask the user for confirmation.',
+  ].join('\n')
+}
+
+function getTextFromContentParts(contentParts: Message['contentParts']): string {
+  return contentParts
+    .filter((part): part is Extract<Message['contentParts'][number], { type: 'text' }> => part.type === 'text')
+    .map((part) => part.text)
+    .join('\n')
+    .trim()
+}
+
+function normalizeTagListCandidate(value: string): string | null {
+  const parts = value
+    .replace(/```[\w-]*\n?/g, '')
+    .replace(/```/g, '')
+    .split(/[\n,]+/)
+    .map((part) =>
+      part
+        .trim()
+        .replace(/^[-*]\s+/, '')
+        .replace(/^\d+\.\s+/, '')
+        .replace(/^(?:final|normalized|danbooru(?:-style)?|tag(?: list)?|prompt)\s*:\s*/i, '')
+        .trim()
+    )
+    .filter(Boolean)
+
+  if (parts.length < 4) {
+    return null
+  }
+
+  const normalized = parts.join(', ')
+  if (/(here is|here are|based on|i found|research|analysis)/i.test(normalized)) {
+    return null
+  }
+  if (/[.!?]\s+[A-Z]/.test(normalized)) {
+    return null
+  }
+
+  return normalized
+}
+
+function extractDanbooruTagListFromText(text: string): string | null {
+  const trimmed = text.trim()
+  if (!trimmed) {
+    return null
+  }
+
+  const fencedMatches = Array.from(trimmed.matchAll(/```(?:[\w-]+)?\n([\s\S]*?)```/g))
+    .map((match) => normalizeTagListCandidate(match[1] || ''))
+    .filter((candidate): candidate is string => Boolean(candidate))
+  if (fencedMatches.length > 0) {
+    return fencedMatches.at(-1) || null
+  }
+
+  const paragraphs = trimmed
+    .split(/\n\s*\n/)
+    .map((paragraph) => normalizeTagListCandidate(paragraph))
+    .filter((candidate): candidate is string => Boolean(candidate))
+  if (paragraphs.length > 0) {
+    return paragraphs.at(-1) || null
+  }
+
+  const lines = trimmed
+    .split('\n')
+    .map((line) => normalizeTagListCandidate(line))
+    .filter((candidate): candidate is string => Boolean(candidate))
+  if (lines.length > 0) {
+    return lines.at(-1) || null
+  }
+
+  return normalizeTagListCandidate(trimmed)
+}
+
+function hasGenerateImageToolCall(contentParts: Message['contentParts']): boolean {
+  return contentParts.some((part) => part.type === 'tool-call' && part.toolName === 'generate_image')
+}
+
+async function maybeAutoStartAgentImageFlow(
+  contentParts: Message['contentParts']
+): Promise<MessageToolCallPart | null> {
+  if (hasGenerateImageToolCall(contentParts)) {
+    return null
+  }
+
+  const inferredPrompt = extractDanbooruTagListFromText(getTextFromContentParts(contentParts))
+  if (!inferredPrompt) {
+    return null
+  }
+
+  const toolCallId = `generate_image_fallback_${Date.now()}`
+
+  try {
+    const generationResult = await startComfyUIAgentGeneration({
+      prompt: inferredPrompt,
+    })
+
+    return {
+      type: 'tool-call',
+      state: 'result',
+      toolCallId,
+      toolName: 'generate_image',
+      args: {
+        prompt: inferredPrompt,
+      },
+      result: generationResult,
+    }
+  } catch (error) {
+    const err = error instanceof Error ? error : new Error(`${error}`)
+    return {
+      type: 'tool-call',
+      state: 'error',
+      toolCallId,
+      toolName: 'generate_image',
+      args: {
+        prompt: inferredPrompt,
+      },
+      result: {
+        name: err.name,
+        message: err.message,
+        stack: err.stack,
+      },
+    }
+  }
+}
 
 // Planning phase system prompt instruction
 const PLANNING_SYSTEM_PROMPT = `
@@ -158,9 +309,14 @@ async function getOverflowTruncateLimit(sessionId: string): Promise<number | und
  * avoids the race condition where a user edits copilot settings and immediately
  * sends a message before the debounced write completes.
  */
-function getCopilotSettings(
-  copilotId: string | undefined
-): { temperature?: number; topP?: number; maxTokens?: number; maxSteps?: number; toolAccess?: CopilotToolAccess; hooks?: { preTurn?: CopilotHook[]; postTurn?: CopilotHook[] } } | null {
+function getCopilotSettings(copilotId: string | undefined): {
+  temperature?: number
+  topP?: number
+  maxTokens?: number
+  maxSteps?: number
+  toolAccess?: CopilotToolAccess
+  hooks?: { preTurn?: CopilotHook[]; postTurn?: CopilotHook[] }
+} | null {
   if (!copilotId) return null
   try {
     const storedCopilots = getDefaultStore().get(myCopilotsAtom)
@@ -324,7 +480,9 @@ export async function generate(
     const model = getModel(effectiveSettings, globalSettings, configs, dependencies)
     const sessionKnowledgeBaseMap = uiStore.getState().sessionKnowledgeBaseMap
     const knowledgeBase = sessionKnowledgeBaseMap[sessionId]
-    const webBrowsing = getSessionWebBrowsing(sessionId, effectiveSettings.provider)
+    const agentImageFlowInstructions = session.agentMode ? buildAgentImageFlowInstruction(globalSettings) : undefined
+    const webBrowsing =
+      getSessionWebBrowsing(sessionId, effectiveSettings.provider) || Boolean(agentImageFlowInstructions)
     const useGeminiGrounding =
       webBrowsing &&
       effectiveSettings.provider === ModelProviderEnum.Gemini &&
@@ -355,9 +513,7 @@ export async function generate(
         }
 
         // Check for existing plan in targetMsg (for 2-phase execution)
-        const existingPlanPart = targetMsg.contentParts.find(
-          (part): part is MessagePlanPart => part.type === 'plan'
-        )
+        const existingPlanPart = targetMsg.contentParts.find((part): part is MessagePlanPart => part.type === 'plan')
         const isExecutionPhase = existingPlanPart?.status === 'approved'
 
         // If we have an approved plan, inject it into the prompt for context
@@ -399,6 +555,8 @@ export async function generate(
         // Determine which tools to use based on phase
         let toolsToUse: ToolSet | undefined
         let planningToolsInstructions = ''
+        const executionAgentImageFlowInstructions =
+          !isPlanMode || isExecutionPhase ? agentImageFlowInstructions : undefined
 
         if (isPlanMode && !isExecutionPhase) {
           // Planning phase: use read-only tools
@@ -430,6 +588,7 @@ export async function generate(
           knowledgeBase,
           webBrowsing,
           nativeWebSearch: useGeminiGrounding ? 'gemini-grounding' : undefined,
+          agentImageFlowInstructions: executionAgentImageFlowInstructions,
           maxSteps,
           tools: toolsToUse,
         })
@@ -463,6 +622,12 @@ export async function generate(
         const finalContentParts = targetMsg.contentParts.filter((part) => part.type !== 'plan')
         if (finalPlanPart) {
           finalContentParts.push(finalPlanPart)
+        }
+        if (executionAgentImageFlowInstructions) {
+          const fallbackGenerateImagePart = await maybeAutoStartAgentImageFlow(finalContentParts)
+          if (fallbackGenerateImagePart) {
+            finalContentParts.push(fallbackGenerateImagePart)
+          }
         }
 
         targetMsg = {

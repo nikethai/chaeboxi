@@ -6,6 +6,7 @@ import { ChatboxAIAPIError } from '../../../shared/models/errors'
 import type WebSearch from './base'
 import { BingSearch } from './bing'
 import { BingNewsSearch } from './bing-news'
+import type { WebSearchOptions } from './base'
 import { DuckDuckGoSearch } from './duckduckgo'
 import { ExaSearch } from './exa'
 import { GoogleSearch } from './google'
@@ -83,13 +84,14 @@ function getSearchProviders() {
   return selectedProviders
 }
 
-async function _searchRelatedResults(query: string, signal?: AbortSignal) {
+async function _searchRelatedResults(query: string, options?: WebSearchOptions, signal?: AbortSignal) {
   const settings = getExtensionSettings()
   const providers = getSearchProviders()
+  const resultLimit = Math.min(options?.maxResults || MAX_CONTEXT_ITEMS, MAX_CONTEXT_ITEMS)
   const results = await Promise.all(
     providers.map(async (provider) => {
       try {
-        const result = await provider.search(query, signal)
+        const result = await provider.search(query, options, signal)
         console.debug(`web search result for "${query}":`, result.items)
         return result
       } catch (err) {
@@ -115,7 +117,7 @@ async function _searchRelatedResults(query: string, signal?: AbortSignal) {
       }
     }
     i++
-  } while (hasMore && items.length < MAX_CONTEXT_ITEMS)
+  } while (hasMore && items.length < resultLimit)
 
   console.debug('web search items', items)
 
@@ -148,10 +150,20 @@ async function _searchRelatedResults(query: string, signal?: AbortSignal) {
 const cache = new Map()
 
 export const webSearchExecutor = async (
-  { query }: { query: string },
+  {
+    query,
+    includeDomains,
+    excludeDomains,
+    maxResults,
+  }: { query: string; includeDomains?: string[]; excludeDomains?: string[]; maxResults?: number },
   { abortSignal }: { abortSignal?: AbortSignal }
 ) => {
   const { webSearch } = getExtensionSettings()
+  const options = {
+    includeDomains,
+    excludeDomains,
+    maxResults,
+  }
   const cacheSettings = {
     provider: webSearch.provider,
     tavilySearchDepth: webSearch.tavilySearchDepth,
@@ -159,14 +171,17 @@ export const webSearchExecutor = async (
     tavilyTimeRange: webSearch.tavilyTimeRange,
     tavilyIncludeRawContent: webSearch.tavilyIncludeRawContent,
     scrapeTopResults: webSearch.scrapeTopResults,
+    includeDomains: includeDomains ? [...includeDomains].sort() : undefined,
+    excludeDomains: excludeDomains ? [...excludeDomains].sort() : undefined,
+    maxResults,
   }
   const searchResults = await cachified({
     cache,
     key: `search-context:${query}:${JSON.stringify(cacheSettings)}`,
     ttl: 1000 * 60 * 5,
-    getFreshValue: () => _searchRelatedResults(query, abortSignal),
+    getFreshValue: () => _searchRelatedResults(query, options, abortSignal),
   })
-  return { query, searchResults }
+  return { query, searchResults, includeDomains, excludeDomains, maxResults }
 }
 
 export type { SearchResultItem }

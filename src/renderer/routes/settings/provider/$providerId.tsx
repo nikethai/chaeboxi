@@ -116,6 +116,35 @@ function ImagePromptPrependSection({
   )
 }
 
+function parseDomainList(value: string): string[] {
+  return Array.from(
+    new Set(
+      value
+        .split(/[\n,]+/)
+        .map((item) => item.trim().toLowerCase())
+        .filter(Boolean)
+    )
+  )
+}
+
+function DomainListTextarea({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string[]
+  onChange: (domains: string[]) => void
+  placeholder?: string
+}) {
+  const [localValue, setLocalValue] = useState(value.join('\n'))
+  const handleBlur = useCallback(() => {
+    onChange(parseDomainList(localValue))
+  }, [localValue, onChange])
+  return (
+    <Textarea autosize minRows={2} value={localValue} placeholder={placeholder} onChange={(e) => setLocalValue(e.currentTarget.value)} onBlur={handleBlur} />
+  )
+}
+
 function normalizeAPIHost(
   providerSettings: any,
   providerType: ModelProviderType
@@ -159,11 +188,17 @@ function ProviderSettings({ providerId }: { providerId: string }) {
   const { providerSettings, setProviderSettings } = useProviderSettings(providerId)
 
   const displayModels = providerSettings?.models || baseInfo?.defaultSettings?.models || []
-  const isNoApiKeyProvider = [ModelProviderEnum.Ollama, ModelProviderEnum.LMStudio, ModelProviderEnum.OpenClaw, ModelProviderEnum.ComfyUI].includes(
-    baseInfo?.id as ModelProviderEnum
-  )
+  const isNoApiKeyProvider = [
+    ModelProviderEnum.Ollama,
+    ModelProviderEnum.LMStudio,
+    ModelProviderEnum.OpenClaw,
+    ModelProviderEnum.ComfyUI,
+  ].includes(baseInfo?.id as ModelProviderEnum)
   const isBuiltinOpenAICompatible =
-    !!baseInfo && !baseInfo.isCustom && baseInfo.type === ModelProviderType.OpenAI && baseInfo.id !== ModelProviderEnum.Azure
+    !!baseInfo &&
+    !baseInfo.isCustom &&
+    baseInfo.type === ModelProviderType.OpenAI &&
+    baseInfo.id !== ModelProviderEnum.Azure
   const showBuiltinApiHostSection =
     isBuiltinOpenAICompatible ||
     [ModelProviderEnum.OpenAIResponses, ModelProviderEnum.Claude, ModelProviderEnum.Gemini].includes(
@@ -590,10 +625,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         )}
 
         {baseInfo.id === ModelProviderEnum.OpenAI && !baseInfo.isCustom && (
-          <ImagePromptPrependSection
-            providerSettings={providerSettings}
-            setProviderSettings={setProviderSettings}
-          />
+          <ImagePromptPrependSection providerSettings={providerSettings} setProviderSettings={setProviderSettings} />
         )}
 
         {baseInfo.id === ModelProviderEnum.OpenClaw && (
@@ -749,10 +781,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         )}
 
         {baseInfo.id === ModelProviderEnum.ComfyUI && (
-          <ComfyUISettingsSection
-            providerSettings={providerSettings}
-            setProviderSettings={setProviderSettings}
-          />
+          <ComfyUISettingsSection providerSettings={providerSettings} setProviderSettings={setProviderSettings} />
         )}
 
         {/* Models */}
@@ -1025,11 +1054,7 @@ function ComfyUISettingsSection({
             placeholder="http://192.168.1.100:8188"
             onChange={(e) => setProviderSettings({ apiHost: e.currentTarget.value })}
           />
-          <Button
-            size="sm"
-            loading={testingConnection}
-            onClick={handleTestConnection}
-          >
+          <Button size="sm" loading={testingConnection} onClick={handleTestConnection}>
             {t('Test Connection')}
           </Button>
         </Flex>
@@ -1122,10 +1147,57 @@ function ComfyUISettingsSection({
         </Flex>
       </Stack>
 
-      <ImagePromptPrependSection
-        providerSettings={providerSettings}
-        setProviderSettings={setProviderSettings}
-      />
+      <ImagePromptPrependSection providerSettings={providerSettings} setProviderSettings={setProviderSettings} />
+
+      <Stack gap="sm">
+        <Switch
+          checked={providerSettings?.agentImageFlowEnabled || false}
+          onChange={(event) =>
+            setProviderSettings({
+              agentImageFlowEnabled: event.currentTarget.checked,
+            })
+          }
+          label={t('Enable agent research-to-ComfyUI flow')}
+        />
+        <Text size="xs" c="chatbox-secondary">
+          {t('When enabled, agent mode can research allowed art sites, normalize tags, and auto-start ComfyUI.')}
+        </Text>
+      </Stack>
+
+      <Stack gap="xxs">
+        <Text span fw="600">
+          {t('Agent Research Domains')}
+        </Text>
+        <DomainListTextarea
+          value={providerSettings?.agentImageResearchDomains || []}
+          onChange={(domains) => setProviderSettings({ agentImageResearchDomains: domains })}
+          placeholder={'danbooru.donmai.us\npixiv.net'}
+        />
+        <Text size="xs" c="chatbox-secondary">
+          {t('One domain per line or comma-separated. The agent will restrict research to these domains.')}
+        </Text>
+      </Stack>
+
+      <Stack gap="xxs">
+        <Text span fw="600">
+          {t('Agent Tag Normalization Prompt')}
+        </Text>
+        <Textarea
+          autosize
+          minRows={4}
+          maxRows={10}
+          value={providerSettings?.agentImageNormalizationPrompt || ''}
+          placeholder={String(t('Describe how the agent should convert research into reusable Danbooru-style tags.'))}
+          onChange={(e) =>
+            setProviderSettings({
+              agentImageNormalizationPrompt: e.currentTarget.value,
+            })
+          }
+        />
+        <Text size="xs" c="chatbox-secondary">
+          {t('This prompt is injected only for the opt-in agent image flow.')}
+        </Text>
+      </Stack>
 
       {/* Default Negative Prompt */}
       <Stack gap="xxs">
@@ -1154,9 +1226,7 @@ function ComfyUISettingsSection({
             min={1}
             max={100}
             value={providerSettings?.comfyuiDefaultSteps ?? 29}
-            onChange={(val) =>
-              setProviderSettings({ comfyuiDefaultSteps: typeof val === 'number' ? val : 29 })
-            }
+            onChange={(val) => setProviderSettings({ comfyuiDefaultSteps: typeof val === 'number' ? val : 29 })}
           />
           <NumberInput
             label={t('CFG Scale')}
@@ -1166,9 +1236,7 @@ function ComfyUISettingsSection({
             step={0.1}
             decimalScale={1}
             value={providerSettings?.comfyuiDefaultCfg ?? 4.9}
-            onChange={(val) =>
-              setProviderSettings({ comfyuiDefaultCfg: typeof val === 'number' ? val : 4.9 })
-            }
+            onChange={(val) => setProviderSettings({ comfyuiDefaultCfg: typeof val === 'number' ? val : 4.9 })}
           />
         </Flex>
         <Flex gap="sm">

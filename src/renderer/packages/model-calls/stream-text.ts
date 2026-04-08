@@ -6,7 +6,7 @@ import { ToolRiskTier } from '@shared/types/mcp'
 import { getToolRiskTier } from '../tools/risk-engine'
 import { sequenceMessages } from '@shared/utils/message'
 import { getModelSettings } from '@shared/utils/model_settings'
-import type { ModelMessage, ToolSet } from 'ai'
+import { type ModelMessage, type ToolSet } from 'ai'
 import NiceModal from '@ebay/nice-modal-react'
 import { t } from 'i18next'
 import { uniqueId } from 'lodash'
@@ -42,6 +42,7 @@ import {
 } from './tools'
 import fileToolSet from './toolsets/file'
 import { getToolSet } from './toolsets/knowledge-base'
+import generateImageToolSet, { generateImageTool } from './toolsets/generate-image'
 import taskTrackingToolSet from './toolsets/task-tracking'
 import websearchToolSet, { parseLinkTool, webSearchTool } from './toolsets/web-search'
 
@@ -266,9 +267,7 @@ function filterToolsByAccess(tools: ToolSet, toolAccess?: CopilotToolAccess): To
   // If includeMcp is false, filter out all MCP tools first
   let filteredTools = tools
   if (includeMcp === false) {
-    filteredTools = Object.fromEntries(
-      Object.entries(tools).filter(([name]) => !name.startsWith(MCP_TOOL_PREFIX))
-    )
+    filteredTools = Object.fromEntries(Object.entries(tools).filter(([name]) => !name.startsWith(MCP_TOOL_PREFIX)))
   }
 
   // If no access tools specified, return filtered tools as-is
@@ -280,14 +279,10 @@ function filterToolsByAccess(tools: ToolSet, toolAccess?: CopilotToolAccess): To
 
   if (mode === 'allowlist') {
     // Only include tools that are in the access list
-    return Object.fromEntries(
-      Object.entries(filteredTools).filter(([name]) => accessSet.has(name))
-    )
+    return Object.fromEntries(Object.entries(filteredTools).filter(([name]) => accessSet.has(name)))
   } else {
     // denylist: exclude tools that are in the access list
-    return Object.fromEntries(
-      Object.entries(filteredTools).filter(([name]) => !accessSet.has(name))
-    )
+    return Object.fromEntries(Object.entries(filteredTools).filter(([name]) => !accessSet.has(name)))
   }
 }
 
@@ -305,13 +300,24 @@ export async function streamText(
     knowledgeBase?: Pick<KnowledgeBase, 'id' | 'name'>
     webBrowsing?: boolean
     nativeWebSearch?: 'gemini-grounding'
+    agentImageFlowInstructions?: string
+    tools?: ToolSet
     maxSteps?: number
     toolAccess?: CopilotToolAccess
     allowedTools?: string[]
   },
   signal?: AbortSignal
 ): Promise<{ result: StreamTextResult; coreMessages: ModelMessage[] }> {
-  const { knowledgeBase, webBrowsing, sessionId, nativeWebSearch, toolAccess, allowedTools } = params
+  const {
+    knowledgeBase,
+    webBrowsing,
+    sessionId,
+    nativeWebSearch,
+    toolAccess,
+    allowedTools,
+    agentImageFlowInstructions,
+    tools: customTools,
+  } = params
   const hasFileOrLink = params.messages.some((m) => m.files?.length || m.links?.length)
 
   const controller = new AbortController()
@@ -358,6 +364,10 @@ export async function streamText(
   // Task tracking tools are always available when the model supports tool use
   if (model.isSupportToolUse()) {
     toolSetInstructions += taskTrackingToolSet.description
+  }
+  if (agentImageFlowInstructions && model.isSupportToolUse()) {
+    toolSetInstructions += generateImageToolSet.description
+    toolSetInstructions += `\n\n${agentImageFlowInstructions}`
   }
 
   params.messages = injectModelSystemPrompt(
@@ -478,36 +488,49 @@ export async function streamText(
     }
 
     // 4. construct tool set
-    let tools: ToolSet = { ...mcpTools }
-    if (useGeminiGrounding) {
-      tools.google_search = google.tools.googleSearch({
-        mode: 'MODE_DYNAMIC',
-        dynamicThreshold: 0.3,
-      })
-    } else if (webBrowsing) {
-      tools.web_search = webSearchTool
-      tools.parse_link = parseLinkTool
-    }
-    if (kbToolSet) {
-      tools = {
-        ...tools,
-        ...kbToolSet.tools,
+    const useCustomTools = Boolean(customTools)
+    let tools: ToolSet = useCustomTools ? { ...customTools } : { ...mcpTools }
+    if (!useCustomTools) {
+      if (useGeminiGrounding) {
+        tools.google_search = google.tools.googleSearch({
+          mode: 'MODE_DYNAMIC',
+          dynamicThreshold: 0.3,
+        })
+      } else if (webBrowsing) {
+        tools.web_search = webSearchTool
+        tools.parse_link = parseLinkTool
       }
-    }
-
-    if (needFileToolSet) {
-      const wrappedFileTools = wrapMCPToolsWithApproval(sessionId, fileToolSet.tools as ToolSet)
-      tools = {
-        ...tools,
-        ...wrappedFileTools,
+      if (kbToolSet) {
+        tools = {
+          ...tools,
+          ...kbToolSet.tools,
+        }
       }
-    }
 
-    // Task tracking tools are always available when the model supports tool use
-    if (model.isSupportToolUse()) {
-      tools = {
-        ...tools,
-        ...taskTrackingToolSet.tools,
+      if (needFileToolSet) {
+        const wrappedFileTools = wrapMCPToolsWithApproval(sessionId, fileToolSet.tools as ToolSet)
+        tools = {
+          ...tools,
+          ...wrappedFileTools,
+        }
+      }
+
+      if (agentImageFlowInstructions && model.isSupportToolUse()) {
+        const generateImageTools = wrapMCPToolsWithApproval(sessionId, {
+          generate_image: generateImageTool,
+        })
+        tools = {
+          ...tools,
+          ...generateImageTools,
+        }
+      }
+
+      // Task tracking tools are always available when the model supports tool use
+      if (model.isSupportToolUse()) {
+        tools = {
+          ...tools,
+          ...taskTrackingToolSet.tools,
+        }
       }
     }
 

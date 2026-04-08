@@ -1,4 +1,15 @@
-import { Button as MantineButton, Checkbox, Flex, MultiSelect, Radio, Select, Stack, Switch as MantineSwitch, Text, Tooltip } from '@mantine/core'
+import {
+  Button as MantineButton,
+  Checkbox,
+  Flex,
+  MultiSelect,
+  Radio,
+  Select,
+  Stack,
+  Switch as MantineSwitch,
+  Text,
+  Tooltip,
+} from '@mantine/core'
 import EditIcon from '@mui/icons-material/Edit'
 import MoreHorizOutlinedIcon from '@mui/icons-material/MoreHorizOutlined'
 import StarIcon from '@mui/icons-material/Star'
@@ -52,6 +63,7 @@ export const Route = createFileRoute('/copilots')({
 const BUILT_IN_TOOLS = [
   { value: 'web_search', label: 'Web Search' },
   { value: 'parse_link', label: 'Parse Link' },
+  { value: 'generate_image', label: 'Generate Image' },
   { value: 'file_read', label: 'File Read' },
   { value: 'file_write', label: 'File Write' },
   { value: 'query_knowledge_base', label: 'Knowledge Base Query' },

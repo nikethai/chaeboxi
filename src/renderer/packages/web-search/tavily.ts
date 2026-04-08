@@ -1,6 +1,6 @@
 import type { SearchResult } from '@shared/types'
 import { ofetch } from 'ofetch'
-import WebSearch from './base'
+import WebSearch, { type WebSearchOptions } from './base'
 
 export class TavilySearch extends WebSearch {
   private readonly TAVILY_SEARCH_URL = 'https://api.tavily.com/search'
@@ -26,9 +26,9 @@ export class TavilySearch extends WebSearch {
     this.includeRawContent = includeRawContent === 'none' ? null : includeRawContent
   }
 
-  async search(query: string, signal?: AbortSignal): Promise<SearchResult> {
+  async search(query: string, options?: WebSearchOptions, signal?: AbortSignal): Promise<SearchResult> {
     try {
-      const requestBody = this.buildRequestBody(query)
+      const requestBody = this.buildRequestBody(query, options)
       const response = await ofetch(this.TAVILY_SEARCH_URL, {
         method: 'POST',
         headers: {
@@ -39,12 +39,20 @@ export class TavilySearch extends WebSearch {
         signal,
       })
 
-      const items = (response.results || []).map((result: any) => ({
-        title: result.title,
-        link: result.url,
-        snippet: result.content,
-        rawContent: result.raw_content,
-      }))
+      // Tavily handles include/exclude domains natively via the API —
+      // only apply maxResults slicing as a safety net.
+      const maxResultsOnly: WebSearchOptions | undefined = options?.maxResults
+        ? { maxResults: options.maxResults }
+        : undefined
+      const items = this.finalizeItems(
+        (response.results || []).map((result: any) => ({
+          title: result.title,
+          link: result.url,
+          snippet: result.content,
+          rawContent: result.raw_content,
+        })),
+        maxResultsOnly
+      )
 
       return { items }
     } catch (error) {
@@ -53,13 +61,13 @@ export class TavilySearch extends WebSearch {
     }
   }
 
-  private buildRequestBody(query: string): any {
+  private buildRequestBody(query: string, options?: WebSearchOptions): any {
     const requestBody: any = {
       query,
       search_depth: this.searchDepth,
-      max_results: this.maxResults,
-      include_domains: [],
-      exclude_domains: [],
+      max_results: options?.maxResults || this.maxResults,
+      include_domains: options?.includeDomains || [],
+      exclude_domains: options?.excludeDomains || [],
     }
 
     if (!this.isNullOrNone(this.timeRange)) {

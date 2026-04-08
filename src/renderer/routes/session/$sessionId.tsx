@@ -5,7 +5,6 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { IconShield } from '@tabler/icons-react'
 import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from 'zustand'
 import MessageList, { type MessageListRef } from '@/components/chat/MessageList'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { CostDashboard } from '@/components/CostDashboard'
@@ -29,8 +28,6 @@ function RouteComponent() {
   const { sessionId: currentSessionId } = Route.useParams()
   const navigate = useNavigate()
   const { session: currentSession, isFetching } = useSession(currentSessionId)
-  const setLastUsedChatModel = useStore(lastUsedModelStore, (state) => state.setChatModel)
-  const setLastUsedPictureModel = useStore(lastUsedModelStore, (state) => state.setPictureModel)
   const [showToolAudit, setShowToolAudit] = useState(false)
 
   const currentMessageList = useMemo(() => (currentSession ? getAllMessageList(currentSession) : []), [currentSession])
@@ -52,22 +49,29 @@ function RouteComponent() {
   }, [])
 
   // currentSession变化时（包括session settings变化），存下当前的settings作为新Session的默认值
+  const currentSessionType = currentSession?.type
+  const currentSessionProvider = currentSession?.settings?.provider
+  const currentSessionModelId = currentSession?.settings?.modelId
   useEffect(() => {
-    if (currentSession) {
-      if (currentSession.type === 'chat' && currentSession.settings) {
-        const { provider, modelId } = currentSession.settings
-        if (provider && modelId) {
-          setLastUsedChatModel(provider, modelId)
-        }
-      }
-      if (currentSession.type === 'picture' && currentSession.settings) {
-        const { provider, modelId } = currentSession.settings
-        if (provider && modelId) {
-          setLastUsedPictureModel(provider, modelId)
-        }
-      }
+    if (!currentSessionType || !currentSessionProvider || !currentSessionModelId) {
+      return
     }
-  }, [currentSession?.settings, currentSession?.type, currentSession, setLastUsedChatModel, setLastUsedPictureModel])
+
+    const { chat, picture, setChatModel, setPictureModel } = lastUsedModelStore.getState()
+    if (
+      currentSessionType === 'chat' &&
+      (chat?.provider !== currentSessionProvider || chat?.modelId !== currentSessionModelId)
+    ) {
+      setChatModel(currentSessionProvider, currentSessionModelId)
+      return
+    }
+    if (
+      currentSessionType === 'picture' &&
+      (picture?.provider !== currentSessionProvider || picture?.modelId !== currentSessionModelId)
+    ) {
+      setPictureModel(currentSessionProvider, currentSessionModelId)
+    }
+  }, [currentSessionType, currentSessionProvider, currentSessionModelId])
 
   const onSelectModel = useCallback(
     (provider: ModelProvider, modelId: string) => {

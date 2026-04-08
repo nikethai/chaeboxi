@@ -82,54 +82,65 @@ function remarkAddCodeIndex() {
 }
 
 function remarkTransformCitationLinks(citations: SearchCitation[]) {
-  if (!citations?.length) {
-    return () => {}
-  }
-  const citationIndexSet = new Set(citations.map((citation) => citation.index))
+  return () => {
+    if (!citations?.length) {
+      return
+    }
 
-  // biome-ignore lint/suspicious/noExplicitAny: remark AST nodes lack a friendly type here
-  return (tree: any) => {
-    visit(tree, 'text', (node, index, parent) => {
-      if (!parent || typeof index !== 'number' || !node.value || !citationIndexSet.size) {
+    const citationIndexSet = new Set(citations.map((citation) => citation.index))
+
+    // biome-ignore lint/suspicious/noExplicitAny: remark AST nodes lack a friendly type here
+    return (tree: any) => {
+      if (!tree || typeof tree !== 'object') {
         return
       }
 
-      const parts = String(node.value).split(/(\[\d+\])/g)
-      if (parts.length <= 1) {
-        return
-      }
-
-      const replacementNodes: any[] = []
-      for (const part of parts) {
-        if (!part) {
-          continue
-        }
-        const match = /^\[(\d+)\]$/.exec(part)
-        if (!match) {
-          replacementNodes.push({ type: 'text', value: part })
-          continue
+      visit(tree, 'text', (node, index, parent) => {
+        if (
+          !parent ||
+          !Array.isArray(parent.children) ||
+          typeof index !== 'number' ||
+          !node.value ||
+          !citationIndexSet.size
+        ) {
+          return
         }
 
-        const citationIndex = Number(match[1])
-        if (!citationIndexSet.has(citationIndex)) {
-          replacementNodes.push({ type: 'text', value: part })
-          continue
+        const parts = String(node.value).split(/(\[\d+\])/g)
+        if (parts.length <= 1) {
+          return
         }
 
-        replacementNodes.push(
-          {
+        const replacementNodes: any[] = []
+        for (const part of parts) {
+          if (!part) {
+            continue
+          }
+          const match = /^\[(\d+)\]$/.exec(part)
+          if (!match) {
+            replacementNodes.push({ type: 'text', value: part })
+            continue
+          }
+
+          const citationIndex = Number(match[1])
+          if (!citationIndexSet.has(citationIndex)) {
+            replacementNodes.push({ type: 'text', value: part })
+            continue
+          }
+
+          replacementNodes.push({
             type: 'link',
             url: `citation:${citationIndex}`,
             children: [{ type: 'text', value: part }],
-          }
-        )
-      }
+          })
+        }
 
-      if (replacementNodes.length > 0) {
-        parent.children.splice(index, 1, ...replacementNodes)
-        return index + replacementNodes.length
-      }
-    })
+        if (replacementNodes.length > 0) {
+          parent.children.splice(index, 1, ...replacementNodes)
+          return index + replacementNodes.length
+        }
+      })
+    }
   }
 }
 

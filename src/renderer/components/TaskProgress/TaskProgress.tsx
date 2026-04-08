@@ -27,7 +27,8 @@ function StatusIcon({ status }: { status: TaskStatus }) {
 
 export function TaskProgress({ sessionId }: { sessionId: string }) {
   const { t } = useTranslation()
-  const tasks = useTaskStore((state) => state.tasks.filter((task) => task.sessionId === sessionId))
+  const allTasks = useTaskStore((state) => state.tasks)
+  const tasks = useMemo(() => allTasks.filter((task) => task.sessionId === sessionId), [allTasks, sessionId])
 
   const summary = useMemo(() => {
     const total = tasks.length

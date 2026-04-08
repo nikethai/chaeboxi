@@ -22,19 +22,29 @@ export const lastUsedModelStore = createStore(
       } as State,
       (set) => ({
         setChatModel: (provider: string, modelId: string) => {
-          set({
-            chat: {
-              provider,
-              modelId,
-            },
+          set((state) => {
+            if (state.chat?.provider === provider && state.chat?.modelId === modelId) {
+              return state
+            }
+            return {
+              chat: {
+                provider,
+                modelId,
+              },
+            }
           })
         },
         setPictureModel: (provider: string, modelId: string) => {
-          set({
-            picture: {
-              provider,
-              modelId,
-            },
+          set((state) => {
+            if (state.picture?.provider === provider && state.picture?.modelId === modelId) {
+              return state
+            }
+            return {
+              picture: {
+                provider,
+                modelId,
+              },
+            }
           })
         },
       })

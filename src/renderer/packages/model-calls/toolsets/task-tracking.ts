@@ -23,8 +23,9 @@ export const createTaskTool = tool({
   execute: async (input: { title: string }, context: { sessionId?: string }) => {
     const sessionId = context.sessionId || 'default'
     const id = generateTaskId()
-    taskStore.getState().createTask(sessionId, id, input.title)
-    const task = taskStore.getState().tasks.find((t) => t.id === id)
+    const state = taskStore.getState()
+    state.createTask(sessionId, id, input.title)
+    const task = state.tasks.find((t) => t.id === id)
     return {
       id,
       title: input.title,
@@ -52,16 +53,17 @@ export const updateTaskTool = tool({
       .describe('Progress percentage (0-100).'),
   }),
   execute: async (input: { id: string; status?: string; title?: string; progress?: number }) => {
-    const existing = taskStore.getState().tasks.find((t) => t.id === input.id)
+    const state = taskStore.getState()
+    const existing = state.tasks.find((t) => t.id === input.id)
     if (!existing) {
       return { error: `Task with id "${input.id}" not found.` }
     }
-    taskStore.getState().updateTask(input.id, {
+    state.updateTask(input.id, {
       status: input.status as 'pending' | 'in-progress' | 'done' | 'failed' | undefined,
       title: input.title,
       progress: input.progress,
     })
-    const updated = taskStore.getState().tasks.find((t) => t.id === input.id)
+    const updated = state.tasks.find((t) => t.id === input.id)
     return {
       message: `Task "${input.id}" updated.`,
       task: updated,

@@ -547,7 +547,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 autosize
                 minRows={2}
                 value={providerSettings?.imagePromptCharacterPrepend || ''}
-                placeholder={t('Character name, traits, outfit, pose, and other reusable character tags')}
+                placeholder={String(t('Character name, traits, outfit, pose, and other reusable character tags'))}
                 onChange={(e) =>
                   setProviderSettings({
                     imagePromptCharacterPrepend: e.currentTarget.value,
@@ -564,7 +564,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 autosize
                 minRows={2}
                 value={providerSettings?.imagePromptPositiveTagsPrepend || ''}
-                placeholder={t('Reusable positive quality/style tags')}
+                placeholder={String(t('Reusable positive quality/style tags'))}
                 onChange={(e) =>
                   setProviderSettings({
                     imagePromptPositiveTagsPrepend: e.currentTarget.value,
@@ -1044,7 +1044,7 @@ function ComfyUISettingsSection({
             data={checkpoints}
             onChange={(val) => setProviderSettings({ comfyuiCheckpoint: val })}
             searchable
-            placeholder={t('Select checkpoint')}
+            placeholder={String(t('Select checkpoint'))}
           />
         ) : (
           <TextInput
@@ -1073,7 +1073,7 @@ function ComfyUISettingsSection({
                 data={loras}
                 onChange={(val) => setProviderSettings({ comfyuiLora: val })}
                 searchable
-                placeholder={t('Select LoRA')}
+                placeholder={String(t('Select LoRA'))}
               />
             ) : (
               <TextInput

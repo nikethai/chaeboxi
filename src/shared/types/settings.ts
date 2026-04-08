@@ -50,6 +50,8 @@ export const ProviderSettingsSchema = z.object({
   apiPath: z.string().optional().catch(undefined),
   cloudflareClientId: z.string().optional().catch(undefined),
   cloudflareClientSecret: z.string().optional().catch(undefined),
+  imagePromptCharacterPrepend: z.string().optional().catch(undefined),
+  imagePromptPositiveTagsPrepend: z.string().optional().catch(undefined),
   models: z.array(ProviderModelInfoSchema).optional().catch(undefined),
   excludedModels: z.array(z.string()).optional().catch(undefined),
   useProxy: z.boolean().optional().catch(undefined),

@@ -5,10 +5,10 @@ import {
   Flex,
   Loader,
   PasswordInput,
-  Select,
   Stack,
   Switch,
   Text,
+  Textarea,
   TextInput,
   Title,
   Tooltip,
@@ -528,6 +528,48 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 ? normalizeGeminiHost(providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost || '').apiHost +
                   normalizeGeminiHost(providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost || '').apiPath
                 : ''}
+            </Text>
+          </Stack>
+        )}
+
+        {baseInfo.id === ModelProviderEnum.OpenAI && !baseInfo.isCustom && (
+          <Stack gap="md">
+            <Stack gap="xxs">
+              <Text span fw="600">
+                {t('Image Character Prepend')}
+              </Text>
+              <Textarea
+                autosize
+                minRows={2}
+                value={providerSettings?.imagePromptCharacterPrepend || ''}
+                placeholder={t('Character name, traits, outfit, pose, and other reusable character tags')}
+                onChange={(e) =>
+                  setProviderSettings({
+                    imagePromptCharacterPrepend: e.currentTarget.value,
+                  })
+                }
+              />
+            </Stack>
+
+            <Stack gap="xxs">
+              <Text span fw="600">
+                {t('Image Positive Tags Prepend')}
+              </Text>
+              <Textarea
+                autosize
+                minRows={2}
+                value={providerSettings?.imagePromptPositiveTagsPrepend || ''}
+                placeholder={t('Reusable positive quality/style tags')}
+                onChange={(e) =>
+                  setProviderSettings({
+                    imagePromptPositiveTagsPrepend: e.currentTarget.value,
+                  })
+                }
+              />
+            </Stack>
+
+            <Text size="xs" c="chatbox-secondary">
+              {t('These values are prepended only for Image Creator requests and do not rewrite saved history prompts.')}
             </Text>
           </Stack>
         )}

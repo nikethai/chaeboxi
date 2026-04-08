@@ -1,11 +1,12 @@
 import { getModel } from '@shared/models'
 import { AIProviderNoImplementedPaintError, ChatboxAIAPIError } from '@shared/models/errors'
-import type { ImageGeneration, ImageGenerationModel } from '@shared/types'
+import { ModelProviderEnum, type ImageGeneration, type ImageGenerationModel } from '@shared/types'
 import { createModelDependencies } from '@/adapters'
 import { getLogger } from '@/lib/utils'
 import platform from '@/platform'
 import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
+import { composeImageGenerationPrompt } from '@/utils/imagePrompt'
 import { trackEvent } from '@/utils/track'
 import {
   addGeneratedImage,
@@ -20,6 +21,15 @@ import { queryClient } from './queryClient'
 import { settingsStore } from './settingsStore'
 
 const log = getLogger('image-generation-actions')
+
+function getGenerationPrompt(rawPrompt: string, model: ImageGenerationModel) {
+  if (model.provider !== ModelProviderEnum.OpenAI) {
+    return rawPrompt
+  }
+
+  const providerSettings = settingsStore.getState().providers?.[model.provider]
+  return composeImageGenerationPrompt(providerSettings, rawPrompt)
+}
 
 export interface GenerateImageParams {
   prompt: string
@@ -101,9 +111,11 @@ async function generateImages(recordId: string, params: GenerateImageParams): Pr
       has_reference: params.referenceImages.length > 0,
     })
 
+    const prompt = getGenerationPrompt(params.prompt, params.model)
+
     await model.paint(
       {
-        prompt: params.prompt,
+        prompt,
         images: referenceImageUrls.length > 0 ? referenceImageUrls : undefined,
         num: params.imageGenerateNum || 1,
         aspectRatio: params.aspectRatio,

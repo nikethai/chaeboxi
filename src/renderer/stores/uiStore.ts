@@ -66,8 +66,7 @@ export const uiStore = createStore(
         },
 
         setShowSidebar: (showSidebar: boolean) => {
-          console.log('setShowSidebar:', showSidebar)
-          set({ showSidebar })
+          set((state) => (state.showSidebar === showSidebar ? state : { showSidebar }))
         },
 
         setSidebarMode: (sidebarMode: 'chat' | 'task') => {
@@ -75,11 +74,15 @@ export const uiStore = createStore(
         },
 
         setOpenSearchDialog: (openSearchDialog: boolean, globalOnly = false) => {
-          set({ openSearchDialog, searchDialogGlobalOnly: globalOnly })
+          set((state) =>
+            state.openSearchDialog === openSearchDialog && state.searchDialogGlobalOnly === globalOnly
+              ? state
+              : { openSearchDialog, searchDialogGlobalOnly: globalOnly }
+          )
         },
 
         setOpenAboutDialog: (openAboutDialog: boolean) => {
-          set({ openAboutDialog })
+          set((state) => (state.openAboutDialog === openAboutDialog ? state : { openAboutDialog }))
         },
 
         setInputBoxWebBrowsingMode: (inputBoxWebBrowsingMode: boolean) => {
@@ -91,7 +94,7 @@ export const uiStore = createStore(
         },
 
         setWidthFull: (widthFull: boolean) => {
-          set({ widthFull })
+          set((state) => (state.widthFull === widthFull ? state : { widthFull }))
         },
 
         setMessageListElement: (messageListElement: RefObject<HTMLDivElement> | null) => {
@@ -201,7 +204,7 @@ export const uiStore = createStore(
         },
 
         setSidebarWidth: (sidebarWidth: number | null) => {
-          set({ sidebarWidth })
+          set((state) => (state.sidebarWidth === sidebarWidth ? state : { sidebarWidth }))
         },
       })
     ),

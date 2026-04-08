@@ -1,10 +1,10 @@
 import type { SearchResult } from '@shared/types'
-import WebSearch from './base'
+import WebSearch, { type WebSearchOptions } from './base'
 
 export class BingNewsSearch extends WebSearch {
-  async search(query: string, signal?: AbortSignal): Promise<SearchResult> {
-    const html = await this.fetchSerp(query, signal)
-    const items = this.extractItems(html)
+  async search(query: string, options?: WebSearchOptions, signal?: AbortSignal): Promise<SearchResult> {
+    const html = await this.fetchSerp(this.applyQueryFilters(query, options), signal)
+    const items = this.finalizeItems(this.extractItems(html), options)
     return { items }
   }
 

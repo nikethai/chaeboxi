@@ -15,12 +15,21 @@ Extract readable content from a URL. Use when you need detailed information from
 
 export const webSearchTool = tool({
   description:
-    'Search the web for current events and real-time information. Use short, concise queries (English preferred).',
+    'Search the web for current events and real-time information. Use short, concise queries (English preferred). Prefer includeDomains when the user requests specific sites.',
   inputSchema: z.object({
     query: z.string().describe('the search query'),
+    includeDomains: z
+      .array(z.string())
+      .optional()
+      .describe('Optional list of domains to include, e.g. ["danbooru.donmai.us", "pixiv.net"].'),
+    excludeDomains: z.array(z.string()).optional().describe('Optional list of domains to exclude from results.'),
+    maxResults: z.number().int().min(1).max(10).optional().describe('Optional maximum number of results to return.'),
   }),
-  execute: async (input: { query: string }, { abortSignal }: { abortSignal?: AbortSignal }) => {
-    return await webSearchExecutor({ query: input.query }, { abortSignal })
+  execute: async (
+    input: { query: string; includeDomains?: string[]; excludeDomains?: string[]; maxResults?: number },
+    { abortSignal }: { abortSignal?: AbortSignal } = {}
+  ) => {
+    return await webSearchExecutor(input, { abortSignal })
   },
 })
 

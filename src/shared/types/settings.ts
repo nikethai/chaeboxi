@@ -71,6 +71,9 @@ export const ProviderSettingsSchema = z.object({
   comfyuiDefaultCfg: z.number().optional().catch(undefined),
   comfyuiDefaultSampler: z.string().optional().catch(undefined),
   comfyuiDefaultScheduler: z.string().optional().catch(undefined),
+  agentImageFlowEnabled: z.boolean().optional().catch(undefined),
+  agentImageResearchDomains: z.array(z.string()).optional().catch(undefined),
+  agentImageNormalizationPrompt: z.string().optional().catch(undefined),
 })
 
 const BuiltinProviderBaseInfoSchema = z.object({

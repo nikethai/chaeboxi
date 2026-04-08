@@ -1,5 +1,5 @@
 import type { SearchResult } from '@shared/types'
-import WebSearch from './base'
+import WebSearch, { type WebSearchOptions } from './base'
 
 interface SerperResultItem {
   title?: string
@@ -21,7 +21,7 @@ export class SerperSearch extends WebSearch {
     this.apiKey = apiKey
   }
 
-  async search(query: string, signal?: AbortSignal): Promise<SearchResult> {
+  async search(query: string, options?: WebSearchOptions, signal?: AbortSignal): Promise<SearchResult> {
     try {
       const response = (await this.fetch(this.SERPER_SEARCH_URL, {
         method: 'POST',
@@ -30,13 +30,13 @@ export class SerperSearch extends WebSearch {
           'X-API-KEY': this.apiKey,
         },
         body: {
-          q: query,
-          num: 10,
+          q: this.applyQueryFilters(query, options),
+          num: Math.min(options?.maxResults || 10, 10),
         },
         signal,
       })) as SerperResponse
 
-      const items = this.extractItems(response)
+      const items = this.finalizeItems(this.extractItems(response), options)
       return { items }
     } catch (error) {
       console.error('Serper search error:', error)

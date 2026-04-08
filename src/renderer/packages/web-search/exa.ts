@@ -1,5 +1,5 @@
 import type { SearchResult } from '@shared/types'
-import WebSearch from './base'
+import WebSearch, { type WebSearchOptions } from './base'
 
 interface ExaResultItem {
   title?: string
@@ -18,7 +18,7 @@ export class ExaSearch extends WebSearch {
     super()
   }
 
-  async search(query: string, signal?: AbortSignal): Promise<SearchResult> {
+  async search(query: string, options?: WebSearchOptions, signal?: AbortSignal): Promise<SearchResult> {
     try {
       const response = (await this.fetch(this.EXA_SEARCH_URL, {
         method: 'POST',
@@ -27,10 +27,10 @@ export class ExaSearch extends WebSearch {
           'x-api-key': this.apiKey,
         },
         body: {
-          query,
+          query: this.applyQueryFilters(query, options),
           type: 'neural',
           useAutoprompt: true,
-          numResults: 8,
+          numResults: Math.min(options?.maxResults || 8, 10),
           contents: {
             text: {
               maxCharacters: 2000,
@@ -40,8 +40,8 @@ export class ExaSearch extends WebSearch {
         signal,
       })) as ExaResponse
 
-      return {
-        items: (response.results || [])
+      const items = this.finalizeItems(
+        (response.results || [])
           .filter((result) => Boolean(result.url))
           .map((result) => ({
             title: result.title || result.url || '',
@@ -49,7 +49,10 @@ export class ExaSearch extends WebSearch {
             snippet: result.text || '',
             rawContent: result.text || null,
           })),
-      }
+        options
+      )
+
+      return { items }
     } catch (error) {
       console.error('Exa search error:', error)
       return { items: [] }

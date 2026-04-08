@@ -1,7 +1,7 @@
 import { getModel } from '@shared/models'
 import { AIProviderNoImplementedPaintError, ChatboxAIAPIError } from '@shared/models/errors'
 import type { ComfyUIGenerationParams } from '@shared/providers/definitions/models/comfyui-types'
-import { ModelProviderEnum, type ImageGeneration, type ImageGenerationModel } from '@shared/types'
+import type { ImageGeneration, ImageGenerationModel } from '@shared/types'
 import { createModelDependencies } from '@/adapters'
 import { getLogger } from '@/lib/utils'
 import platform from '@/platform'
@@ -24,10 +24,6 @@ import { settingsStore } from './settingsStore'
 const log = getLogger('image-generation-actions')
 
 function getGenerationPrompt(rawPrompt: string, model: ImageGenerationModel) {
-  if (model.provider !== ModelProviderEnum.OpenAI) {
-    return rawPrompt
-  }
-
   const providerSettings = settingsStore.getState().providers?.[model.provider]
   return composeImageGenerationPrompt(providerSettings, rawPrompt)
 }

@@ -64,6 +64,58 @@ type ModelTestResult = ModelTestState & {
   modelName: string
 }
 
+function ImagePromptPrependSection({
+  providerSettings,
+  setProviderSettings,
+}: {
+  providerSettings: any
+  setProviderSettings: (val: any) => void
+}) {
+  const { t } = useTranslation()
+
+  return (
+    <Stack gap="md">
+      <Stack gap="xxs">
+        <Text span fw="600">
+          {t('Image Character Prepend')}
+        </Text>
+        <Textarea
+          autosize
+          minRows={2}
+          value={providerSettings?.imagePromptCharacterPrepend || ''}
+          placeholder={String(t('Character name, traits, outfit, pose, and other reusable character tags'))}
+          onChange={(e) =>
+            setProviderSettings({
+              imagePromptCharacterPrepend: e.currentTarget.value,
+            })
+          }
+        />
+      </Stack>
+
+      <Stack gap="xxs">
+        <Text span fw="600">
+          {t('Image Positive Tags Prepend')}
+        </Text>
+        <Textarea
+          autosize
+          minRows={2}
+          value={providerSettings?.imagePromptPositiveTagsPrepend || ''}
+          placeholder={String(t('Reusable positive quality/style tags'))}
+          onChange={(e) =>
+            setProviderSettings({
+              imagePromptPositiveTagsPrepend: e.currentTarget.value,
+            })
+          }
+        />
+      </Stack>
+
+      <Text size="xs" c="chatbox-secondary">
+        {t('These values are prepended only for Image Creator requests and do not rewrite saved history prompts.')}
+      </Text>
+    </Stack>
+  )
+}
+
 function normalizeAPIHost(
   providerSettings: any,
   providerType: ModelProviderType
@@ -538,45 +590,10 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         )}
 
         {baseInfo.id === ModelProviderEnum.OpenAI && !baseInfo.isCustom && (
-          <Stack gap="md">
-            <Stack gap="xxs">
-              <Text span fw="600">
-                {t('Image Character Prepend')}
-              </Text>
-              <Textarea
-                autosize
-                minRows={2}
-                value={providerSettings?.imagePromptCharacterPrepend || ''}
-                placeholder={String(t('Character name, traits, outfit, pose, and other reusable character tags'))}
-                onChange={(e) =>
-                  setProviderSettings({
-                    imagePromptCharacterPrepend: e.currentTarget.value,
-                  })
-                }
-              />
-            </Stack>
-
-            <Stack gap="xxs">
-              <Text span fw="600">
-                {t('Image Positive Tags Prepend')}
-              </Text>
-              <Textarea
-                autosize
-                minRows={2}
-                value={providerSettings?.imagePromptPositiveTagsPrepend || ''}
-                placeholder={String(t('Reusable positive quality/style tags'))}
-                onChange={(e) =>
-                  setProviderSettings({
-                    imagePromptPositiveTagsPrepend: e.currentTarget.value,
-                  })
-                }
-              />
-            </Stack>
-
-            <Text size="xs" c="chatbox-secondary">
-              {t('These values are prepended only for Image Creator requests and do not rewrite saved history prompts.')}
-            </Text>
-          </Stack>
+          <ImagePromptPrependSection
+            providerSettings={providerSettings}
+            setProviderSettings={setProviderSettings}
+          />
         )}
 
         {baseInfo.id === ModelProviderEnum.OpenClaw && (
@@ -1104,6 +1121,11 @@ function ComfyUISettingsSection({
           </Stack>
         </Flex>
       </Stack>
+
+      <ImagePromptPrependSection
+        providerSettings={providerSettings}
+        setProviderSettings={setProviderSettings}
+      />
 
       {/* Default Negative Prompt */}
       <Stack gap="xxs">

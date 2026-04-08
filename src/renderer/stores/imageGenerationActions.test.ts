@@ -94,6 +94,10 @@ vi.mock('@/stores/settingsStore', () => ({
           imagePromptCharacterPrepend: '1girl, blue eyes',
           imagePromptPositiveTagsPrepend: 'masterpiece, best quality',
         },
+        comfyui: {
+          imagePromptCharacterPrepend: '1girl, blue eyes',
+          imagePromptPositiveTagsPrepend: 'masterpiece, best quality',
+        },
       },
     }),
   },
@@ -154,7 +158,7 @@ describe('imageGenerationActions', () => {
       paint: paintMock,
     })
 
-    const { createAndGenerate } = await import('./imageGenerationActions')
+    const { createAndGenerate } = await import('./imageGenerationActions.js')
 
     const createdId = await createAndGenerate({
       prompt: rawPrompt,
@@ -214,7 +218,7 @@ describe('imageGenerationActions', () => {
       paint: paintMock,
     })
 
-    const { retryGeneration } = await import('./imageGenerationActions')
+    const { retryGeneration } = await import('./imageGenerationActions.js')
 
     await retryGeneration(record.id)
 
@@ -229,6 +233,64 @@ describe('imageGenerationActions', () => {
     })
     await vi.waitFor(() => {
       expect(queryClientInvalidateQueriesMock).toHaveBeenCalled()
+    })
+  })
+
+  it('applies provider-specific prepend settings for ComfyUI image generation', async () => {
+    const rawPrompt = 'neon alley at night'
+    const record = {
+      id: 'record-3',
+      prompt: rawPrompt,
+      referenceImages: [],
+      generatedImages: [],
+      createdAt: Date.now(),
+      model: {
+        provider: 'comfyui',
+        modelId: 'comfyui-txt2img',
+      },
+      status: 'pending' as const,
+    }
+    const paintMock = vi.fn(async (_params: unknown, _signal: unknown, callback?: (dataUrl: string) => Promise<void>) => {
+      await callback?.('data:image/png;base64,abc')
+      return ['data:image/png;base64,abc']
+    })
+
+    createRecordMock.mockResolvedValue(record)
+    updateRecordMock.mockResolvedValue(record)
+    addGeneratedImageMock.mockResolvedValue({
+      ...record,
+      generatedImages: ['stored-image'],
+    })
+    createModelDependenciesMock.mockResolvedValue({
+      storage: {
+        getImage: vi.fn(),
+      },
+    })
+    getModelMock.mockReturnValue({
+      paint: paintMock,
+    })
+
+    const { createAndGenerate } = await import('./imageGenerationActions.js')
+
+    await createAndGenerate({
+      prompt: rawPrompt,
+      referenceImages: [],
+      model: {
+        provider: 'comfyui',
+        modelId: 'comfyui-txt2img',
+      },
+      imageGenerateNum: 1,
+      aspectRatio: 'vertical',
+    })
+
+    await vi.waitFor(() => {
+      expect(paintMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          prompt: '1girl, blue eyes, masterpiece, best quality, neon alley at night',
+        }),
+        undefined,
+        expect.any(Function),
+      )
     })
   })
 })

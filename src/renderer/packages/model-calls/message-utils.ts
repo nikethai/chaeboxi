@@ -105,9 +105,9 @@ async function convertAssistantContentParts(
 
 export async function convertToModelMessages(
   messages: Message[],
-  options?: { modelSupportVision: boolean }
+  options?: { modelSupportVision: boolean; dependencies?: ModelDependencies }
 ): Promise<ModelMessage[]> {
-  const dependencies = await createModelDependencies()
+  const dependencies = options?.dependencies ?? (await createModelDependencies())
   const results = await Promise.all(
     messages.map(async (m): Promise<ModelMessage | null> => {
       switch (m.role) {

@@ -90,8 +90,8 @@ export class ComputationQueue {
   }
 
   private maxConcurrency = 1
-  /** Interval between task executions (ms) - helps visualize progress */
-  private taskIntervalMs = 5
+  /** Interval between task executions (ms) - set to 0 to avoid unnecessary delays */
+  private taskIntervalMs = 0
   private listeners = new Set<() => void>()
   private taskExecutor: ((task: ComputationTask) => Promise<TaskResult>) | null = null
 

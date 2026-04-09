@@ -11,6 +11,7 @@ import NiceModal from '@ebay/nice-modal-react'
 import { t } from 'i18next'
 import { uniqueId } from 'lodash'
 import { createModelDependencies } from '@/adapters'
+import type { ModelDependencies } from '@shared/types/adapters'
 import type { ToolApprovalModalResult } from '@/modals/ToolApproval'
 import { settingsStore } from '@/stores/settingsStore'
 import { getToolApproval, toolApprovalStore } from '@/stores/toolApprovalStore'
@@ -89,7 +90,8 @@ async function handleSearchResult(
   coreMessages: ModelMessage[],
   controller: AbortController,
   onResultChange: OnResultChange,
-  params: { providerOptions?: ProviderOptions; onStatusChange?: OnStatusChange; maxSteps?: number }
+  params: { providerOptions?: ProviderOptions; onStatusChange?: OnStatusChange; maxSteps?: number },
+  dependencies?: ModelDependencies
 ) {
   if (!result?.searchResults?.length || result.type === 'none') {
     const chatResult = await model.chat(coreMessages, {
@@ -116,7 +118,7 @@ async function handleSearchResult(
       ? constructMessagesWithKnowledgeBaseResults(messages, result.searchResults)
       : constructMessagesWithSearchResults(messages, result.searchResults)
 
-  const chatResult = await model.chat(await convertToModelMessages(messagesWithResults), {
+  const chatResult = await model.chat(await convertToModelMessages(messagesWithResults, { modelSupportVision: true, dependencies }), {
     signal: controller.signal,
     onResultChange: (data) => {
       if (data.contentParts) {
@@ -132,7 +134,7 @@ async function handleSearchResult(
   return { result: withSearchMetadata(chatResult), coreMessages }
 }
 
-async function ocrMessages(messages: Message[]) {
+async function ocrMessages(messages: Message[], dependencies: ModelDependencies) {
   const settings = settingsStore.getState().getSettings()
   const hasUserOcrModel = settings.ocrModel?.provider && settings.ocrModel?.model
 
@@ -147,7 +149,6 @@ async function ocrMessages(messages: Message[]) {
   }
   const ocrProviderName = ocrModelSetting.provider
   try {
-    const dependencies = await createModelDependencies()
     const modelSettings = getModelSettings(settings, ocrModelSetting.provider, ocrModelSetting.model)
     const ocrModel = getModel(modelSettings, settings, { uuid: '123' }, dependencies)
     await imageOCR(ocrModel, messages)
@@ -331,6 +332,9 @@ export async function streamText(
   }
   let coreMessages: ModelMessage[] = []
 
+  // Create dependencies once for the entire pipeline
+  const dependencies = await createModelDependencies()
+
   // for model not support tool use, use prompt engineering to handle knowledge base and web search
   const needFileToolSet = hasFileOrLink && model.isSupportToolUse()
   const kbNotSupported = knowledgeBase && !model.isSupportToolUse('knowledge-base')
@@ -399,7 +403,7 @@ export async function streamText(
       !model.isSupportVision() &&
       messages.some((m) => m.contentParts.some((c) => c.type === 'image' && !c.ocrResult))
     ) {
-      await ocrMessages(messages)
+      await ocrMessages(messages, dependencies)
       infoParts.push({
         type: 'info',
         text: t('Current model {{modelName}} does not support image input, using OCR to process images', {
@@ -408,7 +412,7 @@ export async function streamText(
       })
     }
 
-    coreMessages = await convertToModelMessages(messages, { modelSupportVision: model.isSupportVision() })
+    coreMessages = await convertToModelMessages(messages, { modelSupportVision: model.isSupportVision(), dependencies })
 
     // 3. handle model not support tool use scenarios
     if (kbNotSupported || webNotSupported) {
@@ -439,7 +443,8 @@ export async function streamText(
           coreMessages,
           controller,
           onResultChange,
-          params
+          params,
+          dependencies
         )
       }
       // 只有知识库不支持工具调用
@@ -461,7 +466,8 @@ export async function streamText(
           coreMessages,
           controller,
           onResultChange,
-          params
+          params,
+          dependencies
         )
       }
       // 只有网络搜索不支持工具调用
@@ -482,7 +488,8 @@ export async function streamText(
           coreMessages,
           controller,
           onResultChange,
-          params
+          params,
+          dependencies
         )
       }
     }

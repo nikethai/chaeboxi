@@ -14,12 +14,12 @@ import {
   type MessagePicture,
   type PlanPhase,
   ModelProviderEnum,
+  type Session,
   type SessionSettings,
   type SessionType,
   type Settings,
 } from '@shared/types'
 import { cloneMessage, getMessageText, mergeMessages } from '@shared/utils/message'
-import { identity, pickBy } from 'lodash'
 import { createModelDependencies } from '@/adapters'
 import * as appleAppStore from '@/packages/apple_app_store'
 import { getBuiltInCopilotById, myCopilotsAtom } from '@/hooks/useCopilots'
@@ -44,6 +44,7 @@ import { trackEvent } from '@/utils/track'
 import * as chatStore from '../chatStore'
 import { settingsStore } from '../settingsStore'
 import { uiStore } from '../uiStore'
+import { extractDanbooruTagListFromText } from './agentImageFlow'
 import { createNewFork, findMessageLocation } from './forks'
 import { insertMessageAfter, modifyMessage, submitNewUserMessage } from './messages'
 import { messageQueueStore } from './messageQueue'
@@ -85,68 +86,6 @@ function getTextFromContentParts(contentParts: Message['contentParts']): string 
     .map((part) => part.text)
     .join('\n')
     .trim()
-}
-
-function normalizeTagListCandidate(value: string): string | null {
-  const parts = value
-    .replace(/```[\w-]*\n?/g, '')
-    .replace(/```/g, '')
-    .split(/[\n,]+/)
-    .map((part) =>
-      part
-        .trim()
-        .replace(/^[-*]\s+/, '')
-        .replace(/^\d+\.\s+/, '')
-        .replace(/^(?:final|normalized|danbooru(?:-style)?|tag(?: list)?|prompt)\s*:\s*/i, '')
-        .trim()
-    )
-    .filter(Boolean)
-
-  if (parts.length < 4) {
-    return null
-  }
-
-  const normalized = parts.join(', ')
-  if (/(here is|here are|based on|i found|research|analysis)/i.test(normalized)) {
-    return null
-  }
-  if (/[.!?]\s+[A-Z]/.test(normalized)) {
-    return null
-  }
-
-  return normalized
-}
-
-function extractDanbooruTagListFromText(text: string): string | null {
-  const trimmed = text.trim()
-  if (!trimmed) {
-    return null
-  }
-
-  const fencedMatches = Array.from(trimmed.matchAll(/```(?:[\w-]+)?\n([\s\S]*?)```/g))
-    .map((match) => normalizeTagListCandidate(match[1] || ''))
-    .filter((candidate): candidate is string => Boolean(candidate))
-  if (fencedMatches.length > 0) {
-    return fencedMatches.at(-1) || null
-  }
-
-  const paragraphs = trimmed
-    .split(/\n\s*\n/)
-    .map((paragraph) => normalizeTagListCandidate(paragraph))
-    .filter((candidate): candidate is string => Boolean(candidate))
-  if (paragraphs.length > 0) {
-    return paragraphs.at(-1) || null
-  }
-
-  const lines = trimmed
-    .split('\n')
-    .map((line) => normalizeTagListCandidate(line))
-    .filter((candidate): candidate is string => Boolean(candidate))
-  if (lines.length > 0) {
-    return lines.at(-1) || null
-  }
-
-  return normalizeTagListCandidate(trimmed)
 }
 
 function hasGenerateImageToolCall(contentParts: Message['contentParts']): boolean {
@@ -405,12 +344,17 @@ export function createLoadingPictures(n: number): MessagePicture[] {
 export async function generate(
   sessionId: string,
   targetMsg: Message,
-  options?: { operationType?: 'send_message' | 'regenerate'; truncateTokenLimit?: number }
+  options?: {
+    operationType?: 'send_message' | 'regenerate'
+    truncateTokenLimit?: number
+    prefetchedSession?: Session
+    prefetchedSettings?: SessionSettings
+  }
 ) {
   let shouldProcessQueuedMessages = false
-  // Get dependent data
-  const session = await chatStore.getSession(sessionId)
-  const settings = await chatStore.getSessionSettings(sessionId)
+  // Get dependent data — use pre-fetched values when available to avoid redundant async lookups
+  const session = options?.prefetchedSession ?? (await chatStore.getSession(sessionId))
+  const settings = options?.prefetchedSettings ?? (await chatStore.getSessionSettings(sessionId))
   const globalSettings = settingsStore.getState().getSettings()
   const configs = await platform.getConfig()
   if (!session || !settings) {
@@ -533,9 +477,13 @@ export async function generate(
           if (updated.tokenSpeed !== undefined) {
             lastTokenSpeed = updated.tokenSpeed
           }
+          // Direct field merge instead of pickBy(updated, identity) + spread.
+          // pickBy with identity drops falsy values (0, false, '') which is a silent bug;
+          // explicit assignment is both faster and more correct.
           targetMsg = {
             ...targetMsg,
-            ...pickBy(updated, identity),
+            contentParts: updated.contentParts ?? targetMsg.contentParts,
+            cancel: updated.cancel ?? targetMsg.cancel,
             status: textLength > 0 ? [] : targetMsg.status,
             firstTokenLatency,
             tokenSpeed: lastTokenSpeed,
@@ -635,7 +583,10 @@ export async function generate(
           generating: false,
           cancel: undefined,
           contentParts: finalContentParts,
-          tokensUsed: targetMsg.tokensUsed ?? estimateTokensFromMessages([...promptMsgs, targetMsg]),
+          tokensUsed:
+            targetMsg.tokensUsed ??
+            result.usage?.totalTokens ??
+            estimateTokensFromMessages([...promptMsgs, targetMsg]),
           status: [],
           finishReason: result.finishReason,
           usage: result.usage,
@@ -747,6 +698,12 @@ export async function generate(
   }
 
   if (shouldProcessQueuedMessages) {
+    // Run full compaction check in background after response is shown to user.
+    // This handles modal prompts and summarization without blocking the send path.
+    runCompactionWithUIState(sessionId).catch((err) => {
+      console.warn('[generate] Post-response compaction failed:', err)
+    })
+
     while (messageQueueStore.getState().getQueuedCount(sessionId) > 0) {
       const nextQueuedMessage = messageQueueStore.getState().dequeueMessage(sessionId)
       if (!nextQueuedMessage) {
@@ -1030,11 +987,12 @@ export async function genMessageContext(
       }
     }
 
-    prompts = [msg, ...prompts]
+    prompts.push(msg)
     _totalLen += size
   }
+  prompts.reverse()
   if (head) {
-    prompts = [head, ...prompts]
+    prompts.unshift(head)
   }
   return prompts
 }

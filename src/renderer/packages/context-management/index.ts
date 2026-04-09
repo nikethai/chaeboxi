@@ -1,5 +1,6 @@
 export type { CompactionOptions, CompactionResult } from './compaction'
 export {
+  checkSessionOverflowFast,
   isAutoCompactionEnabled,
   isCompactionInProgress,
   needsCompaction,

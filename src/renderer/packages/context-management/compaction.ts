@@ -1,5 +1,5 @@
 import NiceModal from '@ebay/nice-modal-react'
-import type { CompactionPoint, Message, SessionSettings, Settings } from '@shared/types'
+import type { CompactionPoint, Message, Session, SessionSettings, Settings } from '@shared/types'
 import { createMessage } from '@shared/types'
 import type { ContextOverflowAction } from '@/modals/ContextOverflow'
 import { getTokenizerType } from '@/packages/token-estimation'
@@ -53,6 +53,43 @@ export function isAutoCompactionEnabled(sessionSettings?: SessionSettings, globa
 
 export function isCompactionInProgress(sessionId: string): boolean {
   return ongoingCompactions.has(sessionId)
+}
+
+/**
+ * Fast synchronous overflow check using only cached token counts.
+ * Does NOT show modals, make LLM calls, or trigger computation.
+ * Use this pre-send to get a quick truncation budget; defer full
+ * compaction (with modal/summarization) to post-response.
+ */
+export function checkSessionOverflowFast(
+  session: Session,
+  globalSettings: Settings
+): { isOverflow: boolean; truncateTokenLimit?: number } {
+  if (!isAutoCompactionEnabled(session.settings, globalSettings)) {
+    return { isOverflow: false }
+  }
+
+  const providerId = session.settings?.provider ?? globalSettings.defaultChatModel?.provider
+  const modelId = session.settings?.modelId ?? globalSettings.defaultChatModel?.model
+  if (!modelId) return { isOverflow: false }
+
+  // Use only cached token counts from messages — never triggers async computation
+  const mergedSettings = { ...globalSettings, ...session.settings } as SessionSettings
+  const contextMessages = getContextMessagesForTokenEstimation(session, { settings: mergedSettings })
+  const estimatedTokens = sumCachedTokensFromMessages(contextMessages)
+
+  const contextWindow = getModelContextWindowFromSettings(providerId, modelId, globalSettings)
+  const result = checkOverflow({
+    tokens: estimatedTokens,
+    modelId,
+    settings: { compactionThreshold: globalSettings.compactionThreshold },
+    contextWindow,
+  })
+
+  if (result.isOverflow) {
+    return { isOverflow: true, truncateTokenLimit: result.thresholdTokens ?? estimatedTokens }
+  }
+  return { isOverflow: false }
 }
 
 export async function needsCompaction(sessionId: string): Promise<boolean> {

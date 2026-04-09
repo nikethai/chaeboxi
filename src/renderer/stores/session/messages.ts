@@ -10,7 +10,7 @@ import {
 import { createMessage, type Message } from '@shared/types'
 import { countMessageWords } from '@shared/utils/message'
 import { createModelDependencies } from '@/adapters'
-import { runCompactionWithUIState } from '@/packages/context-management'
+import { checkSessionOverflowFast, runCompactionWithUIState } from '@/packages/context-management'
 import { getModelDisplayName } from '@/packages/model-setting-utils'
 import { estimateTokensFromMessages } from '@/packages/token'
 import platform from '@/platform'
@@ -129,18 +129,16 @@ export async function submitNewUserMessage(
     return
   }
 
-  // Run compaction check before sending message (blocking)
-  // Only for chat sessions with auto-compaction enabled
+  // Fast synchronous overflow check using cached token counts — no modal, no blocking.
+  // Full compaction (with modal/summarization) is deferred to post-response in generate().
   let truncateTokenLimit: number | undefined
   if (session.type === 'chat' || session.type === undefined) {
-    const compactionResult = await runCompactionWithUIState(sessionId)
-    if (!compactionResult.success) {
-      throw compactionResult.error ?? new Error('Compaction failed')
-    }
-    truncateTokenLimit = compactionResult.truncateTokenLimit
-    // Reserve space for the outgoing user message so the truncation budget
-    // accounts for tokens that will be added after this check.
-    if (truncateTokenLimit) {
+    const globalSettings = settingsStore.getState().getSettings()
+    const quickCheck = checkSessionOverflowFast(session, globalSettings)
+    if (quickCheck.isOverflow && quickCheck.truncateTokenLimit) {
+      truncateTokenLimit = quickCheck.truncateTokenLimit
+      // Reserve space for the outgoing user message so the truncation budget
+      // accounts for tokens that will be added after this check.
       const userMsgTokens = estimateTokensFromMessages([params.newUserMsg])
       truncateTokenLimit = Math.max(0, truncateTokenLimit - userMsgTokens)
     }
@@ -246,6 +244,11 @@ export async function submitNewUserMessage(
     if (freshSession?.planMode && freshSession?.agentMode && !freshSession?.planPhase) {
       await chatStore.updateSession(sessionId, { planPhase: 'planning' })
     }
-    await generate(sessionId, newAssistantMsg, { operationType: 'send_message', truncateTokenLimit })
+    await generate(sessionId, newAssistantMsg, {
+      operationType: 'send_message',
+      truncateTokenLimit,
+      prefetchedSession: freshSession ?? undefined,
+      prefetchedSettings: settings,
+    })
   }
 }

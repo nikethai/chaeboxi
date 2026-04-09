@@ -544,26 +544,65 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     let currentTextPart: MessageTextPart | undefined
     let currentReasoningPart: MessageReasoningPart | undefined
 
-    // Token speed tracking
+    // Token speed tracking — use character count (O(1) per chunk) instead of regex word splitting
     let streamStartTime: number | undefined
-    let outputTokenCount = 0
+    let outputCharCount = 0
+
+    // RAF-based update batching: accumulate changes, emit at screen refresh rate (~60fps)
+    // contentParts is mutated in-place by processStreamChunk, so RAF always sees latest data
+    const hasRAF = typeof requestAnimationFrame === 'function'
+    let rafId: number | undefined
+    let pendingUpdate = false
+    let lastEmittedSpeed: number | undefined
+
+    const computeSpeed = (): number | undefined => {
+      const elapsedSec = streamStartTime !== undefined ? (Date.now() - streamStartTime) / 1000 : 0
+      // Approximate: ~4 chars per token (much cheaper than regex split per chunk)
+      const approxTokens = Math.round(outputCharCount / 4)
+      return elapsedSec > 0.5 ? Math.round(approxTokens / elapsedSec) : undefined
+    }
+
+    const scheduleUpdate = () => {
+      if (pendingUpdate) return
+      pendingUpdate = true
+      if (hasRAF) {
+        rafId = requestAnimationFrame(() => {
+          pendingUpdate = false
+          rafId = undefined
+          lastEmittedSpeed = computeSpeed()
+          options.onResultChange?.({ contentParts, tokenSpeed: lastEmittedSpeed })
+        })
+      } else {
+        // Fallback for non-browser environments (Node/tests)
+        lastEmittedSpeed = computeSpeed()
+        options.onResultChange?.({ contentParts, tokenSpeed: lastEmittedSpeed })
+        pendingUpdate = false
+      }
+    }
+
+    const flushUpdate = () => {
+      if (rafId !== undefined && hasRAF) {
+        cancelAnimationFrame(rafId)
+        rafId = undefined
+      }
+      pendingUpdate = false
+      lastEmittedSpeed = computeSpeed()
+      options.onResultChange?.({ contentParts, tokenSpeed: lastEmittedSpeed })
+    }
 
     try {
       for await (const chunk of result.fullStream) {
-        // console.debug('stream chunk', chunk)
-
         // Handle error chunks
         if (chunk.type === 'error') {
           this.handleError(chunk.error)
         }
 
-        // Count text and reasoning tokens for speed calculation
+        // Track character count for speed estimation (O(1) per chunk)
         if (chunk.type === 'text-delta' || chunk.type === 'reasoning-delta') {
           if (streamStartTime === undefined) {
             streamStartTime = Date.now()
           }
-          // Approximate token count: split on spaces + punctuation, similar to common tokenizers
-          outputTokenCount += chunk.text.split(/\s+/).filter(Boolean).length
+          outputCharCount += chunk.text.length
         }
 
         const chunkResult = await this.processStreamChunk(
@@ -576,22 +615,32 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
         currentTextPart = chunkResult.currentTextPart
         currentReasoningPart = chunkResult.currentReasoningPart
 
-        // Emit live token speed with each content update
-        const elapsedSec = streamStartTime !== undefined ? (Date.now() - streamStartTime) / 1000 : 0
-        const liveSpeed = elapsedSec > 0 ? Math.round(outputTokenCount / elapsedSec) : undefined
-        options.onResultChange?.({ contentParts, tokenSpeed: liveSpeed })
+        // Tool-related chunks flush immediately so users see tool execution feedback right away
+        if (
+          chunk.type === 'tool-call' ||
+          chunk.type === 'tool-result' ||
+          chunk.type === 'tool-call-streaming-start'
+        ) {
+          flushUpdate()
+        } else {
+          scheduleUpdate()
+        }
       }
     } catch (error) {
       // Ensure reasoning parts get their duration set even if streaming is interrupted
       if (currentReasoningPart?.startTime && !currentReasoningPart.duration) {
         currentReasoningPart.duration = Date.now() - currentReasoningPart.startTime
       }
+      // Final flush to emit whatever we have before re-throwing
+      flushUpdate()
       throw error
     }
 
+    // Final flush to ensure last chunk is emitted
+    flushUpdate()
+
     // Compute final token speed for persistence
-    const finalElapsedSec = streamStartTime !== undefined ? (Date.now() - streamStartTime) / 1000 : 0
-    const finalTokenSpeed = finalElapsedSec > 0 ? Math.round(outputTokenCount / finalElapsedSec) : undefined
+    const finalTokenSpeed = computeSpeed()
     const providerMetadata = await result.providerMetadata
     const finalResultMetadata = this.extractFinalResultMetadata(contentParts, providerMetadata)
 

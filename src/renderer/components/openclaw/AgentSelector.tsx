@@ -11,8 +11,9 @@ import {
   openclawAgentsAtom,
   openclawGatewayStatusAtom,
   openclawSelectedAgentIdAtom,
-  type OpenClawAgent,
 } from '@/stores/atoms/openclawAtoms'
+import type { AgentInfo } from '@shared/openclaw/gateway/types'
+import { getOrCreateGatewayClient } from '@shared/models/openclaw'
 
 interface AgentSelectorProps {
   className?: string
@@ -21,29 +22,11 @@ interface AgentSelectorProps {
   position?: 'top-end' | 'bottom-end' | 'top-start' | 'bottom-start'
 }
 
-export interface OpenClawListAgentsResponse {
-  agents: Array<{
-    id: string
-    name: string
-    description?: string
-    capabilities?: string[]
-  }>
-}
-
-async function listAgents(apiHost: string, apiKey: string): Promise<OpenClawAgent[]> {
-  const url = `${apiHost}/agents`
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-    },
-  })
-
-  if (!response.ok) {
-    throw new Error(`Failed to list agents: ${response.statusText}`)
-  }
-
-  const data: OpenClawListAgentsResponse = await response.json()
-  return data.agents.map((agent) => ({
+async function fetchAgentsFromGateway(apiHost: string, apiKey: string): Promise<AgentInfo[]> {
+  const client = getOrCreateGatewayClient(apiHost, apiKey)
+  await client.connect()
+  const response = await client.listAgents()
+  return response.agents.map((agent) => ({
     id: agent.id,
     name: agent.name,
     description: agent.description,
@@ -72,10 +55,10 @@ export default function AgentSelector(props: AgentSelectorProps) {
   const fetchAgents = useCallback(async () => {
     if (!apiHost) return
     try {
-      const fetchedAgents = await listAgents(apiHost, apiKey)
-      setAgents(fetchedAgents)
+      const fetched = await fetchAgentsFromGateway(apiHost, apiKey)
+      setAgents(fetched)
     } catch (error) {
-      console.error('Failed to fetch OpenClaw agents:', error)
+      console.error('[OpenClaw] Failed to fetch agents:', error)
     }
   }, [apiHost, apiKey, setAgents])
 
@@ -111,24 +94,11 @@ export default function AgentSelector(props: AgentSelectorProps) {
             className
           )}
         >
-          {isLoading ? (
-            <Loader size={16} />
-          ) : (
-            <ProviderIcon size={18} provider="openclaw" />
-          )}
-          <Text
-            size="sm"
-            className={cn(
-              'text-[var(--chatbox-tint-secondary)] truncate',
-              'max-w-[120px]'
-            )}
-          >
+          {isLoading ? <Loader size={16} /> : <ProviderIcon size={18} provider="openclaw" />}
+          <Text size="sm" className={cn('text-[var(--chatbox-tint-secondary)] truncate', 'max-w-[120px]')}>
             {displayText}
           </Text>
-          <IconChevronRight
-            size={14}
-            className="text-[var(--chatbox-tint-tertiary)] rotate-90 flex-shrink-0"
-          />
+          <IconChevronRight size={14} className="text-[var(--chatbox-tint-tertiary)] rotate-90 flex-shrink-0" />
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>

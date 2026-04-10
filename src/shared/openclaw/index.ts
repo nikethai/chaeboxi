@@ -1,7 +1,5 @@
-// OpenClaw module re-exports
-export { OpenClawGatewayClient } from './gateway'
+export { OpenClawGatewayClient, normalizeGatewayUrl } from './gateway'
 export type {
-  OpenClawGatewayClientOptions,
   AgentStreamEvent,
   ConnectParams,
   ConnectResponse,
@@ -18,4 +16,6 @@ export type {
   SessionMessage,
   AgentInvokeParams,
   AgentMessage,
+  AgentInfo,
+  AgentsListResponse,
 } from './gateway'

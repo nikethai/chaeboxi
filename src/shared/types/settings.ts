@@ -146,6 +146,7 @@ export const SessionSettingsSchema = GlobalSessionSettingsSchema.extend({
   providerOptions: ProviderOptionsSchema.optional().catch(undefined),
   autoCompaction: z.boolean().optional().catch(undefined),
   planMode: z.boolean().optional().catch(undefined),
+  openclawAgentId: z.string().optional().catch(undefined),
 })
 
 const UnifiedTokenUsageDetailSchema = z.object({
@@ -289,6 +290,25 @@ const MCPSettingsSchema = z.object({
   enabledBuiltinServers: z.array(z.string()),
 })
 
+// ===== OpenClaw Gateway Config =====
+
+export const OpenClawGatewayConfigSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  url: z.string(),
+  token: z.string().optional().catch(undefined),
+  lastConnected: z.number().optional().catch(undefined),
+  isDefault: z.boolean().optional().catch(undefined),
+})
+
+export type OpenClawGatewayConfig = z.infer<typeof OpenClawGatewayConfigSchema>
+
+const OpenClawSettingsSchema = z.object({
+  gateways: z.array(OpenClawGatewayConfigSchema).default([]),
+})
+
+export type OpenClawSettings = z.infer<typeof OpenClawSettingsSchema>
+
 export enum Theme {
   Dark,
   Light,
@@ -414,6 +434,7 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
 
   extension: ExtensionSettingsSchema,
   mcp: MCPSettingsSchema,
+  openclaw: OpenClawSettingsSchema,
 })
 
 // TODO: provider的 base info 和 settings混在一起了，可以考虑像 session settings 和 global settings一样拆开

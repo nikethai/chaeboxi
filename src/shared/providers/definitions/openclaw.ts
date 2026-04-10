@@ -20,16 +20,14 @@ export const openClawProvider = defineProvider({
     ],
   },
   listModels: async (config) => {
+    const { OpenClawGatewayClient } = await import('../../openclaw/gateway')
+    const client = new OpenClawGatewayClient(
+      config.formattedApiHost,
+      config.providerSetting.apiKey ? { token: config.providerSetting.apiKey } : {}
+    )
     try {
-      const { OpenClawGatewayClient } = await import('../../openclaw/gateway')
-      const client = new OpenClawGatewayClient(
-        config.formattedApiHost,
-        config.providerSetting.apiKey ? { token: config.providerSetting.apiKey } : {}
-      )
       await client.connect()
       const response = await client.listAgents()
-      client.disconnect()
-
       return response.agents.map((agent) => ({
         modelId: agent.id,
         nickname: agent.name,
@@ -43,6 +41,8 @@ export const openClawProvider = defineProvider({
           capabilities: ['tool_use'],
         },
       ]
+    } finally {
+      client.disconnect()
     }
   },
   createModel: (config) => {

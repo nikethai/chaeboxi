@@ -80,6 +80,7 @@ import { useUIStore } from '@/stores/uiStore'
 import { delay } from '@/utils'
 import { featureFlags } from '@/utils/feature-flags'
 import { trackEvent } from '@/utils/track'
+import { ModelProviderEnum } from '../../../shared/types'
 import type { KnowledgeBase, Message, SessionType, ShortcutSendValue } from '../../../shared/types'
 import * as dom from '../../hooks/dom'
 import * as sessionHelpers from '../../stores/sessionHelpers'
@@ -91,6 +92,7 @@ import ProviderImageIcon from '../icons/ProviderImageIcon'
 import KnowledgeBaseMenu from '../knowledge-base/KnowledgeBaseMenu'
 import ModelSelector from '../ModelSelector'
 import MCPMenu from '../mcp/MCPMenu'
+import AgentSelector from '../openclaw/AgentSelector'
 import { FileMiniCard, ImageMiniCard, LinkMiniCard } from './Attachments'
 import { ImageUploadInput } from './ImageUploadInput'
 import {
@@ -126,6 +128,7 @@ export type InputBoxProps = {
   }
   fullWidth?: boolean
   onSelectModel?(provider: string, model: string): void
+  onSelectAgent?(agentId: string): void
   onSubmit?(payload: InputBoxPayload): Promise<void>
   onStopGenerating?(): boolean
   onStartNewThread?(): boolean
@@ -144,6 +147,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       model,
       fullWidth = false,
       onSelectModel,
+      onSelectAgent,
       onSubmit,
       onStopGenerating,
       onStartNewThread,
@@ -1338,6 +1342,14 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     </Text>
                   </Flex>
                 </TokenCountMenu>
+
+                {model?.provider === ModelProviderEnum.OpenClaw && (
+                  <AgentSelector
+                    onSelectAgent={onSelectAgent}
+                    selectedAgentId={currentSessionMergedSettings?.openclawAgentId}
+                    position="top-end"
+                  />
+                )}
 
                 {/* Model Selector */}
                 <Tooltip

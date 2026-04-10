@@ -1,5 +1,3 @@
-// OpenClaw model implementation using the WebSocket gateway client
-
 import type { ModelMessage } from 'ai'
 import type {
   MessageContentParts,
@@ -15,21 +13,52 @@ import { OpenClawGatewayClient } from '../openclaw/gateway'
 import { ApiError } from './errors'
 import type { CallChatCompletionOptions, ModelInterface } from './types'
 
-const gatewayClientCache = new Map<string, OpenClawGatewayClient>()
+// Shared client cache — keyed by apiHost:apiKey
+const clientCache = new Map<string, OpenClawGatewayClient>()
+const MAX_CACHED_GATEWAY_CLIENTS = 1
 
-function getGatewayClient(apiHost: string, apiKey?: string): OpenClawGatewayClient {
-  const cacheKey = `${apiHost}:${apiKey || ''}`
-  if (!gatewayClientCache.has(cacheKey)) {
-    gatewayClientCache.set(cacheKey, new OpenClawGatewayClient(apiHost, { token: apiKey }))
-  }
-  return gatewayClientCache.get(cacheKey)!
+function getGatewayClientCacheKey(apiHost: string, apiKey?: string): string {
+  return `${apiHost}:${apiKey || ''}`
 }
 
-export function clearGatewayClientCache(): void {
-  gatewayClientCache.forEach((client) => {
+export function getOrCreateGatewayClient(apiHost: string, apiKey?: string): OpenClawGatewayClient {
+  const key = getGatewayClientCacheKey(apiHost, apiKey)
+  let client = clientCache.get(key)
+  if (!client) {
+    while (clientCache.size >= MAX_CACHED_GATEWAY_CLIENTS) {
+      const oldestKey = clientCache.keys().next().value
+      if (!oldestKey) {
+        break
+      }
+
+      const staleClient = clientCache.get(oldestKey)
+      staleClient?.disconnect()
+      clientCache.delete(oldestKey)
+    }
+
+    client = new OpenClawGatewayClient(apiHost, { token: apiKey })
+    clientCache.set(key, client)
+  } else {
+    clientCache.delete(key)
+    clientCache.set(key, client)
+  }
+  return client
+}
+
+export function evictGatewayClient(apiHost: string, apiKey?: string): void {
+  const key = getGatewayClientCacheKey(apiHost, apiKey)
+  const client = clientCache.get(key)
+  if (client) {
     client.disconnect()
-  })
-  gatewayClientCache.clear()
+    clientCache.delete(key)
+  }
+}
+
+export function clearAllGatewayClients(): void {
+  for (const client of clientCache.values()) {
+    client.disconnect()
+  }
+  clientCache.clear()
 }
 
 interface Options {
@@ -43,9 +72,12 @@ export default class OpenClawModel implements ModelInterface {
   public modelId: string
   private gatewayClient: OpenClawGatewayClient
 
-  constructor(public options: Options, _dependencies: ModelDependencies) {
+  constructor(
+    public options: Options,
+    _dependencies: ModelDependencies
+  ) {
     this.modelId = options.model.modelId
-    this.gatewayClient = getGatewayClient(options.apiHost, options.apiKey)
+    this.gatewayClient = getOrCreateGatewayClient(options.apiHost, options.apiKey)
   }
 
   isSupportVision(): boolean {
@@ -60,58 +92,25 @@ export default class OpenClawModel implements ModelInterface {
     return true
   }
 
-  private formatMessageForGateway(msg: ModelMessage): AgentMessage {
-    let content: string
-
-    if (typeof msg.content === 'string') {
-      content = msg.content
-    } else if (Array.isArray(msg.content)) {
-      content = msg.content
-        .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
-        .map((part) => part.text)
-        .join('\n')
-    } else {
-      content = ''
-    }
-
-    const role: 'user' | 'assistant' | 'system' =
-      msg.role === 'assistant' ? 'assistant' : msg.role === 'system' ? 'system' : 'user'
-
-    return { role, content }
-  }
-
-  private async ensureConnected(): Promise<void> {
-    if (!this.gatewayClient.connected) {
-      await this.gatewayClient.connect()
-    }
-  }
-
   async chat(messages: ModelMessage[], options: CallChatCompletionOptions): Promise<StreamTextResult> {
     try {
-      await this.ensureConnected()
+      // connect() is safe to call concurrently — returns existing promise if already in-flight
+      await this.gatewayClient.connect()
 
-      const lastMessage = this.formatMessageForGateway(messages[messages.length - 1])
-
+      const lastMessage = formatMessageForGateway(messages[messages.length - 1])
       if (!lastMessage.content) {
         throw new ApiError('No messages to send')
       }
 
-      const contentParts: MessageContentParts = []
-      let currentTextPart: MessageTextPart | undefined
-      const toolCallMap = new Map<string, MessageToolCallPart>()
+      const acc = new StreamAccumulator(options)
 
-      const stream = this.gatewayClient.invokeAgent(
-        this.modelId,
-        lastMessage,
-        options.sessionId,
-        options.signal
-      )
+      const stream = this.gatewayClient.invokeAgent(this.modelId, lastMessage, options.sessionId, options.signal)
 
       for await (const event of stream) {
-        ;({ currentTextPart } = this.processStreamEvent(event, contentParts, toolCallMap, currentTextPart, options))
+        acc.process(event)
       }
 
-      return { contentParts }
+      return { contentParts: acc.contentParts }
     } catch (error) {
       if (error instanceof Error && error.message === 'Not connected') {
         throw new ApiError('OpenClaw gateway not connected. Please check your settings.')
@@ -120,50 +119,75 @@ export default class OpenClawModel implements ModelInterface {
     }
   }
 
-  private processStreamEvent(
-    event: AgentStreamEvent,
-    contentParts: MessageContentParts,
-    toolCallMap: Map<string, MessageToolCallPart>,
-    currentTextPart: MessageTextPart | undefined,
-    options: CallChatCompletionOptions
-  ): { currentTextPart: MessageTextPart | undefined } {
+  async paint(): Promise<string[]> {
+    return []
+  }
+}
+
+function formatMessageForGateway(msg: ModelMessage): AgentMessage {
+  let content: string
+  if (typeof msg.content === 'string') {
+    content = msg.content
+  } else if (Array.isArray(msg.content)) {
+    content = msg.content
+      .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
+      .map((part) => part.text)
+      .join('\n')
+  } else {
+    content = ''
+  }
+
+  const role: 'user' | 'assistant' | 'system' =
+    msg.role === 'assistant' ? 'assistant' : msg.role === 'system' ? 'system' : 'user'
+
+  return { role, content }
+}
+
+class StreamAccumulator {
+  contentParts: MessageContentParts = []
+  private currentTextPart: MessageTextPart | undefined
+  private toolCallMap = new Map<string, MessageToolCallPart>()
+  private options: CallChatCompletionOptions
+
+  constructor(options: CallChatCompletionOptions) {
+    this.options = options
+  }
+
+  process(event: AgentStreamEvent): void {
     switch (event.type) {
       case 'chunk': {
-        if (!currentTextPart) {
-          currentTextPart = { type: 'text', text: event.delta }
-          contentParts.push(currentTextPart)
+        if (!this.currentTextPart) {
+          this.currentTextPart = { type: 'text', text: event.delta }
+          this.contentParts.push(this.currentTextPart)
         } else {
-          currentTextPart.text += event.delta
+          this.currentTextPart.text += event.delta
         }
-        options.onResultChange?.({ contentParts })
+        this.notify()
         break
       }
-
       case 'tool': {
         const toolCallPart: MessageToolCallPart = {
           type: 'tool-call',
           state: 'call',
-          toolCallId: event.invocationId + ':' + event.tool,
+          toolCallId: `${event.invocationId}:${event.tool}`,
           toolName: event.tool,
           args: event.input,
         }
-        toolCallMap.set(toolCallPart.toolCallId, toolCallPart)
-        contentParts.push(toolCallPart)
-        options.onResultChange?.({ contentParts })
+        this.toolCallMap.set(toolCallPart.toolCallId, toolCallPart)
+        this.contentParts.push(toolCallPart)
+        this.notify()
         break
       }
-
       case 'tool_result': {
-        const toolCallId = event.invocationId + ':' + event.tool
-        const existingCall = toolCallMap.get(toolCallId)
-        if (existingCall) {
-          existingCall.state = event.error ? 'error' : 'result'
-          existingCall.result = event.error ? { error: event.error } : event.output
+        const toolCallId = `${event.invocationId}:${event.tool}`
+        const existing = this.toolCallMap.get(toolCallId)
+        if (existing) {
+          existing.state = event.error ? 'error' : 'result'
+          existing.result = event.error ? { error: event.error } : event.output
         }
-        options.onResultChange?.({ contentParts })
+        this.notify()
         break
       }
-
       case 'done': {
         if (event.status === 'error' && event.error) {
           console.error('[OpenClaw] Agent error:', event.error)
@@ -171,11 +195,9 @@ export default class OpenClawModel implements ModelInterface {
         break
       }
     }
-
-    return { currentTextPart }
   }
 
-  async paint(): Promise<string[]> {
-    return []
+  private notify(): void {
+    this.options.onResultChange?.({ contentParts: this.contentParts })
   }
 }

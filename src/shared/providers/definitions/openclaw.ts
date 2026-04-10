@@ -1,12 +1,13 @@
 import { ModelProviderEnum, ModelProviderType } from '../../types'
 import { defineProvider } from '../registry'
 import OpenClawModel from '../../models/openclaw'
+import { OpenClawGatewayClient } from '../../openclaw/gateway'
 
 export const openClawProvider = defineProvider({
   id: ModelProviderEnum.OpenClaw,
   name: 'OpenClaw',
   type: ModelProviderType.OpenAI,
-  description: 'Local OpenClaw gateway via WebSocket',
+  description: 'OpenClaw gateway via WebSocket',
   urls: {
     website: 'https://docs.openclaw.ai/',
   },
@@ -20,11 +21,10 @@ export const openClawProvider = defineProvider({
     ],
   },
   listModels: async (config) => {
-    const { OpenClawGatewayClient } = await import('../../openclaw/gateway')
-    const client = new OpenClawGatewayClient(
-      config.formattedApiHost,
-      config.providerSetting.apiKey ? { token: config.providerSetting.apiKey } : {}
-    )
+    const client = new OpenClawGatewayClient(config.formattedApiHost, {
+      token: config.providerSetting.apiKey || undefined,
+    })
+
     try {
       await client.connect()
       const response = await client.listAgents()

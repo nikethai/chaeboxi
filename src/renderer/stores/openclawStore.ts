@@ -27,11 +27,8 @@ export const openclawStore = createStore<OpenClawSettings & Action>()(
         const newGateway: OpenClawGatewayConfig = { id, ...config }
 
         set((state) => {
-          // If this is the first gateway or marked as default, ensure it's the only default
           if (newGateway.isDefault || state.gateways.length === 0) {
-            state.gateways.forEach((g) => {
-              g.isDefault = false
-            })
+            for (const g of state.gateways) g.isDefault = false
             newGateway.isDefault = true
           }
           state.gateways.push(newGateway)
@@ -45,7 +42,6 @@ export const openclawStore = createStore<OpenClawSettings & Action>()(
         const gateway = get().gateways.find((g) => g.id === id)
         set((state) => {
           state.gateways = state.gateways.filter((g) => g.id !== id)
-          // If we removed the default, make the first remaining gateway the default
           if (gateway?.isDefault && state.gateways.length > 0) {
             state.gateways[0].isDefault = true
           }
@@ -58,18 +54,8 @@ export const openclawStore = createStore<OpenClawSettings & Action>()(
           const index = state.gateways.findIndex((g) => g.id === id)
           if (index === -1) return
 
-          const gateway = state.gateways[index]
-          // Short-circuit: no actual changes
-          const hasChanges = Object.keys(updates).some(
-            (key) => gateway[key as keyof typeof gateway] !== updates[key as keyof typeof updates]
-          )
-          if (!hasChanges) return
-
-          // If setting as default, unset other defaults first
           if (updates.isDefault) {
-            state.gateways.forEach((g) => {
-              g.isDefault = false
-            })
+            for (const g of state.gateways) g.isDefault = false
           }
           Object.assign(state.gateways[index], updates)
         })
@@ -87,59 +73,54 @@ export const openclawStore = createStore<OpenClawSettings & Action>()(
 
       setActiveGateway: (id) => {
         set((state) => {
-          // Short-circuit: if already active, skip update
           const currentDefault = state.gateways.find((g) => g.isDefault)
           if (currentDefault?.id === id) return
 
-          state.gateways.forEach((g) => {
-            g.isDefault = g.id === id
-          })
+          for (const g of state.gateways) g.isDefault = g.id === id
         })
         log.info(`[OpenClaw] Set active gateway: ${id}`)
       },
 
-      getSettings: () => {
-        const store = get()
-        return {
-          gateways: store.gateways,
-        }
-      },
+      getSettings: () => ({
+        gateways: get().gateways,
+      }),
     }))
   )
 )
 
-// Sync openclawStore with settingsStore's openclaw field
+// One-directional sync: settingsStore → openclawStore (hydration only)
+// openclawStore writes back to settingsStore on changes
 let _initialized = false
+let _syncing = false
 
 export function initOpenClawStore() {
   if (_initialized) return
   _initialized = true
 
-  // Lazy import to avoid circular dependency
   import('./settingsStore').then(({ settingsStore }) => {
-    // Sync from settings to openclawStore on hydration
+    // On settingsStore hydration, seed openclawStore
     settingsStore.subscribe(
-      (state: any) => state.openclaw,
-      (openclawSettings: OpenClawSettings | undefined) => {
-        if (openclawSettings?.gateways) {
-          openclawStore.setState((state) => {
-            state.gateways = openclawSettings.gateways
-          })
-        }
+      (state) => (state as Record<string, unknown>).openclaw as OpenClawSettings | undefined,
+      (openclawSettings) => {
+        if (_syncing || !openclawSettings?.gateways) return
+        _syncing = true
+        openclawStore.setState((state) => {
+          state.gateways = openclawSettings.gateways
+        })
+        _syncing = false
       }
     )
 
-    // Sync from openclawStore to settings when openclawStore changes
+    // Write openclawStore changes back to settingsStore
     openclawStore.subscribe(
       (state) => state.gateways,
       (gateways) => {
-        // Equality guard: only write if actually changed
-        const currentSettings = settingsStore.getState()
-        if (currentSettings.openclaw?.gateways === gateways) return
-
-        settingsStore.setState((state: any) => {
-          state.openclaw = { gateways }
+        if (_syncing) return
+        _syncing = true
+        settingsStore.setState((state) => {
+          ;(state as Record<string, unknown>).openclaw = { gateways }
         })
+        _syncing = false
       }
     )
   })

@@ -1,5 +1,3 @@
-// OpenClaw Gateway WebSocket client implementation
-
 import type {
   AgentInvokeParams,
   AgentMessage,
@@ -7,23 +5,15 @@ import type {
   ConnectParams,
   ConnectResponse,
   ConnectionState,
-  GatewayError,
   GatewayInfo,
   GatewayMessage,
   HealthStatus,
   MessageId,
   PresenceUpdate,
-  RequestFrame,
   ResponseFrame,
   SessionInfo,
 } from './types'
-import {
-  createReq,
-  isEvent,
-  isResponse,
-  parseMessage,
-  serializeMessage,
-} from './protocol'
+import { createReq, isEvent, isResponse, parseMessage, serializeMessage } from './protocol'
 
 const DEFAULT_PORT = 18789
 const DEFAULT_RECONNECT_DELAY_MS = 1000
@@ -33,10 +23,11 @@ const DEFAULT_REQUEST_TIMEOUT_MS = 30000
 type EventHandler = (event: string, data: unknown) => void
 type HealthHandler = (health: HealthStatus) => void
 type PresenceHandler = (presence: PresenceUpdate) => void
+type AgentEventWaiter = {
+  resolve: () => void
+  reject: (error: Error) => void
+}
 
-/**
- * OpenClaw Gateway WebSocket client for connecting to the OpenClaw gateway
- */
 export class OpenClawGatewayClient {
   private ws: WebSocket | null = null
   private url: string
@@ -46,7 +37,7 @@ export class OpenClawGatewayClient {
   private requestTimeoutMs: number
 
   private state: ConnectionState = 'disconnected'
-  private gatewayInfo: GatewayInfo | null = null
+  private info: GatewayInfo | null = null
   private messageId: MessageId = 1
 
   private pendingRequests = new Map<
@@ -65,85 +56,66 @@ export class OpenClawGatewayClient {
   private reconnectAttempt = 0
   private reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null
 
-  // Queue for streaming agent events
   private agentEventQueues = new Map<string, AgentStreamEvent[]>()
-  private agentEventResolvers = new Map<string, () => void>()
+  private agentEventResolvers = new Map<string, AgentEventWaiter>()
 
-  // Map to track wrapped handlers for removal
-  private wrappedHandlers = new Map<EventHandler, (event: string, data: unknown) => void>()
+  // Shared promise for concurrent connect() callers
+  private connectPromise: Promise<ConnectResponse> | null = null
 
   constructor(url: string, auth: { token?: string; password?: string } = {}) {
-    // Convert http://host:port to ws://host:port if needed
-    this.url = this.normalizeUrl(url)
+    this.url = normalizeGatewayUrl(url)
     this.auth = auth
     this.shouldReconnect = true
     this.reconnectDelayMs = DEFAULT_RECONNECT_DELAY_MS
     this.requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS
   }
 
-  /**
-   * Normalize URL to WebSocket format
-   */
-  private normalizeUrl(url: string): string {
-    // Already ws:// or wss://
-    if (url.startsWith('ws://') || url.startsWith('wss://')) {
-      return url
-    }
-
-    // Convert http:// or https:// to ws:// or wss://
-    let normalized = url.replace(/^http:\/\//, 'ws://').replace(/^https:\/\//, 'wss://')
-
-    // Add default port if not specified
-    if (!normalized.includes(':')) {
-      normalized += `:${DEFAULT_PORT}`
-    }
-
-    return normalized
-  }
-
-  /**
-   * Get the next message ID
-   */
   private nextId(): MessageId {
     return this.messageId++
   }
 
-  /**
-   * Get current connection state
-   */
   get connected(): boolean {
     return this.state === 'connected'
   }
 
-  /**
-   * Get authentication state
-   */
   get authenticated(): boolean {
-    return this.gatewayInfo !== null
+    return this.info !== null
   }
 
-  /**
-   * Get gateway info if connected
-   */
   getGatewayInfo(): GatewayInfo | null {
-    return this.gatewayInfo
+    return this.info
   }
 
-  /**
-   * Get current connection state
-   */
   getState(): ConnectionState {
     return this.state
   }
 
-  /**
-   * Connect to the gateway and authenticate
-   */
+  // Returns existing connect promise if already in-flight (prevents race conditions)
   async connect(): Promise<ConnectResponse> {
-    if (this.state === 'connected' || this.state === 'authenticating') {
-      throw new Error('Already connected or connecting')
+    if (this.state === 'connected' && this.info) {
+      return {
+        status: 'ok',
+        stateVersion: this.info.stateVersion,
+        uptimeMs: this.info.uptimeMs,
+        limits: this.info.limits,
+        policy: this.info.policy,
+        features: this.info.features,
+      }
     }
 
+    if (this.connectPromise) {
+      return this.connectPromise
+    }
+
+    this.connectPromise = this.doConnect()
+    try {
+      return await this.connectPromise
+    } finally {
+      this.connectPromise = null
+    }
+  }
+
+  private doConnect(): Promise<ConnectResponse> {
     this.state = 'connecting'
 
     return new Promise((resolve, reject) => {
@@ -153,7 +125,6 @@ export class OpenClawGatewayClient {
         this.ws.onopen = () => {
           this.state = 'authenticating'
 
-          // Send connect request
           const connectParams: ConnectParams = {
             role: 'operator',
             auth: this.auth.token
@@ -163,42 +134,34 @@ export class OpenClawGatewayClient {
                 : undefined,
           }
 
-          const req = createReq(this.nextId(), 'connect', connectParams)
-          this.sendFrame(req)
+          const id = this.nextId()
+          const req = createReq(id, 'connect', connectParams)
 
-          // Set up one-time handler for connect response
-          const responseHandler = (msg: GatewayMessage) => {
-            if (!isResponse(msg) || msg.id !== req.id) {
-              return
-            }
-
-            this.removeMessageHandler(responseHandler)
-
-            if (msg.ok) {
-              this.gatewayInfo = {
-                url: this.url,
-                ...(msg.payload as ConnectResponse),
-              }
-              this.state = 'connected'
-              this.reconnectAttempt = 0
-              resolve(msg.payload as ConnectResponse)
-            } else {
-              const error = msg.error as GatewayError
-              this.state = 'error'
-              reject(new Error(`Connection failed: ${error?.message ?? 'Unknown error'}`))
-            }
-          }
-
-          this.addMessageHandler(responseHandler)
-
-          // Set up timeout for connect
-          setTimeout(() => {
-            this.removeMessageHandler(responseHandler)
+          const timeoutId = setTimeout(() => {
+            this.pendingRequests.delete(id)
             if (this.state === 'authenticating') {
               this.disconnect()
               reject(new Error('Connection timeout'))
             }
           }, this.requestTimeoutMs)
+
+          // Route through pendingRequests so handleMessage resolves it
+          this.pendingRequests.set(id, {
+            resolve: (payload) => {
+              const response = payload as ConnectResponse
+              this.info = { url: this.url, ...response }
+              this.state = 'connected'
+              this.reconnectAttempt = 0
+              resolve(response)
+            },
+            reject: (error) => {
+              this.state = 'error'
+              reject(error)
+            },
+            timeoutId,
+          })
+
+          this.sendFrame(req)
         }
 
         this.ws.onmessage = (event) => {
@@ -206,12 +169,15 @@ export class OpenClawGatewayClient {
         }
 
         this.ws.onerror = () => {
-          if (this.state === 'authenticating') {
+          if (this.state === 'connecting' || this.state === 'authenticating') {
             reject(new Error('WebSocket connection error'))
           }
         }
 
         this.ws.onclose = () => {
+          this.rejectPendingAgentWaiters(new Error('Connection closed during agent invocation'))
+          this.agentEventQueues.clear()
+
           if (this.state === 'connected' && this.shouldReconnect) {
             this.scheduleReconnect()
           } else if (this.state !== 'disconnected') {
@@ -225,9 +191,6 @@ export class OpenClawGatewayClient {
     })
   }
 
-  /**
-   * Disconnect from the gateway
-   */
   disconnect(): void {
     this.shouldReconnect = false
 
@@ -241,20 +204,26 @@ export class OpenClawGatewayClient {
       this.ws = null
     }
 
-    // Reject all pending requests
-    for (const [_id, pending] of this.pendingRequests) {
+    for (const [, pending] of this.pendingRequests) {
       clearTimeout(pending.timeoutId)
       pending.reject(new Error('Connection closed'))
     }
     this.pendingRequests.clear()
 
-    this.gatewayInfo = null
+    this.rejectPendingAgentWaiters(new Error('Connection closed during agent invocation'))
+
+    // Clean up all handler arrays and queues
+    this.eventHandlers.length = 0
+    this.healthHandlers.length = 0
+    this.presenceHandlers.length = 0
+    this.agentEventQueues.clear()
+    this.agentEventResolvers.clear()
+
+    this.info = null
     this.state = 'disconnected'
+    this.connectPromise = null
   }
 
-  /**
-   * Reconnect to the gateway with exponential backoff
-   */
   async reconnect(): Promise<void> {
     if (this.state === 'connected') {
       return
@@ -263,32 +232,22 @@ export class OpenClawGatewayClient {
     this.shouldReconnect = true
     this.state = 'reconnecting'
 
-    const delay = Math.min(
-      this.reconnectDelayMs * Math.pow(2, this.reconnectAttempt),
-      MAX_RECONNECT_DELAY_MS
-    )
-
-    this.reconnectAttempt++
-
     await new Promise<void>((resolve) => {
       this.reconnectTimeoutId = setTimeout(() => {
         this.reconnectTimeoutId = null
         resolve()
-      }, delay)
+      }, this.getReconnectDelay())
     })
 
     if (this.shouldReconnect) {
       try {
         await this.connect()
       } catch {
-        // Will schedule another reconnect if still should reconnect
+        // scheduleReconnect handles further attempts
       }
     }
   }
 
-  /**
-   * Send a request and wait for response
-   */
   request<T>(method: string, params?: Record<string, unknown>, timeoutMs?: number): Promise<T> {
     if (this.ws === null || this.state !== 'connected') {
       return Promise.reject(new Error('Not connected'))
@@ -304,48 +263,26 @@ export class OpenClawGatewayClient {
         reject(new Error(`Request ${method} timed out after ${timeout}ms`))
       }, timeout)
 
-      this.pendingRequests.set(id, { resolve, reject, timeoutId })
+      this.pendingRequests.set(id, {
+        resolve: (payload) => resolve(payload as T),
+        reject,
+        timeoutId,
+      })
+
       this.sendFrame(req)
-
-      // Handler to process response
-      const responseHandler = (msg: GatewayMessage) => {
-        if (!isResponse(msg) || msg.id !== id) {
-          return
-        }
-
-        clearTimeout(timeoutId)
-        this.pendingRequests.delete(id)
-        this.removeMessageHandler(responseHandler)
-
-        if (msg.ok) {
-          resolve(msg.payload as T)
-        } else {
-          const error = msg.error as GatewayError
-          reject(new Error(error?.message ?? `Request ${method} failed`))
-        }
-      }
-
-      this.addMessageHandler(responseHandler)
     })
   }
 
-  /**
-   * List available agents
-   */
-  listAgents(): Promise<{ agents: Array<{ id: string; name: string; description?: string; capabilities?: string[] }> }> {
+  listAgents(): Promise<{
+    agents: Array<{ id: string; name: string; description?: string; capabilities?: string[] }>
+  }> {
     return this.request('agents.list', {})
   }
 
-  /**
-   * List sessions
-   */
   listSessions(): Promise<{ sessions: SessionInfo[] }> {
     return this.request('sessions.list', {})
   }
 
-  /**
-   * Invoke an agent and get streaming response as an async generator
-   */
   async *invokeAgent(
     agentId: string,
     message: AgentMessage,
@@ -357,8 +294,6 @@ export class OpenClawGatewayClient {
     }
 
     const invocationId = crypto.randomUUID()
-
-    // Initialize queue for this invocation
     this.agentEventQueues.set(invocationId, [])
 
     const params: AgentInvokeParams = {
@@ -367,80 +302,64 @@ export class OpenClawGatewayClient {
       session: sessionId,
     }
 
-    // Send agent invoke request
-    const response = await this.request<{ status: string; invocationId?: string }>(
-      'agent',
-      params
-    )
+    const response = await this.request<{ status: string; invocationId?: string }>('agent', params)
 
     if (response.status !== 'accepted') {
       this.agentEventQueues.delete(invocationId)
       throw new Error(`Agent invocation not accepted: ${response.status}`)
     }
 
-    // Listen for agent events - route to the appropriate queue
     const agentEventHandler = (event: string, data: unknown) => {
-      if (event === 'agent' && data) {
-        const agentData = data as AgentStreamEvent
-        if ('invocationId' in agentData) {
-          const queue = this.agentEventQueues.get(agentData.invocationId)
-          if (queue) {
-            queue.push(agentData)
-            // Resolve any pending waiters
-            const resolver = this.agentEventResolvers.get(agentData.invocationId)
-            if (resolver) {
-              resolver()
-              this.agentEventResolvers.delete(agentData.invocationId)
-            }
-          }
-        }
+      if (event !== 'agent' || !data) return
+      const agentData = data as AgentStreamEvent
+      if (!('invocationId' in agentData)) return
+
+      const queue = this.agentEventQueues.get(agentData.invocationId)
+      if (!queue) return
+
+      queue.push(agentData)
+      const waiter = this.agentEventResolvers.get(agentData.invocationId)
+      if (waiter) {
+        waiter.resolve()
+        this.agentEventResolvers.delete(agentData.invocationId)
       }
     }
 
     this.onEvent(agentEventHandler)
 
+    const abortHandler = signal
+      ? () => this.sendFrame(createReq(this.nextId(), 'agent.cancel', { invocationId }))
+      : undefined
+
+    if (signal && abortHandler) {
+      signal.addEventListener('abort', abortHandler)
+    }
+
     try {
-      // Set up abort signal handling
-      const abortHandler = () => {
-        this.sendFrame(
-          createReq(this.nextId(), 'agent.cancel', { invocationId })
-        )
-      }
-
-      if (signal) {
-        signal.addEventListener('abort', abortHandler)
-      }
-
-      // Yield events from the queue as they arrive
       while (true) {
         const queue = this.agentEventQueues.get(invocationId)
-        if (!queue || queue.length === 0) {
-          // Check for done status
-          const doneEvent = this.agentEventQueues.get(invocationId)?.find(
-            (e) => e.type === 'done'
-          )
-          if (doneEvent) {
-            break
+        if (!queue) {
+          if (this.state !== 'connected' || this.ws === null) {
+            throw new Error('Connection closed during agent invocation')
           }
-
-          // Wait for more events
-          await new Promise<void>((resolve) => {
-            this.agentEventResolvers.set(invocationId, resolve)
-            // Short timeout to check again
-            setTimeout(resolve, 100)
-          }).catch(() => {})
+          break
         }
 
-        const event = this.agentEventQueues.get(invocationId)?.shift()
-        if (event) {
-          yield event
-          if (event.type === 'done') {
-            break
+        if (queue.length === 0) {
+          if (this.state !== 'connected' || this.ws === null) {
+            throw new Error('Connection closed during agent invocation')
           }
+
+          await new Promise<void>((resolve, reject) => {
+            this.agentEventResolvers.set(invocationId, { resolve, reject })
+          })
+          continue
         }
 
-        // Check if signal is aborted
-        if (signal?.aborted) {
+        const event = queue.shift()!
+        yield event
+
+        if (event.type === 'done' || signal?.aborted) {
           break
         }
       }
@@ -449,211 +368,148 @@ export class OpenClawGatewayClient {
       this.agentEventQueues.delete(invocationId)
       this.agentEventResolvers.delete(invocationId)
 
-      if (signal) {
+      if (signal && abortHandler) {
         signal.removeEventListener('abort', abortHandler)
       }
     }
   }
 
-  /**
-   * Register an event handler for all gateway events
-   */
   onEvent(handler: EventHandler): void {
     this.eventHandlers.push(handler)
   }
 
-  /**
-   * Remove an event handler
-   */
   offEvent(handler: EventHandler): void {
     const index = this.eventHandlers.indexOf(handler)
-    if (index !== -1) {
-      this.eventHandlers.splice(index, 1)
-    }
+    if (index !== -1) this.eventHandlers.splice(index, 1)
   }
 
-  /**
-   * Register a handler for health events
-   */
   onHealth(handler: HealthHandler): void {
     this.healthHandlers.push(handler)
   }
 
-  /**
-   * Remove a health handler
-   */
   offHealth(handler: HealthHandler): void {
     const index = this.healthHandlers.indexOf(handler)
-    if (index !== -1) {
-      this.healthHandlers.splice(index, 1)
-    }
+    if (index !== -1) this.healthHandlers.splice(index, 1)
   }
 
-  /**
-   * Register a handler for presence updates
-   */
   onPresence(handler: PresenceHandler): void {
     this.presenceHandlers.push(handler)
   }
 
-  /**
-   * Remove a presence handler
-   */
   offPresence(handler: PresenceHandler): void {
     const index = this.presenceHandlers.indexOf(handler)
-    if (index !== -1) {
-      this.presenceHandlers.splice(index, 1)
-    }
+    if (index !== -1) this.presenceHandlers.splice(index, 1)
   }
 
-  /**
-   * Send a frame over the WebSocket
-   */
   private sendFrame(frame: GatewayMessage): void {
     if (this.ws !== null && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(serializeMessage(frame))
     }
   }
 
-  /**
-   * Handle incoming WebSocket message
-   */
   private handleMessage(data: string): void {
     let parsed: GatewayMessage | null
     try {
       parsed = parseMessage(JSON.parse(data))
     } catch {
-      console.warn('Failed to parse gateway message:', data)
       return
     }
 
-    if (parsed === null) {
-      console.warn('Invalid gateway message:', data)
-      return
-    }
+    if (parsed === null) return
 
-    // Check if it's a response to a pending request
     if (isResponse(parsed)) {
-      const pending = this.pendingRequests.get(parsed.id)
-      if (pending !== undefined) {
-        clearTimeout(pending.timeoutId)
-        this.pendingRequests.delete(parsed.id)
-
-        if (parsed.ok) {
-          pending.resolve(parsed.payload)
-        } else {
-          const error = parsed.error as GatewayError
-          pending.reject(new Error(error?.message ?? 'Request failed'))
-        }
-        return
-      }
+      this.resolveResponse(parsed)
+      return
     }
 
-    // Handle event messages
     if (isEvent(parsed)) {
       this.handleEvent(parsed)
     }
   }
 
-  /**
-   * Handle incoming event
-   */
+  private resolveResponse(res: ResponseFrame): void {
+    const pending = this.pendingRequests.get(res.id)
+    if (!pending) return
+
+    clearTimeout(pending.timeoutId)
+    this.pendingRequests.delete(res.id)
+
+    if (res.ok) {
+      pending.resolve(res.payload)
+    } else {
+      pending.reject(new Error(res.error?.message ?? 'Request failed'))
+    }
+  }
+
   private handleEvent(event: { type: 'event'; event: string; data?: unknown }): void {
-    // Notify all event handlers
     for (const handler of this.eventHandlers) {
       try {
         handler(event.event, event.data)
       } catch (err) {
-        console.error('Event handler error:', err)
+        console.error('[OpenClaw] Event handler error:', err)
       }
     }
 
-    // Handle specific event types
     switch (event.event) {
       case 'health':
         for (const handler of this.healthHandlers) {
           try {
             handler(event.data as HealthStatus)
           } catch (err) {
-            console.error('Health handler error:', err)
+            console.error('[OpenClaw] Health handler error:', err)
           }
         }
         break
-
       case 'presence':
         for (const handler of this.presenceHandlers) {
           try {
             handler(event.data as PresenceUpdate)
           } catch (err) {
-            console.error('Presence handler error:', err)
+            console.error('[OpenClaw] Presence handler error:', err)
           }
         }
         break
-
       case 'shutdown':
-        this.handleShutdown()
+        this.disconnect()
         break
     }
   }
 
-  /**
-   * Handle shutdown event
-   */
-  private handleShutdown(): void {
-    this.disconnect()
-  }
-
-  /**
-   * Schedule a reconnection attempt
-   */
   private scheduleReconnect(): void {
-    if (!this.shouldReconnect) {
-      return
-    }
+    if (!this.shouldReconnect) return
 
     this.state = 'reconnecting'
-
-    const delay = Math.min(
-      this.reconnectDelayMs * Math.pow(2, this.reconnectAttempt),
-      MAX_RECONNECT_DELAY_MS
-    )
-
-    this.reconnectAttempt++
-
     this.reconnectTimeoutId = setTimeout(() => {
       this.reconnectTimeoutId = null
       if (this.shouldReconnect) {
-        this.reconnect().catch(() => {
-          // Will schedule another reconnect if needed
-        })
+        this.reconnect().catch(() => {})
       }
-    }, delay)
+    }, this.getReconnectDelay())
   }
 
-  /**
-   * Add a temporary message handler for request/response matching
-   */
-  private addMessageHandler(handler: (msg: GatewayMessage) => void): void {
-    const wrappedHandler = (event: string, data: unknown) => {
-      if (event === 'internal') {
-        handler(data as GatewayMessage)
-      }
-    }
-    this.wrappedHandlers.set(handler, wrappedHandler)
-    this.eventHandlers.push(wrappedHandler)
+  private getReconnectDelay(): number {
+    const delay = Math.min(this.reconnectDelayMs * 2 ** this.reconnectAttempt, MAX_RECONNECT_DELAY_MS)
+    this.reconnectAttempt++
+    return delay
   }
 
-  /**
-   * Remove a message handler
-   */
-  private removeMessageHandler(handler: (msg: GatewayMessage) => void): void {
-    const wrappedHandler = this.wrappedHandlers.get(handler)
-    if (wrappedHandler) {
-      const index = this.eventHandlers.indexOf(wrappedHandler)
-      if (index !== -1) {
-        this.eventHandlers.splice(index, 1)
-      }
-      this.wrappedHandlers.delete(handler)
+  private rejectPendingAgentWaiters(error: Error): void {
+    for (const [, waiter] of this.agentEventResolvers) {
+      waiter.reject(error)
     }
+    this.agentEventResolvers.clear()
   }
+}
+
+/** Convert http(s):// URLs to ws(s):// and ensure port is present */
+export function normalizeGatewayUrl(url: string): string {
+  if (url.startsWith('ws://') || url.startsWith('wss://')) return url
+
+  let normalized = url.replace(/^https:\/\//, 'wss://').replace(/^http:\/\//, 'ws://')
+
+  if (!normalized.match(/:\d+/)) {
+    normalized += `:${DEFAULT_PORT}`
+  }
+
+  return normalized
 }

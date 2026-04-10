@@ -1,41 +1,33 @@
 import { ModelProviderEnum, ModelProviderType } from '../../types'
 import { defineProvider } from '../registry'
-import CustomOpenAI from './models/custom-openai'
+import OpenClawModel from '../../models/openclaw'
 
 export const openClawProvider = defineProvider({
   id: ModelProviderEnum.OpenClaw,
   name: 'OpenClaw',
   type: ModelProviderType.OpenAI,
-  description: 'Local OpenClaw gateway',
+  description: 'OpenClaw local AI agent runtime',
   urls: {
-    website: 'https://docs.openclaw.ai/',
+    website: 'https://openclaw.ai/',
+    docs: 'https://docs.openclaw.ai/',
   },
   defaultSettings: {
-    apiHost: 'http://127.0.0.1:18789/v1',
+    apiHost: 'ws://127.0.0.1:18789',
     models: [
       {
         modelId: 'pi-agent',
+        nickname: 'Pi Agent',
         capabilities: ['tool_use'],
       },
     ],
   },
   createModel: (config) => {
-    return new CustomOpenAI(
-      {
-        apiKey: config.providerSetting.apiKey || '',
-        apiHost: config.formattedApiHost,
-        apiPath: config.formattedApiPath,
-        cloudflareClientId: config.providerSetting.cloudflareClientId,
-        cloudflareClientSecret: config.providerSetting.cloudflareClientSecret,
-        model: config.model,
-        temperature: config.settings.temperature,
-        topP: config.settings.topP,
-        maxOutputTokens: config.settings.maxTokens,
-        stream: config.settings.stream,
-        useProxy: false,
-      },
-      config.dependencies
-    )
+    return new OpenClawModel({
+      apiHost: config.formattedApiHost || 'ws://127.0.0.1:18789',
+      apiKey: config.providerSetting.apiKey || '',
+      model: config.model,
+      dependencies: config.dependencies,
+    })
   },
   getDisplayName: (modelId, providerSettings) => {
     return `OpenClaw (${providerSettings?.models?.find((m) => m.modelId === modelId)?.nickname || modelId})`

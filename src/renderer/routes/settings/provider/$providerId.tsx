@@ -54,6 +54,7 @@ import { add as addToast } from '@/stores/toastActions'
 import { type ModelTestState, testModelCapabilities } from '@/utils/model-tester'
 import { useComfyUIInfo } from '@/hooks/useComfyUIInfo'
 import { ComfyUIClient } from '@shared/providers/definitions/models/comfyui-client'
+import { OpenClawGatewaySettings } from '@/components/settings/OpenClawGatewaySettings'
 
 export const Route = createFileRoute('/settings/provider/$providerId')({
   component: RouteComponent,
@@ -647,6 +648,19 @@ function ProviderSettings({ providerId }: { providerId: string }) {
               {t('Uses the local OpenClaw health endpoint at /health.')}
             </Text>
           </Stack>
+        )}
+
+        {baseInfo.id === ModelProviderEnum.OpenClaw && (
+          <OpenClawGatewaySettings
+            gatewayUrl={providerSettings?.apiHost?.replace(/\/v1$/, '') || 'http://127.0.0.1:18789'}
+            authToken={providerSettings?.apiKey || ''}
+            onGatewayUrlChange={(value) =>
+              setProviderSettings({ apiHost: value })
+            }
+            onAuthTokenChange={(value) =>
+              setProviderSettings({ apiKey: value })
+            }
+          />
         )}
 
         {baseInfo.isCustom && (

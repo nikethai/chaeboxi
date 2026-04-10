@@ -1,17 +1,17 @@
 import { ModelProviderEnum, ModelProviderType } from '../../types'
 import { defineProvider } from '../registry'
-import CustomOpenAI from './models/custom-openai'
+import OpenClawModel from '../../models/openclaw'
 
 export const openClawProvider = defineProvider({
   id: ModelProviderEnum.OpenClaw,
   name: 'OpenClaw',
   type: ModelProviderType.OpenAI,
-  description: 'Local OpenClaw gateway',
+  description: 'Local OpenClaw gateway via WebSocket',
   urls: {
     website: 'https://docs.openclaw.ai/',
   },
   defaultSettings: {
-    apiHost: 'http://127.0.0.1:18789/v1',
+    apiHost: 'http://127.0.0.1:18789',
     models: [
       {
         modelId: 'pi-agent',
@@ -19,20 +19,38 @@ export const openClawProvider = defineProvider({
       },
     ],
   },
+  listModels: async (config) => {
+    try {
+      const { OpenClawGatewayClient } = await import('../../openclaw/gateway')
+      const client = new OpenClawGatewayClient(
+        config.formattedApiHost,
+        config.providerSetting.apiKey ? { token: config.providerSetting.apiKey } : {}
+      )
+      await client.connect()
+      const response = await client.listAgents()
+      client.disconnect()
+
+      return response.agents.map((agent) => ({
+        modelId: agent.id,
+        nickname: agent.name,
+        capabilities: agent.capabilities as ('vision' | 'reasoning' | 'tool_use' | 'web_search')[],
+      }))
+    } catch (error) {
+      console.warn('[OpenClaw] Failed to list agents:', error)
+      return [
+        {
+          modelId: 'pi-agent',
+          capabilities: ['tool_use'],
+        },
+      ]
+    }
+  },
   createModel: (config) => {
-    return new CustomOpenAI(
+    return new OpenClawModel(
       {
         apiKey: config.providerSetting.apiKey || '',
         apiHost: config.formattedApiHost,
-        apiPath: config.formattedApiPath,
-        cloudflareClientId: config.providerSetting.cloudflareClientId,
-        cloudflareClientSecret: config.providerSetting.cloudflareClientSecret,
         model: config.model,
-        temperature: config.settings.temperature,
-        topP: config.settings.topP,
-        maxOutputTokens: config.settings.maxTokens,
-        stream: config.settings.stream,
-        useProxy: false,
       },
       config.dependencies
     )

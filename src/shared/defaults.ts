@@ -153,6 +153,9 @@ export function settings(): Settings {
       servers: [],
       enabledBuiltinServers: [],
     },
+    openclaw: {
+      gateways: [],
+    },
   }
 }
 

@@ -1,21 +1,11 @@
 // Message framing utilities for OpenClaw gateway protocol
 
-import type {
-  EventFrame,
-  GatewayMessage,
-  RequestFrame,
-  ResponseFrame,
-  MessageId,
-} from './types'
+import type { EventFrame, GatewayMessage, RequestFrame, ResponseFrame, MessageId } from './types'
 
 /**
  * Creates a request frame with the given parameters
  */
-export function createReq(
-  id: MessageId,
-  method: string,
-  params?: Record<string, unknown>
-): RequestFrame {
+export function createReq(id: MessageId, method: string, params?: Record<string, unknown> | object): RequestFrame {
   return {
     type: 'req',
     id,
@@ -27,11 +17,7 @@ export function createReq(
 /**
  * Creates a response frame with the given parameters
  */
-export function createRes(
-  id: MessageId,
-  ok: boolean,
-  payload?: unknown
-): ResponseFrame {
+export function createRes(id: MessageId, ok: boolean, payload?: unknown): ResponseFrame {
   return {
     type: 'res',
     id,
@@ -147,9 +133,6 @@ export function serializeMessage(msg: GatewayMessage): string {
 /**
  * Check if a response matches a specific request by ID
  */
-export function isResponseTo(
-  response: ResponseFrame,
-  requestId: MessageId
-): boolean {
+export function isResponseTo(response: ResponseFrame, requestId: MessageId): boolean {
   return response.id === requestId
 }

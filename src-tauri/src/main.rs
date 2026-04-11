@@ -1,6 +1,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
+use ed25519_dalek::{Signer, SigningKey};
+use futures_util::{SinkExt, StreamExt};
 use http::header::{HeaderName, HeaderValue};
+use rand_core::OsRng;
 use rmcp::{
     model::{CallToolRequestParams, ClientCapabilities, ClientInfo, Implementation},
     transport::streamable_http_client::StreamableHttpClientTransportConfig,
@@ -9,18 +13,25 @@ use rmcp::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
 use std::{
     collections::HashMap,
     fs,
+    io::Write,
     path::PathBuf,
     sync::{
         atomic::{AtomicI64, AtomicU64, Ordering},
         Mutex,
     },
+    time::Duration,
 };
 use sys_locale::get_locale;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow, WindowEvent};
 use tokio::process::Command;
+use tokio_tungstenite::{
+    connect_async,
+    tungstenite::{client::IntoClientRequest, Message},
+};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -96,6 +107,7 @@ struct AppState {
     store: Mutex<HashMap<String, Value>>,
     blobs: Mutex<HashMap<String, String>>,
     mcp_servers: Mutex<HashMap<String, McpServerState>>,
+    openclaw_streams: Mutex<HashMap<String, tokio::task::JoinHandle<()>>>,
     next_mcp_id: AtomicU64,
     kb: Mutex<KnowledgeBaseState>,
     next_kb_id: AtomicI64,
@@ -103,6 +115,126 @@ struct AppState {
 }
 
 type CommandResult<T> = Result<T, String>;
+
+type OpenClawSocket =
+    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
+
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OpenClawAuth {
+    token: Option<String>,
+    password: Option<String>,
+    cloudflare_client_id: Option<String>,
+    cloudflare_client_secret: Option<String>,
+}
+
+impl OpenClawAuth {
+    fn token(&self) -> Option<&str> {
+        self.token
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+    }
+
+    fn password(&self) -> Option<&str> {
+        self.password
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+    }
+
+    fn cloudflare_client_id(&self) -> Option<&str> {
+        self.cloudflare_client_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+    }
+
+    fn cloudflare_client_secret(&self) -> Option<&str> {
+        self.cloudflare_client_secret
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct OpenClawGatewayRequest {
+    url: String,
+    #[serde(default)]
+    auth: OpenClawAuth,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct OpenClawInvokeRequest {
+    stream_id: String,
+    url: String,
+    #[serde(default)]
+    auth: OpenClawAuth,
+    agent_id: String,
+    message: Value,
+    session_id: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OpenClawInvokeAccepted {
+    invocation_id: String,
+}
+
+#[derive(Debug, Serialize)]
+struct OpenClawRequestFrame<'a> {
+    #[serde(rename = "type")]
+    frame_type: &'static str,
+    id: &'a str,
+    method: &'a str,
+    params: Value,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenClawResponseFrame {
+    id: Value,
+    ok: bool,
+    payload: Option<Value>,
+    error: Option<OpenClawErrorFrame>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenClawEventFrame {
+    event: String,
+    #[serde(alias = "data")]
+    payload: Option<Value>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenClawConnectChallenge {
+    nonce: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct OpenClawDeviceIdentityStore {
+    version: u8,
+    device_id: String,
+    public_key: String,
+    private_key: String,
+    created_at_ms: i64,
+}
+
+#[derive(Debug, Clone)]
+struct OpenClawDeviceIdentity {
+    device_id: String,
+    public_key_base64url: String,
+    signing_key: SigningKey,
+}
+
+#[derive(Debug, Deserialize)]
+struct OpenClawErrorFrame {
+    message: String,
+    details: Option<Value>,
+}
 
 fn get_store_path(app: &AppHandle, filename: &str) -> PathBuf {
     let mut path = app
@@ -160,6 +292,383 @@ fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
+const OPENCLAW_CONNECT_CHALLENGE_TIMEOUT_MS: u64 = 10_000;
+const OPENCLAW_PROTOCOL_VERSION: i64 = 3;
+const OPENCLAW_ROLE: &str = "operator";
+const OPENCLAW_CLIENT_ID: &str = "gateway-client";
+const OPENCLAW_CLIENT_MODE: &str = "backend";
+
+fn openclaw_device_identity_path(app: &AppHandle) -> PathBuf {
+    let mut path = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| PathBuf::from("."));
+    path.push("openclaw");
+    path.push("device-identity.json");
+    path
+}
+
+fn openclaw_normalize_metadata_for_auth(value: Option<&str>) -> String {
+    value
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_ascii_lowercase())
+        .unwrap_or_default()
+}
+
+fn openclaw_hex_encode(bytes: &[u8]) -> String {
+    let mut output = String::with_capacity(bytes.len() * 2);
+    for byte in bytes {
+        output.push_str(&format!("{byte:02x}"));
+    }
+    output
+}
+
+fn openclaw_derive_device_id(public_key_bytes: &[u8]) -> String {
+    let digest = Sha256::digest(public_key_bytes);
+    openclaw_hex_encode(&digest)
+}
+
+fn openclaw_write_device_identity_store(
+    path: &PathBuf,
+    store: &OpenClawDeviceIdentityStore,
+) -> CommandResult<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|err| format!("create OpenClaw identity dir failed: {err}"))?;
+    }
+
+    let serialized = serde_json::to_string_pretty(store)
+        .map_err(|err| format!("serialize OpenClaw identity failed: {err}"))?;
+    let mut file = fs::File::create(path)
+        .map_err(|err| format!("create OpenClaw identity file failed: {err}"))?;
+    file.write_all(serialized.as_bytes())
+        .map_err(|err| format!("write OpenClaw identity file failed: {err}"))?;
+    file.write_all(b"\n")
+        .map_err(|err| format!("finalize OpenClaw identity file failed: {err}"))?;
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(path, fs::Permissions::from_mode(0o600));
+    }
+
+    Ok(())
+}
+
+fn openclaw_load_or_create_device_identity(
+    app: &AppHandle,
+) -> CommandResult<OpenClawDeviceIdentity> {
+    let identity_path = openclaw_device_identity_path(app);
+
+    if let Ok(raw) = fs::read_to_string(&identity_path) {
+        if let Ok(mut store) = serde_json::from_str::<OpenClawDeviceIdentityStore>(&raw) {
+            let private_bytes = URL_SAFE_NO_PAD
+                .decode(store.private_key.as_bytes())
+                .map_err(|err| format!("decode OpenClaw private key failed: {err}"))?;
+            let private_bytes: [u8; 32] = private_bytes
+                .as_slice()
+                .try_into()
+                .map_err(|_| "OpenClaw private key has invalid length".to_string())?;
+            let signing_key = SigningKey::from_bytes(&private_bytes);
+            let public_key_base64url =
+                URL_SAFE_NO_PAD.encode(signing_key.verifying_key().to_bytes());
+            let derived_device_id =
+                openclaw_derive_device_id(&signing_key.verifying_key().to_bytes());
+
+            let needs_refresh = store.device_id != derived_device_id
+                || store.public_key != public_key_base64url
+                || store.version != 1;
+            if needs_refresh {
+                store.version = 1;
+                store.device_id = derived_device_id.clone();
+                store.public_key = public_key_base64url.clone();
+                let _ = openclaw_write_device_identity_store(&identity_path, &store);
+            }
+
+            return Ok(OpenClawDeviceIdentity {
+                device_id: derived_device_id,
+                public_key_base64url,
+                signing_key,
+            });
+        }
+    }
+
+    let signing_key = SigningKey::generate(&mut OsRng);
+    let public_key = signing_key.verifying_key().to_bytes();
+    let device_id = openclaw_derive_device_id(&public_key);
+    let private_key_base64url = URL_SAFE_NO_PAD.encode(signing_key.to_bytes());
+    let public_key_base64url = URL_SAFE_NO_PAD.encode(public_key);
+    let store = OpenClawDeviceIdentityStore {
+        version: 1,
+        device_id: device_id.clone(),
+        public_key: public_key_base64url.clone(),
+        private_key: private_key_base64url,
+        created_at_ms: now_ms(),
+    };
+    openclaw_write_device_identity_store(&identity_path, &store)?;
+
+    Ok(OpenClawDeviceIdentity {
+        device_id,
+        public_key_base64url,
+        signing_key,
+    })
+}
+
+fn openclaw_build_device_auth_payload_v3(
+    identity: &OpenClawDeviceIdentity,
+    role: &str,
+    scopes: &[&str],
+    nonce: &str,
+    signed_at_ms: i64,
+    signature_token: Option<&str>,
+    platform: &str,
+    device_family: Option<&str>,
+) -> String {
+    let scopes = scopes.join(",");
+    let token = signature_token.unwrap_or_default();
+    let normalized_platform = openclaw_normalize_metadata_for_auth(Some(platform));
+    let normalized_device_family = openclaw_normalize_metadata_for_auth(device_family);
+
+    [
+        "v3".to_string(),
+        identity.device_id.clone(),
+        OPENCLAW_CLIENT_ID.to_string(),
+        OPENCLAW_CLIENT_MODE.to_string(),
+        role.to_string(),
+        scopes,
+        signed_at_ms.to_string(),
+        token.to_string(),
+        nonce.to_string(),
+        normalized_platform,
+        normalized_device_family,
+    ]
+    .join("|")
+}
+
+fn openclaw_build_connect_params(
+    auth: &OpenClawAuth,
+    challenge_nonce: &str,
+    identity: &OpenClawDeviceIdentity,
+) -> Value {
+    let role = OPENCLAW_ROLE;
+    let scopes = [String::from("operator.admin")];
+    let scopes_refs = scopes
+        .iter()
+        .map(std::string::String::as_str)
+        .collect::<Vec<_>>();
+    let signed_at_ms = now_ms();
+    let platform = map_platform();
+    let device_family = map_arch();
+    let signature_payload = openclaw_build_device_auth_payload_v3(
+        identity,
+        role,
+        &scopes_refs,
+        challenge_nonce,
+        signed_at_ms,
+        auth.token(),
+        &platform,
+        Some(device_family.as_str()),
+    );
+    let signature = URL_SAFE_NO_PAD.encode(
+        identity
+            .signing_key
+            .sign(signature_payload.as_bytes())
+            .to_bytes(),
+    );
+
+    let mut auth_map = serde_json::Map::new();
+    if let Some(token) = auth.token() {
+        auth_map.insert("token".to_string(), Value::String(token.to_string()));
+    } else if let Some(password) = auth.password() {
+        auth_map.insert("password".to_string(), Value::String(password.to_string()));
+    }
+
+    let mut params = serde_json::Map::new();
+    params.insert(
+        "minProtocol".to_string(),
+        Value::Number(OPENCLAW_PROTOCOL_VERSION.into()),
+    );
+    params.insert(
+        "maxProtocol".to_string(),
+        Value::Number(OPENCLAW_PROTOCOL_VERSION.into()),
+    );
+    params.insert(
+        "client".to_string(),
+        json!({
+          "id": OPENCLAW_CLIENT_ID,
+          "version": env!("CARGO_PKG_VERSION"),
+          "platform": platform,
+          "deviceFamily": device_family,
+          "mode": OPENCLAW_CLIENT_MODE,
+        }),
+    );
+    params.insert("role".to_string(), Value::String(role.to_string()));
+    params.insert(
+        "scopes".to_string(),
+        Value::Array(scopes.into_iter().map(Value::String).collect()),
+    );
+    params.insert("caps".to_string(), Value::Array(vec![]));
+    params.insert("commands".to_string(), Value::Array(vec![]));
+    params.insert(
+        "permissions".to_string(),
+        Value::Object(serde_json::Map::new()),
+    );
+
+    if !auth_map.is_empty() {
+        params.insert("auth".to_string(), Value::Object(auth_map));
+    }
+    if let Some(locale) = get_locale().filter(|locale| !locale.trim().is_empty()) {
+        params.insert("locale".to_string(), Value::String(locale));
+    }
+    params.insert(
+        "userAgent".to_string(),
+        Value::String(format!("chaeboxi-tauri/{}", env!("CARGO_PKG_VERSION"))),
+    );
+    params.insert(
+        "device".to_string(),
+        json!({
+          "id": identity.device_id,
+          "publicKey": identity.public_key_base64url,
+          "signature": signature,
+          "signedAt": signed_at_ms,
+          "nonce": challenge_nonce,
+        }),
+    );
+
+    Value::Object(params)
+}
+
+fn openclaw_build_connect_params_without_device(auth: &OpenClawAuth) -> Value {
+    let role = OPENCLAW_ROLE;
+    let scopes = [String::from("operator.admin")];
+    let platform = map_platform();
+    let device_family = map_arch();
+
+    let mut auth_map = serde_json::Map::new();
+    if let Some(token) = auth.token() {
+        auth_map.insert("token".to_string(), Value::String(token.to_string()));
+    } else if let Some(password) = auth.password() {
+        auth_map.insert("password".to_string(), Value::String(password.to_string()));
+    }
+
+    let mut params = serde_json::Map::new();
+    params.insert(
+        "minProtocol".to_string(),
+        Value::Number(OPENCLAW_PROTOCOL_VERSION.into()),
+    );
+    params.insert(
+        "maxProtocol".to_string(),
+        Value::Number(OPENCLAW_PROTOCOL_VERSION.into()),
+    );
+    params.insert(
+        "client".to_string(),
+        json!({
+          "id": OPENCLAW_CLIENT_ID,
+          "version": env!("CARGO_PKG_VERSION"),
+          "platform": platform,
+          "deviceFamily": device_family,
+          "mode": OPENCLAW_CLIENT_MODE,
+        }),
+    );
+    params.insert("role".to_string(), Value::String(role.to_string()));
+    params.insert(
+        "scopes".to_string(),
+        Value::Array(scopes.into_iter().map(Value::String).collect()),
+    );
+    params.insert("caps".to_string(), Value::Array(vec![]));
+    params.insert("commands".to_string(), Value::Array(vec![]));
+    params.insert(
+        "permissions".to_string(),
+        Value::Object(serde_json::Map::new()),
+    );
+    if !auth_map.is_empty() {
+        params.insert("auth".to_string(), Value::Object(auth_map));
+    }
+    if let Some(locale) = get_locale().filter(|locale| !locale.trim().is_empty()) {
+        params.insert("locale".to_string(), Value::String(locale));
+    }
+    params.insert(
+        "userAgent".to_string(),
+        Value::String(format!("chaeboxi-tauri/{}", env!("CARGO_PKG_VERSION"))),
+    );
+
+    Value::Object(params)
+}
+
+fn openclaw_response_id_to_string(id: &Value) -> Option<String> {
+    if let Some(value) = id.as_str() {
+        return Some(value.to_string());
+    }
+    if let Some(value) = id.as_u64() {
+        return Some(value.to_string());
+    }
+    if let Some(value) = id.as_i64() {
+        return Some(value.to_string());
+    }
+    None
+}
+
+fn openclaw_map_hello_to_connect_response(payload: &Value) -> Value {
+    if payload.get("type").and_then(Value::as_str) != Some("hello-ok") {
+        return payload.clone();
+    }
+
+    let state_presence = payload
+        .get("snapshot")
+        .and_then(|snapshot| snapshot.get("stateVersion"))
+        .and_then(|value| value.get("presence"))
+        .and_then(Value::as_i64)
+        .unwrap_or(0);
+    let state_health = payload
+        .get("snapshot")
+        .and_then(|snapshot| snapshot.get("stateVersion"))
+        .and_then(|value| value.get("health"))
+        .and_then(Value::as_i64)
+        .unwrap_or(0);
+    let state_version = state_presence.max(state_health);
+
+    let uptime_ms = payload
+        .get("snapshot")
+        .and_then(|snapshot| snapshot.get("uptimeMs"))
+        .and_then(Value::as_i64)
+        .unwrap_or(0);
+
+    let methods = payload
+        .get("features")
+        .and_then(|features| features.get("methods"))
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let has_method = |prefix: &str| {
+        methods
+            .iter()
+            .filter_map(Value::as_str)
+            .any(|method| method == prefix || method.starts_with(&format!("{prefix}.")))
+    };
+
+    json!({
+      "status": "ok",
+      "stateVersion": state_version,
+      "uptimeMs": uptime_ms,
+      "limits": {},
+      "policy": {
+        "tickIntervalMs": payload
+          .get("policy")
+          .and_then(|policy| policy.get("tickIntervalMs"))
+          .and_then(Value::as_i64),
+      },
+      "features": {
+        "streaming": true,
+        "agentInvocation": has_method("agent"),
+        "sessionManagement": has_method("sessions"),
+        "presence": has_method("system-presence"),
+        "toolExecution": has_method("tools"),
+      },
+      "hello": payload,
+    })
+}
+
 fn map_platform() -> String {
     match std::env::consts::OS {
         "macos" => "darwin".to_string(),
@@ -210,6 +719,465 @@ fn default_config() -> Value {
     json!({
       "uuid": Uuid::new_v4().to_string()
     })
+}
+
+fn openclaw_transport_error_event(invocation_id: &str, message: &str) -> Value {
+    json!({
+      "type": "done",
+      "invocationId": invocation_id,
+      "status": "error",
+      "error": {
+        "code": "transport_error",
+        "message": message,
+      }
+    })
+}
+
+async fn openclaw_connect_socket(url: &str, auth: &OpenClawAuth) -> CommandResult<OpenClawSocket> {
+    let mut request = url
+        .into_client_request()
+        .map_err(|err| format!("openclaw websocket request build failed: {err}"))?;
+
+    // Some OpenClaw gateway deployments enforce stricter non-local handshake checks.
+    // Explicit Origin + User-Agent avoids the "origin=n/a, ua=n/a" rejection path.
+    let user_agent = format!("chaeboxi-tauri/{}", env!("CARGO_PKG_VERSION"));
+    if let Ok(value) = HeaderValue::from_str(&user_agent) {
+        request.headers_mut().insert("User-Agent", value);
+    }
+
+    if let Ok(parsed_url) = url::Url::parse(url) {
+        let origin_scheme = if parsed_url.scheme() == "wss" {
+            "https"
+        } else if parsed_url.scheme() == "ws" {
+            "http"
+        } else {
+            parsed_url.scheme()
+        };
+        if let Some(host) = parsed_url.host_str() {
+            let origin = if let Some(port) = parsed_url.port() {
+                format!("{origin_scheme}://{host}:{port}")
+            } else {
+                format!("{origin_scheme}://{host}")
+            };
+            if let Ok(value) = HeaderValue::from_str(&origin) {
+                request.headers_mut().insert("Origin", value);
+            }
+        }
+    }
+
+    if let Some(client_id) = auth.cloudflare_client_id() {
+        let value = HeaderValue::from_str(client_id)
+            .map_err(|err| format!("invalid CF Access client id header: {err}"))?;
+        request.headers_mut().insert("CF-Access-Client-Id", value);
+    }
+
+    if let Some(client_secret) = auth.cloudflare_client_secret() {
+        let value = HeaderValue::from_str(client_secret)
+            .map_err(|err| format!("invalid CF Access client secret header: {err}"))?;
+        request
+            .headers_mut()
+            .insert("CF-Access-Client-Secret", value);
+    }
+
+    let (socket, response) = connect_async(request)
+        .await
+        .map_err(|err| format!("openclaw websocket connect failed: {err}"))?;
+
+    eprintln!(
+        "[openclaw-debug] websocket upgrade ok, status={:?}, headers={:?}",
+        response.status(),
+        response.headers()
+    );
+
+    Ok(socket)
+}
+
+async fn openclaw_send_request(
+    socket: &mut OpenClawSocket,
+    id: &str,
+    method: &str,
+    params: Value,
+) -> CommandResult<()> {
+    let frame = OpenClawRequestFrame {
+        frame_type: "req",
+        id,
+        method,
+        params,
+    };
+    let payload = serde_json::to_string(&frame)
+        .map_err(|err| format!("openclaw request serialize failed: {err}"))?;
+    socket
+        .send(Message::Text(payload))
+        .await
+        .map_err(|err| format!("openclaw websocket send failed: {err}"))
+}
+
+async fn openclaw_wait_for_connect_challenge(
+    socket: &mut OpenClawSocket,
+) -> CommandResult<Option<OpenClawConnectChallenge>> {
+    eprintln!("[openclaw-debug] waiting for connect challenge (timeout {}ms)", OPENCLAW_CONNECT_CHALLENGE_TIMEOUT_MS);
+    tokio::time::timeout(
+        Duration::from_millis(OPENCLAW_CONNECT_CHALLENGE_TIMEOUT_MS),
+        async {
+            while let Some(message) = socket.next().await {
+                let message =
+                    message.map_err(|err| {
+                        eprintln!("[openclaw-debug] websocket read error: {err}");
+                        format!("openclaw websocket read failed: {err}")
+                    })?;
+                match &message {
+                    Message::Text(text) => {
+                        eprintln!("[openclaw-debug] received text frame: {}", &text[..text.len().min(200)]);
+                        let frame: Value = serde_json::from_str(text)
+                            .map_err(|err| format!("openclaw frame parse failed: {err}"))?;
+                        let frame_type = frame
+                            .get("type")
+                            .and_then(Value::as_str)
+                            .ok_or_else(|| "openclaw frame missing type".to_string())?;
+                        if frame_type != "event" {
+                            continue;
+                        }
+
+                        let event_frame: OpenClawEventFrame = serde_json::from_value(frame)
+                            .map_err(|err| format!("openclaw event decode failed: {err}"))?;
+                        if event_frame.event != "connect.challenge" {
+                            eprintln!("[openclaw-debug] ignoring event: {}", event_frame.event);
+                            continue;
+                        }
+
+                        eprintln!("[openclaw-debug] received connect.challenge");
+                        let payload = event_frame.payload.ok_or_else(|| {
+                            "openclaw connect challenge missing payload".to_string()
+                        })?;
+                        let challenge: OpenClawConnectChallenge = serde_json::from_value(payload)
+                            .map_err(|err| {
+                            format!("openclaw connect challenge payload decode failed: {err}")
+                        })?;
+                        let nonce = challenge.nonce.trim();
+                        if nonce.is_empty() {
+                            return Err("openclaw connect challenge nonce is empty".to_string());
+                        }
+
+                        return Ok(OpenClawConnectChallenge {
+                            nonce: nonce.to_string(),
+                        });
+                    }
+                    Message::Ping(_) => {
+                        eprintln!("[openclaw-debug] received ping");
+                        socket
+                            .send(Message::Pong(vec![].into()))
+                            .await
+                            .map_err(|err| format!("openclaw websocket pong failed: {err}"))?;
+                    }
+                    Message::Close(frame) => {
+                        let reason = frame
+                            .as_ref()
+                            .map(|f| format!("code={} reason={}", f.code, f.reason))
+                            .unwrap_or_else(|| "no close frame".to_string());
+                        eprintln!("[openclaw-debug] received close: {reason}");
+                        return Err(format!("openclaw websocket closed: {reason}"));
+                    }
+                    Message::Binary(data) => {
+                        eprintln!("[openclaw-debug] received binary frame ({} bytes)", data.len());
+                    }
+                    Message::Pong(_) => {
+                        eprintln!("[openclaw-debug] received pong");
+                    }
+                    _ => {
+                        eprintln!("[openclaw-debug] received unknown frame type");
+                    }
+                }
+            }
+
+            eprintln!("[openclaw-debug] socket stream ended (no more messages)");
+            Err("openclaw websocket closed before connect challenge was received".to_string())
+        },
+    )
+    .await
+    .map(|value| value.map(Some))
+    .unwrap_or_else(|_| {
+        eprintln!("[openclaw-debug] challenge wait timed out, proceeding without challenge");
+        Ok(None)
+    })
+}
+
+async fn openclaw_wait_for_response(
+    socket: &mut OpenClawSocket,
+    request_id: &str,
+) -> CommandResult<Value> {
+    while let Some(message) = socket.next().await {
+        let message = message.map_err(|err| format!("openclaw websocket read failed: {err}"))?;
+        match message {
+            Message::Text(text) => {
+                let frame: Value = serde_json::from_str(&text)
+                    .map_err(|err| format!("openclaw frame parse failed: {err}"))?;
+                let frame_type = frame
+                    .get("type")
+                    .and_then(Value::as_str)
+                    .ok_or_else(|| "openclaw frame missing type".to_string())?;
+
+                match frame_type {
+                    "res" => {
+                        let response: OpenClawResponseFrame = serde_json::from_value(frame)
+                            .map_err(|err| format!("openclaw response decode failed: {err}"))?;
+                        let Some(response_id) = openclaw_response_id_to_string(&response.id) else {
+                            continue;
+                        };
+                        if response_id != request_id {
+                            continue;
+                        }
+
+                        if response.ok {
+                            return Ok(response.payload.unwrap_or(Value::Null));
+                        }
+
+                        let message = if let Some(error) = response.error {
+                            let detail_code = error
+                                .details
+                                .as_ref()
+                                .and_then(|details| details.get("code"))
+                                .and_then(Value::as_str)
+                                .unwrap_or_default();
+                            if detail_code.is_empty() {
+                                error.message
+                            } else {
+                                format!("{} ({detail_code})", error.message)
+                            }
+                        } else {
+                            format!("OpenClaw request {request_id} failed without an error message")
+                        };
+                        return Err(message);
+                    }
+                    "event" => {
+                        // Ignore out-of-band events while waiting for request responses.
+                    }
+                    _ => {}
+                }
+            }
+            Message::Ping(payload) => {
+                socket
+                    .send(Message::Pong(payload))
+                    .await
+                    .map_err(|err| format!("openclaw websocket pong failed: {err}"))?;
+            }
+            Message::Close(frame) => {
+                let reason = frame
+                    .map(|frame| frame.reason.to_string())
+                    .unwrap_or_else(|| "connection closed".to_string());
+                return Err(format!("openclaw websocket closed: {reason}"));
+            }
+            _ => {}
+        }
+    }
+
+    Err("openclaw websocket closed before a response was received".to_string())
+}
+
+async fn openclaw_connect_and_auth(
+    app: &AppHandle,
+    url: &str,
+    auth: &OpenClawAuth,
+) -> CommandResult<(OpenClawSocket, Value)> {
+    // Retry connection up to 3 times — CF Tunnel may close the WebSocket
+    // before the origin is fully connected (1006 "closed before connect").
+    let mut last_error = String::from("openclaw connection failed");
+    for attempt in 0..3u32 {
+        if attempt > 0 {
+            eprintln!("[openclaw-debug] retry attempt {}/3 after {}ms", attempt + 1, 500 * attempt);
+            tokio::time::sleep(Duration::from_millis(500 * u64::from(attempt))).await;
+        } else {
+            eprintln!("[openclaw-debug] connect attempt 1/3 to {url}");
+        }
+
+        let mut socket = match openclaw_connect_socket(url, auth).await {
+            Ok(socket) => socket,
+            Err(err) => {
+                last_error = err;
+                continue;
+            }
+        };
+
+        let challenge = match openclaw_wait_for_connect_challenge(&mut socket).await {
+            Ok(challenge) => challenge,
+            Err(err) => {
+                eprintln!("[openclaw-debug] challenge step failed: {err}");
+                last_error = err;
+                let _ = socket.close(None).await;
+                continue;
+            }
+        };
+
+        eprintln!("[openclaw-debug] building connect params (challenge={})", challenge.is_some());
+        let connect_params = if let Some(challenge) = challenge {
+            let identity = openclaw_load_or_create_device_identity(app)?;
+            eprintln!("[openclaw-debug] device identity loaded, signing challenge");
+            openclaw_build_connect_params(auth, &challenge.nonce, &identity)
+        } else {
+            openclaw_build_connect_params_without_device(auth)
+        };
+        eprintln!("[openclaw-debug] connect params built, sending connect request");
+
+        let connect_request_id = "1";
+        if let Err(err) =
+            openclaw_send_request(&mut socket, connect_request_id, "connect", connect_params).await
+        {
+            eprintln!("[openclaw-debug] send connect request failed: {err}");
+            last_error = err;
+            let _ = socket.close(None).await;
+            continue;
+        }
+        eprintln!("[openclaw-debug] connect request sent, waiting for response");
+
+        match openclaw_wait_for_response(&mut socket, connect_request_id).await {
+            Ok(response) => {
+                eprintln!("[openclaw-debug] connect response received ok");
+                return Ok((socket, response));
+            }
+            Err(err) => {
+                eprintln!("[openclaw-debug] wait for connect response failed: {err}");
+                last_error = err;
+                let _ = socket.close(None).await;
+                continue;
+            }
+        }
+    }
+
+    Err(last_error)
+}
+
+async fn openclaw_test_connection(
+    app: &AppHandle,
+    params: &OpenClawGatewayRequest,
+) -> CommandResult<Value> {
+    let (mut socket, response) = openclaw_connect_and_auth(app, &params.url, &params.auth).await?;
+    let _ = socket.close(None).await;
+    Ok(openclaw_map_hello_to_connect_response(&response))
+}
+
+async fn openclaw_list_agents(
+    app: &AppHandle,
+    params: &OpenClawGatewayRequest,
+) -> CommandResult<Value> {
+    let (mut socket, _) = openclaw_connect_and_auth(app, &params.url, &params.auth).await?;
+    let request_id = "2";
+    openclaw_send_request(&mut socket, request_id, "agents.list", json!({})).await?;
+    let response = openclaw_wait_for_response(&mut socket, request_id).await?;
+    let _ = socket.close(None).await;
+    Ok(response)
+}
+
+async fn openclaw_list_sessions(
+    app: &AppHandle,
+    params: &OpenClawGatewayRequest,
+) -> CommandResult<Value> {
+    let (mut socket, _) = openclaw_connect_and_auth(app, &params.url, &params.auth).await?;
+    let request_id = "2";
+    openclaw_send_request(&mut socket, request_id, "sessions.list", json!({})).await?;
+    let response = openclaw_wait_for_response(&mut socket, request_id).await?;
+    let _ = socket.close(None).await;
+    Ok(response)
+}
+
+async fn openclaw_forward_agent_events(
+    app: AppHandle,
+    stream_id: String,
+    event_name: String,
+    invocation_id: String,
+    mut socket: OpenClawSocket,
+) {
+    let mut transport_error: Option<String> = None;
+
+    while let Some(message) = socket.next().await {
+        let message = match message {
+            Ok(message) => message,
+            Err(err) => {
+                transport_error = Some(format!("openclaw websocket read failed: {err}"));
+                break;
+            }
+        };
+
+        match message {
+            Message::Text(text) => {
+                let frame: Value = match serde_json::from_str(&text) {
+                    Ok(frame) => frame,
+                    Err(err) => {
+                        transport_error = Some(format!("openclaw frame parse failed: {err}"));
+                        break;
+                    }
+                };
+
+                match frame.get("type").and_then(Value::as_str) {
+                    Some("event") => {
+                        let event_frame: OpenClawEventFrame = match serde_json::from_value(frame) {
+                            Ok(frame) => frame,
+                            Err(err) => {
+                                transport_error =
+                                    Some(format!("openclaw event decode failed: {err}"));
+                                break;
+                            }
+                        };
+
+                        if event_frame.event != "agent" {
+                            continue;
+                        }
+
+                        let Some(event_data) = event_frame.payload else {
+                            continue;
+                        };
+                        let matches_invocation = event_data
+                            .get("invocationId")
+                            .and_then(Value::as_str)
+                            .map(|value| value == invocation_id)
+                            .unwrap_or(false);
+                        if !matches_invocation {
+                            continue;
+                        }
+
+                        let is_done = event_data
+                            .get("type")
+                            .and_then(Value::as_str)
+                            .map(|value| value == "done")
+                            .unwrap_or(false);
+
+                        let _ = app.emit(&event_name, event_data);
+                        if is_done {
+                            break;
+                        }
+                    }
+                    Some("res") => {
+                        // Late responses are ignored after the initial agent.accepted response.
+                    }
+                    _ => {}
+                }
+            }
+            Message::Ping(payload) => {
+                if let Err(err) = socket.send(Message::Pong(payload)).await {
+                    transport_error = Some(format!("openclaw websocket pong failed: {err}"));
+                    break;
+                }
+            }
+            Message::Close(frame) => {
+                let reason = frame
+                    .map(|frame| frame.reason.to_string())
+                    .unwrap_or_else(|| "connection closed".to_string());
+                transport_error = Some(format!("openclaw websocket closed: {reason}"));
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    if let Some(message) = transport_error {
+        let _ = app.emit(
+            &event_name,
+            openclaw_transport_error_event(&invocation_id, &message),
+        );
+    }
+
+    let _ = socket.close(None).await;
+    if let Ok(mut streams) = app.state::<AppState>().openclaw_streams.lock() {
+        streams.remove(&stream_id);
+    }
 }
 
 fn extract_tool_list(raw_tools: Value) -> Vec<McpToolInfo> {
@@ -788,6 +1756,89 @@ async fn ipc_invoke(
             Ok(Value::Bool(window.is_maximized().map_err(|err| {
                 format!("window maximize state check failed: {err}")
             })?))
+        }
+
+        "openclaw:test-connection" => {
+            let params =
+                serde_json::from_value::<OpenClawGatewayRequest>(get_arg(&args, 0)?.clone())
+                    .map_err(|err| format!("invalid OpenClaw request: {err}"))?;
+            openclaw_test_connection(&app, &params).await
+        }
+        "openclaw:list-agents" => {
+            let params =
+                serde_json::from_value::<OpenClawGatewayRequest>(get_arg(&args, 0)?.clone())
+                    .map_err(|err| format!("invalid OpenClaw request: {err}"))?;
+            openclaw_list_agents(&app, &params).await
+        }
+        "openclaw:list-sessions" => {
+            let params =
+                serde_json::from_value::<OpenClawGatewayRequest>(get_arg(&args, 0)?.clone())
+                    .map_err(|err| format!("invalid OpenClaw request: {err}"))?;
+            openclaw_list_sessions(&app, &params).await
+        }
+        "openclaw:invoke-agent" => {
+            let params =
+                serde_json::from_value::<OpenClawInvokeRequest>(get_arg(&args, 0)?.clone())
+                    .map_err(|err| format!("invalid OpenClaw invoke request: {err}"))?;
+
+            let (mut socket, _) =
+                openclaw_connect_and_auth(&app, &params.url, &params.auth).await?;
+            let request_params = json!({
+              "agent": params.agent_id,
+              "message": params.message,
+              "session": params.session_id,
+            });
+            let request_id = "2";
+            openclaw_send_request(&mut socket, request_id, "agent", request_params).await?;
+            let response = openclaw_wait_for_response(&mut socket, request_id).await?;
+            let invocation_id = response
+                .get("invocationId")
+                .and_then(Value::as_str)
+                .filter(|value| !value.is_empty())
+                .ok_or_else(|| "OpenClaw agent invocation did not return invocationId".to_string())?
+                .to_string();
+
+            let event_name = format!("openclaw:stream:{}", params.stream_id);
+            let stream_id = params.stream_id.clone();
+
+            if let Some(handle) = state
+                .openclaw_streams
+                .lock()
+                .map_err(|_| "openclaw stream lock poisoned".to_string())?
+                .remove(&stream_id)
+            {
+                handle.abort();
+            }
+
+            let app_handle = app.clone();
+            let task = tokio::spawn(openclaw_forward_agent_events(
+                app_handle,
+                stream_id.clone(),
+                event_name,
+                invocation_id.clone(),
+                socket,
+            ));
+
+            state
+                .openclaw_streams
+                .lock()
+                .map_err(|_| "openclaw stream lock poisoned".to_string())?
+                .insert(stream_id, task);
+
+            serde_json::to_value(OpenClawInvokeAccepted { invocation_id })
+                .map_err(|err| format!("serialize OpenClaw invoke response failed: {err}"))
+        }
+        "openclaw:cancel-invoke" | "openclaw:close-stream" => {
+            let stream_id = get_arg_string(&args, 0)?;
+            if let Some(handle) = state
+                .openclaw_streams
+                .lock()
+                .map_err(|_| "openclaw stream lock poisoned".to_string())?
+                .remove(&stream_id)
+            {
+                handle.abort();
+            }
+            Ok(Value::Null)
         }
 
         // mcp:stdio-transport:* channels are the legacy Electron/preload IPC route.
@@ -1502,8 +2553,9 @@ async fn ipc_invoke(
             let content = get_arg_string(&args, 1)?;
             let path = PathBuf::from(&file_path);
             if let Some(parent) = path.parent() {
-                fs::create_dir_all(parent)
-                    .map_err(|err| format!("failed to create directories for '{}': {}", file_path, err))?;
+                fs::create_dir_all(parent).map_err(|err| {
+                    format!("failed to create directories for '{}': {}", file_path, err)
+                })?;
             }
             fs::write(&file_path, &content)
                 .map_err(|err| format!("failed to write file '{}': {}", file_path, err))?;

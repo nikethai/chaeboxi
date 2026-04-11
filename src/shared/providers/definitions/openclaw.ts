@@ -23,6 +23,8 @@ export const openClawProvider = defineProvider({
   listModels: async (config) => {
     const client = new OpenClawGatewayClient(config.formattedApiHost, {
       token: config.providerSetting.apiKey || undefined,
+      cloudflareClientId: config.providerSetting.cloudflareClientId || undefined,
+      cloudflareClientSecret: config.providerSetting.cloudflareClientSecret || undefined,
     })
 
     try {
@@ -51,6 +53,8 @@ export const openClawProvider = defineProvider({
         apiKey: config.providerSetting.apiKey || '',
         apiHost: config.formattedApiHost,
         model: config.model,
+        cloudflareClientId: config.providerSetting.cloudflareClientId || undefined,
+        cloudflareClientSecret: config.providerSetting.cloudflareClientSecret || undefined,
       },
       config.dependencies
     )

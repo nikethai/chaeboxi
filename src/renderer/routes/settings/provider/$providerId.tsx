@@ -142,7 +142,14 @@ function DomainListTextarea({
     onChange(parseDomainList(localValue))
   }, [localValue, onChange])
   return (
-    <Textarea autosize minRows={2} value={localValue} placeholder={placeholder} onChange={(e) => setLocalValue(e.currentTarget.value)} onBlur={handleBlur} />
+    <Textarea
+      autosize
+      minRows={2}
+      value={localValue}
+      placeholder={placeholder}
+      onChange={(e) => setLocalValue(e.currentTarget.value)}
+      onBlur={handleBlur}
+    />
   )
 }
 
@@ -654,12 +661,12 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           <OpenClawGatewaySettings
             gatewayUrl={providerSettings?.apiHost?.replace(/\/v1$/, '') || 'http://127.0.0.1:18789'}
             authToken={providerSettings?.apiKey || ''}
-            onGatewayUrlChange={(value) =>
-              setProviderSettings({ apiHost: value })
-            }
-            onAuthTokenChange={(value) =>
-              setProviderSettings({ apiKey: value })
-            }
+            cloudflareClientId={providerSettings?.cloudflareClientId || ''}
+            cloudflareClientSecret={providerSettings?.cloudflareClientSecret || ''}
+            onGatewayUrlChange={(value) => setProviderSettings({ apiHost: value })}
+            onAuthTokenChange={(value) => setProviderSettings({ apiKey: value })}
+            onCloudflareClientIdChange={(value) => setProviderSettings({ cloudflareClientId: value })}
+            onCloudflareClientSecretChange={(value) => setProviderSettings({ cloudflareClientSecret: value })}
           />
         )}
 

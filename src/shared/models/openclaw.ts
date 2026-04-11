@@ -13,16 +13,25 @@ import { OpenClawGatewayClient } from '../openclaw/gateway'
 import { ApiError } from './errors'
 import type { CallChatCompletionOptions, ModelInterface } from './types'
 
-// Shared client cache — keyed by apiHost:apiKey
+// Shared client cache — keyed by apiHost:apiKey:cfId:cfSecret
 const clientCache = new Map<string, OpenClawGatewayClient>()
 const MAX_CACHED_GATEWAY_CLIENTS = 1
 
-function getGatewayClientCacheKey(apiHost: string, apiKey?: string): string {
-  return `${apiHost}:${apiKey || ''}`
+export interface GatewayClientCreateOptions {
+  apiHost: string
+  apiKey?: string
+  cloudflareClientId?: string
+  cloudflareClientSecret?: string
+  idleTimeoutMs?: number
+  maxDurationMs?: number
 }
 
-export function getOrCreateGatewayClient(apiHost: string, apiKey?: string): OpenClawGatewayClient {
-  const key = getGatewayClientCacheKey(apiHost, apiKey)
+function getGatewayClientCacheKey(opts: GatewayClientCreateOptions): string {
+  return `${opts.apiHost}:${opts.apiKey || ''}:${opts.cloudflareClientId || ''}:${opts.cloudflareClientSecret || ''}`
+}
+
+export function getOrCreateGatewayClient(opts: GatewayClientCreateOptions): OpenClawGatewayClient {
+  const key = getGatewayClientCacheKey(opts)
   let client = clientCache.get(key)
   if (!client) {
     while (clientCache.size >= MAX_CACHED_GATEWAY_CLIENTS) {
@@ -36,7 +45,18 @@ export function getOrCreateGatewayClient(apiHost: string, apiKey?: string): Open
       clientCache.delete(oldestKey)
     }
 
-    client = new OpenClawGatewayClient(apiHost, { token: apiKey })
+    client = new OpenClawGatewayClient(
+      opts.apiHost,
+      {
+        token: opts.apiKey,
+        cloudflareClientId: opts.cloudflareClientId,
+        cloudflareClientSecret: opts.cloudflareClientSecret,
+      },
+      {
+        idleTimeoutMs: opts.idleTimeoutMs,
+        maxDurationMs: opts.maxDurationMs,
+      }
+    )
     clientCache.set(key, client)
   } else {
     clientCache.delete(key)
@@ -45,8 +65,8 @@ export function getOrCreateGatewayClient(apiHost: string, apiKey?: string): Open
   return client
 }
 
-export function evictGatewayClient(apiHost: string, apiKey?: string): void {
-  const key = getGatewayClientCacheKey(apiHost, apiKey)
+export function evictGatewayClient(opts: GatewayClientCreateOptions): void {
+  const key = getGatewayClientCacheKey(opts)
   const client = clientCache.get(key)
   if (client) {
     client.disconnect()
@@ -65,6 +85,8 @@ interface Options {
   apiKey: string
   apiHost: string
   model: ProviderModelInfo
+  cloudflareClientId?: string
+  cloudflareClientSecret?: string
 }
 
 export default class OpenClawModel implements ModelInterface {
@@ -77,7 +99,12 @@ export default class OpenClawModel implements ModelInterface {
     _dependencies: ModelDependencies
   ) {
     this.modelId = options.model.modelId
-    this.gatewayClient = getOrCreateGatewayClient(options.apiHost, options.apiKey)
+    this.gatewayClient = getOrCreateGatewayClient({
+      apiHost: options.apiHost,
+      apiKey: options.apiKey,
+      cloudflareClientId: options.cloudflareClientId,
+      cloudflareClientSecret: options.cloudflareClientSecret,
+    })
   }
 
   isSupportVision(): boolean {

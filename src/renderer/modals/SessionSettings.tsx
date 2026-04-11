@@ -214,21 +214,23 @@ const SessionSettingsModal = NiceModal.create(
               />
             </Input.Wrapper>
 
-            <Textarea
-              label={t('Instruction (System Prompt)')}
-              placeholder={t('Copilot Prompt Demo') || ''}
-              autosize
-              minRows={2}
-              maxRows={12}
-              value={systemPrompt}
-              onChange={(event) => setSystemPrompt(event.target.value)}
-              classNames={{
-                input: '!text-chatbox-tint-primary',
-              }}
-              styles={{
-                input: { touchAction: 'manipulation' },
-              }}
-            />
+            {editingData.settings?.provider !== ModelProviderEnum.OpenClaw && (
+              <Textarea
+                label={t('Instruction (System Prompt)')}
+                placeholder={t('Copilot Prompt Demo') || ''}
+                autosize
+                minRows={2}
+                maxRows={12}
+                value={systemPrompt}
+                onChange={(event) => setSystemPrompt(event.target.value)}
+                classNames={{
+                  input: '!text-chatbox-tint-primary',
+                }}
+                styles={{
+                  input: { touchAction: 'manipulation' },
+                }}
+              />
+            )}
 
             <Stack className=" border border-solid border-chatbox-border-primary rounded-md">
               <Flex

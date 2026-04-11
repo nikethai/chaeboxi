@@ -441,12 +441,18 @@ export async function generate(
         let lastTokenSpeed: number | undefined
         const persistInterval = 2000
         let lastPersistTimestamp = Date.now()
-        const promptMsgs = await genMessageContext(
+        let promptMsgs = await genMessageContext(
           effectiveSettings,
           messages.slice(0, targetMsgIx),
           model.isSupportToolUse('read-file'),
           { compactionPoints: session.compactionPoints, truncateTokenLimit: options?.truncateTokenLimit }
         )
+
+        if (effectiveSettings.provider === ModelProviderEnum.OpenClaw) {
+          // OpenClaw manages its own session prompt. Drop persisted chat-level system messages,
+          // but keep runtime instructions injected below (pre-hooks, planning, tool prompts).
+          promptMsgs = promptMsgs.filter((message) => message.role !== 'system')
+        }
 
         // Execute pre-turn hooks and prepend context to messages
         const preHookContext = copilotOverrides?.hooks?.preTurn

@@ -23,7 +23,7 @@ import storage from '@/storage'
 import { StorageKey, StorageKeyGenerator } from '@/storage/StoreStorage'
 import { migrateSession, sortSessions } from '@/utils/session-utils'
 import * as defaults from '../../shared/defaults'
-import { createMessage, type Message, SessionSettingsSchema, TOKEN_CACHE_KEYS } from '../../shared/types'
+import { createMessage, type Message, ModelProviderEnum, SessionSettingsSchema, TOKEN_CACHE_KEYS } from '../../shared/types'
 import { lastUsedModelStore } from './lastUsedModelStore'
 import { getPlatformDefaultDocumentParser, settingsStore } from './settingsStore'
 
@@ -524,7 +524,7 @@ export function initEmptyChatSession(): Omit<Session, 'id'> {
         : lastUsedChatModel),
     },
   }
-  if (settings.defaultPrompt) {
+  if (settings.defaultPrompt && newSession.settings.provider !== ModelProviderEnum.OpenClaw) {
     newSession.messages.push(createMessage('system', settings.defaultPrompt || defaults.getDefaultPrompt()))
   }
   return newSession

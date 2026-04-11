@@ -21,6 +21,7 @@ import { createSession as createSessionStore } from '@/stores/chatStore'
 import { submitNewUserMessage, switchCurrentSession } from '@/stores/sessionActions'
 import { initEmptyChatSession } from '@/stores/sessionHelpers'
 import { useUIStore } from '@/stores/uiStore'
+import { ModelProviderEnum } from '@shared/types'
 
 export const Route = createFileRoute('/')({
   component: Index,
@@ -145,6 +146,7 @@ function Index() {
   const onSelectModel = useCallback((p: string, m: string) => {
     setSession((old) => ({
       ...old,
+      messages: p === ModelProviderEnum.OpenClaw ? old.messages.filter((message) => message.role !== 'system') : old.messages,
       settings: {
         ...(old.settings || {}),
         provider: p,

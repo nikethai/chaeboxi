@@ -1,5 +1,6 @@
 import type {
   AgentInvokeParams,
+  AgentInvokeResponse,
   AgentMessage,
   AgentStreamEvent,
   ConnectParams,
@@ -33,6 +34,143 @@ type AgentEventWaiter = {
 }
 
 type TauriUnlisten = () => void
+
+function getAgentRunId(value: { runId?: string; invocationId?: string } | null | undefined): string | undefined {
+  const runId = value?.runId?.trim()
+  if (runId) {
+    return runId
+  }
+
+  const invocationId = value?.invocationId?.trim()
+  if (invocationId) {
+    return invocationId
+  }
+
+  return undefined
+}
+
+function normalizeAgentStreamEvent(data: unknown): AgentStreamEvent | null {
+  if (!data || typeof data !== 'object') {
+    return null
+  }
+
+  const raw = data as Record<string, unknown>
+  const runId = getAgentRunId({
+    runId: typeof raw.runId === 'string' ? raw.runId : undefined,
+    invocationId: typeof raw.invocationId === 'string' ? raw.invocationId : undefined,
+  })
+
+  if (!runId) {
+    return null
+  }
+
+  const rawType = typeof raw.type === 'string' ? raw.type : undefined
+  if (rawType === 'chunk' || rawType === 'done' || rawType === 'tool' || rawType === 'tool_result') {
+    return {
+      ...raw,
+      invocationId: runId,
+      runId,
+    } as AgentStreamEvent
+  }
+
+  const stream = typeof raw.stream === 'string' ? raw.stream : undefined
+  const payload =
+    raw.data && typeof raw.data === 'object' ? (raw.data as Record<string, unknown>) : raw
+
+  if (stream === 'assistant') {
+    const delta =
+      typeof payload.delta === 'string'
+        ? payload.delta
+        : typeof payload.text === 'string'
+          ? payload.text
+          : typeof payload.content === 'string'
+            ? payload.content
+            : ''
+
+    if (!delta) {
+      return null
+    }
+
+    return {
+      type: 'chunk',
+      invocationId: runId,
+      runId,
+      delta,
+    }
+  }
+
+  if (stream === 'tool') {
+    const phase = typeof payload.phase === 'string' ? payload.phase : undefined
+    const tool =
+      typeof payload.tool === 'string'
+        ? payload.tool
+        : typeof payload.name === 'string'
+          ? payload.name
+          : typeof payload.toolName === 'string'
+            ? payload.toolName
+            : 'tool'
+
+    if (phase === 'start' || phase === 'call') {
+      const input =
+        (payload.input as Record<string, unknown> | undefined) ||
+        (payload.args as Record<string, unknown> | undefined) ||
+        {}
+
+      return {
+        type: 'tool',
+        invocationId: runId,
+        runId,
+        tool,
+        input,
+      }
+    }
+
+    if (phase === 'result' || phase === 'end' || phase === 'error') {
+      return {
+        type: 'tool_result',
+        invocationId: runId,
+        runId,
+        tool,
+        output: payload.output ?? payload.result ?? null,
+        error:
+          typeof payload.error === 'string'
+            ? payload.error
+            : phase === 'error'
+              ? typeof payload.message === 'string'
+                ? payload.message
+                : 'Tool execution failed'
+              : undefined,
+      }
+    }
+  }
+
+  if (stream === 'lifecycle') {
+    const phase = typeof payload.phase === 'string' ? payload.phase : undefined
+    if (phase === 'end' || phase === 'error') {
+      const message =
+        typeof payload.error === 'string'
+          ? payload.error
+          : typeof payload.message === 'string'
+            ? payload.message
+            : undefined
+
+      return {
+        type: 'done',
+        invocationId: runId,
+        runId,
+        status: phase === 'error' ? 'error' : 'ok',
+        error: message
+          ? {
+              code: phase === 'error' ? 'agent_error' : 'agent_done',
+              message,
+            }
+          : undefined,
+      }
+    }
+  }
+
+  return null
+}
 
 function isTauriRuntime(): boolean {
   if (typeof window === 'undefined') {
@@ -403,11 +541,15 @@ export class OpenClawGatewayClient {
   async *invokeAgent(
     agentId: string,
     message: AgentMessage,
-    sessionId?: string,
+    options?: {
+      sessionId?: string
+      sessionKey?: string
+      extraSystemPrompt?: string
+    },
     signal?: AbortSignal
   ): AsyncGenerator<AgentStreamEvent, void, unknown> {
     if (this.isNativeTauriTransport()) {
-      yield* this.invokeAgentViaTauri(agentId, message, sessionId, signal)
+      yield* this.invokeAgentViaTauri(agentId, message, options, signal)
       return
     }
 
@@ -416,24 +558,27 @@ export class OpenClawGatewayClient {
     }
 
     const params: AgentInvokeParams = {
-      agent: agentId,
-      message,
-      session: sessionId,
+      agentId,
+      message: message.content,
+      sessionId: options?.sessionId,
+      sessionKey: options?.sessionKey,
+      extraSystemPrompt: options?.extraSystemPrompt,
+      idempotencyKey: crypto.randomUUID(),
     }
 
-    const response = await this.request<{ status: string; invocationId?: string }>('agent', params)
+    const response = await this.request<AgentInvokeResponse>('agent', params)
+    const invocationId = getAgentRunId(response)
 
-    if (response.status !== 'accepted' || !response.invocationId) {
-      throw new Error(`Agent invocation not accepted: ${response.status}`)
+    if (!invocationId) {
+      throw new Error(`Agent invocation did not return runId: ${JSON.stringify(response)}`)
     }
 
-    const invocationId = response.invocationId
     this.agentEventQueues.set(invocationId, this.agentEventQueues.get(invocationId) ?? [])
 
     const agentEventHandler = (event: string, data: unknown) => {
       if (event !== 'agent' || !data) return
-      const agentData = data as AgentStreamEvent
-      if (!('invocationId' in agentData)) return
+      const agentData = normalizeAgentStreamEvent(data)
+      if (!agentData) return
 
       const queue = this.agentEventQueues.get(agentData.invocationId)
       if (!queue) return
@@ -498,7 +643,11 @@ export class OpenClawGatewayClient {
   private async *invokeAgentViaTauri(
     agentId: string,
     message: AgentMessage,
-    sessionId?: string,
+    options?: {
+      sessionId?: string
+      sessionKey?: string
+      extraSystemPrompt?: string
+    },
     signal?: AbortSignal
   ): AsyncGenerator<AgentStreamEvent, void, unknown> {
     const streamId = crypto.randomUUID()
@@ -507,7 +656,11 @@ export class OpenClawGatewayClient {
     let wake: (() => void) | null = null
 
     const unlisten = await listenTauriEvent(eventName, (payload) => {
-      queue.push(payload as AgentStreamEvent)
+      const event = normalizeAgentStreamEvent(payload)
+      if (!event) {
+        return
+      }
+      queue.push(event)
       this.touchActivity()
       wake?.()
       wake = null
@@ -528,13 +681,15 @@ export class OpenClawGatewayClient {
     }
 
     try {
-      await invokeTauri<{ invocationId: string }>('openclaw:invoke-agent', {
+      await invokeTauri<{ invocationId?: string; runId?: string }>('openclaw:invoke-agent', {
         streamId,
         url: this.url,
         auth: this.auth,
         agentId,
-        message,
-        sessionId,
+        message: message.content,
+        sessionId: options?.sessionId,
+        sessionKey: options?.sessionKey,
+        extraSystemPrompt: options?.extraSystemPrompt,
       })
 
       while (true) {

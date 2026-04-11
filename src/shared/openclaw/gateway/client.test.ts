@@ -18,6 +18,45 @@ describe('OpenClawGatewayClient', () => {
     vi.restoreAllMocks()
   })
 
+  it('sends the current agent payload shape expected by the gateway', async () => {
+    const client = new OpenClawGatewayClient('http://127.0.0.1:18789')
+
+    ;(client as unknown as { ws: { readyState: number; close: () => void; send: () => void }; state: string }).ws = {
+      readyState: 1,
+      close: vi.fn(),
+      send: vi.fn(),
+    }
+    ;(client as unknown as { state: string }).state = 'connected'
+
+    vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('test-idempotency-key')
+    const requestSpy = vi.spyOn(client, 'request').mockResolvedValue({
+      runId: 'server-run-id',
+    })
+
+    const stream = client.invokeAgent(
+      'pi-agent',
+      { role: 'user', content: 'hello' },
+      {
+        sessionKey: 'chaeboxi:session-1',
+      }
+    )
+    const nextEvent = stream.next()
+
+    await waitForPendingStreamWaiter(client)
+
+    expect(requestSpy).toHaveBeenCalledWith('agent', {
+      agentId: 'pi-agent',
+      message: 'hello',
+      sessionId: undefined,
+      sessionKey: 'chaeboxi:session-1',
+      extraSystemPrompt: undefined,
+      idempotencyKey: 'test-idempotency-key',
+    })
+
+    client.disconnect()
+    await expect(nextEvent).rejects.toThrow('Connection closed during agent invocation')
+  })
+
   it('rejects a pending agent stream waiter when disconnect closes the connection', async () => {
     const client = new OpenClawGatewayClient('http://127.0.0.1:18789')
 
@@ -28,7 +67,7 @@ describe('OpenClawGatewayClient', () => {
     }
     ;(client as unknown as { state: string }).state = 'connected'
 
-    vi.spyOn(client, 'request').mockResolvedValue({ status: 'accepted', invocationId: 'server-invocation-id' })
+    vi.spyOn(client, 'request').mockResolvedValue({ runId: 'server-run-id' })
 
     const stream = client.invokeAgent('pi-agent', { role: 'user', content: 'hello' })
     const nextEvent = stream.next()
@@ -40,7 +79,7 @@ describe('OpenClawGatewayClient', () => {
     await expect(nextEvent).rejects.toThrow('Connection closed during agent invocation')
   })
 
-  it('routes stream events using the invocation id returned by the gateway', async () => {
+  it('routes stream events using the run id returned by the gateway', async () => {
     const client = new OpenClawGatewayClient('http://127.0.0.1:18789')
 
     ;(client as unknown as { ws: { readyState: number; close: () => void; send: () => void }; state: string }).ws = {
@@ -50,7 +89,44 @@ describe('OpenClawGatewayClient', () => {
     }
     ;(client as unknown as { state: string }).state = 'connected'
 
-    vi.spyOn(client, 'request').mockResolvedValue({ status: 'accepted', invocationId: 'server-invocation-id' })
+    vi.spyOn(client, 'request').mockResolvedValue({ runId: 'server-run-id' })
+
+    const stream = client.invokeAgent('pi-agent', { role: 'user', content: 'hello' })
+    const nextEventPromise = stream.next()
+
+    await waitForPendingStreamWaiter(client)
+
+    const handlers = (client as unknown as { eventHandlers: Array<(event: string, data: unknown) => void> }).eventHandlers
+    handlers[0]?.('agent', {
+      stream: 'assistant',
+      runId: 'server-run-id',
+      data: {
+        delta: 'hello back',
+      },
+    })
+
+    await expect(nextEventPromise).resolves.toMatchObject({
+      done: false,
+      value: {
+        type: 'chunk',
+        invocationId: 'server-run-id',
+        runId: 'server-run-id',
+        delta: 'hello back',
+      },
+    })
+  })
+
+  it('normalizes legacy invocationId events for backward compatibility', async () => {
+    const client = new OpenClawGatewayClient('http://127.0.0.1:18789')
+
+    ;(client as unknown as { ws: { readyState: number; close: () => void; send: () => void }; state: string }).ws = {
+      readyState: 1,
+      close: vi.fn(),
+      send: vi.fn(),
+    }
+    ;(client as unknown as { state: string }).state = 'connected'
+
+    vi.spyOn(client, 'request').mockResolvedValue({ status: 'accepted', invocationId: 'legacy-invocation-id' })
 
     const stream = client.invokeAgent('pi-agent', { role: 'user', content: 'hello' })
     const nextEventPromise = stream.next()
@@ -60,7 +136,7 @@ describe('OpenClawGatewayClient', () => {
     const handlers = (client as unknown as { eventHandlers: Array<(event: string, data: unknown) => void> }).eventHandlers
     handlers[0]?.('agent', {
       type: 'chunk',
-      invocationId: 'server-invocation-id',
+      invocationId: 'legacy-invocation-id',
       delta: 'hello back',
     })
 
@@ -68,7 +144,8 @@ describe('OpenClawGatewayClient', () => {
       done: false,
       value: {
         type: 'chunk',
-        invocationId: 'server-invocation-id',
+        invocationId: 'legacy-invocation-id',
+        runId: 'legacy-invocation-id',
         delta: 'hello back',
       },
     })

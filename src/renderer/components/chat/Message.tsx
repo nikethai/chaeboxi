@@ -44,7 +44,6 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import { useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
 import * as dateFns from 'date-fns'
@@ -72,10 +71,9 @@ import { copyToClipboard } from '@/packages/navigator'
 import { countWord } from '@/packages/word-count'
 import platform from '@/platform'
 import storage from '@/storage'
-import { getSession, useSessionSettings } from '@/stores/chatStore'
+import { getSession } from '@/stores/chatStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
-import { openclawAgentsAtom } from '@/stores/atoms/openclawAtoms'
 import '../../static/Block.css'
 import {
   generateMore,
@@ -156,18 +154,6 @@ const _Message: FC<Props> = (props) => {
   const isComfyUIReady = useSettingsStore(
     (state) => !!state.providers?.[ModelProviderEnum.ComfyUI]?.comfyuiCheckpoint
   )
-
-  const { sessionSettings: currentSessionSettings } = useSessionSettings(props.sessionId || null)
-  const openclawAgents = useAtomValue(openclawAgentsAtom)
-  const openclawAgentId = currentSessionSettings?.openclawAgentId
-  const openclawAgentName = useMemo(() => {
-    if (msg.aiProvider !== ModelProviderEnum.OpenClaw) {
-      return null
-    }
-    if (!openclawAgentId) return null
-    const agent = openclawAgents.find((a) => a.id === openclawAgentId)
-    return agent?.name || openclawAgentId
-  }, [msg.aiProvider, openclawAgentId, openclawAgents])
 
   const messageText = useMemo(() => getMessageText(msg), [msg])
 
@@ -430,9 +416,6 @@ const _Message: FC<Props> = (props) => {
     }
     if (showModelName && props.msg.role === 'assistant') {
       tips.push(`model: ${props.msg.model || 'unknown'}`)
-    }
-    if (openclawAgentName && props.msg.role === 'assistant') {
-      tips.push(`agent: ${openclawAgentName}`)
     }
   } else if (props.sessionType === 'picture') {
     if (showModelName && props.msg.role === 'assistant') {

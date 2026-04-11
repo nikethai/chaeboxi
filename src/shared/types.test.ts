@@ -1,8 +1,8 @@
-import * as defaults from './defaults'
 import { describe, expect, it } from 'vitest'
+import * as defaults from './defaults'
 import { copyMessagesWithMapping, copyThreads, createMessage } from './types'
-import { ProviderSettingsSchema, SettingsSchema } from './types/settings'
 import type { CompactionPoint, SessionThread } from './types/session'
+import { ProviderSettingsSchema, SettingsSchema } from './types/settings'
 
 describe('defaults', () => {
   it('registers built-in system providers before SystemProviders is read', () => {
@@ -377,11 +377,25 @@ describe('provider settings schema', () => {
 
   it('parses comfyui agent image flow settings', () => {
     const parsed = ProviderSettingsSchema.parse({
+      comfyuiLoras: [
+        {
+          name: 'style-a.safetensors',
+          strengthModel: 0.8,
+          strengthClip: 0.6,
+        },
+      ],
       agentImageFlowEnabled: true,
       agentImageResearchDomains: ['danbooru.donmai.us', 'pixiv.net'],
       agentImageNormalizationPrompt: 'Output only comma-separated tags.',
     })
 
+    expect(parsed.comfyuiLoras).toEqual([
+      {
+        name: 'style-a.safetensors',
+        strengthModel: 0.8,
+        strengthClip: 0.6,
+      },
+    ])
     expect(parsed.agentImageFlowEnabled).toBe(true)
     expect(parsed.agentImageResearchDomains).toEqual(['danbooru.donmai.us', 'pixiv.net'])
     expect(parsed.agentImageNormalizationPrompt).toBe('Output only comma-separated tags.')
@@ -392,6 +406,13 @@ describe('provider settings schema', () => {
       ...defaults.settings(),
       providers: {
         comfyui: {
+          comfyuiLoras: [
+            {
+              name: 'style-b.safetensors',
+              strengthModel: 1.2,
+              strengthClip: 0.5,
+            },
+          ],
           agentImageFlowEnabled: true,
           agentImageResearchDomains: ['danbooru.donmai.us', 'pixiv.net'],
           agentImageNormalizationPrompt: 'Keep only reusable Danbooru-style tags.',
@@ -399,6 +420,13 @@ describe('provider settings schema', () => {
       },
     })
 
+    expect(parsed.providers?.comfyui?.comfyuiLoras).toEqual([
+      {
+        name: 'style-b.safetensors',
+        strengthModel: 1.2,
+        strengthClip: 0.5,
+      },
+    ])
     expect(parsed.providers?.comfyui?.agentImageFlowEnabled).toBe(true)
     expect(parsed.providers?.comfyui?.agentImageResearchDomains).toEqual(['danbooru.donmai.us', 'pixiv.net'])
     expect(parsed.providers?.comfyui?.agentImageNormalizationPrompt).toBe('Keep only reusable Danbooru-style tags.')

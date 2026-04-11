@@ -1,10 +1,10 @@
 import { AIProviderNoImplementedChatError, ApiError } from '../../../models/errors'
 import type { CallChatCompletionOptions, ModelInterface } from '../../../models/types'
 import type { ProviderModelInfo, ProviderSettings } from '../../../types'
-import type { ComfyUIGenerationParams } from './comfyui-types'
 import { ComfyUIClient } from './comfyui-client'
+import type { ComfyUIGenerationParams } from './comfyui-types'
+import { DEFAULT_COMFYUI_LORA_STRENGTH, normalizeComfyUILoras, resolveComfyUIOption } from './comfyui-utils'
 import { buildComfyUIWorkflow, DEFAULT_NEGATIVE_PROMPT } from './comfyui-workflow'
-import { resolveComfyUIOption } from './comfyui-utils'
 
 export interface ComfyUIModelOptions {
   apiHost: string
@@ -50,15 +50,16 @@ export default class ComfyUI implements ModelInterface {
       comfyuiParams?: ComfyUIGenerationParams
     },
     signal?: AbortSignal,
-    callback?: (picBase64: string) => void,
+    callback?: (picBase64: string) => void
   ): Promise<string[]> {
     const ps = this.providerSettings
 
     // Merge provider settings defaults with per-generation overrides
     const genParams: ComfyUIGenerationParams & { prompt: string } = {
       checkpoint: ps.comfyuiCheckpoint,
+      loras: ps.comfyuiLoras,
       lora: ps.comfyuiLora,
-      loraStrength: ps.comfyuiLoraStrength ?? 1,
+      loraStrength: ps.comfyuiLoraStrength ?? DEFAULT_COMFYUI_LORA_STRENGTH,
       negativePrompt: ps.comfyuiNegativePrompt ?? DEFAULT_NEGATIVE_PROMPT,
       steps: ps.comfyuiDefaultSteps ?? 29,
       cfg: ps.comfyuiDefaultCfg ?? 4.9,
@@ -76,22 +77,21 @@ export default class ComfyUI implements ModelInterface {
 
     if (!genParams.checkpoint) {
       throw new ApiError(
-        'No checkpoint configured. Please go to Settings → ComfyUI and select a checkpoint from your server.',
+        'No checkpoint configured. Please go to Settings → ComfyUI and select a checkpoint from your server.'
       )
     }
 
-    if (!genParams.lora) {
-      genParams.lora = 'none'
-    }
+    genParams.loras = normalizeComfyUILoras(genParams)
 
     try {
       const objectInfo = await this.client.getObjectInfo()
       const serverInfo = this.client.parseServerInfo(objectInfo)
 
       genParams.checkpoint = resolveComfyUIOption(genParams.checkpoint, serverInfo.checkpoints)
-      if (genParams.lora && genParams.lora !== 'none') {
-        genParams.lora = resolveComfyUIOption(genParams.lora, serverInfo.loras)
-      }
+      genParams.loras = genParams.loras.map((lora) => ({
+        ...lora,
+        name: resolveComfyUIOption(lora.name, serverInfo.loras) ?? lora.name,
+      }))
       genParams.samplerName = resolveComfyUIOption(genParams.samplerName, serverInfo.samplers)
       genParams.scheduler = resolveComfyUIOption(genParams.scheduler, serverInfo.schedulers)
     } catch {

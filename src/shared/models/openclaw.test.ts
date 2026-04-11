@@ -131,4 +131,58 @@ describe('OpenClawModel', () => {
       undefined
     )
   })
+
+  it('surfaces completed OpenClaw tool events even when no tool start event was streamed', async () => {
+    vi.spyOn(OpenClawGatewayClient.prototype, 'connect').mockResolvedValue({
+      status: 'ok',
+      stateVersion: 1,
+      uptimeMs: 1,
+      limits: {},
+      policy: {},
+      features: {},
+    })
+    vi.spyOn(OpenClawGatewayClient.prototype, 'listSessions').mockResolvedValue({ sessions: [] })
+    vi.spyOn(OpenClawGatewayClient.prototype, 'invokeAgent').mockImplementation(async function* () {
+      yield {
+        type: 'tool_result',
+        invocationId: 'run-2',
+        tool: 'read_file',
+        output: {
+          path: '/tmp/demo.txt',
+          content: 'hello',
+        },
+      }
+      yield {
+        type: 'done',
+        invocationId: 'run-2',
+        status: 'ok',
+      }
+    })
+
+    const model = new OpenClawModel(
+      {
+        apiKey: 'token',
+        apiHost: 'http://127.0.0.1:18789',
+        model: {
+          modelId: 'rp-agent',
+          capabilities: ['tool_use'],
+        },
+      },
+      {} as never
+    )
+
+    const result = await model.chat([{ role: 'user', content: 'inspect the file' }], {})
+
+    expect(result.contentParts).toContainEqual({
+      type: 'tool-call',
+      state: 'result',
+      toolCallId: 'run-2:read_file',
+      toolName: 'read_file',
+      args: {},
+      result: {
+        path: '/tmp/demo.txt',
+        content: 'hello',
+      },
+    })
+  })
 })

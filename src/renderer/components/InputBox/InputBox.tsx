@@ -94,6 +94,7 @@ import ModelSelector from '../ModelSelector'
 import MCPMenu from '../mcp/MCPMenu'
 import { FileMiniCard, ImageMiniCard, LinkMiniCard } from './Attachments'
 import { ImageUploadInput } from './ImageUploadInput'
+import OpenClawCommandPicker, { filterOpenClawCommands, getCommandAlias } from './OpenClawCommandPicker'
 import {
   cleanupFile,
   cleanupLink,
@@ -106,6 +107,8 @@ import {
 } from './preprocessState'
 import TokenCountMenu from './TokenCountMenu'
 import PresetPicker, { filterPresets } from './PresetPicker'
+import type { GatewayCommandInfo } from '@shared/openclaw/gateway/types'
+import { getOrCreateGatewayClient } from '@shared/models/openclaw'
 
 export type InputBoxPayload = {
   constructedMessage: Message
@@ -457,15 +460,64 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       () => sessionType === 'chat' && !isOpenClawModel && messageInput.startsWith('/') && !messageInput.includes('\n'),
       [isOpenClawModel, messageInput, sessionType]
     )
+    const [openClawPickerDismissed, setOpenClawPickerDismissed] = useState(false)
+
+    const showOpenClawCommandPicker = useMemo(
+      () =>
+        sessionType === 'chat' &&
+        isOpenClawModel &&
+        messageInput.startsWith('/') &&
+        !messageInput.includes('\n') &&
+        !messageInput.includes(' ') &&
+        !openClawPickerDismissed,
+      [isOpenClawModel, messageInput, sessionType, openClawPickerDismissed]
+    )
     const presetQuery = useMemo(() => (showPresetPicker ? messageInput.slice(1) : ''), [messageInput, showPresetPicker])
+    const openClawCommandQuery = useMemo(
+      () => (showOpenClawCommandPicker ? messageInput.slice(1) : ''),
+      [messageInput, showOpenClawCommandPicker]
+    )
     const filteredPresets = useMemo(
       () => filterPresets(promptPresets, presetQuery).slice(0, 8),
       [presetQuery, promptPresets]
     )
+    const providerSettings = useSettingsStore((state) => state.providers?.[ModelProviderEnum.OpenClaw])
+    const openClawGatewayConfig = useMemo(
+      () => ({
+        apiHost: providerSettings?.apiHost || 'http://127.0.0.1:18789',
+        apiKey: providerSettings?.apiKey || '',
+        cloudflareClientId: providerSettings?.cloudflareClientId || '',
+        cloudflareClientSecret: providerSettings?.cloudflareClientSecret || '',
+      }),
+      [providerSettings]
+    )
+    const { data: openClawCommands = [] } = useQuery({
+      queryKey: [
+        'openclaw-commands',
+        openClawGatewayConfig.apiHost,
+        openClawGatewayConfig.apiKey,
+        openClawGatewayConfig.cloudflareClientId,
+        openClawGatewayConfig.cloudflareClientSecret,
+      ],
+      queryFn: async () => {
+        const client = getOrCreateGatewayClient(openClawGatewayConfig)
+        await client.connect()
+        const response = await client.listCommands()
+        return response.commands ?? []
+      },
+      enabled: showOpenClawCommandPicker && !!openClawGatewayConfig.apiHost,
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+    })
+    const filteredOpenClawCommands = useMemo(
+      () => filterOpenClawCommands(openClawCommands, openClawCommandQuery).slice(0, 8),
+      [openClawCommands, openClawCommandQuery]
+    )
 
     useEffect(() => {
       setPresetHighlightIndex(0)
-    }, [presetQuery])
+      setOpenClawPickerDismissed(false)
+    }, [presetQuery, messageInput])
 
     const handlePresetSelect = useCallback(
       async (presetId: string) => {
@@ -483,6 +535,20 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         }, 0)
       },
       [filteredPresets, resetHistoryIndex, setMessageInput]
+    )
+
+    const handleOpenClawCommandSelect = useCallback(
+      (command: GatewayCommandInfo) => {
+        const nextValue = `${getCommandAlias(command)} `
+        setOpenClawPickerDismissed(true)
+        setMessageInput(nextValue)
+        resetHistoryIndex()
+        dom.focusMessageInput()
+        setTimeout(() => {
+          dom.setMessageInputCursorToEnd()
+        }, 0)
+      },
+      [resetHistoryIndex, setMessageInput]
     )
 
     const closeSelectModelErrorTipCb = useRef<NodeJS.Timeout>()
@@ -571,26 +637,32 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     )
 
     const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (showPresetPicker) {
+      if (showPresetPicker || showOpenClawCommandPicker) {
+        const activePickerItems = showOpenClawCommandPicker ? filteredOpenClawCommands : filteredPresets
+
         if (event.key === 'ArrowDown') {
           event.preventDefault()
-          if (filteredPresets.length > 0) {
-            setPresetHighlightIndex((index) => (index + 1) % filteredPresets.length)
+          if (activePickerItems.length > 0) {
+            setPresetHighlightIndex((index) => (index + 1) % activePickerItems.length)
           }
           return
         }
 
         if (event.key === 'ArrowUp') {
           event.preventDefault()
-          if (filteredPresets.length > 0) {
-            setPresetHighlightIndex((index) => (index - 1 + filteredPresets.length) % filteredPresets.length)
+          if (activePickerItems.length > 0) {
+            setPresetHighlightIndex((index) => (index - 1 + activePickerItems.length) % activePickerItems.length)
           }
           return
         }
 
         if (event.key === 'Escape') {
           event.preventDefault()
-          setMessageInput('')
+          if (showOpenClawCommandPicker) {
+            setOpenClawPickerDismissed(true)
+          } else {
+            setMessageInput('')
+          }
           return
         }
 
@@ -600,10 +672,14 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           !event.ctrlKey &&
           !event.altKey &&
           !event.metaKey &&
-          filteredPresets[presetHighlightIndex]
+          activePickerItems[presetHighlightIndex]
         ) {
           event.preventDefault()
-          void handlePresetSelect(filteredPresets[presetHighlightIndex].id)
+          if (showOpenClawCommandPicker) {
+            handleOpenClawCommandSelect(activePickerItems[presetHighlightIndex] as GatewayCommandInfo)
+          } else {
+            void handlePresetSelect(filteredPresets[presetHighlightIndex].id)
+          }
           return
         }
       }
@@ -983,6 +1059,15 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 }}
                 presets={promptPresets}
                 query={presetQuery}
+              />
+            )}
+            {showOpenClawCommandPicker && (
+              <OpenClawCommandPicker
+                commands={openClawCommands}
+                highlightedIndex={presetHighlightIndex}
+                onHighlightChange={setPresetHighlightIndex}
+                onSelect={handleOpenClawCommandSelect}
+                query={openClawCommandQuery}
               />
             )}
 

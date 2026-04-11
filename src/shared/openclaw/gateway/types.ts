@@ -240,6 +240,20 @@ export interface SessionsListResponse {
   sessions: SessionInfo[]
 }
 
+export interface CommandsListResponse {
+  commands: GatewayCommandInfo[]
+}
+
+export interface GatewayCommandInfo {
+  name: string
+  nativeName?: string
+  description?: string
+  usage?: string
+  textAliases?: string[]
+  icon?: string
+  category?: string
+}
+
 // Client connection state
 export type ConnectionState =
   | 'disconnected'

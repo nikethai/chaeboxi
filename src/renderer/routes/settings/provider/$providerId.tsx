@@ -54,6 +54,7 @@ import { add as addToast } from '@/stores/toastActions'
 import { type ModelTestState, testModelCapabilities } from '@/utils/model-tester'
 import { useComfyUIInfo } from '@/hooks/useComfyUIInfo'
 import { ComfyUIClient } from '@shared/providers/definitions/models/comfyui-client'
+import type { ComfyUILoraConfig } from '@shared/providers/definitions/models/comfyui-types'
 import { OpenClawGatewaySettings } from '@/components/settings/OpenClawGatewaySettings'
 
 export const Route = createFileRoute('/settings/provider/$providerId')({
@@ -126,6 +127,35 @@ function parseDomainList(value: string): string[] {
         .filter(Boolean)
     )
   )
+}
+
+const DEFAULT_COMFYUI_LORA: ComfyUILoraConfig = {
+  name: '',
+  strengthModel: 1,
+  strengthClip: 1,
+}
+
+function getComfyUILoras(providerSettings: any): ComfyUILoraConfig[] {
+  if (Array.isArray(providerSettings?.comfyuiLoras) && providerSettings.comfyuiLoras.length > 0) {
+    return providerSettings.comfyuiLoras.map((lora: ComfyUILoraConfig) => ({
+      name: lora.name || '',
+      strengthModel: lora.strengthModel ?? 1,
+      strengthClip: lora.strengthClip ?? lora.strengthModel ?? 1,
+    }))
+  }
+
+  if (providerSettings?.comfyuiLora && providerSettings.comfyuiLora !== 'none') {
+    const strength = providerSettings.comfyuiLoraStrength ?? 1
+    return [
+      {
+        name: providerSettings.comfyuiLora,
+        strengthModel: strength,
+        strengthClip: strength,
+      },
+    ]
+  }
+
+  return []
 }
 
 function DomainListTextarea({
@@ -1042,6 +1072,16 @@ function ComfyUISettingsSection({
   const { checkpoints, loras, samplers, schedulers, isLoading, refetch } = useComfyUIInfo()
   const [testingConnection, setTestingConnection] = useState(false)
   const [connectionStatus, setConnectionStatus] = useState<boolean | null>(null)
+  const configuredLoras = getComfyUILoras(providerSettings)
+  const availableLoras = loras.filter((lora) => lora !== 'none')
+
+  const updateComfyUILoras = (nextLoras: ComfyUILoraConfig[]) => {
+    setProviderSettings({
+      comfyuiLoras: nextLoras,
+      comfyuiLora: undefined,
+      comfyuiLoraStrength: undefined,
+    })
+  }
 
   const handleTestConnection = async () => {
     const apiHost = providerSettings?.apiHost || 'http://127.0.0.1:8188'
@@ -1126,46 +1166,92 @@ function ComfyUISettingsSection({
       {/* LoRA */}
       <Stack gap="xxs">
         <Text span fw="600">
-          {t('LoRA')}
+          {t('LoRAs')}
         </Text>
-        <Flex gap="sm" align="flex-end">
-          <Stack gap="xxs" flex={3}>
-            {loras.length > 1 ? (
-              <Select
-                value={providerSettings?.comfyuiLora || 'none'}
-                data={loras}
-                onChange={(val) => setProviderSettings({ comfyuiLora: val })}
-                searchable
-                placeholder={String(t('Select LoRA'))}
-              />
-            ) : (
-              <TextInput
-                value={providerSettings?.comfyuiLora || ''}
-                placeholder="none"
-                onChange={(e) => setProviderSettings({ comfyuiLora: e.currentTarget.value })}
-              />
-            )}
-          </Stack>
-          <Stack gap="xxs" flex={2}>
-            <Text size="xs" c="chatbox-tertiary">
-              {t('LoRA Strength')}
-            </Text>
-            <Slider
+        <Text size="xs" c="chatbox-tertiary">
+          {t('LoRAs are chained in order from top to bottom.')}
+        </Text>
+        {configuredLoras.map((lora, index) => (
+          <Flex key={`${lora.name || 'lora'}-${index}`} gap="sm" align="flex-end" wrap="wrap">
+            <Stack gap="xxs" flex={3}>
+              <Text size="xs" c="chatbox-tertiary">
+                {t('LoRA')}
+              </Text>
+              {availableLoras.length > 0 ? (
+                <Select
+                  value={lora.name}
+                  data={availableLoras}
+                  onChange={(val) => {
+                    const nextLoras = [...configuredLoras]
+                    nextLoras[index] = { ...nextLoras[index], name: val || '' }
+                    updateComfyUILoras(nextLoras)
+                  }}
+                  searchable
+                  placeholder={String(t('Select LoRA'))}
+                />
+              ) : (
+                <TextInput
+                  value={lora.name}
+                  placeholder="anime-detailer.safetensors"
+                  onChange={(e) => {
+                    const nextLoras = [...configuredLoras]
+                    nextLoras[index] = { ...nextLoras[index], name: e.currentTarget.value }
+                    updateComfyUILoras(nextLoras)
+                  }}
+                />
+              )}
+            </Stack>
+            <NumberInput
+              label={t('Model Strength')}
               min={0}
               max={2}
               step={0.05}
-              value={providerSettings?.comfyuiLoraStrength ?? 1}
-              onChange={(val) => setProviderSettings({ comfyuiLoraStrength: val })}
-              marks={[
-                { value: 0, label: '0' },
-                { value: 1, label: '1' },
-                { value: 2, label: '2' },
-              ]}
-              label={(v) => v.toFixed(2)}
-              style={{ paddingBottom: 16 }}
+              decimalScale={2}
+              value={lora.strengthModel ?? 1}
+              onChange={(val) => {
+                const nextLoras = [...configuredLoras]
+                nextLoras[index] = {
+                  ...nextLoras[index],
+                  strengthModel: typeof val === 'number' ? val : 1,
+                }
+                updateComfyUILoras(nextLoras)
+              }}
+              styles={{ root: { flex: 1, minWidth: 140 } }}
             />
-          </Stack>
-        </Flex>
+            <NumberInput
+              label={t('CLIP Strength')}
+              min={0}
+              max={2}
+              step={0.05}
+              decimalScale={2}
+              value={lora.strengthClip ?? 1}
+              onChange={(val) => {
+                const nextLoras = [...configuredLoras]
+                nextLoras[index] = {
+                  ...nextLoras[index],
+                  strengthClip: typeof val === 'number' ? val : 1,
+                }
+                updateComfyUILoras(nextLoras)
+              }}
+              styles={{ root: { flex: 1, minWidth: 140 } }}
+            />
+            <Button
+              variant="subtle"
+              color="red"
+              px="xs"
+              onClick={() => updateComfyUILoras(configuredLoras.filter((_, itemIndex) => itemIndex !== index))}
+            >
+              <IconTrash size={16} />
+            </Button>
+          </Flex>
+        ))}
+        <Button
+          variant="light"
+          leftSection={<IconPlus size={16} />}
+          onClick={() => updateComfyUILoras([...configuredLoras, { ...DEFAULT_COMFYUI_LORA }])}
+        >
+          {t('Add LoRA')}
+        </Button>
       </Stack>
 
       <ImagePromptPrependSection providerSettings={providerSettings} setProviderSettings={setProviderSettings} />

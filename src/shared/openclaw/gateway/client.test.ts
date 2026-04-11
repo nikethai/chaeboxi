@@ -150,6 +150,47 @@ describe('OpenClawGatewayClient', () => {
       },
     })
   })
+
+  it('accepts tool events forwarded on session.tool', async () => {
+    const client = new OpenClawGatewayClient('http://127.0.0.1:18789')
+
+    ;(client as unknown as { ws: { readyState: number; close: () => void; send: () => void }; state: string }).ws = {
+      readyState: 1,
+      close: vi.fn(),
+      send: vi.fn(),
+    }
+    ;(client as unknown as { state: string }).state = 'connected'
+
+    vi.spyOn(client, 'request').mockResolvedValue({ runId: 'server-run-id' })
+
+    const stream = client.invokeAgent('pi-agent', { role: 'user', content: 'hello' })
+    const nextEventPromise = stream.next()
+
+    await waitForPendingStreamWaiter(client)
+
+    const handlers = (client as unknown as { eventHandlers: Array<(event: string, data: unknown) => void> }).eventHandlers
+    handlers[0]?.('session.tool', {
+      type: 'tool',
+      runId: 'server-run-id',
+      tool: 'read_file',
+      input: {
+        path: '/tmp/demo.txt',
+      },
+    })
+
+    await expect(nextEventPromise).resolves.toMatchObject({
+      done: false,
+      value: {
+        type: 'tool',
+        invocationId: 'server-run-id',
+        runId: 'server-run-id',
+        tool: 'read_file',
+        input: {
+          path: '/tmp/demo.txt',
+        },
+      },
+    })
+  })
 })
 
 describe('wsToHttpUrl', () => {

@@ -15,6 +15,15 @@ export type ImageGenerationModel = z.infer<typeof ImageGenerationModelSchema>
 export const ComfyUIStoredParamsSchema = z
   .object({
     checkpoint: z.string().optional(),
+    loras: z
+      .array(
+        z.object({
+          name: z.string(),
+          strengthModel: z.number().optional(),
+          strengthClip: z.number().optional(),
+        })
+      )
+      .optional(),
     lora: z.string().optional(),
     loraStrength: z.number().optional(),
     negativePrompt: z.string().optional(),

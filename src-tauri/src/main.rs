@@ -1082,6 +1082,18 @@ async fn openclaw_list_sessions(
     Ok(response)
 }
 
+async fn openclaw_list_commands(
+    app: &AppHandle,
+    params: &OpenClawGatewayRequest,
+) -> CommandResult<Value> {
+    let (mut socket, _) = openclaw_connect_and_auth(app, &params.url, &params.auth).await?;
+    let request_id = "2";
+    openclaw_send_request(&mut socket, request_id, "commands.list", json!({})).await?;
+    let response = openclaw_wait_for_response(&mut socket, request_id).await?;
+    let _ = socket.close(None).await;
+    Ok(response)
+}
+
 async fn openclaw_forward_agent_events(
     app: AppHandle,
     stream_id: String,
@@ -1121,7 +1133,7 @@ async fn openclaw_forward_agent_events(
                             }
                         };
 
-                        if event_frame.event != "agent" {
+                        if event_frame.event != "agent" && event_frame.event != "session.tool" {
                             continue;
                         }
 
@@ -1780,6 +1792,12 @@ async fn ipc_invoke(
                 serde_json::from_value::<OpenClawGatewayRequest>(get_arg(&args, 0)?.clone())
                     .map_err(|err| format!("invalid OpenClaw request: {err}"))?;
             openclaw_list_sessions(&app, &params).await
+        }
+        "openclaw:list-commands" => {
+            let params =
+                serde_json::from_value::<OpenClawGatewayRequest>(get_arg(&args, 0)?.clone())
+                    .map_err(|err| format!("invalid OpenClaw request: {err}"))?;
+            openclaw_list_commands(&app, &params).await
         }
         "openclaw:invoke-agent" => {
             let params =

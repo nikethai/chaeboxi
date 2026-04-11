@@ -8,6 +8,12 @@ export interface ComfyUINode {
 /** Full API-format workflow (node IDs as string keys) */
 export type ComfyUIWorkflow = Record<string, ComfyUINode>
 
+export interface ComfyUILoraConfig {
+  name: string
+  strengthModel?: number
+  strengthClip?: number
+}
+
 /** POST /prompt response */
 export interface ComfyUIPromptResponse {
   prompt_id: string
@@ -46,6 +52,7 @@ export interface ComfyUIObjectInfo {
 /** Parameters passed per-generation for ComfyUI */
 export interface ComfyUIGenerationParams {
   checkpoint?: string
+  loras?: ComfyUILoraConfig[]
   lora?: string
   loraStrength?: number
   negativePrompt?: string

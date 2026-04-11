@@ -1,7 +1,7 @@
 import { ModelProviderEnum, ModelProviderType } from '../../types'
 import { defineProvider } from '../registry'
-import { DEFAULT_NEGATIVE_PROMPT } from './models/comfyui-workflow'
 import ComfyUI from './models/comfyui'
+import { DEFAULT_NEGATIVE_PROMPT } from './models/comfyui-workflow'
 
 export const COMFYUI_AGENT_DEFAULT_RESEARCH_DOMAINS = ['danbooru.donmai.us', 'pixiv.net']
 
@@ -25,6 +25,7 @@ export const comfyuiProvider = defineProvider({
       },
     ],
     comfyuiCheckpoint: '',
+    comfyuiLoras: [],
     comfyuiLora: 'none',
     comfyuiLoraStrength: 1,
     comfyuiNegativePrompt: DEFAULT_NEGATIVE_PROMPT,

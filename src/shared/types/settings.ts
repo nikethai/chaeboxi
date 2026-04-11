@@ -44,6 +44,12 @@ export const ProviderModelInfoSchema = z.object({
   maxOutput: z.number().optional().catch(undefined),
 })
 
+const ComfyUILoraSettingsSchema = z.object({
+  name: z.string(),
+  strengthModel: z.number().optional().catch(undefined),
+  strengthClip: z.number().optional().catch(undefined),
+})
+
 export const ProviderSettingsSchema = z.object({
   apiKey: z.string().optional().catch(undefined),
   apiHost: z.string().optional().catch(undefined),
@@ -64,6 +70,7 @@ export const ProviderSettingsSchema = z.object({
 
   // comfyui
   comfyuiCheckpoint: z.string().optional().catch(undefined),
+  comfyuiLoras: z.array(ComfyUILoraSettingsSchema).optional().catch(undefined),
   comfyuiLora: z.string().optional().catch(undefined),
   comfyuiLoraStrength: z.number().optional().catch(undefined),
   comfyuiNegativePrompt: z.string().optional().catch(undefined),

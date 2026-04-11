@@ -279,6 +279,17 @@ class StreamAccumulator {
         if (existing) {
           existing.state = event.error ? 'error' : 'result'
           existing.result = event.error ? { error: event.error } : event.output
+        } else {
+          const toolCallPart: MessageToolCallPart = {
+            type: 'tool-call',
+            state: event.error ? 'error' : 'result',
+            toolCallId,
+            toolName: event.tool,
+            args: {},
+            result: event.error ? { error: event.error } : event.output,
+          }
+          this.toolCallMap.set(toolCallId, toolCallPart)
+          this.contentParts.push(toolCallPart)
         }
         this.notify()
         break

@@ -3,6 +3,7 @@ import type {
   AgentInvokeResponse,
   AgentMessage,
   AgentStreamEvent,
+  CommandsListResponse,
   ConnectParams,
   ConnectResponse,
   ConnectionState,
@@ -538,6 +539,17 @@ export class OpenClawGatewayClient {
     return this.request('sessions.list', {})
   }
 
+  listCommands(): Promise<CommandsListResponse> {
+    if (this.isNativeTauriTransport()) {
+      this.touchActivity()
+      return invokeTauri('openclaw:list-commands', {
+        url: this.url,
+        auth: this.auth,
+      })
+    }
+    return this.request('commands.list', {})
+  }
+
   async *invokeAgent(
     agentId: string,
     message: AgentMessage,
@@ -576,7 +588,7 @@ export class OpenClawGatewayClient {
     this.agentEventQueues.set(invocationId, this.agentEventQueues.get(invocationId) ?? [])
 
     const agentEventHandler = (event: string, data: unknown) => {
-      if (event !== 'agent' || !data) return
+      if ((event !== 'agent' && event !== 'session.tool') || !data) return
       const agentData = normalizeAgentStreamEvent(data)
       if (!agentData) return
 

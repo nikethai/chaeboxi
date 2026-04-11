@@ -1,4 +1,5 @@
 import type { ComfyUIGenerationParams, ComfyUIWorkflow } from './comfyui-types'
+import { DEFAULT_COMFYUI_LORA_STRENGTH, normalizeComfyUILoras } from './comfyui-utils'
 
 /**
  * Default negative prompt from the mah-v2 workflow.
@@ -60,11 +61,11 @@ const WORKFLOW_TEMPLATE: ComfyUIWorkflow = {
     class_type: 'ImpactWildcardEncode',
   },
 
-  // Negative prompt (connected to checkpoint CLIP directly)
+  // Negative prompt (connected to the final CLIP source)
   '7': {
     inputs: {
       text: DEFAULT_NEGATIVE_PROMPT,
-      clip: ['4', 1],
+      clip: ['58', 1],
     },
     class_type: 'CLIPTextEncode',
   },
@@ -145,28 +146,44 @@ const WORKFLOW_TEMPLATE: ComfyUIWorkflow = {
 /**
  * Build a ComfyUI API-format workflow by patching the template with generation parameters.
  */
-export function buildComfyUIWorkflow(
-  params: ComfyUIGenerationParams & { prompt: string },
-): ComfyUIWorkflow {
+export function buildComfyUIWorkflow(params: ComfyUIGenerationParams & { prompt: string }): ComfyUIWorkflow {
   const workflow = structuredClone(WORKFLOW_TEMPLATE)
+  const loras = normalizeComfyUILoras(params)
 
   // Checkpoint
   if (params.checkpoint) {
     workflow['4'].inputs.ckpt_name = params.checkpoint
   }
 
-  // LoRA
-  if (params.lora && params.lora !== 'none') {
-    workflow['58'].inputs.lora_name = params.lora
-    workflow['58'].inputs.strength_model = params.loraStrength ?? 1
-    workflow['58'].inputs.strength_clip = params.loraStrength ?? 1
-  } else if (params.lora === 'none') {
-    // Bypass LoRA: connect checkpoint directly to ImpactWildcardEncode
-    workflow['22'].inputs.model = ['4', 0]
-    workflow['22'].inputs.clip = ['4', 1]
-    // Remove LoRA node to avoid errors
+  let modelSource: [string, number] = ['4', 0]
+  let clipSource: [string, number] = ['4', 1]
+
+  // LoRAs
+  if (loras.length > 0) {
+    loras.forEach((lora, index) => {
+      const nodeId = String(58 + index)
+
+      workflow[nodeId] = {
+        inputs: {
+          lora_name: lora.name,
+          strength_model: lora.strengthModel ?? DEFAULT_COMFYUI_LORA_STRENGTH,
+          strength_clip: lora.strengthClip ?? DEFAULT_COMFYUI_LORA_STRENGTH,
+          model: modelSource,
+          clip: clipSource,
+        },
+        class_type: 'LoraLoader',
+      }
+
+      modelSource = [nodeId, 0]
+      clipSource = [nodeId, 1]
+    })
+  } else {
     delete workflow['58']
   }
+
+  workflow['22'].inputs.model = modelSource
+  workflow['22'].inputs.clip = clipSource
+  workflow['7'].inputs.clip = clipSource
 
   // Positive prompt (user's tags)
   workflow['22'].inputs.wildcard_text = params.prompt

@@ -1,6 +1,6 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { ActionIcon, Button, Flex, Tooltip } from '@mantine/core'
-import type { Message, ModelProvider } from '@shared/types'
+import { ModelProviderEnum, type Message, type ModelProvider } from '@shared/types'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { IconShield } from '@tabler/icons-react'
 import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -79,6 +79,10 @@ function RouteComponent() {
         return
       }
       void updateSessionStore(currentSession.id, {
+        messages:
+          provider === ModelProviderEnum.OpenClaw
+            ? currentSession.messages.filter((message) => message.role !== 'system')
+            : currentSession.messages,
         settings: {
           ...(currentSession.settings || {}),
           provider,

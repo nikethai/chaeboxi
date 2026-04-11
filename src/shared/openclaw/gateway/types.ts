@@ -90,10 +90,13 @@ export interface GatewayError {
 
 // Agent invoke types
 export interface AgentInvokeParams {
-  agent: string
-  message: AgentMessage
-  session?: string
-  context?: Record<string, unknown>
+  agentId: string
+  message: string
+  sessionId?: string
+  sessionKey?: string
+  extraSystemPrompt?: string
+  idempotencyKey: string
+  attachments?: AgentAttachment[]
 }
 
 export interface AgentMessage {
@@ -110,13 +113,16 @@ export interface AgentAttachment {
 }
 
 export interface AgentInvokeResponse {
-  status: 'accepted'
-  invocationId: string
+  status?: 'accepted' | 'started' | 'in_flight' | 'ok'
+  invocationId?: string
+  runId?: string
+  acceptedAt?: string | number
 }
 
 export interface AgentChunk {
   type: 'chunk'
   invocationId: string
+  runId?: string
   delta: string
   done?: boolean
 }
@@ -124,6 +130,7 @@ export interface AgentChunk {
 export interface AgentDone {
   type: 'done'
   invocationId: string
+  runId?: string
   status: 'ok' | 'error'
   error?: GatewayError
 }
@@ -131,6 +138,7 @@ export interface AgentDone {
 export interface AgentToolCall {
   type: 'tool'
   invocationId: string
+  runId?: string
   tool: string
   input: Record<string, unknown>
 }
@@ -138,6 +146,7 @@ export interface AgentToolCall {
 export interface AgentToolResult {
   type: 'tool_result'
   invocationId: string
+  runId?: string
   tool: string
   output: unknown
   error?: string

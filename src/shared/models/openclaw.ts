@@ -16,6 +16,7 @@ import type { CallChatCompletionOptions, ModelInterface } from './types'
 // Shared client cache — keyed by apiHost:apiKey:cfId:cfSecret
 const clientCache = new Map<string, OpenClawGatewayClient>()
 const MAX_CACHED_GATEWAY_CLIENTS = 1
+const gatewaySessionBindingCache = new Map<string, { sessionId?: string; sessionKey?: string }>()
 
 export interface GatewayClientCreateOptions {
   apiHost: string
@@ -79,6 +80,7 @@ export function clearAllGatewayClients(): void {
     client.disconnect()
   }
   clientCache.clear()
+  gatewaySessionBindingCache.clear()
 }
 
 interface Options {
@@ -124,14 +126,32 @@ export default class OpenClawModel implements ModelInterface {
       // connect() is safe to call concurrently — returns existing promise if already in-flight
       await this.gatewayClient.connect()
 
-      const lastMessage = formatMessageForGateway(messages[messages.length - 1])
-      if (!lastMessage.content) {
+      const lastNonSystemMessage = [...messages].reverse().find((message) => message.role !== 'system')
+      const lastMessage = lastNonSystemMessage ? formatMessageForGateway(lastNonSystemMessage) : undefined
+      const extraSystemPrompt = messages
+        .filter((message) => message.role === 'system')
+        .map(getMessageText)
+        .filter(Boolean)
+        .join('\n\n')
+        .trim()
+
+      if (!lastMessage?.content) {
         throw new ApiError('No messages to send')
       }
 
       const acc = new StreamAccumulator(options)
+      const sessionBinding = options.sessionId ? await this.resolveGatewaySessionBinding(options.sessionId) : undefined
 
-      const stream = this.gatewayClient.invokeAgent(this.modelId, lastMessage, options.sessionId, options.signal)
+      const stream = this.gatewayClient.invokeAgent(
+        this.modelId,
+        lastMessage,
+        {
+          sessionId: sessionBinding?.sessionId,
+          sessionKey: sessionBinding?.sessionKey,
+          extraSystemPrompt: extraSystemPrompt || undefined,
+        },
+        options.signal
+      )
 
       for await (const event of stream) {
         acc.process(event)
@@ -139,8 +159,14 @@ export default class OpenClawModel implements ModelInterface {
 
       return { contentParts: acc.contentParts }
     } catch (error) {
+      if (options.signal?.aborted || (error instanceof DOMException && error.name === 'AbortError')) {
+        throw error
+      }
       if (error instanceof Error && error.message === 'Not connected') {
         throw new ApiError('OpenClaw gateway not connected. Please check your settings.')
+      }
+      if (error instanceof Error && !(error instanceof ApiError)) {
+        throw new ApiError(error.message)
       }
       throw error
     }
@@ -148,6 +174,34 @@ export default class OpenClawModel implements ModelInterface {
 
   async paint(): Promise<string[]> {
     return []
+  }
+
+  private async resolveGatewaySessionBinding(localSessionId: string): Promise<{ sessionId?: string; sessionKey?: string }> {
+    const cacheKey = `${this.options.apiHost}:${this.modelId}:${localSessionId}`
+    const cached = gatewaySessionBindingCache.get(cacheKey)
+    if (cached) {
+      return cached
+    }
+
+    try {
+      const response = await this.gatewayClient.listSessions()
+      const latestSession = response.sessions
+        .filter((session) => !session.agentId || session.agentId === this.modelId)
+        .sort((left, right) => {
+          const leftTs = left.updatedAt || left.createdAt || 0
+          const rightTs = right.updatedAt || right.createdAt || 0
+          return rightTs - leftTs
+        })[0]
+
+      const binding = latestSession ? { sessionId: latestSession.id } : { sessionKey: 'main' }
+      gatewaySessionBindingCache.set(cacheKey, binding)
+      return binding
+    } catch (error) {
+      console.warn('[OpenClaw] Failed to resolve latest session, falling back to main session key:', error)
+      const binding = { sessionKey: 'main' }
+      gatewaySessionBindingCache.set(cacheKey, binding)
+      return binding
+    }
   }
 }
 
@@ -168,6 +222,20 @@ function formatMessageForGateway(msg: ModelMessage): AgentMessage {
     msg.role === 'assistant' ? 'assistant' : msg.role === 'system' ? 'system' : 'user'
 
   return { role, content }
+}
+
+function getMessageText(msg: ModelMessage): string {
+  if (typeof msg.content === 'string') {
+    return msg.content.trim()
+  }
+  if (Array.isArray(msg.content)) {
+    return msg.content
+      .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
+      .map((part) => part.text)
+      .join('\n')
+      .trim()
+  }
+  return ''
 }
 
 class StreamAccumulator {

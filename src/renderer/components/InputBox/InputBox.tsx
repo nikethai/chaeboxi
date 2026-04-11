@@ -92,7 +92,6 @@ import ProviderImageIcon from '../icons/ProviderImageIcon'
 import KnowledgeBaseMenu from '../knowledge-base/KnowledgeBaseMenu'
 import ModelSelector from '../ModelSelector'
 import MCPMenu from '../mcp/MCPMenu'
-import AgentSelector from '../openclaw/AgentSelector'
 import { FileMiniCard, ImageMiniCard, LinkMiniCard } from './Attachments'
 import { ImageUploadInput } from './ImageUploadInput'
 import {
@@ -128,7 +127,6 @@ export type InputBoxProps = {
   }
   fullWidth?: boolean
   onSelectModel?(provider: string, model: string): void
-  onSelectAgent?(agentId: string): void
   onSubmit?(payload: InputBoxPayload): Promise<void>
   onStopGenerating?(): boolean
   onStartNewThread?(): boolean
@@ -147,7 +145,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       model,
       fullWidth = false,
       onSelectModel,
-      onSelectAgent,
       onSubmit,
       onStopGenerating,
       onStartNewThread,
@@ -208,6 +205,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const { session: currentSession } = useSession(sessionId || null)
     const { sessionSettings: currentSessionMergedSettings } = useSessionSettings(sessionId || null)
     const agentMode = controlledAgentMode ?? currentSession?.agentMode ?? false
+    const isOpenClawModel = model?.provider === ModelProviderEnum.OpenClaw
 
     const toggleAgentMode = useCallback(() => {
       onToggleAgentMode?.(!agentMode)
@@ -456,8 +454,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const { addInputBoxHistory, getPreviousHistoryInput, getNextHistoryInput, resetHistoryIndex } = useInputBoxHistory()
     const [presetHighlightIndex, setPresetHighlightIndex] = useState(0)
     const showPresetPicker = useMemo(
-      () => sessionType === 'chat' && messageInput.startsWith('/') && !messageInput.includes('\n'),
-      [messageInput, sessionType]
+      () => sessionType === 'chat' && !isOpenClawModel && messageInput.startsWith('/') && !messageInput.includes('\n'),
+      [isOpenClawModel, messageInput, sessionType]
     )
     const presetQuery = useMemo(() => (showPresetPicker ? messageInput.slice(1) : ''), [messageInput, showPresetPicker])
     const filteredPresets = useMemo(
@@ -1144,7 +1142,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   t={t}
                 />
 
-                {featureFlags.mcp && (
+                {featureFlags.mcp && !isOpenClawModel && (
                   <MCPMenu>
                     {(enabledTools) => (
                       <UnstyledButton className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors">
@@ -1167,7 +1165,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   </MCPMenu>
                 )}
 
-                {featureFlags.knowledgeBase && !isSmallScreen && (
+                {featureFlags.knowledgeBase && !isSmallScreen && !isOpenClawModel && (
                   <KnowledgeBaseMenu currentKnowledgeBaseId={knowledgeBase?.id} onSelect={handleKnowledgeBaseSelect}>
                     <UnstyledButton className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors">
                       <IconVocabulary
@@ -1181,25 +1179,27 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   </KnowledgeBaseMenu>
                 )}
 
-                <Tooltip label={t('Web Search')} position="top" withArrow disabled={isSmallScreen}>
-                  <UnstyledButton
-                    onClick={() => {
-                      setWebBrowsingMode(!webBrowsingMode)
-                      dom.focusMessageInput()
-                    }}
-                    className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors"
-                  >
-                    <IconWorldWww
-                      size={toolbarIconSize}
-                      strokeWidth={1.8}
-                      className={
-                        webBrowsingMode ? 'text-[var(--chatbox-tint-brand)]' : 'text-[var(--chatbox-tint-secondary)]'
-                      }
-                    />
-                  </UnstyledButton>
-                </Tooltip>
+                {!isOpenClawModel && (
+                  <Tooltip label={t('Web Search')} position="top" withArrow disabled={isSmallScreen}>
+                    <UnstyledButton
+                      onClick={() => {
+                        setWebBrowsingMode(!webBrowsingMode)
+                        dom.focusMessageInput()
+                      }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors"
+                    >
+                      <IconWorldWww
+                        size={toolbarIconSize}
+                        strokeWidth={1.8}
+                        className={
+                          webBrowsingMode ? 'text-[var(--chatbox-tint-brand)]' : 'text-[var(--chatbox-tint-secondary)]'
+                        }
+                      />
+                    </UnstyledButton>
+                  </Tooltip>
+                )}
 
-                {sessionType === 'chat' && (
+                {sessionType === 'chat' && !isOpenClawModel && (
                   <Tooltip
                     label={t('Agent Mode: Enables autonomous multi-step tool use')}
                     position="top"
@@ -1292,7 +1292,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       <Menu.Item leftSection={<ScalableIcon icon={IconPlus} size={16} />} onClick={startNewThread}>
                         {t('New Thread')}
                       </Menu.Item>
-                      {sessionType === 'chat' && (
+                      {sessionType === 'chat' && !isOpenClawModel && (
                         <Menu.Item leftSection={<ScalableIcon icon={IconRobot} size={16} />} onClick={toggleAgentMode}>
                           {t('Agent Mode')}
                         </Menu.Item>
@@ -1342,14 +1342,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     </Text>
                   </Flex>
                 </TokenCountMenu>
-
-                {model?.provider === ModelProviderEnum.OpenClaw && (
-                  <AgentSelector
-                    onSelectAgent={onSelectAgent}
-                    selectedAgentId={currentSessionMergedSettings?.openclawAgentId}
-                    position="top-end"
-                  />
-                )}
 
                 {/* Model Selector */}
                 <Tooltip

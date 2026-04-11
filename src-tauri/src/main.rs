@@ -174,14 +174,17 @@ struct OpenClawInvokeRequest {
     #[serde(default)]
     auth: OpenClawAuth,
     agent_id: String,
-    message: Value,
+    message: String,
     session_id: Option<String>,
+    session_key: Option<String>,
+    extra_system_prompt: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct OpenClawInvokeAccepted {
     invocation_id: String,
+    run_id: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -721,10 +724,11 @@ fn default_config() -> Value {
     })
 }
 
-fn openclaw_transport_error_event(invocation_id: &str, message: &str) -> Value {
+fn openclaw_transport_error_event(run_id: &str, message: &str) -> Value {
     json!({
       "type": "done",
-      "invocationId": invocation_id,
+      "invocationId": run_id,
+      "runId": run_id,
       "status": "error",
       "error": {
         "code": "transport_error",
@@ -1082,7 +1086,7 @@ async fn openclaw_forward_agent_events(
     app: AppHandle,
     stream_id: String,
     event_name: String,
-    invocation_id: String,
+    run_id: String,
     mut socket: OpenClawSocket,
 ) {
     let mut transport_error: Option<String> = None;
@@ -1124,12 +1128,13 @@ async fn openclaw_forward_agent_events(
                         let Some(event_data) = event_frame.payload else {
                             continue;
                         };
-                        let matches_invocation = event_data
-                            .get("invocationId")
+                        let matches_run = event_data
+                            .get("runId")
                             .and_then(Value::as_str)
-                            .map(|value| value == invocation_id)
+                            .or_else(|| event_data.get("invocationId").and_then(Value::as_str))
+                            .map(|value| value == run_id)
                             .unwrap_or(false);
-                        if !matches_invocation {
+                        if !matches_run {
                             continue;
                         }
 
@@ -1170,7 +1175,7 @@ async fn openclaw_forward_agent_events(
     if let Some(message) = transport_error {
         let _ = app.emit(
             &event_name,
-            openclaw_transport_error_event(&invocation_id, &message),
+            openclaw_transport_error_event(&run_id, &message),
         );
     }
 
@@ -1783,19 +1788,39 @@ async fn ipc_invoke(
 
             let (mut socket, _) =
                 openclaw_connect_and_auth(&app, &params.url, &params.auth).await?;
-            let request_params = json!({
-              "agent": params.agent_id,
-              "message": params.message,
-              "session": params.session_id,
-            });
+            let mut request_params = serde_json::Map::new();
+            request_params.insert("agentId".to_string(), Value::String(params.agent_id.clone()));
+            request_params.insert("message".to_string(), Value::String(params.message.clone()));
+            request_params.insert(
+                "idempotencyKey".to_string(),
+                Value::String(Uuid::new_v4().to_string()),
+            );
+            if let Some(session_id) = params.session_id.clone().filter(|value| !value.is_empty()) {
+                request_params.insert("sessionId".to_string(), Value::String(session_id));
+            }
+            if let Some(session_key) = params.session_key.clone().filter(|value| !value.is_empty()) {
+                request_params.insert("sessionKey".to_string(), Value::String(session_key));
+            }
+            if let Some(extra_system_prompt) = params
+                .extra_system_prompt
+                .clone()
+                .filter(|value| !value.is_empty())
+            {
+                request_params.insert(
+                    "extraSystemPrompt".to_string(),
+                    Value::String(extra_system_prompt),
+                );
+            }
             let request_id = "2";
-            openclaw_send_request(&mut socket, request_id, "agent", request_params).await?;
+            openclaw_send_request(&mut socket, request_id, "agent", Value::Object(request_params))
+                .await?;
             let response = openclaw_wait_for_response(&mut socket, request_id).await?;
-            let invocation_id = response
-                .get("invocationId")
+            let run_id = response
+                .get("runId")
+                .or_else(|| response.get("invocationId"))
                 .and_then(Value::as_str)
                 .filter(|value| !value.is_empty())
-                .ok_or_else(|| "OpenClaw agent invocation did not return invocationId".to_string())?
+                .ok_or_else(|| "OpenClaw agent invocation did not return runId".to_string())?
                 .to_string();
 
             let event_name = format!("openclaw:stream:{}", params.stream_id);
@@ -1815,7 +1840,7 @@ async fn ipc_invoke(
                 app_handle,
                 stream_id.clone(),
                 event_name,
-                invocation_id.clone(),
+                run_id.clone(),
                 socket,
             ));
 
@@ -1825,7 +1850,10 @@ async fn ipc_invoke(
                 .map_err(|_| "openclaw stream lock poisoned".to_string())?
                 .insert(stream_id, task);
 
-            serde_json::to_value(OpenClawInvokeAccepted { invocation_id })
+            serde_json::to_value(OpenClawInvokeAccepted {
+                invocation_id: run_id.clone(),
+                run_id,
+            })
                 .map_err(|err| format!("serialize OpenClaw invoke response failed: {err}"))
         }
         "openclaw:cancel-invoke" | "openclaw:close-stream" => {

@@ -1,7 +1,7 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { ActionIcon, Button, Flex, Stack, Text, Transition } from '@mantine/core'
 import { useThrottledCallback } from '@mantine/hooks'
-import type { Session, SessionThreadBrief } from '@shared/types'
+import { ModelProviderEnum, type Session, type SessionThreadBrief } from '@shared/types'
 import {
   IconAlignRight,
   IconArrowBarToUp,
@@ -99,7 +99,13 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
     () => currentSession && getCurrentThreadHistoryHash(currentSession),
     [currentSession]
   )
-  const currentMessageList = useMemo(() => getAllMessageList(currentSession), [currentSession])
+  const currentMessageList = useMemo(() => {
+    const messages = getAllMessageList(currentSession)
+    if (currentSession.settings?.provider !== ModelProviderEnum.OpenClaw) {
+      return messages
+    }
+    return messages.filter((message) => message.role !== 'system')
+  }, [currentSession])
 
   const latestSummaryMessageId = useMemo(() => {
     for (let i = currentMessageList.length - 1; i >= 0; i--) {

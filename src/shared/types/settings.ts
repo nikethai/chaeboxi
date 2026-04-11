@@ -299,6 +299,8 @@ export const OpenClawGatewayConfigSchema = z.object({
   token: z.string().optional().catch(undefined),
   lastConnected: z.number().optional().catch(undefined),
   isDefault: z.boolean().optional().catch(undefined),
+  cloudflareClientId: z.string().optional().catch(undefined),
+  cloudflareClientSecret: z.string().optional().catch(undefined),
 })
 
 export type OpenClawGatewayConfig = z.infer<typeof OpenClawGatewayConfigSchema>

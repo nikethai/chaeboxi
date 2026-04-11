@@ -1,9 +1,9 @@
-import { Accordion, Badge, Button, Flex, PasswordInput, Stack, Text, TextInput } from '@mantine/core'
-import { IconCircleCheck, IconX } from '@tabler/icons-react'
-import { useCallback, useRef, useState } from 'react'
+import { Accordion, Alert, Badge, Button, Flex, PasswordInput, Stack, Text, TextInput } from '@mantine/core'
+import { IconAlertTriangle, IconCircleCheck, IconShieldCheck, IconShieldOff, IconX } from '@tabler/icons-react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
-import { OpenClawGatewayClient } from '@shared/openclaw/gateway'
+import { OpenClawGatewayClient, analyzeGatewayUrl } from '@shared/openclaw/gateway'
 import type { GatewayInfo } from '@shared/openclaw/gateway/types'
 
 type ConnectionStatus = 'idle' | 'testing' | 'connected' | 'error'
@@ -23,19 +23,29 @@ function formatUptime(ms: number): string {
 export function OpenClawGatewaySettings({
   gatewayUrl,
   authToken,
+  cloudflareClientId,
+  cloudflareClientSecret,
   onGatewayUrlChange,
   onAuthTokenChange,
+  onCloudflareClientIdChange,
+  onCloudflareClientSecretChange,
 }: {
   gatewayUrl: string
   authToken: string
+  cloudflareClientId: string
+  cloudflareClientSecret: string
   onGatewayUrlChange: (value: string) => void
   onAuthTokenChange: (value: string) => void
+  onCloudflareClientIdChange: (value: string) => void
+  onCloudflareClientSecretChange: (value: string) => void
 }) {
   const { t } = useTranslation()
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('idle')
   const [gatewayInfo, setGatewayInfo] = useState<GatewayInfo | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const testClientRef = useRef<OpenClawGatewayClient | null>(null)
+
+  const urlAnalysis = useMemo(() => analyzeGatewayUrl(gatewayUrl), [gatewayUrl])
 
   const handleTestConnection = useCallback(async () => {
     // Clean up previous test client
@@ -46,7 +56,11 @@ export function OpenClawGatewaySettings({
     setErrorMessage(null)
 
     const baseUrl = gatewayUrl.replace(/\/+$/, '').replace(/\/v1$/, '')
-    const client = new OpenClawGatewayClient(baseUrl, authToken ? { token: authToken } : {})
+    const client = new OpenClawGatewayClient(baseUrl, {
+      token: authToken || undefined,
+      cloudflareClientId: cloudflareClientId || undefined,
+      cloudflareClientSecret: cloudflareClientSecret || undefined,
+    })
     testClientRef.current = client
 
     try {
@@ -60,7 +74,30 @@ export function OpenClawGatewaySettings({
       client.disconnect()
       testClientRef.current = null
     }
-  }, [gatewayUrl, authToken, t])
+  }, [gatewayUrl, authToken, cloudflareClientId, cloudflareClientSecret, t])
+
+  const statusBadgeColor =
+    connectionStatus === 'connected'
+      ? urlAnalysis.securityLevel === 'danger'
+        ? 'red'
+        : urlAnalysis.securityLevel === 'warning'
+          ? 'yellow'
+          : 'green'
+      : 'red'
+
+  const statusIcon =
+    connectionStatus === 'connected'
+      ? urlAnalysis.securityLevel === 'safe'
+        ? IconShieldCheck
+        : IconAlertTriangle
+      : IconX
+
+  const statusLabel =
+    connectionStatus === 'connected'
+      ? urlAnalysis.isLocalhost
+        ? t('Connected (Local)')
+        : t('Connected (Remote)')
+      : t('Disconnected')
 
   return (
     <Stack gap="lg">
@@ -79,6 +116,17 @@ export function OpenClawGatewaySettings({
         </Text>
       </Stack>
 
+      {urlAnalysis.securityLevel === 'danger' && (
+        <Alert color="red" icon={<IconShieldOff size={16} />} title={t('Insecure Connection')} variant="light">
+          {t(urlAnalysis.warning ?? '')}
+        </Alert>
+      )}
+      {urlAnalysis.securityLevel === 'warning' && (
+        <Alert color="yellow" icon={<IconAlertTriangle size={16} />} variant="light">
+          {t(urlAnalysis.warning ?? '')}
+        </Alert>
+      )}
+
       <Stack gap="xxs">
         <Text span fw="600">
           {t('Auth Token')}
@@ -95,6 +143,36 @@ export function OpenClawGatewaySettings({
       </Stack>
 
       <Stack gap="xxs">
+        <Text span fw="600">
+          {t('Cloudflare Client ID')}
+        </Text>
+        <TextInput
+          flex={1}
+          value={cloudflareClientId}
+          placeholder={t('Optional — for CF Access tunnels')}
+          onChange={(e) => onCloudflareClientIdChange(e.currentTarget.value)}
+        />
+        <Text size="xs" c="chatbox-secondary">
+          {t('CF Access Service Token Client ID (for Cloudflare Tunnel)')}
+        </Text>
+      </Stack>
+
+      <Stack gap="xxs">
+        <Text span fw="600">
+          {t('Cloudflare Client Secret')}
+        </Text>
+        <PasswordInput
+          flex={1}
+          value={cloudflareClientSecret}
+          placeholder={t('Optional')}
+          onChange={(e) => onCloudflareClientSecretChange(e.currentTarget.value)}
+        />
+        <Text size="xs" c="chatbox-secondary">
+          {t('CF Access Service Token Client Secret')}
+        </Text>
+      </Stack>
+
+      <Stack gap="xxs">
         <Flex justify="space-between" align="center">
           <Text span fw="600">
             {t('Connection Status')}
@@ -106,8 +184,8 @@ export function OpenClawGatewaySettings({
 
         <Flex gap="xs" align="center">
           {connectionStatus === 'connected' && (
-            <Badge color="green" variant="light" leftSection={<ScalableIcon icon={IconCircleCheck} size={12} />}>
-              {t('Connected')}
+            <Badge color={statusBadgeColor} variant="light" leftSection={<ScalableIcon icon={statusIcon} size={12} />}>
+              {statusLabel}
             </Badge>
           )}
           {connectionStatus === 'error' && (

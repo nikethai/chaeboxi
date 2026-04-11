@@ -381,9 +381,7 @@ function clampHistorySyncIntervalSeconds(value: number): number {
   return Math.min(3600, Math.max(15, Math.round(value)))
 }
 
-function normalizeHistorySyncFormState(
-  config: Partial<HistorySyncFormState> | undefined | null
-): HistorySyncFormState {
+function normalizeHistorySyncFormState(config: Partial<HistorySyncFormState> | undefined | null): HistorySyncFormState {
   return {
     enabled: Boolean(config?.enabled),
     endpoint: typeof config?.endpoint === 'string' ? config.endpoint : '',
@@ -596,14 +594,11 @@ const ImportExportDataSection = () => {
       })
 
       const conflictSuffix = result.conflictResolved
-        ? t(
-            ' (resolved conflict: imported {{imported}}, updated {{updated}}, skipped {{skipped}} conversations)',
-            {
-              imported: result.imported,
-              updated: result.updated,
-              skipped: result.skipped,
-            }
-          )
+        ? t(' (resolved conflict: imported {{imported}}, updated {{updated}}, skipped {{skipped}} conversations)', {
+            imported: result.imported,
+            updated: result.updated,
+            skipped: result.skipped,
+          })
         : ''
 
       return {
@@ -630,15 +625,12 @@ const ImportExportDataSection = () => {
         : t('Push skipped after pull merge')
 
       return {
-        tip: t(
-          'Sync completed. Pull imported {{imported}}, updated {{updated}}, skipped {{skipped}}. {{pushText}}',
-          {
-            imported: result.pull.imported,
-            updated: result.pull.updated,
-            skipped: result.pull.skipped,
-            pushText,
-          }
-        ),
+        tip: t('Sync completed. Pull imported {{imported}}, updated {{updated}}, skipped {{skipped}}. {{pushText}}', {
+          imported: result.pull.imported,
+          updated: result.pull.updated,
+          skipped: result.pull.skipped,
+          pushText,
+        }),
         recoverSessions: recoverFromPull || recoverFromPushConflict,
       }
     })
@@ -706,6 +698,14 @@ const ImportExportDataSection = () => {
           return provider
         }
       )
+      // Scrub OpenClaw gateway secrets (token + CF Access credentials)
+      const settings = data[StorageKey.Settings] as Settings
+      if (settings.openclaw?.gateways) {
+        settings.openclaw.gateways = settings.openclaw.gateways.map((gw) => {
+          const { token, cloudflareClientSecret, ...rest } = gw
+          return rest
+        })
+      }
     }
     if (!exportItems.includes(ExportDataItem.Setting)) {
       delete data[StorageKey.Settings]
@@ -920,11 +920,7 @@ const ImportExportDataSection = () => {
               }
             }}
           />
-          <Button
-            variant="light"
-            onClick={persistHistorySyncConfig}
-            disabled={!hasUnsavedHistorySyncChanges}
-          >
+          <Button variant="light" onClick={persistHistorySyncConfig} disabled={!hasUnsavedHistorySyncChanges}>
             {t('Save Sync Settings')}
           </Button>
         </Flex>

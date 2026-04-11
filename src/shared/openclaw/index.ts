@@ -1,5 +1,19 @@
-export { OpenClawGatewayClient, normalizeGatewayUrl } from './gateway'
+export {
+  OpenClawGatewayClient,
+  normalizeGatewayUrl,
+  wsToHttpUrl,
+  isLocalhostUrl,
+  analyzeGatewayUrl,
+  classifyCapabilityRisk,
+  getCapabilityRiskColor,
+  getCapabilityTooltip,
+} from './gateway'
 export type {
+  GatewayAuth,
+  GatewayClientOptions,
+  GatewaySecurityLevel,
+  GatewayUrlAnalysis,
+  CapabilityRisk,
   AgentStreamEvent,
   ConnectParams,
   ConnectResponse,

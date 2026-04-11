@@ -13,6 +13,8 @@ import {
   openclawSelectedAgentIdAtom,
 } from '@/stores/atoms/openclawAtoms'
 import type { AgentInfo } from '@shared/openclaw/gateway/types'
+import { classifyCapabilityRisk, getCapabilityRiskColor, getCapabilityTooltip } from '@shared/openclaw/gateway'
+import type { GatewayClientCreateOptions } from '@shared/models/openclaw'
 import { getOrCreateGatewayClient } from '@shared/models/openclaw'
 
 interface AgentSelectorProps {
@@ -22,8 +24,8 @@ interface AgentSelectorProps {
   position?: 'top-end' | 'bottom-end' | 'top-start' | 'bottom-start'
 }
 
-async function fetchAgentsFromGateway(apiHost: string, apiKey: string): Promise<AgentInfo[]> {
-  const client = getOrCreateGatewayClient(apiHost, apiKey)
+async function fetchAgentsFromGateway(opts: GatewayClientCreateOptions): Promise<AgentInfo[]> {
+  const client = getOrCreateGatewayClient(opts)
   await client.connect()
   const response = await client.listAgents()
   return response.agents.map((agent) => ({
@@ -51,16 +53,18 @@ export default function AgentSelector(props: AgentSelectorProps) {
 
   const apiHost = activeGateway?.url || providerSettings?.apiHost || 'http://127.0.0.1:18789'
   const apiKey = activeGateway?.token || providerSettings?.apiKey || ''
+  const cloudflareClientId = activeGateway?.cloudflareClientId || providerSettings?.cloudflareClientId || ''
+  const cloudflareClientSecret = activeGateway?.cloudflareClientSecret || providerSettings?.cloudflareClientSecret || ''
 
   const fetchAgents = useCallback(async () => {
     if (!apiHost) return
     try {
-      const fetched = await fetchAgentsFromGateway(apiHost, apiKey)
+      const fetched = await fetchAgentsFromGateway({ apiHost, apiKey, cloudflareClientId, cloudflareClientSecret })
       setAgents(fetched)
     } catch (error) {
       console.error('[OpenClaw] Failed to fetch agents:', error)
     }
-  }, [apiHost, apiKey, setAgents])
+  }, [apiHost, apiKey, cloudflareClientId, cloudflareClientSecret, setAgents])
 
   useEffect(() => {
     if (gatewayStatus === 'connected' && agents.length === 0) {
@@ -162,15 +166,29 @@ export default function AgentSelector(props: AgentSelectorProps) {
                 </Flex>
                 {agent.capabilities && agent.capabilities.length > 0 && (
                   <Flex gap={4} wrap="wrap" justify="flex-end">
-                    {agent.capabilities.slice(0, 2).map((cap) => (
-                      <Badge key={cap} size="xs" variant="light" color="chatbox-brand">
-                        {cap}
-                      </Badge>
-                    ))}
-                    {agent.capabilities.length > 2 && (
-                      <Badge size="xs" variant="light" color="chatbox-brand">
-                        +{agent.capabilities.length - 2}
-                      </Badge>
+                    {agent.capabilities.slice(0, 3).map((cap) => {
+                      const risk = classifyCapabilityRisk(cap)
+                      const color = getCapabilityRiskColor(risk)
+                      const tooltip = getCapabilityTooltip(cap, risk)
+                      const badge = (
+                        <Badge key={cap} size="xs" variant="light" color={color}>
+                          {cap}
+                        </Badge>
+                      )
+                      return tooltip ? (
+                        <Tooltip key={cap} label={tooltip} multiline w={220}>
+                          {badge}
+                        </Tooltip>
+                      ) : (
+                        badge
+                      )
+                    })}
+                    {agent.capabilities.length > 3 && (
+                      <Tooltip label={agent.capabilities.slice(3).join(', ')}>
+                        <Badge size="xs" variant="light" color="chatbox-brand">
+                          +{agent.capabilities.length - 3}
+                        </Badge>
+                      </Tooltip>
                     )}
                   </Flex>
                 )}

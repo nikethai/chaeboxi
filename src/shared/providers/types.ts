@@ -48,6 +48,8 @@ export interface ProviderDefinition {
   }
   /** Default settings for the provider */
   defaultSettings?: ProviderSettings
+  /** Optional provider-specific model discovery hook. */
+  listModels?: (config: CreateModelConfig) => Promise<ProviderModelInfo[]>
   /**
    * Factory function to create a model instance.
    * This replaces the switch statement in getModel().

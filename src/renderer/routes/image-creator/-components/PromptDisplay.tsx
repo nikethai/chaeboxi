@@ -6,9 +6,10 @@ export interface PromptDisplayProps {
   prompt: string
   modelDisplayName: string
   referenceImageCount: number
+  statusLabel?: string
 }
 
-export function PromptDisplay({ prompt, modelDisplayName, referenceImageCount }: PromptDisplayProps) {
+export function PromptDisplay({ prompt, modelDisplayName, referenceImageCount, statusLabel }: PromptDisplayProps) {
   const { t } = useTranslation()
 
   return (
@@ -17,6 +18,16 @@ export function PromptDisplay({ prompt, modelDisplayName, referenceImageCount }:
         {prompt}
       </Text>
       <Flex gap="sm" align="center" justify="center">
+        {statusLabel && (
+          <>
+            <Text size="xs" c="gray.5">
+              {statusLabel}
+            </Text>
+            <Text size="xs" c="gray.5">
+              •
+            </Text>
+          </>
+        )}
         <Text size="xs" c="gray.5">
           {modelDisplayName}
         </Text>

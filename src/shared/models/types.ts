@@ -28,7 +28,8 @@ export interface ModelInterface {
       comfyuiParams?: ComfyUIGenerationParams
     },
     signal?: AbortSignal,
-    callback?: (picBase64: string) => void
+    callback?: (picBase64: string) => void,
+    onProviderJobUpdate?: (data: { providerJobId?: string; queueNumber?: number }) => void
   ) => Promise<string[]>
 }
 

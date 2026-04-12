@@ -35,15 +35,22 @@ import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { getLogger } from '@/lib/utils'
 import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
-import { createAndGenerate, retryGeneration } from '@/stores/imageGenerationActions'
+import {
+  cancelGeneration,
+  createAndGenerate,
+  removeQueuedGeneration,
+  resumeQueuedGenerations,
+  retryGeneration,
+} from '@/stores/imageGenerationActions'
 import {
   deleteRecord,
   IMAGE_GEN_LIST_QUERY_KEY,
   imageGenerationStore,
-  useCurrentGeneratingId,
+  useActiveGenerationId,
   useCurrentRecordId,
   useImageGenerationHistory,
   useImageGenerationRecord,
+  useQueuedGenerationIds,
 } from '@/stores/imageGenerationStore'
 import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 import { queryClient } from '@/stores/queryClient'
@@ -235,7 +242,8 @@ function ImageCreatorPage() {
   // Get ratio options based on selected model
   const ratioOptions = getRatioOptionsForModel(selectedModel)
 
-  const currentGeneratingId = useCurrentGeneratingId()
+  const activeGenerationId = useActiveGenerationId()
+  const queuedGenerationIds = useQueuedGenerationIds()
   const currentRecordId = useCurrentRecordId()
   const { data: currentRecord } = useImageGenerationRecord(currentRecordId)
 
@@ -251,7 +259,7 @@ function ImageCreatorPage() {
     return historyData?.pages.flatMap((page) => page.items) ?? []
   }, [historyData])
 
-  const isCurrentlyGenerating = currentGeneratingId !== null
+  const isCurrentlyGenerating = activeGenerationId !== null
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -310,7 +318,7 @@ function ImageCreatorPage() {
   }, [])
 
   const handleSubmit = useCallback(async () => {
-    if (!prompt.trim() || isCurrentlyGenerating) return
+    if (!prompt.trim()) return
 
     try {
       // Collect all unique source record IDs from reference images (DAG support)
@@ -336,12 +344,10 @@ function ImageCreatorPage() {
     } catch (error) {
       log.error('Failed to generate image:', error)
     }
-  }, [prompt, referenceImages, selectedProvider, selectedModel, selectedRatio, isCurrentlyGenerating, isComfyUI, comfyuiParams])
+  }, [prompt, referenceImages, selectedProvider, selectedModel, selectedRatio, isComfyUI, comfyuiParams])
 
   const handleQuickPromptSubmit = useCallback(
     async (quickPrompt: string) => {
-      if (isCurrentlyGenerating) return
-
       try {
         await createAndGenerate({
           prompt: quickPrompt,
@@ -357,7 +363,7 @@ function ImageCreatorPage() {
         log.error('Failed to generate image:', error)
       }
     },
-    [selectedProvider, selectedModel, isCurrentlyGenerating]
+    [selectedProvider, selectedModel]
   )
 
   const handleUseAsReference = useCallback(async (storageKey: string, sourceRecordId?: string) => {
@@ -399,12 +405,49 @@ function ImageCreatorPage() {
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage])
 
-  const handleDelete = useCallback(async (id: string) => {
+  const handleDelete = useCallback(
+    async (id: string) => {
+      try {
+        if (activeGenerationId === id) {
+          throw new Error('Active generations must be cancelled before deletion.')
+        }
+
+        const record = historyCache.find((item) => item.id === id)
+        if (record?.status === 'queued') {
+          await removeQueuedGeneration(id)
+        } else {
+          await deleteRecord(id)
+        }
+        queryClient.invalidateQueries({ queryKey: [IMAGE_GEN_LIST_QUERY_KEY] })
+      } catch (error) {
+        log.error('Failed to delete record:', error)
+      }
+    },
+    [activeGenerationId, historyCache]
+  )
+
+  const handleCancel = useCallback(async (id: string) => {
     try {
-      await deleteRecord(id)
+      await cancelGeneration(id)
+    } catch (error) {
+      log.error('Failed to cancel generation:', error)
+    }
+  }, [])
+
+  const handleRemoveQueued = useCallback(async (id: string) => {
+    try {
+      await removeQueuedGeneration(id)
       queryClient.invalidateQueries({ queryKey: [IMAGE_GEN_LIST_QUERY_KEY] })
     } catch (error) {
-      log.error('Failed to delete record:', error)
+      log.error('Failed to remove queued generation:', error)
+    }
+  }, [])
+
+  const handleRetry = useCallback(async (id: string) => {
+    try {
+      await retryGeneration(id)
+    } catch (error) {
+      log.error('Failed to retry generation:', error)
     }
   }, [])
 
@@ -494,21 +537,68 @@ function ImageCreatorPage() {
     }
   }, [selectedModel])
 
-  const modelDisplayName = useMemo(() => {
-    const provider = providers.find((p) => p.id === selectedProvider)
-    if (!provider) {
-      return selectedModel || t('Select model')
+  useEffect(() => {
+    if (activeGenerationId === null && queuedGenerationIds.length > 0) {
+      resumeQueuedGenerations()
     }
-    if (!selectedModel) {
-      return provider.name
-    }
-    const providerModels = provider?.models || provider?.defaultSettings?.models || []
-    const model = providerModels.find((m) => m.modelId === selectedModel)
-    const modelName = model?.nickname || IMAGE_MODEL_FALLBACK_NAMES[selectedModel] || selectedModel
+  }, [activeGenerationId, queuedGenerationIds])
 
-    const providerName = provider?.name || selectedProvider
-    return `${providerName} - ${modelName}`
-  }, [selectedProvider, selectedModel, providers, t])
+  const getModelDisplayName = useCallback(
+    (providerId: string, modelId: string) => {
+      const provider = providers.find((p) => p.id === providerId)
+      if (!provider) {
+        return modelId || t('Select model')
+      }
+      if (!modelId) {
+        return provider.name
+      }
+      const providerModels = provider?.models || provider?.defaultSettings?.models || []
+      const model = providerModels.find((m) => m.modelId === modelId)
+      const modelName = model?.nickname || IMAGE_MODEL_FALLBACK_NAMES[modelId] || modelId
+
+      const providerName = provider?.name || providerId
+      return `${providerName} - ${modelName}`
+    },
+    [providers, t]
+  )
+
+  const modelDisplayName = useMemo(
+    () => getModelDisplayName(selectedProvider, selectedModel),
+    [getModelDisplayName, selectedProvider, selectedModel]
+  )
+
+  const currentRecordModelDisplayName = useMemo(
+    () =>
+      currentRecord ? getModelDisplayName(currentRecord.model.provider, currentRecord.model.modelId) : modelDisplayName,
+    [currentRecord, getModelDisplayName, modelDisplayName]
+  )
+
+  const currentRecordStatusLabel = useMemo(() => {
+    if (!currentRecord) {
+      return undefined
+    }
+
+    if (currentRecord.status === 'queued') {
+      const queuePosition = queuedGenerationIds.indexOf(currentRecord.id) + 1
+      return queuePosition > 0 ? t('Queued #{{count}}', { count: queuePosition }) : t('Queued')
+    }
+
+    if (currentRecord.status === 'generating') {
+      return currentRecord.queueNumber
+        ? t('Generating · Server #{{count}}', { count: currentRecord.queueNumber })
+        : t('Generating')
+    }
+
+    if (currentRecord.status === 'cancelled') {
+      return t('Cancelled')
+    }
+
+    if (currentRecord.status === 'error') {
+      return t('Error')
+    }
+
+    return t('Done')
+  }, [currentRecord, queuedGenerationIds, t])
 
   const headerRight = isSmallScreen ? (
     <ActionIcon
@@ -560,15 +650,18 @@ function ImageCreatorPage() {
 
                   <PromptDisplay
                     prompt={currentRecord.prompt}
-                    modelDisplayName={modelDisplayName}
+                    modelDisplayName={currentRecordModelDisplayName}
                     referenceImageCount={currentRecord.referenceImages.length}
+                    statusLabel={currentRecordStatusLabel}
                   />
 
-                  {currentRecord.status === 'error' && (
+                  {(currentRecord.status === 'error' || currentRecord.status === 'cancelled') && (
                     <ImageGenerationErrorTips
                       record={currentRecord}
-                      onRetry={() => void retryGeneration(currentRecord.id)}
-                      isRetrying={isCurrentlyGenerating}
+                      onRetry={() => void handleRetry(currentRecord.id)}
+                      isRetrying={
+                        queuedGenerationIds.includes(currentRecord.id) || activeGenerationId === currentRecord.id
+                      }
                     />
                   )}
                 </Stack>
@@ -600,9 +693,7 @@ function ImageCreatorPage() {
               >
                 <Stack gap="xs">
                   {/* ComfyUI Advanced Controls */}
-                  {isComfyUI && (
-                    <ComfyUIControls params={comfyuiParams} onChange={setComfyuiParams} />
-                  )}
+                  {isComfyUI && <ComfyUIControls params={comfyuiParams} onChange={setComfyuiParams} />}
 
                   {/* Input Row */}
                   <Flex align="flex-end" gap={4}>
@@ -639,21 +730,26 @@ function ImageCreatorPage() {
                     <ActionIcon
                       size={32}
                       variant="filled"
-                      color={isCurrentlyGenerating ? 'dark' : 'chatbox-brand'}
+                      color="chatbox-brand"
                       radius="xl"
-                      onClick={isCurrentlyGenerating ? undefined : handleSubmit}
-                      disabled={!prompt.trim() && !isCurrentlyGenerating}
-                      className={`shrink-0 mb-1 ${!prompt.trim() && !isCurrentlyGenerating ? 'disabled:!opacity-100 !text-white' : ''}`}
+                      onClick={handleSubmit}
+                      disabled={!prompt.trim()}
+                      className={`shrink-0 mb-1 ${!prompt.trim() ? 'disabled:!opacity-100 !text-white' : ''}`}
                       style={{
-                        cursor: isCurrentlyGenerating ? 'default' : undefined,
-                        ...(!prompt.trim() && !isCurrentlyGenerating
-                          ? { backgroundColor: 'rgba(222, 226, 230, 1)' }
-                          : {}),
+                        ...(!prompt.trim() ? { backgroundColor: 'rgba(222, 226, 230, 1)' } : {}),
                       }}
                     >
-                      {isCurrentlyGenerating ? <Loader size={16} color="white" /> : <IconArrowUp size={16} />}
+                      <IconArrowUp size={16} />
                     </ActionIcon>
                   </Flex>
+
+                  {isCurrentlyGenerating && (
+                    <Text size="xs" c="dimmed">
+                      {queuedGenerationIds.length > 0
+                        ? t('1 generation running, {{count}} queued', { count: queuedGenerationIds.length })
+                        : t('1 generation running')}
+                    </Text>
+                  )}
 
                   {/* Toolbar Row */}
                   <InputToolbar
@@ -686,12 +782,17 @@ function ImageCreatorPage() {
             historyCache={historyCache}
             historyLoading={historyLoading}
             currentRecordId={currentRecord?.id ?? null}
+            activeGenerationId={activeGenerationId}
+            queuedGenerationIds={queuedGenerationIds}
             hasNextPage={hasNextPage}
             isFetchingNextPage={isFetchingNextPage}
             onItemClick={handleHistoryClick}
             onLoadMore={handleLoadMoreHistory}
             onNewCreation={handleNewCreation}
             onClose={() => setShowHistory(false)}
+            onRetry={handleRetry}
+            onCancel={handleCancel}
+            onRemoveQueued={handleRemoveQueued}
             onDelete={handleDelete}
           />
         )}
@@ -705,11 +806,16 @@ function ImageCreatorPage() {
               historyCache={historyCache}
               historyLoading={historyLoading}
               currentRecordId={currentRecord?.id ?? null}
+              activeGenerationId={activeGenerationId}
+              queuedGenerationIds={queuedGenerationIds}
               hasNextPage={hasNextPage}
               isFetchingNextPage={isFetchingNextPage}
               onItemClick={handleHistoryClick}
               onLoadMore={handleLoadMoreHistory}
               onNewCreation={handleNewCreation}
+              onRetry={handleRetry}
+              onCancel={handleCancel}
+              onRemoveQueued={handleRemoveQueued}
               onDelete={handleDelete}
             />
 

@@ -12,11 +12,16 @@ export interface HistoryListContentProps {
   historyCache: ImageGeneration[]
   historyLoading: boolean
   currentRecordId: string | null
+  activeGenerationId: string | null
+  queuedGenerationIds: string[]
   hasNextPage: boolean
   isFetchingNextPage: boolean
   isMobile?: boolean
   onItemClick: (record: ImageGeneration) => void
   onLoadMore: () => void
+  onRetry: (id: string) => void
+  onCancel: (id: string) => void
+  onRemoveQueued: (id: string) => void
   onDelete: (id: string) => void
 }
 
@@ -24,11 +29,16 @@ export function HistoryListContent({
   historyCache,
   historyLoading,
   currentRecordId,
+  activeGenerationId,
+  queuedGenerationIds,
   hasNextPage,
   isFetchingNextPage,
   isMobile,
   onItemClick,
   onLoadMore,
+  onRetry,
+  onCancel,
+  onRemoveQueued,
   onDelete,
 }: HistoryListContentProps) {
   const { t } = useTranslation()
@@ -48,8 +58,13 @@ export function HistoryListContent({
           key={record.id}
           record={record}
           isActive={currentRecordId === record.id}
+          isActiveGeneration={activeGenerationId === record.id}
+          queuePosition={queuedGenerationIds.indexOf(record.id) + 1 || null}
           isMobile={isMobile}
           onClick={() => onItemClick(record)}
+          onRetry={onRetry}
+          onCancel={onCancel}
+          onRemoveQueued={onRemoveQueued}
           onDelete={onDelete}
         />
       ))}
@@ -90,12 +105,17 @@ export interface HistoryPanelProps {
   historyCache: ImageGeneration[]
   historyLoading: boolean
   currentRecordId: string | null
+  activeGenerationId: string | null
+  queuedGenerationIds: string[]
   hasNextPage: boolean
   isFetchingNextPage: boolean
   onItemClick: (record: ImageGeneration) => void
   onLoadMore: () => void
   onNewCreation: () => void
   onClose: () => void
+  onRetry: (id: string) => void
+  onCancel: (id: string) => void
+  onRemoveQueued: (id: string) => void
   onDelete: (id: string) => void
 }
 
@@ -105,12 +125,17 @@ export function HistoryPanel({
   historyCache,
   historyLoading,
   currentRecordId,
+  activeGenerationId,
+  queuedGenerationIds,
   hasNextPage,
   isFetchingNextPage,
   onItemClick,
   onLoadMore,
   onNewCreation,
   onClose,
+  onRetry,
+  onCancel,
+  onRemoveQueued,
   onDelete,
 }: HistoryPanelProps) {
   const { t } = useTranslation()
@@ -151,10 +176,15 @@ export function HistoryPanel({
             historyCache={historyCache}
             historyLoading={historyLoading}
             currentRecordId={currentRecordId}
+            activeGenerationId={activeGenerationId}
+            queuedGenerationIds={queuedGenerationIds}
             hasNextPage={hasNextPage}
             isFetchingNextPage={isFetchingNextPage}
             onItemClick={onItemClick}
             onLoadMore={onLoadMore}
+            onRetry={onRetry}
+            onCancel={onCancel}
+            onRemoveQueued={onRemoveQueued}
             onDelete={onDelete}
           />
         </ScrollArea>

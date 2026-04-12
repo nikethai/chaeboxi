@@ -10,6 +10,7 @@ export interface ImageGenerationStorage {
   update(id: string, updates: Partial<ImageGeneration>): Promise<ImageGeneration | null>
   getById(id: string): Promise<ImageGeneration | null>
   delete(id: string): Promise<void>
+  getAll(): Promise<ImageGeneration[]>
   getPage(cursor: number, limit?: number): Promise<ImageGenerationPage>
   getTotal(): Promise<number>
 }
@@ -93,6 +94,30 @@ export class IndexedDBImageGenerationStorage implements ImageGenerationStorage {
       const store = this.getStore('readwrite')
       const request = store.delete(id)
       request.onsuccess = () => resolve()
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  async getAll(): Promise<ImageGeneration[]> {
+    await this.initialize()
+
+    return new Promise((resolve, reject) => {
+      const store = this.getStore('readonly')
+      const index = store.index('createdAt')
+      const items: ImageGeneration[] = []
+      const request = index.openCursor(null, 'prev')
+
+      request.onsuccess = (event) => {
+        const cursor = (event.target as IDBRequest<IDBCursorWithValue>).result
+        if (!cursor) {
+          resolve(items)
+          return
+        }
+
+        items.push(cursor.value)
+        cursor.continue()
+      }
+
       request.onerror = () => reject(request.error)
     })
   }

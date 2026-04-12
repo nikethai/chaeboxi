@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 // Image generation record status
-export const ImageGenerationStatusSchema = z.enum(['pending', 'generating', 'done', 'error'])
+export const ImageGenerationStatusSchema = z.enum(['queued', 'generating', 'done', 'error', 'cancelled'])
 export type ImageGenerationStatus = z.infer<typeof ImageGenerationStatusSchema>
 
 // Model info for image generation
@@ -45,12 +45,16 @@ export const ImageGenerationSchema = z.object({
   referenceImages: z.array(z.string()), // storage keys
   generatedImages: z.array(z.string()), // storage keys
   createdAt: z.number(),
+  startedAt: z.number().optional(),
+  finishedAt: z.number().optional(),
   model: ImageGenerationModelSchema,
   dalleStyle: z.enum(['vivid', 'natural']).optional(),
   imageGenerateNum: z.number().optional(),
   aspectRatio: z.string().optional(),
   comfyuiParams: ComfyUIStoredParamsSchema,
   status: ImageGenerationStatusSchema,
+  providerJobId: z.string().optional(),
+  queueNumber: z.number().optional(),
   parentIds: z.array(z.string()).optional(), // for tracking iteration DAG (multiple parents possible)
   error: z.string().optional(),
   errorCode: z.number().optional(), // ChatboxAI API error code

@@ -112,7 +112,8 @@ export default class CustomGemini extends AbstractAISDKModel {
       aspectRatio?: string
     },
     signal?: AbortSignal,
-    callback?: (picBase64: string) => void
+    callback?: (picBase64: string) => void,
+    _onProviderJobUpdate?: (data: { providerJobId?: string; queueNumber?: number }) => void
   ): Promise<string[]> {
     if (!GEMINI_IMAGE_MODELS.includes(this.options.model.modelId)) {
       throw new ApiError('This Gemini model does not support image generation')

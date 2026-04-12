@@ -1,5 +1,5 @@
 import { getLogger } from '@/lib/utils'
-import platform from '@/platform'
+import platform, { getEffectivePlatformType } from '@/platform'
 import { authInfoStore } from '@/stores/authInfoStore'
 import { USE_BETA_API, USE_BETA_CHATBOX, USE_LOCAL_API, USE_LOCAL_CHATBOX } from '@/variables'
 import { ofetch } from 'ofetch'
@@ -28,7 +28,7 @@ async function initAfetch(): Promise<ReturnType<typeof createAfetch>> {
 
   afetchPromise = (async () => {
     _afetch = createAfetch({
-      type: platform.type,
+      type: getEffectivePlatformType(),
       platform: await platform.getPlatform(),
       os: getOS(),
       version: await platform.getVersion(),
@@ -57,7 +57,7 @@ async function initAuthenticatedAfetch(): Promise<ReturnType<typeof createAuthen
   authenticatedAfetchPromise = (async () => {
     _authenticatedAfetch = createAuthenticatedAfetch({
       platformInfo: {
-        type: platform.type,
+        type: getEffectivePlatformType(),
         platform: await platform.getPlatform(),
         os: getOS(),
         version: await platform.getVersion(),
@@ -112,7 +112,7 @@ export function getChatboxOrigin() {
 const getChatboxHeaders = async () => {
   return {
     'CHATBOX-PLATFORM': await platform.getPlatform(),
-    'CHATBOX-PLATFORM-TYPE': platform.type,
+    'CHATBOX-PLATFORM-TYPE': getEffectivePlatformType(),
     'CHATBOX-VERSION': await platform.getVersion(),
     'CHATBOX-OS': getOS(),
   }
@@ -622,7 +622,7 @@ export async function requestLoginTicketId() {
   const afetch = await getAfetch()
 
   let deviceType: string
-  if (platform.type === 'mobile') {
+  if (getEffectivePlatformType() === 'mobile') {
     deviceType = await platform.getPlatform()
   } else if (platform.type === 'desktop') {
     const os = getOS()

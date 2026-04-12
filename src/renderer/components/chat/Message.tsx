@@ -558,7 +558,7 @@ const _Message: FC<Props> = (props) => {
         onClick: quoteMsg,
       },
       { divider: true },
-      ...(msg.role === 'assistant' && platform.type === 'mobile'
+      ...(msg.role === 'assistant' && platform.formFactor === 'mobile'
         ? [
             {
               text: t('report'),
@@ -787,7 +787,7 @@ const _Message: FC<Props> = (props) => {
               {props.sessionType === 'picture' && msg.contentParts.filter((p) => p.type === 'image').length > 0 && (
                 <PictureGallery
                   pictures={msg.contentParts.filter((p) => p.type === 'image')}
-                  onReport={platform.type === 'mobile' ? onReport : undefined}
+                  onReport={platform.formFactor === 'mobile' ? onReport : undefined}
                 />
               )}
               {needArtifact && (
@@ -994,7 +994,7 @@ const PictureGallery = memo(({ pictures, compact, onReport }: PictureGalleryProp
             }
             // storageKey中含有冒号，会在android端导致存储失败，且android端在同文件名的情况下不会再次保存图片，也无提示，可能对用户造成困扰，所以增加随机后缀
             const filename =
-              platform.type === 'mobile'
+              platform.formFactor === 'mobile'
                 ? `${picture.storageKey.replaceAll(':', '_')}_${Math.random().toString(36).substring(7)}`
                 : picture.storageKey
             platform.exporter.exportImageFile(filename, base64)

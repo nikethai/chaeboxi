@@ -11,7 +11,7 @@ import * as defaults from '@shared/defaults'
 import type { Config, Language, Settings, ShortcutSetting } from '@shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { type ImageGenerationStorage, IndexedDBImageGenerationStorage } from '@/storage/ImageGenerationStorage'
-import type { Exporter, Platform, PlatformType, Storage } from './interfaces'
+import type { Exporter, Platform, PlatformType, FormFactor, Storage } from './interfaces'
 import type { KnowledgeBaseController } from './knowledge-base/interface'
 
 /**
@@ -112,6 +112,7 @@ class TestExporter implements Exporter {
  */
 export default class TestPlatform implements Platform {
   public type: PlatformType = 'web'
+  public formFactor: FormFactor = 'desktop'
   public exporter: TestExporter = new TestExporter()
 
   private storage = new InMemoryStorage()

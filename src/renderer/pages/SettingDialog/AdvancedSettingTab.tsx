@@ -59,7 +59,7 @@ export default function AdvancedSettingTab(props: Props) {
           />
         </AccordionDetails>
       </Accordion>
-      {platform.type !== 'mobile' && (
+      {platform.formFactor !== 'mobile' && (
         <Accordion>
           <AccordionSummary aria-controls="panel1a-content">
             <Typography>{t('Hotkeys')}</Typography>

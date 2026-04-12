@@ -43,7 +43,7 @@ export const GeneratedImagesGallery = memo(function GeneratedImagesGallery({
           const base64 = await storage.getBlob(storageKey)
           if (!base64) return
           const filename =
-            platform.type === 'mobile'
+            platform.formFactor === 'mobile'
               ? `${storageKey.replaceAll(':', '_')}_${Math.random().toString(36).substring(7)}`
               : storageKey
           platform.exporter.exportImageFile(filename, base64)

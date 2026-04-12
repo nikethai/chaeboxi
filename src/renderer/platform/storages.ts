@@ -330,6 +330,9 @@ export class IndexedDBStorage implements Storage {
   }
 }
 
+// Storage selection keys off platform.type (not formFactor) because it must match
+// the actual storage backend. Tauri Android uses DesktopPlatform with Tauri IPC
+// file-based storage, so it correctly follows the 'desktop' path here.
 export function getOldVersionStorages(): Storage[] {
   if (platform.type === 'desktop') {
     return [new DesktopFileStorage()]

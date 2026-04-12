@@ -9,6 +9,48 @@ import type {
 
 const POLL_INTERVAL_MS = 1500
 const POLL_TIMEOUT_MS = 5 * 60 * 1000 // 5 minutes
+const COMFYUI_ENDPOINT_PATHS = new Set([
+  '/api',
+  '/api/prompt',
+  '/api/object_info',
+  '/api/system_stats',
+  '/api/view',
+  '/prompt',
+  '/object_info',
+  '/system_stats',
+  '/view',
+])
+
+export function normalizeComfyUIBaseUrl(baseUrl: string): string {
+  let url = baseUrl.trim()
+
+  if (!url) {
+    throw new ApiError('ComfyUI server URL is empty. Enter something like http://127.0.0.1:8188')
+  }
+
+  const wrappedUrl = url.match(/^(['"`])(.*)\1$/)
+  if (wrappedUrl) {
+    url = wrappedUrl[2].trim()
+  }
+
+  if (!/^https?:\/\//i.test(url)) {
+    url = `http://${url}`
+  }
+
+  let parsedUrl: URL
+  try {
+    parsedUrl = new URL(url)
+  } catch {
+    throw new ApiError(
+      `Invalid ComfyUI server URL "${baseUrl}". Use something like http://127.0.0.1:8188`,
+    )
+  }
+
+  const normalizedPath = parsedUrl.pathname.replace(/\/+$/, '')
+  const cleanedPath = COMFYUI_ENDPOINT_PATHS.has(normalizedPath) ? '' : normalizedPath
+
+  return `${parsedUrl.origin}${cleanedPath}`
+}
 
 /**
  * ComfyUI HTTP client.
@@ -23,12 +65,7 @@ export class ComfyUIClient {
   private apiPrefix: string | null = null
 
   constructor(baseUrl: string) {
-    let url = baseUrl.trim().replace(/\/+$/, '')
-    // Auto-prepend http:// if no protocol is specified
-    if (url && !/^https?:\/\//i.test(url)) {
-      url = `http://${url}`
-    }
-    this.baseUrl = url
+    this.baseUrl = normalizeComfyUIBaseUrl(baseUrl)
   }
 
   /**
@@ -88,8 +125,9 @@ export class ComfyUIClient {
       }
     }
 
+    const detail = lastError instanceof Error && lastError.message ? ` Last error: ${lastError.message}` : ''
     throw new NetworkError(
-      `Cannot connect to ComfyUI server at ${this.baseUrl}. Make sure ComfyUI is running and accessible.`,
+      `Cannot connect to ComfyUI server at ${this.baseUrl}. Make sure ComfyUI is running and accessible.${detail}`,
       this.baseUrl,
     )
   }

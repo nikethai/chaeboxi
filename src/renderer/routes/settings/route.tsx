@@ -67,7 +67,7 @@ const ITEMS = [
     label: 'Chat Settings',
     icon: <IconMessages className="w-full h-full" />,
   },
-  ...(platform.type === 'mobile'
+  ...(platform.formFactor === 'mobile'
     ? []
     : [
         {

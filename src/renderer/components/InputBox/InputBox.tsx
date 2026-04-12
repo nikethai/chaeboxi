@@ -231,7 +231,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const [links, setLinks] = useAtom(atoms.inputBoxLinksFamily(currentSessionId || 'new'))
     const [isSubmitting, setIsSubmitting] = useState(false)
 
-
     useEffect(() => {
       const constructedMessage = sessionHelpers.constructUserMessage(
         messageInput,
@@ -590,6 +589,9 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           constructedMessage: preConstructedMessage.message,
           needGenerating,
           onUserMessageReady: () => {
+            // Re-enable submit as soon as the message is accepted so follow-up
+            // sends can enter the per-session queue while generation continues.
+            setIsSubmitting(false)
             clearDraft()
             setLinks([])
             setPreConstructedMessage({
@@ -610,7 +612,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               message: undefined,
             })
             setShowRollbackThreadButton(false)
-            if (platform.type !== 'mobile' && messageTextForHistory) {
+            if (platform.formFactor !== 'mobile' && messageTextForHistory) {
               addInputBoxHistory(messageTextForHistory)
             }
           },
@@ -696,7 +698,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
       // 发送消息
       if (isPressedHash[shortcuts.inputBoxSendMessage]) {
-        if (platform.type === 'mobile' && isSmallScreen && shortcuts.inputBoxSendMessage === 'Enter') {
+        if (platform.formFactor === 'mobile' && isSmallScreen && shortcuts.inputBoxSendMessage === 'Enter') {
           // 移动端点击回车不会发送消息
           return
         }

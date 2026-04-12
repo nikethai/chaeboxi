@@ -122,7 +122,7 @@ export function ProviderList({ providers, onAddProvider, onImportProvider, isImp
         <Button variant="outline" leftSection={<ScalableIcon icon={IconPlus} />} onClick={onAddProvider}>
           {t('Add')}
         </Button>
-        {platform.type !== 'mobile' && (
+        {platform.formFactor !== 'mobile' && (
           <Button
             variant="light"
             leftSection={<ScalableIcon icon={IconFileImport} />}

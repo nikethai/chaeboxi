@@ -1,0 +1,6 @@
+{
+  "build": {
+    "beforeDevCommand": "cross-env CHATBOX_BUILD_PLATFORM=android CHATBOX_BUILD_TARGET=mobile_app pnpm start:renderer",
+    "beforeBuildCommand": "cross-env CHATBOX_BUILD_PLATFORM=android CHATBOX_BUILD_TARGET=mobile_app pnpm build:renderer"
+  }
+}

@@ -5,6 +5,8 @@ import type { KnowledgeBaseController } from './knowledge-base/interface'
 
 export type PlatformType = 'web' | 'desktop' | 'mobile'
 
+export type FormFactor = 'desktop' | 'mobile'
+
 export interface Storage {
   getStorageType(): string
   setStoreValue(key: string, value: any): Promise<void>
@@ -17,6 +19,7 @@ export interface Storage {
 
 export interface Platform extends Storage {
   type: PlatformType
+  formFactor: FormFactor
 
   exporter: Exporter
 

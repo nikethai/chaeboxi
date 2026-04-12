@@ -156,7 +156,7 @@ export function SVGPreview(props: { xmlCode: string; className?: string; generat
           },
           appendTo: 'bar',
           onClick: async () => {
-            if (platform.type === 'mobile') {
+            if (platform.formFactor === 'mobile') {
               const pngBase64 = await picUtils.svgToPngBase64(svgBase64)
               platform.exporter.exportImageFile(`svg_${Math.random().toString(36).substring(7)}`, pngBase64)
             } else {

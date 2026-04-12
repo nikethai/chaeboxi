@@ -1,7 +1,7 @@
 import { createAfetch } from '@shared/request/request'
 import type { ApiRequestOptions, ModelDependencies } from '@shared/types/adapters'
 import { getOS } from '@/packages/navigator'
-import platform from '@/platform'
+import platform, { getEffectivePlatformType } from '@/platform'
 import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import * as settingActions from '@/stores/settingActions'
@@ -20,7 +20,7 @@ export async function createModelDependencies(): Promise<ModelDependencies> {
 
   _cachedDepsPromise = (async () => {
     const platformInfo = {
-      type: platform.type,
+      type: getEffectivePlatformType(),
       platform: await platform.getPlatform(),
       os: getOS(),
       version: (await platform.getVersion()) || 'unknown',

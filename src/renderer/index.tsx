@@ -1,4 +1,3 @@
-import { SplashScreen } from '@capacitor/splash-screen'
 import '@mantine/core/styles.css'
 import '@mantine/spotlight/styles.css'
 import * as Sentry from '@sentry/react'
@@ -36,6 +35,8 @@ import './setup/global_error_handler'
 
 // 引入保护代码
 import './setup/protect'
+import { isTauriRuntime } from './platform/tauri_ipc_adapter'
+import { isCapacitorMobile } from './platform'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { initLastUsedModelStore } from './stores/lastUsedModelStore'
 import { initSettingsStore } from './stores/settingsStore'
@@ -51,6 +52,11 @@ import('./setup/token_estimation_init')
 // 引入移动端安全区域代码，主要为了解决异形屏幕的问题
 if (CHATBOX_BUILD_TARGET === 'mobile_app' && CHATBOX_BUILD_PLATFORM === 'ios') {
   import('./setup/mobile_safe_area')
+}
+
+// Tauri Android safe area (CSS env()-based, no Capacitor dependency)
+if (CHATBOX_BUILD_PLATFORM === 'android' && isTauriRuntime()) {
+  import('./setup/tauri_android_safe_area')
 }
 
 // ==========执行初始化==============
@@ -110,6 +116,10 @@ function InitPage() {
 }
 
 // initializeApp执行时间少于1s的话，将不会看到log
+const hideSplashScreen = isCapacitorMobile
+  ? () => import('@capacitor/splash-screen').then(({ SplashScreen }) => SplashScreen.hide()).catch(() => {})
+  : () => {}
+
 const tid = setTimeout(() => {
   ReactDOM.createRoot(document.getElementById('log-root') as HTMLElement).render(
     <StrictMode>
@@ -118,8 +128,8 @@ const tid = setTimeout(() => {
       </ErrorBoundary>
     </StrictMode>
   )
-  if (platform.type === 'mobile') {
-    SplashScreen.hide()
+  if (isCapacitorMobile) {
+    hideSplashScreen()
   }
 }, 1000)
 
@@ -148,8 +158,8 @@ initializeApp()
       </StrictMode>
     )
 
-    if (platform.type === 'mobile') {
-      SplashScreen.hide()
+    if (isCapacitorMobile) {
+      hideSplashScreen()
     }
     const el = document.querySelector('.splash-screen')
     if (el) {

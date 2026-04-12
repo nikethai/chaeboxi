@@ -1,7 +1,7 @@
 import { CapacitorHttp } from '@capacitor/core'
 import type { SearchResult } from '@shared/types'
 import { type FetchOptions, ofetch } from 'ofetch'
-import platform from '@/platform'
+import { isCapacitorMobile } from '@/platform'
 
 export interface WebSearchOptions {
   includeDomains?: string[]
@@ -62,7 +62,7 @@ abstract class WebSearch {
 
   async fetch(url: string, options: FetchOptions) {
     const { origin } = new URL(url)
-    if (platform.type === 'mobile') {
+    if (isCapacitorMobile) {
       const { data } = await CapacitorHttp.request({
         url,
         method: options.method,

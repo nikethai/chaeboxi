@@ -150,7 +150,7 @@ async function migrateStorage() {
 
   if (!needMigration) {
     log.info(
-      `migrateStorage check: platform ${platform.type} old config version: ${oldConfigVersion}, old storage: ${oldStorage?.getStorageType()}`
+      `migrateStorage check: platform ${platform.type} (formFactor: ${platform.formFactor}) old config version: ${oldConfigVersion}, old storage: ${oldStorage?.getStorageType()}`
     )
 
     if (

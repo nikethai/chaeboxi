@@ -163,7 +163,8 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       aspectRatio?: string
     },
     signal?: AbortSignal,
-    callback?: (picBase64: string) => void
+    callback?: (picBase64: string) => void,
+    _onProviderJobUpdate?: (data: { providerJobId?: string; queueNumber?: number }) => void
   ): Promise<string[]> {
     const imageModel = this.getImageModel()
     if (!imageModel) {
@@ -616,11 +617,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
         currentReasoningPart = chunkResult.currentReasoningPart
 
         // Tool-related chunks flush immediately so users see tool execution feedback right away
-        if (
-          chunk.type === 'tool-call' ||
-          chunk.type === 'tool-result' ||
-          chunk.type === 'tool-call-streaming-start'
-        ) {
+        if (chunk.type === 'tool-call' || chunk.type === 'tool-result' || chunk.type === 'tool-call-streaming-start') {
           flushUpdate()
         } else {
           scheduleUpdate()

@@ -15,11 +15,16 @@ export interface MobileHistoryDrawerProps {
   historyCache: ImageGeneration[]
   historyLoading: boolean
   currentRecordId: string | null
+  activeGenerationId: string | null
+  queuedGenerationIds: string[]
   hasNextPage: boolean
   isFetchingNextPage: boolean
   onItemClick: (record: ImageGeneration) => void
   onLoadMore: () => void
   onNewCreation: () => void
+  onRetry: (id: string) => void
+  onCancel: (id: string) => void
+  onRemoveQueued: (id: string) => void
   onDelete: (id: string) => void
 }
 
@@ -29,11 +34,16 @@ export function MobileHistoryDrawer({
   historyCache,
   historyLoading,
   currentRecordId,
+  activeGenerationId,
+  queuedGenerationIds,
   hasNextPage,
   isFetchingNextPage,
   onItemClick,
   onLoadMore,
   onNewCreation,
+  onRetry,
+  onCancel,
+  onRemoveQueued,
   onDelete,
 }: MobileHistoryDrawerProps) {
   const { t } = useTranslation()
@@ -74,6 +84,8 @@ export function MobileHistoryDrawer({
               historyCache={historyCache}
               historyLoading={historyLoading}
               currentRecordId={currentRecordId}
+              activeGenerationId={activeGenerationId}
+              queuedGenerationIds={queuedGenerationIds}
               hasNextPage={hasNextPage}
               isFetchingNextPage={isFetchingNextPage}
               isMobile
@@ -82,6 +94,9 @@ export function MobileHistoryDrawer({
                 onOpenChange(false)
               }}
               onLoadMore={onLoadMore}
+              onRetry={onRetry}
+              onCancel={onCancel}
+              onRemoveQueued={onRemoveQueued}
               onDelete={onDelete}
             />
           </ScrollArea>

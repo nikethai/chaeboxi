@@ -1,6 +1,6 @@
 import { ActionIcon, Button, Flex, Image, Popover, Skeleton, Stack, Text, Tooltip, UnstyledButton } from '@mantine/core'
 import type { ImageGeneration } from '@shared/types'
-import { IconPhoto, IconTrash } from '@tabler/icons-react'
+import { IconPlayerStop, IconPhoto, IconRefresh, IconTrash, IconX } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,17 +10,51 @@ import { blobToDataUrl, IMAGE_MODEL_FALLBACK_NAMES } from './constants'
 export interface HistoryItemProps {
   record: ImageGeneration
   isActive: boolean
+  isActiveGeneration: boolean
+  queuePosition: number | null
   isMobile?: boolean
   onClick: () => void
+  onRetry: (id: string) => void
+  onCancel: (id: string) => void
+  onRemoveQueued: (id: string) => void
   onDelete: (id: string) => void
 }
 
-export function HistoryItem({ record, isActive, isMobile, onClick, onDelete }: HistoryItemProps) {
+export function HistoryItem({
+  record,
+  isActive,
+  isActiveGeneration,
+  queuePosition,
+  isMobile,
+  onClick,
+  onRetry,
+  onCancel,
+  onRemoveQueued,
+  onDelete,
+}: HistoryItemProps) {
   const { t } = useTranslation()
   const [hovered, setHovered] = useState(false)
   const [deletePopoverOpened, setDeletePopoverOpened] = useState(false)
   const firstImage = record.generatedImages[0]
   const modelName = IMAGE_MODEL_FALLBACK_NAMES[record.model.modelId] || record.model.modelId || 'Unknown'
+  const isQueued = record.status === 'queued'
+  const showActions = hovered || deletePopoverOpened || !!isMobile
+
+  const statusLabel = (() => {
+    if (isQueued) {
+      return queuePosition ? t('Queued #{{count}}', { count: queuePosition }) : t('Queued')
+    }
+    if (isActiveGeneration || record.status === 'generating') {
+      return record.queueNumber ? t('Generating · Server #{{count}}', { count: record.queueNumber }) : t('Generating')
+    }
+    if (record.status === 'cancelled') {
+      return t('Cancelled')
+    }
+    if (record.status === 'error') {
+      return t('Error')
+    }
+    return t('Done')
+  })()
 
   const handleDeleteClick = useCallback(
     (e: React.MouseEvent) => {
@@ -49,6 +83,30 @@ export function HistoryItem({ record, isActive, isMobile, onClick, onDelete }: H
     e.stopPropagation()
     setDeletePopoverOpened(false)
   }, [])
+
+  const handleRetryClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      onRetry(record.id)
+    },
+    [onRetry, record.id]
+  )
+
+  const handleCancelClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      onCancel(record.id)
+    },
+    [onCancel, record.id]
+  )
+
+  const handleRemoveQueuedClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      onRemoveQueued(record.id)
+    },
+    [onRemoveQueued, record.id]
+  )
 
   return (
     <UnstyledButton
@@ -83,6 +141,12 @@ export function HistoryItem({ record, isActive, isMobile, onClick, onDelete }: H
           </Text>
           <Flex align="center" gap={4}>
             <Text size="xs" c="dimmed">
+              {statusLabel}
+            </Text>
+            <Text size="xs" c="dimmed" className="opacity-40">
+              ·
+            </Text>
+            <Text size="xs" c="dimmed">
               {new Date(record.createdAt).toLocaleDateString()}
             </Text>
             <Text size="xs" c="dimmed" className="opacity-40">
@@ -94,54 +158,79 @@ export function HistoryItem({ record, isActive, isMobile, onClick, onDelete }: H
           </Flex>
         </Stack>
 
-        {isMobile ? (
-          <ActionIcon
-            variant="transparent"
-            color="gray"
-            size="sm"
-            onClick={handleDeleteClick}
-            className="shrink-0 opacity-40 hover:opacity-100 transition-opacity"
-          >
-            <IconTrash size={14} />
-          </ActionIcon>
-        ) : (
-          <Popover
-            opened={deletePopoverOpened}
-            onClose={() => setDeletePopoverOpened(false)}
-            position="left"
-            withArrow
-            shadow="md"
-            radius="md"
-          >
-            <Popover.Target>
-              <ActionIcon
-                variant="subtle"
-                color="red"
-                size="sm"
-                radius="md"
-                onClick={handleDeleteClick}
-                className={`shrink-0 transition-opacity duration-150 ${
-                  hovered || deletePopoverOpened ? 'opacity-100' : 'opacity-0'
-                }`}
-              >
-                <IconTrash size={14} />
+        <Flex
+          gap={4}
+          align="center"
+          className={`shrink-0 transition-opacity duration-150 ${showActions ? 'opacity-100' : 'opacity-0'}`}
+        >
+          {(record.status === 'error' || record.status === 'cancelled') && (
+            <Tooltip label={t('Retry')} disabled={isMobile}>
+              <ActionIcon variant="subtle" color="gray" size="sm" radius="md" onClick={handleRetryClick}>
+                <IconRefresh size={14} />
               </ActionIcon>
-            </Popover.Target>
-            <Popover.Dropdown onClick={(e) => e.stopPropagation()}>
-              <Stack gap="xs">
-                <Text size="sm">{t('Delete this record?')}</Text>
-                <Flex gap="xs" justify="flex-end">
-                  <Button size="xs" variant="default" onClick={handleCancelDelete}>
-                    {t('Cancel')}
-                  </Button>
-                  <Button size="xs" color="red" onClick={handleConfirmDelete}>
-                    {t('Delete')}
-                  </Button>
-                </Flex>
-              </Stack>
-            </Popover.Dropdown>
-          </Popover>
-        )}
+            </Tooltip>
+          )}
+
+          {(isActiveGeneration || record.status === 'generating') && (
+            <Tooltip label={t('Cancel')} disabled={isMobile}>
+              <ActionIcon variant="subtle" color="red" size="sm" radius="md" onClick={handleCancelClick}>
+                <IconPlayerStop size={14} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+
+          {isQueued && (
+            <Tooltip label={t('Remove from Queue')} disabled={isMobile}>
+              <ActionIcon variant="subtle" color="gray" size="sm" radius="md" onClick={handleRemoveQueuedClick}>
+                <IconX size={14} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+
+          {!isQueued && !isActiveGeneration && (
+            <>
+              {isMobile ? (
+                <ActionIcon
+                  variant="transparent"
+                  color="gray"
+                  size="sm"
+                  onClick={handleDeleteClick}
+                  className="shrink-0 opacity-40 hover:opacity-100 transition-opacity"
+                >
+                  <IconTrash size={14} />
+                </ActionIcon>
+              ) : (
+                <Popover
+                  opened={deletePopoverOpened}
+                  onClose={() => setDeletePopoverOpened(false)}
+                  position="left"
+                  withArrow
+                  shadow="md"
+                  radius="md"
+                >
+                  <Popover.Target>
+                    <ActionIcon variant="subtle" color="red" size="sm" radius="md" onClick={handleDeleteClick}>
+                      <IconTrash size={14} />
+                    </ActionIcon>
+                  </Popover.Target>
+                  <Popover.Dropdown onClick={(e) => e.stopPropagation()}>
+                    <Stack gap="xs">
+                      <Text size="sm">{t('Delete this record?')}</Text>
+                      <Flex gap="xs" justify="flex-end">
+                        <Button size="xs" variant="default" onClick={handleCancelDelete}>
+                          {t('Cancel')}
+                        </Button>
+                        <Button size="xs" color="red" onClick={handleConfirmDelete}>
+                          {t('Delete')}
+                        </Button>
+                      </Flex>
+                    </Stack>
+                  </Popover.Dropdown>
+                </Popover>
+              )}
+            </>
+          )}
+        </Flex>
       </Flex>
     </UnstyledButton>
   )

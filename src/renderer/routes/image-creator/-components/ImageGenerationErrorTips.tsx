@@ -13,6 +13,7 @@ export interface ImageGenerationErrorTipsProps {
 
 export function ImageGenerationErrorTips({ record, onRetry, isRetrying }: ImageGenerationErrorTipsProps) {
   const { t } = useTranslation()
+  const isCancelled = record.status === 'cancelled'
 
   const chatboxAIErrorDetail = record.errorCode ? ChatboxAIAPIError.getDetail(record.errorCode) : null
   const showDetailedError = !chatboxAIErrorDetail
@@ -29,7 +30,7 @@ export function ImageGenerationErrorTips({ record, onRetry, isRetrying }: ImageG
         </div>
 
         <Text fw={500} size="sm">
-          {t('Generation Failed')}
+          {isCancelled ? t('Generation Cancelled') : t('Generation Failed')}
         </Text>
 
         {chatboxAIErrorDetail ? (

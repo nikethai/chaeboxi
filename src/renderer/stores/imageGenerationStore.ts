@@ -7,30 +7,59 @@ import platform from '@/platform'
 import type { ImageGenerationStorage } from '@/storage/ImageGenerationStorage'
 
 const log = getLogger('image-generation-store')
+const LEGACY_PENDING_STATUS = 'pending'
 
 interface ImageGenerationUIState {
-  currentGeneratingId: string | null
+  activeGenerationId: string | null
+  queuedGenerationIds: string[]
   currentRecordId: string | null
   initialized: boolean
 }
 
 interface ImageGenerationUIActions {
-  setCurrentGeneratingId: (id: string | null) => void
+  setActiveGenerationId: (id: string | null) => void
+  setQueuedGenerationIds: (ids: string[]) => void
+  enqueueGenerationId: (id: string) => void
+  removeQueuedGenerationId: (id: string) => void
+  shiftQueuedGenerationId: () => string | null
   setCurrentRecordId: (id: string | null) => void
   setInitialized: (initialized: boolean) => void
 }
 
 export const imageGenerationStore = createStore<ImageGenerationUIState & ImageGenerationUIActions>((set) => ({
-  currentGeneratingId: null,
+  activeGenerationId: null,
+  queuedGenerationIds: [],
   currentRecordId: null,
   initialized: false,
 
-  setCurrentGeneratingId: (id) => set({ currentGeneratingId: id }),
+  setActiveGenerationId: (id) => set({ activeGenerationId: id }),
+  setQueuedGenerationIds: (ids) => set({ queuedGenerationIds: ids }),
+  enqueueGenerationId: (id) =>
+    set((state) => ({
+      queuedGenerationIds: state.queuedGenerationIds.includes(id)
+        ? state.queuedGenerationIds
+        : [...state.queuedGenerationIds, id],
+    })),
+  removeQueuedGenerationId: (id) =>
+    set((state) => ({
+      queuedGenerationIds: state.queuedGenerationIds.filter((queuedId) => queuedId !== id),
+    })),
+  shiftQueuedGenerationId: () => {
+    let nextId: string | null = null
+    set((state) => {
+      nextId = state.queuedGenerationIds[0] ?? null
+      return {
+        queuedGenerationIds: state.queuedGenerationIds.slice(1),
+      }
+    })
+    return nextId
+  },
   setCurrentRecordId: (id) => set({ currentRecordId: id }),
   setInitialized: (initialized) => set({ initialized }),
 }))
 
 let storage: ImageGenerationStorage | null = null
+let initializePromise: Promise<void> | null = null
 
 function getStorage(): ImageGenerationStorage {
   if (!storage) {
@@ -42,15 +71,64 @@ function getStorage(): ImageGenerationStorage {
 async function initializeStore(): Promise<void> {
   const store = imageGenerationStore.getState()
   if (store.initialized) return
+  if (initializePromise) {
+    await initializePromise
+    return
+  }
+
+  initializePromise = (async () => {
+    try {
+      await getStorage().initialize()
+      await recoverQueueState()
+      imageGenerationStore.getState().setInitialized(true)
+      log.debug('Image generation storage initialized')
+    } catch (error) {
+      log.error('Failed to initialize image generation storage:', error)
+      throw error
+    }
+  })()
 
   try {
-    await getStorage().initialize()
-    store.setInitialized(true)
-    log.debug('Image generation storage initialized')
-  } catch (error) {
-    log.error('Failed to initialize image generation storage:', error)
-    throw error
+    await initializePromise
+  } finally {
+    initializePromise = null
   }
+}
+
+async function recoverQueueState(): Promise<void> {
+  const records = await getStorage().getAll()
+  const now = Date.now()
+
+  await Promise.all(
+    records
+      .filter((record) => record.status === 'generating')
+      .map((record) =>
+        getStorage().update(record.id, {
+          status: 'error',
+          error: 'Generation stopped because the app was closed before completion. Retry to run it again.',
+          finishedAt: now,
+        })
+      )
+  )
+
+  await Promise.all(
+    records
+      .filter((record) => record.status === LEGACY_PENDING_STATUS)
+      .map((record) =>
+        getStorage().update(record.id, {
+          status: 'queued',
+        })
+      )
+  )
+
+  const queuedGenerationIds = records
+    .filter((record) => record.status === 'queued' || record.status === LEGACY_PENDING_STATUS)
+    .sort((left, right) => left.createdAt - right.createdAt)
+    .map((record) => record.id)
+
+  const store = imageGenerationStore.getState()
+  store.setActiveGenerationId(null)
+  store.setQueuedGenerationIds(queuedGenerationIds)
 }
 
 export const IMAGE_GEN_QUERY_KEY = 'image-generation'
@@ -85,7 +163,10 @@ export function useImageGenerationRecord(id: string | null) {
 }
 
 export async function createRecord(
-  params: Omit<ImageGeneration, 'id' | 'createdAt' | 'status' | 'generatedImages'>
+  params: Omit<
+    ImageGeneration,
+    'id' | 'createdAt' | 'generatedImages' | 'status' | 'startedAt' | 'finishedAt' | 'providerJobId' | 'queueNumber'
+  >
 ): Promise<ImageGeneration> {
   const store = imageGenerationStore.getState()
   if (!store.initialized) {
@@ -95,7 +176,7 @@ export async function createRecord(
   const record: ImageGeneration = {
     id: uuidv4(),
     createdAt: Date.now(),
-    status: 'pending',
+    status: 'queued',
     generatedImages: [],
     ...params,
   }
@@ -133,14 +214,42 @@ export async function deleteRecord(id: string): Promise<void> {
   await getStorage().delete(id)
   log.debug('Deleted image generation record:', id)
 
+  store.removeQueuedGenerationId(id)
+
   // Clear current record if it's the one being deleted
   if (store.currentRecordId === id) {
     store.setCurrentRecordId(null)
   }
 }
 
+export async function getImageGenerationRecord(id: string): Promise<ImageGeneration | null> {
+  const store = imageGenerationStore.getState()
+  if (!store.initialized) {
+    await initializeStore()
+  }
+
+  return getStorage().getById(id)
+}
+
+export async function getAllImageGenerationRecords(): Promise<ImageGeneration[]> {
+  const store = imageGenerationStore.getState()
+  if (!store.initialized) {
+    await initializeStore()
+  }
+
+  return getStorage().getAll()
+}
+
+export function useActiveGenerationId() {
+  return useStore(imageGenerationStore, (s) => s.activeGenerationId)
+}
+
+export function useQueuedGenerationIds() {
+  return useStore(imageGenerationStore, (s) => s.queuedGenerationIds)
+}
+
 export function useCurrentGeneratingId() {
-  return useStore(imageGenerationStore, (s) => s.currentGeneratingId)
+  return useActiveGenerationId()
 }
 
 export function useCurrentRecordId() {

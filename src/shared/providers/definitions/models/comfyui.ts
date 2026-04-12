@@ -50,7 +50,8 @@ export default class ComfyUI implements ModelInterface {
       comfyuiParams?: ComfyUIGenerationParams
     },
     signal?: AbortSignal,
-    callback?: (picBase64: string) => void
+    callback?: (picBase64: string) => void,
+    onProviderJobUpdate?: (data: { providerJobId?: string; queueNumber?: number }) => void
   ): Promise<string[]> {
     const ps = this.providerSettings
 
@@ -110,7 +111,11 @@ export default class ComfyUI implements ModelInterface {
         seed: Math.floor(Math.random() * 2 ** 32),
       })
 
-      const { prompt_id } = await this.client.queuePrompt(workflow)
+      const { prompt_id, number } = await this.client.queuePrompt(workflow)
+      onProviderJobUpdate?.({
+        providerJobId: prompt_id,
+        queueNumber: number,
+      })
       const history = await this.client.pollForCompletion(prompt_id, signal)
 
       const outputNode = history.outputs['9']

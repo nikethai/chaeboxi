@@ -39,16 +39,34 @@ export class SQLiteImageGenerationStorage implements ImageGenerationStorage {
         reference_images TEXT NOT NULL DEFAULT '[]',
         generated_images TEXT NOT NULL DEFAULT '[]',
         created_at INTEGER NOT NULL,
+        started_at INTEGER,
+        finished_at INTEGER,
         model_provider TEXT NOT NULL,
         model_id TEXT NOT NULL,
         dalle_style TEXT,
         image_generate_num INTEGER,
         status TEXT NOT NULL,
+        provider_job_id TEXT,
+        queue_number INTEGER,
         parent_id TEXT,
         error TEXT,
         error_code INTEGER
       )
     `)
+
+    const columnResult = await this.database.query('PRAGMA table_info(image_generation)')
+    const columns = new Set((columnResult.values || []).map((row) => row.name as string))
+
+    const addColumnIfMissing = async (column: string, ddl: string) => {
+      if (!columns.has(column)) {
+        await this.database.execute(`ALTER TABLE image_generation ADD COLUMN ${ddl}`)
+      }
+    }
+
+    await addColumnIfMissing('started_at', 'started_at INTEGER')
+    await addColumnIfMissing('finished_at', 'finished_at INTEGER')
+    await addColumnIfMissing('provider_job_id', 'provider_job_id TEXT')
+    await addColumnIfMissing('queue_number', 'queue_number INTEGER')
 
     await this.database.execute(`
       CREATE INDEX IF NOT EXISTS idx_image_generation_created_at 
@@ -63,11 +81,15 @@ export class SQLiteImageGenerationStorage implements ImageGenerationStorage {
       reference_images: JSON.stringify(record.referenceImages),
       generated_images: JSON.stringify(record.generatedImages),
       created_at: record.createdAt,
+      started_at: record.startedAt || null,
+      finished_at: record.finishedAt || null,
       model_provider: record.model.provider,
       model_id: record.model.modelId,
       dalle_style: record.dalleStyle || null,
       image_generate_num: record.imageGenerateNum || null,
       status: record.status,
+      provider_job_id: record.providerJobId || null,
+      queue_number: record.queueNumber || null,
       parent_id: record.parentIds?.length ? JSON.stringify(record.parentIds) : null,
       error: record.error || null,
       error_code: record.errorCode || null,
@@ -81,6 +103,8 @@ export class SQLiteImageGenerationStorage implements ImageGenerationStorage {
       referenceImages: JSON.parse((row.reference_images as string) || '[]'),
       generatedImages: JSON.parse((row.generated_images as string) || '[]'),
       createdAt: row.created_at as number,
+      startedAt: row.started_at as number | undefined,
+      finishedAt: row.finished_at as number | undefined,
       model: {
         provider: row.model_provider as string,
         modelId: row.model_id as string,
@@ -88,6 +112,8 @@ export class SQLiteImageGenerationStorage implements ImageGenerationStorage {
       dalleStyle: row.dalle_style as 'vivid' | 'natural' | undefined,
       imageGenerateNum: row.image_generate_num as number | undefined,
       status: row.status as ImageGeneration['status'],
+      providerJobId: row.provider_job_id as string | undefined,
+      queueNumber: row.queue_number as number | undefined,
       parentIds: row.parent_id ? JSON.parse(row.parent_id as string) : undefined,
       error: row.error as string | undefined,
       errorCode: row.error_code as number | undefined,
@@ -100,19 +126,23 @@ export class SQLiteImageGenerationStorage implements ImageGenerationStorage {
 
     await this.database.run(
       `INSERT INTO image_generation 
-       (id, prompt, reference_images, generated_images, created_at, model_provider, model_id, dalle_style, image_generate_num, status, parent_id, error, error_code)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, prompt, reference_images, generated_images, created_at, started_at, finished_at, model_provider, model_id, dalle_style, image_generate_num, status, provider_job_id, queue_number, parent_id, error, error_code)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         row.id,
         row.prompt,
         row.reference_images,
         row.generated_images,
         row.created_at,
+        row.started_at,
+        row.finished_at,
         row.model_provider,
         row.model_id,
         row.dalle_style,
         row.image_generate_num,
         row.status,
+        row.provider_job_id,
+        row.queue_number,
         row.parent_id,
         row.error,
         row.error_code,
@@ -130,20 +160,24 @@ export class SQLiteImageGenerationStorage implements ImageGenerationStorage {
 
     await this.database.run(
       `UPDATE image_generation SET
-       prompt = ?, reference_images = ?, generated_images = ?, created_at = ?,
+       prompt = ?, reference_images = ?, generated_images = ?, created_at = ?, started_at = ?, finished_at = ?,
        model_provider = ?, model_id = ?, dalle_style = ?, image_generate_num = ?,
-       status = ?, parent_id = ?, error = ?, error_code = ?
+       status = ?, provider_job_id = ?, queue_number = ?, parent_id = ?, error = ?, error_code = ?
        WHERE id = ?`,
       [
         row.prompt,
         row.reference_images,
         row.generated_images,
         row.created_at,
+        row.started_at,
+        row.finished_at,
         row.model_provider,
         row.model_id,
         row.dalle_style,
         row.image_generate_num,
         row.status,
+        row.provider_job_id,
+        row.queue_number,
         row.parent_id,
         row.error,
         row.error_code,
@@ -164,6 +198,13 @@ export class SQLiteImageGenerationStorage implements ImageGenerationStorage {
   async delete(id: string): Promise<void> {
     await this.initialize()
     await this.database.run('DELETE FROM image_generation WHERE id = ?', [id])
+  }
+
+  async getAll(): Promise<ImageGeneration[]> {
+    await this.initialize()
+
+    const result = await this.database.query('SELECT * FROM image_generation ORDER BY created_at DESC')
+    return (result.values || []).map((row) => this.rowToRecord(row))
   }
 
   async getPage(cursor: number = 0, limit: number = PAGE_SIZE): Promise<ImageGenerationPage> {

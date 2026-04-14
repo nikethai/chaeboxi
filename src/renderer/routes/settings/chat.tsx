@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next'
 import { AssistantAvatar, UserAvatar } from '@/components/common/Avatar'
 import MaxContextMessageCountSlider from '@/components/common/MaxContextMessageCountSlider'
 import { AdaptiveModal } from '@/components/common/AdaptiveModal'
+import { SystemPromptPresetPicker, SystemPromptPresetsSection } from '@/components/SystemPromptPresets'
 import { AdaptiveSelect } from '@/components/AdaptiveSelect'
 import SliderWithInput from '@/components/common/SliderWithInput'
 import { Divider } from '@/components/common/Divider'
@@ -135,6 +136,14 @@ export function RouteComponent() {
         <Text fw="600">{t('Default Settings for New Conversation')}</Text>
         <Stack gap="xxs">
           <Text fw="500">{t('Prompt')}</Text>
+          <SystemPromptPresetPicker
+            value={settings.defaultPrompt || ''}
+            onChange={(value) =>
+              setSettings({
+                defaultPrompt: value,
+              })
+            }
+          />
           <Textarea
             value={settings.defaultPrompt || ''}
             autosize
@@ -401,6 +410,10 @@ export function RouteComponent() {
           />
         </Stack>
       </Stack>
+
+      <Divider />
+
+      <SystemPromptPresetsSection />
 
       <Divider />
 

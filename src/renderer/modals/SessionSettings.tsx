@@ -31,6 +31,7 @@ import { AdaptiveModal } from '@/components/common/AdaptiveModal'
 import LazyNumberInput from '@/components/common/LazyNumberInput'
 import MaxContextMessageCountSlider from '@/components/common/MaxContextMessageCountSlider'
 import SliderWithInput from '@/components/common/SliderWithInput'
+import { SystemPromptPresetPicker } from '@/components/SystemPromptPresets'
 import { handleImageInputAndSave } from '@/components/Image'
 import ImageStyleSelect from '@/components/ImageStyleSelect'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
@@ -215,21 +216,24 @@ const SessionSettingsModal = NiceModal.create(
             </Input.Wrapper>
 
             {editingData.settings?.provider !== ModelProviderEnum.OpenClaw && (
-              <Textarea
-                label={t('Instruction (System Prompt)')}
-                placeholder={t('Copilot Prompt Demo') || ''}
-                autosize
-                minRows={2}
-                maxRows={12}
-                value={systemPrompt}
-                onChange={(event) => setSystemPrompt(event.target.value)}
-                classNames={{
-                  input: '!text-chatbox-tint-primary',
-                }}
-                styles={{
-                  input: { touchAction: 'manipulation' },
-                }}
-              />
+              <Stack gap="xs">
+                <Textarea
+                  label={t('Instruction (System Prompt)')}
+                  placeholder={t('Copilot Prompt Demo') || ''}
+                  autosize
+                  minRows={2}
+                  maxRows={12}
+                  value={systemPrompt}
+                  onChange={(event) => setSystemPrompt(event.target.value)}
+                  classNames={{
+                    input: '!text-chatbox-tint-primary',
+                  }}
+                  styles={{
+                    input: { touchAction: 'manipulation' },
+                  }}
+                />
+                <SystemPromptPresetPicker value={systemPrompt} onChange={setSystemPrompt} />
+              </Stack>
             )}
 
             <Stack className=" border border-solid border-chatbox-border-primary rounded-md">

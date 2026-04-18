@@ -220,6 +220,11 @@ export default defineConfig(({ mode }) => {
       },
       postcss: path.resolve(__dirname, 'postcss.config.js'),
     },
+    esbuild: {
+      // Chrome 91 is the minimum WebView on Android API 30 emulators.
+      // Use es2021 to avoid static class blocks (ES2022/Chrome 94+).
+      target: 'es2021',
+    },
     server: {
       port: 1212,
       strictPort: true,

@@ -1,6 +1,6 @@
 import type { Message, MessageContentParts } from '@shared/types'
 import type { ModelDependencies } from '@shared/types/adapters'
-import type { FilePart, ImagePart, ModelMessage, TextPart } from 'ai'
+import type { FilePart, ImagePart, ModelMessage, ReasoningPart, TextPart } from 'ai'
 import dayjs from 'dayjs'
 import { compact } from 'lodash'
 import { createModelDependencies } from '@/adapters'
@@ -98,14 +98,37 @@ async function convertUserContentParts(
 
 async function convertAssistantContentParts(
   contentParts: MessageContentParts,
-  dependencies: ModelDependencies
-): Promise<Array<TextPart | FilePart>> {
-  return await convertContentParts<TextPart | FilePart>(contentParts, 'file', dependencies)
+  dependencies: ModelDependencies,
+  options?: { includeReasoning?: boolean }
+): Promise<Array<TextPart | FilePart | ReasoningPart>> {
+  const convertedParts = await Promise.all(
+    contentParts.map(async (part): Promise<TextPart | FilePart | ReasoningPart | null> => {
+      if (part.type === 'reasoning') {
+        if (!options?.includeReasoning) {
+          return null
+        }
+
+        return {
+          type: 'reasoning',
+          text: part.text,
+        }
+      }
+
+      const converted = await convertContentParts<TextPart | FilePart>([part], 'file', dependencies)
+      return converted[0] || null
+    })
+  )
+
+  return compact(convertedParts)
 }
 
 export async function convertToModelMessages(
   messages: Message[],
-  options?: { modelSupportVision: boolean; dependencies?: ModelDependencies }
+  options?: {
+    modelSupportVision: boolean
+    dependencies?: ModelDependencies
+    includeAssistantReasoning?: boolean
+  }
 ): Promise<ModelMessage[]> {
   const dependencies = options?.dependencies ?? (await createModelDependencies())
   const results = await Promise.all(
@@ -127,7 +150,9 @@ export async function convertToModelMessages(
           const contentParts = m.contentParts || []
           return {
             role: 'assistant' as const,
-            content: await convertAssistantContentParts(contentParts, dependencies),
+            content: await convertAssistantContentParts(contentParts, dependencies, {
+              includeReasoning: options?.includeAssistantReasoning,
+            }),
           }
         }
         case 'tool':

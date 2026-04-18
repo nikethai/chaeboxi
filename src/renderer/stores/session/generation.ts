@@ -530,6 +530,7 @@ export async function generate(
         const { result } = await streamText(model, {
           sessionId: session.id,
           messages: promptMsgs,
+          sessionSettings: effectiveSettings,
           onResultChangeWithCancel: modifyMessageCache,
           onStatusChange: (status) => {
             targetMsg = {

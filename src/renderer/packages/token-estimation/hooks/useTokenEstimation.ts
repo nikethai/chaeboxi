@@ -11,10 +11,12 @@ export interface UseTokenEstimationOptions {
   contextMessages: Message[]
   model?: { provider: string; modelId: string }
   modelSupportToolUseForFile: boolean
+  includeReasoningInAssistantMessages?: boolean
 }
 
 export function useTokenEstimation(options: UseTokenEstimationOptions): TokenEstimationResult {
-  const { sessionId, constructedMessage, contextMessages, model, modelSupportToolUseForFile } = options
+  const { sessionId, constructedMessage, contextMessages, model, modelSupportToolUseForFile, includeReasoningInAssistantMessages } =
+    options
 
   const tokenizerType = useMemo(() => getTokenizerType(model), [model])
 
@@ -39,8 +41,9 @@ export function useTokenEstimation(options: UseTokenEstimationOptions): TokenEst
         contextMessages,
         tokenizerType,
         modelSupportToolUseForFile,
+        includeReasoningInAssistantMessages: includeReasoningInAssistantMessages ?? false,
       }),
-    [constructedMessage, contextMessages, tokenizerType, modelSupportToolUseForFile]
+    [constructedMessage, contextMessages, tokenizerType, modelSupportToolUseForFile, includeReasoningInAssistantMessages]
   )
 
   const contextMessageIds = useMemo(() => new Set(contextMessages.map((m) => m.id)), [contextMessages])

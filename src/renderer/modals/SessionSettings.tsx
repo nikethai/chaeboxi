@@ -22,6 +22,7 @@ import {
   type Session,
   type SessionSettings,
 } from '@shared/types'
+import { isReasoningReplayAvailable } from '@shared/utils/reasoning-replay'
 import { IconInfoCircle, IconTrash } from '@tabler/icons-react'
 import { pick } from 'lodash'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -565,6 +566,11 @@ export function ChatConfig({
 }) {
   const { t } = useTranslation()
   const globalSettingsStream = useSettingsStore((s) => s.stream)
+  const globalSettings = useSettingsStore((s) => s)
+  const showPreserveReasoningToggle = useMemo(
+    () => isReasoningReplayAvailable(settings, globalSettings),
+    [settings, globalSettings]
+  )
 
   return (
     <Stack gap="md">
@@ -658,6 +664,36 @@ export function ChatConfig({
           />
         </Flex>
       </Stack>
+
+      {showPreserveReasoningToggle && (
+        <Stack gap="xs" py="xs">
+          <Flex align="center" gap="xs">
+            <Text size="sm" fw="600">
+              {t('Preserve reasoning in context')}
+            </Text>
+            <Tooltip
+              label={t('Replay prior assistant reasoning back to supported reasoning models on later turns.')}
+              withArrow={true}
+              maw={320}
+              className="!whitespace-normal"
+              zIndex={3000}
+              events={{ hover: true, focus: true, touch: true }}
+            >
+              <ScalableIcon icon={IconInfoCircle} size={20} className="text-chatbox-tint-tertiary" />
+            </Tooltip>
+          </Flex>
+
+          <Flex align="center" justify="space-between" gap="xs">
+            <Text size="sm" c="dimmed">
+              {t('Only available for supported reasoning transports.')}
+            </Text>
+            <Switch
+              checked={settings?.preserveReasoningInContext ?? true}
+              onChange={(event) => onSettingsChange({ preserveReasoningInContext: event.target.checked })}
+            />
+          </Flex>
+        </Stack>
+      )}
 
       <Stack>
         {settings?.provider === ModelProviderEnum.Claude && (

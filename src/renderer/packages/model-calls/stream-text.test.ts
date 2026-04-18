@@ -2,15 +2,33 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMessage, ModelProviderEnum, type Message, type StreamTextResult } from '@shared/types'
 import type { ModelInterface } from '@shared/models/types'
 
-const { createAndGenerateMock, navigateMock, webSearchExecutorMock, parseUserLinkFreeMock, modalShowMock } = vi.hoisted(
-  () => ({
-    createAndGenerateMock: vi.fn(),
-    navigateMock: vi.fn(),
-    webSearchExecutorMock: vi.fn(),
-    parseUserLinkFreeMock: vi.fn(),
-    modalShowMock: vi.fn(),
-  })
-)
+const {
+  createAndGenerateMock,
+  navigateMock,
+  webSearchExecutorMock,
+  parseUserLinkFreeMock,
+  modalShowMock,
+  convertToModelMessagesMock,
+  injectModelSystemPromptMock,
+} = vi.hoisted(() => ({
+  createAndGenerateMock: vi.fn(),
+  navigateMock: vi.fn(),
+  webSearchExecutorMock: vi.fn(),
+  parseUserLinkFreeMock: vi.fn(),
+  modalShowMock: vi.fn(),
+  convertToModelMessagesMock: vi.fn(async (messages: Message[]) =>
+    messages.map((message) => ({
+      role: message.role,
+      content: message.contentParts.map((part) => ('text' in part ? part.text : '')).join('\n'),
+    }))
+  ),
+  injectModelSystemPromptMock: vi.fn((_: string, messages: Message[], instructions: string, role: 'system' | 'user') => {
+    if (!instructions) {
+      return messages
+    }
+    return [createMessage(role, instructions), ...messages]
+  }),
+}))
 
 const settingsState = vi.hoisted(() => ({
   extension: {
@@ -47,7 +65,10 @@ vi.mock('@/adapters', () => ({
 
 vi.mock('@/stores/settingsStore', () => ({
   settingsStore: {
-    getState: () => settingsState,
+    getState: () => ({
+      ...settingsState,
+      getSettings: () => settingsState,
+    }),
   },
 }))
 
@@ -77,18 +98,8 @@ vi.mock('../mcp/controller', () => ({
 }))
 
 vi.mock('./message-utils', () => ({
-  convertToModelMessages: vi.fn(async (messages: Message[]) =>
-    messages.map((message) => ({
-      role: message.role,
-      content: message.contentParts.map((part) => ('text' in part ? part.text : '')).join('\n'),
-    }))
-  ),
-  injectModelSystemPrompt: vi.fn((_: string, messages: Message[], instructions: string, role: 'system' | 'user') => {
-    if (!instructions) {
-      return messages
-    }
-    return [createMessage(role, instructions), ...messages]
-  }),
+  convertToModelMessages: convertToModelMessagesMock,
+  injectModelSystemPrompt: injectModelSystemPromptMock,
 }))
 
 vi.mock('./toolsets/knowledge-base', () => ({
@@ -136,6 +147,8 @@ describe('streamText agent image flow', () => {
     webSearchExecutorMock.mockReset()
     parseUserLinkFreeMock.mockReset()
     modalShowMock.mockReset()
+    convertToModelMessagesMock.mockClear()
+    injectModelSystemPromptMock.mockClear()
 
     createAndGenerateMock.mockResolvedValue('record-1')
     navigateMock.mockResolvedValue(undefined)
@@ -337,5 +350,75 @@ describe('streamText agent image flow', () => {
     })
 
     expect(createAndGenerateMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('streamText reasoning replay', () => {
+  beforeEach(() => {
+    convertToModelMessagesMock.mockClear()
+  })
+
+  it('passes assistant reasoning replay when the session toggle is enabled on a supported provider', async () => {
+    const chat = vi.fn(async () => ({ contentParts: [], text: 'done' }) as StreamTextResult)
+    const { streamText } = await import('./stream-text')
+
+    await streamText(createTestModel(chat), {
+      messages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          contentParts: [
+            { type: 'reasoning', text: 'hidden chain' },
+            { type: 'text', text: 'final answer' },
+          ],
+        },
+        createMessage('user', 'follow up'),
+      ],
+      sessionSettings: {
+        provider: ModelProviderEnum.Qwen,
+        modelId: 'qwen3.5-plus',
+        preserveReasoningInContext: true,
+      },
+      onResultChangeWithCancel: vi.fn(),
+    })
+
+    expect(convertToModelMessagesMock).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({
+        includeAssistantReasoning: true,
+      })
+    )
+  })
+
+  it('keeps assistant reasoning replay disabled when the session toggle is off', async () => {
+    const chat = vi.fn(async () => ({ contentParts: [], text: 'done' }) as StreamTextResult)
+    const { streamText } = await import('./stream-text')
+
+    await streamText(createTestModel(chat), {
+      messages: [
+        {
+          id: 'assistant-1',
+          role: 'assistant',
+          contentParts: [
+            { type: 'reasoning', text: 'hidden chain' },
+            { type: 'text', text: 'final answer' },
+          ],
+        },
+        createMessage('user', 'follow up'),
+      ],
+      sessionSettings: {
+        provider: ModelProviderEnum.Qwen,
+        modelId: 'qwen3.5-plus',
+        preserveReasoningInContext: false,
+      },
+      onResultChangeWithCancel: vi.fn(),
+    })
+
+    expect(convertToModelMessagesMock).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({
+        includeAssistantReasoning: false,
+      })
+    )
   })
 })

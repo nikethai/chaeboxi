@@ -1,6 +1,7 @@
 import NiceModal from '@ebay/nice-modal-react'
 import type { CompactionPoint, Message, Session, SessionSettings, Settings } from '@shared/types'
 import { createMessage } from '@shared/types'
+import { shouldPreserveReasoningInContext } from '@shared/utils/reasoning-replay'
 import type { ContextOverflowAction } from '@/modals/ContextOverflow'
 import { getTokenizerType } from '@/packages/token-estimation'
 import { setCompactionUIState } from '@/stores/atoms/compactionAtoms'
@@ -76,7 +77,12 @@ export function checkSessionOverflowFast(
   // Use only cached token counts from messages — never triggers async computation
   const mergedSettings = { ...globalSettings, ...session.settings } as SessionSettings
   const contextMessages = getContextMessagesForTokenEstimation(session, { settings: mergedSettings })
-  const estimatedTokens = sumCachedTokensFromMessages(contextMessages)
+  const model = providerId && modelId ? { provider: providerId, modelId } : undefined
+  const estimatedTokens = sumCachedTokensFromMessages(
+    contextMessages,
+    model,
+    shouldPreserveReasoningInContext(mergedSettings, globalSettings)
+  )
 
   const contextWindow = getModelContextWindowFromSettings(providerId, modelId, globalSettings)
   const result = checkOverflow({
@@ -132,6 +138,7 @@ async function checkSessionOverflow(sessionId: string): Promise<OverflowCheckRes
   const contextMessages = getContextMessagesForTokenEstimation(session, { settings: mergedSettings })
   const model = providerId && modelId ? { provider: providerId, modelId } : undefined
   const tokenizerType = getTokenizerType(model)
+  const includeReasoningInAssistantMessages = shouldPreserveReasoningInContext(mergedSettings, globalSettings)
 
   const cacheKey = getContextTokensCacheKey({
     sessionId,
@@ -139,13 +146,14 @@ async function checkSessionOverflow(sessionId: string): Promise<OverflowCheckRes
     latestContextMessageId: contextMessages[contextMessages.length - 1]?.id ?? null,
     latestCompactionBoundaryId: getLatestCompactionBoundaryId(session.compactionPoints),
     tokenizerType,
+    includeReasoningInAssistantMessages,
   })
 
   // ===== NEW: Read from cache =====
   const cachedResult = queryClient.getQueryData<ContextTokensCacheValue>(cacheKey)
   if (!cachedResult) {
     // L2 cache miss: Use L1 cache aggregation (do NOT trigger calculation tasks)
-    const estimatedTokens = sumCachedTokensFromMessages(contextMessages)
+    const estimatedTokens = sumCachedTokensFromMessages(contextMessages, model, includeReasoningInAssistantMessages)
     queryClient.setQueryData(cacheKey, {
       contextTokens: estimatedTokens,
       messageCount: contextMessages.length,

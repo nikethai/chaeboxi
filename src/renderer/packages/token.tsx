@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/react'
 import type { Message, MessageFile, MessageLink } from '../../shared/types'
 import { TOKEN_CACHE_KEYS, type TokenCacheKey } from '../../shared/types/session'
 import { getMessageText, isEmptyMessage } from '../../shared/utils/message'
+import { getMessageTextCacheKey } from './token-estimation/cache-keys'
 import {
   buildAttachmentWrapperPrefix,
   buildAttachmentWrapperSuffix,
@@ -39,7 +40,8 @@ export function getTokenCountForModel(item: { tokenCountMap?: Record<string, num
 export function estimateTokensFromMessages(
   messages: Message[],
   type = 'output' as 'output' | 'input',
-  model?: TokenModel
+  model?: TokenModel,
+  includeReasoningInInput = false
 ) {
   if (messages.length === 0) {
     return 0
@@ -53,7 +55,10 @@ export function estimateTokensFromMessages(
         continue
       }
       ret += tokensPerMessage
-      ret += estimateTokens(getMessageText(msg, false, type === 'output'), model)
+      ret += estimateTokens(
+        getMessageText(msg, false, type === 'output' || (type === 'input' && msg.role === 'assistant' && includeReasoningInInput)),
+        model
+      )
       ret += estimateTokens(msg.role, model)
       if (msg.name) {
         ret += estimateTokens(msg.name, model)
@@ -93,7 +98,11 @@ export function estimateTokensFromMessages(
  * Used by needsCompaction for non-blocking token count checks.
  * Actual calculation is done by InputBox's useTokenEstimation.
  */
-export function sumCachedTokensFromMessages(messages: Message[], model?: TokenModel): number {
+export function sumCachedTokensFromMessages(
+  messages: Message[],
+  model?: TokenModel,
+  includeReasoningInInput = false
+): number {
   if (messages.length === 0) {
     return 0
   }
@@ -112,7 +121,14 @@ export function sumCachedTokensFromMessages(messages: Message[], model?: TokenMo
     total += tokensPerMessage
 
     // Read cached message text tokens (tokenCountMap preferred, tokenCount as fallback)
-    total += msg.tokenCountMap?.[cacheKey] ?? msg.tokenCount ?? 0
+    const messageCacheKey = getMessageTextCacheKey({
+      tokenizerType: cacheKey === TOKEN_CACHE_KEYS.deepseek ? 'deepseek' : 'default',
+      includeReasoning: msg.role === 'assistant' && includeReasoningInInput,
+    })
+    const canUseLegacyFallback = !(msg.role === 'assistant' && includeReasoningInInput)
+    total +=
+      msg.tokenCountMap?.[messageCacheKey] ??
+      (canUseLegacyFallback ? (msg.tokenCountMap?.[cacheKey] ?? msg.tokenCount ?? 0) : 0)
 
     // Add role tokens
     total += estimateTokens(msg.role, model)
@@ -243,13 +259,14 @@ export interface EstimateTokensForSendPayloadOptions {
   type?: 'output' | 'input'
   model?: TokenModel
   modelSupportToolUseForFile?: boolean
+  includeReasoningInInput?: boolean
 }
 
 export function estimateTokensFromMessagesForSendPayload(
   messages: Message[],
   options: EstimateTokensForSendPayloadOptions = {}
 ): number {
-  const { type = 'input', model, modelSupportToolUseForFile = false } = options
+  const { type = 'input', model, modelSupportToolUseForFile = false, includeReasoningInInput = false } = options
 
   if (messages.length === 0) {
     return 0
@@ -266,7 +283,10 @@ export function estimateTokensFromMessagesForSendPayload(
       }
 
       total += tokensPerMessage
-      total += estimateTokens(getMessageText(msg, false, type === 'output'), model)
+      total += estimateTokens(
+        getMessageText(msg, false, type === 'output' || (type === 'input' && msg.role === 'assistant' && includeReasoningInInput)),
+        model
+      )
       total += estimateTokens(msg.role, model)
 
       if (msg.name) {

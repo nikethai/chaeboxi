@@ -2,7 +2,8 @@ import type { Message, MessageFile, MessageLink, TokenCacheKey, TokenCountMap } 
 import { getLogger } from '@/lib/utils'
 import * as chatStore from '@/stores/chatStore'
 import queryClient from '@/stores/queryClient'
-import type { AttachmentType, ContentMode, TaskResult, TokenizerType } from './types'
+import { getMessageTextCacheKey } from './cache-keys'
+import type { AttachmentType, ContentMode, TaskResult } from './types'
 
 const log = getLogger('token-estimation:persister')
 
@@ -19,8 +20,8 @@ interface PendingUpdate {
   sessionId: string
   messageId: string
   updates: {
-    tokenCountMap?: Partial<Record<TokenizerType, number>>
-    tokenCalculatedAt?: Partial<Record<TokenizerType, number>>
+    tokenCountMap?: Partial<Record<TokenCacheKey, number>>
+    tokenCalculatedAt?: Partial<Record<TokenCacheKey, number>>
     attachments?: AttachmentUpdate[]
   }
 }
@@ -100,13 +101,17 @@ class ResultPersister {
     }
 
     if (result.type === 'message-text') {
+      const cacheKey = getMessageTextCacheKey({
+        tokenizerType: result.tokenizerType,
+        includeReasoning: result.includeReasoning ?? false,
+      })
       pending.updates.tokenCountMap = {
         ...pending.updates.tokenCountMap,
-        [result.tokenizerType]: result.tokens,
+        [cacheKey]: result.tokens,
       }
       pending.updates.tokenCalculatedAt = {
         ...pending.updates.tokenCalculatedAt,
-        [result.tokenizerType]: result.calculatedAt,
+        [cacheKey]: result.calculatedAt,
       }
       log.debug('Result added (message-text)', { messageId: result.messageId, tokens: result.tokens })
     } else {

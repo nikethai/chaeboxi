@@ -597,6 +597,7 @@ describe('estimateTokensFromMessages', () => {
 
   it('should handle reasoning content in output mode', () => {
     const messageWithReasoning = createMessage({
+      role: MessageRoleEnum.Assistant,
       contentParts: [
         { type: 'reasoning', text: 'Let me think about this...' },
         { type: 'text', text: 'The answer is 42.' },
@@ -608,6 +609,21 @@ describe('estimateTokensFromMessages', () => {
 
     // Output mode includes reasoning, input mode does not
     expect(tokensOutput).toBeGreaterThan(tokensInput)
+  })
+
+  it('should include assistant reasoning in input mode when explicitly enabled', () => {
+    const messageWithReasoning = createMessage({
+      role: MessageRoleEnum.Assistant,
+      contentParts: [
+        { type: 'reasoning', text: 'Let me think about this...' },
+        { type: 'text', text: 'The answer is 42.' },
+      ],
+    })
+
+    const tokensDefaultInput = estimateTokensFromMessages([messageWithReasoning], 'input')
+    const tokensWithReplay = estimateTokensFromMessages([messageWithReasoning], 'input', undefined, true)
+
+    expect(tokensWithReplay).toBeGreaterThan(tokensDefaultInput)
   })
 
   it('should handle messages with image parts', () => {
@@ -729,6 +745,23 @@ describe('getAttachmentTokenCacheKey', () => {
 describe('estimateTokensFromMessagesForSendPayload', () => {
   it('should return 0 for empty message array', () => {
     expect(estimateTokensFromMessagesForSendPayload([])).toBe(0)
+  })
+
+  it('should include assistant reasoning in input payload estimation only when enabled', () => {
+    const message = createMessage({
+      role: MessageRoleEnum.Assistant,
+      contentParts: [
+        { type: 'reasoning', text: 'Reasoning trace' },
+        { type: 'text', text: 'Visible answer' },
+      ],
+    })
+
+    const withoutReplay = estimateTokensFromMessagesForSendPayload([message])
+    const withReplay = estimateTokensFromMessagesForSendPayload([message], {
+      includeReasoningInInput: true,
+    })
+
+    expect(withReplay).toBeGreaterThan(withoutReplay)
   })
 
   it('should estimate tokens for single text message', () => {

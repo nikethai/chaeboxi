@@ -1,5 +1,6 @@
-import type { CompactionPoint, Message, Session, Settings } from '@shared/types'
+import type { CompactionPoint, Message, Session, SessionSettings, Settings } from '@shared/types'
 import { useEffect, useMemo } from 'react'
+import { shouldPreserveReasoningInContext } from '@shared/utils/reasoning-replay'
 import { getTokenizerType } from '@/packages/token-estimation'
 import { useTokenEstimation } from '@/packages/token-estimation/hooks/useTokenEstimation'
 import queryClient from '@/stores/queryClient'
@@ -12,13 +13,16 @@ queryClient.setQueryDefaults(['context-tokens'], {
   gcTime: 60 * 60 * 1000, // 1 hour
 })
 
+const EMPTY_REASONING_REPLAY_SETTINGS = {}
+
 /**
  * Options for useContextTokens hook
  */
 export interface UseContextTokensOptions {
   sessionId: string | null
   session: Session | null | undefined
-  settings: Partial<Settings>
+  settings: Partial<SessionSettings>
+  globalSettings?: Pick<Settings, 'providers' | 'customProviders'>
   model?: { provider: string; modelId: string }
   modelSupportToolUseForFile: boolean
   constructedMessage?: Message
@@ -46,6 +50,7 @@ export interface ContextTokensCacheKeyParams {
   latestContextMessageId: string | null
   latestCompactionBoundaryId: string | null
   tokenizerType: 'default' | 'deepseek'
+  includeReasoningInAssistantMessages?: boolean
 }
 
 /**
@@ -61,7 +66,7 @@ export interface ContextTokensCacheValue {
  * Options for getContextMessagesForTokenEstimation
  */
 export interface GetContextMessagesForTokenEstimationOptions {
-  settings?: Partial<Settings>
+  settings?: Partial<SessionSettings>
   preserveLastUserMessage?: boolean
   keepToolCallRounds?: number
 }
@@ -122,6 +127,7 @@ export function getContextTokensCacheKey(params: ContextTokensCacheKeyParams): r
     params.latestContextMessageId,
     params.latestCompactionBoundaryId,
     params.tokenizerType,
+    params.includeReasoningInAssistantMessages ?? false,
   ] as const
 }
 
@@ -160,6 +166,11 @@ export function getLatestCompactionBoundaryId(compactionPoints?: CompactionPoint
  */
 export function useContextTokens(options: UseContextTokensOptions): UseContextTokensResult {
   const { sessionId, session, settings, model, modelSupportToolUseForFile, constructedMessage } = options
+  const reasoningReplaySettings = options.globalSettings ?? EMPTY_REASONING_REPLAY_SETTINGS
+  const includeReasoningInAssistantMessages = useMemo(
+    () => shouldPreserveReasoningInContext(settings, reasoningReplaySettings),
+    [settings, reasoningReplaySettings]
+  )
 
   // 1. contextMessages must be stable
   const contextMessages = useMemo(() => {
@@ -179,8 +190,16 @@ export function useContextTokens(options: UseContextTokensOptions): UseContextTo
       latestContextMessageId: contextMessages[contextMessages.length - 1]?.id ?? null,
       latestCompactionBoundaryId: getLatestCompactionBoundaryId(session.compactionPoints),
       tokenizerType,
+      includeReasoningInAssistantMessages,
     })
-  }, [sessionId, session?.compactionPoints, settings.maxContextMessageCount, contextMessages, tokenizerType])
+  }, [
+    sessionId,
+    session?.compactionPoints,
+    settings.maxContextMessageCount,
+    contextMessages,
+    tokenizerType,
+    includeReasoningInAssistantMessages,
+  ])
 
   // 4. Call useTokenEstimation
   const tokenResult = useTokenEstimation({
@@ -189,6 +208,7 @@ export function useContextTokens(options: UseContextTokensOptions): UseContextTo
     contextMessages,
     model,
     modelSupportToolUseForFile,
+    includeReasoningInAssistantMessages,
   })
 
   const isCalculating = tokenResult.isCalculating

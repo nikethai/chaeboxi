@@ -14,14 +14,8 @@ import { difference, intersection, keyBy, uniq, uniqBy } from 'lodash'
 import oldStore from 'store'
 import { v4 as uuidv4 } from 'uuid'
 import {
-  artifactSessionCN,
-  artifactSessionEN,
   defaultSessionsForCN,
   defaultSessionsForEN,
-  imageCreatorSessionForCN,
-  imageCreatorSessionForEN,
-  mermaidSessionCN,
-  mermaidSessionEN,
 } from '@/packages/initial_data'
 import platform from '@/platform'
 import type { Storage } from '@/platform/interfaces'
@@ -45,6 +39,7 @@ export async function migrate() {
       setData: storage.setItemNow.bind(storage),
       setAll: storage.setAll.bind(storage),
       setBlob: storage.setBlob.bind(storage),
+      removeData: storage.removeItem.bind(storage),
     },
     true
   )
@@ -55,9 +50,10 @@ type MigrateStore = {
   setData: <T>(key: StorageKey | string, value: T) => Promise<void>
   setAll: (data: { [key: string]: unknown }) => Promise<void>
   setBlob?: (key: string, value: string) => Promise<void>
+  removeData?: (key: StorageKey | string) => Promise<void>
 }
 
-export const CurrentVersion = 14
+export const CurrentVersion = 15
 
 async function doMigrateStorage(oldStorage: Storage) {
   // 找到老版本的数据，说明是升级，执行数据迁移操作
@@ -203,6 +199,7 @@ export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true)
     migrate_11_to_12,
     migrate_12_to_13,
     migrate_13_to_14,
+    migrate_14_to_15,
   ]
 
   for (; configVersion < CurrentVersion; configVersion++) {
@@ -230,20 +227,8 @@ async function migrate_0_to_1(dataStore: MigrateStore) {
   }
 }
 
-async function migrate_1_to_2(dataStore: MigrateStore) {
-  const sessions = await dataStore.getData<Session[]>(StorageKey.ChatSessions, [])
-  const lang = await platform.getLocale()
-  if (lang.startsWith('zh')) {
-    if (sessions.find((session) => session.id === imageCreatorSessionForCN.id)) {
-      return
-    }
-    await dataStore.setData(StorageKey.ChatSessions, [...sessions, imageCreatorSessionForCN])
-  } else {
-    if (sessions.find((session) => session.id === imageCreatorSessionForEN.id)) {
-      return
-    }
-    await dataStore.setData(StorageKey.ChatSessions, [...sessions, imageCreatorSessionForEN])
-  }
+async function migrate_1_to_2(_dataStore: MigrateStore) {
+  // Deprecated: no longer inject demo sessions.
 }
 
 async function migrate_2_to_3(dataStore: MigrateStore) {
@@ -266,14 +251,8 @@ async function migrate_2_to_3(dataStore: MigrateStore) {
   }
 }
 
-async function migrate_3_to_4(dataStore: MigrateStore) {
-  const sessions = await dataStore.getData<Session[]>(StorageKey.ChatSessions, [])
-  const lang = await platform.getLocale()
-  const targetSession = lang.startsWith('zh') ? artifactSessionCN : artifactSessionEN
-  if (sessions.find((session) => session.id === targetSession.id)) {
-    return
-  }
-  await dataStore.setData(StorageKey.ChatSessions, [...sessions, targetSession])
+async function migrate_3_to_4(_dataStore: MigrateStore) {
+  // Deprecated: no longer inject demo sessions.
 }
 
 // 已经迁移到storage migration
@@ -296,14 +275,8 @@ async function migrate_4_to_5(dataStore: MigrateStore): Promise<boolean> {
   return true
 }
 
-async function migrate_5_to_6(dataStore: MigrateStore) {
-  const sessions = await dataStore.getData<Session[]>(StorageKey.ChatSessions, [])
-  const lang = await platform.getLocale()
-  const targetSession = lang.startsWith('zh') ? mermaidSessionCN : mermaidSessionEN
-  if (sessions.find((session) => session.id === targetSession.id)) {
-    return
-  }
-  await dataStore.setData(StorageKey.ChatSessions, [...sessions, targetSession])
+async function migrate_5_to_6(_dataStore: MigrateStore) {
+  // Deprecated: no longer inject demo sessions.
 }
 
 // 针对 mobile 端，从 store 迁移至 sqlite
@@ -801,5 +774,43 @@ async function migrate_13_to_14(dataStore: MigrateStore) {
   }
 
   log.info(`migrate_13_to_14, migrated ${migratedCount} image generation records`)
+  return false
+}
+
+async function migrate_14_to_15(dataStore: MigrateStore) {
+  const demoSessionIds = new Set(
+    uniq([...defaultSessionsForEN.map((session) => session.id), ...defaultSessionsForCN.map((session) => session.id)])
+  )
+
+  if (demoSessionIds.size === 0) {
+    return false
+  }
+
+  const sessionList = await dataStore.getData<SessionMeta[]>(StorageKey.ChatSessionsList, [])
+  const filteredSessionList = sessionList.filter((session) => !demoSessionIds.has(session.id))
+  const removedSessionCount = sessionList.length - filteredSessionList.length
+
+  if (removedSessionCount > 0) {
+    await dataStore.setData(StorageKey.ChatSessionsList, filteredSessionList)
+
+    if (dataStore.removeData) {
+      for (const sessionMeta of sessionList) {
+        if (demoSessionIds.has(sessionMeta.id)) {
+          await dataStore.removeData(StorageKeyGenerator.session(sessionMeta.id))
+        }
+      }
+    }
+  }
+
+  const legacySessions = await dataStore.getData<Session[]>(StorageKey.ChatSessions, [])
+  const filteredLegacySessions = legacySessions.filter((session) => !demoSessionIds.has(session.id))
+  if (filteredLegacySessions.length !== legacySessions.length) {
+    await dataStore.setData(StorageKey.ChatSessions, filteredLegacySessions)
+  }
+
+  if (removedSessionCount > 0) {
+    log.info(`migrate_14_to_15, removed ${removedSessionCount} demo sessions`)
+  }
+
   return false
 }

@@ -59,6 +59,11 @@ if (CHATBOX_BUILD_PLATFORM === 'android' && isTauriRuntime()) {
   import('./setup/tauri_android_safe_area')
 }
 
+// Tauri Android keyboard handling (mobile WebView keyboard can cover bottom UI)
+if (CHATBOX_BUILD_PLATFORM === 'android' && isTauriRuntime()) {
+  import('./setup/tauri_android_keyboard')
+}
+
 // ==========执行初始化==============
 async function initializeApp() {
   log.info('initializeApp')

@@ -80,15 +80,21 @@ export function ProviderList({ providers, onAddProvider, onImportProvider, isImp
                   provider.id === providerId ? '' : 'hover:!bg-chatbox-background-gray-secondary'
                 )}
               >
-                {provider.isCustom ? (
-                  provider.iconUrl ? (
-                    <Image w={32} h={32} src={provider.iconUrl} alt={provider.name} />
+                {(() => {
+                  if (provider.isCustom) {
+                    return provider.iconUrl ? (
+                      <Image w={32} h={32} src={provider.iconUrl} alt={provider.name} />
+                    ) : (
+                      <CustomProviderIcon providerId={provider.id} providerName={provider.name} size={32} />
+                    )
+                  }
+                  const iconSrc = icons.find((icon) => icon.name === provider.id)?.src
+                  return iconSrc ? (
+                    <Image w={32} h={32} src={iconSrc} alt={provider.name} />
                   ) : (
                     <CustomProviderIcon providerId={provider.id} providerName={provider.name} size={32} />
                   )
-                ) : (
-                  <Image w={32} h={32} src={icons.find((icon) => icon.name === provider.id)?.src} alt={provider.name} />
-                )}
+                })()}
 
                 <Text
                   span

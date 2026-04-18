@@ -1020,7 +1020,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     // Show deprecated notice for legacy picture sessions
     if (sessionType === 'picture') {
       return (
-        <Box pt={0} pb={isSmallScreen ? 'md' : 'sm'} px="sm" id={dom.InputBoxID}>
+        <Box pt={0} pb={isSmallScreen ? 'md' : 'sm'} px="sm" id={dom.InputBoxID} className="chat-input-shell">
           <Stack
             className={cn('rounded-2xl bg-chatbox-background-secondary', widthFull ? 'w-full' : 'max-w-4xl mx-auto')}
             gap="xs"
@@ -1039,7 +1039,14 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     }
 
     return (
-      <Box pt={0} pb={isSmallScreen ? 'md' : 'sm'} px="sm" id={dom.InputBoxID} {...getRootProps()}>
+      <Box
+        pt={0}
+        pb={isSmallScreen ? 'md' : 'sm'}
+        px="sm"
+        id={dom.InputBoxID}
+        {...getRootProps()}
+        className="chat-input-shell"
+      >
         <input className="hidden" {...getInputProps()} />
         <Stack className={cn(widthFull ? 'w-full' : 'max-w-4xl mx-auto')} gap="xs">
           {currentSessionId && <CompactionStatus sessionId={currentSessionId} />}

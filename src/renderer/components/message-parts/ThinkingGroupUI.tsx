@@ -1,4 +1,4 @@
-import { ActionIcon, Box, Collapse, Group, Paper, Space, Text } from '@mantine/core'
+import { ActionIcon, Box, Collapse, Group, Paper, Text } from '@mantine/core'
 import type { Message, MessageContentParts, MessageReasoningPart, MessageToolCallPart } from '@shared/types'
 import {
   IconBulb,
@@ -12,6 +12,7 @@ import clsx from 'clsx'
 import { type FC, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Markdown from '@/components/Markdown'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { formatElapsedTime, formatHumanizedDuration, useThinkingTimer } from '@/hooks/useThinkingTimer'
 import { copyToClipboard } from '@/packages/navigator'
 import * as toastActions from '@/stores/toastActions'
@@ -26,6 +27,7 @@ interface ThinkingGroupUIProps {
 
 export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLastGroup }) => {
   const { t } = useTranslation()
+  const isSmallScreen = useIsSmallScreen()
 
   const reasoningParts = useMemo(() => parts.filter((p) => p.type === 'reasoning') as MessageReasoningPart[], [parts])
   const toolCallParts = useMemo(() => parts.filter((p) => p.type === 'tool-call') as MessageToolCallPart[], [parts])
@@ -110,9 +112,10 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
       : null
 
     if (toolCount > 0 && durationStr) {
-      const key = toolCount === 1
-        ? 'Thought for {{duration}} and used {{count}} tool'
-        : 'Thought for {{duration}} and used {{count}} tools'
+      const key =
+        toolCount === 1
+          ? 'Thought for {{duration}} and used {{count}} tool'
+          : 'Thought for {{duration}} and used {{count}} tools'
       return t(key, {
         duration: formatHumanizedDuration(displayTime),
         count: toolCount,
@@ -120,9 +123,7 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
     }
 
     if (toolCount > 0) {
-      const key = toolCount === 1
-        ? 'Thought and used {{count}} tool'
-        : 'Thought and used {{count}} tools'
+      const key = toolCount === 1 ? 'Thought and used {{count}} tool' : 'Thought and used {{count}} tools'
       return t(key, { count: toolCount })
     }
 
@@ -134,23 +135,27 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
   }, [isThinking, shouldShowTimer, displayTime, toolCount, t])
 
   return (
-    <Paper withBorder radius="md" mb="xs">
+    <Paper withBorder radius={isSmallScreen ? 'lg' : 'md'} mb="xs" className={clsx(isSmallScreen && 'mx-0.5')}>
       <Box onClick={toggleExpanded} className="cursor-pointer group">
-        <Group px="xs" justify="space-between" className="w-full">
-          <Group gap="xs">
+        <Group px={isSmallScreen ? 'sm' : 'xs'} py={isSmallScreen ? 8 : 6} justify="space-between" className="w-full">
+          <Group gap="xs" wrap="nowrap" className="flex-1 min-w-0">
             <ScalableIcon icon={IconBulb} color="var(--chatbox-tint-warning)" />
-            <Text fw={600} size="sm" className={isThinking ? 'animate-shimmer shimmer-text' : ''}>
+            <Text
+              fw={600}
+              size={isSmallScreen ? 'xs' : 'sm'}
+              className={clsx('truncate', isThinking ? 'animate-shimmer shimmer-text' : '')}
+            >
               {headerLabel}
             </Text>
             {toolCount > 0 && (
-              <Group gap="xs" ml={2}>
-                <Group gap={4}>
+              <Group gap={6} ml={2} wrap="nowrap" className="shrink-0">
+                <Group gap={3} wrap="nowrap">
                   <ScalableIcon icon={IconCircleXFilled} color="var(--chatbox-tint-error)" />
                   <Text size="xs" fw={600} style={{ color: 'var(--chatbox-tint-error)' }}>
                     {toolStatusCounts.failed}
                   </Text>
                 </Group>
-                <Group gap={4}>
+                <Group gap={3} wrap="nowrap">
                   <ScalableIcon
                     icon={IconLoader}
                     className={toolStatusCounts.running > 0 ? 'animate-spin' : undefined}
@@ -160,7 +165,7 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
                     {toolStatusCounts.running}
                   </Text>
                 </Group>
-                <Group gap={4}>
+                <Group gap={3} wrap="nowrap">
                   <ScalableIcon icon={IconCircleCheckFilled} color="var(--chatbox-tint-success)" />
                   <Text size="xs" fw={600} style={{ color: 'var(--chatbox-tint-success)' }}>
                     {toolStatusCounts.succeeded}
@@ -169,17 +174,16 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
               </Group>
             )}
             {isThinking && elapsedTime > 0 && shouldShowTimer && (
-              <Text size="xs" c="chatbox-tertiary">
+              <Text size="xs" c="chatbox-tertiary" className="shrink-0">
                 ({formatElapsedTime(elapsedTime)})
               </Text>
             )}
           </Group>
-          <Space miw="xl" />
-          <Group gap="xs">
+          <Group gap={6} wrap="nowrap" className="shrink-0">
             <ActionIcon
               variant="subtle"
               c="chatbox-gray"
-              size="sm"
+              size={isSmallScreen ? 'md' : 'sm'}
               onClick={onCopy}
               aria-label={t('Copy reasoning content')}
             >
@@ -201,19 +205,24 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
         >
           {parts.map((part, index) =>
             part.type === 'reasoning' ? (
-              <Box key={`group-reasoning-${index}`} px="sm" className="reasoning-content" style={{ opacity: 0.85 }}>
+              <Box
+                key={`group-reasoning-${index}`}
+                px={isSmallScreen ? 'xs' : 'sm'}
+                className="reasoning-content"
+                style={{ opacity: 0.9 }}
+              >
                 <Markdown
                   enableLaTeXRendering={false}
                   enableMermaidRendering={false}
                   hiddenCodeCopyButton={false}
-                  className="text-sm"
+                  className={isSmallScreen ? 'text-[13px]' : 'text-sm'}
                   generating={isThinking && index === parts.length - 1}
                 >
                   {part.text}
                 </Markdown>
               </Box>
             ) : part.type === 'tool-call' ? (
-              <Box key={`group-tool-${part.toolCallId}`} px="sm" py="xs">
+              <Box key={`group-tool-${part.toolCallId}`} px={isSmallScreen ? 'xs' : 'sm'} py="xs">
                 <ToolCallPartUI part={part as MessageToolCallPart} />
               </Box>
             ) : null

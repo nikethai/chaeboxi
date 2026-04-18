@@ -57,15 +57,20 @@ export default function Header(props: { session: Session }) {
 
   return (
     <>
-      <Flex h={54} align="center" px="sm" className={'flex-none title-bar'}>
+      <Flex
+        h={isSmallScreen ? 56 : 54}
+        align="center"
+        px={isSmallScreen ? 'xs' : 'sm'}
+        className={'flex-none title-bar'}
+      >
         {(!showSidebar || isSmallScreen) && (
           <Flex align="center" className={needRoomForMacWindowControls ? 'pl-20' : ''}>
             <ActionIcon
               className="controls"
               variant="subtle"
-              size={isSmallScreen ? 24 : 20}
+              size={isSmallScreen ? 30 : 20}
               color={isSmallScreen ? 'chatbox-secondary' : 'chatbox-tertiary'}
-              mr="sm"
+              mr={isSmallScreen ? 'xs' : 'sm'}
               onClick={() => setShowSidebar(!showSidebar)}
             >
               {isSmallScreen ? <IconMenu2 /> : <IconLayoutSidebarLeftExpand />}
@@ -73,8 +78,19 @@ export default function Header(props: { session: Session }) {
           </Flex>
         )}
 
-        <Flex align="center" gap={'xxs'} flex={1} {...(isSmallScreen ? { justify: 'center', pl: 28, pr: 8 } : {})}>
-          <Title order={4} fz={!isSmallScreen ? 20 : undefined} lineClamp={1}>
+        <Flex
+          align="center"
+          gap={'xxs'}
+          flex={1}
+          className={isSmallScreen ? 'min-w-0 px-1' : ''}
+          {...(isSmallScreen ? { justify: 'center' } : {})}
+        >
+          <Title
+            order={4}
+            fz={isSmallScreen ? 21 : 20}
+            lineClamp={1}
+            className={clsx(isSmallScreen && 'max-w-[72vw] text-center leading-tight')}
+          >
             {currentSession?.name}
           </Title>
 
@@ -83,12 +99,12 @@ export default function Header(props: { session: Session }) {
               className="controls"
               variant="subtle"
               color="chatbox-tertiary"
-              size={20}
+              size={isSmallScreen ? 24 : 20}
               onClick={() => {
                 editCurrentSession()
               }}
             >
-              <ScalableIcon icon={IconPencil} size={20} />
+              <ScalableIcon icon={IconPencil} size={isSmallScreen ? 18 : 20} />
             </ActionIcon>
           </Tooltip>
         </Flex>

@@ -1,4 +1,4 @@
-import { ActionIcon, alpha, Box, Code, Collapse, Group, Paper, SimpleGrid, Space, Stack, Text } from '@mantine/core'
+import { ActionIcon, Box, Code, Collapse, Group, Paper, SimpleGrid, Stack, Text } from '@mantine/core'
 import {
   type Message,
   type MessageReasoningPart,
@@ -20,6 +20,7 @@ import clsx from 'clsx'
 import { type FC, type ReactNode, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import z from 'zod'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { formatElapsedTime, formatHumanizedDuration, useThinkingTimer } from '@/hooks/useThinkingTimer'
 import { getToolName } from '@/packages/tools'
 import type { SearchResultItem } from '@/packages/web-search'
@@ -27,11 +28,21 @@ import { ScalableIcon } from '../common/ScalableIcon'
 import Markdown from '@/components/Markdown'
 
 const ToolCallHeader: FC<{ part: MessageToolCallPart; action: ReactNode; onClick: () => void }> = (props) => {
+  const isSmallScreen = useIsSmallScreen()
   return (
-    <Paper withBorder radius="md" px="xs" onClick={props.onClick} className="cursor-pointer group">
-      <Group justify="space-between" className="w-full">
-        <Group gap="xs">
-          <Text fw={600}>{getToolName(props.part.toolName)}</Text>
+    <Paper
+      withBorder
+      radius={isSmallScreen ? 'lg' : 'md'}
+      px={isSmallScreen ? 'sm' : 'xs'}
+      py={isSmallScreen ? 6 : 4}
+      onClick={props.onClick}
+      className="cursor-pointer group"
+    >
+      <Group justify="space-between" className="w-full" wrap="nowrap">
+        <Group gap="xs" wrap="nowrap" className="min-w-0 flex-1">
+          <Text fw={600} size={isSmallScreen ? 'sm' : 'md'} className="truncate">
+            {getToolName(props.part.toolName)}
+          </Text>
           <ScalableIcon icon={IconTool} color="var(--chatbox-tint-success)" />
           {props.part.state === 'call' ? (
             <ScalableIcon icon={IconLoader} className="animate-spin" color="var(--chatbox-tint-brand)" />
@@ -41,8 +52,7 @@ const ToolCallHeader: FC<{ part: MessageToolCallPart; action: ReactNode; onClick
             <ScalableIcon icon={IconCircleCheckFilled} color="var(--chatbox-tint-success)" />
           )}
         </Group>
-        <Space miw="xl" />
-        {props.action}
+        <Box className="shrink-0">{props.action}</Box>
       </Group>
     </Paper>
   )
@@ -93,11 +103,19 @@ const getSafeExternalHref = (raw: string): string | null => {
 }
 
 const SearchResultCard: FC<{ index: number; result: SearchResultItem }> = ({ index, result }) => {
+  const isSmallScreen = useIsSmallScreen()
   const href = getSafeExternalHref(result.link)
 
   const content = (
-    <Paper radius="md" p={8} bg={'var(--chatbox-background-gray-secondary)'} maw={200} title={result.title}>
-      <Text size="sm" truncate="end" m={0}>
+    <Paper
+      radius={isSmallScreen ? 'lg' : 'md'}
+      p={8}
+      bg={'var(--chatbox-background-gray-secondary)'}
+      maw={isSmallScreen ? 240 : 200}
+      miw={isSmallScreen ? 180 : undefined}
+      title={result.title}
+    >
+      <Text size={isSmallScreen ? 'xs' : 'sm'} truncate="end" m={0}>
         <b>{index + 1}.</b> {result.title}
       </Text>
       <Text size="xs" truncate="end" c="chatbox-tertiary" m={0} mt={4}>
@@ -118,6 +136,7 @@ const SearchResultCard: FC<{ index: number; result: SearchResultItem }> = ({ ind
 }
 
 const WebSearchToolCallUI: FC<{ part: WebBrowsingToolCallPart }> = ({ part }) => {
+  const isSmallScreen = useIsSmallScreen()
   const { t } = useTranslation()
   const [expaned, setExpand] = useState(false)
   return (
@@ -131,16 +150,16 @@ const WebSearchToolCallUI: FC<{ part: WebBrowsingToolCallPart }> = ({ part }) =>
       />
       <Collapse in={expaned}>
         <Stack gap="xs">
-          <Group gap="xs" my={2}>
+          <Group gap="xs" my={2} wrap="nowrap">
             <Text c="chatbox-tertiary" m={0}>
               {t('Search query')}:
             </Text>
-            <Text fw={600} size="sm" m={0} fs="italic">
+            <Text fw={600} size={isSmallScreen ? 'xs' : 'sm'} m={0} fs="italic" className="truncate">
               {part.args.query}
             </Text>
           </Group>
           {part.result && (
-            <SimpleGrid cols={{ sm: 3, md: 4 }} spacing="xs">
+            <SimpleGrid cols={{ base: 1, sm: 3, md: 4 }} spacing="xs">
               {part.result.searchResults.map((result, index) => (
                 <SearchResultCard key={result.link} index={index} result={result} />
               ))}
@@ -162,6 +181,7 @@ const WebSearchToolCallUI: FC<{ part: WebBrowsingToolCallPart }> = ({ part }) =>
 }
 
 const GeneralToolCallUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
+  const isSmallScreen = useIsSmallScreen()
   const { t } = useTranslation()
   const [expaned, setExpand] = useState(false)
   return (
@@ -175,7 +195,7 @@ const GeneralToolCallUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
       />
 
       <Collapse in={expaned}>
-        <Paper withBorder radius="md" p="sm">
+        <Paper withBorder radius={isSmallScreen ? 'lg' : 'md'} p="sm">
           <Stack gap="xs">
             <Group gap="xs" c="chatbox-tertiary">
               <ScalableIcon icon={IconCode} />
@@ -223,6 +243,7 @@ export const ReasoningContentUI: FC<{
 }> = ({ message, part, onCopyReasoningContent }) => {
   const reasoningContent = part?.text || message.reasoningContent || ''
   const { t } = useTranslation()
+  const isSmallScreen = useIsSmallScreen()
   const isThinking =
     (message.generating &&
       part &&
@@ -253,12 +274,16 @@ export const ReasoningContentUI: FC<{
   }, [])
 
   return (
-    <Paper withBorder radius="md" mb="xs">
+    <Paper withBorder radius={isSmallScreen ? 'lg' : 'md'} mb="xs" className={clsx(isSmallScreen && 'mx-0.5')}>
       <Box onClick={toggleExpanded} className="cursor-pointer group">
-        <Group px="xs" justify="space-between" className="w-full">
-          <Group gap="xs">
+        <Group px={isSmallScreen ? 'sm' : 'xs'} py={isSmallScreen ? 8 : 6} justify="space-between" className="w-full">
+          <Group gap="xs" wrap="nowrap" className="min-w-0 flex-1">
             <ScalableIcon icon={IconBulb} color="var(--chatbox-tint-warning)" />
-            <Text fw={600} size="sm" className={isThinking ? 'animate-shimmer shimmer-text' : ''}>
+            <Text
+              fw={600}
+              size={isSmallScreen ? 'xs' : 'sm'}
+              className={clsx('truncate', isThinking ? 'animate-shimmer shimmer-text' : '')}
+            >
               {isThinking
                 ? t('Thinking')
                 : shouldShowTimer && displayTime > 0
@@ -273,12 +298,11 @@ export const ReasoningContentUI: FC<{
               </Text>
             )}
           </Group>
-          <Space miw="xl" />
-          <Group gap="xs">
+          <Group gap={6} wrap="nowrap" className="shrink-0">
             <ActionIcon
               variant="subtle"
               c="chatbox-gray"
-              size="sm"
+              size={isSmallScreen ? 'md' : 'sm'}
               onClick={(e) => {
                 e.stopPropagation()
                 onCopyReasoningContent(reasoningContent)(e)
@@ -302,19 +326,23 @@ export const ReasoningContentUI: FC<{
             borderTop: '1px solid var(--paper-border-color)',
           }}
         >
-          <Box px="sm" className="reasoning-content" style={{ opacity: 0.85 }}>
+          <Box px={isSmallScreen ? 'xs' : 'sm'} className="reasoning-content" style={{ opacity: 0.9 }}>
             {shouldRenderMarkdown ? (
               <Markdown
                 enableLaTeXRendering={false}
                 enableMermaidRendering={false}
                 hiddenCodeCopyButton={false}
-                className="text-sm"
+                className={isSmallScreen ? 'text-[13px]' : 'text-sm'}
                 generating={isThinking}
               >
                 {reasoningContent}
               </Markdown>
             ) : (
-              <Text size="sm" m={0} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+              <Text
+                size={isSmallScreen ? 'xs' : 'sm'}
+                m={0}
+                style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+              >
                 {reasoningContent}
               </Text>
             )}

@@ -151,9 +151,7 @@ const _Message: FC<Props> = (props) => {
   const [feedbackText, setFeedbackText] = useState(msg.feedback?.text ?? '')
 
   const navigate = useNavigate()
-  const isComfyUIReady = useSettingsStore(
-    (state) => !!state.providers?.[ModelProviderEnum.ComfyUI]?.comfyuiCheckpoint
-  )
+  const isComfyUIReady = useSettingsStore((state) => !!state.providers?.[ModelProviderEnum.ComfyUI]?.comfyuiCheckpoint)
 
   const messageText = useMemo(() => getMessageText(msg), [msg])
 
@@ -616,7 +614,7 @@ const _Message: FC<Props> = (props) => {
       className={cn(
         'group/message',
         'msg-block',
-        'px-2 py-1.5',
+        isSamllScreen ? 'px-1.5 py-2' : 'px-2 py-1.5',
         msg.generating ? 'rendering' : 'render-done',
         { user: 'user-msg', system: 'system-msg', assistant: 'assistant-msg', tool: 'tool-msg' }[msg.role || 'user'],
         className,
@@ -626,13 +624,13 @@ const _Message: FC<Props> = (props) => {
         paddingBottom: '0.1rem',
         paddingX: '1rem',
         [theme.breakpoints.down('sm')]: {
-          paddingX: '0.3rem',
+          paddingX: '0.2rem',
         },
       }}
     >
       <Grid container wrap="nowrap" spacing={1.5}>
         <Grid item>
-          <Box className={cn('relative', msg.role !== 'assistant' ? 'mt-1' : 'mt-2')}>
+          <Box className={cn('relative', msg.role !== 'assistant' ? 'mt-1' : isSamllScreen ? 'mt-1.5' : 'mt-2')}>
             {
               {
                 assistant: (
@@ -655,13 +653,17 @@ const _Message: FC<Props> = (props) => {
             )}
           </Box>
         </Grid>
-        <Grid item xs sm container sx={{ width: '0px', paddingRight: '15px' }}>
+        <Grid item xs sm container sx={{ width: '0px', paddingRight: isSamllScreen ? '8px' : '15px' }}>
           <Grid item xs>
             <MessageStatuses statuses={msg.status} />
             <div
               className={cn(
                 'max-w-full inline-block',
-                msg.role !== 'assistant' ? 'bg-chatbox-background-secondary px-4 rounded-lg' : 'w-full'
+                msg.role !== 'assistant'
+                  ? isSamllScreen
+                    ? 'bg-chatbox-background-secondary px-3.5 py-2 rounded-2xl'
+                    : 'bg-chatbox-background-secondary px-4 rounded-lg'
+                  : 'w-full'
               )}
             >
               <Box
@@ -851,28 +853,29 @@ const _Message: FC<Props> = (props) => {
                       : ''
                   }
                 >
-                  {!msg.generating && msg.role === 'assistant' && (
+                  {!isSamllScreen && !msg.generating && msg.role === 'assistant' && (
                     <MessageActionIcon icon={IconReload} tooltip={t('Reply Again')} onClick={handleRefresh} />
                   )}
 
-                  {msg.role !== 'assistant' && (
+                  {!isSamllScreen && msg.role !== 'assistant' && (
                     <MessageActionIcon icon={IconArrowDown} tooltip={t('Reply Again Below')} onClick={onGenerateMore} />
                   )}
 
                   {
                     // Chatbox-AI 模型不支持编辑消息
-                    !msg.model?.startsWith('Chatbox-AI') &&
+                    !isSamllScreen &&
+                      !msg.model?.startsWith('Chatbox-AI') &&
                       // 图片会话中，助手消息无需编辑
                       !(msg.role === 'assistant' && props.sessionType === 'picture') && (
                         <MessageActionIcon icon={IconPencil} tooltip={t('edit')} onClick={onEditClick} />
                       )
                   }
 
-                  {!(props.sessionType === 'picture' && msg.role === 'assistant') && (
+                  {!isSamllScreen && !(props.sessionType === 'picture' && msg.role === 'assistant') && (
                     <MessageActionIcon icon={IconCopy} tooltip={t('copy')} onClick={onCopyMsg} />
                   )}
 
-                  {msg.role === 'assistant' && (
+                  {!isSamllScreen && msg.role === 'assistant' && (
                     <MessageActionIcon
                       icon={msg.feedback?.rating === 'up' ? IconThumbUpFilled : IconThumbUp}
                       tooltip={t('Thumbs Up')}
@@ -881,7 +884,7 @@ const _Message: FC<Props> = (props) => {
                     />
                   )}
 
-                  {msg.role === 'assistant' && (
+                  {!isSamllScreen && msg.role === 'assistant' && (
                     <MessageActionIcon
                       icon={msg.feedback?.rating === 'down' ? IconThumbDownFilled : IconThumbDown}
                       tooltip={t('Thumbs Down')}
@@ -890,7 +893,7 @@ const _Message: FC<Props> = (props) => {
                     />
                   )}
 
-                  {msg.role === 'assistant' && isComfyUIReady && (
+                  {!isSamllScreen && msg.role === 'assistant' && isComfyUIReady && (
                     <MessageActionIcon
                       icon={IconPhoto}
                       tooltip={t('Send to Image Creator')}
@@ -898,7 +901,7 @@ const _Message: FC<Props> = (props) => {
                     />
                   )}
 
-                  {!msg.generating && props.sessionType === 'picture' && msg.role === 'assistant' && (
+                  {!isSamllScreen && !msg.generating && props.sessionType === 'picture' && msg.role === 'assistant' && (
                     <MessageActionIcon
                       icon={IconPhotoPlus}
                       tooltip={t('Generate More Images Below')}
@@ -934,11 +937,7 @@ const _Message: FC<Props> = (props) => {
               />
             )}
             {msg.role === 'assistant' && !msg.generating && msg.citations?.length ? (
-              <FollowUpSuggestions
-                sessionId={sessionId}
-                citations={msg.citations}
-                searchQuery={msg.searchQuery}
-              />
+              <FollowUpSuggestions sessionId={sessionId} citations={msg.citations} searchQuery={msg.searchQuery} />
             ) : null}
           </Grid>
         </Grid>

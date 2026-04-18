@@ -162,6 +162,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const navigate = useNavigate()
     const isSmallScreen = useIsSmallScreen()
     const toolbarIconSize = isSmallScreen ? 22 : 18
+    const toolbarButtonClass = cn(
+      'flex items-center gap-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors',
+      isSmallScreen ? 'px-2.5 py-1.5 rounded-xl min-h-9' : 'px-2 py-1'
+    )
     const { height: viewportHeight } = useViewportSize()
     const pasteLongTextAsAFile = useSettingsStore((state) => state.pasteLongTextAsAFile)
     const shortcuts = useSettingsStore((state) => state.shortcuts)
@@ -1053,7 +1057,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           {currentSessionId && <QueuedMessageList sessionId={currentSessionId} />}
           <Stack
             className={cn(
-              'relative rounded-md bg-chatbox-background-secondary justify-between px-3 py-2',
+              'relative bg-chatbox-background-secondary justify-between',
+              isSmallScreen ? 'rounded-2xl px-3 py-2.5' : 'rounded-md px-3 py-2',
               !isSmallScreen && 'min-h-[92px]'
             )}
             style={{ border: '1px solid var(--chatbox-border-primary)' }}
@@ -1089,7 +1094,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   root: 'flex-1',
                   wrapper: 'flex-1',
                   input:
-                    'block w-full outline-none border-none px-2 py-1 resize-none bg-transparent text-chatbox-tint-primary',
+                    'block w-full outline-none border-none px-2 py-1 resize-none bg-transparent text-chatbox-tint-primary leading-6',
                 }}
                 size="sm"
                 id={dom.messageInputID}
@@ -1116,13 +1121,13 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       : isPreprocessing || isSubmitting || isCompactionRunning
                     : disableSubmit || isPreprocessing || isSubmitting || isCompactionRunning
                 }
-                size={32}
+                size={isSmallScreen ? 36 : 32}
                 variant="filled"
                 color={generating && disableSubmit ? 'dark' : 'chatbox-brand'}
                 radius="xl"
                 onClick={generating && disableSubmit ? onStopGenerating : () => handleSubmit()}
                 className={cn(
-                  'shrink-0 mb-1',
+                  'shrink-0 mb-1 shadow-sm',
                   !(generating && disableSubmit) &&
                     (disableSubmit || isPreprocessing || isSubmitting || isCompactionRunning) &&
                     'disabled:!opacity-100 !text-white'
@@ -1216,7 +1221,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             )}
 
             {/* Toolbar Row */}
-            <Flex align="center" gap={0} className="shrink-0 w-full" justify="space-between">
+            <Flex
+              align="center"
+              gap={0}
+              className={cn('shrink-0 w-full justify-between', isSmallScreen && 'pt-1.5 mt-0.5')}
+            >
               {/* Hidden file inputs */}
               <ImageUploadInput ref={pictureInputRef} onChange={onFileInputChange} />
               <input
@@ -1240,7 +1249,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 {featureFlags.mcp && !isOpenClawModel && (
                   <MCPMenu>
                     {(enabledTools) => (
-                      <UnstyledButton className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors">
+                      <UnstyledButton className={toolbarButtonClass}>
                         <IconHammer
                           size={toolbarIconSize}
                           strokeWidth={1.8}
@@ -1262,7 +1271,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
                 {featureFlags.knowledgeBase && !isSmallScreen && !isOpenClawModel && (
                   <KnowledgeBaseMenu currentKnowledgeBaseId={knowledgeBase?.id} onSelect={handleKnowledgeBaseSelect}>
-                    <UnstyledButton className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors">
+                    <UnstyledButton className={toolbarButtonClass}>
                       <IconVocabulary
                         size={toolbarIconSize}
                         strokeWidth={1.8}
@@ -1281,7 +1290,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                         setWebBrowsingMode(!webBrowsingMode)
                         dom.focusMessageInput()
                       }}
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors"
+                      className={toolbarButtonClass}
                     >
                       <IconWorldWww
                         size={toolbarIconSize}
@@ -1294,17 +1303,14 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   </Tooltip>
                 )}
 
-                {sessionType === 'chat' && !isOpenClawModel && (
+                {sessionType === 'chat' && !isOpenClawModel && !isSmallScreen && (
                   <Tooltip
                     label={t('Agent Mode: Enables autonomous multi-step tool use')}
                     position="top"
                     withArrow
                     disabled={isSmallScreen}
                   >
-                    <UnstyledButton
-                      onClick={toggleAgentMode}
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors"
-                    >
+                    <UnstyledButton onClick={toggleAgentMode} className={toolbarButtonClass}>
                       <IconRobot
                         size={toolbarIconSize}
                         strokeWidth={1.8}
@@ -1319,10 +1325,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 {!isSmallScreen &&
                   (showRollbackThreadButton ? (
                     <Tooltip label={t('Rollback Thread')} position="top" withArrow>
-                      <UnstyledButton
-                        onClick={rollbackThread}
-                        className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors"
-                      >
+                      <UnstyledButton onClick={rollbackThread} className={toolbarButtonClass}>
                         <IconArrowBackUp
                           size={toolbarIconSize}
                           strokeWidth={1.8}
@@ -1335,7 +1338,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       <UnstyledButton
                         onClick={startNewThread}
                         disabled={!onStartNewThread}
-                        className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors disabled:opacity-50"
+                        className={cn(toolbarButtonClass, 'disabled:opacity-50')}
                       >
                         <IconFilePencil
                           size={toolbarIconSize}
@@ -1351,7 +1354,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     <UnstyledButton
                       onClick={onClickSessionSettings}
                       disabled={!onClickSessionSettings}
-                      className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors disabled:opacity-50"
+                      className={cn(toolbarButtonClass, 'disabled:opacity-50')}
                     >
                       <IconAdjustmentsHorizontal
                         size={toolbarIconSize}
@@ -1375,7 +1378,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     }}
                   >
                     <Menu.Target>
-                      <UnstyledButton className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors">
+                      <UnstyledButton className={toolbarButtonClass}>
                         <IconSettings
                           size={toolbarIconSize}
                           strokeWidth={1.8}
@@ -1405,38 +1408,40 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
               {/* Right Group: Token Count + Model Selector */}
               <Flex align="center" gap={0}>
-                <TokenCountMenu
-                  currentInputTokens={currentInputTokens}
-                  contextTokens={contextTokens}
-                  totalTokens={totalTokens}
-                  isCalculating={isCalculating}
-                  pendingTasks={pendingTasks}
-                  totalContextMessages={messageCount}
-                  contextWindow={effectiveContextWindow ?? undefined}
-                  currentMessageCount={currentContextMessageIds?.length ?? 0}
-                  maxContextMessageCount={currentSessionMergedSettings?.maxContextMessageCount}
-                  onCompressClick={sessionId && !isNewSession ? () => setShowCompressionModal(true) : undefined}
-                  autoCompactionEnabled={autoCompactionEnabled}
-                  isCompacting={isCompacting}
-                  contextWindowKnown={contextWindowKnown}
-                  onAutoCompactionChange={sessionId && !isNewSession ? handleAutoCompactionChange : undefined}
-                >
-                  <Flex
-                    align="center"
-                    gap="2"
-                    className={`text-xs cursor-pointer hover:text-chatbox-tint-secondary transition-colors px-2 py-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] ${
-                      tokenPercentage && tokenPercentage > 80 ? 'text-red-500' : 'text-chatbox-tint-tertiary'
-                    }`}
+                {!isSmallScreen && (
+                  <TokenCountMenu
+                    currentInputTokens={currentInputTokens}
+                    contextTokens={contextTokens}
+                    totalTokens={totalTokens}
+                    isCalculating={isCalculating}
+                    pendingTasks={pendingTasks}
+                    totalContextMessages={messageCount}
+                    contextWindow={effectiveContextWindow ?? undefined}
+                    currentMessageCount={currentContextMessageIds?.length ?? 0}
+                    maxContextMessageCount={currentSessionMergedSettings?.maxContextMessageCount}
+                    onCompressClick={sessionId && !isNewSession ? () => setShowCompressionModal(true) : undefined}
+                    autoCompactionEnabled={autoCompactionEnabled}
+                    isCompacting={isCompacting}
+                    contextWindowKnown={contextWindowKnown}
+                    onAutoCompactionChange={sessionId && !isNewSession ? handleAutoCompactionChange : undefined}
                   >
-                    <ScalableIcon icon={IconArrowUp} size={14} />
-                    {isCalculating && <Loader size={10} />}
-                    <Text span size="xs" className="whitespace-nowrap" c="inherit">
-                      {isCalculating ? '~' : ''}
-                      {formatNumber(totalTokens)}
-                      {tokenPercentage !== null && tokenPercentage > 10 && ` (${tokenPercentage}%)`}
-                    </Text>
-                  </Flex>
-                </TokenCountMenu>
+                    <Flex
+                      align="center"
+                      gap="2"
+                      className={`${toolbarButtonClass} text-xs cursor-pointer hover:text-chatbox-tint-secondary ${
+                        tokenPercentage && tokenPercentage > 80 ? 'text-red-500' : 'text-chatbox-tint-tertiary'
+                      }`}
+                    >
+                      <ScalableIcon icon={IconArrowUp} size={14} />
+                      {isCalculating && <Loader size={10} />}
+                      <Text span size="xs" className="whitespace-nowrap" c="inherit">
+                        {isCalculating ? '~' : ''}
+                        {formatNumber(totalTokens)}
+                        {tokenPercentage !== null && tokenPercentage > 10 && ` (${tokenPercentage}%)`}
+                      </Text>
+                    </Flex>
+                  </TokenCountMenu>
+                )}
 
                 {/* Model Selector */}
                 <Tooltip
@@ -1462,13 +1467,13 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       duration: 200,
                     }}
                   >
-                    <UnstyledButton className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors">
+                    <UnstyledButton className={cn(toolbarButtonClass, isSmallScreen && 'px-2.5')}>
                       {!!model && <ProviderImageIcon size={18} provider={model.provider} />}
                       <Text
-                        size="sm"
+                        size={isSmallScreen ? 'xs' : 'sm'}
                         className={cn(
                           'text-[var(--chatbox-tint-secondary)] truncate',
-                          isSmallScreen ? 'max-w-[100px]' : 'max-w-[160px]'
+                          isSmallScreen ? 'max-w-[108px]' : 'max-w-[160px]'
                         )}
                       >
                         {modelSelectorDisplayText}
@@ -1505,6 +1510,10 @@ const AttachmentMenu: React.FC<{
 }> = ({ onImageUploadClick, onFileUploadClick, handleAttachLink, t }) => {
   const isSmallScreen = useIsSmallScreen()
   const toolbarIconSize = isSmallScreen ? 22 : 18
+  const toolbarButtonClass = cn(
+    'flex items-center gap-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors',
+    isSmallScreen ? 'px-2.5 py-1.5 rounded-xl min-h-9' : 'px-2 py-1'
+  )
   return (
     <Menu
       shadow="md"
@@ -1519,7 +1528,7 @@ const AttachmentMenu: React.FC<{
       }}
     >
       <Menu.Target>
-        <UnstyledButton className="flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors">
+        <UnstyledButton className={toolbarButtonClass}>
           <IconCirclePlus size={toolbarIconSize} strokeWidth={1.8} className="text-[var(--chatbox-tint-secondary)]" />
         </UnstyledButton>
       </Menu.Target>

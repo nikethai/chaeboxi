@@ -327,3 +327,15 @@ div[data-vaul-drawer] {
   border-left: 2px solid var(--chatbox-tint-tertiary);
   padding-left: 12px;
 }
+
+@media (max-width: 48em) {
+  .reasoning-content {
+    border-left-width: 1px;
+    padding-left: 10px;
+  }
+
+  .msg-block .mantine-ActionIcon-root {
+    min-width: 32px;
+    min-height: 32px;
+  }
+}

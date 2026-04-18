@@ -170,7 +170,7 @@ export default function Toolbar({ sessionId }: { sessionId: string }) {
     </Flex>
   ) : (
     <Flex align="center" gap="xs">
-      <ActionIcon variant="subtle" size={24} color="chatbox-secondary" onClick={() => setOpenSearchDialog(true)}>
+      <ActionIcon variant="subtle" size={30} color="chatbox-secondary" onClick={() => setOpenSearchDialog(true)}>
         <IconSearch strokeWidth={1.8} />
       </ActionIcon>
       <ActionMenu
@@ -219,7 +219,7 @@ export default function Toolbar({ sessionId }: { sessionId: string }) {
           },
         ]}
       >
-        <ActionIcon variant="subtle" size={24} color="chatbox-secondary">
+        <ActionIcon variant="subtle" size={30} color="chatbox-secondary">
           <IconDots strokeWidth={1.8} />
         </ActionIcon>
       </ActionMenu>

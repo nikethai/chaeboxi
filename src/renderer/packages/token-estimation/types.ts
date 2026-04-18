@@ -16,6 +16,8 @@
  */
 export type TokenizerType = 'default' | 'deepseek'
 
+export type MessageTextTokenCacheKey = 'default' | 'deepseek' | 'default_reasoning' | 'deepseek_reasoning'
+
 /**
  * Content mode for token calculation
  * - 'full': Calculate tokens for full content
@@ -27,7 +29,13 @@ export type ContentMode = 'full' | 'preview'
  * Token cache key combining tokenizer type and content mode
  * Matches TokenCacheKey from @shared/types/session
  */
-export type TokenCacheKey = 'default' | 'deepseek' | 'default_preview' | 'deepseek_preview'
+export type TokenCacheKey =
+  | 'default'
+  | 'deepseek'
+  | 'default_reasoning'
+  | 'deepseek_reasoning'
+  | 'default_preview'
+  | 'deepseek_preview'
 
 // ============================================================================
 // Computation Task Types
@@ -65,6 +73,8 @@ export interface ComputationTask {
   attachmentType?: AttachmentType
   /** Tokenizer to use */
   tokenizerType: TokenizerType
+  /** Whether assistant reasoning text is included in message text serialization */
+  includeReasoning?: boolean
   /** Content mode (full or preview, for attachments) */
   contentMode?: ContentMode
   /** Task priority (lower = more urgent, 0 is highest) */
@@ -101,6 +111,8 @@ export interface TaskResult {
     attachmentType?: AttachmentType
     /** Tokenizer used */
     tokenizerType: TokenizerType
+    /** Whether assistant reasoning text is included in message text serialization */
+    includeReasoning?: boolean
     /** Content mode used */
     contentMode?: ContentMode
     /** Computed token count */

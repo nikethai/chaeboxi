@@ -6,7 +6,7 @@
  */
 
 import type { MessageFile, MessageLink, TokenCacheKey } from '@shared/types/session'
-import type { ContentMode, TokenizerType } from './types'
+import type { ContentMode, MessageTextTokenCacheKey, TokenizerType } from './types'
 
 /**
  * Get the cache key for a given tokenizer and content mode combination
@@ -24,6 +24,19 @@ export function getTokenCacheKey(params: { tokenizerType: TokenizerType; content
   if (contentMode === 'preview') {
     return tokenizerType === 'deepseek' ? 'deepseek_preview' : 'default_preview'
   }
+  return tokenizerType === 'deepseek' ? 'deepseek' : 'default'
+}
+
+export function getMessageTextCacheKey(params: {
+  tokenizerType: TokenizerType
+  includeReasoning: boolean
+}): MessageTextTokenCacheKey {
+  const { tokenizerType, includeReasoning } = params
+
+  if (includeReasoning) {
+    return tokenizerType === 'deepseek' ? 'deepseek_reasoning' : 'default_reasoning'
+  }
+
   return tokenizerType === 'deepseek' ? 'deepseek' : 'default'
 }
 

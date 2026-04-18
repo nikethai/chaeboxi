@@ -24,7 +24,7 @@ const log = getLogger('token-estimation:queue')
  */
 export function generateTaskId(task: Omit<ComputationTask, 'id' | 'createdAt'>): string {
   if (task.type === 'message-text') {
-    return `msg:${task.sessionId}:${task.messageId}:${task.tokenizerType}`
+    return `msg:${task.sessionId}:${task.messageId}:${task.tokenizerType}:${task.includeReasoning ? 'reasoning' : 'plain'}`
   }
   return `att:${task.sessionId}:${task.messageId}:${task.attachmentId}:${task.tokenizerType}:${task.contentMode}`
 }

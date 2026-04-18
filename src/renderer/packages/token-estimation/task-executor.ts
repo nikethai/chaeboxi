@@ -59,7 +59,8 @@ async function executeMessageTextTask(task: ComputationTask): Promise<TaskResult
     return { success: false, error: 'message_not_found', silent: true }
   }
 
-  const text = getMessageText(message, true, true)
+  const includeReasoning = task.includeReasoning ?? false
+  const text = getMessageText(message, true, message.role === 'assistant' && includeReasoning)
   const tokens = estimateTokens(text, getTokenModel(tokenizerType))
 
   log.debug('Message text task completed', { taskId: task.id, tokens })
@@ -71,6 +72,7 @@ async function executeMessageTextTask(task: ComputationTask): Promise<TaskResult
       sessionId,
       messageId,
       tokenizerType,
+      includeReasoning,
       tokens,
       calculatedAt: Date.now(),
     },

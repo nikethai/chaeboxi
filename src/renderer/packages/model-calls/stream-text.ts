@@ -2,6 +2,7 @@ import { google } from '@ai-sdk/google'
 import { getModel } from '@shared/models'
 import { ChatboxAIAPIError, OCRError } from '@shared/models/errors'
 import { searchResultsToCitations } from '@shared/utils/search'
+import { shouldPreserveReasoningInContext } from '@shared/utils/reasoning-replay'
 import { ToolRiskTier } from '@shared/types/mcp'
 import { getToolRiskTier } from '../tools/risk-engine'
 import { sequenceMessages } from '@shared/utils/message'
@@ -29,6 +30,7 @@ import type {
   MessageToolCallPart,
   ProviderOptions,
   SearchResultItem,
+  SessionSettings,
   StreamTextResult,
 } from '../../../shared/types'
 import { mcpController } from '../mcp/controller'
@@ -90,7 +92,12 @@ async function handleSearchResult(
   coreMessages: ModelMessage[],
   controller: AbortController,
   onResultChange: OnResultChange,
-  params: { providerOptions?: ProviderOptions; onStatusChange?: OnStatusChange; maxSteps?: number },
+  params: {
+    providerOptions?: ProviderOptions
+    onStatusChange?: OnStatusChange
+    maxSteps?: number
+    includeAssistantReasoning?: boolean
+  },
   dependencies?: ModelDependencies
 ) {
   if (!result?.searchResults?.length || result.type === 'none') {
@@ -118,19 +125,26 @@ async function handleSearchResult(
       ? constructMessagesWithKnowledgeBaseResults(messages, result.searchResults)
       : constructMessagesWithSearchResults(messages, result.searchResults)
 
-  const chatResult = await model.chat(await convertToModelMessages(messagesWithResults, { modelSupportVision: true, dependencies }), {
-    signal: controller.signal,
-    onResultChange: (data) => {
-      if (data.contentParts) {
-        onResultChange({ ...data, contentParts: [toolCallPart, ...data.contentParts] })
-      } else {
-        onResultChange(data)
-      }
-    },
-    onStatusChange: params.onStatusChange,
-    providerOptions: params.providerOptions,
-    maxSteps: params.maxSteps,
-  })
+  const chatResult = await model.chat(
+    await convertToModelMessages(messagesWithResults, {
+      modelSupportVision: true,
+      dependencies,
+      includeAssistantReasoning: params.includeAssistantReasoning,
+    }),
+    {
+      signal: controller.signal,
+      onResultChange: (data) => {
+        if (data.contentParts) {
+          onResultChange({ ...data, contentParts: [toolCallPart, ...data.contentParts] })
+        } else {
+          onResultChange(data)
+        }
+      },
+      onStatusChange: params.onStatusChange,
+      providerOptions: params.providerOptions,
+      maxSteps: params.maxSteps,
+    }
+  )
   return { result: withSearchMetadata(chatResult), coreMessages }
 }
 
@@ -295,6 +309,7 @@ export async function streamText(
   params: {
     sessionId?: string
     messages: Message[]
+    sessionSettings?: Partial<SessionSettings>
     onResultChangeWithCancel: OnResultChangeWithCancel
     onStatusChange?: OnStatusChange
     providerOptions?: ProviderOptions
@@ -313,12 +328,14 @@ export async function streamText(
     knowledgeBase,
     webBrowsing,
     sessionId,
+    sessionSettings,
     nativeWebSearch,
     toolAccess,
     allowedTools,
     agentImageFlowInstructions,
     tools: customTools,
   } = params
+  const globalSettings = settingsStore.getState().getSettings()
   const hasFileOrLink = params.messages.some((m) => m.files?.length || m.links?.length)
 
   const controller = new AbortController()
@@ -410,9 +427,15 @@ export async function streamText(
           modelName: model.modelId,
         }),
       })
-    }
+  }
 
-    coreMessages = await convertToModelMessages(messages, { modelSupportVision: model.isSupportVision(), dependencies })
+    const includeAssistantReasoning = shouldPreserveReasoningInContext(sessionSettings, globalSettings)
+
+    coreMessages = await convertToModelMessages(messages, {
+      modelSupportVision: model.isSupportVision(),
+      dependencies,
+      includeAssistantReasoning,
+    })
 
     // 3. handle model not support tool use scenarios
     if (kbNotSupported || webNotSupported) {
@@ -443,7 +466,7 @@ export async function streamText(
           coreMessages,
           controller,
           onResultChange,
-          params,
+          { ...params, includeAssistantReasoning },
           dependencies
         )
       }
@@ -466,7 +489,7 @@ export async function streamText(
           coreMessages,
           controller,
           onResultChange,
-          params,
+          { ...params, includeAssistantReasoning },
           dependencies
         )
       }
@@ -488,7 +511,7 @@ export async function streamText(
           coreMessages,
           controller,
           onResultChange,
-          params,
+          { ...params, includeAssistantReasoning },
           dependencies
         )
       }

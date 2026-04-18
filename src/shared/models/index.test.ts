@@ -2,6 +2,7 @@ import { settings as getDefaultSettings, newConfigs } from 'src/shared/defaults'
 import { getModel } from 'src/shared/providers'
 import OpenAI from 'src/shared/providers/definitions/models/openai'
 import OpenAIResponses from 'src/shared/providers/definitions/models/openai-responses'
+import CustomOpenAI from 'src/shared/providers/definitions/models/custom-openai'
 import { ModelProviderEnum, type SessionSettings, type Settings } from 'src/shared/types'
 import type { ModelDependencies } from 'src/shared/types/adapters'
 import type { SentryScope } from 'src/shared/utils/sentry_adapter'
@@ -83,5 +84,31 @@ describe('getModel', () => {
     const model = getModel(sessionSettings, globalSettings, newConfigs(), mockDependencies)
 
     expect(model).toBeInstanceOf(OpenAI)
+  })
+
+  it('returns OpenAI-compatible transport for Qwen', () => {
+    const sessionSettings: SessionSettings = {
+      provider: ModelProviderEnum.Qwen,
+      modelId: 'qwen3.5-plus',
+      stream: true,
+      preserveReasoningInContext: true,
+    }
+
+    const defaultSettings = getDefaultSettings()
+    const globalSettings: Settings = {
+      ...defaultSettings,
+      providers: {
+        ...defaultSettings.providers,
+        [ModelProviderEnum.Qwen]: {
+          apiKey: 'test-key',
+          apiHost: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+          models: [{ modelId: 'qwen3.5-plus', capabilities: ['reasoning'] }],
+        },
+      },
+    }
+
+    const model = getModel(sessionSettings, globalSettings, newConfigs(), mockDependencies)
+
+    expect(model).toBeInstanceOf(CustomOpenAI)
   })
 })

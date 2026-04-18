@@ -1,6 +1,6 @@
 import { ModelProviderEnum, ModelProviderType } from '../../types'
 import { defineProvider } from '../registry'
-import OpenAI from './models/openai'
+import CustomOpenAI from './models/custom-openai'
 
 const QWEN_API_HOST = 'https://dashscope.aliyuncs.com/compatible-mode/v1'
 
@@ -17,27 +17,28 @@ export const qwenProvider = defineProvider({
     models: [
       {
         modelId: 'qwen3.5-plus',
+        capabilities: ['reasoning'],
       },
       {
         modelId: 'qwen3-coder-plus',
-        capabilities: ['tool_use'],
+        capabilities: ['reasoning', 'tool_use'],
       },
       {
         modelId: 'qwen3-max-2026-01-23',
+        capabilities: ['reasoning'],
       },
     ],
   },
   createModel: (config) => {
-    return new OpenAI(
+    return new CustomOpenAI(
       {
         apiKey: config.providerSetting.apiKey || '',
         apiHost: config.formattedApiHost || QWEN_API_HOST,
+        apiPath: '',
         model: config.model,
-        dalleStyle: 'vivid',
         temperature: config.settings.temperature,
         topP: config.settings.topP,
         maxOutputTokens: config.settings.maxTokens,
-        injectDefaultMetadata: config.globalSettings.injectDefaultMetadata,
         useProxy: config.providerSetting.useProxy || false,
         stream: config.settings.stream,
       },

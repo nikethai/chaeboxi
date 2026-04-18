@@ -338,17 +338,18 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     })
 
     // Calculate token counts using unified cache layer
+    const globalSettings = useSettingsStore((state) => state)
     const { contextTokens, currentInputTokens, totalTokens, isCalculating, pendingTasks, messageCount } =
       useContextTokens({
         sessionId: currentSessionId || null,
         session: currentSession,
         settings: currentSessionMergedSettings || {},
+        globalSettings,
         model,
         modelSupportToolUseForFile,
         constructedMessage: preConstructedMessage.message,
       })
 
-    const globalSettings = useSettingsStore((state) => state)
     const [isCompacting, setIsCompacting] = useState(false)
 
     const compactionUIStateMap = useAtomValue(compactionUIStateMapAtom)

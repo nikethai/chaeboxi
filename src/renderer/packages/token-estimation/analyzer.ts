@@ -8,7 +8,7 @@
 import type { Message, MessageFile, MessageLink } from '@shared/types/session'
 import { getMessageText } from '@shared/utils/message'
 import { MAX_INLINE_FILE_LINES } from '@/packages/context-management/attachment-payload'
-import { getTokenCacheKey, isAttachmentCacheValid, isMessageTextCacheValid } from './cache-keys'
+import { getMessageTextCacheKey, getTokenCacheKey, isAttachmentCacheValid, isMessageTextCacheValid } from './cache-keys'
 import { getPriority } from './computation-queue'
 import { estimateTokens } from './tokenizer'
 import type { ComputationTask, ContentMode, TokenBreakdown, TokenizerType } from './types'
@@ -29,6 +29,8 @@ export interface AnalyzeTokenRequirementsOptions {
   tokenizerType: TokenizerType
   /** Whether the model supports tool use for files (affects preview mode) */
   modelSupportToolUseForFile: boolean
+  /** Whether assistant reasoning is included when replaying context */
+  includeReasoningInAssistantMessages?: boolean
 }
 
 /**
@@ -87,6 +89,7 @@ interface MessageAttachmentsAnalysisResult {
  */
 export function analyzeTokenRequirements(options: AnalyzeTokenRequirementsOptions): AnalysisResult {
   const { constructedMessage, contextMessages, tokenizerType, modelSupportToolUseForFile } = options
+  const includeReasoningInAssistantMessages = options.includeReasoningInAssistantMessages ?? false
 
   const pendingTasks: Omit<ComputationTask, 'id' | 'createdAt' | 'sessionId'>[] = []
   let currentInputText = 0
@@ -96,7 +99,13 @@ export function analyzeTokenRequirements(options: AnalyzeTokenRequirementsOption
 
   // Analyze current input message
   if (constructedMessage) {
-    const textResult = analyzeMessageText(constructedMessage, tokenizerType, true, 0)
+    const textResult = analyzeMessageText(
+      constructedMessage,
+      tokenizerType,
+      includeReasoningInAssistantMessages,
+      true,
+      0
+    )
     currentInputText = textResult.tokens
     if (textResult.needsCalculation && textResult.task) {
       pendingTasks.push(textResult.task)
@@ -121,7 +130,13 @@ export function analyzeTokenRequirements(options: AnalyzeTokenRequirementsOption
     // Reverse priority: newest message (last in array) gets priority 0
     const priorityIndex = contextLength - 1 - index
 
-    const textResult = analyzeMessageText(msg, tokenizerType, false, priorityIndex)
+    const textResult = analyzeMessageText(
+      msg,
+      tokenizerType,
+      includeReasoningInAssistantMessages,
+      false,
+      priorityIndex
+    )
     contextText += textResult.tokens
     if (textResult.needsCalculation && textResult.task) {
       pendingTasks.push(textResult.task)
@@ -165,6 +180,7 @@ export function analyzeTokenRequirements(options: AnalyzeTokenRequirementsOption
 function analyzeMessageText(
   message: Message,
   tokenizerType: TokenizerType,
+  includeReasoningInAssistantMessages: boolean,
   isCurrentInput: boolean,
   messageIndex: number
 ): MessageTextAnalysisResult {
@@ -172,14 +188,18 @@ function analyzeMessageText(
   // This message only exists in React state, not in the store,
   // so async task execution would fail with "message not found".
   if (isCurrentInput) {
-    const text = getMessageText(message, true, true)
+    const text = getMessageText(message, true, shouldIncludeReasoning(message, includeReasoningInAssistantMessages))
     const tokens = estimateTokens(text, getTokenModel(tokenizerType))
     return { tokens, needsCalculation: false }
   }
 
   // For context messages, check cache first
-  const cachedValue = message.tokenCountMap?.[tokenizerType]
-  const calculatedAt = message.tokenCalculatedAt?.[tokenizerType]
+  const cacheKey = getMessageTextCacheKey({
+    tokenizerType,
+    includeReasoning: shouldIncludeReasoning(message, includeReasoningInAssistantMessages),
+  })
+  const cachedValue = message.tokenCountMap?.[cacheKey]
+  const calculatedAt = message.tokenCalculatedAt?.[cacheKey]
   const cacheValid = isMessageTextCacheValid(cachedValue, calculatedAt, message.updatedAt)
 
   if (cacheValid) {
@@ -193,9 +213,14 @@ function analyzeMessageText(
       type: 'message-text',
       messageId: message.id,
       tokenizerType,
+      includeReasoning: shouldIncludeReasoning(message, includeReasoningInAssistantMessages),
       priority: getPriority(isCurrentInput, 'message-text', messageIndex),
     },
   }
+}
+
+function shouldIncludeReasoning(message: Message, includeReasoningInAssistantMessages: boolean): boolean {
+  return message.role === 'assistant' && includeReasoningInAssistantMessages
 }
 
 function getTokenModel(tokenizerType: TokenizerType): { provider: string; modelId: string } | undefined {

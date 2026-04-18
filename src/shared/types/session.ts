@@ -7,7 +7,14 @@ import { ModelProviderEnum } from './provider'
 export { ModelProviderEnum } from './provider'
 
 // Token cache key schema
-export const TokenCacheKeySchema = z.enum(['default', 'deepseek', 'default_preview', 'deepseek_preview'])
+export const TokenCacheKeySchema = z.enum([
+  'default',
+  'deepseek',
+  'default_reasoning',
+  'deepseek_reasoning',
+  'default_preview',
+  'deepseek_preview',
+])
 export type TokenCacheKey = z.infer<typeof TokenCacheKeySchema>
 
 // Export the enum values directly for easy access
@@ -23,6 +30,8 @@ export const TokenCalculatedAtSchema = z
   .object({
     default: z.number().optional(),
     deepseek: z.number().optional(),
+    default_reasoning: z.number().optional(),
+    deepseek_reasoning: z.number().optional(),
     default_preview: z.number().optional(),
     deepseek_preview: z.number().optional(),
   })

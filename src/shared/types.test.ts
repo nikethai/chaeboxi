@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import * as defaults from './defaults'
 import { copyMessagesWithMapping, copyThreads, createMessage } from './types'
 import type { CompactionPoint, SessionThread } from './types/session'
-import { ProviderSettingsSchema, SettingsSchema } from './types/settings'
+import { ProviderSettingsSchema, SessionSettingsSchema, SettingsSchema } from './types/settings'
 
 describe('defaults', () => {
   it('registers built-in system providers before SystemProviders is read', () => {
@@ -350,6 +350,15 @@ describe('copyThreads with compactionPoints', () => {
 })
 
 describe('provider settings schema', () => {
+  it('defaults preserveReasoningInContext to true for sessions', () => {
+    const parsed = SessionSettingsSchema.parse({
+      provider: 'qwen',
+      modelId: 'qwen3.5-plus',
+    })
+
+    expect(parsed.preserveReasoningInContext).toBe(true)
+  })
+
   it('parses image prompt prepend fields', () => {
     const parsed = ProviderSettingsSchema.parse({
       imagePromptCharacterPrepend: '1girl, blue hair',

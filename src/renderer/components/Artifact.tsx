@@ -181,7 +181,7 @@ export function ArtifactWithButtons(props: {
               onClick={(e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                onOpenFullscreen()
+                void onOpenFullscreen()
               }}
             />
             <ArrowRightIcon
@@ -246,13 +246,17 @@ export function Artifact(props: { htmlCode: string; reloadSign?: number; classNa
   }, [reloadSign])
 
   // 当 htmlCode 改变时，防抖地刷新 iframe 内容
-  const updateIframe = debounce(() => {
-    sendIframeMsg('html', htmlCode)
-  }, 300)
+  const updateIframe = useMemo(
+    () =>
+      debounce(() => {
+        sendIframeMsg('html', htmlCode)
+      }, 300),
+    [htmlCode]
+  )
   useEffect(() => {
     updateIframe()
     return () => updateIframe.cancel()
-  }, [htmlCode])
+  }, [updateIframe])
 
   return (
     <iframe

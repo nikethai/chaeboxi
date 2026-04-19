@@ -71,5 +71,5 @@ export function shouldPreserveReasoningInContext(
   sessionSettings: Partial<SessionSettings> | undefined,
   globalSettings: Pick<Settings, 'providers' | 'customProviders'>
 ): boolean {
-  return Boolean(sessionSettings?.preserveReasoningInContext) && isReasoningReplayAvailable(sessionSettings, globalSettings)
+  return (sessionSettings?.preserveReasoningInContext ?? true) && isReasoningReplayAvailable(sessionSettings, globalSettings)
 }

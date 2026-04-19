@@ -208,22 +208,24 @@ export default function Sidebar() {
                 {t('Create Image')}
               </Button>
             </Stack>
-            <NavLink
-              c="chatbox-secondary"
-              className="rounded"
-              label={t('My Copilots')}
-              leftSection={<ScalableIcon icon={IconMessageChatbot} size={20} />}
-              onClick={() => {
-                navigate({
-                  to: '/copilots',
-                })
-                if (isSmallScreen) {
-                  setShowSidebar(false)
-                }
-              }}
-              variant="light"
-              p="xs"
-            />
+            {CHATBOX_BUILD_PLATFORM !== 'android' && (
+              <NavLink
+                c="chatbox-secondary"
+                className="rounded"
+                label={t('My Copilots')}
+                leftSection={<ScalableIcon icon={IconMessageChatbot} size={20} />}
+                onClick={() => {
+                  navigate({
+                    to: '/copilots',
+                  })
+                  if (isSmallScreen) {
+                    setShowSidebar(false)
+                  }
+                }}
+                variant="light"
+                p="xs"
+              />
+            )}
             <NavLink
               c="chatbox-secondary"
               className="rounded"

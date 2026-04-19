@@ -80,8 +80,10 @@ async function initializeApp() {
   // 最后执行 storage 清理，清理不 block 进入UI
   import('./setup/storage_clear')
 
-  // 启动mcp服务器
-  import('./setup/mcp_bootstrap')
+  // 启动mcp服务器 (desktop only — MCP is feature-flagged off on mobile)
+  if (CHATBOX_BUILD_PLATFORM !== 'android') {
+    import('./setup/mcp_bootstrap')
+  }
 }
 
 // ==========渲染节点==============

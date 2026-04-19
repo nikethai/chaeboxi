@@ -32,30 +32,31 @@ import {
   PREVIEW_LINES,
 } from '@/packages/context-management/attachment-payload'
 import { generateImage, streamText } from '@/packages/model-calls'
-import { getToolSet } from '@/packages/model-calls/toolsets/knowledge-base'
-import { startComfyUIAgentGeneration } from '@/packages/model-calls/toolsets/generate-image'
-import websearchToolSet, { webSearchTool } from '@/packages/model-calls/toolsets/web-search'
-import fileToolSet from '@/packages/model-calls/toolsets/file'
 import { getModelDisplayName } from '@/packages/model-setting-utils'
 import { estimateTokensFromMessages } from '@/packages/token'
 import platform from '@/platform'
 import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import { trackEvent } from '@/utils/track'
+import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 import * as chatStore from '../chatStore'
 import { settingsStore } from '../settingsStore'
 import { uiStore } from '../uiStore'
-import { extractDanbooruTagListFromText } from './agentImageFlow'
 import { createNewFork, findMessageLocation } from './forks'
 import { insertMessageAfter, modifyMessage, submitNewUserMessage } from './messages'
 import { messageQueueStore } from './messageQueue'
 import { runCompactionWithUIState } from '@/packages/context-management'
-import { executePostHooks, executePreHooks } from '@/packages/copilot-hooks'
 import type { MessagePlanPart, MessageToolCallPart } from '@shared/types'
 import {
   COMFYUI_AGENT_DEFAULT_RESEARCH_DOMAINS,
   COMFYUI_AGENT_DEFAULT_NORMALIZATION_PROMPT,
 } from '@shared/providers/definitions/comfyui'
+
+// Agent-only modules (toolsets, copilot hooks, agentImageFlow) are loaded
+// dynamically inside the corresponding agent-mode code paths so they can be
+// tree-shaken from the Android bundle. CHATBOX_BUILD_PLATFORM === 'android'
+// gates ensure the dynamic imports never execute on mobile.
+const isAgentEnabled = CHATBOX_BUILD_PLATFORM !== 'android'
 
 function buildAgentImageFlowInstruction(settings: Settings): string | undefined {
   const comfyuiSettings = settings.providers?.[ModelProviderEnum.ComfyUI]
@@ -99,7 +100,11 @@ async function maybeAutoStartAgentImageFlow(
   if (hasGenerateImageToolCall(contentParts)) {
     return null
   }
+  if (!isAgentEnabled) {
+    return null
+  }
 
+  const { extractDanbooruTagListFromText } = await import('./agentImageFlow')
   const inferredPrompt = extractDanbooruTagListFromText(getTextFromContentParts(contentParts))
   if (!inferredPrompt) {
     return null
@@ -108,6 +113,9 @@ async function maybeAutoStartAgentImageFlow(
   const toolCallId = `generate_image_fallback_${Date.now()}`
 
   try {
+    const { startComfyUIAgentGeneration } = await import(
+      '@/packages/model-calls/toolsets/generate-image'
+    )
     const generationResult = await startComfyUIAgentGeneration({
       prompt: inferredPrompt,
     })
@@ -174,6 +182,22 @@ async function getReadOnlyToolsForPlanning(
   knowledgeBase?: Pick<{ id: number; name: string }, 'id' | 'name'>
 ): Promise<{ tools: ToolSet; instructions: string }> {
   const tools: ToolSet = {}
+  let instructions = PLANNING_SYSTEM_PROMPT
+
+  // Plan mode is agent-only; on Android the toolsets aren't bundled.
+  if (!isAgentEnabled) {
+    return { tools, instructions }
+  }
+
+  // Lazy-load agent toolsets so they're tree-shaken on Android.
+  const [websearchToolSetModule, fileToolSetModule, kbModule] = await Promise.all([
+    import('@/packages/model-calls/toolsets/web-search'),
+    import('@/packages/model-calls/toolsets/file'),
+    import('@/packages/model-calls/toolsets/knowledge-base'),
+  ])
+  const websearchToolSet = websearchToolSetModule.default
+  const fileToolSet = fileToolSetModule.default
+  const { getToolSet } = kbModule
 
   // Add web search tools
   if (websearchToolSet?.tools) {
@@ -210,7 +234,6 @@ async function getReadOnlyToolsForPlanning(
   }
 
   // Build instructions string
-  let instructions = PLANNING_SYSTEM_PROMPT
   if (websearchToolSet?.description) {
     instructions += '\n\n' + websearchToolSet.description
   }
@@ -425,14 +448,16 @@ export async function generate(
     const model = getModel(effectiveSettings, globalSettings, configs, dependencies)
     const sessionKnowledgeBaseMap = uiStore.getState().sessionKnowledgeBaseMap
     const knowledgeBase = sessionKnowledgeBaseMap[sessionId]
-    const agentImageFlowInstructions = session.agentMode ? buildAgentImageFlowInstruction(globalSettings) : undefined
+    const agentImageFlowInstructions =
+      isAgentEnabled && session.agentMode ? buildAgentImageFlowInstruction(globalSettings) : undefined
     const webBrowsing =
       getSessionWebBrowsing(sessionId, effectiveSettings.provider) || Boolean(agentImageFlowInstructions)
     const useGeminiGrounding =
       webBrowsing &&
       effectiveSettings.provider === ModelProviderEnum.Gemini &&
       globalSettings.extension.webSearch.useGoogleGroundingForGemini !== false
-    const maxSteps = session.agentMode ? (copilotOverrides?.maxSteps ?? COPILOT_MAX_STEPS_DEFAULT) : undefined
+    const maxSteps =
+      isAgentEnabled && session.agentMode ? (copilotOverrides?.maxSteps ?? COPILOT_MAX_STEPS_DEFAULT) : undefined
     switch (session.type) {
       // Chat message generation
       case 'chat':
@@ -456,9 +481,10 @@ export async function generate(
         }
 
         // Execute pre-turn hooks and prepend context to messages
-        const preHookContext = copilotOverrides?.hooks?.preTurn
-          ? await executePreHooks(copilotOverrides.hooks.preTurn)
-          : ''
+        const preHookContext =
+          isAgentEnabled && copilotOverrides?.hooks?.preTurn
+            ? await (await import('@/packages/copilot-hooks')).executePreHooks(copilotOverrides.hooks.preTurn)
+            : ''
         if (preHookContext) {
           promptMsgs.unshift(createMessage('system', preHookContext))
         }
@@ -504,7 +530,7 @@ export async function generate(
         }
 
         // 2-phase execution: if planMode and not yet approved, generate plan first
-        const isPlanMode = session.agentMode && effectiveSettings.planMode
+        const isPlanMode = isAgentEnabled && session.agentMode && effectiveSettings.planMode
         const isPendingPlan = existingPlanPart?.status === 'pending'
 
         // Determine which tools to use based on phase
@@ -608,8 +634,9 @@ export async function generate(
         await modifyMessage(sessionId, targetMsg, true)
 
         // Execute post-turn hooks after generation (only in execution phase or non-plan mode)
-        if (copilotOverrides?.hooks?.postTurn) {
+        if (isAgentEnabled && copilotOverrides?.hooks?.postTurn) {
           const outputText = result.text ?? ''
+          const { executePostHooks } = await import('@/packages/copilot-hooks')
           await executePostHooks(copilotOverrides.hooks.postTurn, outputText)
         }
 

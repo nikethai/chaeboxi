@@ -1,11 +1,18 @@
 import * as defaults from '@shared/defaults'
-import { createMessage, type Message, type Session, type SessionThread } from '@shared/types'
+import { createMessage, type Message, type Session, type SessionThread, ModelProviderEnum } from '@shared/types'
 import { getMessageText } from '@shared/utils/message'
 import { v4 as uuidv4 } from 'uuid'
 import * as dom from '@/hooks/dom'
 import * as chatStore from '../chatStore'
+import { getSessionSettings } from '../chatStore'
 import * as scrollActions from '../scrollActions'
 import { _copySession as copySession, switchCurrentSession } from './crud'
+
+/** Returns true when the session uses OpenClaw, which manages its own server-side threads. */
+async function isOpenClawSession(sessionId: string): Promise<boolean> {
+  const settings = await getSessionSettings(sessionId)
+  return settings?.provider === ModelProviderEnum.OpenClaw
+}
 
 /**
  * Edit a thread (currently only supports name modification)
@@ -59,6 +66,10 @@ export async function removeThread(sessionId: string, threadId: string) {
  * @param threadId
  */
 export async function switchThread(sessionId: string, threadId: string) {
+  // OpenClaw — server-side session, no local thread switching
+  if (await isOpenClawSession(sessionId)) {
+    return
+  }
   const session = await chatStore.getSession(sessionId)
   if (!session || !session.threads) {
     return
@@ -118,6 +129,10 @@ export async function refreshContextAndCreateNewThread(sessionId: string) {
 }
 
 export async function startNewThread(sessionId: string) {
+  // OpenClaw — server-side session, no local thread management
+  if (await isOpenClawSession(sessionId)) {
+    return
+  }
   await refreshContextAndCreateNewThread(sessionId)
   // Auto-scroll to bottom and focus input
   setTimeout(() => {

@@ -269,6 +269,91 @@ fn get_store_path(app: &AppHandle, filename: &str) -> PathBuf {
     path
 }
 
+fn get_kb_chunks_dir(app: &AppHandle, kb_id: i64) -> PathBuf {
+    let mut path = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| PathBuf::from("."));
+    path.push("kb_chunks");
+    path.push(kb_id.to_string());
+    path
+}
+
+fn get_chunk_file_path(app: &AppHandle, kb_id: i64, file_id: i64) -> PathBuf {
+    let mut path = get_kb_chunks_dir(app, kb_id);
+    path.push(format!("{file_id}.json"));
+    path
+}
+
+fn load_chunks_from_disk(app: &AppHandle, kb_id: i64, file_id: i64) -> Option<Vec<String>> {
+    let path = get_chunk_file_path(app, kb_id, file_id);
+    if let Ok(content) = fs::read_to_string(&path) {
+        if let Ok(chunks) = serde_json::from_str::<Vec<String>>(&content) {
+            return Some(chunks);
+        }
+    }
+    None
+}
+
+fn save_chunks_to_disk(app: &AppHandle, kb_id: i64, file_id: i64, chunks: &[String]) {
+    let path = get_chunk_file_path(app, kb_id, file_id);
+    if let Some(parent) = path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    if let Ok(content) = serde_json::to_string(chunks) {
+        let _ = fs::write(&path, content);
+    }
+}
+
+fn delete_chunks_from_disk(app: &AppHandle, kb_id: i64, file_id: i64) {
+    let path = get_chunk_file_path(app, kb_id, file_id);
+    let _ = fs::remove_file(path);
+}
+
+fn load_all_kb_chunks_from_disk(app: &AppHandle) -> HashMap<i64, Vec<String>> {
+    let mut all_chunks = HashMap::new();
+    let mut kb_chunks_path = app
+        .path()
+        .app_data_dir()
+        .unwrap_or_else(|_| PathBuf::from("."));
+    kb_chunks_path.push("kb_chunks");
+
+    if let Ok(entries) = fs::read_dir(&kb_chunks_path) {
+        for entry in entries.flatten() {
+            let kb_path = entry.path();
+            if kb_path.is_dir() {
+                if let Some(kb_id_str) = kb_path.file_name().and_then(|n| n.to_str()) {
+                    if let Ok(_kb_id) = kb_id_str.parse::<i64>() {
+                        if let Ok(file_entries) = fs::read_dir(&kb_path) {
+                            for file_entry in file_entries.flatten() {
+                                let file_path = file_entry.path();
+                                if file_path.extension().and_then(|e| e.to_str()) == Some("json") {
+                                    if let Some(file_id_str) =
+                                        file_path.file_stem().and_then(|n| n.to_str())
+                                    {
+                                        if let Ok(file_id) = file_id_str.parse::<i64>() {
+                                            if let Ok(content) =
+                                                fs::read_to_string(&file_path)
+                                            {
+                                                if let Ok(chunks) =
+                                                    serde_json::from_str::<Vec<String>>(&content)
+                                                {
+                                                    all_chunks.insert(file_id, chunks);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    all_chunks
+}
+
 fn load_store_from_disk(app: &AppHandle, filename: &str) -> HashMap<String, Value> {
     let path = get_store_path(app, filename);
     if let Ok(content) = fs::read_to_string(path) {
@@ -2334,6 +2419,9 @@ async fn ipc_invoke(
             for file_id in removed_file_ids {
                 kb.file_chunks.remove(&file_id);
             }
+            drop(kb);
+            let kb_chunks_dir = get_kb_chunks_dir(&app, kb_id);
+            let _ = fs::remove_dir_all(kb_chunks_dir);
             Ok(json!({ "success": true }))
         }
         "kb:file:list" => {
@@ -2559,7 +2647,9 @@ async fn ipc_invoke(
                 .lock()
                 .map_err(|_| "kb lock poisoned".to_string())?;
             kb.files.insert(id, record);
-            kb.file_chunks.insert(id, chunks);
+            kb.file_chunks.insert(id, chunks.clone());
+            drop(kb);
+            save_chunks_to_disk(&app, kb_id, id, &chunks);
             Ok(json!({ "id": id }))
         }
         "kb:search" => {
@@ -2688,12 +2778,23 @@ async fn ipc_invoke(
             let file_id = get_arg(&args, 0)?
                 .as_i64()
                 .ok_or_else(|| "invalid file id".to_string())?;
+            let kb_id = {
+                let kb = state
+                    .kb
+                    .lock()
+                    .map_err(|_| "kb lock poisoned".to_string())?;
+                kb.files.get(&file_id).map(|f| f.kb_id)
+            };
             let mut kb = state
                 .kb
                 .lock()
                 .map_err(|_| "kb lock poisoned".to_string())?;
             kb.files.remove(&file_id);
             kb.file_chunks.remove(&file_id);
+            drop(kb);
+            if let Some(kb_id) = kb_id {
+                delete_chunks_from_disk(&app, kb_id, file_id);
+            }
             Ok(json!({ "success": true }))
         }
         "parser:test-mineru" => Ok(json!({
@@ -2842,10 +2943,12 @@ pub fn run() {
             let handle = app.handle();
             let store = load_store_from_disk(handle, "store.json");
             let blobs = load_blobs_from_disk(handle, "blobs.json");
+            let chunks = load_all_kb_chunks_from_disk(handle);
 
             let state: State<AppState> = app.state();
             *state.store.lock().unwrap() = store;
             *state.blobs.lock().unwrap() = blobs;
+            state.kb.lock().unwrap().file_chunks = chunks;
 
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.emit("window-show", json!({}));

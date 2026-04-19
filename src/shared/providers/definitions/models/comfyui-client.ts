@@ -206,7 +206,6 @@ export class ComfyUIClient {
         return response
       } catch (err) {
         lastError = err
-        continue
       }
     }
 

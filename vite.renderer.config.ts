@@ -138,6 +138,7 @@ if (inferredDist) {
 export default defineConfig(({ mode }) => {
   const isProduction = mode === 'production'
   const isWeb = process.env.CHATBOX_BUILD_PLATFORM === 'web'
+  const tauriDevHost = process.env.TAURI_DEV_HOST
   const rendererRoot = path.resolve(__dirname, 'src/renderer')
 
   return {
@@ -226,8 +227,16 @@ export default defineConfig(({ mode }) => {
       target: 'es2021',
     },
     server: {
+      host: tauriDevHost || '0.0.0.0',
       port: 1212,
       strictPort: true,
+      hmr: tauriDevHost
+        ? {
+            protocol: 'ws',
+            host: tauriDevHost,
+            port: 1212,
+          }
+        : undefined,
     },
     define: {
       'process.type': '"renderer"',

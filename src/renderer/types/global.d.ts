@@ -13,5 +13,3 @@ declare global {
     path?: string
   }
 }
-
-export {}

@@ -866,7 +866,7 @@ export async function genMessageContext(
   const workingMsgs = head ? contextMessages.slice(1) : contextMessages
 
   let _totalLen = head ? (head.tokenCount ?? estimateTokensFromMessages([head])) : 0
-  let prompts: Message[] = []
+  const prompts: Message[] = []
   for (let i = workingMsgs.length - 1; i >= 0; i--) {
     let msg = workingMsgs[i]
     // Skip error messages

@@ -5,15 +5,15 @@ import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { cn } from '@/lib/utils'
-import { ScalableIcon } from '../common/ScalableIcon'
-import ProviderIcon from '../icons/ProviderIcon'
+import { ScalableIcon } from '@/components/common/ScalableIcon'
+import ProviderIcon from '@/components/icons/ProviderIcon'
 import {
   openclawAgentsAtom,
   openclawGatewayStatusAtom,
   openclawSelectedAgentIdAtom,
-} from '@/stores/atoms/openclawAtoms'
-import type { AgentInfo } from '@shared/openclaw/gateway/types'
-import { classifyCapabilityRisk, getCapabilityRiskColor, getCapabilityTooltip } from '@shared/openclaw/gateway'
+} from '@/openclaw/atoms'
+import type { AgentInfo } from '@/openclaw/gateway'
+import { classifyCapabilityRisk, getCapabilityRiskColor, getCapabilityTooltip } from '@/openclaw/gateway'
 import type { GatewayClientCreateOptions } from '@shared/models/openclaw'
 import { getOrCreateGatewayClient } from '@shared/models/openclaw'
 

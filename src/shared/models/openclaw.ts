@@ -16,7 +16,82 @@ import type { CallChatCompletionOptions, ModelInterface } from './types'
 // Shared client cache — keyed by apiHost:apiKey:cfId:cfSecret
 const clientCache = new Map<string, OpenClawGatewayClient>()
 const MAX_CACHED_GATEWAY_CLIENTS = 1
-const gatewaySessionBindingCache = new Map<string, { sessionId?: string; sessionKey?: string }>()
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Gateway session binding store — bounded, TTL-scavenged, thread-safe
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface SessionBinding {
+  sessionId?: string
+  sessionKey?: string
+  /** Epoch ms when this binding was created/resolved */
+  resolvedAt: number
+}
+
+class GatewaySessionBindingStore {
+  private cache = new Map<string, SessionBinding>()
+  private mu = { read: false, write: false }
+
+  constructor(
+    private readonly maxEntries: number = 200,
+    private readonly ttlMs: number = 30 * 60 * 1000
+  ) {}
+
+  private withReadLock<T>(fn: () => T): T {
+    while (this.mu.write) {/* spin */}
+    this.mu.read = true
+    try { return fn() } finally { this.mu.read = false }
+  }
+
+  private withWriteLock<T>(fn: () => T): T {
+    while (this.mu.read || this.mu.write) {/* spin */}
+    this.mu.write = true
+    try { return fn() } finally { this.mu.write = false }
+  }
+
+  get(cacheKey: string): SessionBinding | undefined {
+    return this.withReadLock(() => {
+      const binding = this.cache.get(cacheKey)
+      if (binding && Date.now() - binding.resolvedAt > this.ttlMs) {
+        this.cache.delete(cacheKey)
+        return undefined
+      }
+      return binding
+    })
+  }
+
+  set(cacheKey: string, binding: SessionBinding): void {
+    this.withWriteLock(() => {
+      if (this.cache.size >= this.maxEntries && !this.cache.has(cacheKey)) {
+        const oldest = this.findOldestEntry()
+        if (oldest) this.cache.delete(oldest)
+      }
+      this.cache.set(cacheKey, { ...binding, resolvedAt: Date.now() })
+    })
+  }
+
+  delete(cacheKey: string): void {
+    this.withWriteLock(() => { this.cache.delete(cacheKey) })
+  }
+
+  clear(): void {
+    this.withWriteLock(() => { this.cache.clear() })
+  }
+
+  private findOldestEntry(): string | undefined {
+    let oldest: string | undefined
+    let oldestTs = Infinity
+    for (const [k, v] of this.cache) {
+      if (v.resolvedAt < oldestTs) {
+        oldestTs = v.resolvedAt
+        oldest = k
+      }
+    }
+    return oldest
+  }
+}
+
+const gatewaySessionBindingStore = new GatewaySessionBindingStore()
 
 export interface GatewayClientCreateOptions {
   apiHost: string
@@ -80,7 +155,7 @@ export function clearAllGatewayClients(): void {
     client.disconnect()
   }
   clientCache.clear()
-  gatewaySessionBindingCache.clear()
+  gatewaySessionBindingStore.clear()
 }
 
 interface Options {
@@ -176,30 +251,33 @@ export default class OpenClawModel implements ModelInterface {
     return []
   }
 
-  private async resolveGatewaySessionBinding(localSessionId: string): Promise<{ sessionId?: string; sessionKey?: string }> {
+  private async resolveGatewaySessionBinding(localSessionId: string): Promise<SessionBinding> {
     const cacheKey = `${this.options.apiHost}:${this.modelId}:${localSessionId}`
-    const cached = gatewaySessionBindingCache.get(cacheKey)
+    const cached = gatewaySessionBindingStore.get(cacheKey)
     if (cached) {
       return cached
     }
 
     try {
       const response = await this.gatewayClient.listSessions()
-      const latestSession = response.sessions
-        .filter((session) => !session.agentId || session.agentId === this.modelId)
-        .sort((left, right) => {
-          const leftTs = left.updatedAt || left.createdAt || 0
-          const rightTs = right.updatedAt || right.createdAt || 0
-          return rightTs - leftTs
-        })[0]
+      const sessions = response.sessions.filter((s) => !s.agentId || s.agentId === this.modelId)
+      const bestSession = sessions.length > 0
+        ? sessions.reduce((latest, s) => {
+            const sTs = s.updatedAt || s.createdAt || 0
+            const lTs = latest.updatedAt || latest.createdAt || 0
+            return sTs > lTs ? s : latest
+          })
+        : undefined
 
-      const binding = latestSession ? { sessionId: latestSession.id } : { sessionKey: 'main' }
-      gatewaySessionBindingCache.set(cacheKey, binding)
+      const binding: SessionBinding = bestSession
+        ? { sessionId: bestSession.id, resolvedAt: Date.now() }
+        : { sessionKey: 'main', resolvedAt: Date.now() }
+      gatewaySessionBindingStore.set(cacheKey, binding)
       return binding
     } catch (error) {
       console.warn('[OpenClaw] Failed to resolve latest session, falling back to main session key:', error)
-      const binding = { sessionKey: 'main' }
-      gatewaySessionBindingCache.set(cacheKey, binding)
+      const binding: SessionBinding = { sessionKey: 'main', resolvedAt: Date.now() }
+      gatewaySessionBindingStore.set(cacheKey, binding)
       return binding
     }
   }

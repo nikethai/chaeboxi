@@ -2,7 +2,7 @@ import NiceModal from '@ebay/nice-modal-react'
 import { ActionIcon, Button, Flex, Tooltip } from '@mantine/core'
 import { ModelProviderEnum, type Message, type ModelProvider } from '@shared/types'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { IconSession, IconShield } from '@tabler/icons-react'
+import { IconMessage, IconShield } from '@tabler/icons-react'
 import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import MessageList, { type MessageListRef } from '@/components/chat/MessageList'
@@ -10,7 +10,7 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { CostDashboard } from '@/components/CostDashboard'
 import InputBox from '@/components/InputBox/InputBox'
 import Header from '@/components/layout/Header'
-import SessionPanel from '@/components/openclaw/SessionPanel'
+import SessionPanel from '@/openclaw/components/SessionPanel'
 import ThreadHistoryDrawer from '@/components/session/ThreadHistoryDrawer'
 import { ToolAuditPanel } from '@/components/ToolAuditPanel'
 import { TaskProgress } from '@/components/TaskProgress/TaskProgress'
@@ -185,7 +185,7 @@ function RouteComponent() {
               color={showSessionPanel ? 'chatbox-primary' : 'chatbox-tertiary'}
               onClick={() => setShowSessionPanel((v) => !v)}
             >
-              <IconSession size={16} />
+              <IconMessage size={16} />
             </ActionIcon>
           </Tooltip>
         )}

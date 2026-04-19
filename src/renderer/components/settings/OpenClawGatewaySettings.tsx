@@ -3,8 +3,8 @@ import { IconAlertTriangle, IconCircleCheck, IconShieldCheck, IconShieldOff, Ico
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
-import { OpenClawGatewayClient, analyzeGatewayUrl } from '@shared/openclaw/gateway'
-import type { GatewayInfo } from '@shared/openclaw/gateway/types'
+import { OpenClawGatewayClient, analyzeGatewayUrl } from '@/openclaw/gateway'
+import type { GatewayInfo } from '@/openclaw/gateway'
 
 type ConnectionStatus = 'idle' | 'testing' | 'connected' | 'error'
 
@@ -92,12 +92,13 @@ export function OpenClawGatewaySettings({
         : IconAlertTriangle
       : IconX
 
-  const statusLabel =
+  const statusLabel = String(
     connectionStatus === 'connected'
       ? urlAnalysis.isLocalhost
         ? t('Connected (Local)')
         : t('Connected (Remote)')
       : t('Disconnected')
+  )
 
   return (
     <Stack gap="lg">
@@ -212,7 +213,7 @@ export function OpenClawGatewaySettings({
           <Text span fw="600">
             {t('Gateway Info')}
           </Text>
-          <Accordion variant="contained" defaultValue={['info']}>
+          <Accordion variant="contained" defaultValue="info">
             <Accordion.Item value="info">
               <Accordion.Control>
                 <Flex justify="space-between" pr="md">

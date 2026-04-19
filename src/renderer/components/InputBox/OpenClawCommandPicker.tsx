@@ -1,5 +1,5 @@
 import { Box, Paper, Stack, Text } from '@mantine/core'
-import type { GatewayCommandInfo } from '@shared/openclaw/gateway/types'
+import type { GatewayCommandInfo } from '@/openclaw/gateway'
 import { memo, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 

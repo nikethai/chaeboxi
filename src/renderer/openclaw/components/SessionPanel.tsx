@@ -1,18 +1,18 @@
 import { ActionIcon, Badge, Flex, ScrollArea, Text, Tooltip, UnstyledButton } from '@mantine/core'
-import { IconRefresh, IconSession } from '@tabler/icons-react'
+import { IconRefresh, IconMessage } from '@tabler/icons-react'
 import { useAtom, useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { useSettingsStore } from '@/stores/settingsStore'
-import { ScalableIcon } from '../common/ScalableIcon'
-import ProviderIcon from '../icons/ProviderIcon'
+import { ScalableIcon } from '@/components/common/ScalableIcon'
+import ProviderIcon from '@/components/icons/ProviderIcon'
 import {
   openclawActiveSessionIdAtom,
   openclawGatewayStatusAtom,
   openclawSessionsAtom,
   type OpenClawSession,
-} from '@/stores/atoms/openclawAtoms'
+} from '@/openclaw/atoms'
 import type { GatewayClientCreateOptions } from '@shared/models/openclaw'
 import { getOrCreateGatewayClient } from '@shared/models/openclaw'
 
@@ -25,13 +25,8 @@ async function fetchSessionsFromGateway(opts: GatewayClientCreateOptions): Promi
   await client.connect()
   const response = await client.listSessions()
   return response.sessions.map((session) => ({
-    id: session.id,
-    name: session.name,
-    createdAt: session.createdAt,
-    updatedAt: session.updatedAt,
-    modelId: session.modelId,
-    agentId: session.agentId,
-    messageCount: session.messageCount,
+    ...session,
+    messageCount: 0,
   }))
 }
 
@@ -100,7 +95,7 @@ export default function SessionPanel({ className }: SessionPanelProps) {
         <Flex direction="column" align="center" py="md" gap="xs">
           {gatewayStatus === 'connected' ? (
             <>
-              <ScalableIcon icon={IconSession} size={24} className="text-chatbox-tertiary" />
+              <ScalableIcon icon={IconMessage} size={24} className="text-chatbox-tertiary" />
               <Text size="xs" c="chatbox-tertiary">
                 {t('No sessions found')}
               </Text>
@@ -110,7 +105,7 @@ export default function SessionPanel({ className }: SessionPanelProps) {
             </>
           ) : (
             <>
-              <ScalableIcon icon={IconSession} size={24} className="text-chatbox-tertiary" />
+              <ScalableIcon icon={IconMessage} size={24} className="text-chatbox-tertiary" />
               <Text size="xs" c="chatbox-tertiary">
                 {gatewayStatus === 'disconnected' ? t('Gateway disconnected') : t('Gateway connecting...')}
               </Text>
@@ -139,9 +134,9 @@ export default function SessionPanel({ className }: SessionPanelProps) {
                 <Text size="sm" fw={500} truncate="end">
                   {session.name || t('Unnamed Session')}
                 </Text>
-                {session.modelId && (
+                {session.agentId && (
                   <Text size="xs" c="chatbox-tertiary" truncate="end">
-                    {session.modelId}
+                    {session.agentId}
                   </Text>
                 )}
               </Flex>

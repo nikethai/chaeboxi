@@ -156,6 +156,10 @@ export function settings(): Settings {
     openclaw: {
       gateways: [],
     },
+    userPersonalInfo: {
+      entries: [],
+      enableInjection: true,
+    },
   }
 }
 

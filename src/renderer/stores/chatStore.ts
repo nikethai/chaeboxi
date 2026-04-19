@@ -324,34 +324,47 @@ export async function listMessages(sessionId?: string | null): Promise<Message[]
 }
 
 export async function insertMessage(sessionId: string, message: Message, previousId?: string) {
-  await updateSessionWithMessages(sessionId, (session) => {
-    if (!session) {
+  // Bypass local thread management for OpenClaw — it manages its own server-side session/history
+  const session = await getSession(sessionId)
+  const settings = session ? await getSessionSettings(sessionId) : null
+  const isOpenClaw = settings?.provider === ModelProviderEnum.OpenClaw
+
+  await updateSessionWithMessages(sessionId, (sess) => {
+    if (!sess) {
       throw new Error(`session ${sessionId} not found`)
+    }
+
+    // OpenClaw: append directly to main messages, ignore previousId and threads
+    if (isOpenClaw) {
+      return {
+        ...sess,
+        messages: [...sess.messages, message],
+      } satisfies Session
     }
 
     if (previousId) {
       // try to find insert position in message list
-      let previousIndex = session.messages.findIndex((m) => m.id === previousId)
+      let previousIndex = sess.messages.findIndex((m) => m.id === previousId)
 
       if (previousIndex >= 0) {
         return {
-          ...session,
+          ...sess,
           messages: [
-            ...session.messages.slice(0, previousIndex + 1),
+            ...sess.messages.slice(0, previousIndex + 1),
             message,
-            ...session.messages.slice(previousIndex + 1),
+            ...sess.messages.slice(previousIndex + 1),
           ],
         } satisfies Session
       }
 
       // try to find insert position in threads
-      if (session.threads) {
-        for (const thread of session.threads) {
+      if (sess.threads) {
+        for (const thread of sess.threads) {
           previousIndex = thread.messages.findIndex((m) => m.id === previousId)
           if (previousIndex >= 0) {
             return {
-              ...session,
-              threads: session.threads.map((th) => {
+              ...sess,
+              threads: sess.threads.map((th) => {
                 if (th.id === thread.id) {
                   return {
                     ...thread,
@@ -371,8 +384,8 @@ export async function insertMessage(sessionId: string, message: Message, previou
     }
     // no previous message, insert to tail of current thread
     return {
-      ...session,
-      messages: [...session.messages, message],
+      ...sess,
+      messages: [...sess.messages, message],
     } satisfies Session
   })
 }

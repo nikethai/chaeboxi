@@ -2,8 +2,11 @@ import { getLogger } from '@/lib/utils'
 import { recoverSessionList } from '@/stores/chatStore'
 import { syncHistoryNow } from '@/stores/historySync'
 import { settingsStore } from '@/stores/settingsStore'
+import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
 const log = getLogger('history-sync-bootstrap')
+
+const isAndroid = CHATBOX_BUILD_PLATFORM === 'android'
 
 const DEFAULT_INTERVAL_SECONDS = 60
 const MIN_INTERVAL_SECONDS = 15
@@ -127,4 +130,7 @@ export function initHistorySyncBootstrap() {
   )
 }
 
-initHistorySyncBootstrap()
+// Auto-sync disabled on mobile (battery/data savings)
+if (!isAndroid) {
+  initHistorySyncBootstrap()
+}

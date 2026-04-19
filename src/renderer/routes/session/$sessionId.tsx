@@ -19,6 +19,7 @@ import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 import * as scrollActions from '@/stores/scrollActions'
 import { modifyMessage, removeCurrentThread, startNewThread, submitNewUserMessage } from '@/stores/sessionActions'
 import { getAllMessageList } from '@/stores/sessionHelpers'
+import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
 export const Route = createFileRoute('/session/$sessionId')({
   component: RouteComponent,
@@ -221,7 +222,7 @@ function RouteComponent() {
           onStopGenerating={onStopGenerating}
         />
       </ErrorBoundary>
-      <CostDashboard messages={currentMessageList} />
+      {CHATBOX_BUILD_PLATFORM !== 'android' && <CostDashboard messages={currentMessageList} />}
       <ThreadHistoryDrawer session={currentSession} />
     </div>
   ) : (

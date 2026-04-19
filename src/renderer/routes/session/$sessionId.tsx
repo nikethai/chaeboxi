@@ -3,23 +3,39 @@ import { ActionIcon, Button, Flex, Tooltip } from '@mantine/core'
 import { ModelProviderEnum, type Message, type ModelProvider } from '@shared/types'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { IconMessage, IconShield } from '@tabler/icons-react'
-import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type FC, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import MessageList, { type MessageListRef } from '@/components/chat/MessageList'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { CostDashboard } from '@/components/CostDashboard'
 import InputBox from '@/components/InputBox/InputBox'
 import Header from '@/components/layout/Header'
-import SessionPanel from '@/openclaw/components/SessionPanel'
 import ThreadHistoryDrawer from '@/components/session/ThreadHistoryDrawer'
-import { ToolAuditPanel } from '@/components/ToolAuditPanel'
-import { TaskProgress } from '@/components/TaskProgress/TaskProgress'
 import { updateSessionWithMessages as updateSessionStore, useSession } from '@/stores/chatStore'
 import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 import * as scrollActions from '@/stores/scrollActions'
 import { modifyMessage, removeCurrentThread, startNewThread, submitNewUserMessage } from '@/stores/sessionActions'
 import { getAllMessageList } from '@/stores/sessionHelpers'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
+
+// Agent-mode panels are not used on Android. Use compile-time conditional
+// dynamic imports so the modules (and their @mantine/openclaw deps) are
+// fully tree-shaken from the Android session chunk.
+const isAgentEnabled = CHATBOX_BUILD_PLATFORM !== 'android'
+
+const SessionPanel = isAgentEnabled
+  ? lazy(() => import('@/openclaw/components/SessionPanel'))
+  : null
+const ToolAuditPanel = isAgentEnabled
+  ? lazy(() =>
+      import('@/components/ToolAuditPanel').then((m) => ({ default: m.ToolAuditPanel }))
+    )
+  : null
+const TaskProgress = isAgentEnabled
+  ? lazy(() =>
+      import('@/components/TaskProgress/TaskProgress').then((m) => ({ default: m.TaskProgress }))
+    )
+  : null
 
 export const Route = createFileRoute('/session/$sessionId')({
   component: RouteComponent,
@@ -176,33 +192,47 @@ function RouteComponent() {
       <MessageList ref={messageListRef} key={`message-list${currentSessionId}`} currentSession={currentSession} />
 
       {/* <ScrollButtons /> */}
-      <TaskProgress sessionId={currentSession.id} />
-      <Flex justify="flex-end" px="sm" py="xs">
-        {isOpenClawProvider && (
-          <Tooltip label={t('Gateway Sessions')}>
+      {TaskProgress && (
+        <Suspense fallback={null}>
+          <TaskProgress sessionId={currentSession.id} />
+        </Suspense>
+      )}
+      {isAgentEnabled && (
+        <Flex justify="flex-end" px="sm" py="xs">
+          {isOpenClawProvider && (
+            <Tooltip label={t('Gateway Sessions')}>
+              <ActionIcon
+                variant={showSessionPanel ? 'filled' : 'subtle'}
+                size="sm"
+                color={showSessionPanel ? 'chatbox-primary' : 'chatbox-tertiary'}
+                onClick={() => setShowSessionPanel((v) => !v)}
+              >
+                <IconMessage size={16} />
+              </ActionIcon>
+            </Tooltip>
+          )}
+          <Tooltip label={t('Tool Audit')}>
             <ActionIcon
-              variant={showSessionPanel ? 'filled' : 'subtle'}
+              variant={showToolAudit ? 'filled' : 'subtle'}
               size="sm"
-              color={showSessionPanel ? 'chatbox-primary' : 'chatbox-tertiary'}
-              onClick={() => setShowSessionPanel((v) => !v)}
+              color={showToolAudit ? 'chatbox-primary' : 'chatbox-tertiary'}
+              onClick={() => setShowToolAudit((v) => !v)}
             >
-              <IconMessage size={16} />
+              <IconShield size={16} />
             </ActionIcon>
           </Tooltip>
-        )}
-        <Tooltip label={t('Tool Audit')}>
-          <ActionIcon
-            variant={showToolAudit ? 'filled' : 'subtle'}
-            size="sm"
-            color={showToolAudit ? 'chatbox-primary' : 'chatbox-tertiary'}
-            onClick={() => setShowToolAudit((v) => !v)}
-          >
-            <IconShield size={16} />
-          </ActionIcon>
-        </Tooltip>
-      </Flex>
-      {showToolAudit && <ToolAuditPanel sessionId={currentSession.id} />}
-      {showSessionPanel && <SessionPanel />}
+        </Flex>
+      )}
+      {ToolAuditPanel && showToolAudit && (
+        <Suspense fallback={null}>
+          <ToolAuditPanel sessionId={currentSession.id} />
+        </Suspense>
+      )}
+      {SessionPanel && showSessionPanel && (
+        <Suspense fallback={null}>
+          <SessionPanel />
+        </Suspense>
+      )}
       <ErrorBoundary name="session-inputbox">
         <InputBox
           key={`input-box${currentSession.id}`}

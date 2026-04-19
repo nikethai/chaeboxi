@@ -1,6 +1,7 @@
 /** biome-ignore-all lint/security/noDangerouslySetInnerHtml: <explanation> */
 import DataObjectIcon from '@mui/icons-material/DataObject'
 import { ChartBarStacked } from 'lucide-react'
+import mermaid from 'mermaid'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Gallery, Item } from 'react-photoswipe-gallery'
@@ -10,7 +11,6 @@ import * as picUtils from '@/packages/pic_utils'
 import platform from '@/platform'
 import { useUIStore } from '@/stores/uiStore'
 import * as toastActions from '../stores/toastActions'
-import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
 export function MessageMermaid(props: { source: string; theme: 'light' | 'dark'; generating?: boolean }) {
   const { source, theme, generating } = props
@@ -186,10 +186,6 @@ export function SVGPreview(props: { xmlCode: string; className?: string; generat
 }
 
 async function mermaidCodeToSvgCode(source: string, theme: 'light' | 'dark') {
-  // Lazy-load mermaid only when actually needed (deferred on mobile via CHATBOX_BUILD_PLATFORM)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mermaidModule = await import('mermaid')
-  const mermaid = mermaidModule as any
   mermaid.initialize({ theme: theme === 'light' ? 'default' : 'dark' })
   const id = 'mermaidtmp' + Math.random().toString(36).substring(2, 15)
   const result = await mermaid.render(id, source)

@@ -80,6 +80,7 @@ import { useUIStore } from '@/stores/uiStore'
 import { delay } from '@/utils'
 import { featureFlags } from '@/utils/feature-flags'
 import { trackEvent } from '@/utils/track'
+import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 import { ModelProviderEnum } from '../../../shared/types'
 import type { KnowledgeBase, Message, SessionType, ShortcutSendValue } from '../../../shared/types'
 import * as dom from '../../hooks/dom'
@@ -1303,7 +1304,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   </Tooltip>
                 )}
 
-                {sessionType === 'chat' && !isOpenClawModel && !isSmallScreen && (
+                {sessionType === 'chat' && !isOpenClawModel && !isSmallScreen && CHATBOX_BUILD_PLATFORM !== 'android' && (
                   <Tooltip
                     label={t('Agent Mode: Enables autonomous multi-step tool use')}
                     position="top"
@@ -1390,7 +1391,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       <Menu.Item leftSection={<ScalableIcon icon={IconPlus} size={16} />} onClick={startNewThread}>
                         {t('New Thread')}
                       </Menu.Item>
-                      {sessionType === 'chat' && !isOpenClawModel && (
+                      {sessionType === 'chat' && !isOpenClawModel && CHATBOX_BUILD_PLATFORM !== 'android' && (
                         <Menu.Item leftSection={<ScalableIcon icon={IconRobot} size={16} />} onClick={toggleAgentMode}>
                           {t('Agent Mode')}
                         </Menu.Item>

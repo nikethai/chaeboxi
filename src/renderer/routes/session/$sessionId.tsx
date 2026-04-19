@@ -2,7 +2,7 @@ import NiceModal from '@ebay/nice-modal-react'
 import { ActionIcon, Button, Flex, Tooltip } from '@mantine/core'
 import { ModelProviderEnum, type Message, type ModelProvider } from '@shared/types'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { IconShield } from '@tabler/icons-react'
+import { IconSession, IconShield } from '@tabler/icons-react'
 import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import MessageList, { type MessageListRef } from '@/components/chat/MessageList'
@@ -10,10 +10,11 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import { CostDashboard } from '@/components/CostDashboard'
 import InputBox from '@/components/InputBox/InputBox'
 import Header from '@/components/layout/Header'
+import SessionPanel from '@/components/openclaw/SessionPanel'
 import ThreadHistoryDrawer from '@/components/session/ThreadHistoryDrawer'
 import { ToolAuditPanel } from '@/components/ToolAuditPanel'
 import { TaskProgress } from '@/components/TaskProgress/TaskProgress'
-import { updateSession as updateSessionStore, useSession } from '@/stores/chatStore'
+import { updateSessionWithMessages as updateSessionStore, useSession } from '@/stores/chatStore'
 import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 import * as scrollActions from '@/stores/scrollActions'
 import { modifyMessage, removeCurrentThread, startNewThread, submitNewUserMessage } from '@/stores/sessionActions'
@@ -163,6 +164,9 @@ function RouteComponent() {
     }
   }, [currentSession?.settings?.provider, currentSession?.settings?.modelId])
 
+  const isOpenClawProvider = currentSession?.settings?.provider === ModelProviderEnum.OpenClaw
+  const [showSessionPanel, setShowSessionPanel] = useState(false)
+
   return currentSession ? (
     <div className="flex flex-col h-full">
       <Header session={currentSession} />
@@ -173,6 +177,18 @@ function RouteComponent() {
       {/* <ScrollButtons /> */}
       <TaskProgress sessionId={currentSession.id} />
       <Flex justify="flex-end" px="sm" py="xs">
+        {isOpenClawProvider && (
+          <Tooltip label={t('Gateway Sessions')}>
+            <ActionIcon
+              variant={showSessionPanel ? 'filled' : 'subtle'}
+              size="sm"
+              color={showSessionPanel ? 'chatbox-primary' : 'chatbox-tertiary'}
+              onClick={() => setShowSessionPanel((v) => !v)}
+            >
+              <IconSession size={16} />
+            </ActionIcon>
+          </Tooltip>
+        )}
         <Tooltip label={t('Tool Audit')}>
           <ActionIcon
             variant={showToolAudit ? 'filled' : 'subtle'}
@@ -185,6 +201,7 @@ function RouteComponent() {
         </Tooltip>
       </Flex>
       {showToolAudit && <ToolAuditPanel sessionId={currentSession.id} />}
+      {showSessionPanel && <SessionPanel />}
       <ErrorBoundary name="session-inputbox">
         <InputBox
           key={`input-box${currentSession.id}`}

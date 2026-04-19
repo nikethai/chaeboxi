@@ -53,8 +53,10 @@ import type React from 'react'
 import {
   type FC,
   forwardRef,
+  lazy,
   type MouseEventHandler,
   memo,
+  Suspense,
   useCallback,
   useEffect,
   useMemo,
@@ -93,8 +95,19 @@ import {
 import { AssistantAvatar, SystemAvatar, UserAvatar } from '../common/Avatar'
 import { ScalableIcon } from '../common/ScalableIcon'
 import Loading from '../icons/Loading'
-import { ThinkingGroupUI } from '../message-parts/ThinkingGroupUI'
-import { ReasoningContentUI, ToolCallPartUI } from '../message-parts/ToolCallPartUI'
+import { ReasoningContentUI } from '../message-parts/ReasoningContentUI'
+import { CHATBOX_BUILD_PLATFORM } from '@/variables'
+
+// Tool/thinking renderers are agent-only — lazy-load them and skip on Android.
+// CHATBOX_BUILD_PLATFORM is a Vite-defined compile-time constant so the
+// branch below is dead-code-eliminated on Android (no chunk emitted).
+const isAgentEnabled = CHATBOX_BUILD_PLATFORM !== 'android'
+const ThinkingGroupUI = isAgentEnabled
+  ? lazy(() => import('../message-parts/ThinkingGroupUI').then((m) => ({ default: m.ThinkingGroupUI })))
+  : null
+const ToolCallPartUI = isAgentEnabled
+  ? lazy(() => import('../message-parts/ToolCallPartUI').then((m) => ({ default: m.ToolCallPartUI })))
+  : null
 import { SourceCardList } from '../search/SourceCardList'
 import FollowUpSuggestions from '../search/FollowUpSuggestions'
 import { MessageAttachmentGrid } from './MessageAttachmentGrid'
@@ -685,13 +698,17 @@ const _Message: FC<Props> = (props) => {
                   <div>
                     {groupedParts.map((group, groupIndex) =>
                       group.type === 'thinking-group' ? (
-                        <div key={`thinking-group-${msg.id}-${group.startIndex}`}>
-                          <ThinkingGroupUI
-                            message={msg}
-                            parts={group.parts}
-                            isLastGroup={groupIndex === groupedParts.length - 1}
-                          />
-                        </div>
+                        ThinkingGroupUI ? (
+                          <div key={`thinking-group-${msg.id}-${group.startIndex}`}>
+                            <Suspense fallback={null}>
+                              <ThinkingGroupUI
+                                message={msg}
+                                parts={group.parts}
+                                isLastGroup={groupIndex === groupedParts.length - 1}
+                              />
+                            </Suspense>
+                          </div>
+                        ) : null
                       ) : group.part.type === 'reasoning' ? (
                         <div key={`reasoning-${msg.id}-${group.index}`}>
                           <ReasoningContentUI
@@ -781,7 +798,11 @@ const _Message: FC<Props> = (props) => {
                           </div>
                         )
                       ) : group.part.type === 'tool-call' ? (
-                        <ToolCallPartUI key={group.part.toolCallId} part={group.part as MessageToolCallPart} />
+                        ToolCallPartUI ? (
+                          <Suspense fallback={null} key={group.part.toolCallId}>
+                            <ToolCallPartUI part={group.part as MessageToolCallPart} />
+                          </Suspense>
+                        ) : null
                       ) : null
                     )}
                   </div>

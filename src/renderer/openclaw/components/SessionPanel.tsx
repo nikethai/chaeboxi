@@ -1,69 +1,35 @@
 import { ActionIcon, Badge, Flex, ScrollArea, Text, Tooltip, UnstyledButton } from '@mantine/core'
 import { IconRefresh, IconMessage } from '@tabler/icons-react'
 import { useAtom, useAtomValue } from 'jotai'
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
-import { useSettingsStore } from '@/stores/settingsStore'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import ProviderIcon from '@/components/icons/ProviderIcon'
 import {
   openclawActiveSessionIdAtom,
   openclawGatewayStatusAtom,
   openclawSessionsAtom,
-  type OpenClawSession,
+  useGatewaySync,
 } from '@/openclaw/atoms'
-import type { GatewayClientCreateOptions } from '@shared/models/openclaw'
-import { getOrCreateGatewayClient } from '@shared/models/openclaw'
 
 interface SessionPanelProps {
   className?: string
 }
 
-async function fetchSessionsFromGateway(opts: GatewayClientCreateOptions): Promise<OpenClawSession[]> {
-  const client = getOrCreateGatewayClient(opts)
-  await client.connect()
-  const response = await client.listSessions()
-  return response.sessions.map((session) => ({
-    ...session,
-    messageCount: 0,
-  }))
-}
-
 export default function SessionPanel({ className }: SessionPanelProps) {
   const { t } = useTranslation()
-  const [sessions, setSessions] = useAtom(openclawSessionsAtom)
+  const [sessions] = useAtom(openclawSessionsAtom)
   const [activeSessionId, setActiveSessionId] = useAtom(openclawActiveSessionIdAtom)
   const gatewayStatus = useAtomValue(openclawGatewayStatusAtom)
 
-  const openclawSettings = useSettingsStore((state) => state.openclaw)
-  const providerSettings = useSettingsStore((state) => state.providers?.['openclaw'])
-
-  const activeGateway = useMemo(() => {
-    if (!openclawSettings?.gateways) return null
-    return openclawSettings.gateways.find((g) => g.isDefault) || openclawSettings.gateways[0]
-  }, [openclawSettings])
-
-  const apiHost = activeGateway?.url || providerSettings?.apiHost || 'http://127.0.0.1:18789'
-  const apiKey = activeGateway?.token || providerSettings?.apiKey || ''
-  const cloudflareClientId = activeGateway?.cloudflareClientId || providerSettings?.cloudflareClientId || ''
-  const cloudflareClientSecret = activeGateway?.cloudflareClientSecret || providerSettings?.cloudflareClientSecret || ''
-
-  const fetchSessions = useCallback(async () => {
-    if (!apiHost) return
-    try {
-      const fetched = await fetchSessionsFromGateway({ apiHost, apiKey, cloudflareClientId, cloudflareClientSecret })
-      setSessions(fetched)
-    } catch (error) {
-      console.error('[OpenClaw] Failed to fetch sessions:', error)
-    }
-  }, [apiHost, apiKey, cloudflareClientId, cloudflareClientSecret, setSessions])
+  // useGatewaySync auto-connects on mount; gatewayKey changes trigger
+  // internal atom resets, so the stale-while-revalidate pattern works.
+  const { ensureConnected } = useGatewaySync()
 
   useEffect(() => {
-    if (gatewayStatus === 'connected' && sessions.length === 0) {
-      void fetchSessions()
-    }
-  }, [gatewayStatus, sessions.length, fetchSessions])
+    void ensureConnected()
+  }, [ensureConnected])
 
   const handleSelectSession = useCallback(
     (sessionId: string) => {
@@ -83,7 +49,7 @@ export default function SessionPanel({ className }: SessionPanelProps) {
           <ActionIcon
             variant="subtle"
             size="sm"
-            onClick={() => void fetchSessions()}
+            onClick={() => void ensureConnected()}
             disabled={gatewayStatus !== 'connected'}
           >
             <ScalableIcon icon={IconRefresh} size={14} />

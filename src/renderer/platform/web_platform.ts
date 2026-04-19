@@ -10,6 +10,7 @@ import type { KnowledgeBaseController } from './knowledge-base/interface'
 import { IndexedDBStorage } from './storages'
 import WebExporter from './web_exporter'
 import webLogger from './web_logger'
+import WebKnowledgeBaseController from './knowledge-base/web-controller'
 import { parseTextFileLocally } from './web_platform_utils'
 
 export default class WebPlatform extends IndexedDBStorage implements Platform {
@@ -18,11 +19,15 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
 
   public exporter = new WebExporter()
 
+  private _kbController?: WebKnowledgeBaseController
   private imageGenerationStorage: ImageGenerationStorage | null = null
 
   constructor() {
     super()
     webLogger.init().catch((e) => console.error('Failed to init web logger:', e))
+    if (window.desktopAPI) {
+      this._kbController = new WebKnowledgeBaseController(window.desktopAPI)
+    }
   }
 
   public async getVersion(): Promise<string> {
@@ -160,7 +165,10 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
   }
 
   public getKnowledgeBaseController(): KnowledgeBaseController {
-    throw new Error('Method not implemented.')
+    if (!this._kbController) {
+      throw new Error('Knowledge base is not available on the web platform.')
+    }
+    return this._kbController
   }
 
   public getImageGenerationStorage(): ImageGenerationStorage {

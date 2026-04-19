@@ -408,7 +408,6 @@ function ThinkingBudgetConfig({
           value={currentSegmentValue}
           onChange={handleThinkingConfigChange}
           data={thinkingBudgetOptions}
-          fullWidth={false}
         />
       </div>
 

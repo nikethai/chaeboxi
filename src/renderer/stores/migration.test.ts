@@ -371,10 +371,42 @@ describe('migrateStorage test', () => {
   // Initialize platform instances after all mocks are set up
   beforeAll(async () => {
     const { default: DesktopPlatformClass } = await import('@/platform/desktop_platform')
-    const { default: MobilePlatformClass } = await import('@/platform/mobile_platform')
 
     desktopPlatform = new DesktopPlatformClass(window.desktopAPI)
-    mobilePlatform = new MobilePlatformClass()
+    // Mobile platform implementation was removed from renderer/platform.
+    // Build a mobile test platform backed by sqliteData to preserve migration test semantics.
+    const mobile = new DesktopPlatformClass(window.desktopAPI) as Platform
+    mobile.type = 'mobile'
+    mobile.formFactor = 'mobile'
+    mobile.getStorageType = () => 'MOBILE_SQLITE'
+    mobile.setStoreValue = async (key: string, value: unknown) => {
+      sqliteData[key] = JSON.stringify(value)
+    }
+    mobile.getStoreValue = async (key: string) => {
+      const json = sqliteData[key]
+      return json ? JSON.parse(json) : null
+    }
+    mobile.delStoreValue = async (key: string) => {
+      delete sqliteData[key]
+    }
+    mobile.getAllStoreValues = async () => {
+      const items: { [key: string]: unknown } = {}
+      for (const key in sqliteData) {
+        try {
+          items[key] = JSON.parse(sqliteData[key])
+        } catch {
+          items[key] = sqliteData[key]
+        }
+      }
+      return items
+    }
+    mobile.getAllStoreKeys = async () => Object.keys(sqliteData)
+    mobile.setAllStoreValues = async (data: { [key: string]: unknown }) => {
+      for (const [key, value] of Object.entries(data)) {
+        sqliteData[key] = JSON.stringify(value)
+      }
+    }
+    mobilePlatform = mobile
     currentPlatform = desktopPlatform
   })
 

@@ -150,7 +150,7 @@ export const SessionSettingsSchema = GlobalSessionSettingsSchema.extend({
   modelId: z.string().optional().catch(undefined),
   dalleStyle: z.enum(['vivid', 'natural']).optional().catch('vivid'),
   imageGenerateNum: z.number().optional().catch(1),
-  preserveReasoningInContext: z.boolean().default(true).catch(true),
+  preserveReasoningInContext: z.boolean().optional().catch(true),
   providerOptions: ProviderOptionsSchema.optional().catch(undefined),
   autoCompaction: z.boolean().optional().catch(undefined),
   planMode: z.boolean().optional().catch(undefined),

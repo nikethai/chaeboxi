@@ -617,7 +617,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
         currentReasoningPart = chunkResult.currentReasoningPart
 
         // Tool-related chunks flush immediately so users see tool execution feedback right away
-        if (chunk.type === 'tool-call' || chunk.type === 'tool-result' || chunk.type === 'tool-call-streaming-start') {
+        if (chunk.type === 'tool-call' || chunk.type === 'tool-result') {
           flushUpdate()
         } else {
           scheduleUpdate()

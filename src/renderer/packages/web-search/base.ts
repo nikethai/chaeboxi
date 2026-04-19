@@ -31,12 +31,14 @@ abstract class WebSearch {
   protected finalizeItems<T extends { link?: string }>(items: T[], options?: WebSearchOptions): T[] {
     let filtered = items
 
-    if (options?.includeDomains?.length) {
-      filtered = filtered.filter((item) => this.matchesAnyDomain(item.link, options.includeDomains))
+    const includeDomains = options?.includeDomains
+    if (includeDomains?.length) {
+      filtered = filtered.filter((item) => this.matchesAnyDomain(item.link, includeDomains))
     }
 
-    if (options?.excludeDomains?.length) {
-      filtered = filtered.filter((item) => !this.matchesAnyDomain(item.link, options.excludeDomains))
+    const excludeDomains = options?.excludeDomains
+    if (excludeDomains?.length) {
+      filtered = filtered.filter((item) => !this.matchesAnyDomain(item.link, excludeDomains))
     }
 
     if (options?.maxResults && options.maxResults > 0) {

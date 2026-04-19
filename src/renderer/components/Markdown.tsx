@@ -101,7 +101,8 @@ function remarkTransformCitationLinks(citations: SearchCitation[]) {
           !Array.isArray(parent.children) ||
           typeof index !== 'number' ||
           !node.value ||
-          !citationIndexSet.size
+          !citationIndexSet.size ||
+          parent.type === 'link'
         ) {
           return
         }

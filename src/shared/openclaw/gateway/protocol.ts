@@ -5,7 +5,7 @@ import type { EventFrame, GatewayMessage, RequestFrame, ResponseFrame, MessageId
 /**
  * Creates a request frame with the given parameters
  */
-export function createReq(id: MessageId, method: string, params?: Record<string, unknown> | object): RequestFrame {
+export function createReq(id: MessageId, method: string, params?: Record<string, unknown>): RequestFrame {
   return {
     type: 'req',
     id,

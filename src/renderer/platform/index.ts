@@ -3,9 +3,10 @@ import type { Platform, PlatformType } from './interfaces'
 import { createTauriIPCAdapter, isTauriRuntime } from './tauri_ipc_adapter'
 import TestPlatform from './test_platform'
 import WebPlatform from './web_platform'
+import type { DesktopIPC } from '../../shared/desktop-ipc-types'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
-function createDesktopPlatformWithFormFactor(api: DesktopAPI): DesktopPlatform {
+function createDesktopPlatformWithFormFactor(api: DesktopIPC): DesktopPlatform {
   const p = new DesktopPlatform(api)
   if (CHATBOX_BUILD_PLATFORM === 'android') {
     p.formFactor = 'mobile'

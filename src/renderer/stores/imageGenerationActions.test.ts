@@ -279,7 +279,7 @@ describe('imageGenerationActions', () => {
     seedRecord(record1)
     seedRecord(record2)
 
-    let resolveFirstRun: (() => void) | null = null
+    let resolveFirstRun: (() => unknown) | undefined
     const paintMock = vi
       .fn()
       .mockImplementationOnce(

@@ -1,7 +1,20 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.0.0/schema.json",
-  "vcs": { "enabled": false, "clientKind": "git", "useIgnoreFile": false },
-  "files": { "ignoreUnknown": true },
+  "vcs": { "enabled": false, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "src/**",
+      "test/**",
+      "!src-tauri/**",
+      "!release/**",
+      "!tmp/**",
+      "biome.json",
+      "*.config.js",
+      "*.config.ts",
+      "*.config.mjs"
+    ]
+  },
   "formatter": {
     "enabled": true,
     "formatWithErrors": false,
@@ -16,6 +29,7 @@
     "useEditorconfig": true,
     "includes": [
       "src/**",
+      "!src-tauri/**",
       "test/integration/**/*.ts",
       "!src-tauri/target/**",
       "!src/renderer/components/icons/**",
@@ -43,6 +57,7 @@
     },
     "includes": [
       "src/**",
+      "!src-tauri/**",
       "!src-tauri/target/**",
       "!src/renderer/components/icons/**",
       "biome.json",

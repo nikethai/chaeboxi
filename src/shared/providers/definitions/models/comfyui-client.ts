@@ -177,7 +177,8 @@ export class ComfyUIClient {
     }
     const response = (await window.desktopAPI.invoke('http:request', payload)) as DesktopHttpResponsePayload
     const bodyBytes = response.bodyBase64 ? decodeBase64ToBytes(response.bodyBase64) : new Uint8Array()
-    return new Response(bodyBytes, {
+    const normalizedBody = Uint8Array.from(bodyBytes)
+    return new Response(new Blob([normalizedBody]), {
       status: response.status,
       headers: response.headers,
     })

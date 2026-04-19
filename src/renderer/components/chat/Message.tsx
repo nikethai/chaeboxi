@@ -748,26 +748,27 @@ const _Message: FC<Props> = (props) => {
                               pictures={[group.part]}
                               compact={msg.role === 'user'}
                             />
-                            {group.part.ocrResult && (
+                            {(group.part as { ocrResult?: string }).ocrResult && (
                               <div
                                 className="my-2 p-2 bg-chatbox-background-brand-secondary rounded-md cursor-pointer hover:bg-chatbox-background-brand-secondary-hover transition-colors"
                                 onClick={async (e) => {
                                   e.stopPropagation()
                                   await NiceModal.show('content-viewer', {
                                     title: t('OCR Text Content'),
-                                    content: group.part.ocrResult,
+                                    content: (group.part as { ocrResult?: string }).ocrResult || '',
                                   })
                                 }}
                               >
                                 <Typography variant="caption" className="text-gray-600 dark:text-gray-400 block mb-1">
-                                  {t('OCR Text')} ({group.part.ocrResult.length} {t('characters')})
+                                  {t('OCR Text')} ({(group.part as { ocrResult?: string }).ocrResult?.length || 0}{' '}
+                                  {t('characters')})
                                 </Typography>
                                 <Typography
                                   variant="body2"
                                   className="line-clamp-2 text-gray-700 dark:text-gray-300"
-                                  title={group.part.ocrResult}
+                                  title={(group.part as { ocrResult?: string }).ocrResult}
                                 >
-                                  {group.part.ocrResult}
+                                  {(group.part as { ocrResult?: string }).ocrResult}
                                 </Typography>
                                 <Typography
                                   variant="caption"

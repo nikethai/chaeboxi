@@ -6,6 +6,7 @@ import type { ToolSet } from 'ai'
 import type { OnResultChangeWithCancel } from '@shared/models/types'
 import {
   COPILOT_MAX_STEPS_DEFAULT,
+  type CopilotToolAccess,
   type CompactionPoint,
   type CopilotHook,
   createMessage,
@@ -574,7 +575,7 @@ export async function generate(
         }
 
         // Build final content parts - remove any existing plan part and add the final one
-        const finalContentParts = targetMsg.contentParts.filter((part) => part.type !== 'plan')
+        const finalContentParts: Message['contentParts'] = targetMsg.contentParts.filter((part) => part.type !== 'plan')
         if (finalPlanPart) {
           finalContentParts.push(finalPlanPart)
         }

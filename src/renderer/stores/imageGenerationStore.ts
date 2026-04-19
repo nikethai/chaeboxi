@@ -113,7 +113,7 @@ async function recoverQueueState(): Promise<void> {
 
   await Promise.all(
     records
-      .filter((record) => record.status === LEGACY_PENDING_STATUS)
+      .filter((record) => (record.status as string) === LEGACY_PENDING_STATUS)
       .map((record) =>
         getStorage().update(record.id, {
           status: 'queued',
@@ -122,7 +122,7 @@ async function recoverQueueState(): Promise<void> {
   )
 
   const queuedGenerationIds = records
-    .filter((record) => record.status === 'queued' || record.status === LEGACY_PENDING_STATUS)
+    .filter((record) => record.status === 'queued' || (record.status as string) === LEGACY_PENDING_STATUS)
     .sort((left, right) => left.createdAt - right.createdAt)
     .map((record) => record.id)
 

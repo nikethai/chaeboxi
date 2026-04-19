@@ -13,7 +13,7 @@ function isJsonLikeCandidate(value: string): boolean {
     return false
   }
 
-  if (/^[\[{]/.test(trimmed)) {
+  if (/^[[{]/.test(trimmed)) {
     return true
   }
 
@@ -21,7 +21,7 @@ function isJsonLikeCandidate(value: string): boolean {
     return true
   }
 
-  if (/"\s*:\s*"/.test(trimmed) || /"\s*:\s*[\[{0-9-]/.test(trimmed)) {
+  if (/"\s*:\s*"/.test(trimmed) || /"\s*:\s*[[{0-9-]/.test(trimmed)) {
     return true
   }
 

@@ -319,6 +319,19 @@ const OpenClawSettingsSchema = z.object({
 
 export type OpenClawSettings = z.infer<typeof OpenClawSettingsSchema>
 
+// ===== User Personal Info =====
+
+export const UserPersonalInfoEntrySchema = z.object({
+  id: z.string(), // uuid
+  key: z.string(), // e.g. "name", "company", "role"
+  value: z.string(),
+})
+
+export const UserPersonalInfoSettingsSchema = z.object({
+  entries: z.array(UserPersonalInfoEntrySchema).default([]),
+  enableInjection: z.boolean().default(true),
+})
+
 export enum Theme {
   Dark,
   Light,
@@ -445,6 +458,8 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
   extension: ExtensionSettingsSchema,
   mcp: MCPSettingsSchema,
   openclaw: OpenClawSettingsSchema,
+
+  userPersonalInfo: UserPersonalInfoSettingsSchema,
 })
 
 // TODO: provider的 base info 和 settings混在一起了，可以考虑像 session settings 和 global settings一样拆开
@@ -473,3 +488,5 @@ export type HistorySyncConfig = z.infer<typeof HistorySyncConfigSchema>
 export type MCPTransportConfig = z.infer<typeof MCPTransportConfigSchema>
 export type MCPServerConfig = z.infer<typeof MCPServerConfigSchema>
 export type MCPSettings = z.infer<typeof MCPSettingsSchema>
+export type UserPersonalInfoEntry = z.infer<typeof UserPersonalInfoEntrySchema>
+export type UserPersonalInfoSettings = z.infer<typeof UserPersonalInfoSettingsSchema>

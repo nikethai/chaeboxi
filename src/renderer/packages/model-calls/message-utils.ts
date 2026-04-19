@@ -4,6 +4,7 @@ import type { FilePart, ImagePart, ModelMessage, ReasoningUIPart, TextPart } fro
 import dayjs from 'dayjs'
 import { compact } from 'lodash'
 import { createModelDependencies } from '@/adapters'
+import { settingsStore } from '@/stores/settingsStore'
 import { cloneMessage, getMessageText } from '@/utils/message'
 
 /**
@@ -170,6 +171,24 @@ export async function convertToModelMessages(
 }
 
 /**
+ * Build personal info section for system prompt injection.
+ * Returns empty string if injection is disabled or no entries exist.
+ */
+function buildPersonalInfoSection(): string {
+  const userPersonalInfo = settingsStore.getState().userPersonalInfo
+  if (!userPersonalInfo?.enableInjection) return ''
+  const entries = userPersonalInfo?.entries ?? []
+  if (entries.length === 0) return ''
+
+  const infoLines = entries
+    .filter((entry) => entry.key && entry.value)
+    .map((entry) => `- ${entry.key}: ${entry.value}`)
+    .join('\n')
+
+  return infoLines ? `\n## Personal Info About You (the user):\n${infoLines}\n` : ''
+}
+
+/**
  * 在 system prompt 中注入模型信息
  * @param model
  * @param messages
@@ -181,9 +200,10 @@ export function injectModelSystemPrompt(
   additionalInfo: string,
   role: 'system' | 'user' = 'system'
 ) {
+  const personalInfo = buildPersonalInfoSection()
   const metadataPrompt = `Current model: ${model}\nCurrent date: ${dayjs().format(
     'YYYY-MM-DD'
-  )}\n Additional info for this conversation: ${additionalInfo}\n\n`
+  )}${personalInfo}\n Additional info for this conversation: ${additionalInfo}\n\n`
   let hasInjected = false
   return messages.map((m) => {
     if (m.role === role && !hasInjected) {

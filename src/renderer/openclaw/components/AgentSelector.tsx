@@ -3,7 +3,6 @@ import { IconChevronRight, IconRefresh, IconRobot } from '@tabler/icons-react'
 import { useAtom, useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSettingsStore } from '@/stores/settingsStore'
 import { cn } from '@/lib/utils'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import ProviderIcon from '@/components/icons/ProviderIcon'
@@ -11,11 +10,9 @@ import {
   openclawAgentsAtom,
   openclawGatewayStatusAtom,
   openclawSelectedAgentIdAtom,
+  useGatewaySync,
 } from '@/openclaw/atoms'
-import type { AgentInfo } from '@/openclaw/gateway'
 import { classifyCapabilityRisk, getCapabilityRiskColor, getCapabilityTooltip } from '@/openclaw/gateway'
-import type { GatewayClientCreateOptions } from '@shared/models/openclaw'
-import { getOrCreateGatewayClient } from '@shared/models/openclaw'
 
 interface AgentSelectorProps {
   className?: string
@@ -24,53 +21,20 @@ interface AgentSelectorProps {
   position?: 'top-end' | 'bottom-end' | 'top-start' | 'bottom-start'
 }
 
-async function fetchAgentsFromGateway(opts: GatewayClientCreateOptions): Promise<AgentInfo[]> {
-  const client = getOrCreateGatewayClient(opts)
-  await client.connect()
-  const response = await client.listAgents()
-  return response.agents.map((agent) => ({
-    id: agent.id,
-    name: agent.name,
-    description: agent.description,
-    capabilities: agent.capabilities,
-  }))
-}
-
 export default function AgentSelector(props: AgentSelectorProps) {
   const { className, onSelectAgent, selectedAgentId, position = 'top-end' } = props
   const { t } = useTranslation()
-  const [agents, setAgents] = useAtom(openclawAgentsAtom)
+  const [agents] = useAtom(openclawAgentsAtom)
   const [selectedAgent, setSelectedAgent] = useAtom(openclawSelectedAgentIdAtom)
   const gatewayStatus = useAtomValue(openclawGatewayStatusAtom)
 
-  const openclawSettings = useSettingsStore((state) => state.openclaw)
-  const providerSettings = useSettingsStore((state) => state.providers?.['openclaw'])
-
-  const activeGateway = useMemo(() => {
-    if (!openclawSettings?.gateways) return null
-    return openclawSettings.gateways.find((g) => g.isDefault) || openclawSettings.gateways[0]
-  }, [openclawSettings])
-
-  const apiHost = activeGateway?.url || providerSettings?.apiHost || 'http://127.0.0.1:18789'
-  const apiKey = activeGateway?.token || providerSettings?.apiKey || ''
-  const cloudflareClientId = activeGateway?.cloudflareClientId || providerSettings?.cloudflareClientId || ''
-  const cloudflareClientSecret = activeGateway?.cloudflareClientSecret || providerSettings?.cloudflareClientSecret || ''
-
-  const fetchAgents = useCallback(async () => {
-    if (!apiHost) return
-    try {
-      const fetched = await fetchAgentsFromGateway({ apiHost, apiKey, cloudflareClientId, cloudflareClientSecret })
-      setAgents(fetched)
-    } catch (error) {
-      console.error('[OpenClaw] Failed to fetch agents:', error)
-    }
-  }, [apiHost, apiKey, cloudflareClientId, cloudflareClientSecret, setAgents])
+  // useGatewaySync auto-connects on mount; gatewayKey changes trigger
+  // internal atom resets, so the stale-while-revalidate pattern works.
+  const { ensureConnected } = useGatewaySync()
 
   useEffect(() => {
-    if (gatewayStatus === 'connected' && agents.length === 0) {
-      void fetchAgents()
-    }
-  }, [gatewayStatus, agents.length, fetchAgents])
+    void ensureConnected()
+  }, [ensureConnected])
 
   const currentAgent = useMemo(() => {
     const agentId = selectedAgentId ?? selectedAgent
@@ -114,7 +78,7 @@ export default function AgentSelector(props: AgentSelectorProps) {
             <ActionIcon
               variant="subtle"
               size="sm"
-              onClick={() => void fetchAgents()}
+              onClick={() => void ensureConnected()}
               disabled={gatewayStatus !== 'connected'}
             >
               <ScalableIcon icon={IconRefresh} size={14} />

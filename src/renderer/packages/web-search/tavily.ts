@@ -44,13 +44,18 @@ export class TavilySearch extends WebSearch {
       const maxResultsOnly: WebSearchOptions | undefined = options?.maxResults
         ? { maxResults: options.maxResults }
         : undefined
+      const rawItems = Array.isArray((response as { results?: unknown[] }).results)
+        ? ((response as { results: unknown[] }).results as Array<Record<string, unknown>>)
+        : []
       const items = this.finalizeItems(
-        (response.results || []).map((result: any) => ({
-          title: result.title,
-          link: result.url,
-          snippet: result.content,
-          rawContent: result.raw_content,
-        })),
+        rawItems
+          .map((result) => ({
+            title: String(result.title || ''),
+            link: String(result.url || ''),
+            snippet: String(result.content || ''),
+            rawContent: result.raw_content == null ? undefined : String(result.raw_content),
+          }))
+          .filter((item) => item.link.length > 0),
         maxResultsOnly
       )
 

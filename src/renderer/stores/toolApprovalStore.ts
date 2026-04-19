@@ -48,27 +48,27 @@ function deserializeMap(obj: Record<string, ToolApprovalRecord>): Map<string, To
   return new Map(Object.entries(obj))
 }
 
-export const toolApprovalStore = createStore(
+export const toolApprovalStore = createStore<ToolApprovalState>()(
   persist(
     combine(
       {
         approvedTools: new Map<string, ToolApprovalRecord>(),
         auditLog: [] as ToolApprovalAuditEntry[],
       },
-      (set, get) => ({
-        addApproval: (sessionId, approval) =>
+      (set, _get) => ({
+        addApproval: (sessionId: string, approval: ToolApprovalRecord) =>
           set((state) => {
             const approvedTools = new Map(state.approvedTools)
             approvedTools.set(getApprovalKey(sessionId, approval.toolName), approval)
             return { approvedTools }
           }),
-        removeApproval: (sessionId, toolName) =>
+        removeApproval: (sessionId: string, toolName: string) =>
           set((state) => {
             const approvedTools = new Map(state.approvedTools)
             approvedTools.delete(getApprovalKey(sessionId, toolName))
             return { approvedTools }
           }),
-        clearSessionApprovals: (sessionId) =>
+        clearSessionApprovals: (sessionId: string) =>
           set((state) => {
             const approvedTools = new Map(state.approvedTools)
             for (const key of approvedTools.keys()) {
@@ -78,7 +78,7 @@ export const toolApprovalStore = createStore(
             }
             return { approvedTools }
           }),
-        addAuditEntry: (entry) =>
+        addAuditEntry: (entry: ToolApprovalAuditEntry) =>
           set((state) => ({
             auditLog: [...state.auditLog, entry],
           })),

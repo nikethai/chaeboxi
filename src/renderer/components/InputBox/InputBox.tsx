@@ -107,7 +107,7 @@ import {
 } from './preprocessState'
 import TokenCountMenu from './TokenCountMenu'
 import PresetPicker, { filterPresets } from './PresetPicker'
-import type { GatewayCommandInfo } from '@shared/openclaw/gateway/types'
+import type { GatewayCommandInfo } from '@/openclaw/gateway'
 import { getOrCreateGatewayClient } from '@shared/models/openclaw'
 
 export type InputBoxPayload = {

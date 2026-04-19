@@ -524,7 +524,7 @@ export function initEmptyChatSession(): Omit<Session, 'id'> {
         : lastUsedChatModel),
     },
   }
-  if (settings.defaultPrompt && newSession.settings.provider !== ModelProviderEnum.OpenClaw) {
+  if (settings.defaultPrompt && newSession.settings?.provider !== ModelProviderEnum.OpenClaw) {
     newSession.messages.push(createMessage('system', settings.defaultPrompt || defaults.getDefaultPrompt()))
   }
   return newSession

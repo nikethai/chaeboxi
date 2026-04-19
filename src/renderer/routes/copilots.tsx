@@ -917,7 +917,7 @@ function HookList({ hooks, onChange }: HookListProps) {
   }
 
   const updateHook = (index: number, updates: Partial<CopilotHook>) => {
-    const updated = hooks.map((h, i) => (i === index ? { ...h, ...updates } : h))
+    const updated = hooks.map((h, i) => (i === index ? { ...h, ...updates } : h)) as CopilotHook[]
     onChange(updated)
   }
 
@@ -1055,13 +1055,13 @@ function HookEditor({ hook, onChange, onRemove }: HookEditorProps) {
       )}
 
       {hook.type === 'inject-datetime' && (
-        <Typography variant="caption" c="dimmed" sx={{ mt: 1 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
           {t('Injects current datetime (ISO 8601 format)')}
         </Typography>
       )}
 
       {hook.type === 'inject-system-info' && (
-        <Typography variant="caption" c="dimmed" sx={{ mt: 1 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
           {t('Injects OS and platform information')}
         </Typography>
       )}

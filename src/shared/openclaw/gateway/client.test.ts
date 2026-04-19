@@ -28,7 +28,7 @@ describe('OpenClawGatewayClient', () => {
     }
     ;(client as unknown as { state: string }).state = 'connected'
 
-    vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('test-idempotency-key')
+    vi.spyOn(globalThis.crypto, 'randomUUID').mockReturnValue('11111111-1111-1111-1111-111111111111')
     const requestSpy = vi.spyOn(client, 'request').mockResolvedValue({
       runId: 'server-run-id',
     })
@@ -50,7 +50,7 @@ describe('OpenClawGatewayClient', () => {
       sessionId: undefined,
       sessionKey: 'chaeboxi:session-1',
       extraSystemPrompt: undefined,
-      idempotencyKey: 'test-idempotency-key',
+      idempotencyKey: '11111111-1111-1111-1111-111111111111',
     })
 
     client.disconnect()

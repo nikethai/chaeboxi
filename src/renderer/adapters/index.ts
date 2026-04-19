@@ -13,8 +13,8 @@ import { RendererSentryAdapter } from './sentry'
 let _cachedDeps: ModelDependencies | null = null
 let _cachedDepsPromise: Promise<ModelDependencies> | null = null
 
-export async function createModelDependencies(): Promise<ModelDependencies> {
-  if (_cachedDeps) return _cachedDeps
+export function createModelDependencies(): Promise<ModelDependencies> {
+  if (_cachedDeps) return Promise.resolve(_cachedDeps)
   // Deduplicate concurrent first calls
   if (_cachedDepsPromise) return _cachedDepsPromise
 
@@ -42,14 +42,14 @@ export async function createModelDependencies(): Promise<ModelDependencies> {
         },
       },
       request: {
-        fetchWithOptions: async (
+        fetchWithOptions: (
           url: string,
           init?: RequestInit,
           options?: { retry?: number; parseChatboxRemoteError?: boolean }
         ): Promise<Response> => {
           return afetch(url, init, options || {})
         },
-        async apiRequest(options: ApiRequestOptions): Promise<Response> {
+        apiRequest(options: ApiRequestOptions): Promise<Response> {
           if (options.method === 'POST') {
             return apiRequest.post(options.url, options.headers || {}, options.body, {
               signal: options.signal,

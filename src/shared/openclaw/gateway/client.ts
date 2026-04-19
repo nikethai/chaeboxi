@@ -365,7 +365,7 @@ export class OpenClawGatewayClient {
           }
 
           const id = this.nextId()
-          const req = createReq(id, 'connect', connectParams)
+          const req = createReq(id, 'connect', connectParams as unknown as Record<string, unknown>)
 
           const timeoutId = setTimeout(() => {
             this.pendingRequests.delete(id)
@@ -490,7 +490,7 @@ export class OpenClawGatewayClient {
     }
   }
 
-  request<T>(method: string, params?: Record<string, unknown> | object, timeoutMs?: number): Promise<T> {
+  request<T>(method: string, params?: Record<string, unknown>, timeoutMs?: number): Promise<T> {
     if (this.ws === null || this.state !== 'connected') {
       return Promise.reject(new Error('Not connected'))
     }
@@ -578,7 +578,7 @@ export class OpenClawGatewayClient {
       idempotencyKey: crypto.randomUUID(),
     }
 
-    const response = await this.request<AgentInvokeResponse>('agent', params)
+    const response = await this.request<AgentInvokeResponse>('agent', params as unknown as Record<string, unknown>)
     const invocationId = getAgentRunId(response)
 
     if (!invocationId) {

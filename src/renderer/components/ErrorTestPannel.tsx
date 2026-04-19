@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 
 // 组件内部的错误测试工具
 export function ErrorTestPanel() {
@@ -6,8 +6,8 @@ export function ErrorTestPanel() {
 
   if (shouldError) {
     // 模拟常见的 "cannot read properties of undefined" 错误
-    const obj: any = null
-    return <div>{obj.nonExistentProperty.anotherProperty}</div>
+    const obj: { nonExistentProperty?: { anotherProperty?: string } } | null = null
+    return <div>{obj!.nonExistentProperty!.anotherProperty}</div>
   }
 
   const testGlobalError = () => {
@@ -17,7 +17,7 @@ export function ErrorTestPanel() {
   }
 
   const testUnhandledPromise = () => {
-    Promise.reject(new Error('Test unhandled promise rejection - this error is intentional'))
+    void Promise.reject(new Error('Test unhandled promise rejection - this error is intentional'))
   }
 
   const testConsoleError = () => {

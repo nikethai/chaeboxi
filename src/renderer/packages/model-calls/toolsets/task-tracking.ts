@@ -34,7 +34,7 @@ export const createTaskTool = tool({
       task,
     }
   },
-})
+} as any)
 
 export const updateTaskTool = tool({
   description: 'Update an existing task with a new status, title, or progress percentage.',
@@ -88,7 +88,7 @@ export const listTasksTool = tool({
       },
     }
   },
-})
+} as any)
 
 export default {
   description: toolSetDescription,

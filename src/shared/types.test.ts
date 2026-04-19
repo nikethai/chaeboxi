@@ -350,13 +350,13 @@ describe('copyThreads with compactionPoints', () => {
 })
 
 describe('provider settings schema', () => {
-  it('defaults preserveReasoningInContext to true for sessions', () => {
+  it('keeps preserveReasoningInContext optional for sessions', () => {
     const parsed = SessionSettingsSchema.parse({
       provider: 'qwen',
       modelId: 'qwen3.5-plus',
     })
 
-    expect(parsed.preserveReasoningInContext).toBe(true)
+    expect(parsed.preserveReasoningInContext).toBeUndefined()
   })
 
   it('parses image prompt prepend fields', () => {

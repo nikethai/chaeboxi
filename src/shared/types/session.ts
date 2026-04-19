@@ -237,6 +237,7 @@ export const MessageContentPartSchema = z.discriminatedUnion('type', [
 export const MessageContentPartsSchema = z.array(MessageContentPartSchema)
 
 export const StreamTextResultSchema = z.object({
+  text: z.string().optional(),
   contentParts: MessageContentPartsSchema,
   reasoningContent: z.string().optional(),
   usage: z.custom<LanguageModelUsage>().optional(),
@@ -404,7 +405,9 @@ export const SessionSchema = z.object({
   tags: z.array(z.string()).optional(),
   archived: z.boolean().optional(),
   assistantAvatarKey: z.string().optional(),
-  agentMode: z.boolean().optional().default(false),
+  agentMode: z.boolean().optional(),
+  planMode: z.boolean().optional(),
+  planPhase: PlanPhaseEnum.optional(),
   settings: SessionSettingsSchema.optional(),
   threads: z.array(SessionThreadSchema).optional(),
   threadName: z.string().optional(),
@@ -464,4 +467,3 @@ export type SessionMeta = z.infer<typeof SessionMetaSchema>
 export type SessionThread = z.infer<typeof SessionThreadSchema>
 export type SessionThreadBrief = z.infer<typeof SessionThreadBriefSchema>
 export type MessagePlanPart = z.infer<typeof MessagePlanPartSchema>
-export type PlanPhase = z.infer<typeof PlanPhaseEnum>

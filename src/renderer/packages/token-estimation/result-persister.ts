@@ -3,7 +3,7 @@ import { getLogger } from '@/lib/utils'
 import * as chatStore from '@/stores/chatStore'
 import queryClient from '@/stores/queryClient'
 import { getMessageTextCacheKey } from './cache-keys'
-import type { AttachmentType, ContentMode, TaskResult } from './types'
+import type { AttachmentType, ContentMode, TaskResult, TokenizerType } from './types'
 
 const log = getLogger('token-estimation:persister')
 

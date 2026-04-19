@@ -230,16 +230,8 @@ describe('analyzeTokenRequirements', () => {
       })
 
       expect(result.breakdown.currentInput.attachments).toBe(0)
-      expect(result.pendingTasks).toHaveLength(1)
-      expect(result.pendingTasks[0]).toMatchObject({
-        type: 'attachment',
-        messageId: 'msg-with-file',
-        attachmentId: 'file-no-cache',
-        attachmentType: 'file',
-        tokenizerType: 'default',
-        contentMode: 'full',
-        priority: PRIORITY.CURRENT_INPUT_ATTACHMENT,
-      })
+      // Current input attachments are not queued for async computation.
+      expect(result.pendingTasks).toHaveLength(0)
     })
 
     it('skips attachments without storageKey', () => {
@@ -276,8 +268,8 @@ describe('analyzeTokenRequirements', () => {
       })
 
       const result = analyzeTokenRequirements({
-        constructedMessage: message,
-        contextMessages: [],
+        constructedMessage: undefined,
+        contextMessages: [message],
         tokenizerType: 'default',
         modelSupportToolUseForFile: false,
       })
@@ -300,8 +292,8 @@ describe('analyzeTokenRequirements', () => {
       })
 
       const result = analyzeTokenRequirements({
-        constructedMessage: message,
-        contextMessages: [],
+        constructedMessage: undefined,
+        contextMessages: [message],
         tokenizerType: 'default',
         modelSupportToolUseForFile: true,
       })
@@ -324,8 +316,8 @@ describe('analyzeTokenRequirements', () => {
       })
 
       const result = analyzeTokenRequirements({
-        constructedMessage: message,
-        contextMessages: [],
+        constructedMessage: undefined,
+        contextMessages: [message],
         tokenizerType: 'default',
         modelSupportToolUseForFile: true,
       })
@@ -460,7 +452,8 @@ describe('analyzeTokenRequirements', () => {
         modelSupportToolUseForFile: false,
       })
 
-      expect(result.pendingTasks[0].priority).toBe(PRIORITY.CURRENT_INPUT_ATTACHMENT)
+      // Current input attachments are handled synchronously and should not queue tasks.
+      expect(result.pendingTasks).toHaveLength(0)
     })
 
     it('assigns CONTEXT_TEXT + reversed index priority for context text (newest first)', () => {

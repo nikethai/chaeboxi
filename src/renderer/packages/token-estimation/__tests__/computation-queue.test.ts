@@ -36,7 +36,7 @@ describe('generateTaskId', () => {
       messageId: 'msg-456',
       tokenizerType: 'default',
     })
-    expect(generateTaskId(task)).toBe('msg:sess-123:msg-456:default')
+    expect(generateTaskId(task)).toBe('msg:sess-123:msg-456:default:plain')
   })
 
   it('generates correct ID for message-text with deepseek tokenizer', () => {
@@ -45,7 +45,7 @@ describe('generateTaskId', () => {
       messageId: 'msg-456',
       tokenizerType: 'deepseek',
     })
-    expect(generateTaskId(task)).toBe('msg:sess-123:msg-456:deepseek')
+    expect(generateTaskId(task)).toBe('msg:sess-123:msg-456:deepseek:plain')
   })
 
   it('generates correct ID for attachment tasks', () => {
@@ -534,7 +534,7 @@ describe('ComputationQueue', () => {
       queue.clearCompletedBySession('session-1')
 
       expect(queue._getState().completed.size).toBe(1)
-      expect(queue._getState().completed.has('msg:session-2:msg-3:default')).toBe(true)
+      expect(queue._getState().completed.has('msg:session-2:msg-3:default:plain')).toBe(true)
     })
 
     it('clears cancelled session flag', async () => {

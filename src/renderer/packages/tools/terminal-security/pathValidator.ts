@@ -85,9 +85,10 @@ function tokenize(command: string): string[] {
   // Simple tokenizer that extracts path-like tokens from a command string
   const tokens: string[] = []
   const regex = /(?:["']([^"']+)["']|(\S+))/g
-  let match: RegExpExecArray | null = null
-  while ((match = regex.exec(command)) !== null) {
+  let match = regex.exec(command)
+  while (match !== null) {
     tokens.push(match[1] || match[2])
+    match = regex.exec(command)
   }
   return tokens
 }

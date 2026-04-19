@@ -2,7 +2,7 @@
   "compilerOptions": {
     "incremental": true,
     "target": "es2021",
-    "module": "nodenext",
+    "module": "esnext",
     "lib": ["dom", "es2023"],
     "jsx": "react-jsx",
     "strict": true,
@@ -12,10 +12,11 @@
       "@/*": ["./src/renderer/*"],
       "@shared/*": ["./src/shared/*"]
     },
-    "moduleResolution": "nodenext",
+    "moduleResolution": "bundler",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
+    "types": ["node", "vite/client", "vitest/globals"],
     "allowJs": true,
     "outDir": "tmp/tsbuild",
     "skipLibCheck": true
@@ -26,6 +27,9 @@
     "tmp",
     "test",
     "release",
+    "src-tauri",
+    "src-tauri/target",
+    "src-tauri/gen",
     "ios",
     "android"
   ]

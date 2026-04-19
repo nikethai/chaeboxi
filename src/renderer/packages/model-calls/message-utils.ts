@@ -1,6 +1,6 @@
 import type { Message, MessageContentParts } from '@shared/types'
 import type { ModelDependencies } from '@shared/types/adapters'
-import type { FilePart, ImagePart, ModelMessage, ReasoningPart, TextPart } from 'ai'
+import type { FilePart, ImagePart, ModelMessage, ReasoningUIPart, TextPart } from 'ai'
 import dayjs from 'dayjs'
 import { compact } from 'lodash'
 import { createModelDependencies } from '@/adapters'
@@ -100,9 +100,9 @@ async function convertAssistantContentParts(
   contentParts: MessageContentParts,
   dependencies: ModelDependencies,
   options?: { includeReasoning?: boolean }
-): Promise<Array<TextPart | FilePart | ReasoningPart>> {
+): Promise<Array<TextPart | FilePart | ReasoningUIPart>> {
   const convertedParts = await Promise.all(
-    contentParts.map(async (part): Promise<TextPart | FilePart | ReasoningPart | null> => {
+    contentParts.map(async (part): Promise<TextPart | FilePart | ReasoningUIPart | null> => {
       if (part.type === 'reasoning') {
         if (!options?.includeReasoning) {
           return null

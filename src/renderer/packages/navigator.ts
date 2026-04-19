@@ -1,9 +1,13 @@
 import * as Sentry from '@sentry/react'
 import copyToClipboardFallback from 'copy-to-clipboard'
 
+function getNavigator(): Navigator | undefined {
+  return typeof globalThis !== 'undefined' ? globalThis.navigator : undefined
+}
+
 export function copyToClipboard(text: string) {
   try {
-    navigator?.clipboard?.writeText(text)
+    getNavigator()?.clipboard?.writeText(text)
   } catch (e) {
     Sentry.captureException(e)
   }
@@ -14,9 +18,13 @@ export function copyToClipboard(text: string) {
   }
 }
 
-const ua = navigator.userAgent
+function getUA(): string {
+  return getNavigator()?.userAgent || ''
+}
 
 export const getBrowser = (): 'Opera' | 'Chrome' | 'Firefox' | 'Safari' | 'IE' | 'Edge' | 'Unknown' | undefined => {
+  const ua = getUA()
+
   if (ua.indexOf('Opera') > -1) {
     return 'Opera'
   }
@@ -42,6 +50,8 @@ export const getBrowser = (): 'Opera' | 'Chrome' | 'Firefox' | 'Safari' | 'IE' |
 }
 
 export const getOS = (): 'Windows' | 'Mac' | 'Linux' | 'Android' | 'iOS' | 'Unknown' => {
+  const ua = getUA()
+
   if (ua.indexOf('Windows') > -1) {
     return 'Windows'
   }

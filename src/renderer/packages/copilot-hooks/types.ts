@@ -56,6 +56,7 @@ export const ValidateFormatSchema = z.object({
 export const CopilotHookSchema = z.discriminatedUnion('type', [
   InjectContextSchema,
   InjectDatetimeSchema,
+  InjectSystemInfoSchema,
   WebFetchSchema,
   ValidateFormatSchema,
 ])

@@ -37,17 +37,19 @@ export const GeneratedImagesGallery = memo(function GeneratedImagesGallery({
         outlineID: 'pswp__icn-download',
       },
       appendTo: 'bar',
-      onClick: async (_e: PointerEvent, _el: HTMLElement, pswp: PhotoSwipe) => {
-        const storageKey = storageKeysRef.current[pswp.currIndex]
-        if (storageKey) {
-          const base64 = await storage.getBlob(storageKey)
-          if (!base64) return
-          const filename =
-            platform.formFactor === 'mobile'
-              ? `${storageKey.replaceAll(':', '_')}_${Math.random().toString(36).substring(7)}`
-              : storageKey
-          platform.exporter.exportImageFile(filename, base64)
-        }
+      onClick: (_e: MouseEvent, _el: HTMLElement, pswp: PhotoSwipe) => {
+        void (async () => {
+          const storageKey = storageKeysRef.current[pswp.currIndex]
+          if (storageKey) {
+            const base64 = await storage.getBlob(storageKey)
+            if (!base64) return
+            const filename =
+              platform.formFactor === 'mobile'
+                ? `${storageKey.replaceAll(':', '_')}_${Math.random().toString(36).substring(7)}`
+                : storageKey
+            platform.exporter.exportImageFile(filename, base64)
+          }
+        })()
       },
     },
   ]

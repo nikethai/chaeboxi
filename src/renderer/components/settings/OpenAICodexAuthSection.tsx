@@ -1,0 +1,415 @@
+import { Alert, Button, Flex, Loader, SegmentedControl, Stack, Text, TextInput } from '@mantine/core'
+import {
+  fetchOpenAICodexModels,
+  humanizeOpenAICodexOAuthNetworkError,
+  mergeOpenAICodexModels,
+  OPENAI_CODEX_DEFAULT_MODELS,
+  OpenAICodexOAuthError,
+  pollOpenAICodexDeviceAuth,
+  resolveOpenAIAuthMode,
+  settingsPatchFromOpenAICodexTokens,
+  settingsPatchSignOutOpenAICodexOAuth,
+  startOpenAICodexDeviceAuth,
+  tokensFromCodexAuthJson,
+  type OpenAIAuthMode,
+} from '@shared/providers/oauth'
+import type { ProviderSettings } from '@shared/types'
+import { IconCopy, IconExternalLink, IconInfoCircle, IconLogout, IconFileImport } from '@tabler/icons-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ScalableIcon } from '@/components/common/ScalableIcon'
+import platform from '@/platform'
+import { add as addToast } from '@/stores/toastActions'
+
+interface OpenAICodexAuthSectionProps {
+  providerSettings?: ProviderSettings
+  setProviderSettings: (val: Partial<ProviderSettings>) => void
+}
+
+type SignInPhase = 'idle' | 'starting' | 'waiting' | 'error'
+
+export function OpenAICodexAuthSection({
+  providerSettings,
+  setProviderSettings,
+}: OpenAICodexAuthSectionProps) {
+  const { t } = useTranslation()
+  const authMode = resolveOpenAIAuthMode(providerSettings)
+  const signedIn = Boolean(providerSettings?.oauth?.accessToken)
+  const planType = providerSettings?.oauth?.planType
+
+  const [phase, setPhase] = useState<SignInPhase>('idle')
+  const [userCode, setUserCode] = useState<string | null>(null)
+  const [verificationUri, setVerificationUri] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const abortRef = useRef<AbortController | null>(null)
+
+  const cancelSignIn = useCallback(() => {
+    abortRef.current?.abort()
+    abortRef.current = null
+    setPhase('idle')
+    setUserCode(null)
+    setVerificationUri(null)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort()
+    }
+  }, [])
+
+  const handleModeChange = (value: string) => {
+    if (value !== 'oauth' && value !== 'api_key') return
+    cancelSignIn()
+    if (value === 'oauth') {
+      // Seed subscription-safe models when switching into ChatGPT mode
+      // (API catalog models often fail on WHAM).
+      const looksLikeApiCatalog = (providerSettings?.models || []).some((m) =>
+        /gpt-4o|gpt-5\.1|gpt-5-mini|o3|o4|embedding/i.test(m.modelId)
+      )
+      setProviderSettings({
+        authMode: 'oauth',
+        ...(looksLikeApiCatalog || !providerSettings?.models?.length
+          ? { models: OPENAI_CODEX_DEFAULT_MODELS }
+          : {}),
+      })
+      return
+    }
+    setProviderSettings({ authMode: value as OpenAIAuthMode })
+  }
+
+  const handleSignIn = async () => {
+    cancelSignIn()
+    const ac = new AbortController()
+    abortRef.current = ac
+    setPhase('starting')
+    setErrorMessage(null)
+    setUserCode(null)
+    setVerificationUri(null)
+
+    try {
+      const device = await startOpenAICodexDeviceAuth()
+      if (ac.signal.aborted) return
+
+      setUserCode(device.user_code)
+      setVerificationUri(device.verification_uri_complete || device.verification_uri)
+      setPhase('waiting')
+
+      const openUrl = device.verification_uri_complete || device.verification_uri
+      try {
+        await platform.openLink(openUrl)
+      } catch {
+        // User can open manually
+      }
+
+      const tokens = await pollOpenAICodexDeviceAuth(device, { signal: ac.signal })
+      if (ac.signal.aborted) return
+
+      const authPatch = settingsPatchFromOpenAICodexTokens(tokens)
+      let nextModels = providerSettings?.models
+      try {
+        const remoteModels = await fetchOpenAICodexModels(tokens.accessToken, {
+          accountId: tokens.accountId,
+        })
+        if (remoteModels.length > 0) {
+          nextModels = mergeOpenAICodexModels(providerSettings?.models, remoteModels, {
+            replaceAll: true,
+          })
+        }
+      } catch (modelErr) {
+        console.warn('[OpenAI Codex] post-auth model list failed', modelErr)
+      }
+
+      setProviderSettings({
+        ...authPatch,
+        ...(nextModels ? { models: nextModels } : {}),
+      })
+      setPhase('idle')
+      setUserCode(null)
+      setVerificationUri(null)
+      const modelCount = nextModels?.length
+      addToast(
+        modelCount && nextModels !== providerSettings?.models
+          ? t('Signed in to ChatGPT · {{count}} models loaded', { count: modelCount })
+          : t('Signed in to ChatGPT')
+      )
+    } catch (err) {
+      if (ac.signal.aborted) return
+      const message =
+        err instanceof OpenAICodexOAuthError
+          ? err.message
+          : err instanceof Error
+            ? humanizeOpenAICodexOAuthNetworkError(err)
+            : t('Sign-in failed. Please try again.')
+      setErrorMessage(message)
+      setPhase('error')
+    } finally {
+      if (abortRef.current === ac) {
+        abortRef.current = null
+      }
+    }
+  }
+
+  const handleSignOut = () => {
+    cancelSignIn()
+    setProviderSettings(settingsPatchSignOutOpenAICodexOAuth())
+    addToast(t('Signed out of ChatGPT'))
+  }
+
+  /** Import tokens from local Codex CLI (~/.codex/auth.json) after `codex login`. */
+  const handleImportCodexAuth = async () => {
+    cancelSignIn()
+    setErrorMessage(null)
+    setPhase('starting')
+    try {
+      const raw = await platform.readFileByPath('~/.codex/auth.json')
+      const parsed = JSON.parse(raw) as unknown
+      const tokens = tokensFromCodexAuthJson(parsed)
+      const authPatch = settingsPatchFromOpenAICodexTokens(tokens)
+      let nextModels = OPENAI_CODEX_DEFAULT_MODELS
+      try {
+        const remoteModels = await fetchOpenAICodexModels(tokens.accessToken, {
+          accountId: tokens.accountId,
+        })
+        if (remoteModels.length > 0) {
+          nextModels = mergeOpenAICodexModels(undefined, remoteModels, { replaceAll: true })
+        }
+      } catch (modelErr) {
+        console.warn('[OpenAI Codex] model list after import failed', modelErr)
+      }
+      setProviderSettings({
+        ...authPatch,
+        models: nextModels,
+      })
+      setPhase('idle')
+      addToast(t('Imported ChatGPT session from Codex CLI'))
+    } catch (err) {
+      const message =
+        err instanceof OpenAICodexOAuthError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : t('Could not read ~/.codex/auth.json. Run `codex login` first.')
+      setErrorMessage(message)
+      setPhase('error')
+    }
+  }
+
+  const handleCopyCode = async () => {
+    if (!userCode) return
+    try {
+      await navigator.clipboard.writeText(userCode)
+      addToast(t('Copied'))
+    } catch {
+      addToast(t('Copy failed'))
+    }
+  }
+
+  const handleOpenAgain = () => {
+    if (verificationUri) {
+      void platform.openLink(verificationUri)
+    }
+  }
+
+  return (
+    <Stack gap="sm">
+      <Stack gap="xxs">
+        <Text span fw="600">
+          {t('How do you connect?')}
+        </Text>
+        <SegmentedControl
+          fullWidth
+          value={authMode}
+          onChange={handleModeChange}
+          data={[
+            { label: t('ChatGPT subscription'), value: 'oauth' },
+            { label: t('API Key'), value: 'api_key' },
+          ]}
+        />
+      </Stack>
+
+      {authMode === 'oauth' && (
+        <Stack gap="sm">
+          <Alert variant="light" color="blue" icon={<IconInfoCircle />} title={t('Subscription login')}>
+            <Text size="sm">
+              {t(
+                'Sign in with your ChatGPT Plus, Pro, or Team account. Uses your subscription quota — not Platform API billing. Some models may be limited by your plan. Third-party access may change if OpenAI updates Codex login.'
+              )}
+            </Text>
+          </Alert>
+
+          <Flex gap="xs" align="center" wrap="wrap">
+            <Text size="sm" c={signedIn ? 'teal' : 'chatbox-secondary'}>
+              {signedIn
+                ? planType
+                  ? t('Signed in ({{plan}})', { plan: planType })
+                  : t('Signed in')
+                : t('Not signed in')}
+            </Text>
+            {signedIn ? (
+              <Button
+                variant="light"
+                color="gray"
+                size="compact-sm"
+                leftSection={<ScalableIcon icon={IconLogout} size={14} />}
+                onClick={handleSignOut}
+              >
+                {t('Sign out')}
+              </Button>
+            ) : (
+              <>
+                <Button
+                  size="sm"
+                  loading={phase === 'starting' && !userCode}
+                  disabled={phase === 'waiting'}
+                  onClick={() => void handleSignIn()}
+                >
+                  {t('Sign in with ChatGPT')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="light"
+                  leftSection={<ScalableIcon icon={IconFileImport} size={14} />}
+                  loading={phase === 'starting' && !userCode}
+                  disabled={phase === 'waiting'}
+                  onClick={() => void handleImportCodexAuth()}
+                >
+                  {t('Import Codex login')}
+                </Button>
+              </>
+            )}
+            {signedIn && (
+              <Button variant="subtle" size="compact-sm" onClick={() => void handleSignIn()}>
+                {t('Re-authenticate')}
+              </Button>
+            )}
+          </Flex>
+          {!signedIn && (
+            <Text size="xs" c="chatbox-secondary">
+              {t(
+                'Tip: if device sign-in fails, run `codex login` in Terminal then click Import Codex login.'
+              )}
+            </Text>
+          )}
+
+          {/* Keep code visible for waiting AND error so the browser page never hides it */}
+          {(phase === 'waiting' || phase === 'starting' || (phase === 'error' && userCode)) && (
+            <Stack
+              gap="sm"
+              p="md"
+              className="rounded-md border-2 border-[var(--mantine-color-blue-filled)] bg-[var(--mantine-color-blue-light)]"
+            >
+              {(phase === 'waiting' || phase === 'starting') && (
+                <Flex gap="xs" align="center">
+                  <Loader size="sm" />
+                  <Text size="sm" fw={600}>
+                    {t('Enter this code on the ChatGPT page that opened')}
+                  </Text>
+                </Flex>
+              )}
+
+              {userCode ? (
+                <Stack gap="xs" align="center">
+                  <Text size="xs" c="chatbox-secondary" ta="center">
+                    {t('Your one-time code')}
+                  </Text>
+                  <Text
+                    ff="monospace"
+                    fw={800}
+                    style={{
+                      fontSize: 28,
+                      letterSpacing: '0.18em',
+                      lineHeight: 1.2,
+                      userSelect: 'all',
+                    }}
+                  >
+                    {userCode}
+                  </Text>
+                  <Flex gap="xs" align="center" wrap="wrap" justify="center">
+                    <Button
+                      variant="filled"
+                      size="sm"
+                      leftSection={<ScalableIcon icon={IconCopy} size={16} />}
+                      onClick={() => void handleCopyCode()}
+                    >
+                      {t('Copy code')}
+                    </Button>
+                    <Button
+                      variant="light"
+                      size="sm"
+                      leftSection={<ScalableIcon icon={IconExternalLink} size={16} />}
+                      onClick={handleOpenAgain}
+                    >
+                      {t('Open login page')}
+                    </Button>
+                    {(phase === 'waiting' || phase === 'starting') && (
+                      <Button variant="default" size="sm" onClick={cancelSignIn}>
+                        {t('Cancel')}
+                      </Button>
+                    )}
+                  </Flex>
+                  <Text size="xs" c="chatbox-secondary" ta="center">
+                    {t('Open https://auth.openai.com/codex/device · paste the code · return here')}
+                  </Text>
+                </Stack>
+              ) : (
+                <Flex gap="xs" align="center">
+                  <Loader size="sm" />
+                  <Text size="sm">{t('Starting sign-in…')}</Text>
+                </Flex>
+              )}
+            </Stack>
+          )}
+
+          {phase === 'error' && errorMessage && (
+            <Alert color="red" title={t('Sign-in failed')}>
+              <Stack gap="xs">
+                <Text size="sm">{errorMessage}</Text>
+                <Button size="compact-sm" className="self-start" onClick={() => void handleSignIn()}>
+                  {t('Try again')}
+                </Button>
+              </Stack>
+            </Alert>
+          )}
+
+          <Flex gap="sm" wrap="wrap">
+            <Button
+              variant="subtle"
+              size="compact-xs"
+              leftSection={<ScalableIcon icon={IconExternalLink} size={14} />}
+              onClick={() => platform.openLink('https://chatgpt.com/')}
+            >
+              {t('ChatGPT')}
+            </Button>
+            <Button
+              variant="subtle"
+              size="compact-xs"
+              leftSection={<ScalableIcon icon={IconExternalLink} size={14} />}
+              onClick={() => platform.openLink('https://openai.com/chatgpt/pricing/')}
+            >
+              {t('Plans')}
+            </Button>
+          </Flex>
+        </Stack>
+      )}
+
+      {authMode === 'api_key' && (
+        <Alert variant="light" color="yellow" icon={<IconInfoCircle />} title={t('Developer API')}>
+          <Text size="sm">
+            {t(
+              'API keys from platform.openai.com are billed separately from ChatGPT Plus/Pro. Switch to ChatGPT subscription to use your plan quota.'
+            )}
+          </Text>
+          <Button
+            mt="xs"
+            variant="light"
+            size="compact-sm"
+            leftSection={<ScalableIcon icon={IconExternalLink} size={14} />}
+            onClick={() => platform.openLink('https://platform.openai.com/api-keys')}
+          >
+            {t('Get API Key')}
+          </Button>
+        </Alert>
+      )}
+    </Stack>
+  )
+}

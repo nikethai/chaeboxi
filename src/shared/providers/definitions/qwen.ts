@@ -1,7 +1,9 @@
 import { ModelProviderEnum, ModelProviderType } from '../../types'
+import { getQwenPreset } from '../plan-presets'
 import { defineProvider } from '../registry'
 import CustomOpenAI from './models/custom-openai'
 
+/** Legacy/China standard DashScope host (fallback when no plan preset) */
 const QWEN_API_HOST = 'https://dashscope.aliyuncs.com/compatible-mode/v1'
 
 export const qwenProvider = defineProvider({
@@ -9,31 +11,24 @@ export const qwenProvider = defineProvider({
   name: 'Qwen',
   type: ModelProviderType.OpenAI,
   urls: {
-    website: 'https://chat.qwen.ai',
-    docs: 'https://qwenlm.github.io/qwen-code-docs/en/users/overview/',
+    website: 'https://www.qwencloud.com',
+    apiKey: 'https://home.qwencloud.com/api-keys',
+    docs: 'https://docs.qwencloud.com/developer-guides/clients-and-developer-tools/chatbox',
   },
   defaultSettings: {
-    apiHost: QWEN_API_HOST,
-    models: [
-      {
-        modelId: 'qwen3.5-plus',
-        capabilities: ['reasoning'],
-      },
-      {
-        modelId: 'qwen3-coder-plus',
-        capabilities: ['reasoning', 'tool_use'],
-      },
-      {
-        modelId: 'qwen3-max-2026-01-23',
-        capabilities: ['reasoning'],
-      },
-    ],
+    // Prefer Token Plan path for new users; existing users keep saved apiHost
+    planId: 'token-plan',
+    region: 'international',
+    apiHost: 'https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1',
+    models: getQwenPreset('token-plan', 'international')!.models,
   },
   createModel: (config) => {
+    const preset = getQwenPreset(config.providerSetting.planId, config.providerSetting.region)
+    const fallbackHost = preset?.apiHost || QWEN_API_HOST
     return new CustomOpenAI(
       {
         apiKey: config.providerSetting.apiKey || '',
-        apiHost: config.formattedApiHost || QWEN_API_HOST,
+        apiHost: config.formattedApiHost || fallbackHost,
         apiPath: '',
         model: config.model,
         temperature: config.settings.temperature,

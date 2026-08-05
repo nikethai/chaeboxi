@@ -1,3 +1,4 @@
+import { hasProviderCredentials } from '@shared/providers/provider-credentials'
 import { ModelProviderEnum } from '@shared/types'
 import { getDefaultStore } from 'jotai'
 import * as atoms from './atoms'
@@ -9,8 +10,8 @@ export function needEditSetting() {
   if (settings.providers && Object.keys(settings.providers).length > 0) {
     const providers = settings.providers
     const keys = Object.keys(settings.providers)
-    // 有任何一个供应商配置了api key
-    if (keys.filter((key) => !!providers[key].apiKey).length > 0) {
+    // Any provider with API key or OAuth (e.g. SuperGrok)
+    if (keys.filter((key) => hasProviderCredentials(providers[key])).length > 0) {
       return false
     }
     // Ollama / LMStudio/ custom provider 配置了至少一个模型

@@ -62,6 +62,24 @@ export const ProviderSettingsSchema = z.object({
   excludedModels: z.array(z.string()).optional().catch(undefined),
   useProxy: z.boolean().optional().catch(undefined),
 
+  // Plan presets (e.g. QwenCloud Token Plan) — optional, backward compatible
+  planId: z.string().optional().catch(undefined),
+  region: z.string().optional().catch(undefined),
+
+  // Dual auth (xAI SuperGrok/X Premium OAuth vs developer API key)
+  authMode: z.enum(['api_key', 'oauth']).optional().catch(undefined),
+  oauth: z
+    .object({
+      accessToken: z.string().optional().catch(undefined),
+      refreshToken: z.string().optional().catch(undefined),
+      expiresAt: z.number().optional().catch(undefined),
+      tokenType: z.string().optional().catch(undefined),
+      scope: z.string().optional().catch(undefined),
+      obtainedAt: z.number().optional().catch(undefined),
+    })
+    .optional()
+    .catch(undefined),
+
   // azure
   endpoint: z.string().optional().catch(undefined),
   deploymentName: z.string().optional().catch(undefined),

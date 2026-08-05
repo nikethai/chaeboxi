@@ -26,6 +26,19 @@
   /* shared chat column — thread + composer must match */
   --chatbox-col: 48rem;
   --chatbox-col-pad-x: 1.5rem;
+  /* dock chrome — vertical air around composer (bottom needs more room) */
+  --chatbox-dock-pad-y: 0.5rem;
+  --chatbox-dock-pad-b: 1.1rem;
+  /* composer surface — stronger lift so dock reads separate from void */
+  --chatbox-composer-bg: #ffffff;
+  --chatbox-composer-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 4px 14px rgba(0, 0, 0, 0.08),
+    0 18px 44px -12px rgba(0, 0, 0, 0.2);
+  --chatbox-composer-shadow-drag:
+    0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 42%, transparent),
+    0 6px 16px rgba(0, 0, 0, 0.1),
+    0 20px 48px -12px rgba(0, 0, 0, 0.22);
   --chatbox-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --chatbox-font-ui: 'Satoshi', 'Segoe UI', system-ui, sans-serif;
   --chatbox-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -165,6 +178,17 @@
 
   --chatbox-background-mask-overlay: rgb(18, 18, 20, 0.78);
   --chatbox-background-mask-lighten: rgb(110, 110, 118, 0.4);
+
+  /* composer surface — deeper ambient on dark void */
+  --chatbox-composer-bg: #222228;
+  --chatbox-composer-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.09),
+    0 6px 18px rgba(0, 0, 0, 0.55),
+    0 22px 52px -10px rgba(0, 0, 0, 0.72);
+  --chatbox-composer-shadow-drag:
+    0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 48%, transparent),
+    0 8px 20px rgba(0, 0, 0, 0.55),
+    0 24px 56px -10px rgba(0, 0, 0, 0.75);
 }
 
 :root[data-mantine-color-scheme='light'][data-mantine-color-scheme],
@@ -178,6 +202,9 @@
   --mantine-color-chatbox-brand-light-color: var(--chatbox-tint-brand);
   --mantine-color-chatbox-brand-outline: var(--chatbox-border-brand);
   --mantine-color-chatbox-brand-outline-hover: color-mix(in srgb, var(--chatbox-border-brand), transparent 95%);
+
+  /* filled brand CTAs — force high-contrast white label */
+  --mantine-color-chatbox-brand-contrast: #ffffff;
 
   /* success */
   --mantine-color-chatbox-success-text: var(--chatbox-tint-success);
@@ -278,7 +305,7 @@
   }
 
   .session-dock-pad {
-    padding: 0.45rem var(--chatbox-col-pad-x) 0.65rem;
+    padding: var(--chatbox-dock-pad-y) var(--chatbox-col-pad-x) var(--chatbox-dock-pad-b);
   }
 
   .studio-rail {
@@ -295,9 +322,22 @@
     padding: 0.05rem 0.45rem 0.3rem;
   }
 
+  /* Brand lockup — left with nav, not centered / traffic-light-shifted */
   .rail-head {
     gap: 0.5rem;
     min-width: 0;
+    width: 100%;
+    justify-content: flex-start !important;
+    /* Match .rail-nav horizontal inset so logo lines up with Search */
+    padding-left: 0.65rem !important;
+    padding-right: 0.65rem !important;
+  }
+
+  .rail-head .chaeboxi-wordmark {
+    justify-content: flex-start;
+    margin-inline: 0;
+    width: auto;
+    max-width: 100%;
   }
 
   .rail-nav-item {
@@ -436,21 +476,33 @@
     background: color-mix(in srgb, var(--chatbox-background-tertiary) 88%, var(--chatbox-tint-primary) 6%) !important;
   }
 
-  /* mock .turn-actions — soft always, solid on hover */
+  /*
+   * Message actions — Grok DNA:
+   * hidden by default; full opacity on hover / focus / last message (.is-visible).
+   * Opacity + transform only (no max-height jank).
+   */
   .msg-actions {
-    opacity: 0.55;
-    transition: opacity 120ms var(--chatbox-ease);
+    opacity: 0;
+    transform: translateY(2px);
+    transition-property: opacity, transform;
+    transition-duration: 140ms;
+    transition-timing-function: var(--chatbox-ease);
+    pointer-events: none;
   }
 
   .group\/message:hover .msg-actions,
   .group\/message:focus-within .msg-actions,
   .msg-actions.is-visible {
     opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
   }
 
   @media (hover: none) {
     .msg-actions {
       opacity: 1;
+      transform: none;
+      pointer-events: auto;
     }
   }
 
@@ -531,6 +583,46 @@
     gap: 0.45rem;
   }
 
+  /*
+   * Markdown <hr> (---) — browser default is a harsh black rule.
+   * Soft hairline separator: low-opacity border, roomy air, no 3D inset.
+   */
+  .msg-content hr,
+  .assistant-msg .msg-content hr,
+  .user-msg .msg-content hr {
+    display: block;
+    width: 100%;
+    height: 0;
+    margin: 1.1rem 0;
+    padding: 0;
+    border: none;
+    border-top: 1px solid color-mix(in srgb, var(--chatbox-tint-primary) 10%, transparent);
+    background: none;
+    opacity: 1;
+  }
+
+  :root[data-mantine-color-scheme='dark'] .msg-content hr,
+  :root[data-mantine-color-scheme='dark'] .assistant-msg .msg-content hr {
+    border-top-color: color-mix(in srgb, var(--chatbox-tint-primary) 12%, transparent);
+  }
+
+  /* Soft blockquote — match prose, no heavy left bar */
+  .msg-content blockquote {
+    margin: 0.85rem 0;
+    padding: 0.15rem 0 0.15rem 0.85rem;
+    border: none;
+    border-left: 2px solid color-mix(in srgb, var(--chatbox-tint-primary) 12%, transparent);
+    color: var(--chatbox-tint-secondary);
+  }
+
+  .msg-content blockquote p {
+    margin: 0;
+  }
+
+  .msg-content blockquote p + p {
+    margin-top: 0.55rem;
+  }
+
   /* —— SYSTEM: Grok gear mark + softed card —— */
   .system-msg {
     opacity: 1;
@@ -574,91 +666,103 @@
     line-height: 1.55;
   }
 
-  /* —— Grok thinking bar: rounded card with bulb + expand —— */
+  /*
+   * Grok thinking — plain text control, no card shell.
+   * Collapsed: “Worked for 3s ›”
+   * Expanded / live: optional bulb status line + soft body (no hard border).
+   */
   .msg-worked {
     width: 100%;
-    margin: 0.1rem 0 0.65rem;
+    margin: 0.05rem 0 0.55rem;
   }
 
   .msg-worked-row {
     display: flex;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.25rem;
     width: 100%;
     min-width: 0;
-    padding: 0.55rem 0.75rem;
-    border: 1px solid var(--chatbox-border-primary);
-    border-radius: 0.85rem;
-    background: var(--chatbox-background-secondary);
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
     box-sizing: border-box;
   }
 
   .msg-worked-toggle {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    flex: 1;
+    gap: 0.3rem;
+    flex: 0 1 auto;
     min-width: 0;
     max-width: 100%;
-    padding: 0;
+    min-height: 28px;
+    padding: 0.1rem 0;
     margin: 0;
     border: none;
     background: none;
     cursor: pointer;
     font-size: 0.875rem;
-    font-weight: 500;
+    font-weight: 400;
     line-height: 1.4;
-    color: var(--chatbox-tint-secondary);
+    letter-spacing: -0.01em;
+    color: var(--chatbox-tint-tertiary);
     text-align: left;
+    transition-property: color;
+    transition-duration: 120ms;
+    transition-timing-function: var(--chatbox-ease);
   }
 
   .msg-worked-toggle:hover {
-    color: var(--chatbox-tint-primary);
+    color: var(--chatbox-tint-secondary);
+  }
+
+  .msg-worked-label {
+    min-width: 0;
   }
 
   .msg-worked-bulb {
     flex-shrink: 0;
-    width: 1rem;
-    height: 1rem;
-    color: color-mix(in srgb, #c9a227 70%, var(--chatbox-tint-secondary));
+    width: 0.95rem;
+    height: 0.95rem;
+    color: color-mix(in srgb, #c9a227 55%, var(--chatbox-tint-tertiary));
+    opacity: 0.95;
   }
 
   .msg-worked-live {
     font-variant-numeric: tabular-nums;
-    opacity: 0.85;
-  }
-
-  .msg-worked-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 2px;
-    flex-shrink: 0;
-    margin-left: auto;
+    opacity: 0.8;
   }
 
   .msg-worked-chevron {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.35rem;
-    height: 1.35rem;
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
     font-size: 0.95rem;
     line-height: 1;
     color: var(--chatbox-tint-tertiary);
-    border-radius: 0.35rem;
-    transition:
-      transform 120ms var(--chatbox-ease),
-      color 120ms var(--chatbox-ease);
+    opacity: 0.85;
+    transition-property: transform, color, opacity;
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   }
 
   .msg-worked-chevron.is-open {
     transform: rotate(90deg);
     color: var(--chatbox-tint-secondary);
+    opacity: 1;
   }
 
   .msg-worked-copy {
     opacity: 0;
-    transition: opacity 120ms var(--chatbox-ease);
+    flex-shrink: 0;
+    margin-left: 0.15rem;
+    transition-property: opacity;
+    transition-duration: 120ms;
+    transition-timing-function: var(--chatbox-ease);
   }
 
   .msg-worked:hover .msg-worked-copy,
@@ -666,20 +770,42 @@
     opacity: 1;
   }
 
+  /* Grok status line under header (bulb + short summary) */
+  .msg-worked-status {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.4rem;
+    margin-top: 0.35rem;
+    padding: 0;
+    color: var(--chatbox-tint-tertiary);
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.45;
+    letter-spacing: -0.01em;
+  }
+
+  .msg-worked-status-text {
+    min-width: 0;
+    color: var(--chatbox-tint-tertiary);
+  }
+
   .msg-worked-body {
-    margin-top: 0.45rem;
-    padding: 0.55rem 0.75rem;
-    border: 1px solid var(--chatbox-border-primary);
-    border-radius: 0.75rem;
-    background: var(--chatbox-background-secondary);
+    margin-top: 0.4rem;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
     color: var(--chatbox-tint-secondary);
     font-size: 0.9rem;
     line-height: 1.55;
   }
 
-  /* action strip — mock .turn-actions .ia */
+  /* action strip — quiet icons, solid on hover */
   .msg-actions .msg-action-ia {
     color: var(--chatbox-tint-tertiary) !important;
+    transition-property: color, background-color, transform;
+    transition-duration: 120ms;
+    transition-timing-function: var(--chatbox-ease);
   }
 
   .msg-actions .msg-action-ia:hover {
@@ -687,27 +813,51 @@
     background: var(--chatbox-background-tertiary) !important;
   }
 
-  /* composer card — Grok dock DNA: soft pill shell, quiet toolbar */
+  .msg-actions .msg-action-ia:active {
+    transform: scale(0.96);
+  }
+
+  /* composer card — soft lift via layered shadow (no hard resting border) */
   .composer-card {
     width: 100%;
-    border: 1px solid var(--chatbox-border-secondary);
+    border: 1px solid transparent;
     border-radius: 1.15rem;
-    background: var(--chatbox-background-secondary);
+    background: var(--chatbox-composer-bg, var(--chatbox-background-secondary));
     overflow: hidden;
-    box-shadow: none;
+    box-shadow: var(--chatbox-composer-shadow);
     box-sizing: border-box;
     transition-property: border-color, background-color, box-shadow;
     transition-duration: 180ms;
     transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   }
 
-  /* No focus outline — keep the shell quiet while typing; drag-active still uses brand. */
+  /* Kill brand focus ring / bottom border when typing in the dock */
+  .composer-card:focus,
+  .composer-card:focus-within,
+  .composer-card .composer-textarea:focus,
+  .composer-card .composer-textarea:focus-visible,
+  .composer-card .composer-textarea:focus-within {
+    outline: none !important;
+    border: none !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+  }
 
-  /* Drag-over: brand catch state (no gradient, no dock drop-shadow) */
+  /* Keep card elevation on focus-within (textarea rule above clears its own shadow) */
+  .composer-card:focus-within {
+    box-shadow: var(--chatbox-composer-shadow) !important;
+    border: 1px solid transparent !important;
+  }
+
+  /* Drag-over: brand catch without solid primary ring */
   .composer-card.composer-card-drag-active {
-    border-color: color-mix(in srgb, var(--chatbox-tint-brand) 70%, var(--chatbox-border-secondary));
-    background: color-mix(in srgb, var(--chatbox-tint-brand) 10%, var(--chatbox-background-secondary));
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 28%, transparent);
+    border-color: transparent;
+    background: color-mix(in srgb, var(--chatbox-tint-brand) 10%, var(--chatbox-composer-bg, var(--chatbox-background-secondary)));
+    box-shadow: var(--chatbox-composer-shadow-drag);
+  }
+
+  .composer-card.composer-card-drag-active:focus-within {
+    box-shadow: var(--chatbox-composer-shadow-drag) !important;
   }
 
   .composer-drop-overlay {
@@ -800,6 +950,12 @@
     line-height: 1.55 !important;
     letter-spacing: -0.01em;
     min-height: 3.75rem;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    outline: none !important;
+    --input-bd: transparent !important;
   }
 
   .composer-bar {
@@ -820,13 +976,16 @@
     border-radius: 0.4375rem !important; /* r 7px */
   }
 
-  /* mock .blank empty home */
+  /*
+   * blank empty home — same content measure as .chat-col inside dock pad:
+   * outer max = col + 2*pad so padded content width equals --chatbox-col
+   */
   .blank-workbench {
     display: grid;
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
     gap: 2rem;
     align-items: end;
-    max-width: 56rem;
+    max-width: calc(var(--chatbox-col) + 2 * var(--chatbox-col-pad-x));
     width: 100%;
     margin: 0 auto;
     padding: 3.5rem var(--chatbox-col-pad-x) 1.5rem;
@@ -1086,6 +1245,24 @@ div[data-vaul-drawer] {
 :focus-visible {
   outline: 1.5px solid var(--chatbox-tint-brand);
   outline-offset: 2px;
+}
+
+/* Composer is a quiet surface — no brand focus ring inside the dock */
+.composer-card :focus-visible,
+.composer-card :focus {
+  outline: none !important;
+}
+
+/*
+ * Filled primary CTAs: white label on brand indigo.
+ * chatbox-brand is a flat CSS-var palette so Mantine can't auto-contrast.
+ */
+button.mantine-Button-root[data-variant='filled']:not([data-disabled='true']):not(:disabled) {
+  --button-color: #ffffff;
+  color: #ffffff;
+}
+button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
+  color: inherit;
 }
 
 /* ── Rail account footer + dropdown (mock DNA) ── */
@@ -1889,32 +2066,36 @@ div[data-vaul-drawer] {
   font-size: 0.65rem !important;
 }
 
-/* Folder emoji chips — app toolbar density */
-.folder-emoji-chip {
-  width: 34px;
-  height: 34px;
-  display: grid;
-  place-items: center;
-  border-radius: 7px;
-  border: 1px solid var(--chatbox-border-primary);
-  background: var(--chatbox-background-primary);
-  transition:
-    background-color 120ms var(--chatbox-ease),
-    border-color 120ms var(--chatbox-ease);
+/* Project row shared outline mark */
+.project-row-icon {
+  flex-shrink: 0;
+  color: var(--chatbox-tint-tertiary);
+  opacity: 0.95;
 }
 
-.folder-emoji-chip:hover {
-  background: var(--chatbox-background-tertiary);
-  border-color: var(--chatbox-border-secondary);
+/* Brand mark outline — pure black/white, not palette-tinted */
+.chaeboxi-wordmark-mark {
+  outline: 1px solid rgba(0, 0, 0, 0.1);
+  outline-offset: -1px;
 }
 
-.folder-emoji-chip-on {
-  border-color: var(--chatbox-tint-brand) !important;
-  background: var(--chatbox-background-brand-secondary) !important;
+:root[data-mantine-color-scheme='dark'] .chaeboxi-wordmark-mark {
+  outline-color: rgba(255, 255, 255, 0.1);
 }
 
-.folder-emoji-glyph {
-  font-size: 16px;
-  line-height: 1;
-  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+/* Wider invisible hit area for sidebar edge resize / collapse */
+.sidebar-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  z-index: 2;
+  cursor: col-resize;
+  background: transparent;
+  transition: background-color 140ms var(--chatbox-ease);
+}
+
+.sidebar-resizer:hover,
+.sidebar-resizer.is-resizing {
+  background: color-mix(in srgb, var(--chatbox-tint-brand) 35%, transparent);
 }

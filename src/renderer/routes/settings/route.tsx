@@ -125,64 +125,69 @@ export function SettingsRoot() {
   const isSmallScreen = useIsSmallScreen()
 
   return (
-    <Flex flex={1} h="100%" miw={isSmallScreen ? undefined : 800}>
+    <Flex flex={1} h="100%" miw={isSmallScreen ? undefined : 0} className="settings-page min-h-0">
       {(!isSmallScreen || routerState.location.pathname === '/settings') && (
         <Stack
-          p={isSmallScreen ? 0 : 'xs'}
-          gap={isSmallScreen ? 0 : 'xs'}
-          maw={isSmallScreen ? undefined : 256}
+          p={isSmallScreen ? 0 : 'sm'}
+          gap={4}
+          w={isSmallScreen ? '100%' : 220}
+          miw={isSmallScreen ? undefined : 200}
+          maw={isSmallScreen ? undefined : 240}
           className={clsx(
-            'border-solid border-0 border-r overflow-auto border-chatbox-border-primary',
-            isSmallScreen ? 'w-full border-r-0' : 'flex-[1_0_auto]'
+            'settings-nav border-solid border-0 overflow-auto bg-[var(--chatbox-background-rail)]',
+            isSmallScreen ? 'w-full border-r-0' : 'flex-none border-r border-chatbox-border-primary'
           )}
         >
-          {ITEMS.map((item) => (
-            <Link
-              disabled={
-                routerState.location.pathname === `/settings/${item.key}` ||
-                routerState.location.pathname.startsWith(`/settings/${item.key}/`)
-              }
-              key={item.key}
-              to={`/settings/${item.key}` as never}
-              className={'block no-underline w-full'}
-            >
-              <Flex
-                component="span"
-                gap="xs"
-                p="md"
-                pr="xl"
-                py={isSmallScreen ? 'sm' : undefined}
-                align="center"
-                c={item.key === key ? 'chatbox-brand' : 'chatbox-secondary'}
-                bg={item.key === key ? 'var(--chatbox-background-brand-secondary)' : 'transparent'}
-                className={clsx(
-                  ' cursor-pointer select-none rounded-md',
-                  item.key === key ? '' : 'hover:!bg-chatbox-background-gray-secondary'
-                )}
+          {ITEMS.map((item) => {
+            const active =
+              routerState.location.pathname === `/settings/${item.key}` ||
+              routerState.location.pathname.startsWith(`/settings/${item.key}/`)
+            return (
+              <Link
+                disabled={active}
+                key={item.key}
+                to={`/settings/${item.key}` as never}
+                className="block no-underline w-full"
               >
-                <Box component="span" flex="0 0 auto" w={20} h={20} mr="xs">
-                  {item.icon}
-                </Box>
-                <Text
-                  flex={1}
-                  lineClamp={1}
-                  span={true}
-                  className={`!text-inherit ${isSmallScreen ? 'min-h-[32px] leading-[32px]' : ''}`}
+                <Flex
+                  component="span"
+                  gap="xs"
+                  px="sm"
+                  py={isSmallScreen ? 'sm' : 10}
+                  align="center"
+                  c={active ? 'chatbox-primary' : 'chatbox-secondary'}
+                  className={clsx(
+                    'settings-nav-item cursor-pointer select-none rounded-md relative',
+                    active ? 'settings-nav-item-on' : 'hover:bg-[var(--chatbox-background-tertiary)]'
+                  )}
                 >
-                  {t(item.label)}
-                </Text>
-                {isSmallScreen && (
-                  <ScalableIcon icon={IconChevronRight} size={20} className="!text-chatbox-tint-tertiary" />
-                )}
-              </Flex>
+                  <Box component="span" flex="0 0 auto" w={18} h={18} className="opacity-90">
+                    {item.icon}
+                  </Box>
+                  <Text
+                    flex={1}
+                    lineClamp={1}
+                    span
+                    size="sm"
+                    fw={active ? 600 : 500}
+                    className={`!text-inherit tracking-tight ${isSmallScreen ? 'min-h-[32px] leading-[32px]' : ''}`}
+                    style={{ fontSize: '0.875rem' }}
+                  >
+                    {t(item.label)}
+                  </Text>
+                  {isSmallScreen && (
+                    <ScalableIcon icon={IconChevronRight} size={18} className="!text-chatbox-tint-tertiary" />
+                  )}
+                </Flex>
 
-              {isSmallScreen && <Divider />}
-            </Link>
-          ))}
+                {isSmallScreen && <Divider />}
+              </Link>
+            )
+          })}
         </Stack>
       )}
       {!(isSmallScreen && routerState.location.pathname === '/settings') && (
-        <Box flex="1 1 80%" className="overflow-auto">
+        <Box flex="1 1 auto" miw={0} className="overflow-auto settings-content bg-[var(--chatbox-background-primary)]">
           <Outlet />
         </Box>
       )}

@@ -45,17 +45,15 @@ export function useSidebarWidth() {
     return customWidth
   }
 
-  // Otherwise use default responsive width
-  if (xl) {
+  // Studio rail target ~280px (mock --rail-w); keep slightly tighter only on small desktop
+  if (xl || lg) {
     return 280 * scale
-  } else if (lg) {
-    return 240 * scale
   } else if (md) {
-    return 220 * scale
+    return 260 * scale
   } else if (sm) {
-    return 200 * scale
-  } else {
     return 240 * scale
+  } else {
+    return 280 * scale
   }
 }
 

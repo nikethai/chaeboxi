@@ -69,14 +69,15 @@ export function settings(): Settings {
 
     showWordCount: false,
     showTokenCount: false,
-    showTokenUsed: true,
-    showModelName: true,
+    // Per-message token/model lines removed — use dock SessionStatusBar
+    showTokenUsed: false,
+    showModelName: false,
     showMessageTimestamp: false,
     showFirstTokenLatency: false,
     showTokenSpeed: false,
     userAvatarKey: '',
     defaultAssistantAvatarKey: '',
-    theme: Theme.System,
+    theme: Theme.Dark, // dark-first studio shell (see docs/design-guidelines.md)
     language: 'en',
     fontSize: 14,
     spellCheck: true,

@@ -62,21 +62,61 @@ export function getThemeDesign(realTheme: 'light' | 'dark', fontSize: number, la
     palette: {
       mode: realTheme,
       ...(realTheme === 'light'
-        ? {}
-        : {
-            // MUI 内部无法处理 css 变量，需要使用具体颜色值
+        ? {
             background: {
-              default: '#242424',
-              paper: '#242424',
+              default: '#f7f7f8',
+              paper: '#ffffff',
             },
+            primary: {
+              main: '#5b63d4',
+            },
+          }
+        : {
+            // MUI cannot resolve CSS variables — concrete studio dark tokens
+            background: {
+              default: '#121214',
+              paper: '#1c1c21',
+            },
+            primary: {
+              main: '#5b63d4',
+            },
+            text: {
+              primary: '#ececec',
+              secondary: '#a8a8ae',
+            },
+            divider: '#2a2a32',
           }),
     },
     components: {
+      MuiCssBaseline: {
+        styleOverrides: {
+          html: {
+            backgroundColor: realTheme === 'dark' ? '#121214' : '#f7f7f8',
+          },
+          body: {
+            backgroundColor: realTheme === 'dark' ? '#121214' : '#f7f7f8',
+            color: realTheme === 'dark' ? '#ececec' : '#1a1a1e',
+          },
+          '#root': {
+            backgroundColor: realTheme === 'dark' ? '#121214' : '#f7f7f8',
+            minHeight: '100%',
+          },
+        },
+      },
       MuiSnackbarContent: {
         styleOverrides: {
           root: {
-            backgroundColor: realTheme === 'dark' ? '#333333' : undefined,
-            color: realTheme === 'dark' ? '#ffffff' : undefined,
+            backgroundColor: realTheme === 'dark' ? '#1c1c21' : undefined,
+            color: realTheme === 'dark' ? '#ececec' : undefined,
+          },
+        },
+      },
+      MuiDrawer: {
+        styleOverrides: {
+          paper: {
+            backgroundColor: realTheme === 'dark' ? '#16161a' : '#f0f0f2',
+            backgroundImage: 'none',
+            borderRight: realTheme === 'dark' ? '1px solid #2a2a32' : '1px solid #e4e4e8',
           },
         },
       },
@@ -88,7 +128,9 @@ export function getThemeDesign(realTheme: 'light' | 'dark', fontSize: number, la
         ? {
             fontFamily: 'Cairo, Arial, sans-serif',
           }
-        : {}),
+        : {
+            fontFamily: "'Satoshi', 'Segoe UI', system-ui, sans-serif",
+          }),
       fontSize: (fontSize * 14) / 16,
     },
     direction: language === 'ar' ? 'rtl' : 'ltr',

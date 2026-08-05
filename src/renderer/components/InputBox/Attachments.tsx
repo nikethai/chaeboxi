@@ -4,7 +4,7 @@ import Typography from '@mui/material/Typography'
 import { ChatboxAIAPIError } from '@shared/models/errors'
 import { AlertCircle, CheckCircle, Eye, Link, Link2, Loader2, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import MiniButton from '../common/MiniButton'
+import { cn } from '@/lib/utils'
 import FileIcon from '../FileIcon'
 import { ImageInStorage } from '../Image'
 
@@ -21,25 +21,33 @@ function getTranslatedErrorMessage(errorCode: string | undefined, t: (key: strin
   return t('Processing failed')
 }
 
+const chipSurfaceClass =
+  'composer-attach-chip relative m-1 inline-flex size-[88px] items-center justify-center overflow-hidden rounded-[11px] bg-[var(--chatbox-background-tertiary)] group'
+
+const deleteButtonClass =
+  'absolute top-0.5 right-0.5 z-10 flex size-8 items-center justify-center rounded-full bg-[var(--chatbox-background-secondary)]/95 text-red-500 opacity-0 shadow-[0_0_0_1px_rgba(0,0,0,0.06)] transition-[opacity,transform] duration-150 ease-[cubic-bezier(0.2,0,0,1)] group-hover:opacity-100 active:scale-[0.96] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.1)]'
+
 export function ImageMiniCard(props: { storageKey: string; onDelete: () => void }) {
   const { storageKey, onDelete } = props
   return (
-    <div
-      key={storageKey}
-      className="w-[100px] h-[100px] p-1 m-1 inline-flex items-center justify-center
-                                bg-white shadow-sm rounded-md border-solid border-gray-400/20
-                                hover:shadow-lg hover:cursor-pointer hover:scale-105 transition-all duration-200
-                                group/image-mini-card"
-    >
-      <ImageInStorage storageKey={storageKey} />
+    <div key={storageKey} className={cn(chipSurfaceClass, 'group/image-mini-card')}>
+      <div className="size-full overflow-hidden rounded-[9px] p-0.5">
+        <div className="size-full overflow-hidden rounded-[8px] outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10">
+          <ImageInStorage storageKey={storageKey} className="size-full object-cover" />
+        </div>
+      </div>
       {onDelete && (
-        <MiniButton
-          className="hidden group-hover/image-mini-card:inline-block
-                    absolute top-0 right-0 m-1 p-1 rounded-full shadow-lg bg-white/90 dark:bg-gray-800/90 text-red-500 hover:bg-white dark:hover:bg-gray-800"
-          onClick={onDelete}
+        <button
+          type="button"
+          className={deleteButtonClass}
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete()
+          }}
+          aria-label="Remove image"
         >
-          <Trash2 size="22" strokeWidth={2} />
-        </MiniButton>
+          <Trash2 size={16} strokeWidth={1.8} />
+        </button>
       )}
     </div>
   )
@@ -64,41 +72,55 @@ export function FileMiniCard(props: {
 
   // 获取翻译后的错误消息
   const translatedError = getTranslatedErrorMessage(errorMessage, t)
+  const typeLabel = getFileTypeLabel(name, props.fileType)
 
   return (
     <div
-      className="w-[100px] h-[100px] p-1 m-1 inline-flex items-center justify-center
-                                bg-white shadow-sm rounded-md border-solid border-gray-400/20
-                                hover:shadow-lg hover:cursor-pointer hover:scale-105 transition-all duration-200
-                                group/file-mini-card relative"
+      className={cn(chipSurfaceClass, 'group/file-mini-card cursor-default')}
       onClick={handleClick}
+      role={status === 'error' ? 'button' : undefined}
     >
       <Tooltip title={status === 'error' && translatedError ? translatedError : name}>
-        <div className="flex flex-col justify-center items-center">
-          <FileIcon filename={name} className="w-8 h-8 text-black" />
-          <Typography className="w-20 pt-1 text-black text-center" noWrap sx={{ fontSize: '12px' }}>
+        <div className="flex w-full flex-col items-center justify-center gap-1 px-1.5">
+          <FileIcon filename={name} className="h-7 w-7 text-[var(--chatbox-tint-primary)]" />
+          <Typography
+            className="w-full text-center text-[var(--chatbox-tint-primary)]"
+            noWrap
+            sx={{ fontSize: '11px', lineHeight: 1.3, letterSpacing: '-0.01em' }}
+          >
             {name}
           </Typography>
+          {typeLabel && (
+            <span className="max-w-full truncate font-mono text-[10px] tabular-nums text-[var(--chatbox-tint-tertiary)]">
+              {typeLabel}
+            </span>
+          )}
         </div>
       </Tooltip>
 
       {/* Status indicator */}
       {status && (
         <div className="absolute bottom-1 left-1">
-          {status === 'processing' && <Loader2 size="16" className="animate-spin text-blue-500" />}
-          {status === 'completed' && <CheckCircle size="16" className="text-green-500" />}
-          {status === 'error' && <AlertCircle size="16" className="text-red-500" />}
+          {status === 'processing' && (
+            <Loader2 size={14} className="animate-spin text-[var(--chatbox-tint-brand)]" strokeWidth={1.8} />
+          )}
+          {status === 'completed' && <CheckCircle size={14} className="text-emerald-500" strokeWidth={1.8} />}
+          {status === 'error' && <AlertCircle size={14} className="text-red-500" strokeWidth={1.8} />}
         </div>
       )}
 
       {onDelete && (
-        <MiniButton
-          className="hidden group-hover/file-mini-card:inline-block 
-                    absolute top-0 right-0 m-1 p-1 rounded-full shadow-lg text-red-500"
-          onClick={onDelete}
+        <button
+          type="button"
+          className={deleteButtonClass}
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete()
+          }}
+          aria-label={`Remove ${name}`}
         >
-          <Trash2 size="18" strokeWidth={2} />
-        </MiniButton>
+          <Trash2 size={16} strokeWidth={1.8} />
+        </button>
       )}
     </div>
   )
@@ -205,28 +227,46 @@ export function LinkMiniCard(props: {
 
   return (
     <div
-      className="w-[100px] h-[100px] p-1 m-1 inline-flex items-center justify-center
-                                bg-white shadow-sm rounded-md border-solid border-gray-400/20
-                                hover:shadow-lg hover:cursor-pointer hover:scale-105 transition-all duration-200
-                                group/file-mini-card relative"
+      className={cn(chipSurfaceClass, 'group/file-mini-card cursor-default')}
       onClick={handleClick}
+      role={status === 'error' ? 'button' : undefined}
     >
       <Tooltip title={status === 'error' && translatedError ? translatedError : url}>
-        <div className="flex flex-col justify-center items-center">
-          <Link className="w-8 h-8 text-black" strokeWidth={1} />
-          <Typography className="w-20 pt-1 text-black text-center" noWrap sx={{ fontSize: '10px' }}>
+        <div className="flex w-full flex-col items-center justify-center gap-1 px-1.5">
+          <Link className="h-7 w-7 text-[var(--chatbox-tint-primary)]" strokeWidth={1.5} />
+          <Typography
+            className="w-full text-center text-[var(--chatbox-tint-primary)]"
+            noWrap
+            sx={{ fontSize: '11px', lineHeight: 1.3, letterSpacing: '-0.01em' }}
+          >
             {label}
           </Typography>
+          <span className="font-mono text-[10px] text-[var(--chatbox-tint-tertiary)]">URL</span>
         </div>
       </Tooltip>
+
+      {status && (
+        <div className="absolute bottom-1 left-1">
+          {status === 'processing' && (
+            <Loader2 size={14} className="animate-spin text-[var(--chatbox-tint-brand)]" strokeWidth={1.8} />
+          )}
+          {status === 'completed' && <CheckCircle size={14} className="text-emerald-500" strokeWidth={1.8} />}
+          {status === 'error' && <AlertCircle size={14} className="text-red-500" strokeWidth={1.8} />}
+        </div>
+      )}
+
       {onDelete && (
-        <MiniButton
-          className="hidden group-hover/file-mini-card:inline-block 
-                    absolute top-0 right-0 m-1 p-1 rounded-full shadow-lg text-red-500"
-          onClick={onDelete}
+        <button
+          type="button"
+          className={deleteButtonClass}
+          onClick={(e) => {
+            e.stopPropagation()
+            onDelete()
+          }}
+          aria-label="Remove link"
         >
-          <Trash2 size="18" strokeWidth={2} />
-        </MiniButton>
+          <Trash2 size={16} strokeWidth={1.8} />
+        </button>
       )}
     </div>
   )

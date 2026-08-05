@@ -10,7 +10,6 @@ import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { scheduleGenerateNameAndThreadName, scheduleGenerateThreadName } from '@/stores/sessionActions'
 import * as settingActions from '@/stores/settingActions'
 import { useUIStore } from '@/stores/uiStore'
-import Divider from '../common/Divider'
 import { ScalableIcon } from '../common/ScalableIcon'
 import Toolbar from './Toolbar'
 import WindowControls from './WindowControls'
@@ -58,18 +57,19 @@ export default function Header(props: { session: Session }) {
   return (
     <>
       <Flex
-        h={isSmallScreen ? 56 : 54}
+        h={isSmallScreen ? 56 : 44}
         align="center"
-        px={isSmallScreen ? 'xs' : 'sm'}
-        className={'flex-none title-bar'}
+        px={isSmallScreen ? 'xs' : 'md'}
+        className="flex-none title-bar bg-[var(--chatbox-background-primary)]"
+        style={{ borderBottom: 'none' }}
       >
         {(!showSidebar || isSmallScreen) && (
           <Flex align="center" className={needRoomForMacWindowControls ? 'pl-20' : ''}>
             <ActionIcon
               className="controls"
               variant="subtle"
-              size={isSmallScreen ? 30 : 20}
-              color={isSmallScreen ? 'chatbox-secondary' : 'chatbox-tertiary'}
+              size={isSmallScreen ? 30 : 28}
+              color="chatbox-tertiary"
               mr={isSmallScreen ? 'xs' : 'sm'}
               onClick={() => setShowSidebar(!showSidebar)}
             >
@@ -80,16 +80,18 @@ export default function Header(props: { session: Session }) {
 
         <Flex
           align="center"
-          gap={'xxs'}
+          gap="xxs"
           flex={1}
           className={isSmallScreen ? 'min-w-0 px-1' : ''}
           {...(isSmallScreen ? { justify: 'center' } : {})}
         >
           <Title
             order={4}
-            fz={isSmallScreen ? 21 : 20}
+            fz={isSmallScreen ? 17 : '0.95rem'}
+            fw={600}
             lineClamp={1}
-            className={clsx(isSmallScreen && 'max-w-[72vw] text-center leading-tight')}
+            className={clsx('tracking-tight', isSmallScreen && 'max-w-[72vw] text-center leading-tight')}
+            style={{ letterSpacing: '-0.02em' }}
           >
             {currentSession?.name}
           </Title>
@@ -99,12 +101,12 @@ export default function Header(props: { session: Session }) {
               className="controls"
               variant="subtle"
               color="chatbox-tertiary"
-              size={isSmallScreen ? 24 : 20}
+              size={isSmallScreen ? 24 : 22}
               onClick={() => {
                 editCurrentSession()
               }}
             >
-              <ScalableIcon icon={IconPencil} size={isSmallScreen ? 18 : 20} />
+              <ScalableIcon icon={IconPencil} size={isSmallScreen ? 16 : 15} />
             </ActionIcon>
           </Tooltip>
         </Flex>
@@ -113,8 +115,6 @@ export default function Header(props: { session: Session }) {
 
         <WindowControls className="-mr-3 ml-2" />
       </Flex>
-
-      <Divider />
     </>
   )
 }

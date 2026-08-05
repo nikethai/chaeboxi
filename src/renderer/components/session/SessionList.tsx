@@ -288,7 +288,12 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
   return (
     <>
       <Flex align="center" py="xs" px="md" gap="xs">
-        <Text c="chatbox-tertiary" flex={1}>
+        <Text
+          c="chatbox-tertiary"
+          flex={1}
+          className="uppercase tracking-wider"
+          style={{ fontFamily: 'var(--chatbox-font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em', fontWeight: 500 }}
+        >
           {showArchived ? t('Archived Chats') : t('chat')}
         </Text>
 
@@ -296,7 +301,7 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
           <ActionIcon
             variant="subtle"
             color="chatbox-tertiary"
-            size={20}
+            size={24}
             onClick={() => setOpenSearchDialog(true, true)}
           >
             <IconSearch />

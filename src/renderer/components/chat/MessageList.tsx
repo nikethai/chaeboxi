@@ -273,7 +273,7 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
   return (
     <div className={cn('w-full h-full mx-auto', props.className)}>
       <BlockCodeCollapsedStateProvider defaultCollapsed={!!settingsStore.getState().autoCollapseCodeBlock}>
-        <div className="overflow-hidden h-full pr-0 pl-1 sm:pl-0 relative" ref={messageListRef}>
+        <div className="overflow-hidden h-full relative" ref={messageListRef}>
           <Virtuoso
             style={{ scrollbarGutter: 'stable' }}
             className={platformType === 'win32' ? 'scrollbar-custom' : ''}
@@ -295,8 +295,7 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
                 <Stack
                   key={msg.id}
                   gap={0}
-                  className={widthFull ? 'w-full' : 'max-w-4xl mx-auto'}
-                  pt={msg.role === 'user' ? 4 : 0}
+                  className={cn(widthFull ? 'chat-col-full' : 'chat-col', index === 0 && 'pt-2')}
                 >
                   {currentThreadHash[msg.id] && (
                     <ThreadLabel thread={currentThreadHash[msg.id]} sessionId={currentSession.id} />

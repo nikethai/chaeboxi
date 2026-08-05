@@ -34,7 +34,7 @@ export const ModelSelector = forwardRef<HTMLDivElement, ModelSelectorProps>(
       modelFilter,
       selectedProviderId,
       selectedModelId,
-      searchPosition = 'bottom',
+      searchPosition = 'top',
       ...comboboxProps
     },
     ref

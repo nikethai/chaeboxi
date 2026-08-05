@@ -75,7 +75,7 @@ export default function FollowUpSuggestions({ sessionId, citations, searchQuery 
           key={suggestion}
           variant="light"
           size="compact-xs"
-          radius="xl"
+          radius="md"
           color="chatbox-brand"
           className="font-normal"
           onClick={() => handleSuggestionClick(suggestion)}

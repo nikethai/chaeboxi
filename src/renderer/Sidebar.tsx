@@ -1,26 +1,41 @@
-import { ActionIcon, Box, Button, Flex, Image, NavLink, Stack, Text, TextInput, Tooltip } from '@mantine/core'
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Flex,
+  Image,
+  Menu,
+  Stack,
+  Text,
+  TextInput,
+  Tooltip,
+  UnstyledButton,
+} from '@mantine/core'
 import SwipeableDrawer from '@mui/material/SwipeableDrawer'
 import {
   IconArchive,
+  IconChevronUp,
   IconCirclePlus,
   IconCode,
   IconFolder,
   IconInfoCircle,
   IconLayoutSidebarLeftCollapse,
+  IconLogout,
   IconMessageChatbot,
   IconPhotoPlus,
-  IconSettingsFilled,
+  IconSettings,
+  IconUser,
 } from '@tabler/icons-react'
 import { useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Divider from './components/common/Divider'
-import { ScalableIcon } from './components/common/ScalableIcon'
 import { AdaptiveModal } from './components/common/AdaptiveModal'
+import { ScalableIcon } from './components/common/ScalableIcon'
 import ThemeSwitchButton from './components/dev/ThemeSwitchButton'
 import SessionList from './components/session/SessionList'
 import { FORCE_ENABLE_DEV_PAGES } from './dev/devToolsConfig'
+import { useMyCopilots } from './hooks/useCopilots'
 import { useFolders } from './hooks/useFolders'
 import useNeedRoomForMacWinControls from './hooks/useNeedRoomForWinControls'
 import { useIsSmallScreen, useSidebarWidth } from './hooks/useScreenChange'
@@ -33,12 +48,16 @@ import { useLanguage } from './stores/settingsStore'
 import { useUIStore } from './stores/uiStore'
 import { CHATBOX_BUILD_PLATFORM } from './variables'
 
+/** Compact emoji set for folder icons — chip picker, not a free-text emoji field */
+const FOLDER_EMOJI_PRESETS = ['📁', '💼', '🔬', '🎨', '📚', '⚡', '🏠', '🧪', '🛠', '🎯'] as const
+
 export default function Sidebar() {
   const { t } = useTranslation()
   const versionHook = useVersion()
   const language = useLanguage()
   const navigate = useNavigate()
   const { addFolder } = useFolders()
+  const { copilots: myCopilots } = useMyCopilots()
   const showSidebar = useUIStore((s) => s.showSidebar)
   const setShowSidebar = useUIStore((s) => s.setShowSidebar)
   const setSidebarWidth = useUIStore((s) => s.setSidebarWidth)
@@ -54,10 +73,41 @@ export default function Sidebar() {
   const [folderModalOpened, setFolderModalOpened] = useState(false)
   const [folderName, setFolderName] = useState('')
   const [folderEmoji, setFolderEmoji] = useState('')
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false)
+  const [accountMenuWidth, setAccountMenuWidth] = useState<number | undefined>(undefined)
+  const accountTriggerRef = useRef<HTMLButtonElement>(null)
   const resizeStartX = useRef<number>(0)
   const resizeStartWidth = useRef<number>(0)
 
+  const syncAccountMenuWidth = useCallback(() => {
+    const el = accountTriggerRef.current
+    if (el) {
+      // Match dropdown to trigger / rail foot content width (full container)
+      setAccountMenuWidth(Math.round(el.getBoundingClientRect().width))
+    }
+  }, [])
+
   const { needRoomForMacWindowControls } = useNeedRoomForMacWinControls()
+
+  const closeSidebarIfMobile = useCallback(() => {
+    if (isSmallScreen) {
+      setShowSidebar(false)
+    }
+  }, [isSmallScreen, setShowSidebar])
+
+  const copilotCount = useMemo(() => myCopilots.length, [myCopilots.length])
+
+  const displayName = useMemo(() => {
+    // Local-first CE — no account system; product name as workspace identity
+    return 'Chaeboxi'
+  }, [])
+
+  const displaySubtitle = useMemo(() => {
+    if (/\d/.test(versionHook.version)) {
+      return `local · v${versionHook.version}`
+    }
+    return 'local · free'
+  }, [versionHook.version])
 
   const handleCreateNewSession = useCallback(() => {
     navigate({ to: `/` })
@@ -139,9 +189,11 @@ export default function Sidebar() {
         sx={{
           '& .MuiDrawer-paper': {
             backgroundImage: 'none',
+            backgroundColor: 'var(--chatbox-background-rail)',
             boxSizing: 'border-box',
             width: isSmallScreen ? '75vw' : sidebarWidth,
             maxWidth: '75vw',
+            borderRight: '1px solid var(--chatbox-border-primary)',
           },
         }}
         SlideProps={language === 'ar' ? { direction: 'left' } : undefined}
@@ -156,132 +208,258 @@ export default function Sidebar() {
           gap={0}
           pt="var(--mobile-safe-area-inset-top, 0px)"
           pb="var(--mobile-safe-area-inset-bottom, 0px)"
-          className="relative"
+          className="relative studio-rail"
         >
           {needRoomForMacWindowControls && <Box className="title-bar flex-[0_0_44px]" />}
-          <Flex align="center" justify="space-between" px="md" py="sm">
-            <Flex align="center" gap="sm">
-              <Flex align="center" gap="sm" onClick={() => {}} style={{ cursor: 'pointer' }}>
-                <Image src={icon} w={20} h={20} />
-                <Text span c="chatbox-secondary" size="xl" lh={1.2} fw="700">
+          <Flex align="center" justify="space-between" px="md" pt="md" pb="sm">
+            <Flex align="center" gap="sm" miw={0}>
+              <Image src={icon} w={22} h={22} className="shrink-0" />
+              <Stack gap={2} miw={0}>
+                <Text span c="chatbox-primary" size="md" lh={1.1} fw={700} className="tracking-tight">
                   Chaeboxi
                 </Text>
-              </Flex>
+                <Text
+                  span
+                  size="xs"
+                  c="chatbox-tertiary"
+                  className="font-[family-name:var(--chatbox-font-mono)] uppercase tracking-wider"
+                  style={{ fontSize: '0.7rem', letterSpacing: '0.04em' }}
+                >
+                  Studio
+                </Text>
+              </Stack>
               {FORCE_ENABLE_DEV_PAGES && <ThemeSwitchButton size="xs" />}
             </Flex>
 
             <Tooltip label={t('Collapse')} openDelay={1000} withArrow>
-              <ActionIcon variant="subtle" color="chatbox-tertiary" size={20} onClick={() => setShowSidebar(false)}>
-                <IconLayoutSidebarLeftCollapse />
+              <ActionIcon variant="subtle" color="chatbox-tertiary" size={28} onClick={() => setShowSidebar(false)}>
+                <IconLayoutSidebarLeftCollapse size={16} />
               </ActionIcon>
             </Tooltip>
           </Flex>
 
-          <Flex px="md" pb="xs" gap="xs">
-            <Button variant="light" flex={1} onClick={() => setFolderModalOpened(true)}>
-              <ScalableIcon icon={IconFolder} className="mr-2" />
+          <Box px="sm" pb="sm" pt={2}>
+            <Button
+              fullWidth
+              color="chatbox-brand"
+              variant="filled"
+              h={40}
+              radius="md"
+              fw={600}
+              styles={{
+                root: {
+                  letterSpacing: '-0.01em',
+                  background: 'var(--chatbox-background-brand-primary)',
+                  '&:hover': { background: 'var(--chatbox-background-brand-primary-hover)' },
+                },
+                label: { width: '100%' },
+                inner: { justifyContent: 'space-between' },
+              }}
+              onClick={handleCreateNewSession}
+              rightSection={
+                !isSmallScreen ? (
+                  <Text
+                    component="span"
+                    size="xs"
+                    className="opacity-80 border border-white/25 rounded"
+                    style={{
+                      fontSize: '0.7rem',
+                      fontFamily: 'var(--chatbox-font-mono)',
+                      fontWeight: 500,
+                      padding: '0.12rem 0.32rem',
+                    }}
+                  >
+                    ⌘N
+                  </Text>
+                ) : undefined
+              }
+              leftSection={<ScalableIcon icon={IconCirclePlus} size={16} />}
+            >
+              {t('New Chat')}
+            </Button>
+          </Box>
+
+          <Flex px="md" pb="sm" gap="xs">
+            <Button
+              variant="default"
+              flex={1}
+              h={34}
+              radius="md"
+              fw={500}
+              styles={{
+                root: {
+                  background: 'var(--chatbox-background-primary)',
+                  borderColor: 'var(--chatbox-border-primary)',
+                  color: 'var(--chatbox-tint-secondary)',
+                },
+              }}
+              onClick={() => setFolderModalOpened(true)}
+            >
+              <ScalableIcon icon={IconFolder} size={15} className="mr-1.5" />
               {t('New Folder')}
             </Button>
             <Tooltip label={showArchived ? t('Show Active Chats') : t('Show Archived Chats')} withArrow>
               <ActionIcon
-                size={36}
-                variant={showArchived ? 'filled' : 'light'}
+                size={34}
+                radius="md"
+                variant={showArchived ? 'filled' : 'default'}
                 color={showArchived ? 'chatbox-brand' : 'chatbox-gray'}
+                styles={
+                  showArchived
+                    ? undefined
+                    : {
+                        root: {
+                          background: 'var(--chatbox-background-primary)',
+                          border: '1px solid var(--chatbox-border-primary)',
+                        },
+                      }
+                }
                 onClick={() => setShowArchived((value) => !value)}
               >
-                <IconArchive size={18} />
+                <IconArchive size={16} />
               </ActionIcon>
             </Tooltip>
           </Flex>
 
-          <SessionList sessionListViewportRef={sessionListViewportRef} showArchived={showArchived} />
+          <Box className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            <SessionList sessionListViewportRef={sessionListViewportRef} showArchived={showArchived} />
+          </Box>
 
-          <Stack gap={0} px="xs" pb="xs">
-            <Divider />
-            <Stack gap="xs" pt="xs" mb="xs">
-              <Button variant="light" fullWidth onClick={handleCreateNewSession}>
-                <ScalableIcon icon={IconCirclePlus} className="mr-2" />
-                {t('New Chat')}
-              </Button>
-              <Button variant="light" fullWidth onClick={handleCreateNewPictureSession}>
-                <ScalableIcon icon={IconPhotoPlus} className="mr-2" />
-                {t('Create Image')}
-              </Button>
-            </Stack>
-            {CHATBOX_BUILD_PLATFORM !== 'android' && (
-              <NavLink
-                c="chatbox-secondary"
-                className="rounded"
-                label={t('My Copilots')}
-                leftSection={<ScalableIcon icon={IconMessageChatbot} size={20} />}
-                onClick={() => {
-                  navigate({
-                    to: '/copilots',
-                  })
-                  if (isSmallScreen) {
-                    setShowSidebar(false)
-                  }
-                }}
-                variant="light"
-                p="xs"
-              />
-            )}
-            <NavLink
-              c="chatbox-secondary"
-              className="rounded"
-              label={t('Settings')}
-              leftSection={<ScalableIcon icon={IconSettingsFilled} size={20} />}
-              onClick={() => {
-                navigateToSettings()
-                if (isSmallScreen) {
-                  setShowSidebar(false)
+          {/* Account footer — mock rail-foot: menu above, user trigger below */}
+          <div className="rail-foot">
+            <Menu
+              shadow="md"
+              width={accountMenuWidth ?? 'target'}
+              position="top"
+              withinPortal
+              offset={6}
+              middlewares={{ flip: true, shift: false, size: true }}
+              opened={accountMenuOpen}
+              onChange={(open) => {
+                if (open) {
+                  syncAccountMenuWidth()
                 }
+                setAccountMenuOpen(open)
               }}
-              variant="light"
-              p="xs"
-            />
-            {FORCE_ENABLE_DEV_PAGES && (
-              <NavLink
-                c="chatbox-secondary"
-                className="rounded"
-                label="Dev Tools"
-                leftSection={<ScalableIcon icon={IconCode} size={20} />}
-                onClick={() => {
-                  navigate({
-                    to: '/dev',
-                  })
-                  if (isSmallScreen) {
-                    setShowSidebar(false)
+              classNames={{
+                dropdown: 'user-menu-dropdown user-menu-dropdown-full',
+              }}
+            >
+              <Menu.Target>
+                <UnstyledButton
+                  ref={accountTriggerRef}
+                  className="user-trigger"
+                  data-expanded={accountMenuOpen ? 'true' : 'false'}
+                  aria-expanded={accountMenuOpen}
+                  aria-haspopup="menu"
+                  onMouseEnter={syncAccountMenuWidth}
+                >
+                  <span className="user-avatar" aria-hidden>
+                    <IconUser size={16} stroke={1.5} />
+                  </span>
+                  <span className="user-meta">
+                    <strong>{displayName}</strong>
+                    <span>{displaySubtitle}</span>
+                  </span>
+                  <span className="user-chevron" aria-hidden>
+                    <IconChevronUp size={16} stroke={1.75} />
+                  </span>
+                </UnstyledButton>
+              </Menu.Target>
+
+              <Menu.Dropdown>
+                <Menu.Label>{t('Workspace')}</Menu.Label>
+                <Menu.Item
+                  leftSection={<IconPhotoPlus size={15} stroke={1.5} />}
+                  rightSection={<em className="user-menu-badge">beta</em>}
+                  onClick={() => {
+                    handleCreateNewPictureSession()
+                    closeSidebarIfMobile()
+                  }}
+                >
+                  {t('Image studio')}
+                </Menu.Item>
+                {CHATBOX_BUILD_PLATFORM !== 'android' && (
+                  <Menu.Item
+                    leftSection={<IconMessageChatbot size={15} stroke={1.5} />}
+                    rightSection={
+                      copilotCount > 0 ? <em className="user-menu-badge">{copilotCount}</em> : undefined
+                    }
+                    onClick={() => {
+                      navigate({ to: '/copilots' })
+                      closeSidebarIfMobile()
+                    }}
+                  >
+                    {t('Copilots')}
+                  </Menu.Item>
+                )}
+                {FORCE_ENABLE_DEV_PAGES && (
+                  <Menu.Item
+                    leftSection={<IconCode size={15} stroke={1.5} />}
+                    onClick={() => {
+                      navigate({ to: '/dev' })
+                      closeSidebarIfMobile()
+                    }}
+                  >
+                    Dev Tools
+                  </Menu.Item>
+                )}
+
+                <Menu.Divider />
+                <Menu.Label>{t('Account')}</Menu.Label>
+                <Menu.Item
+                  leftSection={<IconSettings size={15} stroke={1.5} />}
+                  rightSection={<em className="user-menu-kbd">⌘,</em>}
+                  onClick={() => {
+                    navigateToSettings()
+                    closeSidebarIfMobile()
+                  }}
+                >
+                  {t('Settings')}
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<IconUser size={15} stroke={1.5} />}
+                  onClick={() => {
+                    navigateToSettings('/chat')
+                    closeSidebarIfMobile()
+                  }}
+                >
+                  {t('Profile')}
+                </Menu.Item>
+                <Menu.Item
+                  leftSection={<IconInfoCircle size={15} stroke={1.5} />}
+                  rightSection={
+                    CHATBOX_BUILD_PLATFORM === 'android' && versionHook.needCheckUpdate ? (
+                      <Box w={6} h={6} bg="chatbox-brand" style={{ borderRadius: '50%' }} />
+                    ) : (
+                      <em className="user-menu-badge">
+                        {/\d/.test(versionHook.version) ? `v${versionHook.version}` : ''}
+                      </em>
+                    )
                   }
-                }}
-                variant="light"
-                p="xs"
-              />
-            )}
-            <NavLink
-              c="chatbox-tertiary"
-              className="rounded"
-              label={
-                <Flex align="center" gap={6}>
-                  <span>{`${t('About')} ${/\d/.test(versionHook.version) ? `(${versionHook.version})` : ''}`}</span>
-                  {CHATBOX_BUILD_PLATFORM === 'android' && versionHook.needCheckUpdate && (
-                    <Box w={8} h={8} miw={8} bg="chatbox-brand" style={{ borderRadius: '50%' }} />
-                  )}
-                </Flex>
-              }
-              leftSection={<ScalableIcon icon={IconInfoCircle} size={20} />}
-              onClick={() => {
-                navigate({
-                  to: '/about',
-                })
-                if (isSmallScreen) {
-                  setShowSidebar(false)
-                }
-              }}
-              variant="light"
-              p="xs"
-            />
-          </Stack>
+                  onClick={() => {
+                    navigate({ to: '/about' })
+                    closeSidebarIfMobile()
+                  }}
+                >
+                  {t('About')}
+                </Menu.Item>
+
+                <Menu.Divider />
+                <Menu.Item
+                  className="user-menu-item-danger"
+                  leftSection={<IconLogout size={15} stroke={1.5} />}
+                  onClick={() => {
+                    // Local CE has no cloud account — About is the closest account surface
+                    navigate({ to: '/about' })
+                    closeSidebarIfMobile()
+                  }}
+                >
+                  {t('Sign out')}
+                </Menu.Item>
+              </Menu.Dropdown>
+            </Menu>
+          </div>
           {!isSmallScreen && (
             <Box
               onMouseDown={handleResizeStart}
@@ -296,26 +474,112 @@ export default function Sidebar() {
 
       <AdaptiveModal
         opened={folderModalOpened}
-        onClose={() => setFolderModalOpened(false)}
+        onClose={() => {
+          setFolderModalOpened(false)
+          setFolderName('')
+          setFolderEmoji('')
+        }}
         title={t('New Folder')}
         centered
+        size={360}
+        className="app-dialog"
+        classNames={{ content: 'app-dialog-content', header: 'app-dialog-header', body: 'app-dialog-body' }}
       >
-        <TextInput
-          label={t('Folder Name')}
-          value={folderName}
-          onChange={(event) => setFolderName(event.currentTarget.value)}
-        />
-        <TextInput
-          mt="sm"
-          label={t('Folder Emoji')}
-          placeholder="📁"
-          value={folderEmoji}
-          onChange={(event) => setFolderEmoji(event.currentTarget.value)}
-        />
+        {/* Desktop app dialog: name + emoji chips — not a web form stack */}
+        <Stack gap={14}>
+          <TextInput
+            label={t('Name')}
+            placeholder={t('Work, Research, Archive…')}
+            value={folderName}
+            data-autofocus
+            autoFocus
+            onChange={(event) => setFolderName(event.currentTarget.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault()
+                handleCreateFolder()
+              }
+            }}
+            styles={{
+              label: { fontSize: 12, fontWeight: 600, color: 'var(--chatbox-tint-secondary)', marginBottom: 6 },
+              input: {
+                height: 36,
+                fontSize: 14,
+                background: 'var(--chatbox-background-primary)',
+                borderColor: 'var(--chatbox-border-secondary)',
+              },
+            }}
+          />
+
+          <Box>
+            <Text size="xs" fw={600} c="chatbox-secondary" mb={8} style={{ fontSize: 12 }}>
+              {t('Icon')}
+              <Text span c="chatbox-tertiary" fw={400} ml={6}>
+                {t('optional')}
+              </Text>
+            </Text>
+            <Flex gap={6} wrap="wrap" align="center">
+              {FOLDER_EMOJI_PRESETS.map((emoji) => {
+                const selected = folderEmoji === emoji
+                return (
+                  <UnstyledButton
+                    key={emoji}
+                    type="button"
+                    onClick={() => setFolderEmoji(selected ? '' : emoji)}
+                    aria-pressed={selected}
+                    className={clsx('folder-emoji-chip', selected && 'folder-emoji-chip-on')}
+                    title={emoji}
+                  >
+                    <span className="folder-emoji-glyph">{emoji}</span>
+                  </UnstyledButton>
+                )
+              })}
+              {folderEmoji && !(FOLDER_EMOJI_PRESETS as readonly string[]).includes(folderEmoji) && (
+                <UnstyledButton
+                  type="button"
+                  onClick={() => setFolderEmoji('')}
+                  className="folder-emoji-chip folder-emoji-chip-on"
+                  title={t('Clear')}
+                >
+                  <span className="folder-emoji-glyph">{folderEmoji}</span>
+                </UnstyledButton>
+              )}
+            </Flex>
+          </Box>
+        </Stack>
 
         <AdaptiveModal.Actions>
-          <AdaptiveModal.CloseButton onClick={() => setFolderModalOpened(false)} />
-          <Button onClick={handleCreateFolder}>{t('Create')}</Button>
+          <AdaptiveModal.CloseButton
+            onClick={() => {
+              setFolderModalOpened(false)
+              setFolderName('')
+              setFolderEmoji('')
+            }}
+          >
+            {t('Cancel')}
+          </AdaptiveModal.CloseButton>
+          <Button
+            size="sm"
+            onClick={handleCreateFolder}
+            disabled={!folderName.trim()}
+            fw={600}
+            styles={{
+              root: {
+                height: 32,
+                minWidth: 88,
+                backgroundColor: 'var(--chatbox-background-brand-primary)',
+                '&:hover': { backgroundColor: 'var(--chatbox-background-brand-primary-hover)' },
+                '&:disabled': {
+                  backgroundColor: 'var(--chatbox-background-tertiary)',
+                  color: 'var(--chatbox-tint-tertiary)',
+                  opacity: 1,
+                  border: '1px solid var(--chatbox-border-primary)',
+                },
+              },
+            }}
+          >
+            {t('Create')}
+          </Button>
         </AdaptiveModal.Actions>
       </AdaptiveModal>
     </>

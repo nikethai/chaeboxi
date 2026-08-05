@@ -14,9 +14,9 @@ import {
 } from '@mantine/core'
 import { useViewportSize } from '@mantine/hooks'
 import {
-  getFileAcceptConfig,
   getFileAcceptString,
-  getUnsupportedFileType,
+  getUnsupportedFileI18nKey,
+  isAiReadableImageFile,
   isSupportedFile,
 } from '@shared/file-extensions'
 import { getOrCreateGatewayClient } from '@shared/models/openclaw'
@@ -47,7 +47,6 @@ import { useAtom, useAtomValue } from 'jotai'
 import _, { pick } from 'lodash'
 import type React from 'react'
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { useDropzone } from 'react-dropzone'
 import { useTranslation } from 'react-i18next'
 import { createModelDependencies } from '@/adapters'
 import useInputBoxHistory from '@/hooks/useInputBoxHistory'
@@ -839,65 +838,144 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       }
     }
 
+    const toastUnsupportedFile = useCallback(
+      (fileName: string) => {
+        const key = getUnsupportedFileI18nKey(fileName)
+        toastActions.add(t(key, { fileName }))
+      },
+      [t]
+    )
+
     const insertFiles = async (files: File[]) => {
       for (const file of files) {
-        // 文件和图片插入方法复用，会导致 svg、gif 这类不支持的图片也被插入，但暂时没看到有什么问题
-        if (file.type.startsWith('image/')) {
-          const base64 = await picUtils.getImageBase64AndResize(file)
-          const key = StorageKeyGenerator.picture('input-box')
-          await storage.setBlob(key, base64)
-          setPreConstructedMessage((prev) => ({
-            ...prev,
-            pictureKeys: [...(prev.pictureKeys || []), key].slice(-8),
-          })) // Maximum 8 images
-        } else {
-          // Check if file type is supported
-          if (!isSupportedFile(file.name)) {
-            const unsupportedType = getUnsupportedFileType(file.name)
-            let errorMsg = t('Unsupported file type: {{fileName}}', { fileName: file.name })
-            if (unsupportedType === 'iwork') {
-              errorMsg = t('iWork files (Pages, Keynote) are not supported. Please export to PDF or Office format.')
-            } else if (unsupportedType === 'audio') {
-              errorMsg = t('Audio files are not supported')
-            } else if (unsupportedType === 'video') {
-              errorMsg = t('Video files are not supported')
-            } else if (unsupportedType === 'binary') {
-              errorMsg = t('Binary/executable files are not supported')
-            } else if (unsupportedType === 'archive') {
-              errorMsg = t('Archive files are not supported. Please extract and upload individual files.')
-            } else if (unsupportedType === 'image') {
-              errorMsg = t('Advanced image formats are not supported. Please convert to JPG or PNG.')
-            }
-            toastActions.add(errorMsg)
+        // Vision lane: AI-readable images (canvas resize). Advanced formats toast and skip.
+        if (file.type.startsWith('image/') || isAiReadableImageFile(file)) {
+          if (!isAiReadableImageFile(file)) {
+            toastUnsupportedFile(file.name)
             continue
           }
-          setPreConstructedMessage((prev) => {
-            const newAttachments = prev.attachments.find(
-              (f) => StorageKeyGenerator.fileUniqKey(f) === StorageKeyGenerator.fileUniqKey(file)
-            )
-              ? prev.attachments
-              : [...(prev.attachments || []), file].slice(-20) // Maximum 20 attachments
-
-            // Only preprocess first 20 files to avoid wasting resources
-            const fileIndex = newAttachments.findIndex(
-              (f) => f.name === file.name && f.lastModified === file.lastModified
-            )
-            if (fileIndex < 20) {
-              const preprocessPromise = startFilePreprocessing(file)
-              return {
-                ...storeFilePromise(markFileProcessing(prev, file), file, preprocessPromise),
-                attachments: newAttachments,
-              }
-            }
-
-            return {
+          try {
+            const base64 = await picUtils.getImageBase64AndResize(file)
+            const key = StorageKeyGenerator.picture('input-box')
+            await storage.setBlob(key, base64)
+            setPreConstructedMessage((prev) => ({
               ...prev,
+              pictureKeys: [...(prev.pictureKeys || []), key].slice(-8),
+            })) // Maximum 8 images
+          } catch {
+            toastUnsupportedFile(file.name)
+          }
+          continue
+        }
+
+        // Document / text lane
+        if (!isSupportedFile(file.name)) {
+          toastUnsupportedFile(file.name)
+          continue
+        }
+        setPreConstructedMessage((prev) => {
+          const newAttachments = prev.attachments.find(
+            (f) => StorageKeyGenerator.fileUniqKey(f) === StorageKeyGenerator.fileUniqKey(file)
+          )
+            ? prev.attachments
+            : [...(prev.attachments || []), file].slice(-20) // Maximum 20 attachments
+
+          // Only preprocess first 20 files to avoid wasting resources
+          const fileIndex = newAttachments.findIndex(
+            (f) => f.name === file.name && f.lastModified === file.lastModified
+          )
+          if (fileIndex < 20) {
+            const preprocessPromise = startFilePreprocessing(file)
+            return {
+              ...storeFilePromise(markFileProcessing(prev, file), file, preprocessPromise),
               attachments: newAttachments,
             }
-          })
-        }
+          }
+
+          return {
+            ...prev,
+            attachments: newAttachments,
+          }
+        })
       }
     }
+
+    const insertFilesRef = useRef(insertFiles)
+    insertFilesRef.current = insertFiles
+
+    // Window-level file DnD so drops work over the whole chat (not only the composer shell).
+    // Tauri must set dragDropEnabled:false so HTML5 File events reach the webview.
+    const [isFileDragActive, setIsFileDragActive] = useState(false)
+    useEffect(() => {
+      if (sessionType === 'picture') {
+        return
+      }
+
+      let dragDepth = 0
+
+      const isFileDrag = (event: DragEvent) => {
+        const types = event.dataTransfer?.types
+        if (!types) {
+          return false
+        }
+        return Array.from(types).includes('Files')
+      }
+
+      const onDragEnter = (event: DragEvent) => {
+        if (!isFileDrag(event)) {
+          return
+        }
+        event.preventDefault()
+        dragDepth += 1
+        setIsFileDragActive(true)
+      }
+
+      const onDragLeave = (event: DragEvent) => {
+        if (!isFileDrag(event)) {
+          return
+        }
+        dragDepth = Math.max(0, dragDepth - 1)
+        if (dragDepth === 0) {
+          setIsFileDragActive(false)
+        }
+      }
+
+      const onDragOver = (event: DragEvent) => {
+        if (!isFileDrag(event)) {
+          return
+        }
+        // Required so the browser allows drop instead of navigating away
+        event.preventDefault()
+        if (event.dataTransfer) {
+          event.dataTransfer.dropEffect = 'copy'
+        }
+      }
+
+      const onDrop = (event: DragEvent) => {
+        if (!isFileDrag(event)) {
+          return
+        }
+        event.preventDefault()
+        event.stopPropagation()
+        dragDepth = 0
+        setIsFileDragActive(false)
+        const files = Array.from(event.dataTransfer?.files ?? [])
+        if (files.length > 0) {
+          void insertFilesRef.current(files)
+        }
+      }
+
+      window.addEventListener('dragenter', onDragEnter)
+      window.addEventListener('dragleave', onDragLeave)
+      window.addEventListener('dragover', onDragOver)
+      window.addEventListener('drop', onDrop)
+      return () => {
+        window.removeEventListener('dragenter', onDragEnter)
+        window.removeEventListener('dragleave', onDragLeave)
+        window.removeEventListener('dragover', onDragOver)
+        window.removeEventListener('drop', onDrop)
+      }
+    }, [sessionType])
 
     const onFileInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
       if (!event.target.files) {
@@ -980,21 +1058,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       }
     }
 
-    // 拖拽上传
-    const { getRootProps, getInputProps } = useDropzone({
-      onDrop: (acceptedFiles: File[], fileRejections) => {
-        insertFiles(acceptedFiles)
-        // Show toast for rejected files
-        if (fileRejections.length > 0) {
-          const rejectedNames = fileRejections.map((r) => r.file.name).join(', ')
-          toastActions.add(t('Unsupported file type: {{fileName}}', { fileName: rejectedNames }))
-        }
-      },
-      accept: getFileAcceptConfig(),
-      noClick: true,
-      noKeyboard: true,
-    })
-
     // 引用消息
     const quote = useUIStore((state) => state.quote)
     const setQuote = useUIStore((state) => state.setQuote)
@@ -1053,12 +1116,26 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       : disableSubmit || isPreprocessing || isSubmitting || isCompactionRunning
 
     return (
-      <Box id={dom.InputBoxID} {...getRootProps()} className="chat-input-shell">
-        <input className="hidden" {...getInputProps()} />
+      <Box id={dom.InputBoxID} className="chat-input-shell">
         <Stack className={cn(widthFull ? 'chat-col-full' : 'chat-col')} gap="xs">
           {currentSessionId && <CompactionStatus sessionId={currentSessionId} />}
           {currentSessionId && <QueuedMessageList sessionId={currentSessionId} />}
-          <Stack className="composer-card relative justify-between" gap={0}>
+          <Stack
+            className={cn(
+              'composer-card relative justify-between',
+              isFileDragActive && 'composer-card-drag-active'
+            )}
+            gap={0}
+          >
+            {isFileDragActive && (
+              <div className="composer-drop-overlay" aria-hidden>
+                <div className="composer-drop-overlay-content">
+                  <IconFolder className="composer-drop-overlay-icon" strokeWidth={1.5} size={28} />
+                  <span className="composer-drop-overlay-title">{t('Drop to attach')}</span>
+                  <span className="composer-drop-overlay-hint">{t('Images · PDFs · text · code')}</span>
+                </div>
+              </div>
+            )}
             {showPresetPicker && (
               <PresetPicker
                 highlightedIndex={presetHighlightIndex}

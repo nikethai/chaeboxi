@@ -10,7 +10,16 @@ interface ImageUploadInputProps {
 }
 
 export const ImageUploadInput = forwardRef<HTMLInputElement, ImageUploadInputProps>(
-  ({ onChange, accept = 'image/png, image/jpeg', multiple = true, className = 'hidden', style }, ref) => {
+  (
+    {
+      onChange,
+      accept = 'image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif',
+      multiple = true,
+      className = 'hidden',
+      style,
+    },
+    ref
+  ) => {
     return (
       <input
         ref={ref}

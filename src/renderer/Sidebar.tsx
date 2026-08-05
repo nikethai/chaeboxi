@@ -33,6 +33,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AdaptiveModal } from './components/common/AdaptiveModal'
 import ThemeSwitchButton from './components/dev/ThemeSwitchButton'
+import TitleBarRow from './components/layout/TitleBarRow'
 import SessionList from './components/session/SessionList'
 import { FORCE_ENABLE_DEV_PAGES } from './dev/devToolsConfig'
 import { useMyCopilots } from './hooks/useCopilots'
@@ -42,7 +43,6 @@ import { useIsSmallScreen, useSidebarWidth } from './hooks/useScreenChange'
 import useVersion from './hooks/useVersion'
 import { navigateToSettings } from './modals/Settings'
 import { trackingEvent } from './packages/event'
-import platform from './platform'
 import icon from './static/icon.png'
 import { useLanguage } from './stores/settingsStore'
 import { useUIStore } from './stores/uiStore'
@@ -211,11 +211,15 @@ export default function Sidebar() {
           pb="var(--mobile-safe-area-inset-bottom, 0px)"
           className="relative studio-rail"
         >
-          {needRoomForMacWindowControls && <Box className="title-bar flex-[0_0_44px]" />}
-
-          {/* Rail head — Grok DNA: wordmark + collapse */}
-          <Flex align="center" justify="space-between" px="sm" pt="sm" pb="xs" className="rail-head">
-            <Flex align="center" gap={8} miw={0}>
+          {/* Rail head lives in the title bar — no empty mac spacer above content */}
+          <TitleBarRow
+            heightMode="desktop"
+            macTrafficInset={needRoomForMacWindowControls}
+            justify="space-between"
+            px="sm"
+            className="rail-head"
+          >
+            <Flex align="center" gap={8} miw={0} className="controls min-w-0">
               <Image src={icon} w={20} h={20} className="shrink-0 rounded-[5px]" />
               <Text span c="chatbox-primary" size="sm" lh={1.2} fw={600} className="tracking-tight truncate">
                 Chaeboxi
@@ -224,6 +228,7 @@ export default function Sidebar() {
             </Flex>
             <Tooltip label={t('Collapse')} openDelay={800} withArrow>
               <ActionIcon
+                className="controls shrink-0"
                 variant="subtle"
                 color="chatbox-tertiary"
                 size={28}
@@ -234,7 +239,7 @@ export default function Sidebar() {
                 <IconLayoutSidebarLeftCollapse size={16} stroke={1.5} />
               </ActionIcon>
             </Tooltip>
-          </Flex>
+          </TitleBarRow>
 
           {/* Quiet nav stack — Grok: icon + label rows, no solid CTA block */}
           <nav className="rail-nav" aria-label={t('Navigation')}>

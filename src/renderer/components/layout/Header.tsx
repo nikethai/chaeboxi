@@ -11,6 +11,7 @@ import { scheduleGenerateNameAndThreadName, scheduleGenerateThreadName } from '@
 import * as settingActions from '@/stores/settingActions'
 import { useUIStore } from '@/stores/uiStore'
 import { ScalableIcon } from '../common/ScalableIcon'
+import TitleBarRow from './TitleBarRow'
 import Toolbar from './Toolbar'
 import WindowControls from './WindowControls'
 
@@ -54,67 +55,68 @@ export default function Header(props: { session: Session }) {
     NiceModal.show('session-settings', { session: currentSession })
   }
 
+  // Traffic lights sit over the sidebar when open; only inset the main header when expand is shown
+  const showSidebarToggle = !showSidebar || isSmallScreen
+  const macTrafficInset = showSidebarToggle && needRoomForMacWindowControls
+
   return (
-    <>
-      <Flex
-        h={isSmallScreen ? 56 : 44}
-        align="center"
-        px={isSmallScreen ? 'xs' : 'md'}
-        className="flex-none title-bar bg-[var(--chatbox-background-primary)]"
-        style={{ borderBottom: 'none' }}
-      >
-        {(!showSidebar || isSmallScreen) && (
-          <Flex align="center" className={needRoomForMacWindowControls ? 'pl-20' : ''}>
-            <ActionIcon
-              className="controls"
-              variant="subtle"
-              size={isSmallScreen ? 30 : 28}
-              color="chatbox-tertiary"
-              mr={isSmallScreen ? 'xs' : 'sm'}
-              onClick={() => setShowSidebar(!showSidebar)}
-            >
-              {isSmallScreen ? <IconMenu2 /> : <IconLayoutSidebarLeftExpand />}
-            </ActionIcon>
-          </Flex>
-        )}
-
-        <Flex
-          align="center"
-          gap="xxs"
-          flex={1}
-          className={isSmallScreen ? 'min-w-0 px-1' : ''}
-          {...(isSmallScreen ? { justify: 'center' } : {})}
-        >
-          <Title
-            order={4}
-            fz={isSmallScreen ? 17 : '0.95rem'}
-            fw={600}
-            lineClamp={1}
-            className={clsx('tracking-tight', isSmallScreen && 'max-w-[72vw] text-center leading-tight')}
-            style={{ letterSpacing: '-0.02em' }}
+    <TitleBarRow
+      macTrafficInset={macTrafficInset}
+      px={isSmallScreen ? 'xs' : 'md'}
+      className="bg-[var(--chatbox-background-primary)]"
+      style={{ borderBottom: 'none' }}
+    >
+      {showSidebarToggle && (
+        <Flex align="center">
+          <ActionIcon
+            className="controls"
+            variant="subtle"
+            size={isSmallScreen ? 30 : 28}
+            color="chatbox-tertiary"
+            mr={isSmallScreen ? 'xs' : 'sm'}
+            onClick={() => setShowSidebar(!showSidebar)}
           >
-            {currentSession?.name}
-          </Title>
-
-          <Tooltip label={t('Customize settings for the current conversation')}>
-            <ActionIcon
-              className="controls"
-              variant="subtle"
-              color="chatbox-tertiary"
-              size={isSmallScreen ? 24 : 22}
-              onClick={() => {
-                editCurrentSession()
-              }}
-            >
-              <ScalableIcon icon={IconPencil} size={isSmallScreen ? 16 : 15} />
-            </ActionIcon>
-          </Tooltip>
+            {isSmallScreen ? <IconMenu2 /> : <IconLayoutSidebarLeftExpand />}
+          </ActionIcon>
         </Flex>
+      )}
 
-        <Toolbar sessionId={currentSession.id} />
+      <Flex
+        align="center"
+        gap="xxs"
+        flex={1}
+        className={isSmallScreen ? 'min-w-0 px-1' : ''}
+        {...(isSmallScreen ? { justify: 'center' } : {})}
+      >
+        <Title
+          order={4}
+          fz={isSmallScreen ? 17 : '0.95rem'}
+          fw={600}
+          lineClamp={1}
+          className={clsx('tracking-tight', isSmallScreen && 'max-w-[72vw] text-center leading-tight')}
+          style={{ letterSpacing: '-0.02em' }}
+        >
+          {currentSession?.name}
+        </Title>
 
-        <WindowControls className="-mr-3 ml-2" />
+        <Tooltip label={t('Customize settings for the current conversation')}>
+          <ActionIcon
+            className="controls"
+            variant="subtle"
+            color="chatbox-tertiary"
+            size={isSmallScreen ? 24 : 22}
+            onClick={() => {
+              editCurrentSession()
+            }}
+          >
+            <ScalableIcon icon={IconPencil} size={isSmallScreen ? 16 : 15} />
+          </ActionIcon>
+        </Tooltip>
       </Flex>
-    </>
+
+      <Toolbar sessionId={currentSession.id} />
+
+      <WindowControls className="-mr-3 ml-2" />
+    </TitleBarRow>
   )
 }

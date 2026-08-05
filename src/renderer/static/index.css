@@ -10,6 +10,23 @@
   -webkit-app-region: no-drag;
 }
 
+/* Shared chrome row: desktop 44px / mobile 56px; optional mac traffic inset */
+.title-bar-row {
+  height: var(--chatbox-titlebar-height, 44px);
+  box-sizing: border-box;
+  min-height: var(--chatbox-titlebar-height, 44px);
+}
+
+.title-bar-row-mobile {
+  height: var(--chatbox-titlebar-height-mobile, 56px);
+  min-height: var(--chatbox-titlebar-height-mobile, 56px);
+}
+
+/* Physical left — macOS traffic lights are always top-left regardless of UI RTL */
+.title-bar-row-mac-inset {
+  padding-left: var(--chatbox-mac-traffic-inset, 80px) !important;
+}
+
 /* Ensure all interactive elements inside drag regions remain clickable in Tauri/WKWebView.
    Without this, -webkit-app-region: drag on .title-bar ancestors can swallow mouse events
    on inputs, buttons, etc., preventing focus and interaction in the native webview. */

@@ -30,6 +30,11 @@
   --chatbox-font-ui: 'Satoshi', 'Segoe UI', system-ui, sans-serif;
   --chatbox-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --chatbox-rail-width: 280px;
+  /* window chrome — shared by sidebar rail head + main title bars */
+  --chatbox-titlebar-height: 44px;
+  --chatbox-titlebar-height-mobile: 56px;
+  /* macOS traffic lights clearance (≈ pl-20 / 5rem) */
+  --chatbox-mac-traffic-inset: 80px;
 
   /* light theme (minimal remap) */
   --chatbox-tint-primary: #1a1a1e;
@@ -286,7 +291,13 @@
     display: flex;
     flex-direction: column;
     gap: 1px;
-    padding: 0.15rem 0.45rem 0.35rem;
+    /* tight under in-chrome rail head — avoid double air with title bar */
+    padding: 0.05rem 0.45rem 0.3rem;
+  }
+
+  .rail-head {
+    gap: 0.5rem;
+    min-width: 0;
   }
 
   .rail-nav-item {

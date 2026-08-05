@@ -1,0 +1,1813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chaeboxi · Shell Mock v2</title>
+  <!-- Satoshi (display/UI) + JetBrains Mono — not Inter/Jakarta/system-AI defaults -->
+  <link href="https://api.fontshare.com/v2/css?f[]=satoshi@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    /*
+      Chaeboxi shell mock v2 — "Studio rail"
+      Dark-first · solid indigo accent · zero gradients · no MUI
+      Intent: break AI-template tells (over-round pills, letter avatars,
+      centered generic hero, soft purple glows, Plus Jakarta everywhere)
+    */
+    :root {
+      /* Slightly lifted dark — less OLED void, easier long sessions */
+      --ink: #ececec;
+      --ink-2: #a8a8ae;
+      --ink-3: #6e6e76;
+      --ink-4: #4a4a52;
+
+      --void: #121214;
+      --rail: #16161a;
+      --panel: #1c1c21;
+      --lift: #24242b;
+      --lift-2: #2c2c34;
+
+      --line: #2a2a32;
+      --line-2: #36363f;
+
+      /* True indigo (blue-lean), not magenta */
+      --indigo: #5b63d4;
+      --indigo-hi: #6d75df;
+      --indigo-lo: rgba(91, 99, 212, 0.16);
+      --indigo-mid: rgba(91, 99, 212, 0.28);
+
+      --ok: #4fb286;
+      --warn: #c9a227;
+
+      --r: 7px;
+      --r-md: 9px;
+      --r-lg: 11px;
+
+      --font: "Satoshi", "Segoe UI", sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, monospace;
+
+      --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      --rail-w: 280px;
+      /* one shared content column — thread + composer must match */
+      --col: 48rem;
+      --col-pad-x: 1.5rem;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: var(--void);
+      color: var(--ink);
+      font-family: var(--font);
+      font-size: 16px; /* was 14.5 — readable desktop default */
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    /* film grain — texture, not color gradient */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 100;
+      opacity: 0.028;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+      background-size: 180px;
+    }
+
+    button, input, textarea {
+      font: inherit;
+      color: inherit;
+      background: none;
+      border: none;
+      outline: none;
+    }
+
+    button {
+      cursor: pointer;
+      transition:
+        background-color 140ms var(--ease),
+        color 140ms var(--ease),
+        border-color 140ms var(--ease),
+        opacity 140ms var(--ease);
+    }
+
+    button:active:not(:disabled) { opacity: 0.85; }
+    button:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    :focus-visible {
+      outline: 1.5px solid var(--indigo);
+      outline-offset: 2px;
+    }
+
+    /* ═════════ SHELL ═════════ */
+    .shell {
+      display: grid;
+      grid-template-columns: var(--rail-w) 1fr;
+      height: 100%;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* ═════════ RAIL ═════════ */
+    .rail {
+      display: flex;
+      flex-direction: column;
+      background: var(--rail);
+      border-right: 1px solid var(--line);
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .rail-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.5rem;
+      align-items: center;
+      padding: 1.05rem 0.95rem 0.75rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .wordmark {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      min-width: 0;
+    }
+
+    .wordmark strong {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+
+    .wordmark span {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+
+    .icon {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--r);
+      color: var(--ink-2);
+      border: 1px solid transparent;
+    }
+
+    .icon:hover {
+      color: var(--ink);
+      background: var(--lift);
+      border-color: var(--line);
+    }
+
+    .icon svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .rail-new {
+      padding: 0.85rem 0.85rem 0.55rem;
+    }
+
+    .btn-new {
+      width: 100%;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 0.8rem;
+      border-radius: var(--r-md);
+      background: var(--indigo);
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.9rem;
+      letter-spacing: -0.01em;
+    }
+
+    .btn-new:hover { background: var(--indigo-hi); }
+
+    .btn-new kbd {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      font-weight: 500;
+      opacity: 0.8;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 4px;
+      padding: 0.12rem 0.32rem;
+    }
+
+    .find {
+      margin: 0 0.85rem 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      height: 38px;
+      padding: 0 0.7rem;
+      border-radius: var(--r-md);
+      border: 1px solid var(--line);
+      background: var(--void);
+      color: var(--ink-3);
+    }
+
+    .find:focus-within {
+      border-color: var(--indigo);
+      color: var(--ink-2);
+    }
+
+    .find svg {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.6;
+      flex-shrink: 0;
+    }
+
+    .find input {
+      flex: 1;
+      min-width: 0;
+      font-size: 0.875rem;
+      color: var(--ink);
+    }
+
+    .find input::placeholder { color: var(--ink-3); }
+
+    .find kbd {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--ink-3);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0.1rem 0.3rem;
+    }
+
+    .list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.2rem 0.5rem 0.85rem;
+      scrollbar-width: thin;
+      scrollbar-color: var(--line-2) transparent;
+    }
+
+    .list::-webkit-scrollbar { width: 6px; }
+    .list::-webkit-scrollbar-thumb {
+      background: var(--line-2);
+      border-radius: 0;
+    }
+
+    .day {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 0.95rem 0.6rem 0.4rem;
+    }
+
+    .day b {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+
+    .day i {
+      font-style: normal;
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      color: var(--ink-4);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .row {
+      position: relative;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.5rem;
+      align-items: center;
+      text-align: left;
+      padding: 0.58rem 0.6rem 0.58rem 0.75rem;
+      border-radius: var(--r);
+      color: var(--ink-2);
+      margin-bottom: 2px;
+    }
+
+    .row::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 7px;
+      bottom: 7px;
+      width: 2px;
+      border-radius: 1px;
+      background: transparent;
+    }
+
+    .row:hover {
+      background: var(--lift);
+      color: var(--ink);
+    }
+
+    .row.on {
+      background: var(--indigo-lo);
+      color: var(--ink);
+    }
+
+    .row.on::before { background: var(--indigo); }
+
+    .row-title {
+      font-size: 0.9rem;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .row-time {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--ink-3);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .row.on .row-time { color: var(--ink-2); }
+
+    /* user account menu — trigger + popover (ChatGPT / Linear style) */
+    .rail-foot {
+      position: relative;
+      border-top: 1px solid var(--line);
+      padding: 0.4rem;
+      background: var(--panel);
+      flex-shrink: 0;
+    }
+
+    .user-trigger {
+      display: grid;
+      grid-template-columns: 32px 1fr auto;
+      gap: 0.55rem;
+      align-items: center;
+      width: 100%;
+      height: 44px;
+      padding: 0 0.45rem;
+      border-radius: var(--r-md);
+      border: 1px solid transparent;
+      color: var(--ink);
+      text-align: left;
+    }
+
+    .user-trigger:hover {
+      background: var(--lift);
+      border-color: var(--line);
+    }
+
+    .user-trigger[aria-expanded="true"] {
+      background: var(--lift);
+      border-color: var(--line-2);
+    }
+
+    .user-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--lift-2);
+      border: 1px solid var(--line);
+      color: var(--ink-2);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .user-avatar svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .user-avatar.user-photo {
+      background-size: cover;
+      background-position: center;
+    }
+
+    .user-avatar.user-photo svg { display: none; }
+
+    .user-meta {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0.05rem;
+    }
+
+    .user-meta strong {
+      font-size: 0.8125rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-meta span {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--ink-3);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-chevron {
+      width: 16px;
+      height: 16px;
+      color: var(--ink-3);
+      transition: transform 140ms var(--ease);
+    }
+
+    .user-trigger[aria-expanded="true"] .user-chevron {
+      transform: rotate(180deg);
+    }
+
+    .user-chevron svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.75;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .user-menu {
+      position: absolute;
+      left: 0.4rem;
+      right: 0.4rem;
+      bottom: calc(100% + 0.35rem);
+      z-index: 20;
+      padding: 0.3rem;
+      border-radius: var(--r-md);
+      border: 1px solid var(--line-2);
+      background: var(--panel);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+      display: none;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .user-menu.open {
+      display: flex;
+    }
+
+    .user-menu-label {
+      padding: 0.35rem 0.55rem 0.25rem;
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-4);
+    }
+
+    .user-menu-item {
+      display: grid;
+      grid-template-columns: 18px 1fr auto;
+      gap: 0.55rem;
+      align-items: center;
+      width: 100%;
+      height: 34px;
+      padding: 0 0.55rem;
+      border-radius: var(--r);
+      color: var(--ink-2);
+      font-size: 0.8125rem;
+      font-weight: 500;
+      text-align: left;
+    }
+
+    .user-menu-item:hover {
+      background: var(--lift);
+      color: var(--ink);
+    }
+
+    .user-menu-item svg {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .user-menu-item em {
+      font-style: normal;
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--ink-3);
+    }
+
+    .user-menu-sep {
+      height: 1px;
+      margin: 0.25rem 0.35rem;
+      background: var(--line);
+      border: none;
+    }
+
+    .user-menu-item.danger:hover {
+      color: #f0a0a4;
+      background: rgba(242, 85, 90, 0.1);
+    }
+
+    /* ═════════ STAGE ═════════ */
+    .stage {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      height: 100%;
+      overflow: hidden;
+      background: var(--void);
+    }
+
+    /*
+     * Top chrome — no hard divider under the bar.
+     * Just a thin viewport cover so title/actions sit on the same
+     * surface as the thread (Grok/ChatGPT feel).
+     */
+    .topbar {
+      flex-shrink: 0;
+      height: 44px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 1rem;
+      padding: 0 1rem 0 1.15rem;
+      border-bottom: none;
+      /* same surface as thread — no frosted split */
+      background: var(--void);
+      position: relative;
+      z-index: 6;
+    }
+
+    .crumb {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      min-width: 0;
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .crumb .slash {
+      color: var(--ink-4);
+      font-weight: 400;
+      font-family: var(--mono);
+      font-size: 0.8rem;
+    }
+
+    .crumb .muted {
+      color: var(--ink-3);
+      font-weight: 500;
+      font-size: 0.8rem;
+      font-family: var(--mono);
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .crumb .name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      height: 32px;
+      padding: 0 0.65rem;
+      border: 1px solid var(--line);
+      border-radius: var(--r);
+      background: var(--panel);
+      color: var(--ink-2);
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .status:hover {
+      border-color: var(--line-2);
+      color: var(--ink);
+    }
+
+    .status i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--ok);
+      font-style: normal;
+    }
+
+    /* ═════════ VIEWS ═════════ */
+    .body {
+      flex: 1 1 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden; /* keep dock inside stage */
+    }
+
+    .view {
+      display: none;
+      flex: 1 1 0;
+      min-height: 0;
+      max-height: 100%;
+      flex-direction: column;
+      overflow: hidden; /* messages scroll; dock stays */
+    }
+
+    .view.show { display: flex; }
+
+    /* —— Empty: asymmetric workbench, not centered SaaS hero —— */
+    .blank {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow: auto;
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+      gap: 2rem;
+      align-items: end;
+      max-width: 56rem;
+      width: 100%;
+      margin: 0 auto;
+      padding: 3.5rem 2rem 1.5rem;
+    }
+
+    .blank-copy h1 {
+      font-size: clamp(1.9rem, 3.2vw, 2.5rem);
+      font-weight: 700;
+      letter-spacing: -0.045em;
+      line-height: 1.08;
+      max-width: 11ch;
+      text-wrap: balance;
+      margin-bottom: 0.85rem;
+    }
+
+    .blank-copy p {
+      color: var(--ink-2);
+      font-size: 1rem;
+      line-height: 1.55;
+      max-width: 34ch;
+    }
+
+    .blank-copy .meta {
+      margin-top: 1.25rem;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .tag {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      color: var(--ink-3);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      padding: 0.25rem 0.45rem;
+      background: var(--panel);
+    }
+
+    .starters {
+      border: 1px solid var(--line);
+      border-radius: var(--r-lg);
+      background: var(--panel);
+      overflow: hidden;
+    }
+
+    .starters header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.65rem 0.85rem;
+      border-bottom: 1px solid var(--line);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--ink-3);
+    }
+
+    .starter {
+      width: 100%;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 0.8rem;
+      text-align: left;
+      padding: 0.85rem;
+      border-bottom: 1px solid var(--line);
+      color: var(--ink-2);
+    }
+
+    .starter:last-child { border-bottom: none; }
+
+    .starter:hover {
+      background: var(--lift);
+      color: var(--ink);
+    }
+
+    .starter:hover .n { color: var(--indigo-hi); }
+
+    .starter .n {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--ink-3);
+      padding-top: 0.15rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .starter .t {
+      font-size: 0.95rem;
+      font-weight: 500;
+      letter-spacing: -0.015em;
+      line-height: 1.35;
+    }
+
+    .starter .h {
+      margin-top: 0.25rem;
+      font-size: 0.8rem;
+      color: var(--ink-3);
+      font-weight: 400;
+    }
+
+    /*
+     * Thread — Grok / ChatGPT DNA (dark-first)
+     * · User: right-aligned soft pill
+     * · Assistant: left open prose, no avatar column
+     * · Icon-only actions under assistant
+     * · Content-first, generous measure, no list dividers
+     */
+    .thread {
+      flex: 1 1 0;
+      min-height: 0;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding: 0.65rem var(--col-pad-x) 1.25rem;
+      scrollbar-width: thin;
+      scrollbar-color: var(--line-2) transparent;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* shared column — same box as composer */
+    .thread-inner,
+    .dock-inner {
+      max-width: var(--col);
+      width: 100%;
+      margin-left: auto;
+      margin-right: auto;
+      box-sizing: border-box;
+    }
+
+    .thread-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 1.75rem;
+      padding: 0.5rem 0 1.25rem;
+    }
+
+    .turn {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      max-width: 100%;
+      border: none;
+      padding: 0;
+      background: transparent;
+      box-sizing: border-box;
+    }
+
+    /* —— USER: right-aligned bubble (ChatGPT / Grok) —— */
+    .turn.user {
+      align-items: flex-end;
+    }
+
+    .turn.user .prose {
+      /* stay inside shared column; right edge = composer right edge */
+      max-width: min(75%, 34rem);
+      width: fit-content;
+      background: var(--lift-2);
+      border: none;
+      border-radius: 1.35rem;
+      padding: 0.7rem 1.05rem;
+      font-size: 0.98rem;
+      line-height: 1.55;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+      text-align: left;
+      box-sizing: border-box;
+    }
+
+    .turn.user .prose p + p { margin-top: 0.45rem; }
+
+    /* —— ASSISTANT: full width of shared column —— */
+    .turn.assistant {
+      align-items: stretch;
+      gap: 0.55rem;
+      width: 100%;
+    }
+
+    .turn.assistant .prose {
+      max-width: 100%;
+      width: 100%;
+      padding: 0;
+      background: transparent;
+      border: none;
+      font-size: 1.02rem;
+      line-height: 1.7;
+      letter-spacing: -0.011em;
+      color: var(--ink);
+      box-sizing: border-box;
+    }
+
+    .prose p + p { margin-top: 0.85rem; }
+
+    .prose strong { font-weight: 600; color: var(--ink); }
+
+    .prose h3,
+    .prose .h {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0.15rem 0 0.55rem;
+      color: var(--ink);
+    }
+
+    .prose code {
+      font-family: var(--mono);
+      font-size: 0.86em;
+      color: #c8cce8;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      padding: 0.1em 0.35em;
+    }
+
+    .prose ul {
+      margin: 0.55rem 0 0;
+      padding-left: 1.2rem;
+      display: grid;
+      gap: 0.45rem;
+    }
+
+    .prose li {
+      padding-left: 0.2rem;
+      color: var(--ink);
+    }
+
+    .prose li::marker {
+      color: var(--ink-3);
+    }
+
+    /* quoted original (Grok-style) */
+    .quote {
+      margin: 0.85rem 0;
+      padding: 0.75rem 1rem;
+      border-radius: 1rem;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      color: var(--ink-2);
+      font-size: 0.94rem;
+      line-height: 1.55;
+    }
+
+    .worked {
+      font-size: 0.82rem;
+      color: var(--ink-3);
+      margin: 0.15rem 0 0.35rem;
+    }
+
+    .worked button {
+      color: inherit;
+      font: inherit;
+      border: none;
+      background: none;
+      cursor: pointer;
+    }
+
+    .worked button:hover { color: var(--ink-2); }
+
+    .snippet {
+      margin-top: 0.9rem;
+      border: 1px solid var(--line);
+      border-radius: 0.85rem;
+      background: var(--panel);
+      overflow: hidden;
+      max-width: 100%;
+    }
+
+    .snippet-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.4rem 0.75rem;
+      border-bottom: 1px solid var(--line);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--ink-3);
+    }
+
+    .snippet-bar .lang {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .snippet-bar .lang i {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--indigo);
+      font-style: normal;
+    }
+
+    .snippet-bar button {
+      color: var(--ink-2);
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      padding: 0.2rem 0.4rem;
+      border-radius: 5px;
+      border: 1px solid transparent;
+    }
+
+    .snippet-bar button:hover {
+      background: var(--lift);
+      color: var(--ink);
+    }
+
+    .snippet pre {
+      padding: 0.85rem 1rem;
+      overflow-x: auto;
+      font-family: var(--mono);
+      font-size: 0.84rem;
+      line-height: 1.6;
+      color: #c2c6d0;
+      tab-size: 2;
+      background: var(--void);
+    }
+
+    .snippet .k { color: #8b93e8; }
+    .snippet .s { color: #9dcea6; }
+    .snippet .c { color: var(--ink-3); }
+
+    /* icon action rail — left-aligned to column (matches assistant text) */
+    .turn-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.15rem;
+      margin-top: 0.15rem;
+      width: 100%;
+      opacity: 0.55;
+      transition: opacity 120ms var(--ease);
+    }
+
+    .turn.assistant:hover .turn-actions,
+    .turn.assistant:focus-within .turn-actions {
+      opacity: 1;
+    }
+
+    .turn-actions .ia {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      color: var(--ink-3);
+      border: none;
+      background: transparent;
+    }
+
+    .turn-actions .ia:hover {
+      color: var(--ink);
+      background: var(--lift);
+    }
+
+    .turn-actions .ia svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* follow-up suggestions — same left edge as assistant prose */
+    .followups {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.15rem;
+      margin-top: 0.35rem;
+      width: 100%;
+    }
+
+    .followups button {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.15rem;
+      color: var(--ink-2);
+      font-size: 0.9rem;
+      font-weight: 500;
+      border-radius: 6px;
+      background: transparent;
+      border: none;
+    }
+
+    .followups button:hover {
+      color: var(--ink);
+    }
+
+    .followups button svg {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.6;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      opacity: 0.7;
+    }
+
+    @media (hover: none) {
+      .turn-actions { opacity: 1; }
+    }
+
+    /* ═════════ COMPOSER (pinned dock — never scrolls with thread) ═════════ */
+    .dock {
+      flex: 0 0 auto;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 5;
+      /* same horizontal pad as .thread so columns stack */
+      padding: 0.55rem var(--col-pad-x) 0.95rem;
+      border-top: none;
+      background: var(--void);
+      padding-bottom: max(0.95rem, env(safe-area-inset-bottom, 0px));
+    }
+
+    .composer {
+      width: 100%;
+      border: 1px solid var(--line-2);
+      border-radius: var(--r-lg);
+      background: var(--panel);
+      overflow: hidden;
+      box-shadow: none;
+      box-sizing: border-box;
+    }
+
+    .composer:focus-within {
+      border-color: var(--indigo);
+    }
+
+    .composer textarea {
+      display: block;
+      width: 100%;
+      min-height: 80px;
+      max-height: 220px;
+      resize: none;
+      padding: 0.95rem 1rem 0.45rem;
+      background: transparent;
+      color: var(--ink);
+      font-size: 1rem;
+      line-height: 1.55;
+      letter-spacing: -0.01em;
+    }
+
+    .composer textarea::placeholder { color: var(--ink-3); }
+
+    .bar {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0.5rem;
+      align-items: center;
+      padding: 0.4rem 0.45rem 0.45rem 0.5rem;
+      border-top: 1px solid var(--line);
+      background: var(--rail);
+    }
+
+    .tools {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.2rem;
+      min-width: 0;
+    }
+
+    .tool {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      height: 32px;
+      padding: 0 0.55rem;
+      border-radius: var(--r);
+      color: var(--ink-2);
+      font-size: 0.8rem;
+      font-weight: 500;
+      border: 1px solid transparent;
+    }
+
+    .tool:hover {
+      background: var(--lift);
+      color: var(--ink);
+      border-color: var(--line);
+    }
+
+    .tool.on {
+      background: var(--indigo-lo);
+      color: #aab2f5;
+      border-color: var(--indigo-mid);
+    }
+
+    .tool svg {
+      width: 13px;
+      height: 13px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .bar-right {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .ctx {
+      display: none;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--ink-3);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    @media (min-width: 720px) {
+      .ctx { display: inline; }
+    }
+
+    .model {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      height: 32px;
+      padding: 0 0.55rem;
+      border-radius: var(--r);
+      border: 1px solid var(--line);
+      color: var(--ink-2);
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      font-weight: 500;
+      background: var(--void);
+    }
+
+    .model:hover {
+      color: var(--ink);
+      border-color: var(--line-2);
+    }
+
+    .model svg {
+      width: 11px;
+      height: 11px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+    }
+
+    .send {
+      width: 36px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: var(--r);
+      background: var(--indigo);
+      color: #fff;
+    }
+
+    .send:hover { background: var(--indigo-hi); }
+
+    .send:disabled {
+      background: var(--lift-2);
+      color: var(--ink-3);
+      opacity: 1;
+    }
+
+    .send svg {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .fineprint {
+      margin-top: 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--ink-3);
+      letter-spacing: 0.01em;
+    }
+
+    .fineprint kbd {
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      padding: 0.05rem 0.28rem;
+      color: var(--ink-2);
+      background: var(--panel);
+    }
+
+    /* mock switcher */
+    .switch {
+      position: fixed;
+      z-index: 40;
+      /* sit above dock, not over the send button */
+      bottom: 0.75rem;
+      right: 0.85rem;
+      display: flex;
+      border: 1px solid var(--line-2);
+      border-radius: var(--r);
+      background: var(--panel);
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+    }
+
+    .switch button {
+      height: 32px;
+      padding: 0 0.8rem;
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--ink-3);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .switch button.on {
+      background: var(--indigo);
+      color: #fff;
+    }
+
+    .switch button:hover:not(.on) {
+      color: var(--ink);
+      background: var(--lift);
+    }
+
+    @media (max-width: 900px) {
+      .shell { grid-template-columns: 1fr; }
+      .rail { display: none; }
+      .blank {
+        grid-template-columns: 1fr;
+        align-items: start;
+        padding-top: 2rem;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <!-- RAIL -->
+    <aside class="rail" aria-label="Sidebar">
+      <div class="rail-head">
+        <div class="wordmark">
+          <strong>Chaeboxi</strong>
+          <span>local · multi-model</span>
+        </div>
+        <button class="icon" type="button" aria-label="Collapse rail" title="Collapse">
+          <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/><path d="M4 4v16"/></svg>
+        </button>
+      </div>
+
+      <div class="rail-new">
+        <button class="btn-new" type="button" id="btnNew">
+          <span>New chat</span>
+          <kbd>⌘N</kbd>
+        </button>
+      </div>
+
+      <label class="find">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3-3"/></svg>
+        <input type="search" placeholder="Find conversation" aria-label="Find conversation" />
+        <kbd>⌘K</kbd>
+      </label>
+
+      <div class="list">
+        <div class="day"><b>Today</b><i>03</i></div>
+        <button class="row on" type="button" data-open-thread>
+          <span class="row-title">Shell redesign brief</span>
+          <span class="row-time">14:02</span>
+        </button>
+        <button class="row" type="button">
+          <span class="row-title">OpenClaw remote gateway</span>
+          <span class="row-time">11:18</span>
+        </button>
+        <button class="row" type="button">
+          <span class="row-title">Token window edge cases</span>
+          <span class="row-time">09:41</span>
+        </button>
+
+        <div class="day"><b>Yesterday</b><i>03</i></div>
+        <button class="row" type="button">
+          <span class="row-title">MCP stdio hang on macOS</span>
+          <span class="row-time">22:06</span>
+        </button>
+        <button class="row" type="button">
+          <span class="row-title">Provider settings strip</span>
+          <span class="row-time">16:30</span>
+        </button>
+        <button class="row" type="button">
+          <span class="row-title">Image creator empty state</span>
+          <span class="row-time">10:02</span>
+        </button>
+
+        <div class="day"><b>Mar 02</b><i>02</i></div>
+        <button class="row" type="button">
+          <span class="row-title">Streaming cancel race</span>
+          <span class="row-time">—</span>
+        </button>
+        <button class="row" type="button">
+          <span class="row-title">KB chunk overlap</span>
+          <span class="row-time">—</span>
+        </button>
+      </div>
+
+      <div class="rail-foot">
+        <div class="user-menu" id="userMenu" role="menu" hidden>
+          <div class="user-menu-label">Workspace</div>
+          <button class="user-menu-item" type="button" role="menuitem">
+            <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M8 15h3M14 15h2"/></svg>
+            <span>Image studio</span>
+            <em>beta</em>
+          </button>
+          <button class="user-menu-item" type="button" role="menuitem">
+            <svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3"/><circle cx="16" cy="15" r="2.5"/><path d="M4 19c1-3 3.2-4.5 5-4.5"/></svg>
+            <span>Copilots</span>
+            <em>12</em>
+          </button>
+          <hr class="user-menu-sep" />
+          <div class="user-menu-label">Account</div>
+          <button class="user-menu-item" type="button" role="menuitem">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+            <span>Settings</span>
+            <em>⌘,</em>
+          </button>
+          <button class="user-menu-item" type="button" role="menuitem">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 19.5c1.4-3.2 3.9-4.8 6.5-4.8s5.1 1.6 6.5 4.8"/></svg>
+            <span>Profile</span>
+            <em></em>
+          </button>
+          <hr class="user-menu-sep" />
+          <button class="user-menu-item danger" type="button" role="menuitem">
+            <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg>
+            <span>Sign out</span>
+            <em></em>
+          </button>
+        </div>
+
+        <button
+          class="user-trigger"
+          type="button"
+          id="userTrigger"
+          aria-haspopup="menu"
+          aria-expanded="false"
+          aria-controls="userMenu"
+        >
+          <span class="user-avatar" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <circle cx="12" cy="8" r="3.5"/>
+              <path d="M5.5 19.5c1.4-3.2 3.9-4.8 6.5-4.8s5.1 1.6 6.5 4.8"/>
+            </svg>
+          </span>
+          <span class="user-meta">
+            <strong>Huy Nguyen</strong>
+            <span>local · free</span>
+          </span>
+          <span class="user-chevron" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+          </span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- STAGE -->
+    <main class="stage">
+      <header class="topbar">
+        <div class="crumb" id="crumb">
+          <span class="name" id="crumbName">Shell redesign brief</span>
+        </div>
+        <div class="top-actions">
+          <button class="status" type="button" title="Provider status">
+            <i aria-hidden="true"></i>
+            anthropic · sonnet
+          </button>
+          <button class="icon" type="button" aria-label="Edit session">
+            <svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>
+          </button>
+          <button class="icon" type="button" aria-label="More">
+            <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="body">
+        <!-- EMPTY -->
+        <section class="view" id="viewEmpty">
+          <div class="blank">
+            <div class="blank-copy">
+              <h1>Pick a thread. Or start one.</h1>
+              <p>Desktop copilot for people who live in providers, tools, and long context — not another soft chat toy.</p>
+              <div class="meta">
+                <span class="tag">dark-first</span>
+                <span class="tag">indigo · solid</span>
+                <span class="tag">no MUI shell</span>
+                <span class="tag">local-first</span>
+              </div>
+            </div>
+            <div class="starters" role="list">
+              <header>
+                <span>Starters</span>
+                <span>press to fill</span>
+              </header>
+              <button class="starter" type="button" role="listitem" data-fill="Map the session store modules and call out circular deps.">
+                <span class="n">01</span>
+                <span>
+                  <span class="t">Trace session store modules</span>
+                  <span class="h">Architecture · TypeScript</span>
+                </span>
+              </button>
+              <button class="starter" type="button" role="listitem" data-fill="Draft a PR description for replacing the MUI drawer with a custom rail.">
+                <span class="n">02</span>
+                <span>
+                  <span class="t">PR: kill MUI drawer</span>
+                  <span class="h">Write-up · shipping note</span>
+                </span>
+              </button>
+              <button class="starter" type="button" role="listitem" data-fill="Debug intermittent stream cancel when switching models mid-response.">
+                <span class="n">03</span>
+                <span>
+                  <span class="t">Stream cancel race</span>
+                  <span class="h">Debug · concurrency</span>
+                </span>
+              </button>
+              <button class="starter" type="button" role="listitem" data-fill="Propose token budget UI for the composer context meter.">
+                <span class="n">04</span>
+                <span>
+                  <span class="t">Composer context meter</span>
+                  <span class="h">UX · tokens</span>
+                </span>
+              </button>
+            </div>
+          </div>
+          <div class="dock" data-composer></div>
+        </section>
+
+        <!-- THREAD — Grok / ChatGPT layout DNA -->
+        <section class="view show" id="viewThread">
+          <div class="thread">
+            <div class="thread-inner">
+
+              <article class="turn user" aria-label="User message">
+                <div class="prose">
+                  <p>Redesign the desktop shell. Dark-first, solid indigo only — no gradients. Kill MUI from the chrome. I don't want another "AI SaaS" look.</p>
+                </div>
+              </article>
+
+              <article class="turn assistant" aria-label="Assistant message">
+                <p class="worked"><button type="button">Worked for 4s ›</button></p>
+                <div class="prose">
+                  <p class="h">Studio rail, not a soft messenger</p>
+                  <p>Treating the shell like Grok / ChatGPT: your message is a right-aligned pill, answers stay open on the canvas with calm actions underneath.</p>
+                  <ul>
+                    <li><strong>Rail</strong> — history + account menu only</li>
+                    <li><strong>Stage</strong> — content-first thread, no avatar columns</li>
+                    <li><strong>Composer</strong> — hard panel dock, always pinned</li>
+                  </ul>
+                  <div class="snippet">
+                    <div class="snippet-bar">
+                      <span class="lang"><i></i> tokens.css</span>
+                      <button type="button">Copy</button>
+                    </div>
+                    <pre><span class="c">/* solid only — no gradients */</span>
+<span class="k">--void</span>: <span class="s">#121214</span>;
+<span class="k">--rail</span>: <span class="s">#16161a</span>;
+<span class="k">--indigo</span>: <span class="s">#5b63d4</span>;
+<span class="k">--font</span>: <span class="s">Satoshi</span>;
+<span class="k">--r</span>: <span class="s">7px</span>;</pre>
+                  </div>
+                </div>
+                <div class="turn-actions">
+                  <button class="ia" type="button" aria-label="Copy" title="Copy">
+                    <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M6 15V5.5A1.5 1.5 0 0 1 7.5 4H16"/></svg>
+                  </button>
+                  <button class="ia" type="button" aria-label="Good response" title="Good">
+                    <svg viewBox="0 0 24 24"><path d="M7 11v10M14 21H8a2 2 0 0 1-2-2v-8l5-7a2 2 0 0 1 3.7 1.3L14 11h5.5a2 2 0 0 1 2 2.3l-1.4 6A2 2 0 0 1 18.2 21H14z"/></svg>
+                  </button>
+                  <button class="ia" type="button" aria-label="Bad response" title="Bad">
+                    <svg viewBox="0 0 24 24"><path d="M17 13V3M10 3h6a2 2 0 0 1 2 2v8l-5 7a2 2 0 0 1-3.7-1.3L10 13H4.5a2 2 0 0 1-2-2.3l1.4-6A2 2 0 0 1 5.8 3H10z"/></svg>
+                  </button>
+                  <button class="ia" type="button" aria-label="Regenerate" title="Regenerate">
+                    <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.5-6"/><path d="M21 3v6h-6"/></svg>
+                  </button>
+                  <button class="ia" type="button" aria-label="More" title="More">
+                    <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg>
+                  </button>
+                </div>
+                <div class="followups">
+                  <button type="button">
+                    <svg viewBox="0 0 24 24"><path d="M9 14l-4-4 4-4"/><path d="M5 10h11a4 4 0 0 1 0 8h-1"/></svg>
+                    Show the empty state layout
+                  </button>
+                  <button type="button">
+                    <svg viewBox="0 0 24 24"><path d="M9 14l-4-4 4-4"/><path d="M5 10h11a4 4 0 0 1 0 8h-1"/></svg>
+                    Compare spacing to ChatGPT
+                  </button>
+                </div>
+              </article>
+
+              <article class="turn user" aria-label="User message">
+                <div class="prose">
+                  <p>Better — push it closer to Grok / ChatGPT. The old list with avatars felt cheap.</p>
+                </div>
+              </article>
+
+              <article class="turn assistant" aria-label="Assistant message">
+                <p class="worked"><button type="button">Worked for 3s ›</button></p>
+                <div class="prose">
+                  <p class="h">What changed</p>
+                  <div class="quote">"The old list with avatars felt cheap."</div>
+                  <p>Yes. Reference DNA applied:</p>
+                  <ul>
+                    <li>User bubbles <strong>right-aligned</strong>, fully rounded</li>
+                    <li>Assistant = open prose, no robot/user chrome in the stream</li>
+                    <li>Icon row under answers (copy · feedback · retry)</li>
+                    <li>Optional follow-up chips, Grok-style</li>
+                  </ul>
+                </div>
+                <div class="turn-actions">
+                  <button class="ia" type="button" aria-label="Copy" title="Copy">
+                    <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="1.5"/><path d="M6 15V5.5A1.5 1.5 0 0 1 7.5 4H16"/></svg>
+                  </button>
+                  <button class="ia" type="button" aria-label="Good response" title="Good">
+                    <svg viewBox="0 0 24 24"><path d="M7 11v10M14 21H8a2 2 0 0 1-2-2v-8l5-7a2 2 0 0 1 3.7 1.3L14 11h5.5a2 2 0 0 1 2 2.3l-1.4 6A2 2 0 0 1 18.2 21H14z"/></svg>
+                  </button>
+                  <button class="ia" type="button" aria-label="Bad response" title="Bad">
+                    <svg viewBox="0 0 24 24"><path d="M17 13V3M10 3h6a2 2 0 0 1 2 2v8l-5 7a2 2 0 0 1-3.7-1.3L10 13H4.5a2 2 0 0 1-2-2.3l1.4-6A2 2 0 0 1 5.8 3H10z"/></svg>
+                  </button>
+                  <button class="ia" type="button" aria-label="Regenerate" title="Regenerate">
+                    <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.5-6"/><path d="M21 3v6h-6"/></svg>
+                  </button>
+                  <button class="ia" type="button" aria-label="More" title="More">
+                    <svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg>
+                  </button>
+                </div>
+              </article>
+
+            </div>
+          </div>
+          <div class="dock" data-composer></div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <template id="composerTpl">
+    <div class="dock-inner">
+      <div class="composer">
+        <textarea rows="3" placeholder="Message…  Enter send · Shift+Enter or ⌥Enter new line" aria-label="Message"></textarea>
+        <div class="bar">
+          <div class="tools">
+            <button class="tool" type="button" title="Attach">
+              <svg viewBox="0 0 24 24"><path d="M21 12.5V7a5 5 0 0 0-10 0v10a3 3 0 0 0 6 0V8"/></svg>
+              Attach
+            </button>
+            <button class="tool on" type="button">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg>
+              Browse
+            </button>
+            <button class="tool" type="button">
+              <svg viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18v3h3l6.3-6.3a4 4 0 0 0 5.4-5.4"/><path d="m15 5 4 4"/></svg>
+              Tools
+            </button>
+          </div>
+          <div class="bar-right">
+            <span class="ctx">12 418 / 128 000</span>
+            <button class="model" type="button">
+              sonnet-4
+              <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <button class="send" type="button" aria-label="Send message (Enter)" disabled>
+              <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="fineprint">
+        <span>
+          <kbd>Enter</kbd> send ·
+          <kbd>Shift</kbd>+<kbd>Enter</kbd> or
+          <kbd>⌥</kbd>+<kbd>Enter</kbd> new line
+        </span>
+        <span>verify model output</span>
+      </div>
+    </div>
+  </template>
+
+  <div class="switch" role="group" aria-label="View">
+    <button type="button" data-view="empty">Empty</button>
+    <button type="button" class="on" data-view="thread">Thread</button>
+  </div>
+
+  <script>
+    (function () {
+      const tpl = document.getElementById("composerTpl");
+      document.querySelectorAll("[data-composer]").forEach((el) => {
+        el.appendChild(tpl.content.cloneNode(true));
+      });
+
+      /**
+       * Keyboard map (ChatGPT / Claude / most TUIs):
+       *   Enter              → send
+       *   Shift+Enter        → newline
+       *   Alt/Option+Enter   → newline (mac-friendly alt)
+       *   Ctrl/Cmd+Enter     → send (explicit, always)
+       */
+      function insertNewline(ta) {
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        const value = ta.value;
+        ta.value = value.slice(0, start) + "\n" + value.slice(end);
+        const next = start + 1;
+        ta.selectionStart = ta.selectionEnd = next;
+        ta.dispatchEvent(new Event("input"));
+      }
+
+      function trySend(ta, sendBtn) {
+        const text = ta.value.trim();
+        if (!text || sendBtn.disabled) return;
+        // Mock: flash + clear (visual proof Enter sends)
+        sendBtn.animate(
+          [{ transform: "scale(0.92)" }, { transform: "scale(1)" }],
+          { duration: 160, easing: "ease-out" }
+        );
+        console.info("[mock send]", text);
+        ta.value = "";
+        ta.dispatchEvent(new Event("input"));
+      }
+
+      document.querySelectorAll(".composer").forEach((c) => {
+        const ta = c.querySelector("textarea");
+        const send = c.querySelector(".send");
+        if (!ta || !send) return;
+
+        const sync = () => {
+          send.disabled = !ta.value.trim();
+        };
+        ta.addEventListener("input", sync);
+        sync();
+
+        ta.addEventListener("keydown", (e) => {
+          if (e.key !== "Enter") return;
+
+          // Newline: Shift+Enter OR Alt/Option+Enter
+          if (e.shiftKey || e.altKey) {
+            // let default insert newline when shift; force insert for alt
+            if (e.altKey && !e.shiftKey) {
+              e.preventDefault();
+              insertNewline(ta);
+            }
+            // Shift+Enter: browser default inserts newline — good
+            return;
+          }
+
+          // Ctrl/Cmd+Enter always send (redundant with bare Enter, explicit)
+          // Bare Enter → send
+          e.preventDefault();
+          trySend(ta, send);
+        });
+
+        send.addEventListener("click", () => trySend(ta, send));
+
+        c.querySelectorAll(".tool").forEach((t) => {
+          t.addEventListener("click", () => t.classList.toggle("on"));
+        });
+      });
+
+      const empty = document.getElementById("viewEmpty");
+      const thread = document.getElementById("viewThread");
+      const crumbName = document.getElementById("crumbName");
+      const switches = document.querySelectorAll(".switch [data-view]");
+
+      function show(name) {
+        const isEmpty = name === "empty";
+        empty.classList.toggle("show", isEmpty);
+        thread.classList.toggle("show", !isEmpty);
+        crumbName.textContent = isEmpty ? "New chat" : "Shell redesign brief";
+        switches.forEach((b) => b.classList.toggle("on", b.dataset.view === name));
+      }
+
+      switches.forEach((b) => b.addEventListener("click", () => show(b.dataset.view)));
+      document.getElementById("btnNew")?.addEventListener("click", () => show("empty"));
+      document.querySelectorAll("[data-open-thread]").forEach((b) => {
+        b.addEventListener("click", () => show("thread"));
+      });
+
+      document.querySelectorAll("[data-fill]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          show("empty");
+          const ta = empty.querySelector("textarea");
+          if (!ta) return;
+          ta.value = btn.getAttribute("data-fill") || "";
+          ta.dispatchEvent(new Event("input"));
+          ta.focus();
+        });
+      });
+
+      /* user account dropdown */
+      const userTrigger = document.getElementById("userTrigger");
+      const userMenu = document.getElementById("userMenu");
+
+      function setUserMenu(open) {
+        if (!userTrigger || !userMenu) return;
+        userTrigger.setAttribute("aria-expanded", open ? "true" : "false");
+        userMenu.classList.toggle("open", open);
+        if (open) userMenu.removeAttribute("hidden");
+        else userMenu.setAttribute("hidden", "");
+      }
+
+      userTrigger?.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const open = userTrigger.getAttribute("aria-expanded") !== "true";
+        setUserMenu(open);
+      });
+
+      userMenu?.querySelectorAll(".user-menu-item").forEach((item) => {
+        item.addEventListener("click", () => setUserMenu(false));
+      });
+
+      document.addEventListener("click", (e) => {
+        if (!userMenu || !userTrigger) return;
+        if (userMenu.contains(e.target) || userTrigger.contains(e.target)) return;
+        setUserMenu(false);
+      });
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") setUserMenu(false);
+      });
+    })();
+  </script>
+</body>
+</html>

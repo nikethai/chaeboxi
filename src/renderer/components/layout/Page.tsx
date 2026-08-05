@@ -5,7 +5,6 @@ import type { FC } from 'react'
 import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { useUIStore } from '@/stores/uiStore'
-import Divider from '../common/Divider'
 import WindowControls from './WindowControls'
 
 export type PageProps = {
@@ -21,15 +20,21 @@ export const Page: FC<PageProps> = ({ children, title, left, right }) => {
   const isSmallScreen = useIsSmallScreen()
   const { needRoomForMacWindowControls } = useNeedRoomForWinControls()
   return (
-    <div className="flex flex-col h-full">
-      <Flex h={54} align="center" px="sm" className={clsx('title-bar')}>
+    <div className="flex flex-col h-full min-h-0 bg-[var(--chatbox-background-primary)]">
+      <Flex
+        h={isSmallScreen ? 56 : 44}
+        align="center"
+        px="sm"
+        className={clsx('title-bar flex-none bg-[var(--chatbox-background-primary)]')}
+        style={{ borderBottom: 'none' }}
+      >
         {left ||
           ((!showSidebar || isSmallScreen) && (
             <Flex align="center" className={needRoomForMacWindowControls ? 'pl-20' : ''}>
               <ActionIcon
                 className="controls"
                 variant="subtle"
-                size={isSmallScreen ? 24 : 20}
+                size={isSmallScreen ? 24 : 28}
                 color={isSmallScreen ? 'chatbox-secondary' : 'chatbox-tertiary'}
                 mr="sm"
                 onClick={() => setShowSidebar(!showSidebar)}
@@ -41,7 +46,7 @@ export const Page: FC<PageProps> = ({ children, title, left, right }) => {
 
         <Flex align="center" gap={'xxs'} flex={1} {...(isSmallScreen ? { justify: 'center', px: 'sm' } : {})}>
           {typeof title === 'string' ? (
-            <Title order={4} fz={!isSmallScreen ? 20 : undefined} lineClamp={1}>
+            <Title order={4} fz={!isSmallScreen ? '0.95rem' : undefined} fw={600} lineClamp={1} className="tracking-tight">
               {title}
             </Title>
           ) : (
@@ -53,9 +58,7 @@ export const Page: FC<PageProps> = ({ children, title, left, right }) => {
         {isSmallScreen && !right && <Box w={28} />}
       </Flex>
 
-      <Divider />
-
-      <div className="flex-1 overflow-auto">{children}</div>
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">{children}</div>
     </div>
   )
 }

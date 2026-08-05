@@ -1,13 +1,13 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { ActionIcon, Button, Flex, Tooltip } from '@mantine/core'
-import { ModelProviderEnum, type Message, type ModelProvider } from '@shared/types'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Button, Flex, Text } from '@mantine/core'
+import { type Message, type ModelProvider, ModelProviderEnum } from '@shared/types'
 import { IconMessage, IconShield } from '@tabler/icons-react'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { type FC, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import MessageList, { type MessageListRef } from '@/components/chat/MessageList'
+import SessionStatusBar from '@/components/chat/SessionStatusBar'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
-import { CostDashboard } from '@/components/CostDashboard'
 import InputBox from '@/components/InputBox/InputBox'
 import Header from '@/components/layout/Header'
 import ThreadHistoryDrawer from '@/components/session/ThreadHistoryDrawer'
@@ -23,18 +23,12 @@ import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 // fully tree-shaken from the Android session chunk.
 const isAgentEnabled = CHATBOX_BUILD_PLATFORM !== 'android'
 
-const SessionPanel = isAgentEnabled
-  ? lazy(() => import('@/openclaw/components/SessionPanel'))
-  : null
+const SessionPanel = isAgentEnabled ? lazy(() => import('@/openclaw/components/SessionPanel')) : null
 const ToolAuditPanel = isAgentEnabled
-  ? lazy(() =>
-      import('@/components/ToolAuditPanel').then((m) => ({ default: m.ToolAuditPanel }))
-    )
+  ? lazy(() => import('@/components/ToolAuditPanel').then((m) => ({ default: m.ToolAuditPanel })))
   : null
 const TaskProgress = isAgentEnabled
-  ? lazy(() =>
-      import('@/components/TaskProgress/TaskProgress').then((m) => ({ default: m.TaskProgress }))
-    )
+  ? lazy(() => import('@/components/TaskProgress/TaskProgress').then((m) => ({ default: m.TaskProgress })))
   : null
 
 export const Route = createFileRoute('/session/$sessionId')({
@@ -185,11 +179,13 @@ function RouteComponent() {
   const [showSessionPanel, setShowSessionPanel] = useState(false)
 
   return currentSession ? (
-    <div className="flex flex-col h-full">
+    <div className="session-shell">
       <Header session={currentSession} />
 
       {/* MessageList 设置 key，确保每个 session 对应新的 MessageList 实例 */}
-      <MessageList ref={messageListRef} key={`message-list${currentSessionId}`} currentSession={currentSession} />
+      <div className="session-thread">
+        <MessageList ref={messageListRef} key={`message-list${currentSessionId}`} currentSession={currentSession} />
+      </div>
 
       {/* <ScrollButtons /> */}
       {TaskProgress && (
@@ -197,62 +193,83 @@ function RouteComponent() {
           <TaskProgress sessionId={currentSession.id} />
         </Suspense>
       )}
-      {isAgentEnabled && (
-        <Flex justify="flex-end" px="sm" py="xs">
-          {isOpenClawProvider && (
-            <Tooltip label={t('Gateway Sessions')}>
-              <ActionIcon
-                variant={showSessionPanel ? 'filled' : 'subtle'}
-                size="sm"
-                color={showSessionPanel ? 'chatbox-primary' : 'chatbox-tertiary'}
-                onClick={() => setShowSessionPanel((v) => !v)}
-              >
-                <IconMessage size={16} />
-              </ActionIcon>
-            </Tooltip>
+
+      {/* Agent chrome — compact strip above composer (OpenClaw + tool audit) */}
+      {isAgentEnabled && isOpenClawProvider && (
+        <div className="agent-dock">
+          <div className="agent-dock-bar chat-col">
+            <Flex align="center" justify="space-between" gap="sm" className="min-w-0 w-full">
+              <Text className="agent-dock-label" lineClamp={1}>
+                {t('Agent')}
+              </Text>
+              <Flex align="center" gap={6} className="shrink-0">
+                <button
+                  type="button"
+                  className={`agent-dock-chip ${showSessionPanel ? 'is-on' : ''}`}
+                  onClick={() => setShowSessionPanel((v) => !v)}
+                  aria-pressed={showSessionPanel}
+                >
+                  <IconMessage size={14} stroke={1.5} />
+                  <span>{t('Gateway')}</span>
+                </button>
+                <button
+                  type="button"
+                  className={`agent-dock-chip ${showToolAudit ? 'is-on' : ''}`}
+                  onClick={() => setShowToolAudit((v) => !v)}
+                  aria-pressed={showToolAudit}
+                >
+                  <IconShield size={14} stroke={1.5} />
+                  <span>{t('Audit')}</span>
+                </button>
+              </Flex>
+            </Flex>
+          </div>
+          {showSessionPanel && SessionPanel && (
+            <div className="agent-dock-panel chat-col">
+              <Suspense fallback={null}>
+                <SessionPanel />
+              </Suspense>
+            </div>
           )}
-          <Tooltip label={t('Tool Audit')}>
-            <ActionIcon
-              variant={showToolAudit ? 'filled' : 'subtle'}
-              size="sm"
-              color={showToolAudit ? 'chatbox-primary' : 'chatbox-tertiary'}
-              onClick={() => setShowToolAudit((v) => !v)}
-            >
-              <IconShield size={16} />
-            </ActionIcon>
-          </Tooltip>
-        </Flex>
+          {showToolAudit && ToolAuditPanel && (
+            <div className="agent-dock-panel chat-col">
+              <Suspense fallback={null}>
+                <ToolAuditPanel sessionId={currentSession.id} />
+              </Suspense>
+            </div>
+          )}
+        </div>
       )}
-      {ToolAuditPanel && showToolAudit && (
-        <Suspense fallback={null}>
-          <ToolAuditPanel sessionId={currentSession.id} />
-        </Suspense>
-      )}
-      {SessionPanel && showSessionPanel && (
-        <Suspense fallback={null}>
-          <SessionPanel />
-        </Suspense>
-      )}
-      <ErrorBoundary name="session-inputbox">
-        <InputBox
-          key={`input-box${currentSession.id}`}
-          sessionId={currentSession.id}
-          sessionType={currentSession.type}
-          model={model}
-          agentMode={currentSession.agentMode ?? false}
-          onStartNewThread={onStartNewThread}
-          onRollbackThread={onRollbackThread}
-          onSelectModel={onSelectModel}
-          onToggleAgentMode={(agentMode) => {
-            void updateSessionStore(currentSession.id, { agentMode })
-          }}
-          onClickSessionSettings={onClickSessionSettings}
+
+      <div className="session-dock">
+        <div className="session-dock-pad">
+          <ErrorBoundary name="session-inputbox">
+            <InputBox
+              key={`input-box${currentSession.id}`}
+              sessionId={currentSession.id}
+              sessionType={currentSession.type}
+              model={model}
+              agentMode={currentSession.agentMode ?? false}
+              onStartNewThread={onStartNewThread}
+              onRollbackThread={onRollbackThread}
+              onSelectModel={onSelectModel}
+              onToggleAgentMode={(agentMode) => {
+                void updateSessionStore(currentSession.id, { agentMode })
+              }}
+              onClickSessionSettings={onClickSessionSettings}
+              generating={!!lastGeneratingMessage}
+              onSubmit={onSubmit}
+              onStopGenerating={onStopGenerating}
+            />
+          </ErrorBoundary>
+        </div>
+        <SessionStatusBar
+          messages={currentMessageList}
+          modelLabel={model?.modelId}
+          providerId={model?.provider}
           generating={!!lastGeneratingMessage}
-          onSubmit={onSubmit}
-          onStopGenerating={onStopGenerating}
         />
-      </ErrorBoundary>
-      {CHATBOX_BUILD_PLATFORM !== 'android' && <CostDashboard messages={currentMessageList} />}
+      </div>
       <ThreadHistoryDrawer session={currentSession} />
     </div>
   ) : (

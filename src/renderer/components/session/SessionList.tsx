@@ -1,5 +1,3 @@
-import type { Folder, SessionMeta } from '@shared/types'
-import { arrayMove } from '@dnd-kit/sortable'
 import type { DragEndEvent } from '@dnd-kit/core'
 import {
   closestCenter,
@@ -12,6 +10,7 @@ import {
 } from '@dnd-kit/core'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import {
+  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
@@ -19,20 +18,20 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import NiceModal from '@ebay/nice-modal-react'
-import { ActionIcon, Button, Flex, Select, Text, TextInput, Tooltip } from '@mantine/core'
-import { IconSearch, IconTrash } from '@tabler/icons-react'
+import { ActionIcon, Button, Select, TextInput, Tooltip, UnstyledButton } from '@mantine/core'
+import type { Folder, SessionMeta } from '@shared/types'
+import { IconChevronDown, IconTrash } from '@tabler/icons-react'
 import { useRouterState } from '@tanstack/react-router'
-import type { MutableRefObject } from 'react'
+import type { MutableRefObject, ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Virtuoso } from 'react-virtuoso'
-import { useFolders } from '@/hooks/useFolders'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
+import { useFolders } from '@/hooks/useFolders'
 import { getSession, updateSession, updateSessionList, useSessionList } from '@/stores/chatStore'
-import { useUIStore } from '@/stores/uiStore'
+import { AdaptiveModal } from '../common/AdaptiveModal'
 import FolderItem from './FolderItem'
 import SessionItem from './SessionItem'
-import { AdaptiveModal } from '../common/AdaptiveModal'
 
 const ALL_FOLDER_KEY = '__all__'
 
@@ -87,9 +86,10 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
   const { folders, removeFolder, updateFolder } = useFolders()
   const { copilots: myCopilots } = useMyCopilots()
   const { copilots: remoteCopilots } = useRemoteCopilots()
-  const setOpenSearchDialog = useUIStore((s) => s.setOpenSearchDialog)
   const routerState = useRouterState()
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({})
+  const [projectsOpen, setProjectsOpen] = useState(true)
+  const [historyOpen, setHistoryOpen] = useState(true)
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null)
   const [folderName, setFolderName] = useState('')
   const [folderEmoji, setFolderEmoji] = useState('')
@@ -130,7 +130,7 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
     [showArchived, sortedSessions]
   )
 
-  const groups = useMemo<FolderGroup[]>(() => {
+  const { projectGroups, historySessions } = useMemo(() => {
     const groupMap = new Map<string, FolderGroup>()
 
     for (const folder of folders) {
@@ -143,54 +143,104 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
       })
     }
 
-    const unfiledSessions: SessionMeta[] = []
+    const unfiled: SessionMeta[] = []
 
     for (const session of visibleSessions) {
-      if (session.folderId && groupMap.has(session.folderId)) {
-        const group = groupMap.get(session.folderId)!
+      const group = session.folderId ? groupMap.get(session.folderId) : undefined
+      if (group) {
         group.sessions.push(session)
         group.count += 1
       } else {
-        unfiledSessions.push(session)
+        unfiled.push(session)
       }
     }
 
-    const nextGroups: FolderGroup[] = []
+    return {
+      projectGroups: Array.from(groupMap.values()),
+      historySessions: unfiled,
+    }
+  }, [folders, visibleSessions])
 
-    if (unfiledSessions.length > 0 || folders.length === 0) {
-      nextGroups.push({
+  // DnD subsets still keyed by folder (or ALL for history)
+  const groups = useMemo<FolderGroup[]>(() => {
+    const next: FolderGroup[] = []
+    if (historySessions.length > 0 || projectGroups.length === 0) {
+      next.push({
         key: ALL_FOLDER_KEY,
-        name: t('All'),
-        count: unfiledSessions.length,
-        sessions: unfiledSessions,
+        name: t('History'),
+        count: historySessions.length,
+        sessions: historySessions,
         implicit: true,
       })
     }
+    next.push(...projectGroups)
+    return next
+  }, [historySessions, projectGroups, t])
 
-    nextGroups.push(...Array.from(groupMap.values()))
-    return nextGroups
-  }, [folders, t, visibleSessions])
+  type SectionRow =
+    | { type: 'section'; key: string; label: string; open: boolean; onToggle: () => void; trailing?: ReactNode }
+    | RowItem
 
-  const rowItems = useMemo<RowItem[]>(
-    () =>
-      groups.flatMap((group) => {
-        const expanded = expandedFolders[group.key] ?? true
-        const rows: RowItem[] = [{ type: 'folder', folder: group }]
+  const rowItems = useMemo<SectionRow[]>(() => {
+    const rows: SectionRow[] = []
 
-        if (expanded) {
-          rows.push(
-            ...group.sessions.map((session) => ({
-              type: 'session' as const,
-              session,
-              folderKey: group.key,
-            }))
-          )
+    // Projects — Grok-style collapsible section for folders
+    if (projectGroups.length > 0) {
+      rows.push({
+        type: 'section',
+        key: 'projects',
+        label: t('Projects'),
+        open: projectsOpen,
+        onToggle: () => setProjectsOpen((v) => !v),
+      })
+
+      if (projectsOpen) {
+        for (const group of projectGroups) {
+          const expanded = expandedFolders[group.key] ?? true
+          rows.push({ type: 'folder', folder: group })
+          if (expanded) {
+            for (const session of group.sessions) {
+              rows.push({ type: 'session', session, folderKey: group.key })
+            }
+          }
         }
+      }
+    }
 
-        return rows
-      }),
-    [expandedFolders, groups]
-  )
+    // History — unfiled sessions (Grok History DNA)
+    rows.push({
+      type: 'section',
+      key: 'history',
+      label: showArchived ? t('Archived') : t('History'),
+      open: historyOpen,
+      onToggle: () => setHistoryOpen((v) => !v),
+      trailing: (
+        <Tooltip label={t('Clear Conversation List')} openDelay={600} withArrow>
+          <ActionIcon
+            variant="subtle"
+            color="chatbox-tertiary"
+            size={22}
+            radius="sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              void NiceModal.show('clear-session-list')
+            }}
+            aria-label={t('Clear Conversation List')}
+          >
+            <IconTrash size={14} stroke={1.5} />
+          </ActionIcon>
+        </Tooltip>
+      ),
+    })
+
+    if (historyOpen) {
+      for (const session of historySessions) {
+        rows.push({ type: 'session', session, folderKey: ALL_FOLDER_KEY })
+      }
+    }
+
+    return rows
+  }, [expandedFolders, historyOpen, historySessions, projectGroups, projectsOpen, showArchived, t])
 
   const visibleSessionIds = useMemo(
     () =>
@@ -287,34 +337,6 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
 
   return (
     <>
-      <Flex align="center" py="xs" px="md" gap="xs">
-        <Text c="chatbox-tertiary" flex={1}>
-          {showArchived ? t('Archived Chats') : t('chat')}
-        </Text>
-
-        <Tooltip label={t('Search')} openDelay={1000} withArrow>
-          <ActionIcon
-            variant="subtle"
-            color="chatbox-tertiary"
-            size={20}
-            onClick={() => setOpenSearchDialog(true, true)}
-          >
-            <IconSearch />
-          </ActionIcon>
-        </Tooltip>
-
-        <Tooltip label={t('Clear Conversation List')} openDelay={1000} withArrow>
-          <ActionIcon
-            variant="subtle"
-            color="chatbox-tertiary"
-            size={20}
-            onClick={() => NiceModal.show('clear-session-list')}
-          >
-            <IconTrash />
-          </ActionIcon>
-        </Tooltip>
-      </Flex>
-
       <DndContext
         modifiers={[restrictToVerticalAxis]}
         sensors={sensors}
@@ -330,47 +352,73 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
                 sessionListViewportRef.current = ref
               }
             }}
-            itemContent={(_index, row) =>
-              row.type === 'folder' ? (
-                <FolderItem
-                  count={row.folder.count}
-                  emoji={row.folder.emoji}
-                  expanded={expandedFolders[row.folder.key] ?? true}
-                  implicit={row.folder.implicit}
-                  name={row.folder.name}
-                  onDelete={
-                    row.folder.implicit
-                      ? undefined
-                      : () => {
-                          const folder = folders.find((item) => item.id === row.folder.key)
-                          if (folder) {
-                            void handleDeleteFolder(folder)
+            itemContent={(_index, row) => {
+              if (row.type === 'section') {
+                return (
+                  <UnstyledButton
+                    type="button"
+                    className="rail-section"
+                    onClick={row.onToggle}
+                    aria-expanded={row.open}
+                  >
+                    <span className="rail-section-label">{row.label}</span>
+                    <span className="rail-section-trail">
+                      {row.trailing}
+                      <IconChevronDown
+                        size={14}
+                        stroke={1.75}
+                        className={row.open ? 'rail-section-chevron is-open' : 'rail-section-chevron'}
+                        aria-hidden
+                      />
+                    </span>
+                  </UnstyledButton>
+                )
+              }
+
+              if (row.type === 'folder') {
+                return (
+                  <FolderItem
+                    count={row.folder.count}
+                    emoji={row.folder.emoji}
+                    expanded={expandedFolders[row.folder.key] ?? true}
+                    implicit={row.folder.implicit}
+                    name={row.folder.name}
+                    onDelete={
+                      row.folder.implicit
+                        ? undefined
+                        : () => {
+                            const folder = folders.find((item) => item.id === row.folder.key)
+                            if (folder) {
+                              void handleDeleteFolder(folder)
+                            }
                           }
-                        }
-                  }
-                  onRename={
-                    row.folder.implicit
-                      ? undefined
-                      : () => {
-                          const folder = folders.find((item) => item.id === row.folder.key)
-                          if (folder) {
-                            setEditingFolder(folder)
+                    }
+                    onRename={
+                      row.folder.implicit
+                        ? undefined
+                        : () => {
+                            const folder = folders.find((item) => item.id === row.folder.key)
+                            if (folder) {
+                              setEditingFolder(folder)
+                            }
                           }
-                        }
-                  }
-                  onSetDefaultCopilot={
-                    row.folder.implicit
-                      ? undefined
-                      : () => {
-                          const folder = folders.find((item) => item.id === row.folder.key)
-                          if (folder) {
-                            setEditingFolder(folder)
+                    }
+                    onSetDefaultCopilot={
+                      row.folder.implicit
+                        ? undefined
+                        : () => {
+                            const folder = folders.find((item) => item.id === row.folder.key)
+                            if (folder) {
+                              setEditingFolder(folder)
+                            }
                           }
-                        }
-                  }
-                  onToggle={() => toggleFolder(row.folder.key)}
-                />
-              ) : (
+                    }
+                    onToggle={() => toggleFolder(row.folder.key)}
+                  />
+                )
+              }
+
+              return (
                 <SortableItem id={row.session.id}>
                   <SessionItem
                     selected={routerState.location.pathname === `/session/${row.session.id}`}
@@ -378,7 +426,7 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
                   />
                 </SortableItem>
               )
-            }
+            }}
           />
         </SortableContext>
       </DndContext>

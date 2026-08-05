@@ -1,4 +1,4 @@
-import { Badge, Group, Paper, Progress, Stack, Text, Tooltip } from '@mantine/core'
+import { Badge, Group, Progress, Stack, Text, Tooltip } from '@mantine/core'
 import { CheckCircle2, Circle, Loader2, XCircle } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -44,22 +44,21 @@ export function TaskProgress({ sessionId }: { sessionId: string }) {
   }
 
   return (
-    <Paper shadow="xs" radius="md" p="sm" withBorder className="mx-3 mb-2">
-      <Stack gap="xs">
-        <Group justify="space-between" align="center">
-          <Text size="sm" fw={600}>
-            {t('Tasks')}
-          </Text>
-          <Badge variant="light" color="blue" size="sm">
-            {summary.done}/{summary.total}
-          </Badge>
-        </Group>
-
+    <div className="agent-dock">
+      <div className="agent-dock-panel chat-col">
+        <div className="agent-panel">
+          <Group justify="space-between" align="center" className="agent-panel-head px-3">
+            <Text className="agent-panel-title">{t('Tasks')}</Text>
+            <span className="agent-session-count">
+              {summary.done}/{summary.total}
+            </span>
+          </Group>
+          <Stack gap="xs" p="sm">
         <Progress
           value={summary.overallProgress}
-          color={summary.failed > 0 ? 'orange' : 'blue'}
+          color={summary.failed > 0 ? 'orange' : 'chatbox-brand'}
           size="sm"
-          radius="xl"
+          radius="sm"
           animated={summary.inProgress > 0}
         />
 
@@ -90,8 +89,10 @@ export function TaskProgress({ sessionId }: { sessionId: string }) {
             </Group>
           )
         })}
-      </Stack>
-    </Paper>
+          </Stack>
+        </div>
+      </div>
+    </div>
   )
 }
 

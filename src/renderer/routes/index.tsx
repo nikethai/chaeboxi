@@ -1,6 +1,7 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { ActionIcon, Avatar, Box, Button, Divider, Flex, Paper, ScrollArea, Space, Stack, Text } from '@mantine/core'
+import { ActionIcon, Avatar, Box, Button, Divider, Flex, ScrollArea, Space, Stack, Text } from '@mantine/core'
 import type { CopilotDetail, Session } from '@shared/types'
+import { ModelProviderEnum } from '@shared/types'
 import { IconChevronLeft, IconChevronRight, IconX } from '@tabler/icons-react'
 import { createFileRoute, useRouterState } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
@@ -11,7 +12,6 @@ import { v4 as uuidv4 } from 'uuid'
 import { z } from 'zod'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import InputBox, { type InputBoxPayload } from '@/components/InputBox/InputBox'
-import HomepageIcon from '@/components/icons/HomepageIcon'
 import Page from '@/components/layout/Page'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useProviders } from '@/hooks/useProviders'
@@ -21,7 +21,6 @@ import { createSession as createSessionStore } from '@/stores/chatStore'
 import { submitNewUserMessage, switchCurrentSession } from '@/stores/sessionActions'
 import { initEmptyChatSession } from '@/stores/sessionHelpers'
 import { useUIStore } from '@/stores/uiStore'
-import { ModelProviderEnum } from '@shared/types'
 
 export const Route = createFileRoute('/')({
   component: Index,
@@ -48,6 +47,18 @@ function Index() {
     id: 'new',
     ...initEmptyChatSession(),
   })
+  const [composerDraft, setComposerDraft] = useState('')
+  const [composerKey, setComposerKey] = useState(0)
+
+  const fillComposer = useCallback((text: string) => {
+    setComposerDraft(text)
+    setComposerKey((k) => k + 1)
+    // also seed draft storage so remount restores if needed
+    localStorage.setItem('new-chat', text)
+    requestAnimationFrame(() => {
+      document.getElementById('message-input')?.focus()
+    })
+  }, [])
 
   const { providers } = useProviders()
 
@@ -146,7 +157,8 @@ function Index() {
   const onSelectModel = useCallback((p: string, m: string) => {
     setSession((old) => ({
       ...old,
-      messages: p === ModelProviderEnum.OpenClaw ? old.messages.filter((message) => message.role !== 'system') : old.messages,
+      messages:
+        p === ModelProviderEnum.OpenClaw ? old.messages.filter((message) => message.role !== 'system') : old.messages,
       settings: {
         ...(old.settings || {}),
         provider: p,
@@ -169,66 +181,96 @@ function Index() {
     return true
   }, [session])
 
+  const starters = useMemo(
+    () => [
+      {
+        n: '01',
+        title: t('Trace session store modules'),
+        hint: t('Architecture · TypeScript'),
+        fill: 'Map the session store modules and call out circular deps.',
+      },
+      {
+        n: '02',
+        title: t('PR: kill MUI drawer'),
+        hint: t('Write-up · shipping note'),
+        fill: 'Draft a PR description for replacing the MUI drawer with a custom rail.',
+      },
+      {
+        n: '03',
+        title: t('Stream cancel race'),
+        hint: t('Debug · concurrency'),
+        fill: 'Debug intermittent stream cancel when switching models mid-response.',
+      },
+      {
+        n: '04',
+        title: t('Composer context meter'),
+        hint: t('UX · tokens'),
+        fill: 'Propose token budget UI for the composer context meter.',
+      },
+    ],
+    [t]
+  )
+
   return (
     <Page title="">
-      <div className="p-0 flex flex-col h-full">
-        <Stack align="center" justify="center" gap="sm" flex={1}>
-          <HomepageIcon className="h-8" />
-          <Text fw="600" size={isSmallScreen ? 'sm' : 'md'}>
-            {t('What can I help you with today?')}
-          </Text>
-        </Stack>
+      <div className="p-0 flex flex-col h-full session-shell">
+        {/* Mock .blank — asymmetric workbench empty state */}
+        <div className="blank-workbench flex-1 min-h-0 overflow-auto">
+          <div className="blank-copy">
+            <h1 className="blank-title">{t('Pick a thread. Or start one.')}</h1>
+            <p className="blank-sub">
+              {t(
+                'Desktop copilot for people who live in providers, tools, and long context — not another soft chat toy.'
+              )}
+            </p>
+            <div className="blank-tags">
+              <span className="blank-tag">dark-first</span>
+              <span className="blank-tag">indigo · solid</span>
+              <span className="blank-tag">no MUI shell</span>
+              <span className="blank-tag">local-first</span>
+            </div>
+            {!providers.length && (
+              <Button
+                mt="md"
+                size="sm"
+                variant="light"
+                color="chatbox-brand"
+                onClick={() => router.navigate({ to: '/settings/provider' })}
+              >
+                {t('Setup Provider')}
+              </Button>
+            )}
+          </div>
 
-        {!providers.length && (
-          <Box px="sm">
-            <Paper
-              radius="md"
-              shadow="none"
-              withBorder
-              py="md"
-              px="sm"
-              mb="md"
-              className={widthFull ? 'w-full' : 'w-full max-w-4xl mx-auto'}
-            >
-              <Stack gap="sm">
-                <Stack gap="xxs" align="center">
-                  <Text fw={600} className="text-center">
-                    {t('Select and configure an AI model provider')}
-                  </Text>
+          {!isSmallScreen && (
+            <div className="blank-starters" role="list">
+              <header className="blank-starters-head">
+                <span>{t('Starters')}</span>
+                <span>{t('press to fill')}</span>
+              </header>
+              {starters.map((s) => (
+                <button
+                  key={s.n}
+                  type="button"
+                  className="blank-starter"
+                  role="listitem"
+                  onClick={() => fillComposer(s.fill)}
+                >
+                  <span className="blank-starter-n">{s.n}</span>
+                  <span>
+                    <span className="blank-starter-t">{s.title}</span>
+                    <span className="blank-starter-h">{s.hint}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
-                  <Text size="xs" c="chatbox-tertiary" className="text-center">
-                    {t(
-                      'To start a conversation, you need to configure at least one AI model. Click the buttons below to get started.'
-                    )}
-                  </Text>
-                </Stack>
-
-                <Flex gap="xs" justify="center" align="center">
-                  <Button
-                    size="xs"
-                    variant="light"
-                    h={32}
-                    miw={160}
-                    fw={600}
-                    flex="0 1 auto"
-                    onClick={() => {
-                      router.navigate({
-                        to: '/settings/provider',
-                      })
-                    }}
-                  >
-                    {t('Setup Provider')}
-                  </Button>
-                </Flex>
-              </Stack>
-            </Paper>
-          </Box>
-        )}
-
-        <Stack gap="sm">
+        <Stack gap="sm" className="session-dock">
           {session.copilotId ? (
-            <Box px="md">
-              <Stack gap="sm" className={widthFull ? 'w-full' : 'w-full max-w-4xl mx-auto'}>
+            <Box className={widthFull ? 'chat-col-full' : 'chat-col'}>
+              <Stack gap="sm" className="w-full">
                 <Flex align="center" gap="sm">
                   <CopilotItem
                     name={session.name}
@@ -237,13 +279,13 @@ function Index() {
                     selected
                   />
                   <ActionIcon
-                    size={32}
-                    radius={16}
+                    size={28}
+                    radius="md"
                     c="chatbox-tertiary"
-                    bg="#F1F3F5"
+                    variant="subtle"
                     onClick={() => setSession((old) => ({ ...old, copilotId: undefined }))}
                   >
-                    <ScalableIcon icon={IconX} size={24} />
+                    <ScalableIcon icon={IconX} size={18} />
                   </ActionIcon>
                 </Flex>
 
@@ -260,11 +302,12 @@ function Index() {
           )}
 
           <InputBox
+            key={`new-composer-${composerKey}`}
             sessionType="chat"
             sessionId="new"
             model={selectedModel}
             agentMode={session.agentMode ?? false}
-            // fullWidth
+            initialMessage={composerDraft}
             onSelectModel={onSelectModel}
             onToggleAgentMode={(agentMode) => setSession((old) => ({ ...old, agentMode }))}
             onClickSessionSettings={onClickSessionSettings}
@@ -312,11 +355,16 @@ const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect
   }
 
   return (
-    <Box px="md">
-      <Stack gap="xs" className={widthFull ? 'w-full' : 'w-full max-w-4xl mx-auto'}>
+    <Box className={widthFull ? 'chat-col-full' : 'chat-col'}>
+      <Stack gap="xs" className="w-full">
         <Flex align="center" justify="space-between">
-          <Text size="xxs" c="chatbox-tertiary">
-            {t('My Copilots').toUpperCase()}
+          <Text
+            size="xs"
+            c="chatbox-tertiary"
+            className="uppercase tracking-wider"
+            style={{ fontFamily: 'var(--chatbox-font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em' }}
+          >
+            {t('My Copilots')}
           </Text>
 
           {!isSmallScreen && (

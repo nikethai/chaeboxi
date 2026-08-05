@@ -66,7 +66,7 @@ export const ProviderSettingsSchema = z.object({
   planId: z.string().optional().catch(undefined),
   region: z.string().optional().catch(undefined),
 
-  // Dual auth (xAI SuperGrok/X Premium OAuth vs developer API key)
+  // Dual auth (xAI SuperGrok / OpenAI ChatGPT Codex OAuth vs developer API key)
   authMode: z.enum(['api_key', 'oauth']).optional().catch(undefined),
   oauth: z
     .object({
@@ -76,6 +76,11 @@ export const ProviderSettingsSchema = z.object({
       tokenType: z.string().optional().catch(undefined),
       scope: z.string().optional().catch(undefined),
       obtainedAt: z.number().optional().catch(undefined),
+      /** ChatGPT account id (Codex / WHAM requires ChatGPT-Account-Id header) */
+      accountId: z.string().optional().catch(undefined),
+      /** Plan type from JWT claims when available (plus, pro, team, …) */
+      planType: z.string().optional().catch(undefined),
+      idToken: z.string().optional().catch(undefined),
     })
     .optional()
     .catch(undefined),

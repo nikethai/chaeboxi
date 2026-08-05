@@ -3,6 +3,7 @@ import { escape as escapeHtml } from 'lodash'
 import ReactDOMServer from 'react-dom/server'
 import Markdown, { BlockCodeCollapsedStateProvider } from '@/components/Markdown'
 import * as base64 from '@/packages/base64'
+import { CHAEBOXI_ICON_DATA_URI } from '@/packages/brand-icon-data-uri'
 import storage from '@/storage'
 import type { Message, MessageToolCallPart, SessionThread } from '../../shared/types'
 import { getMessageText } from '../../shared/utils/message'
@@ -189,9 +190,9 @@ export function formatChatAsMarkdown(sessionName: string, threads: SessionThread
   }
   content += '--------------------\n\n'
   content += `
-<a href="https://chatboxai.app" style="display: flex; align-items: center;">
-<img src='https://chatboxai.app/icon.png' style='width: 40px; height: 40px; padding-right: 6px'>
-<b style='font-size:30px'>Chatbox AI</b>
+<a href="#" style="display: flex; align-items: center;">
+<img src='${CHAEBOXI_ICON_DATA_URI}' style='width: 40px; height: 40px; padding-right: 6px; border-radius: 8px'>
+<b style='font-size:30px'>Chaeboxi</b>
 </a>
 `
   return content
@@ -258,7 +259,7 @@ export function formatChatAsTxt(sessionName: string, threads: SessionThread[]) {
     content += '\n\n\n\n'
   }
   content += `========================================================================\n\n`
-  content += `Chatbox AI (https://chatboxai.app)`
+  content += `Chaeboxi`
   return content
 }
 
@@ -347,24 +348,21 @@ export async function formatChatAsHtml(sessionName: string, threads: SessionThre
         }
     </script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
-    <link rel="shortcut icon" href="https://chatboxai.app/icon.png">
+    <link rel="shortcut icon" href="${CHAEBOXI_ICON_DATA_URI}">
 </head>
 <body class='bg-slate-100'>
     <div class='mx-auto max-w-5xl shadow-md prose bg-white px-2 py-4'>
         <h1 class='flex flex-row justify-between items-center my-4 h-8'>
             <span>${sessionName}</span>
-            <a href="https://chatboxai.app" target="_blank" >
-                <img src='https://chatboxai.app/icon.png' class="w-12">
-            </a>
+            <img src='${CHAEBOXI_ICON_DATA_URI}' class="w-12" style="border-radius: 10px" alt="Chaeboxi">
         </h1>
         <hr />
         ${content}
         <hr />
-        <a href="https://chatboxai.app" style="display: flex; align-items: center;" class="text-sky-500" target="_blank">
-            <img src='https://chatboxai.app/icon.png' class="w-12 pr-2">
-            <b style='font-size:30px'>Chatbox AI</b>
-        </a>
-        <p><a a href="https://chatboxai.app" target="_blank">https://chatboxai.app</a></p>
+        <div style="display: flex; align-items: center;" class="text-sky-500">
+            <img src='${CHAEBOXI_ICON_DATA_URI}' class="w-12 pr-2" style="border-radius: 10px" alt="Chaeboxi">
+            <b style='font-size:30px'>Chaeboxi</b>
+        </div>
     </div>
 </body>
 </html>

@@ -1,16 +1,4 @@
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Flex,
-  Image,
-  Menu,
-  Stack,
-  Text,
-  TextInput,
-  Tooltip,
-  UnstyledButton,
-} from '@mantine/core'
+import { ActionIcon, Box, Button, Flex, Menu, Stack, TextInput, Tooltip, UnstyledButton } from '@mantine/core'
 import SwipeableDrawer from '@mui/material/SwipeableDrawer'
 import {
   IconArchive,
@@ -31,6 +19,7 @@ import { useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import ChaeboxiWordmark from './components/brand/ChaeboxiWordmark'
 import { AdaptiveModal } from './components/common/AdaptiveModal'
 import ThemeSwitchButton from './components/dev/ThemeSwitchButton'
 import TitleBarRow from './components/layout/TitleBarRow'
@@ -38,18 +27,13 @@ import SessionList from './components/session/SessionList'
 import { FORCE_ENABLE_DEV_PAGES } from './dev/devToolsConfig'
 import { useMyCopilots } from './hooks/useCopilots'
 import { useFolders } from './hooks/useFolders'
-import useNeedRoomForMacWinControls from './hooks/useNeedRoomForWinControls'
 import { useIsSmallScreen, useSidebarWidth } from './hooks/useScreenChange'
 import useVersion from './hooks/useVersion'
 import { navigateToSettings } from './modals/Settings'
 import { trackingEvent } from './packages/event'
-import icon from './static/icon.png'
 import { useLanguage } from './stores/settingsStore'
 import { useUIStore } from './stores/uiStore'
 import { CHATBOX_BUILD_PLATFORM } from './variables'
-
-/** Compact emoji set for folder icons — chip picker, not a free-text emoji field */
-const FOLDER_EMOJI_PRESETS = ['📁', '💼', '🔬', '🎨', '📚', '⚡', '🏠', '🧪', '🛠', '🎯'] as const
 
 export default function Sidebar() {
   const { t } = useTranslation()
@@ -73,7 +57,6 @@ export default function Sidebar() {
   const [showArchived, setShowArchived] = useState(false)
   const [folderModalOpened, setFolderModalOpened] = useState(false)
   const [folderName, setFolderName] = useState('')
-  const [folderEmoji, setFolderEmoji] = useState('')
   const [accountMenuOpen, setAccountMenuOpen] = useState(false)
   const [accountMenuWidth, setAccountMenuWidth] = useState<number | undefined>(undefined)
   const accountTriggerRef = useRef<HTMLButtonElement>(null)
@@ -87,8 +70,6 @@ export default function Sidebar() {
       setAccountMenuWidth(Math.round(el.getBoundingClientRect().width))
     }
   }, [])
-
-  const { needRoomForMacWindowControls } = useNeedRoomForMacWinControls()
 
   const closeSidebarIfMobile = useCallback(() => {
     if (isSmallScreen) {
@@ -169,12 +150,14 @@ export default function Sidebar() {
 
     addFolder({
       name: folderName.trim(),
-      emoji: folderEmoji.trim() || undefined,
     })
     setFolderName('')
-    setFolderEmoji('')
     setFolderModalOpened(false)
   }
+
+  const handleCollapseSidebar = useCallback(() => {
+    setShowSidebar(false)
+  }, [setShowSidebar])
 
   return (
     <>
@@ -211,34 +194,15 @@ export default function Sidebar() {
           pb="var(--mobile-safe-area-inset-bottom, 0px)"
           className="relative studio-rail"
         >
-          {/* Rail head lives in the title bar — no empty mac spacer above content */}
-          <TitleBarRow
-            heightMode="desktop"
-            macTrafficInset={needRoomForMacWindowControls}
-            justify="space-between"
-            px="sm"
-            className="rail-head"
-          >
-            <Flex align="center" gap={8} miw={0} className="controls min-w-0">
-              <Image src={icon} w={20} h={20} className="shrink-0 rounded-[5px]" />
-              <Text span c="chatbox-primary" size="sm" lh={1.2} fw={600} className="tracking-tight truncate">
-                Chaeboxi
-              </Text>
+          {/*
+            Rail head — brand left with nav (no mac traffic inset: 80px made logo look centered).
+            Traffic lights sit in the window corner; wordmark aligns with Search/New Chat.
+          */}
+          <TitleBarRow heightMode="desktop" macTrafficInset={false} justify="flex-start" className="rail-head">
+            <Flex align="center" gap={8} miw={0} justify="flex-start" className="controls min-w-0 w-full">
+              <ChaeboxiWordmark size="rail" />
               {FORCE_ENABLE_DEV_PAGES && <ThemeSwitchButton size="xs" />}
             </Flex>
-            <Tooltip label={t('Collapse')} openDelay={800} withArrow>
-              <ActionIcon
-                className="controls shrink-0"
-                variant="subtle"
-                color="chatbox-tertiary"
-                size={28}
-                radius="md"
-                onClick={() => setShowSidebar(false)}
-                aria-label={t('Collapse')}
-              >
-                <IconLayoutSidebarLeftCollapse size={16} stroke={1.5} />
-              </ActionIcon>
-            </Tooltip>
           </TitleBarRow>
 
           {/* Quiet nav stack — Grok: icon + label rows, no solid CTA block */}
@@ -287,14 +251,14 @@ export default function Sidebar() {
 
           {/* Projects / History chrome tools */}
           <Flex px="sm" pb={6} pt={2} gap={4} align="center" className="rail-tools">
-            <Tooltip label={t('New Folder')} withArrow>
+            <Tooltip label={t('New Project')} withArrow>
               <ActionIcon
                 size={28}
                 radius="md"
                 variant="subtle"
                 color="chatbox-tertiary"
                 onClick={() => setFolderModalOpened(true)}
-                aria-label={t('New Folder')}
+                aria-label={t('New Project')}
               >
                 <IconFolderPlus size={16} stroke={1.5} />
               </ActionIcon>
@@ -362,6 +326,14 @@ export default function Sidebar() {
 
               <Menu.Dropdown>
                 <Menu.Label>{t('Workspace')}</Menu.Label>
+                {!isSmallScreen && (
+                  <Menu.Item
+                    leftSection={<IconLayoutSidebarLeftCollapse size={15} stroke={1.5} />}
+                    onClick={handleCollapseSidebar}
+                  >
+                    {t('Hide Sidebar')}
+                  </Menu.Item>
+                )}
                 <Menu.Item
                   leftSection={<IconPhotoPlus size={15} stroke={1.5} />}
                   rightSection={<em className="user-menu-badge">beta</em>}
@@ -454,10 +426,9 @@ export default function Sidebar() {
           {!isSmallScreen && (
             <Box
               onMouseDown={handleResizeStart}
-              className={clsx(
-                `sidebar-resizer absolute top-0 bottom-0 w-1 cursor-col-resize z-[1] bg-chatbox-border-primary opacity-0 hover:opacity-70 transition-opacity duration-200`,
-                language === 'ar' ? '-left-1' : '-right-1'
-              )}
+              onDoubleClick={handleCollapseSidebar}
+              title={t('Drag to resize · double-click to hide')}
+              className={clsx('sidebar-resizer', isResizing && 'is-resizing', language === 'ar' ? 'left-0' : 'right-0')}
             />
           )}
         </Stack>
@@ -468,15 +439,13 @@ export default function Sidebar() {
         onClose={() => {
           setFolderModalOpened(false)
           setFolderName('')
-          setFolderEmoji('')
         }}
-        title={t('New Folder')}
+        title={t('New Project')}
         centered
         size={360}
         className="app-dialog"
         classNames={{ content: 'app-dialog-content', header: 'app-dialog-header', body: 'app-dialog-body' }}
       >
-        {/* Desktop app dialog: name + emoji chips — not a web form stack */}
         <Stack gap={14}>
           <TextInput
             label={t('Name')}
@@ -501,42 +470,6 @@ export default function Sidebar() {
               },
             }}
           />
-
-          <Box>
-            <Text size="xs" fw={600} c="chatbox-secondary" mb={8} style={{ fontSize: 12 }}>
-              {t('Icon')}
-              <Text span c="chatbox-tertiary" fw={400} ml={6}>
-                {t('optional')}
-              </Text>
-            </Text>
-            <Flex gap={6} wrap="wrap" align="center">
-              {FOLDER_EMOJI_PRESETS.map((emoji) => {
-                const selected = folderEmoji === emoji
-                return (
-                  <UnstyledButton
-                    key={emoji}
-                    type="button"
-                    onClick={() => setFolderEmoji(selected ? '' : emoji)}
-                    aria-pressed={selected}
-                    className={clsx('folder-emoji-chip', selected && 'folder-emoji-chip-on')}
-                    title={emoji}
-                  >
-                    <span className="folder-emoji-glyph">{emoji}</span>
-                  </UnstyledButton>
-                )
-              })}
-              {folderEmoji && !(FOLDER_EMOJI_PRESETS as readonly string[]).includes(folderEmoji) && (
-                <UnstyledButton
-                  type="button"
-                  onClick={() => setFolderEmoji('')}
-                  className="folder-emoji-chip folder-emoji-chip-on"
-                  title={t('Clear')}
-                >
-                  <span className="folder-emoji-glyph">{folderEmoji}</span>
-                </UnstyledButton>
-              )}
-            </Flex>
-          </Box>
         </Stack>
 
         <AdaptiveModal.Actions>
@@ -544,7 +477,6 @@ export default function Sidebar() {
             onClick={() => {
               setFolderModalOpened(false)
               setFolderName('')
-              setFolderEmoji('')
             }}
           >
             {t('Cancel')}
@@ -559,13 +491,21 @@ export default function Sidebar() {
                 height: 32,
                 minWidth: 88,
                 backgroundColor: 'var(--chatbox-background-brand-primary)',
-                '&:hover': { backgroundColor: 'var(--chatbox-background-brand-primary-hover)' },
+                /* filled brand — white label (palette has no auto-contrast shades) */
+                color: 'var(--chatbox-tint-white)',
+                '&:hover': {
+                  backgroundColor: 'var(--chatbox-background-brand-primary-hover)',
+                  color: 'var(--chatbox-tint-white)',
+                },
                 '&:disabled': {
                   backgroundColor: 'var(--chatbox-background-tertiary)',
                   color: 'var(--chatbox-tint-tertiary)',
                   opacity: 1,
                   border: '1px solid var(--chatbox-border-primary)',
                 },
+              },
+              label: {
+                color: 'inherit',
               },
             }}
           >

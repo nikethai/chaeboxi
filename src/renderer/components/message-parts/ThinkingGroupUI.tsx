@@ -1,6 +1,6 @@
 import { ActionIcon, Box, Collapse, Group, Text } from '@mantine/core'
 import type { Message, MessageContentParts, MessageReasoningPart, MessageToolCallPart } from '@shared/types'
-import { IconCircleCheckFilled, IconCircleXFilled, IconCopy, IconLoader } from '@tabler/icons-react'
+import { IconBulb, IconCircleCheckFilled, IconCircleXFilled, IconCopy, IconLoader } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { type FC, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,8 +19,8 @@ interface ThinkingGroupUIProps {
 }
 
 /**
- * Thinking group — mock `.worked` DNA: plain toggle, tools nested when expanded.
- * No bordered Paper / yellow bulb (ChatGPT card chrome).
+ * Thinking group — Grok plain “Worked for Xs ›”; tools nested when expanded.
+ * No bordered pill chrome.
  */
 export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLastGroup }) => {
   const { t } = useTranslation()
@@ -68,6 +68,16 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
   const displayTime = totalDuration > 0 ? totalDuration : isThinking && elapsedTime > 0 ? elapsedTime : 0
 
   const allReasoningText = useMemo(() => reasoningParts.map((p) => p.text).join('\n\n'), [reasoningParts])
+
+  const statusLine = useMemo(() => {
+    if (!allReasoningText) return ''
+    const first = allReasoningText
+      .split(/\n+/)
+      .map((l) => l.trim())
+      .find((l) => l.length > 0)
+    if (!first) return ''
+    return first.replace(/^[#>*\-\s]+/, '').slice(0, 120)
+  }, [allReasoningText])
 
   const toggleExpanded = useCallback(() => {
     setIsExpanded((prev) => !prev)
@@ -124,12 +134,12 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
     <div className={clsx('msg-worked', isSmallScreen && 'mx-0.5')}>
       <div className="msg-worked-row">
         <button type="button" className="msg-worked-toggle" onClick={toggleExpanded} aria-expanded={isExpanded}>
-          <span className={clsx(isThinking && 'animate-shimmer shimmer-text')}>{headerLabel}</span>
+          <span className={clsx('msg-worked-label', isThinking && 'animate-shimmer shimmer-text')}>{headerLabel}</span>
           {toolCount > 0 && (
             <Group gap={6} ml={4} wrap="nowrap" className="shrink-0">
               <Group gap={3} wrap="nowrap">
                 <ScalableIcon icon={IconCircleXFilled} size={12} color="var(--chatbox-tint-error)" />
-                <Text size="xs" fw={500} style={{ color: 'var(--chatbox-tint-error)' }}>
+                <Text size="xs" fw={500} className="tabular-nums" style={{ color: 'var(--chatbox-tint-error)' }}>
                   {toolStatusCounts.failed}
                 </Text>
               </Group>
@@ -140,20 +150,20 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
                   className={toolStatusCounts.running > 0 ? 'animate-spin' : undefined}
                   color="var(--chatbox-tint-brand)"
                 />
-                <Text size="xs" fw={500} style={{ color: 'var(--chatbox-tint-brand)' }}>
+                <Text size="xs" fw={500} className="tabular-nums" style={{ color: 'var(--chatbox-tint-brand)' }}>
                   {toolStatusCounts.running}
                 </Text>
               </Group>
               <Group gap={3} wrap="nowrap">
                 <ScalableIcon icon={IconCircleCheckFilled} size={12} color="var(--chatbox-tint-success)" />
-                <Text size="xs" fw={500} style={{ color: 'var(--chatbox-tint-success)' }}>
+                <Text size="xs" fw={500} className="tabular-nums" style={{ color: 'var(--chatbox-tint-success)' }}>
                   {toolStatusCounts.succeeded}
                 </Text>
               </Group>
             </Group>
           )}
           {isThinking && elapsedTime > 0 && shouldShowTimer && (
-            <span className="msg-worked-live">({formatElapsedTime(elapsedTime)})</span>
+            <span className="msg-worked-live tabular-nums">({formatElapsedTime(elapsedTime)})</span>
           )}
           <span className={clsx('msg-worked-chevron', isExpanded && 'is-open')} aria-hidden>
             ›
@@ -172,6 +182,13 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
           </ActionIcon>
         )}
       </div>
+
+      {(isThinking || isExpanded) && statusLine && (
+        <div className="msg-worked-status">
+          <IconBulb size={15} stroke={1.5} className="msg-worked-bulb" aria-hidden />
+          <span className="msg-worked-status-text">{statusLine}</span>
+        </div>
+      )}
 
       <Collapse in={isExpanded}>
         <div className="msg-worked-body">

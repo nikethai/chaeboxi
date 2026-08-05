@@ -4,7 +4,7 @@
  */
 
 import type { ProviderModelInfo } from '../../types'
-import { defaultOAuthFetch } from './desktop-http-fetch'
+import { defaultOAuthFetch } from '../../utils/desktop-http-fetch'
 import { humanizeOAuthNetworkError, XAI_API_BASE, XaiOAuthError } from './xai-oauth'
 
 /** Known capability seeds for popular Grok model id patterns */

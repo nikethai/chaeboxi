@@ -347,7 +347,7 @@
     display: inline-block;
     max-width: min(75%, 34rem);
     width: fit-content;
-    background: #2c2c34; /* lift-2 */
+    background: var(--chatbox-background-user-bubble);
     border: none;
     border-radius: 1.35rem;
     padding: 0.7rem 1.05rem;
@@ -359,15 +359,16 @@
     box-sizing: border-box;
   }
 
-  :root:not([data-mantine-color-scheme='dark']) .user-msg .msg-bubble {
-    background: var(--chatbox-background-tertiary);
-  }
-
   .user-msg .msg-content,
   .user-msg .msg-content p {
     font-size: inherit;
     line-height: inherit;
     letter-spacing: inherit;
+    margin: 0;
+  }
+
+  .user-msg .msg-content p + p {
+    margin-top: 0.45rem;
   }
 
   /* —— ASSISTANT open prose —— */
@@ -387,16 +388,134 @@
     color: var(--chatbox-tint-primary);
   }
 
+  .assistant-msg .msg-content p {
+    margin: 0;
+  }
+
   .assistant-msg .msg-content p + p {
     margin-top: 0.85rem;
   }
 
+  .assistant-msg .msg-content ul {
+    margin: 0.55rem 0 0;
+    padding-left: 1.2rem;
+    display: grid;
+    gap: 0.45rem;
+  }
+
+  /* —— SYSTEM: quiet caption, not ChatGPT gear card —— */
+  .system-msg {
+    opacity: 0.92;
+  }
+
+  .msg-system-label {
+    display: inline-flex;
+    align-items: center;
+    margin: 0 0 0.35rem;
+    padding: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-family: var(--chatbox-font-mono);
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--chatbox-tint-tertiary);
+  }
+
+  .msg-system-label:hover {
+    color: var(--chatbox-tint-secondary);
+  }
+
   .system-msg .msg-bubble {
     width: 100%;
+    max-width: 100%;
     background: var(--chatbox-background-secondary);
     border: 1px solid var(--chatbox-border-primary);
     border-radius: 0.85rem;
     padding: 0.75rem 1rem;
+    color: var(--chatbox-tint-secondary);
+    font-size: 0.94rem;
+    line-height: 1.55;
+  }
+
+  /* —— mock .worked reasoning toggle —— */
+  .msg-worked {
+    width: 100%;
+    margin: 0.15rem 0 0.45rem;
+  }
+
+  .msg-worked-row {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .msg-worked-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+    max-width: 100%;
+    padding: 0.15rem 0.1rem;
+    margin: 0;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--chatbox-tint-tertiary);
+    text-align: left;
+  }
+
+  .msg-worked-toggle:hover {
+    color: var(--chatbox-tint-secondary);
+  }
+
+  .msg-worked-live {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.85;
+  }
+
+  .msg-worked-chevron {
+    display: inline-block;
+    font-size: 1rem;
+    line-height: 1;
+    transform: translateY(-0.5px);
+    transition: transform 120ms var(--chatbox-ease);
+  }
+
+  .msg-worked-chevron.is-open {
+    transform: rotate(90deg) translateX(1px);
+  }
+
+  .msg-worked-copy {
+    opacity: 0;
+    transition: opacity 120ms var(--chatbox-ease);
+  }
+
+  .msg-worked:hover .msg-worked-copy,
+  .msg-worked:focus-within .msg-worked-copy {
+    opacity: 1;
+  }
+
+  .msg-worked-body {
+    margin-top: 0.35rem;
+    padding-top: 0.15rem;
+  }
+
+  /* action strip — mock .turn-actions .ia */
+  .msg-actions .msg-action-ia {
+    color: var(--chatbox-tint-tertiary) !important;
+  }
+
+  .msg-actions .msg-action-ia:hover {
+    color: var(--chatbox-tint-primary) !important;
+    background: var(--chatbox-background-tertiary) !important;
   }
 
   /* mock composer card */

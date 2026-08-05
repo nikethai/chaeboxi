@@ -9,7 +9,6 @@ import {
   IconInfoCircle,
   IconLayoutSidebarLeftCollapse,
   IconLogout,
-  IconMessageChatbot,
   IconPhotoPlus,
   IconSearch,
   IconSettings,
@@ -25,7 +24,6 @@ import ThemeSwitchButton from './components/dev/ThemeSwitchButton'
 import TitleBarRow from './components/layout/TitleBarRow'
 import SessionList from './components/session/SessionList'
 import { FORCE_ENABLE_DEV_PAGES } from './dev/devToolsConfig'
-import { useMyCopilots } from './hooks/useCopilots'
 import { useFolders } from './hooks/useFolders'
 import { useIsSmallScreen, useSidebarWidth } from './hooks/useScreenChange'
 import useVersion from './hooks/useVersion'
@@ -41,7 +39,6 @@ export default function Sidebar() {
   const language = useLanguage()
   const navigate = useNavigate()
   const { addFolder } = useFolders()
-  const { copilots: myCopilots } = useMyCopilots()
   const showSidebar = useUIStore((s) => s.showSidebar)
   const setShowSidebar = useUIStore((s) => s.setShowSidebar)
   const setSidebarWidth = useUIStore((s) => s.setSidebarWidth)
@@ -76,8 +73,6 @@ export default function Sidebar() {
       setShowSidebar(false)
     }
   }, [isSmallScreen, setShowSidebar])
-
-  const copilotCount = useMemo(() => myCopilots.length, [myCopilots.length])
 
   const displayName = useMemo(() => {
     // Local-first CE — no account system; product name as workspace identity
@@ -233,20 +228,6 @@ export default function Sidebar() {
               <IconPhotoPlus size={18} stroke={1.5} aria-hidden />
               <span>{t('Imagine')}</span>
             </button>
-            {CHATBOX_BUILD_PLATFORM !== 'android' && (
-              <button
-                type="button"
-                className="rail-nav-item"
-                onClick={() => {
-                  navigate({ to: '/copilots' })
-                  closeSidebarIfMobile()
-                }}
-              >
-                <IconMessageChatbot size={18} stroke={1.5} aria-hidden />
-                <span>{t('Copilots')}</span>
-                {copilotCount > 0 && <em className="rail-nav-badge">{copilotCount}</em>}
-              </button>
-            )}
           </nav>
 
           {/* Projects / History chrome tools */}
@@ -344,18 +325,6 @@ export default function Sidebar() {
                 >
                   {t('Image studio')}
                 </Menu.Item>
-                {CHATBOX_BUILD_PLATFORM !== 'android' && (
-                  <Menu.Item
-                    leftSection={<IconMessageChatbot size={15} stroke={1.5} />}
-                    rightSection={copilotCount > 0 ? <em className="user-menu-badge">{copilotCount}</em> : undefined}
-                    onClick={() => {
-                      navigate({ to: '/copilots' })
-                      closeSidebarIfMobile()
-                    }}
-                  >
-                    {t('Copilots')}
-                  </Menu.Item>
-                )}
                 {FORCE_ENABLE_DEV_PAGES && (
                   <Menu.Item
                     leftSection={<IconCode size={15} stroke={1.5} />}

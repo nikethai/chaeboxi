@@ -7,7 +7,7 @@
  * Network: defaults to Tauri desktop HTTP IPC (no CORS). Pass fetchImpl to override (tests).
  */
 
-import { defaultOAuthFetch } from './desktop-http-fetch'
+import { defaultOAuthFetch } from '../../utils/desktop-http-fetch'
 
 export const XAI_OAUTH_CLIENT_ID = 'b1a00492-073a-47ea-816f-4c329264a828'
 

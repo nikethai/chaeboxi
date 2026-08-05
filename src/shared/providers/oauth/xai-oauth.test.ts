@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createDesktopAwareFetch, hasDesktopHttpTransport } from './desktop-http-fetch'
+import { createDesktopAwareFetch, hasDesktopHttpTransport } from '../../utils/desktop-http-fetch'
 import {
   ensureFreshAccessToken,
   humanizeOAuthNetworkError,

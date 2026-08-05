@@ -1,3 +1,4 @@
+import { createDesktopAwareFetch, hasDesktopHttpTransport } from '@shared/utils/desktop-http-fetch'
 import platform, { isCapacitorMobile } from '@/platform'
 import { ApiError, BaseError, NetworkError } from '../../shared/models/errors'
 import { isLocalHost } from '../../shared/utils/network_utils'
@@ -41,9 +42,12 @@ async function retryRequest<T>(fn: () => Promise<T>, retry: number, url: string)
 
 function buildHeaders(options: RequestOptions, url: string): Headers {
   const headers = new Headers(options.headers)
-  headers.set('Content-Type', 'application/json')
+  // Do not overwrite Content-Type if caller already set one (e.g. form-urlencoded)
+  if (!headers.has('Content-Type') && !headers.has('content-type')) {
+    headers.set('Content-Type', 'application/json')
+  }
 
-  if (options.useProxy && !isLocalHost(url) && !isCapacitorMobile) {
+  if (options.useProxy && !isLocalHost(url) && !isCapacitorMobile && !hasDesktopHttpTransport()) {
     headers.set('CHATBOX-TARGET-URI', url)
     headers.set('CHATBOX-PLATFORM', platform.type)
   }
@@ -55,6 +59,30 @@ async function doRequest(url: string, options: RequestOptions): Promise<Response
   const { signal, retry = 3, useProxy = false, body, method } = options
   let requestUrl = url
   const headers = buildHeaders(options, url)
+
+  // Desktop Tauri: native HTTP (reqwest) — avoids webview CORS "Load failed"
+  // Prefer this over chatbox CORS proxy so API keys never leave the machine.
+  if (hasDesktopHttpTransport() && !isLocalHost(url)) {
+    const desktopFetch = createDesktopAwareFetch()
+    const makeDesktopRequest = async () => {
+      const headerRecord: Record<string, string> = {}
+      headers.forEach((value, key) => {
+        headerRecord[key] = value
+      })
+      const res = await desktopFetch(url, {
+        method,
+        headers: headerRecord,
+        body: body ?? undefined,
+        signal,
+      })
+      if (!res.ok) {
+        const err = await res.text().catch(() => null)
+        throw new ApiError(`Status Code ${res.status}`, err ?? undefined)
+      }
+      return res
+    }
+    return retryRequest(makeDesktopRequest, retry, url)
+  }
 
   if (useProxy && !isLocalHost(url) && !isCapacitorMobile) {
     const version = await platform.getVersion()

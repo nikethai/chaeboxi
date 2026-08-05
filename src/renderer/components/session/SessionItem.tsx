@@ -153,15 +153,11 @@ function SessionItem(props: Props) {
     <>
       <Flex
         align="center"
-        className={clsx(
-          'cursor-pointer group/session-item studio-rail-row',
-          selected ? 'studio-rail-row-active' : 'hover:bg-[var(--chatbox-background-tertiary)]'
-        )}
+        className={clsx('cursor-pointer group/session-item studio-rail-row', selected && 'studio-rail-row-active')}
         mx={6}
-        px="xs"
-        py={9}
+        px={10}
+        py={7}
         gap={8}
-        pl={12}
         onClick={onClick}
       >
         <Text
@@ -169,10 +165,10 @@ function SessionItem(props: Props) {
           flex={1}
           lineClamp={1}
           size="sm"
-          fw={selected ? 500 : 500}
+          fw={selected ? 500 : 400}
           c={selected ? 'chatbox-primary' : 'chatbox-secondary'}
           className="tracking-tight"
-          style={{ fontSize: '0.9rem', letterSpacing: '-0.01em' }}
+          style={{ fontSize: '0.875rem', letterSpacing: '-0.01em' }}
         >
           {session.name}
         </Text>

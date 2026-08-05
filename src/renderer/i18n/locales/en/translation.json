@@ -391,6 +391,7 @@
   "Image Creator Intro": "Image Creator Intro",
   "Image Quota": "Image Quota",
   "Image Style": "Image Style",
+  "Imagine": "Imagine",
   "Imagine Something New": "Imagine Something New",
   "Import and Restore": "Import and Restore",
   "Import Error": "Import Error",
@@ -504,6 +505,7 @@
   "Network Proxy": "Network Proxy",
   "network proxy error tips": "Due to the proxy address you have configured as {{proxy}}, please verify if the proxy server is functioning properly, or consider removing the proxy address from the settings.",
   "New": "New",
+  "Navigation": "Navigation",
   "New Chat": "New Chat",
   "New Creation": "New Creation",
   "New Images": "New Images",
@@ -750,6 +752,7 @@
   "The topP parameter controls the diversity of AI responses: lower values make the output more focused and predictable, while higher values allow for more varied and creative replies.": "The topP parameter controls the diversity of AI responses: lower values make the output more focused and predictable, while higher values allow for more varied and creative replies.",
   "The web version temporarily does not support local parsing of this file type. Please use text files (txt, markdown, etc.) or use <LinkToAdvancedFileProcessing>Chatbox AI Service</LinkToAdvancedFileProcessing> for cloud-based document analysis.": "The web version temporarily does not support local parsing of this file type. Please use text files (txt, markdown, etc.) or use <LinkToAdvancedFileProcessing>Chatbox AI Service</LinkToAdvancedFileProcessing> for cloud-based document analysis.",
   "Theme": "Theme",
+  "Thinking…": "Thinking…",
   "Thinking": "Thinking",
   "Thinking Budget": "Thinking Budget",
   "Thinking Budget only works for 2.0 or later models": "Thinking Budget only works for 2.0 or later models",
@@ -889,6 +892,7 @@
   "Your license has expired. You can continue using your quota pack.": "Your license has expired. You can continue using your quota pack.",
   "Your rating on the App Store would help make Chatbox even better!": "Your rating on the App Store would help make Chatbox even better!",
   "Archive": "Archive",
+  "Archived": "Archived",
   "Archived Chats": "Archived Chats",
   "Add Preset": "Add Preset",
   "Comma-separated tags": "Comma-separated tags",
@@ -927,5 +931,6 @@
   "Type '/' in the chat box to insert a saved preset. Supports {{CURRENT_DATE}}, {{CURRENT_TIME}}, and {{CLIPBOARD}}.": "Type '/' in the chat box to insert a saved preset. Supports {{CURRENT_DATE}}, {{CURRENT_TIME}}, and {{CLIPBOARD}}.",
   "Unarchive": "Unarchive",
   "Unavailable": "Unavailable",
-  "Uncategorized": "Uncategorized"
+  "Uncategorized": "Uncategorized",
+  "Projects": "Projects"
 }

@@ -446,7 +446,9 @@ export async function generate(
   try {
     const dependencies = await createModelDependencies()
     const { refreshXaiAuthIfNeeded } = await import('@/utils/xai-auth-refresh')
-    const authReadySettings = await refreshXaiAuthIfNeeded(globalSettings, effectiveSettings.provider)
+    const { refreshOpenAICodexAuthIfNeeded } = await import('@/utils/openai-codex-auth-refresh')
+    let authReadySettings = await refreshXaiAuthIfNeeded(globalSettings, effectiveSettings.provider)
+    authReadySettings = await refreshOpenAICodexAuthIfNeeded(authReadySettings, effectiveSettings.provider)
     const model = getModel(effectiveSettings, authReadySettings, configs, dependencies)
     const sessionKnowledgeBaseMap = uiStore.getState().sessionKnowledgeBaseMap
     const knowledgeBase = sessionKnowledgeBaseMap[sessionId]

@@ -62,8 +62,16 @@ import {
   getQwenPresetModels,
   QwenPlanSelector,
 } from '@/components/settings/QwenPlanSelector'
+import { OpenAICodexAuthSection } from '@/components/settings/OpenAICodexAuthSection'
 import { XaiAuthSection } from '@/components/settings/XaiAuthSection'
-import { isXaiOAuthSignedIn, resolveXaiAuthMode, resolveXaiBearer } from '@shared/providers/oauth'
+import {
+  isOpenAICodexOAuthSignedIn,
+  isXaiOAuthSignedIn,
+  resolveOpenAIAuthMode,
+  resolveOpenAIBearer,
+  resolveXaiAuthMode,
+  resolveXaiBearer,
+} from '@shared/providers/oauth'
 
 export const Route = createFileRoute('/settings/provider/$providerId')({
   component: RouteComponent,
@@ -240,16 +248,26 @@ function ProviderSettings({ providerId }: { providerId: string }) {
     ModelProviderEnum.OpenClaw,
     ModelProviderEnum.ComfyUI,
   ].includes(baseInfo?.id as ModelProviderEnum)
+  const isXaiOAuthMode =
+    baseInfo?.id === ModelProviderEnum.XAI && resolveXaiAuthMode(providerSettings) === 'oauth'
+  const isOpenAICodexOAuthMode =
+    baseInfo?.id === ModelProviderEnum.OpenAI && resolveOpenAIAuthMode(providerSettings) === 'oauth'
+  const isSubscriptionOAuthMode = isXaiOAuthMode || isOpenAICodexOAuthMode
+  const isSubscriptionOAuthSignedIn =
+    (baseInfo?.id === ModelProviderEnum.XAI && isXaiOAuthSignedIn(providerSettings)) ||
+    (baseInfo?.id === ModelProviderEnum.OpenAI && isOpenAICodexOAuthSignedIn(providerSettings))
   const isBuiltinOpenAICompatible =
     !!baseInfo &&
     !baseInfo.isCustom &&
     baseInfo.type === ModelProviderType.OpenAI &&
     baseInfo.id !== ModelProviderEnum.Azure
   const showBuiltinApiHostSection =
-    isBuiltinOpenAICompatible ||
-    [ModelProviderEnum.OpenAIResponses, ModelProviderEnum.Claude, ModelProviderEnum.Gemini].includes(
-      baseInfo?.id as ModelProviderEnum
-    )
+    (isBuiltinOpenAICompatible ||
+      [ModelProviderEnum.OpenAIResponses, ModelProviderEnum.Claude, ModelProviderEnum.Gemini].includes(
+        baseInfo?.id as ModelProviderEnum
+      )) &&
+    // Hide API Host for ChatGPT subscription path (fixed WHAM backend)
+    !isOpenAICodexOAuthMode
 
   const handleApiKeyChange = (e: ChangeEvent<HTMLInputElement>) => {
     setProviderSettings({
@@ -546,8 +564,10 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           </>
         )}
 
-        {/* Provider description */}
-        {baseInfo.description && baseInfo.id !== ModelProviderEnum.XAI && (
+        {/* Provider description — dual-auth providers have their own help copy */}
+        {baseInfo.description &&
+          baseInfo.id !== ModelProviderEnum.XAI &&
+          baseInfo.id !== ModelProviderEnum.OpenAI && (
           <Stack gap="xxs">
             <Text span size="xs" c="chatbox-tertiary">
               {t(baseInfo.description)}
@@ -560,14 +580,21 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           <XaiAuthSection providerSettings={providerSettings} setProviderSettings={setProviderSettings} />
         )}
 
+        {/* OpenAI dual auth: ChatGPT subscription (Codex) or Platform API key */}
+        {baseInfo.id === ModelProviderEnum.OpenAI && (
+          <OpenAICodexAuthSection
+            providerSettings={providerSettings}
+            setProviderSettings={setProviderSettings}
+          />
+        )}
+
         {/* QwenCloud plan presets (Token Plan, Coding Plan, Standard) */}
         {baseInfo.id === ModelProviderEnum.Qwen && (
           <QwenPlanSelector providerSettings={providerSettings} setProviderSettings={setProviderSettings} />
         )}
 
-        {/* API Key — hidden for xAI OAuth mode */}
-        {!isNoApiKeyProvider &&
-          !(baseInfo.id === ModelProviderEnum.XAI && resolveXaiAuthMode(providerSettings) === 'oauth') && (
+        {/* API Key — hidden for subscription OAuth mode */}
+        {!isNoApiKeyProvider && !isSubscriptionOAuthMode && (
           <Stack gap="xxs">
             <Text span fw="600">
               {baseInfo.id === ModelProviderEnum.Qwen
@@ -584,14 +611,9 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 }
               />
               <Tooltip
-                disabled={
-                  (!!providerSettings?.apiKey ||
-                    (baseInfo.id === ModelProviderEnum.XAI && isXaiOAuthSignedIn(providerSettings))) &&
-                  displayModels.length > 0
-                }
+                disabled={(!!providerSettings?.apiKey || isSubscriptionOAuthSignedIn) && displayModels.length > 0}
                 label={
-                  !providerSettings?.apiKey &&
-                  !(baseInfo.id === ModelProviderEnum.XAI && isXaiOAuthSignedIn(providerSettings))
+                  !providerSettings?.apiKey && !isSubscriptionOAuthSignedIn
                     ? t('API Key is required to check connection')
                     : displayModels.length === 0
                       ? t('Add at least one model to check connection')
@@ -600,11 +622,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
               >
                 <Button
                   size="sm"
-                  disabled={
-                    (!providerSettings?.apiKey &&
-                      !(baseInfo.id === ModelProviderEnum.XAI && isXaiOAuthSignedIn(providerSettings))) ||
-                    displayModels.length === 0
-                  }
+                  disabled={(!providerSettings?.apiKey && !isSubscriptionOAuthSignedIn) || displayModels.length === 0}
                   loading={modelTestResult?.testing || false}
                   onClick={() => setShowTestModelSelector(true)}
                 >
@@ -617,7 +635,10 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 {t('Token Plan and Coding Plan keys start with sk-sp- and only work with the matching endpoint.')}
               </Text>
             )}
-            {baseInfo.urls?.apiKey && baseInfo.id !== ModelProviderEnum.Qwen && baseInfo.id !== ModelProviderEnum.XAI && (
+            {baseInfo.urls?.apiKey &&
+              baseInfo.id !== ModelProviderEnum.Qwen &&
+              baseInfo.id !== ModelProviderEnum.XAI &&
+              baseInfo.id !== ModelProviderEnum.OpenAI && (
               <Button
                 variant="subtle"
                 size="compact-xs"
@@ -631,14 +652,14 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           </Stack>
         )}
 
-        {/* xAI OAuth: Check connection without API key field */}
-        {baseInfo.id === ModelProviderEnum.XAI && resolveXaiAuthMode(providerSettings) === 'oauth' && (
+        {/* Subscription OAuth: Check connection without API key field */}
+        {isSubscriptionOAuthMode && (
           <Stack gap="xxs">
             <Flex gap="xs" align="center">
               <Tooltip
-                disabled={isXaiOAuthSignedIn(providerSettings) && displayModels.length > 0}
+                disabled={isSubscriptionOAuthSignedIn && displayModels.length > 0}
                 label={
-                  !isXaiOAuthSignedIn(providerSettings)
+                  !isSubscriptionOAuthSignedIn
                     ? t('Sign in to check connection')
                     : displayModels.length === 0
                       ? t('Add at least one model to check connection')
@@ -647,24 +668,28 @@ function ProviderSettings({ providerId }: { providerId: string }) {
               >
                 <Button
                   size="sm"
-                  disabled={!isXaiOAuthSignedIn(providerSettings) || displayModels.length === 0}
+                  disabled={!isSubscriptionOAuthSignedIn || displayModels.length === 0}
                   loading={modelTestResult?.testing || false}
                   onClick={() => setShowTestModelSelector(true)}
                 >
                   {t('Check')}
                 </Button>
               </Tooltip>
-              {resolveXaiBearer(providerSettings) ? (
+              {isXaiOAuthMode && resolveXaiBearer(providerSettings) ? (
                 <Text size="xs" c="chatbox-secondary">
                   {t('Uses your SuperGrok / X Premium session')}
+                </Text>
+              ) : null}
+              {isOpenAICodexOAuthMode && resolveOpenAIBearer(providerSettings) ? (
+                <Text size="xs" c="chatbox-secondary">
+                  {t('Uses your ChatGPT subscription')}
                 </Text>
               ) : null}
             </Flex>
           </Stack>
         )}
 
-        {!isNoApiKeyProvider &&
-          !(baseInfo.id === ModelProviderEnum.XAI && resolveXaiAuthMode(providerSettings) === 'oauth') && (
+        {!isNoApiKeyProvider && !isSubscriptionOAuthMode && (
           <Stack gap="xxs">
             <Text span fw="600">
               {t('Cloudflare Client ID')}
@@ -678,8 +703,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           </Stack>
         )}
 
-        {!isNoApiKeyProvider &&
-          !(baseInfo.id === ModelProviderEnum.XAI && resolveXaiAuthMode(providerSettings) === 'oauth') && (
+        {!isNoApiKeyProvider && !isSubscriptionOAuthMode && (
           <Stack gap="xxs">
             <Text span fw="600">
               {t('Cloudflare Client Secret')}

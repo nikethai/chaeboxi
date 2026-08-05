@@ -1,10 +1,11 @@
-import { ActionIcon, Flex, Text } from '@mantine/core'
+import { ActionIcon, Flex, Text, Tooltip } from '@mantine/core'
 import {
   IconChevronDown,
   IconChevronRight,
   IconDots,
   IconEdit,
   IconMessageChatbot,
+  IconPlus,
   IconStack2,
   IconTrash,
 } from '@tabler/icons-react'
@@ -22,6 +23,7 @@ export interface FolderItemProps {
   expanded: boolean
   implicit?: boolean
   name: string
+  onCreateChat?(): void
   onDelete?(): void
   onRename?(): void
   onSetDefaultCopilot?(): void
@@ -33,6 +35,7 @@ function FolderItem({
   expanded,
   implicit = false,
   name,
+  onCreateChat,
   onDelete,
   onRename,
   onSetDefaultCopilot,
@@ -47,6 +50,11 @@ function FolderItem({
       implicit
         ? []
         : [
+            {
+              text: t('New Chat'),
+              icon: IconPlus,
+              onClick: () => onCreateChat?.(),
+            },
             {
               text: t('Rename Project'),
               icon: IconEdit,
@@ -66,7 +74,7 @@ function FolderItem({
               onClick: () => onDelete?.(),
             },
           ],
-    [implicit, onDelete, onRename, onSetDefaultCopilot, t]
+    [implicit, onCreateChat, onDelete, onRename, onSetDefaultCopilot, t]
   )
 
   return (
@@ -103,6 +111,28 @@ function FolderItem({
         {count}
       </Text>
 
+      {!implicit && onCreateChat && (
+        <Tooltip label={t('New Chat')} withArrow openDelay={400}>
+          <ActionIcon
+            variant="transparent"
+            size={28}
+            color="chatbox-tertiary"
+            className={clsx(
+              'active:scale-[0.96] transition-transform',
+              isSmallScreen || menuOpened ? '' : 'group-hover/folder-item:visible invisible'
+            )}
+            aria-label={t('New Chat')}
+            onClick={(event) => {
+              event.stopPropagation()
+              event.preventDefault()
+              onCreateChat()
+            }}
+          >
+            <ScalableIcon icon={IconPlus} size={16} />
+          </ActionIcon>
+        </Tooltip>
+      )}
+
       {!implicit && (
         <ActionMenu
           type="desktop"
@@ -113,9 +143,12 @@ function FolderItem({
         >
           <ActionIcon
             variant="transparent"
-            size={20}
+            size={28}
             color="chatbox-tertiary"
-            className={isSmallScreen || menuOpened ? '' : 'group-hover/folder-item:visible invisible'}
+            className={clsx(
+              'active:scale-[0.96] transition-transform',
+              isSmallScreen || menuOpened ? '' : 'group-hover/folder-item:visible invisible'
+            )}
             onClick={(event) => {
               event.stopPropagation()
               event.preventDefault()

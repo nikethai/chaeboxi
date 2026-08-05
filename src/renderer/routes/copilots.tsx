@@ -29,12 +29,11 @@ import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
 import DeleteIcon from '@mui/icons-material/Delete'
 import { IconInfoCircle, IconPlus } from '@tabler/icons-react'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuidv4 } from 'uuid'
 import { ConfirmDeleteMenuItem } from '@/components/common/ConfirmDeleteButton'
-import Page from '@/components/layout/Page'
 import LazyNumberInput from '@/components/common/LazyNumberInput'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import SliderWithInput from '@/components/common/SliderWithInput'
@@ -56,7 +55,11 @@ import {
 } from '../../shared/types'
 
 export const Route = createFileRoute('/copilots')({
-  component: Copilots,
+  // Copilots moved under Settings — keep legacy path as redirect
+  beforeLoad: () => {
+    throw redirect({ to: '/settings/copilots' })
+  },
+  component: () => null,
 })
 
 /** Built-in tool names available for tool access configuration. */
@@ -90,8 +93,8 @@ const FORMAT_OPTIONS = [
   { value: 'code', label: 'Code' },
 ]
 
-function Copilots() {
-  const [open, setOpen] = useState(false)
+/** Copilots management UI — embedded in Settings (no full Page chrome). */
+export function CopilotsContent() {
   const showCopilotsInNewSession = useUIStore((s) => s.showCopilotsInNewSession)
   const setShowCopilotsInNewSession = useUIStore((s) => s.setShowCopilotsInNewSession)
   const navigate = useNavigate()
@@ -100,10 +103,6 @@ function Copilots() {
 
   const store = useMyCopilots()
   const { copilots: remoteCopilots } = useRemoteCopilots()
-
-  const handleClose = () => {
-    setOpen(false)
-  }
 
   const selectCopilot = (detail: CopilotDetail) => {
     const newDetail = { ...detail, usedCount: (detail.usedCount || 0) + 1 }
@@ -118,17 +117,12 @@ function Copilots() {
         copilotId: detail.id,
       },
     })
-    handleClose()
   }
 
   const [copilotEdit, setCopilotEdit] = useState<CopilotDetail | null>(null)
   useEffect(() => {
-    if (!open) {
-      setCopilotEdit(null)
-    } else {
-      trackingEvent('copilot_window', { event_category: 'screen_view' })
-    }
-  }, [open])
+    trackingEvent('copilot_window', { event_category: 'screen_view' })
+  }, [])
 
   const list = [
     ...store.copilots.filter((item) => item.starred).sort((a, b) => b.usedCount - a.usedCount),
@@ -136,106 +130,101 @@ function Copilots() {
   ]
 
   return (
-    <Page title={t('My Copilots')}>
-      <div className="p-4 max-w-4xl mx-auto">
-        {copilotEdit ? (
-          <CopilotForm
-            copilotDetail={copilotEdit}
-            close={() => {
-              setCopilotEdit(null)
-            }}
-            save={(detail) => {
-              store.addOrUpdate(detail)
-              setCopilotEdit(null)
-            }}
-          />
-        ) : (
-          <>
-            {/* Setting Section */}
-            <Box sx={{ mb: 3 }}>
-              <Text size="md" fw={700} mb={2} c="chatbox-primary">
-                {t('Settings')}
-              </Text>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <MantineSwitch
-                  checked={showCopilotsInNewSession}
-                  onChange={(event) => setShowCopilotsInNewSession(event.currentTarget.checked)}
-                  label={t('Show Copilots in New Session')}
+    <div className="p-4 max-w-4xl mx-auto">
+      {copilotEdit ? (
+        <CopilotForm
+          copilotDetail={copilotEdit}
+          close={() => {
+            setCopilotEdit(null)
+          }}
+          save={(detail) => {
+            store.addOrUpdate(detail)
+            setCopilotEdit(null)
+          }}
+        />
+      ) : (
+        <>
+          <Box sx={{ mb: 3 }}>
+            <Text size="md" fw={700} mb={2} c="chatbox-primary">
+              {t('Preferences')}
+            </Text>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <MantineSwitch
+                checked={showCopilotsInNewSession}
+                onChange={(event) => setShowCopilotsInNewSession(event.currentTarget.checked)}
+                label={t('Show Copilots in New Session')}
+              />
+            </Box>
+          </Box>
+
+          <Box sx={{ mb: 4 }}>
+            <Text size="md" fw={700} mb={2} c="chatbox-primary">
+              {t('My Copilots')}
+            </Text>
+
+            <MantineButton
+              variant="light"
+              color="blue"
+              leftSection={<ScalableIcon icon={IconPlus} size={20} />}
+              mb={16}
+              onClick={() => {
+                getEmptyCopilot().then(setCopilotEdit)
+              }}
+            >
+              {t('Create New Copilot')}
+            </MantineButton>
+
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                gap: 1.5,
+              }}
+            >
+              {list.map((item, ix) => (
+                <MiniItem
+                  key={`${item.id}_${ix}`}
+                  mode="local"
+                  detail={item}
+                  canDelete={!item.builtIn}
+                  selectMe={() => selectCopilot(item)}
+                  switchStarred={() => {
+                    store.addOrUpdate({
+                      ...item,
+                      starred: !item.starred,
+                    })
+                  }}
+                  editMe={() => {
+                    setCopilotEdit(item)
+                  }}
+                  deleteMe={() => {
+                    store.remove(item.id)
+                  }}
                 />
-              </Box>
+              ))}
             </Box>
+          </Box>
 
-            {/* My Copilots Section */}
-            <Box sx={{ mb: 4 }}>
-              <Text size="md" fw={700} mb={2} c="chatbox-primary">
-                {t('My Copilots')}
-              </Text>
+          <Box>
+            <Text size="md" fw={700} mb={2} c="chatbox-primary">
+              {t('Chatbox Featured')}
+            </Text>
 
-              <MantineButton
-                variant="light"
-                color="blue"
-                leftSection={<ScalableIcon icon={IconPlus} size={20} />}
-                mb={16}
-                onClick={() => {
-                  getEmptyCopilot().then(setCopilotEdit)
-                }}
-              >
-                {t('Create New Copilot')}
-              </MantineButton>
-
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                  gap: 1.5,
-                }}
-              >
-                {list.map((item, ix) => (
-                  <MiniItem
-                    key={`${item.id}_${ix}`}
-                    mode="local"
-                    detail={item}
-                    canDelete={!item.builtIn}
-                    selectMe={() => selectCopilot(item)}
-                    switchStarred={() => {
-                      store.addOrUpdate({
-                        ...item,
-                        starred: !item.starred,
-                      })
-                    }}
-                    editMe={() => {
-                      setCopilotEdit(item)
-                    }}
-                    deleteMe={() => {
-                      store.remove(item.id)
-                    }}
-                  />
-                ))}
-              </Box>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+                gap: 1.5,
+              }}
+            >
+              {remoteCopilots?.map((item, ix) => (
+                <MiniItem key={`${item.id}_${ix}`} mode="remote" detail={item} selectMe={() => selectCopilot(item)} />
+              ))}
             </Box>
-
-            {/* Chatbox Featured Section */}
-            <Box>
-              <Text size="md" fw={700} mb={2} c="chatbox-primary">
-                {t('Chatbox Featured')}
-              </Text>
-
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                  gap: 1.5,
-                }}
-              >
-                {remoteCopilots?.map((item, ix) => (
-                  <MiniItem key={`${item.id}_${ix}`} mode="remote" detail={item} selectMe={() => selectCopilot(item)} />
-                ))}
-              </Box>
-            </Box>
-          </>
-        )}
-      </div>
-    </Page>
+          </Box>
+        </>
+      )}
+    </div>
   )
 }
 

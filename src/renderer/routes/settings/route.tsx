@@ -9,6 +9,7 @@ import {
   IconCircleDottedLetterM,
   IconFileText,
   IconKeyboard,
+  IconMessageChatbot,
   IconMessages,
   IconWorldWww,
 } from '@tabler/icons-react'
@@ -22,6 +23,7 @@ import Page from '@/components/layout/Page'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import platform from '@/platform'
 import { featureFlags } from '@/utils/feature-flags'
+import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
 const ITEMS = [
   {
@@ -67,6 +69,15 @@ const ITEMS = [
     label: 'Chat Settings',
     icon: <IconMessages className="w-full h-full" />,
   },
+  ...(CHATBOX_BUILD_PLATFORM !== 'android'
+    ? [
+        {
+          key: 'copilots',
+          label: 'Copilots',
+          icon: <IconMessageChatbot className="w-full h-full" />,
+        },
+      ]
+    : []),
   ...(platform.formFactor === 'mobile'
     ? []
     : [

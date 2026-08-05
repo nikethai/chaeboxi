@@ -19,6 +19,7 @@ import { getThemeDesign } from '@/hooks/useAppTheme'
 import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
 import { router } from '@/router'
 import { RouteComponent as SettingsChatRouteComponent } from '@/routes/settings/chat'
+import { RouteComponent as SettingsCopilotsRouteComponent } from '@/routes/settings/copilots'
 import { RouteComponent as SettingsDefaultModelsRouteComponent } from '@/routes/settings/default-models'
 import { RouteComponent as SettingsDocumentParserRouteComponent } from '@/routes/settings/document-parser'
 import { RouteComponent as SettingsGeneralRouteComponent } from '@/routes/settings/general'
@@ -138,6 +139,12 @@ const SettingsChatRoute = createRoute({
   getParentRoute: () => RootRoute,
 })
 
+const SettingsCopilotsRoute = createRoute({
+  component: SettingsCopilotsRouteComponent,
+  path: '/settings/copilots',
+  getParentRoute: () => RootRoute,
+})
+
 const SettingsWebSearchRoute = createRoute({
   component: SettingsWebSearchRouteComponent,
   path: '/settings/web-search',
@@ -198,6 +205,7 @@ const routeTree = RootRoute.addChildren([
   SettingsIndexRoute,
   SettingsGeneralRoute,
   SettingsChatRoute,
+  SettingsCopilotsRoute,
   SettingsWebSearchRoute,
   SettingsMcpRoute,
   SettingsKnowledgeBaseRoute,

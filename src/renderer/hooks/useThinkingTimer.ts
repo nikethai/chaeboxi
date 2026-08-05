@@ -92,3 +92,27 @@ export function formatHumanizedDuration(milliseconds: number): string {
   const secondStr = remainingSeconds === 1 ? '1 second' : `${remainingSeconds} seconds`
   return `${minuteStr} ${secondStr}`
 }
+
+/**
+ * Compact duration for mock `.worked` labels (Grok DNA): "4s", "1m 23s"
+ */
+export function formatWorkedDuration(milliseconds: number): string {
+  if (milliseconds < 1000) {
+    return '<1s'
+  }
+
+  const totalSeconds = Math.round(milliseconds / 1000)
+
+  if (totalSeconds < 60) {
+    return `${totalSeconds}s`
+  }
+
+  const minutes = Math.floor(totalSeconds / 60)
+  const remainingSeconds = totalSeconds % 60
+
+  if (remainingSeconds === 0) {
+    return `${minutes}m`
+  }
+
+  return `${minutes}m ${remainingSeconds}s`
+}

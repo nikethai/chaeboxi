@@ -92,7 +92,6 @@ import {
   MessageArtifact as InlineArtifact,
   isContainRenderableCode,
 } from '../Artifact'
-import { SystemAvatar } from '../common/Avatar'
 import { ScalableIcon } from '../common/ScalableIcon'
 import Loading from '../icons/Loading'
 import { ReasoningContentUI } from '../message-parts/ReasoningContentUI'
@@ -618,15 +617,15 @@ const _Message: FC<Props> = (props) => {
         'w-full'
       )}
     >
-      {/* Mock DNA: no You/Chaeboxi labels, no avatar column on normal chat.
-          System messages keep a small mark; generating shows a thin loader. */}
+      {/* Mock DNA: no You/Chaeboxi labels, no avatar column (incl. system gear).
+          System is a quiet caption row; generating shows a thin loader. */}
       {isSystem && (
-        <Box className="mb-2 relative w-fit">
-          <SystemAvatar size="sm" sessionType={props.sessionType} onClick={onClickAssistantAvatar} />
-        </Box>
+        <button type="button" className="msg-system-label" onClick={onClickAssistantAvatar}>
+          {t('System')}
+        </button>
       )}
       {isAssistant && msg.generating && (
-        <Flex className="mb-2" align="center" gap={6}>
+        <Flex className="mb-1.5" align="center" gap={6}>
           <Loader size={14} classNames={{ root: "after:content-[''] after:border-[2px]" }} />
           <Text size="xs" c="chatbox-tertiary">
             …
@@ -825,6 +824,29 @@ const _Message: FC<Props> = (props) => {
                   : ''
               }
             >
+              {/* Mock action order (assistant): copy · up · down · reload · more */}
+              {!isSamllScreen && !(props.sessionType === 'picture' && msg.role === 'assistant') && (
+                <MessageActionIcon icon={IconCopy} tooltip={t('copy')} onClick={onCopyMsg} />
+              )}
+
+              {!isSamllScreen && msg.role === 'assistant' && (
+                <MessageActionIcon
+                  icon={msg.feedback?.rating === 'up' ? IconThumbUpFilled : IconThumbUp}
+                  tooltip={t('Thumbs Up')}
+                  color={msg.feedback?.rating === 'up' ? 'chatbox-success' : 'chatbox-tertiary'}
+                  onClick={() => toggleFeedbackRating('up')}
+                />
+              )}
+
+              {!isSamllScreen && msg.role === 'assistant' && (
+                <MessageActionIcon
+                  icon={msg.feedback?.rating === 'down' ? IconThumbDownFilled : IconThumbDown}
+                  tooltip={t('Thumbs Down')}
+                  color={msg.feedback?.rating === 'down' ? 'chatbox-error' : 'chatbox-tertiary'}
+                  onClick={() => toggleFeedbackRating('down')}
+                />
+              )}
+
               {!isSamllScreen && !msg.generating && msg.role === 'assistant' && (
                 <MessageActionIcon icon={IconReload} tooltip={t('Reply Again')} onClick={handleRefresh} />
               )}
@@ -842,28 +864,6 @@ const _Message: FC<Props> = (props) => {
                     <MessageActionIcon icon={IconPencil} tooltip={t('edit')} onClick={onEditClick} />
                   )
               }
-
-              {!isSamllScreen && !(props.sessionType === 'picture' && msg.role === 'assistant') && (
-                <MessageActionIcon icon={IconCopy} tooltip={t('copy')} onClick={onCopyMsg} />
-              )}
-
-              {!isSamllScreen && msg.role === 'assistant' && (
-                <MessageActionIcon
-                  icon={msg.feedback?.rating === 'up' ? IconThumbUpFilled : IconThumbUp}
-                  tooltip={t('Thumbs Up')}
-                  color={msg.feedback?.rating === 'up' ? 'chatbox-success' : 'chatbox-secondary'}
-                  onClick={() => toggleFeedbackRating('up')}
-                />
-              )}
-
-              {!isSamllScreen && msg.role === 'assistant' && (
-                <MessageActionIcon
-                  icon={msg.feedback?.rating === 'down' ? IconThumbDownFilled : IconThumbDown}
-                  tooltip={t('Thumbs Down')}
-                  color={msg.feedback?.rating === 'down' ? 'chatbox-error' : 'chatbox-secondary'}
-                  onClick={() => toggleFeedbackRating('down')}
-                />
-              )}
 
               {!isSamllScreen && msg.role === 'assistant' && isComfyUIReady && (
                 <MessageActionIcon
@@ -1073,16 +1073,18 @@ export const MessageActionIcon = forwardRef<
     <ActionIcon
       ref={ref}
       variant="subtle"
-      w="auto"
-      h="auto"
-      miw="auto"
-      mih="auto"
-      p={4}
+      className="msg-action-ia"
+      w={isSmallScreen ? 36 : 32}
+      h={isSmallScreen ? 36 : 32}
+      miw={isSmallScreen ? 36 : 32}
+      mih={isSmallScreen ? 36 : 32}
+      p={0}
       bd={0}
-      color="chatbox-secondary"
+      radius={8}
+      color="chatbox-tertiary"
       {...props}
     >
-      <ScalableIcon icon={icon} size={isSmallScreen ? 20 : 16} />
+      <ScalableIcon icon={icon} size={isSmallScreen ? 18 : 16} />
     </ActionIcon>
   )
 

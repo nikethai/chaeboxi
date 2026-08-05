@@ -3,19 +3,18 @@
   -webkit-user-select: text;
   user-select: text;
 
-  .msg-content p {
-    margin: 0.5rem 0 0.5rem 0;
-  }
+  /* Spacing owned by globals mock DNA (.assistant-msg / .user-msg);
+     keep small-mode and list/image rules only. */
   .msg-content-small p {
     margin: 0.3rem 0 0.2rem 0;
   }
 
   .msg-content ol {
-    padding-inline-start: 25px;
+    padding-inline-start: 1.2rem;
   }
 
   .msg-content ul {
-    padding-inline-start: 25px;
+    padding-inline-start: 1.2rem;
   }
   .msg-content img {
     width: 100%;

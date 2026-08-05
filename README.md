@@ -220,6 +220,7 @@ Any form of contribution is welcome, including but not limited to:
 ## Prerequisites
 
 - Node.js (v20.x – v22.x)
+- Rust 1.88.0 (the repository pins this toolchain in `rust-toolchain.toml`)
 - npm (required – pnpm is not supported)
 
 ## Build Instructions

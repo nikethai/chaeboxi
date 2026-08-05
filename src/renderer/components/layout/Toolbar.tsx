@@ -73,59 +73,44 @@ export default function Toolbar({ sessionId }: { sessionId: string }) {
   }, [sessionId, t])
 
   return !isSmallScreen ? (
-    <Flex align="center" gap="md" className="controls">
+    <Flex align="center" gap="sm" className="controls">
       {showUpdateNotification && <UpdateAvailableButton />}
 
-      {!isSmallScreen ? (
-        <Button
-          h={28}
-          px="xs"
-          radius="sm"
-          variant="outline"
-          color="chatbox-tertiary"
-          leftSection={<ScalableIcon icon={IconSearch} size={16} strokeWidth={1.8} />}
-          className="border-chatbox-border-primary"
-          onClick={() => setOpenSearchDialog(true)}
-        >
-          {t('Search')}...
-        </Button>
-      ) : (
-        <ActionIcon variant="subtle" size={28} color="chatbox-secondary" onClick={() => setOpenSearchDialog(true)}>
-          <IconSearch strokeWidth={1.8} />
-        </ActionIcon>
-      )}
+      <Button
+        h={32}
+        px="sm"
+        radius="md"
+        variant="subtle"
+        color="chatbox-tertiary"
+        leftSection={<ScalableIcon icon={IconSearch} size={16} strokeWidth={1.8} />}
+        className="thread-search-trigger active:scale-[0.96] transition-transform"
+        onClick={() => setOpenSearchDialog(true)}
+        aria-label={t('Search')}
+      >
+        {t('Search')}...
+      </Button>
 
       {isLargeScreen && (
-        <ActionIcon variant="subtle" size={28} color="chatbox-secondary" onClick={() => setWidthFull(!widthFull)}>
+        <ActionIcon
+          variant="subtle"
+          size={32}
+          color="chatbox-secondary"
+          className="active:scale-[0.96] transition-transform"
+          onClick={() => setWidthFull(!widthFull)}
+          aria-label={widthFull ? t('Exit full width') : t('Full width')}
+        >
           {widthFull ? <LayoutExpand strokeWidth={1.8} /> : <LayoutShrink strokeWidth={1.8} />}
         </ActionIcon>
       )}
 
-      <ActionIcon variant="subtle" size={28} color="chatbox-secondary" onClick={() => setThreadHistoryDrawerOpen(true)}>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="24"
-          height="24"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="lucide lucide-table-of-contents-icon lucide-table-of-contents"
-        >
-          <path d="M16 5H3" />
-          <path d="M16 12H3" />
-          <path d="M16 19H3" />
-          <path d="M21 5h.01" />
-          <path d="M21 12h.01" />
-          <path d="M21 19h.01" />
-        </svg>
-      </ActionIcon>
-
       <ActionMenu
         position="bottom-end"
         items={[
+          {
+            text: t('Thread History'),
+            icon: IconHistory,
+            onClick: () => setThreadHistoryDrawerOpen(true),
+          },
           {
             text: t('Export Chat'),
             icon: IconDeviceFloppy,
@@ -158,12 +143,18 @@ export default function Toolbar({ sessionId }: { sessionId: string }) {
             },
             text: t('Delete Current Session'),
             icon: IconTrash,
-            color: 'chatbox-primary',
+            color: 'chatbox-error',
             onClick: handleSessionDelete,
           },
         ]}
       >
-        <ActionIcon variant="subtle" size={28} color="chatbox-secondary">
+        <ActionIcon
+          variant="subtle"
+          size={32}
+          color="chatbox-secondary"
+          className="active:scale-[0.96] transition-transform"
+          aria-label={t('More actions')}
+        >
           <IconDots strokeWidth={1.8} />
         </ActionIcon>
       </ActionMenu>

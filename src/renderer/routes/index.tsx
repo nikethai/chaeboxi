@@ -448,7 +448,7 @@ const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect
                 selected={false}
                 onClick={() =>
                   router.navigate({
-                    to: '/copilots',
+                    to: '/settings/copilots',
                   })
                 }
               />

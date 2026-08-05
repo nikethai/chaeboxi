@@ -18,22 +18,37 @@ async function create(newSession: Omit<Session, 'id'>) {
   return session
 }
 
+export type CreateEmptyOptions = {
+  /** Assign the new session to a project folder */
+  folderId?: string
+  /** Optional copilot to attach (e.g. project default) */
+  copilotId?: string
+}
+
 /**
- * Create a new empty session
+ * Create a new empty session, optionally scoped to a project folder.
  */
-export async function createEmpty(type: 'chat' | 'picture') {
-  let newSession: Session
+export async function createEmpty(type: 'chat' | 'picture', options?: CreateEmptyOptions) {
+  let draft: Omit<Session, 'id'>
   switch (type) {
     case 'chat':
-      newSession = await create(initEmptyChatSession())
+      draft = initEmptyChatSession()
       break
     case 'picture':
-      newSession = await create(initEmptyPictureSession())
+      draft = initEmptyPictureSession()
       break
     default:
       throw new Error(`Unknown session type: ${type}`)
   }
-  return newSession
+
+  if (options?.folderId) {
+    draft = { ...draft, folderId: options.folderId }
+  }
+  if (options?.copilotId) {
+    draft = { ...draft, copilotId: options.copilotId }
+  }
+
+  return await create(draft)
 }
 
 /**

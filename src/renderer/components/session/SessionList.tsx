@@ -28,7 +28,9 @@ import { useTranslation } from 'react-i18next'
 import { Virtuoso } from 'react-virtuoso'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useFolders } from '@/hooks/useFolders'
+import { trackingEvent } from '@/packages/event'
 import { getSession, updateSession, updateSessionList, useSessionList } from '@/stores/chatStore'
+import { createEmpty } from '@/stores/sessionActions'
 import { AdaptiveModal } from '../common/AdaptiveModal'
 import FolderItem from './FolderItem'
 import SessionItem from './SessionItem'
@@ -331,6 +333,18 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
     setEditingFolder(null)
   }
 
+  const handleCreateChatInFolder = async (folder: Folder) => {
+    // Expand so the new session is visible under the project
+    setExpandedFolders((prev) => ({ ...prev, [folder.id]: true }))
+    setProjectsOpen(true)
+    await createEmpty('chat', {
+      folderId: folder.id,
+      copilotId: folder.defaultCopilotId,
+    })
+    trackingEvent('create_new_conversation', { event_category: 'user', source: 'project' })
+    refetch()
+  }
+
   return (
     <>
       <DndContext
@@ -372,6 +386,7 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
               }
 
               if (row.type === 'folder') {
+                const folder = folders.find((item) => item.id === row.folder.key)
                 return (
                   <FolderItem
                     count={row.folder.count}
@@ -379,34 +394,32 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
                     expanded={expandedFolders[row.folder.key] ?? true}
                     implicit={row.folder.implicit}
                     name={row.folder.name}
-                    onDelete={
-                      row.folder.implicit
+                    onCreateChat={
+                      row.folder.implicit || !folder
                         ? undefined
                         : () => {
-                            const folder = folders.find((item) => item.id === row.folder.key)
-                            if (folder) {
-                              void handleDeleteFolder(folder)
-                            }
+                            void handleCreateChatInFolder(folder)
+                          }
+                    }
+                    onDelete={
+                      row.folder.implicit || !folder
+                        ? undefined
+                        : () => {
+                            void handleDeleteFolder(folder)
                           }
                     }
                     onRename={
-                      row.folder.implicit
+                      row.folder.implicit || !folder
                         ? undefined
                         : () => {
-                            const folder = folders.find((item) => item.id === row.folder.key)
-                            if (folder) {
-                              setEditingFolder(folder)
-                            }
+                            setEditingFolder(folder)
                           }
                     }
                     onSetDefaultCopilot={
-                      row.folder.implicit
+                      row.folder.implicit || !folder
                         ? undefined
                         : () => {
-                            const folder = folders.find((item) => item.id === row.folder.key)
-                            if (folder) {
-                              setEditingFolder(folder)
-                            }
+                            setEditingFolder(folder)
                           }
                     }
                     onToggle={() => toggleFolder(row.folder.key)}

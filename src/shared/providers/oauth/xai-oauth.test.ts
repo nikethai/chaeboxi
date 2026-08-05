@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { createDesktopAwareFetch, hasDesktopHttpTransport } from './desktop-http-fetch'
 import {
   ensureFreshAccessToken,
+  humanizeOAuthNetworkError,
   isXaiTokenExpired,
   pollDeviceAuth,
   pollDeviceAuthOnce,
@@ -168,6 +170,61 @@ describe('xai-oauth', () => {
 
   it('ensureFreshAccessToken throws not_signed_in without tokens', async () => {
     await expect(ensureFreshAccessToken(undefined)).rejects.toBeInstanceOf(XaiOAuthError)
+  })
+
+  it('humanizeOAuthNetworkError maps Load failed', () => {
+    expect(humanizeOAuthNetworkError(new TypeError('Load failed'))).toMatch(/auth\.x\.ai/)
+  })
+
+  it('startDeviceAuth surfaces network errors as XaiOAuthError', async () => {
+    await expect(
+      startDeviceAuth({
+        fetchImpl: (async () => {
+          throw new TypeError('Load failed')
+        }) as unknown as typeof fetch,
+      })
+    ).rejects.toMatchObject({ code: 'network_error' })
+  })
+})
+
+describe('desktop-http-fetch', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('routes through desktopAPI.invoke when available', async () => {
+    const body = JSON.stringify({
+      device_code: 'dc',
+      user_code: 'AB',
+      verification_uri: 'https://accounts.x.ai/oauth2/device',
+      expires_in: 100,
+    })
+    const bodyBase64 = btoa(body)
+    const invoke = vi.fn().mockResolvedValue({
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+      bodyBase64,
+    })
+    vi.stubGlobal('window', {
+      desktopAPI: { invoke },
+    })
+
+    expect(hasDesktopHttpTransport()).toBe(true)
+    const desktopFetch = createDesktopAwareFetch()
+    const res = await desktopFetch(XAI_DEVICE_CODE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'client_id=test',
+    })
+    expect(invoke).toHaveBeenCalledWith(
+      'http:request',
+      expect.objectContaining({
+        url: XAI_DEVICE_CODE_URL,
+        method: 'POST',
+      })
+    )
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ device_code: 'dc' })
   })
 })
 

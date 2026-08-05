@@ -165,13 +165,56 @@ export function getUnsupportedFileType(fileName: string): string | null {
   return null
 }
 
+/** Image extensions the chat vision path can load via canvas resize. */
+export const aiReadableImageExts = ['.jpg', '.jpeg', '.png', '.webp', '.gif']
+
+/**
+ * Whether this file should use the image (vision) attachment lane.
+ * Advanced formats in unsupportedPatterns.image stay out of this path.
+ */
+export function isAiReadableImageFile(file: Pick<File, 'name' | 'type'>): boolean {
+  if (getUnsupportedFileType(file.name) === 'image') {
+    return false
+  }
+  if (file.type.startsWith('image/')) {
+    // svg/gif/webp/png/jpeg all resize via canvas; reject exotic image/* that failed the name check above
+    return true
+  }
+  const lower = file.name.toLowerCase()
+  return aiReadableImageExts.some((ext) => lower.endsWith(ext))
+}
+
+/**
+ * i18n key (English source string) for an unsupported file.
+ * Use with t(key, { fileName }) when the key includes {{fileName}}.
+ */
+export function getUnsupportedFileI18nKey(fileName: string): string {
+  const category = getUnsupportedFileType(fileName)
+  switch (category) {
+    case 'iwork':
+      return 'iWork files (Pages, Keynote) are not supported. Please export to PDF or Office format.'
+    case 'audio':
+      return 'Audio files are not supported'
+    case 'video':
+      return 'Video files are not supported'
+    case 'binary':
+      return 'Binary/executable files are not supported'
+    case 'archive':
+      return 'Archive files are not supported. Please extract and upload individual files.'
+    case 'image':
+      return 'Advanced image formats are not supported. Please convert to JPG or PNG.'
+    default:
+      return 'Unsupported file type: {{fileName}}'
+  }
+}
+
 /**
  * Get the file upload accept attribute value
  * Used for input[type="file"] and dropzone accept configuration
  */
 export function getFileAcceptString(): string {
-  // Merge all supported extensions, plus .numbers
-  const exts = [...allSupportedExts, '.numbers']
+  // Images the vision path can read + documents/text the parser can read
+  const exts = [...aiReadableImageExts, ...allSupportedExts, '.numbers']
   return exts.join(',')
 }
 
@@ -181,8 +224,11 @@ export function getFileAcceptString(): string {
  */
 export function getFileAcceptConfig(): Record<string, string[]> {
   return {
-    // Image files
-    'image/*': ['.jpg', '.jpeg', '.png'],
+    // Image files (AI-readable vision set)
+    'image/jpeg': ['.jpg', '.jpeg'],
+    'image/png': ['.png'],
+    'image/webp': ['.webp'],
+    'image/gif': ['.gif'],
     // Text files
     'text/plain': ['.txt', '.log', '.nfo', '.ini', '.conf', '.config', '.env'],
     'text/markdown': ['.md', '.mdx'],

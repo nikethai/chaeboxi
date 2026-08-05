@@ -1,6 +1,8 @@
 import { Alert, Button, Flex, Loader, SegmentedControl, Stack, Text, TextInput } from '@mantine/core'
 import {
+  fetchXaiModels,
   humanizeOAuthNetworkError,
+  mergeXaiModels,
   pollDeviceAuth,
   resolveXaiAuthMode,
   settingsPatchFromOAuthTokens,
@@ -82,11 +84,31 @@ export function XaiAuthSection({ providerSettings, setProviderSettings }: XaiAut
       const tokens = await pollDeviceAuth(device, { signal: ac.signal })
       if (ac.signal.aborted) return
 
-      setProviderSettings(settingsPatchFromOAuthTokens(tokens))
+      const authPatch = settingsPatchFromOAuthTokens(tokens)
+      // Pull live catalog so SuperGrok users see current Grok models, not only seeds
+      let nextModels = providerSettings?.models
+      try {
+        const remoteModels = await fetchXaiModels(tokens.accessToken)
+        if (remoteModels.length > 0) {
+          nextModels = mergeXaiModels(providerSettings?.models, remoteModels, { replaceAll: true })
+        }
+      } catch (modelErr) {
+        console.warn('[xAI] post-auth model list failed', modelErr)
+      }
+
+      setProviderSettings({
+        ...authPatch,
+        ...(nextModels ? { models: nextModels } : {}),
+      })
       setPhase('idle')
       setUserCode(null)
       setVerificationUri(null)
-      addToast(t('Signed in to xAI'))
+      const modelCount = nextModels?.length
+      addToast(
+        modelCount && nextModels !== providerSettings?.models
+          ? t('Signed in to xAI · {{count}} models loaded', { count: modelCount })
+          : t('Signed in to xAI')
+      )
     } catch (err) {
       if (ac.signal.aborted) return
       const message =

@@ -4,6 +4,7 @@ import type { Config, Settings } from '@shared/types'
 import type { ModelDependencies } from '@shared/types/adapters'
 import { tool } from 'ai'
 import { z } from 'zod'
+import { refreshXaiAuthIfNeeded } from '@/utils/xai-auth-refresh'
 
 export type TestResult = {
   status: 'success' | 'error' | 'pending'
@@ -46,7 +47,13 @@ export async function testModelCapabilities(options: TestModelOptions): Promise<
   onStateChange?.(state)
 
   try {
-    const modelInstance = getModel({ ...settings, provider: providerId, modelId }, settings, configs, dependencies)
+    const authReadySettings = await refreshXaiAuthIfNeeded(settings, providerId)
+    const modelInstance = getModel(
+      { ...authReadySettings, provider: providerId, modelId },
+      authReadySettings,
+      configs,
+      dependencies
+    )
 
     // Test 1: Basic text request
     state = await testBasicRequest(modelInstance, state)

@@ -56,6 +56,14 @@ import { useComfyUIInfo } from '@/hooks/useComfyUIInfo'
 import { ComfyUIClient } from '@shared/providers/definitions/models/comfyui-client'
 import type { ComfyUILoraConfig } from '@shared/providers/definitions/models/comfyui-types'
 import { OpenClawGatewaySettings } from '@/components/settings/OpenClawGatewaySettings'
+import {
+  getQwenKeyLabel,
+  getQwenKeyPlaceholder,
+  getQwenPresetModels,
+  QwenPlanSelector,
+} from '@/components/settings/QwenPlanSelector'
+import { XaiAuthSection } from '@/components/settings/XaiAuthSection'
+import { isXaiOAuthSignedIn, resolveXaiAuthMode, resolveXaiBearer } from '@shared/providers/oauth'
 
 export const Route = createFileRoute('/settings/provider/$providerId')({
   component: RouteComponent,
@@ -307,8 +315,10 @@ function ProviderSettings({ providerId }: { providerId: string }) {
   }
 
   const resetModels = () => {
+    const qwenPresetModels =
+      baseInfo?.id === ModelProviderEnum.Qwen ? getQwenPresetModels(providerSettings) : undefined
     setProviderSettings({
-      models: baseInfo?.defaultSettings?.models,
+      models: qwenPresetModels || baseInfo?.defaultSettings?.models,
     })
   }
 
@@ -537,7 +547,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         )}
 
         {/* Provider description */}
-        {baseInfo.description && (
+        {baseInfo.description && baseInfo.id !== ModelProviderEnum.XAI && (
           <Stack gap="xxs">
             <Text span size="xs" c="chatbox-tertiary">
               {t(baseInfo.description)}
@@ -545,18 +555,43 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           </Stack>
         )}
 
-        {/* API Key */}
-        {!isNoApiKeyProvider && (
+        {/* xAI dual auth: SuperGrok/X Premium OAuth or developer API key */}
+        {baseInfo.id === ModelProviderEnum.XAI && (
+          <XaiAuthSection providerSettings={providerSettings} setProviderSettings={setProviderSettings} />
+        )}
+
+        {/* QwenCloud plan presets (Token Plan, Coding Plan, Standard) */}
+        {baseInfo.id === ModelProviderEnum.Qwen && (
+          <QwenPlanSelector providerSettings={providerSettings} setProviderSettings={setProviderSettings} />
+        )}
+
+        {/* API Key — hidden for xAI OAuth mode */}
+        {!isNoApiKeyProvider &&
+          !(baseInfo.id === ModelProviderEnum.XAI && resolveXaiAuthMode(providerSettings) === 'oauth') && (
           <Stack gap="xxs">
             <Text span fw="600">
-              {t('API Key')}
+              {baseInfo.id === ModelProviderEnum.Qwen
+                ? t(getQwenKeyLabel(providerSettings))
+                : t('API Key')}
             </Text>
             <Flex gap="xs" align="center">
-              <PasswordInput flex={1} value={providerSettings?.apiKey || ''} onChange={handleApiKeyChange} />
+              <PasswordInput
+                flex={1}
+                value={providerSettings?.apiKey || ''}
+                onChange={handleApiKeyChange}
+                placeholder={
+                  baseInfo.id === ModelProviderEnum.Qwen ? getQwenKeyPlaceholder(providerSettings) : undefined
+                }
+              />
               <Tooltip
-                disabled={!!providerSettings?.apiKey && displayModels.length > 0}
+                disabled={
+                  (!!providerSettings?.apiKey ||
+                    (baseInfo.id === ModelProviderEnum.XAI && isXaiOAuthSignedIn(providerSettings))) &&
+                  displayModels.length > 0
+                }
                 label={
-                  !providerSettings?.apiKey
+                  !providerSettings?.apiKey &&
+                  !(baseInfo.id === ModelProviderEnum.XAI && isXaiOAuthSignedIn(providerSettings))
                     ? t('API Key is required to check connection')
                     : displayModels.length === 0
                       ? t('Add at least one model to check connection')
@@ -565,7 +600,11 @@ function ProviderSettings({ providerId }: { providerId: string }) {
               >
                 <Button
                   size="sm"
-                  disabled={!providerSettings?.apiKey || displayModels.length === 0}
+                  disabled={
+                    (!providerSettings?.apiKey &&
+                      !(baseInfo.id === ModelProviderEnum.XAI && isXaiOAuthSignedIn(providerSettings))) ||
+                    displayModels.length === 0
+                  }
                   loading={modelTestResult?.testing || false}
                   onClick={() => setShowTestModelSelector(true)}
                 >
@@ -573,10 +612,59 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 </Button>
               </Tooltip>
             </Flex>
+            {baseInfo.id === ModelProviderEnum.Qwen && (
+              <Text size="xs" c="chatbox-secondary">
+                {t('Token Plan and Coding Plan keys start with sk-sp- and only work with the matching endpoint.')}
+              </Text>
+            )}
+            {baseInfo.urls?.apiKey && baseInfo.id !== ModelProviderEnum.Qwen && baseInfo.id !== ModelProviderEnum.XAI && (
+              <Button
+                variant="subtle"
+                size="compact-xs"
+                className="self-start"
+                leftSection={<ScalableIcon icon={IconExternalLink} size={14} />}
+                onClick={() => platform.openLink(baseInfo.urls!.apiKey!)}
+              >
+                {t('Get API Key')}
+              </Button>
+            )}
           </Stack>
         )}
 
-        {!isNoApiKeyProvider && (
+        {/* xAI OAuth: Check connection without API key field */}
+        {baseInfo.id === ModelProviderEnum.XAI && resolveXaiAuthMode(providerSettings) === 'oauth' && (
+          <Stack gap="xxs">
+            <Flex gap="xs" align="center">
+              <Tooltip
+                disabled={isXaiOAuthSignedIn(providerSettings) && displayModels.length > 0}
+                label={
+                  !isXaiOAuthSignedIn(providerSettings)
+                    ? t('Sign in to check connection')
+                    : displayModels.length === 0
+                      ? t('Add at least one model to check connection')
+                      : null
+                }
+              >
+                <Button
+                  size="sm"
+                  disabled={!isXaiOAuthSignedIn(providerSettings) || displayModels.length === 0}
+                  loading={modelTestResult?.testing || false}
+                  onClick={() => setShowTestModelSelector(true)}
+                >
+                  {t('Check')}
+                </Button>
+              </Tooltip>
+              {resolveXaiBearer(providerSettings) ? (
+                <Text size="xs" c="chatbox-secondary">
+                  {t('Uses your SuperGrok / X Premium session')}
+                </Text>
+              ) : null}
+            </Flex>
+          </Stack>
+        )}
+
+        {!isNoApiKeyProvider &&
+          !(baseInfo.id === ModelProviderEnum.XAI && resolveXaiAuthMode(providerSettings) === 'oauth') && (
           <Stack gap="xxs">
             <Text span fw="600">
               {t('Cloudflare Client ID')}
@@ -590,7 +678,8 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           </Stack>
         )}
 
-        {!isNoApiKeyProvider && (
+        {!isNoApiKeyProvider &&
+          !(baseInfo.id === ModelProviderEnum.XAI && resolveXaiAuthMode(providerSettings) === 'oauth') && (
           <Stack gap="xxs">
             <Text span fw="600">
               {t('Cloudflare Client Secret')}

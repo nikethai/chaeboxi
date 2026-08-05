@@ -1,4 +1,5 @@
 import { SystemProviders } from '@shared/defaults'
+import { hasProviderCredentials } from '@shared/providers/provider-credentials'
 import { ModelProviderEnum, type ProviderInfo } from '@shared/types'
 import { useCallback, useMemo } from 'react'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -15,8 +16,10 @@ export const useProviders = () => {
       allProviderBaseInfos
         .map((p) => {
           const providerSettings = providerSettingsMap?.[p.id]
+          // Builtin providers: API key OR OAuth (e.g. SuperGrok on xAI)
+          // Local/custom: models list is enough
           if (
-            (!p.isCustom && providerSettings?.apiKey) ||
+            (!p.isCustom && hasProviderCredentials(providerSettings)) ||
             ((p.isCustom ||
               p.id === ModelProviderEnum.Ollama ||
               p.id === ModelProviderEnum.LMStudio ||

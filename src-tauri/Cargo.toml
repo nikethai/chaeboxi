@@ -2,6 +2,7 @@
 description = "Tauri runtime for Chaeboxi"
 edition = "2021"
 name = "chaeboxi"
+rust-version = "1.88"
 version = "1.6.0"
 
 [lib]

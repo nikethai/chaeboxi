@@ -376,7 +376,7 @@ describe('streamText reasoning replay', () => {
       ],
       sessionSettings: {
         provider: ModelProviderEnum.Qwen,
-        modelId: 'qwen3.5-plus',
+        modelId: 'qwen3.7-plus',
         preserveReasoningInContext: true,
       },
       onResultChangeWithCancel: vi.fn(),
@@ -408,7 +408,7 @@ describe('streamText reasoning replay', () => {
       ],
       sessionSettings: {
         provider: ModelProviderEnum.Qwen,
-        modelId: 'qwen3.5-plus',
+        modelId: 'qwen3.7-plus',
         preserveReasoningInContext: false,
       },
       onResultChangeWithCancel: vi.fn(),

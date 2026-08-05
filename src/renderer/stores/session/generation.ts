@@ -445,7 +445,9 @@ export async function generate(
 
   try {
     const dependencies = await createModelDependencies()
-    const model = getModel(effectiveSettings, globalSettings, configs, dependencies)
+    const { refreshXaiAuthIfNeeded } = await import('@/utils/xai-auth-refresh')
+    const authReadySettings = await refreshXaiAuthIfNeeded(globalSettings, effectiveSettings.provider)
+    const model = getModel(effectiveSettings, authReadySettings, configs, dependencies)
     const sessionKnowledgeBaseMap = uiStore.getState().sessionKnowledgeBaseMap
     const knowledgeBase = sessionKnowledgeBaseMap[sessionId]
     const agentImageFlowInstructions =

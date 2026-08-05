@@ -11,7 +11,7 @@ describe('reasoning replay helpers', () => {
       isReasoningReplayAvailable(
         {
           provider: ModelProviderEnum.Qwen,
-          modelId: 'qwen3.5-plus',
+          modelId: 'qwen3.7-plus',
         },
         globalSettings
       )

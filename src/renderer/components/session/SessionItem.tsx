@@ -86,7 +86,7 @@ function SessionItem(props: Props) {
         },
       },
       {
-        text: t('Move to Folder'),
+        text: t('Move to Project'),
         icon: IconFolder,
         onClick: () => {
           setFolderModalOpened(true)
@@ -130,7 +130,7 @@ function SessionItem(props: Props) {
       { value: '', label: t('All') },
       ...folders.map((folder) => ({
         value: folder.id,
-        label: `${folder.emoji ? `${folder.emoji} ` : ''}${folder.name}`,
+        label: folder.name,
       })),
     ],
     [folders, t]
@@ -204,14 +204,14 @@ function SessionItem(props: Props) {
       <AdaptiveModal
         opened={folderModalOpened}
         onClose={() => setFolderModalOpened(false)}
-        title={t('Move to Folder')}
+        title={t('Move to Project')}
         centered
       >
         <Select
           data={folderOptions}
           value={selectedFolderId ?? ''}
           onChange={(value) => setSelectedFolderId(value || null)}
-          label={t('Folder')}
+          label={t('Project')}
           comboboxProps={{ withinPortal: true }}
         />
 

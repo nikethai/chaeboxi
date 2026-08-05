@@ -267,53 +267,56 @@ function Index() {
           )}
         </div>
 
-        <Stack gap="sm" className="session-dock">
-          {session.copilotId ? (
-            <Box className={widthFull ? 'chat-col-full' : 'chat-col'}>
-              <Stack gap="sm" className="w-full">
-                <Flex align="center" gap="sm">
-                  <CopilotItem
-                    name={session.name}
-                    picUrl={session.picUrl}
-                    emojiAvatar={selectedCopilot?.emojiAvatar}
-                    selected
-                  />
-                  <ActionIcon
-                    size={28}
-                    radius="md"
-                    c="chatbox-tertiary"
-                    variant="subtle"
-                    onClick={() => setSession((old) => ({ ...old, copilotId: undefined }))}
-                  >
-                    <ScalableIcon icon={IconX} size={18} />
-                  </ActionIcon>
-                </Flex>
+        <div className="session-dock">
+          <Stack gap="sm" className="session-dock-pad">
+            {session.copilotId ? (
+              <Box className={widthFull ? 'chat-col-full' : 'chat-col'}>
+                <Stack gap="sm" className="w-full">
+                  <Flex align="center" gap="sm">
+                    <CopilotItem
+                      name={session.name}
+                      picUrl={session.picUrl}
+                      emojiAvatar={selectedCopilot?.emojiAvatar}
+                      selected
+                    />
+                    <ActionIcon
+                      size={28}
+                      radius="md"
+                      c="chatbox-tertiary"
+                      variant="subtle"
+                      onClick={() => setSession((old) => ({ ...old, copilotId: undefined }))}
+                    >
+                      <ScalableIcon icon={IconX} size={18} />
+                    </ActionIcon>
+                  </Flex>
 
-                <Text c="chatbox-secondary" className="line-clamp-5">
-                  {session.messages[0]?.contentParts?.map((part) => (part.type === 'text' ? part.text : '')).join('') ||
-                    ''}
-                </Text>
-              </Stack>
-            </Box>
-          ) : (
-            showCopilotsInNewSession && (
-              <CopilotPicker onSelect={(copilot) => setSession((old) => ({ ...old, copilotId: copilot?.id }))} />
-            )
-          )}
+                  <Text c="chatbox-secondary" className="line-clamp-5">
+                    {session.messages[0]?.contentParts
+                      ?.map((part) => (part.type === 'text' ? part.text : ''))
+                      .join('') || ''}
+                  </Text>
+                </Stack>
+              </Box>
+            ) : (
+              showCopilotsInNewSession && (
+                <CopilotPicker onSelect={(copilot) => setSession((old) => ({ ...old, copilotId: copilot?.id }))} />
+              )
+            )}
 
-          <InputBox
-            key={`new-composer-${composerKey}`}
-            sessionType="chat"
-            sessionId="new"
-            model={selectedModel}
-            agentMode={session.agentMode ?? false}
-            initialMessage={composerDraft}
-            onSelectModel={onSelectModel}
-            onToggleAgentMode={(agentMode) => setSession((old) => ({ ...old, agentMode }))}
-            onClickSessionSettings={onClickSessionSettings}
-            onSubmit={handleSubmit}
-          />
-        </Stack>
+            <InputBox
+              key={`new-composer-${composerKey}`}
+              sessionType="chat"
+              sessionId="new"
+              model={selectedModel}
+              agentMode={session.agentMode ?? false}
+              initialMessage={composerDraft}
+              onSelectModel={onSelectModel}
+              onToggleAgentMode={(agentMode) => setSession((old) => ({ ...old, agentMode }))}
+              onClickSessionSettings={onClickSessionSettings}
+              onSubmit={handleSubmit}
+            />
+          </Stack>
+        </div>
       </div>
     </Page>
   )

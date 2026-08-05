@@ -92,19 +92,16 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
   const [historyOpen, setHistoryOpen] = useState(true)
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null)
   const [folderName, setFolderName] = useState('')
-  const [folderEmoji, setFolderEmoji] = useState('')
   const [folderDefaultCopilotId, setFolderDefaultCopilotId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!editingFolder) {
       setFolderName('')
-      setFolderEmoji('')
       setFolderDefaultCopilotId(null)
       return
     }
 
     setFolderName(editingFolder.name)
-    setFolderEmoji(editingFolder.emoji || '')
     setFolderDefaultCopilotId(editingFolder.defaultCopilotId || null)
   }, [editingFolder])
 
@@ -329,7 +326,6 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
 
     updateFolder(editingFolder.id, {
       name: folderName.trim(),
-      emoji: folderEmoji.trim() || undefined,
       defaultCopilotId: folderDefaultCopilotId || undefined,
     })
     setEditingFolder(null)
@@ -431,18 +427,11 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
         </SortableContext>
       </DndContext>
 
-      <AdaptiveModal opened={!!editingFolder} onClose={() => setEditingFolder(null)} title={t('Edit Folder')} centered>
+      <AdaptiveModal opened={!!editingFolder} onClose={() => setEditingFolder(null)} title={t('Edit Project')} centered>
         <TextInput
-          label={t('Folder Name')}
+          label={t('Project Name')}
           value={folderName}
           onChange={(event) => setFolderName(event.currentTarget.value)}
-        />
-        <TextInput
-          mt="sm"
-          label={t('Folder Emoji')}
-          placeholder="📁"
-          value={folderEmoji}
-          onChange={(event) => setFolderEmoji(event.currentTarget.value)}
         />
         <Select
           mt="sm"

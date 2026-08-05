@@ -5,6 +5,7 @@ import {
   IconDots,
   IconEdit,
   IconMessageChatbot,
+  IconStack2,
   IconTrash,
 } from '@tabler/icons-react'
 import clsx from 'clsx'
@@ -16,6 +17,7 @@ import { ScalableIcon } from '../common/ScalableIcon'
 
 export interface FolderItemProps {
   count: number
+  /** @deprecated emoji ignored in UI — projects use a shared outline mark */
   emoji?: string
   expanded: boolean
   implicit?: boolean
@@ -28,7 +30,6 @@ export interface FolderItemProps {
 
 function FolderItem({
   count,
-  emoji,
   expanded,
   implicit = false,
   name,
@@ -47,7 +48,7 @@ function FolderItem({
         ? []
         : [
             {
-              text: t('Rename Folder'),
+              text: t('Rename Project'),
               icon: IconEdit,
               onClick: () => onRename?.(),
             },
@@ -58,7 +59,7 @@ function FolderItem({
             },
             { divider: true },
             {
-              text: t('Delete Folder'),
+              text: t('Delete Project'),
               icon: IconTrash,
               color: 'chatbox-error',
               doubleCheck: true,
@@ -81,16 +82,24 @@ function FolderItem({
       )}
       onClick={onToggle}
     >
-      <ActionIcon variant="transparent" size={18} color="chatbox-tertiary">
+      <ActionIcon variant="transparent" size={18} color="chatbox-tertiary" aria-hidden>
         <ScalableIcon icon={expanded ? IconChevronDown : IconChevronRight} size={14} />
       </ActionIcon>
 
-      <Text span size="sm" c="chatbox-secondary" fw={500} className="tracking-tight" style={{ fontSize: '0.875rem' }}>
-        {emoji ? `${emoji} ` : ''}
+      <IconStack2 size={15} stroke={1.5} className="project-row-icon" aria-hidden />
+
+      <Text
+        span
+        size="sm"
+        c="chatbox-secondary"
+        fw={500}
+        className="tracking-tight truncate"
+        style={{ fontSize: '0.875rem' }}
+      >
         {name}
       </Text>
 
-      <Text span size="xs" c="chatbox-tertiary" flex={1} style={{ fontSize: '0.75rem' }}>
+      <Text span size="xs" c="chatbox-tertiary" flex={1} className="tabular-nums" style={{ fontSize: '0.75rem' }}>
         {count}
       </Text>
 

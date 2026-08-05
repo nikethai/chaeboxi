@@ -327,11 +327,21 @@ const creteMantineTheme = (scale = 1) =>
         defaultProps: {
           color: 'chatbox-brand',
         },
-        styles: () => ({
+        styles: (_theme, props) => ({
           root: {
             '--button-height-sm': rem('32px'),
             '--button-height-compact-xs': rem('24px'),
             fontWeight: '400',
+            /* flat CSS-var brand palette has no auto-contrast — force white on filled */
+            ...((props.variant === 'filled' || props.variant === undefined) && !props.disabled
+              ? {
+                  color: '#ffffff',
+                  '--button-color': '#ffffff',
+                }
+              : {}),
+          },
+          label: {
+            color: 'inherit',
           },
         }),
       }),

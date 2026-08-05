@@ -2,7 +2,7 @@ import { ActionIcon, Box, Collapse, Text } from '@mantine/core'
 import type { Message, MessageReasoningPart } from '@shared/types'
 import { IconBulb, IconCopy } from '@tabler/icons-react'
 import clsx from 'clsx'
-import { type FC, useCallback, useState } from 'react'
+import { type FC, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Markdown from '@/components/Markdown'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
@@ -10,8 +10,8 @@ import { formatElapsedTime, formatWorkedDuration, useThinkingTimer } from '@/hoo
 import { ScalableIcon } from '../common/ScalableIcon'
 
 /**
- * Reasoning chrome — Grok thinking bar DNA:
- * rounded card, bulb mark, duration label, expand chevron + copy.
+ * Reasoning chrome — Grok DNA:
+ * plain “Worked for 3s ›” (no card border); expand for body + optional status line.
  */
 export const ReasoningContentUI: FC<{
   message: Message
@@ -37,51 +37,67 @@ export const ReasoningContentUI: FC<{
     part?.duration && part.duration > 0 ? part.duration : isThinking && elapsedTime > 0 ? elapsedTime : 0
   const shouldRenderMarkdown = isExpanded && reasoningContent.length > 0
 
+  const statusLine = useMemo(() => {
+    if (!reasoningContent) return ''
+    const first = reasoningContent
+      .split(/\n+/)
+      .map((l) => l.trim())
+      .find((l) => l.length > 0)
+    if (!first) return ''
+    // strip markdown-ish noise for a quiet status line
+    return first.replace(/^[#>*\-\s]+/, '').slice(0, 120)
+  }, [reasoningContent])
+
   const toggleExpanded = useCallback(() => {
     setIsExpanded((prev) => !prev)
   }, [])
 
   const label = isThinking
-    ? t('Thinking…')
+    ? t('Working…')
     : shouldShowTimer && displayTime > 0
-      ? t('Thought for {{duration}}', { duration: formatWorkedDuration(displayTime) })
-      : t('Thought')
+      ? t('Worked for {{duration}}', { duration: formatWorkedDuration(displayTime) })
+      : t('Worked')
 
   return (
     <div className={clsx('msg-worked', isSmallScreen && 'mx-0.5')}>
       <div className="msg-worked-row">
         <button type="button" className="msg-worked-toggle" onClick={toggleExpanded} aria-expanded={isExpanded}>
-          <IconBulb size={16} stroke={1.5} className="msg-worked-bulb" aria-hidden />
-          <span className={clsx(isThinking && 'animate-shimmer shimmer-text')}>{label}</span>
-          {isThinking && reasoningContent.length > 0 && shouldShowTimer && (
-            <span className="msg-worked-live">({formatElapsedTime(displayTime)})</span>
-          )}
-        </button>
-        <span className="msg-worked-actions">
-          {reasoningContent.length > 0 && (
-            <ActionIcon
-              variant="subtle"
-              color="chatbox-secondary"
-              size="sm"
-              className="msg-worked-copy"
-              onClick={(e) => {
-                e.stopPropagation()
-                onCopyReasoningContent(reasoningContent)(e)
-              }}
-              aria-label={t('Copy reasoning content')}
-            >
-              <ScalableIcon icon={IconCopy} size={14} />
-            </ActionIcon>
+          <span className={clsx('msg-worked-label', isThinking && 'animate-shimmer shimmer-text')}>{label}</span>
+          {isThinking && reasoningContent.length > 0 && shouldShowTimer && displayTime > 0 && (
+            <span className="msg-worked-live tabular-nums">({formatElapsedTime(displayTime)})</span>
           )}
           <span className={clsx('msg-worked-chevron', isExpanded && 'is-open')} aria-hidden>
             ›
           </span>
-        </span>
+        </button>
+        {reasoningContent.length > 0 && (
+          <ActionIcon
+            variant="subtle"
+            color="chatbox-secondary"
+            size="sm"
+            className="msg-worked-copy"
+            onClick={(e) => {
+              e.stopPropagation()
+              onCopyReasoningContent(reasoningContent)(e)
+            }}
+            aria-label={t('Copy reasoning content')}
+          >
+            <ScalableIcon icon={IconCopy} size={14} />
+          </ActionIcon>
+        )}
       </div>
 
+      {/* Live / expanded status — Grok bulb line */}
+      {(isThinking || isExpanded) && statusLine && (
+        <div className="msg-worked-status">
+          <IconBulb size={15} stroke={1.5} className="msg-worked-bulb" aria-hidden />
+          <span className="msg-worked-status-text">{statusLine}</span>
+        </div>
+      )}
+
       <Collapse in={isExpanded}>
-        <Box className="msg-worked-body reasoning-content">
-          {shouldRenderMarkdown ? (
+        {shouldRenderMarkdown ? (
+          <Box className="msg-worked-body reasoning-content">
             <Markdown
               enableLaTeXRendering={false}
               enableMermaidRendering={false}
@@ -91,12 +107,17 @@ export const ReasoningContentUI: FC<{
             >
               {reasoningContent}
             </Markdown>
-          ) : (
-            <Text size={isSmallScreen ? 'xs' : 'sm'} m={0} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {reasoningContent}
-            </Text>
-          )}
-        </Box>
+          </Box>
+        ) : isExpanded && reasoningContent ? (
+          <Text
+            className="msg-worked-body"
+            size={isSmallScreen ? 'xs' : 'sm'}
+            m={0}
+            style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+          >
+            {reasoningContent}
+          </Text>
+        ) : null}
       </Collapse>
     </div>
   )

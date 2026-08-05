@@ -1097,7 +1097,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     if (sessionType === 'picture') {
       return (
         <Box id={dom.InputBoxID} className="chat-input-shell">
-          <Stack className={cn('composer-card', widthFull ? 'chat-col-full' : 'chat-col')} gap="xs" p="md" align="center">
+          <Stack
+            className={cn('composer-card', widthFull ? 'chat-col-full' : 'chat-col')}
+            gap="xs"
+            p="md"
+            align="center"
+          >
             <Text size="sm" c="chatbox-tertiary" ta="center">
               {t('This image session is no longer active. Please use the new Image Creator for image generation.')}
             </Text>
@@ -1121,10 +1126,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           {currentSessionId && <CompactionStatus sessionId={currentSessionId} />}
           {currentSessionId && <QueuedMessageList sessionId={currentSessionId} />}
           <Stack
-            className={cn(
-              'composer-card relative justify-between',
-              isFileDragActive && 'composer-card-drag-active'
-            )}
+            className={cn('composer-card relative justify-between', isFileDragActive && 'composer-card-drag-active')}
             gap={0}
           >
             {isFileDragActive && (
@@ -1161,11 +1163,27 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             {/* Text area — full width of card (mock .composer textarea) */}
             <Textarea
               unstyled={true}
+              variant="unstyled"
               classNames={{
                 root: 'w-full',
                 wrapper: 'w-full',
                 input:
-                  'composer-textarea block w-full outline-none border-none px-4 pt-3.5 pb-2 resize-none bg-transparent text-chatbox-tint-primary placeholder:text-[var(--chatbox-tint-tertiary)]',
+                  'composer-textarea block w-full outline-none border-none shadow-none px-4 pt-3.5 pb-2 resize-none bg-transparent text-chatbox-tint-primary placeholder:text-[var(--chatbox-tint-tertiary)] focus:outline-none focus:border-none focus:shadow-none focus-visible:outline-none',
+              }}
+              styles={{
+                input: {
+                  border: 'none',
+                  borderColor: 'transparent',
+                  boxShadow: 'none',
+                  outline: 'none',
+                  backgroundColor: 'transparent',
+                  '&:focus, &:focus-visible, &:focus-within': {
+                    border: 'none',
+                    borderColor: 'transparent',
+                    boxShadow: 'none',
+                    outline: 'none',
+                  },
+                },
               }}
               size="sm"
               id={dom.messageInputID}
@@ -1502,7 +1520,9 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       duration: 200,
                     }}
                   >
-                    <UnstyledButton className={cn(toolbarButtonClass, 'model-picker-trigger', isSmallScreen && 'px-2.5')}>
+                    <UnstyledButton
+                      className={cn(toolbarButtonClass, 'model-picker-trigger', isSmallScreen && 'px-2.5')}
+                    >
                       {!!model && <ProviderImageIcon size={15} provider={model.provider} />}
                       <Text
                         size="xs"

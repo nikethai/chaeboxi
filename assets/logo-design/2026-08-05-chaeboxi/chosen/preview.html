@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chaeboxi · Chosen logos K + K2</title>
+  <style>
+    :root {
+      --void: #121214;
+      --panel: #1c1c21;
+      --ink: #ececec;
+      --ink-2: #a8a8ae;
+      --line: #2a2a32;
+      --indigo: #5b63d4;
+      --font: system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      background: var(--void);
+      color: var(--ink);
+      padding: 2rem 1.25rem 3rem;
+    }
+    .shell { max-width: 900px; margin: 0 auto; }
+    h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.5rem;
+      letter-spacing: -0.03em;
+    }
+    h1 span { color: var(--indigo); }
+    p { color: var(--ink-2); margin: 0 0 1.5rem; line-height: 1.55; }
+    .ok {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 650;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      background: var(--indigo);
+      color: #fff;
+      padding: 0.25rem 0.55rem;
+      border-radius: 999px;
+      margin-bottom: 1rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    @media (min-width: 700px) {
+      .grid { grid-template-columns: 1fr 1fr; }
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--indigo);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 0 0 1px rgba(91, 99, 212, 0.25);
+    }
+    .preview {
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      background: #16161a;
+      padding: 1.5rem;
+    }
+    .preview img {
+      width: 100%;
+      max-width: 320px;
+      border-radius: 22%;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+    }
+    .meta { padding: 1rem 1.1rem 1.15rem; }
+    .meta h2 { margin: 0 0 0.35rem; font-size: 1.05rem; }
+    .meta .id {
+      color: var(--indigo);
+      font-family: ui-monospace, Menlo, monospace;
+      font-size: 0.8rem;
+    }
+    .meta p { margin: 0.5rem 0 0.85rem; font-size: 0.9rem; }
+    a {
+      display: inline-block;
+      text-decoration: none;
+      color: #fff;
+      background: var(--indigo);
+      padding: 0.45rem 0.8rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    footer {
+      margin-top: 1.75rem;
+      color: var(--ink-2);
+      font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="ok">Locked choice</div>
+    <h1><span>Chaeboxi</span> — K + K2</h1>
+    <p>
+      Open cube mark selected. Studio / SVG experiments discarded.
+      Use <strong>K</strong> for rich indigo tile, <strong>K2</strong> for lighter periwinkle tile.
+    </p>
+    <div class="grid">
+      <article class="card">
+        <div class="preview">
+          <img src="K-open-cube-dark.jpg" alt="K open cube dark" />
+        </div>
+        <div class="meta">
+          <div class="id">K · primary dark</div>
+          <h2>Open cube · indigo tile</h2>
+          <p>Original chosen mark. Stronger color presence on dock.</p>
+          <a href="K-open-cube-dark.jpg" download>Download K</a>
+        </div>
+      </article>
+      <article class="card">
+        <div class="preview">
+          <img src="K2-open-cube-light.jpg" alt="K2 open cube light" />
+        </div>
+        <div class="meta">
+          <div class="id">K2 · light variant</div>
+          <h2>Open cube · periwinkle tile</h2>
+          <p>Same cube, lighter background — your preferred softer tile.</p>
+          <a href="K2-open-cube-light.jpg" download>Download K2</a>
+        </div>
+      </article>
+    </div>
+    <footer>
+      Path: <code>assets/logo-design/2026-08-05-chaeboxi/chosen/</code>
+      · Next step when ready: vectorize + replace app icons.
+    </footer>
+  </div>
+</body>
+</html>

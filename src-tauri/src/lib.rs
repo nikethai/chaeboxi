@@ -808,6 +808,21 @@ fn get_arg_string(args: &[Value], idx: usize) -> CommandResult<String> {
         .ok_or_else(|| format!("argument {idx} is not a string"))
 }
 
+/// Expand leading `~` to the user home directory (for reading ~/.codex/auth.json etc.).
+fn expand_user_path(path: &str) -> String {
+    if path == "~" {
+        return std::env::var("HOME")
+            .or_else(|_| std::env::var("USERPROFILE"))
+            .unwrap_or_else(|_| path.to_string());
+    }
+    if let Some(rest) = path.strip_prefix("~/") {
+        if let Ok(home) = std::env::var("HOME").or_else(|_| std::env::var("USERPROFILE")) {
+            return format!("{home}/{rest}");
+        }
+    }
+    path.to_string()
+}
+
 fn get_arg_bool(args: &[Value], idx: usize) -> CommandResult<bool> {
     get_arg(args, idx)?
         .as_bool()
@@ -2889,6 +2904,7 @@ async fn ipc_invoke(
                 match channel.as_str() {
                     "fs:read-file" => {
                         let file_path = get_arg_string(&args, 0)?;
+                        let file_path = expand_user_path(&file_path);
                         let content = fs::read_to_string(&file_path).map_err(|err| {
                             format!("failed to read file '{}': {}", file_path, err)
                         })?;

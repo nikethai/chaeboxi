@@ -1,11 +1,10 @@
-import { ActionIcon, Badge, Flex, ScrollArea, Text, Tooltip, UnstyledButton } from '@mantine/core'
-import { IconRefresh, IconMessage } from '@tabler/icons-react'
+import { ActionIcon, Flex, ScrollArea, Text, Tooltip, UnstyledButton } from '@mantine/core'
+import { IconMessage, IconPlugConnected, IconRefresh } from '@tabler/icons-react'
 import { useAtom, useAtomValue } from 'jotai'
 import { useCallback, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/lib/utils'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
-import ProviderIcon from '@/components/icons/ProviderIcon'
+import { cn } from '@/lib/utils'
 import {
   openclawActiveSessionIdAtom,
   openclawGatewayStatusAtom,
@@ -17,14 +16,21 @@ interface SessionPanelProps {
   className?: string
 }
 
+function gatewayLabel(
+  status: string,
+  t: (k: string) => string
+): { text: string; tone: 'ok' | 'warn' | 'muted' } {
+  if (status === 'connected') return { text: t('Connected'), tone: 'ok' }
+  if (status === 'disconnected') return { text: t('Disconnected'), tone: 'warn' }
+  return { text: t('Connecting…'), tone: 'muted' }
+}
+
 export default function SessionPanel({ className }: SessionPanelProps) {
   const { t } = useTranslation()
   const [sessions] = useAtom(openclawSessionsAtom)
   const [activeSessionId, setActiveSessionId] = useAtom(openclawActiveSessionIdAtom)
   const gatewayStatus = useAtomValue(openclawGatewayStatusAtom)
 
-  // useGatewaySync auto-connects on mount; gatewayKey changes trigger
-  // internal atom resets, so the stale-while-revalidate pattern works.
   const { ensureConnected } = useGatewaySync()
 
   useEffect(() => {
@@ -38,19 +44,28 @@ export default function SessionPanel({ className }: SessionPanelProps) {
     [setActiveSessionId]
   )
 
+  const status = gatewayLabel(gatewayStatus, t)
+
   return (
-    <div className={cn('flex flex-col', className)}>
-      <Flex align="center" gap="xs" className="px-xs py-xxs">
-        <ProviderIcon size={18} provider="openclaw" />
-        <Text size="sm" fw={500} c="chatbox-tint-secondary">
-          {t('Gateway Sessions')}
-        </Text>
-        <Tooltip label={t('Refresh sessions')}>
+    <div className={cn('agent-panel', className)}>
+      <Flex align="center" justify="space-between" gap="xs" className="agent-panel-head">
+        <Flex align="center" gap={8} miw={0}>
+          <span className={cn('agent-status-dot', `is-${status.tone}`)} aria-hidden />
+          <Text className="agent-panel-title" lineClamp={1}>
+            {t('Gateway Sessions')}
+          </Text>
+          <Text className="agent-panel-meta" lineClamp={1}>
+            {status.text}
+          </Text>
+        </Flex>
+        <Tooltip label={t('Refresh sessions')} withArrow openDelay={400}>
           <ActionIcon
             variant="subtle"
-            size="sm"
+            size={28}
+            color="chatbox-tertiary"
+            radius="md"
             onClick={() => void ensureConnected()}
-            disabled={gatewayStatus !== 'connected'}
+            className="agent-panel-icon-btn"
           >
             <ScalableIcon icon={IconRefresh} size={14} />
           </ActionIcon>
@@ -58,56 +73,44 @@ export default function SessionPanel({ className }: SessionPanelProps) {
       </Flex>
 
       {sessions.length === 0 ? (
-        <Flex direction="column" align="center" py="md" gap="xs">
-          {gatewayStatus === 'connected' ? (
-            <>
-              <ScalableIcon icon={IconMessage} size={24} className="text-chatbox-tertiary" />
-              <Text size="xs" c="chatbox-tertiary">
-                {t('No sessions found')}
-              </Text>
-              <Text size="xs" c="chatbox-tertiary">
-                {t('Make sure OpenClaw is running')}
-              </Text>
-            </>
-          ) : (
-            <>
-              <ScalableIcon icon={IconMessage} size={24} className="text-chatbox-tertiary" />
-              <Text size="xs" c="chatbox-tertiary">
-                {gatewayStatus === 'disconnected' ? t('Gateway disconnected') : t('Gateway connecting...')}
-              </Text>
-            </>
-          )}
+        <Flex direction="column" align="center" justify="center" className="agent-panel-empty" gap={6}>
+          <ScalableIcon
+            icon={gatewayStatus === 'connected' ? IconMessage : IconPlugConnected}
+            size={20}
+            className="text-[var(--chatbox-tint-tertiary)] opacity-70"
+          />
+          <Text size="xs" c="chatbox-tertiary" ta="center" className="max-w-[220px] leading-snug">
+            {gatewayStatus === 'connected'
+              ? t('No gateway sessions yet. Start a run in OpenClaw.')
+              : gatewayStatus === 'disconnected'
+                ? t('Gateway disconnected. Check OpenClaw is running.')
+                : t('Connecting to gateway…')}
+          </Text>
         </Flex>
       ) : (
-        <ScrollArea className="max-h-[200px]">
-          {sessions.map((session) => (
-            <UnstyledButton
-              key={session.id}
-              onClick={() => handleSelectSession(session.id)}
-              className={cn(
-                'flex items-center gap-2 px-sm py-xs w-full hover:bg-[var(--chatbox-background-tertiary)] transition-colors',
-                activeSessionId === session.id ? 'bg-[var(--chatbox-background-tertiary)]' : ''
-              )}
-            >
-              <Badge
-                size="xs"
-                variant="light"
-                color={activeSessionId === session.id ? 'chatbox-brand' : 'chatbox-tertiary'}
+        <ScrollArea className="agent-panel-list" type="auto">
+          {sessions.map((session) => {
+            const on = activeSessionId === session.id
+            return (
+              <UnstyledButton
+                key={session.id}
+                onClick={() => handleSelectSession(session.id)}
+                className={cn('agent-session-row', on && 'is-on')}
               >
-                {session.messageCount ?? 0}
-              </Badge>
-              <Flex direction="column" gap={2} style={{ flex: 1, minWidth: 0 }}>
-                <Text size="sm" fw={500} truncate="end">
-                  {session.name || t('Unnamed Session')}
-                </Text>
-                {session.agentId && (
-                  <Text size="xs" c="chatbox-tertiary" truncate="end">
-                    {session.agentId}
+                <span className="agent-session-count">{session.messageCount ?? 0}</span>
+                <Flex direction="column" gap={1} miw={0} style={{ flex: 1 }}>
+                  <Text size="sm" fw={on ? 600 : 500} truncate="end" className="tracking-tight">
+                    {session.name || t('Unnamed Session')}
                   </Text>
-                )}
-              </Flex>
-            </UnstyledButton>
-          ))}
+                  {session.agentId && (
+                    <Text size="xs" c="chatbox-tertiary" truncate="end" className="font-mono opacity-80">
+                      {session.agentId}
+                    </Text>
+                  )}
+                </Flex>
+              </UnstyledButton>
+            )
+          })}
         </ScrollArea>
       )}
     </div>

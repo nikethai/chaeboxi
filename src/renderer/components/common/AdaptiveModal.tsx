@@ -49,14 +49,14 @@ function AdaptiveModalActions({ children }: { children: ReactNode }) {
 
   if (isSmallScreen) {
     return (
-      <Stack gap="xs" mt="md" className="flex-col-reverse">
+      <Stack gap="xs" mt="lg" pt="sm" className="flex-col-reverse border-t border-solid border-[var(--chatbox-border-primary)]">
         {children}
       </Stack>
     )
   }
 
   return (
-    <Flex gap="md" mt="md" justify="flex-end" align="center">
+    <Flex gap={8} mt="md" justify="flex-end" align="center">
       {children}
     </Flex>
   )
@@ -72,8 +72,26 @@ function AdaptiveModalCloseButton(props: ButtonProps & HTMLAttributes<HTMLButton
   }
 
   return (
-    <Button color="chatbox-gray" variant="light" {...props}>
-      {props.children || t('cancel')}
+    <Button
+      variant="default"
+      color="chatbox-secondary"
+      size="sm"
+      fw={500}
+      styles={{
+        root: {
+          height: 32,
+          backgroundColor: 'var(--chatbox-background-tertiary)',
+          borderColor: 'var(--chatbox-border-primary)',
+          color: 'var(--chatbox-tint-primary)',
+          '&:hover': {
+            backgroundColor: 'var(--chatbox-background-lift, var(--chatbox-background-tertiary-hover, #2c2c34))',
+            borderColor: 'var(--chatbox-border-secondary)',
+          },
+        },
+      }}
+      {...props}
+    >
+      {props.children || t('Cancel')}
     </Button>
   )
 }

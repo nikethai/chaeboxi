@@ -25,7 +25,6 @@ import {
 import { copyAndSwitchSession, switchCurrentSession } from '@/stores/sessionActions'
 import { useUIStore } from '@/stores/uiStore'
 import ActionMenu, { type ActionMenuItemProps } from '../ActionMenu'
-import { AssistantAvatar } from '../common/Avatar'
 import { AdaptiveModal } from '../common/AdaptiveModal'
 import { ScalableIcon } from '../common/ScalableIcon'
 
@@ -155,29 +154,26 @@ function SessionItem(props: Props) {
       <Flex
         align="center"
         className={clsx(
-          'cursor-pointer rounded-sm group/session-item',
-          isSmallScreen
-            ? ''
-            : selected
-              ? 'bg-chatbox-background-brand-secondary'
-              : 'hover:bg-chatbox-background-gray-secondary'
+          'cursor-pointer group/session-item studio-rail-row',
+          selected ? 'studio-rail-row-active' : 'hover:bg-[var(--chatbox-background-tertiary)]'
         )}
-        mx="xs"
+        mx={6}
         px="xs"
-        py={10}
-        gap={10}
+        py={9}
+        gap={8}
+        pl={12}
         onClick={onClick}
       >
-        <AssistantAvatar
-          avatarKey={session.assistantAvatarKey}
-          picUrl={session.picUrl}
-          sessionType={session.type}
+        <Text
+          span
+          flex={1}
+          lineClamp={1}
           size="sm"
-          type="chat"
-          c={selected ? 'chatbox-brand' : 'chatbox-primary'}
-        />
-
-        <Text span flex={1} lineClamp={1} c={selected ? 'chatbox-brand' : 'chatbox-primary'}>
+          fw={selected ? 500 : 500}
+          c={selected ? 'chatbox-primary' : 'chatbox-secondary'}
+          className="tracking-tight"
+          style={{ fontSize: '0.9rem', letterSpacing: '-0.01em' }}
+        >
           {session.name}
         </Text>
 
@@ -201,9 +197,9 @@ function SessionItem(props: Props) {
             }}
           >
             {session.starred ? (
-              <ScalableIcon icon={IconStarFilled} className="text-inherit" size={16} />
+              <ScalableIcon icon={IconStarFilled} className="text-inherit" size={14} />
             ) : (
-              <ScalableIcon icon={IconDots} className="text-inherit" size={16} />
+              <ScalableIcon icon={IconDots} className="text-inherit" size={14} />
             )}
           </ActionIcon>
         </ActionMenu>

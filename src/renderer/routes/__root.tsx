@@ -42,7 +42,7 @@ import { ThemeProvider } from '@mui/material/styles'
 import { createRootRoute, Outlet, useLocation } from '@tanstack/react-router'
 import { useSetAtom } from 'jotai'
 import { useEffect, useMemo, useRef } from 'react'
-import SettingsModal, { navigateToSettings } from '@/modals/Settings'
+import { navigateToSettings } from '@/modals/Settings'
 import { getOS } from '@/packages/navigator'
 import PictureDialog from '@/pages/PictureDialog'
 import RemoteDialogWindow from '@/pages/RemoteDialogWindow'
@@ -95,6 +95,18 @@ function Root() {
 
   const showSidebar = useUIStore((s) => s.showSidebar)
   const sidebarWidth = useSidebarWidth()
+
+  // Legacy desktop used ?settings=/settings/... modal; always use full-page routes now
+  useEffect(() => {
+    const settingsPath = (location.search as { settings?: string })?.settings
+    if (typeof settingsPath === 'string' && settingsPath.length > 0) {
+      const path = settingsPath.startsWith('/') ? settingsPath : `/${settingsPath}`
+      void router.navigate({
+        to: path.startsWith('/settings') ? path : `/settings${path}`,
+        replace: true,
+      })
+    }
+  }, [location.search])
 
   const _theme = useTheme()
   const { setColorScheme } = useMantineColorScheme()
@@ -149,14 +161,27 @@ function Root() {
   }, [needRoomForMacWindowControls])
 
   return (
-    <Box className="box-border App" spellCheck={spellCheck} dir={language === 'ar' ? 'rtl' : 'ltr'}>
+    <Box
+      className="box-border App"
+      spellCheck={spellCheck}
+      dir={language === 'ar' ? 'rtl' : 'ltr'}
+      sx={{
+        height: '100%',
+        backgroundColor: 'var(--chatbox-background-primary)',
+        color: 'var(--chatbox-tint-primary)',
+      }}
+    >
       {platform.type === 'desktop' && (getOS() === 'Windows' || getOS() === 'Linux') && <ExitFullscreenButton />}
-      <Grid container className="h-full">
+      <Grid container className="h-full" sx={{ minHeight: 0 }}>
         <Sidebar />
         <Box
-          className="h-full w-full"
+          className="h-full w-full min-h-0"
           sx={{
             flexGrow: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: 'var(--chatbox-background-primary)',
             ...(showSidebar
               ? language === 'ar'
                 ? { paddingRight: { sm: `${sidebarWidth}px` } }
@@ -165,7 +190,9 @@ function Root() {
           }}
         >
           <ErrorBoundary name="main">
-            <Outlet />
+            <Box className="h-full min-h-0 flex flex-col flex-1">
+              <Outlet />
+            </Box>
           </ErrorBoundary>
         </Box>
       </Grid>
@@ -196,16 +223,18 @@ function Root() {
       {/* 没有配置模型时的欢迎弹窗 */}
       {/* <WelcomeDialog /> */}
       <Toasts /> {/* mui */}
-      <SettingsModal />
     </Box>
   )
 }
 
 const creteMantineTheme = (scale = 1) =>
   createTheme({
-    /** Put your mantine theme override here */
+    /** Studio shell — Satoshi UI, tight radii, indigo brand via CSS tokens */
     scale,
+    fontFamily: "var(--chatbox-font-ui, 'Satoshi', 'Segoe UI', system-ui, sans-serif)",
+    fontFamilyMonospace: "var(--chatbox-font-mono, 'JetBrains Mono', ui-monospace, monospace)",
     primaryColor: 'chatbox-brand',
+    defaultRadius: 'md',
     colors: {
       'chatbox-brand': colorsTuple(Array.from({ length: 10 }, () => 'var(--chatbox-tint-brand)')),
       'chatbox-gray': colorsTuple(Array.from({ length: 10 }, () => 'var(--chatbox-tint-gray)')),
@@ -218,7 +247,8 @@ const creteMantineTheme = (scale = 1) =>
       'chatbox-tertiary': colorsTuple(Array.from({ length: 10 }, () => 'var(--chatbox-tint-tertiary)')),
     },
     headings: {
-      fontWeight: 'Bold',
+      fontFamily: "var(--chatbox-font-ui, 'Satoshi', 'Segoe UI', system-ui, sans-serif)",
+      fontWeight: '600',
       sizes: {
         h1: {
           fontSize: 'calc(2.5rem * var(--mantine-scale))', // 40px
@@ -258,17 +288,18 @@ const creteMantineTheme = (scale = 1) =>
       xxs: '1.3', // 13px
       xs: '1.3333333333', // 16px
       sm: '1.4285714286', // 20px
-      md: '1.5', // 24px
+      md: '1.55',
       lg: '1.5555555556', // 28px
       xl: '1.6', // 32px
     },
+    // tight studio radii: ~4 / 7 / 9 / 11 / 12 / 16
     radius: {
-      xs: 'calc(0.125rem * var(--mantine-scale))',
-      sm: 'calc(0.25rem * var(--mantine-scale))',
-      md: 'calc(0.5rem * var(--mantine-scale))',
-      lg: 'calc(1rem * var(--mantine-scale))',
-      xl: 'calc(1.5rem * var(--mantine-scale))',
-      xxl: 'calc(2rem * var(--mantine-scale))',
+      xs: 'calc(0.25rem * var(--mantine-scale))',
+      sm: 'calc(0.4375rem * var(--mantine-scale))',
+      md: 'calc(0.5625rem * var(--mantine-scale))',
+      lg: 'calc(0.6875rem * var(--mantine-scale))',
+      xl: 'calc(0.75rem * var(--mantine-scale))',
+      xxl: 'calc(1rem * var(--mantine-scale))',
     },
     spacing: {
       '3xs': 'calc(0.125rem * var(--mantine-scale))',
@@ -307,13 +338,31 @@ const creteMantineTheme = (scale = 1) =>
       Input: Input.extend({
         styles: (_theme, props) => ({
           wrapper: {
-            '--input-height-sm': rem('32px'),
+            '--input-height-sm': rem('36px'),
+            '--input-bd': 'var(--chatbox-border-primary)',
+            '--input-bg': 'var(--chatbox-background-primary)',
+            '--input-color': 'var(--chatbox-tint-primary)',
+            '--input-placeholder-color': 'var(--chatbox-tint-tertiary)',
             ...(props.error
               ? {
                   '--input-color': 'var(--chatbox-tint-error)',
                   '--input-bd': 'var(--chatbox-tint-error)',
                 }
               : {}),
+          },
+          input: {
+            backgroundColor: 'var(--chatbox-background-primary)',
+            borderColor: 'var(--chatbox-border-primary)',
+            color: 'var(--chatbox-tint-primary)',
+            borderRadius: 'var(--chatbox-radius-md)',
+            fontSize: '0.875rem',
+            transition: 'border-color 140ms var(--chatbox-ease), background-color 140ms var(--chatbox-ease)',
+            '&:focus, &:focus-within': {
+              borderColor: 'var(--chatbox-tint-brand)',
+            },
+            '&::placeholder': {
+              color: 'var(--chatbox-tint-tertiary)',
+            },
           },
         }),
       }),
@@ -326,6 +375,17 @@ const creteMantineTheme = (scale = 1) =>
             marginBottom: 'var(--chatbox-spacing-xxs)',
             fontWeight: '600',
             lineHeight: '1.5',
+            color: 'var(--chatbox-tint-secondary)',
+            fontSize: '0.8125rem',
+          },
+          description: {
+            color: 'var(--chatbox-tint-tertiary)',
+          },
+          input: {
+            backgroundColor: 'var(--chatbox-background-primary)',
+            borderColor: 'var(--chatbox-border-secondary)',
+            color: 'var(--chatbox-tint-primary)',
+            borderRadius: 'var(--chatbox-radius-md)',
           },
         }),
       }),
@@ -338,6 +398,14 @@ const creteMantineTheme = (scale = 1) =>
             marginBottom: 'var(--chatbox-spacing-xxs)',
             fontWeight: '600',
             lineHeight: '1.5',
+            color: 'var(--chatbox-tint-secondary)',
+            fontSize: '0.8125rem',
+          },
+          input: {
+            backgroundColor: 'var(--chatbox-background-primary)',
+            borderColor: 'var(--chatbox-border-secondary)',
+            color: 'var(--chatbox-tint-primary)',
+            borderRadius: 'var(--chatbox-radius-md)',
           },
         }),
       }),
@@ -351,6 +419,21 @@ const creteMantineTheme = (scale = 1) =>
             marginBottom: 'var(--chatbox-spacing-xxs)',
             fontWeight: '600',
             lineHeight: '1.5',
+            color: 'var(--chatbox-tint-secondary)',
+            fontSize: '0.8125rem',
+          },
+          input: {
+            backgroundColor: 'var(--chatbox-background-primary)',
+            borderColor: 'var(--chatbox-border-secondary)',
+            color: 'var(--chatbox-tint-primary)',
+            borderRadius: 'var(--chatbox-radius-md)',
+          },
+          dropdown: {
+            backgroundColor: 'var(--chatbox-background-secondary)',
+            borderColor: 'var(--chatbox-border-secondary)',
+          },
+          option: {
+            borderRadius: 'var(--chatbox-radius-sm)',
           },
         }),
       }),
@@ -363,6 +446,14 @@ const creteMantineTheme = (scale = 1) =>
             marginBottom: 'var(--chatbox-spacing-xxs)',
             fontWeight: '600',
             lineHeight: '1.5',
+            color: 'var(--chatbox-tint-secondary)',
+            fontSize: '0.8125rem',
+          },
+          input: {
+            backgroundColor: 'var(--chatbox-background-primary)',
+            borderColor: 'var(--chatbox-border-secondary)',
+            color: 'var(--chatbox-tint-primary)',
+            borderRadius: 'var(--chatbox-radius-md)',
           },
         }),
       }),
@@ -391,20 +482,53 @@ const creteMantineTheme = (scale = 1) =>
       Modal: Modal.extend({
         defaultProps: {
           zIndex: 2000,
+          radius: 'md',
+          padding: 'md',
+          shadow: 'xl',
+          overlayProps: {
+            backgroundOpacity: 0.62,
+            blur: 2,
+          },
+        },
+        classNames: {
+          content: 'studio-modal-content',
+          header: 'studio-modal-header',
+          body: 'studio-modal-body',
+          title: 'studio-modal-title',
+          close: 'studio-modal-close',
         },
         styles: () => ({
+          content: {
+            backgroundColor: 'var(--chatbox-background-secondary)',
+            border: '1px solid var(--chatbox-border-secondary)',
+            borderRadius: 'var(--chatbox-radius-lg)',
+            boxShadow: '0 16px 48px rgba(0, 0, 0, 0.55)',
+          },
+          header: {
+            backgroundColor: 'var(--chatbox-background-secondary)',
+            borderBottom: '1px solid var(--chatbox-border-primary)',
+            paddingBottom: 'var(--chatbox-spacing-sm)',
+            marginBottom: 0,
+            minHeight: rem('48px'),
+          },
           title: {
             fontWeight: '600',
             color: 'var(--chatbox-tint-primary)',
-            fontSize: 'var(--mantine-font-size-sm)',
+            fontSize: '0.9375rem',
+            letterSpacing: '-0.015em',
+          },
+          body: {
+            paddingTop: 'var(--chatbox-spacing-md)',
           },
           close: {
-            width: rem('24px'),
-            height: rem('24px'),
-            color: 'var(--chatbox-tint-secondary)',
-          },
-          content: {
-            backgroundColor: 'var(--chatbox-background-primary)',
+            width: rem('28px'),
+            height: rem('28px'),
+            color: 'var(--chatbox-tint-tertiary)',
+            borderRadius: 'var(--chatbox-radius-sm)',
+            '&:hover': {
+              backgroundColor: 'var(--chatbox-background-tertiary)',
+              color: 'var(--chatbox-tint-primary)',
+            },
           },
           overlay: {
             '--overlay-bg': 'var(--chatbox-background-mask-overlay)',
@@ -419,15 +543,20 @@ const creteMantineTheme = (scale = 1) =>
           title: {
             fontWeight: '600',
             color: 'var(--chatbox-tint-primary)',
-            fontSize: 'var(--mantine-font-size-sm)',
+            fontSize: '0.9375rem',
+            letterSpacing: '-0.015em',
           },
           close: {
-            width: rem('24px'),
-            height: rem('24px'),
-            color: 'var(--chatbox-tint-secondary)',
+            width: rem('28px'),
+            height: rem('28px'),
+            color: 'var(--chatbox-tint-tertiary)',
           },
           content: {
-            backgroundColor: 'var(--chatbox-background-primary)',
+            backgroundColor: 'var(--chatbox-background-secondary)',
+            borderColor: 'var(--chatbox-border-primary)',
+          },
+          header: {
+            borderBottom: '1px solid var(--chatbox-border-primary)',
           },
           overlay: {
             '--overlay-bg': 'var(--chatbox-background-mask-overlay)',

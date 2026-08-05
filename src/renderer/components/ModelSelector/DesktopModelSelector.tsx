@@ -48,7 +48,7 @@ interface DesktopModelSelectorProps {
   searchPosition?: 'top' | 'bottom'
 }
 
-// Search box component with integrated SegmentedControl
+// Search + All/Favorite — studio toolbar density
 const SearchBox = ({
   search,
   activeTab,
@@ -62,34 +62,59 @@ const SearchBox = ({
   onTabChange: (value: string | null) => void
   t: (key: string) => string
 }) => (
-  <Flex align="center" className="px-xs py-xs">
-    <ScalableIcon icon={IconSearch} className="text-chatbox-tint-gray" />
-    <TextInput
-      value={search}
-      onChange={(event) => onSearchChange(event.currentTarget.value)}
-      placeholder={t('Search models') as string}
-      variant="unstyled"
-      className="flex-1 ml-xs"
-      styles={{
-        input: {
-          padding: 0,
-          height: 'auto',
-          minHeight: 'auto',
-          fontSize: 'var(--mantine-font-size-sm)',
-        },
-      }}
-    />
+  <Flex align="center" gap={8} className="model-picker-search">
+    <Flex align="center" gap={6} className="model-picker-search-field flex-1 min-w-0">
+      <ScalableIcon icon={IconSearch} size={14} className="text-[var(--chatbox-tint-tertiary)] shrink-0" />
+      <TextInput
+        value={search}
+        onChange={(event) => onSearchChange(event.currentTarget.value)}
+        placeholder={t('Search models') as string}
+        variant="unstyled"
+        className="flex-1 min-w-0"
+        styles={{
+          input: {
+            padding: 0,
+            height: 'auto',
+            minHeight: 'auto',
+            fontSize: '0.8125rem',
+            color: 'var(--chatbox-tint-primary)',
+            background: 'transparent',
+          },
+        }}
+      />
+    </Flex>
     <SegmentedControl
       value={activeTab || 'all'}
       onChange={(value) => onTabChange(value)}
       data={[
         { label: t('All'), value: 'all' },
-        {
-          label: t('Favorite'),
-          value: 'favorite',
-        },
+        { label: t('Favorite'), value: 'favorite' },
       ]}
       size="xs"
+      className="model-picker-tabs shrink-0"
+      styles={{
+        root: {
+          background: 'var(--chatbox-background-primary)',
+          // soft inset chrome instead of hard border
+          boxShadow: 'inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 10%, transparent)',
+          border: 'none',
+          borderRadius: 6,
+          padding: 2,
+        },
+        label: {
+          fontSize: '0.6875rem',
+          fontWeight: 500,
+          paddingLeft: 10,
+          paddingRight: 10,
+          color: 'var(--chatbox-tint-tertiary)',
+          letterSpacing: '-0.01em',
+        },
+        indicator: {
+          background: 'var(--chatbox-background-tertiary)',
+          borderRadius: 4,
+          boxShadow: '0 1px 2px color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent)',
+        },
+      }}
     />
   </Flex>
 )
@@ -171,10 +196,9 @@ export const DesktopModelSelector = forwardRef<HTMLDivElement, DesktopModelSelec
             modelCount={provider.models?.length || 0}
             isCollapsed={isCollapsed}
             onClick={() => toggleProviderCollapse(provider.id)}
-            className="-ml-xs -mr-xs pr-sm"
           />
           <Collapse in={!isCollapsed}>
-            <div className="mb-xs">{options}</div>
+            <div className="model-picker-models pb-1">{options}</div>
           </Collapse>
         </div>
       )
@@ -185,8 +209,23 @@ export const DesktopModelSelector = forwardRef<HTMLDivElement, DesktopModelSelec
       combobox.closeDropdown()
     }
 
+    // Prefer search on top (app picker DNA); allow override via prop
+    const searchAtTop = searchPosition !== 'bottom'
+
     return (
-      <Combobox store={combobox} width={350} withinPortal={true} {...comboboxProps} onOptionSubmit={handleOptionSubmit}>
+      <Combobox
+        store={combobox}
+        width={340}
+        withinPortal={true}
+        shadow="none"
+        transitionProps={{ transition: 'pop', duration: 140, timingFunction: 'cubic-bezier(0.2, 0, 0, 1)' }}
+        {...comboboxProps}
+        onOptionSubmit={handleOptionSubmit}
+        classNames={{
+          dropdown: 'model-picker-dropdown',
+          options: 'model-picker-options',
+        }}
+      >
         <Combobox.Target targetType="button">
           {isValidElement(children) ? (
             cloneElement(children as ReactElement, {
@@ -203,9 +242,9 @@ export const DesktopModelSelector = forwardRef<HTMLDivElement, DesktopModelSelec
           )}
         </Combobox.Target>
 
-        <Combobox.Dropdown className="!p-0 overflow-hidden rounded-md">
-          {searchPosition === 'top' && (
-            <div className="sticky top-0 z-10" style={{ borderBottom: '1px solid var(--chatbox-border-primary)' }}>
+        <Combobox.Dropdown className="model-picker-dropdown !p-0 overflow-hidden">
+          {searchAtTop && (
+            <div className="model-picker-toolbar sticky top-0 z-10">
               <SearchBox
                 search={search}
                 activeTab={activeTab}
@@ -216,13 +255,13 @@ export const DesktopModelSelector = forwardRef<HTMLDivElement, DesktopModelSelec
             </div>
           )}
 
-          <Combobox.Options mah="50vh" style={{ overflowY: 'auto' }} className="px-xs pb-xs">
+          <Combobox.Options mah={360} style={{ overflowY: 'auto' }} className="model-picker-options px-1.5 pb-1.5">
             {showAuto && activeTab === 'all' && (
               <Combobox.Option
                 value={''}
                 className={clsx(
-                  'flex items-center -mx-xs px-xs',
-                  !selectedProviderId && !selectedModelId ? SELECTED_BG_CLASS : ''
+                  'model-picker-option',
+                  !selectedProviderId && !selectedModelId && 'model-picker-option-on'
                 )}
               >
                 {autoText || t('Auto')}
@@ -230,27 +269,26 @@ export const DesktopModelSelector = forwardRef<HTMLDivElement, DesktopModelSelec
             )}
             {(isEmpty && !showAuto) ||
             (activeTab === 'favorite' && (!favoritedModels || favoritedModels.length === 0)) ? (
-              <Stack gap="xs" pt="xs" align="center" className="overflow-hidden">
+              <Stack gap="xs" py="md" align="center" className="overflow-hidden">
                 <Text c="chatbox-tertiary" size="xs">
                   {activeTab === 'favorite' ? t('No favorite models') : t('No eligible models available')}
                 </Text>
                 {activeTab === 'all' && (
-                  <Button variant="transparent" size="xs" onClick={() => navigateToSettings('/provider')}>
-                    {t('Click here to set up')}
+                  <Button variant="light" size="compact-xs" color="chatbox-brand" onClick={() => navigateToSettings('/provider')}>
+                    {t('Set up providers')}
                   </Button>
                 )}
               </Stack>
             ) : activeTab === 'favorite' ? (
               <div>
                 {Object.entries(groupFavoriteModels(favoritedModels)).map(([providerId, group]) => (
-                  <div key={providerId}>
+                  <div key={providerId} className="model-picker-group">
                     <ProviderHeader
                       provider={group.provider || { id: providerId, name: providerId }}
                       showChevron={false}
                       showModelCount={false}
-                      className="-ml-xs -mr-xs pr-sm"
                     />
-                    <div className="mb-xs">
+                    <div>
                       {group.models.map((fm) => {
                         if (!fm.provider || !fm.model) return null
                         return (
@@ -276,15 +314,14 @@ export const DesktopModelSelector = forwardRef<HTMLDivElement, DesktopModelSelec
             ) : (
               <>
                 {favoritedModels && favoritedModels.length > 0 && (
-                  <div>
+                  <div className="model-picker-group">
                     <ProviderHeader
                       provider={{ id: 'favorite', name: t('Favorite') }}
                       variant="favorite"
                       showChevron={false}
                       showModelCount={false}
-                      className="-ml-xs -mr-xs pr-sm"
                     />
-                    <div className="mb-xs">
+                    <div>
                       {favoritedModels?.map((fm) => {
                         if (!fm.provider || !fm.model) return null
                         return (
@@ -312,8 +349,8 @@ export const DesktopModelSelector = forwardRef<HTMLDivElement, DesktopModelSelec
             )}
           </Combobox.Options>
 
-          {searchPosition === 'bottom' && (
-            <div className="sticky bottom-0 z-10" style={{ borderTop: '1px solid var(--chatbox-border-primary)' }}>
+          {!searchAtTop && (
+            <div className="model-picker-toolbar sticky bottom-0 z-10">
               <SearchBox
                 search={search}
                 activeTab={activeTab}

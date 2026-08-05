@@ -19,6 +19,7 @@ import {
   getUnsupportedFileType,
   isSupportedFile,
 } from '@shared/file-extensions'
+import { getOrCreateGatewayClient } from '@shared/models/openclaw'
 import { getModel } from '@shared/providers'
 import { formatNumber } from '@shared/utils'
 import {
@@ -55,6 +56,8 @@ import { useMessageInput } from '@/hooks/useMessageInput'
 import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
+import { navigateToSettings } from '@/modals/Settings'
+import type { GatewayCommandInfo } from '@/openclaw/gateway'
 import {
   getContextMessageIds,
   isAutoCompactionEnabled,
@@ -62,27 +65,25 @@ import {
   useContextTokens,
 } from '@/packages/context-management'
 import { trackingEvent } from '@/packages/event'
-import { getModelContextWindowSync } from '@/packages/model-context'
 import { replacePromptTemplateVars } from '@/packages/model-calls/message-utils'
+import { getModelContextWindowSync } from '@/packages/model-context'
 import * as picUtils from '@/packages/pic_utils'
 import platform from '@/platform'
 import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
-import { navigateToSettings } from '@/modals/Settings'
 import * as atoms from '@/stores/atoms'
 import { compactionUIStateMapAtom } from '@/stores/atoms/compactionAtoms'
 import * as chatStore from '@/stores/chatStore'
-import { usePromptPresets } from '@/stores/promptPresetsStore'
-import QueuedMessageList from './QueuedMessageList'
 import { useSession, useSessionSettings } from '@/stores/chatStore'
+import { usePromptPresets } from '@/stores/promptPresetsStore'
 import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 import { delay } from '@/utils'
 import { featureFlags } from '@/utils/feature-flags'
 import { trackEvent } from '@/utils/track'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
-import { ModelProviderEnum } from '../../../shared/types'
 import type { KnowledgeBase, Message, SessionType, ShortcutSendValue } from '../../../shared/types'
+import { ModelProviderEnum } from '../../../shared/types'
 import * as dom from '../../hooks/dom'
 import * as sessionHelpers from '../../stores/sessionHelpers'
 import * as toastActions from '../../stores/toastActions'
@@ -96,6 +97,7 @@ import MCPMenu from '../mcp/MCPMenu'
 import { FileMiniCard, ImageMiniCard, LinkMiniCard } from './Attachments'
 import { ImageUploadInput } from './ImageUploadInput'
 import OpenClawCommandPicker, { filterOpenClawCommands, getCommandAlias } from './OpenClawCommandPicker'
+import PresetPicker, { filterPresets } from './PresetPicker'
 import {
   cleanupFile,
   cleanupLink,
@@ -106,10 +108,8 @@ import {
   storeFilePromise,
   storeLinkPromise,
 } from './preprocessState'
+import QueuedMessageList from './QueuedMessageList'
 import TokenCountMenu from './TokenCountMenu'
-import PresetPicker, { filterPresets } from './PresetPicker'
-import type { GatewayCommandInfo } from '@/openclaw/gateway'
-import { getOrCreateGatewayClient } from '@shared/models/openclaw'
 
 export type InputBoxPayload = {
   constructedMessage: Message
@@ -138,6 +138,8 @@ export type InputBoxProps = {
   onClickSessionSettings?(): boolean | Promise<boolean>
   agentMode?: boolean
   onToggleAgentMode?(enabled: boolean): void
+  /** Prefill composer (e.g. empty-state starters). Remount with a new key when changing. */
+  initialMessage?: string
 }
 
 const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
@@ -156,6 +158,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       onClickSessionSettings,
       agentMode: controlledAgentMode,
       onToggleAgentMode,
+      initialMessage = '',
     },
     ref
   ) => {
@@ -200,7 +203,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       [currentSessionId, setSessionWebBrowsing]
     )
 
-    const { messageInput, setMessageInput, clearDraft } = useMessageInput('', { isNewSession })
+    const { messageInput, setMessageInput, clearDraft } = useMessageInput(initialMessage, { isNewSession })
     const { promptPresets } = usePromptPresets()
 
     // Pre-constructed message state (scoped by session)
@@ -702,6 +705,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         'Ctrl+Shift+Enter': event.keyCode === 13 && event.ctrlKey && event.shiftKey,
       }
 
+      // Alt/Option+Enter always inserts a newline (does not send)
+      if (event.keyCode === 13 && event.altKey && !event.ctrlKey && !event.metaKey) {
+        return
+      }
+
       // 发送消息
       if (isPressedHash[shortcuts.inputBoxSendMessage]) {
         if (platform.formFactor === 'mobile' && isSmallScreen && shortcuts.inputBoxSendMessage === 'Enter') {
@@ -1025,13 +1033,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     // Show deprecated notice for legacy picture sessions
     if (sessionType === 'picture') {
       return (
-        <Box pt={0} pb={isSmallScreen ? 'md' : 'sm'} px="sm" id={dom.InputBoxID} className="chat-input-shell">
-          <Stack
-            className={cn('rounded-2xl bg-chatbox-background-secondary', widthFull ? 'w-full' : 'max-w-4xl mx-auto')}
-            gap="xs"
-            p="md"
-            align="center"
-          >
+        <Box id={dom.InputBoxID} className="chat-input-shell">
+          <Stack className={cn('composer-card', widthFull ? 'chat-col-full' : 'chat-col')} gap="xs" p="md" align="center">
             <Text size="sm" c="chatbox-tertiary" ta="center">
               {t('This image session is no longer active. Please use the new Image Creator for image generation.')}
             </Text>
@@ -1043,28 +1046,19 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       )
     }
 
+    const sendDisabled = generating
+      ? disableSubmit
+        ? false
+        : isPreprocessing || isSubmitting || isCompactionRunning
+      : disableSubmit || isPreprocessing || isSubmitting || isCompactionRunning
+
     return (
-      <Box
-        pt={0}
-        pb={isSmallScreen ? 'md' : 'sm'}
-        px="sm"
-        id={dom.InputBoxID}
-        {...getRootProps()}
-        className="chat-input-shell"
-      >
+      <Box id={dom.InputBoxID} {...getRootProps()} className="chat-input-shell">
         <input className="hidden" {...getInputProps()} />
-        <Stack className={cn(widthFull ? 'w-full' : 'max-w-4xl mx-auto')} gap="xs">
+        <Stack className={cn(widthFull ? 'chat-col-full' : 'chat-col')} gap="xs">
           {currentSessionId && <CompactionStatus sessionId={currentSessionId} />}
           {currentSessionId && <QueuedMessageList sessionId={currentSessionId} />}
-          <Stack
-            className={cn(
-              'relative bg-chatbox-background-secondary justify-between',
-              isSmallScreen ? 'rounded-2xl px-3 py-2.5' : 'rounded-md px-3 py-2',
-              !isSmallScreen && 'min-h-[92px]'
-            )}
-            style={{ border: '1px solid var(--chatbox-border-primary)' }}
-            gap="xs"
-          >
+          <Stack className="composer-card relative justify-between" gap={0}>
             {showPresetPicker && (
               <PresetPicker
                 highlightedIndex={presetHighlightIndex}
@@ -1087,69 +1081,33 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               />
             )}
 
-            {/* Input Row */}
-            <Flex align="flex-end" gap={4}>
-              <Textarea
-                unstyled={true}
-                classNames={{
-                  root: 'flex-1',
-                  wrapper: 'flex-1',
-                  input:
-                    'block w-full outline-none border-none px-2 py-1 resize-none bg-transparent text-chatbox-tint-primary leading-6',
-                }}
-                size="sm"
-                id={dom.messageInputID}
-                ref={inputRef}
-                placeholder={t('Type your question here...') || ''}
-                bg="transparent"
-                autosize={true}
-                minRows={2}
-                maxRows={Math.max(4, Math.floor(viewportHeight / 100))}
-                value={messageInput}
-                autoFocus={!isSmallScreen}
-                readOnly={isCompactionRunning}
-                onChange={onMessageInput}
-                onKeyDown={onKeyDown}
-                onPaste={onPaste}
-              />
-
-              {/* Send Button */}
-              <ActionIcon
-                disabled={
-                  generating
-                    ? disableSubmit
-                      ? false
-                      : isPreprocessing || isSubmitting || isCompactionRunning
-                    : disableSubmit || isPreprocessing || isSubmitting || isCompactionRunning
-                }
-                size={isSmallScreen ? 36 : 32}
-                variant="filled"
-                color={generating && disableSubmit ? 'dark' : 'chatbox-brand'}
-                radius="xl"
-                onClick={generating && disableSubmit ? onStopGenerating : () => handleSubmit()}
-                className={cn(
-                  'shrink-0 mb-1 shadow-sm',
-                  !(generating && disableSubmit) &&
-                    (disableSubmit || isPreprocessing || isSubmitting || isCompactionRunning) &&
-                    'disabled:!opacity-100 !text-white'
-                )}
-                style={
-                  !(generating && disableSubmit) &&
-                  (disableSubmit || isPreprocessing || isSubmitting || isCompactionRunning)
-                    ? { backgroundColor: 'rgba(222, 226, 230, 1)' }
-                    : undefined
-                }
-              >
-                {generating && disableSubmit ? (
-                  <ScalableIcon icon={IconPlayerStopFilled} size={16} />
-                ) : (
-                  <ScalableIcon icon={IconArrowUp} size={16} />
-                )}
-              </ActionIcon>
-            </Flex>
+            {/* Text area — full width of card (mock .composer textarea) */}
+            <Textarea
+              unstyled={true}
+              classNames={{
+                root: 'w-full',
+                wrapper: 'w-full',
+                input:
+                  'composer-textarea block w-full outline-none border-none px-4 pt-3.5 pb-2 resize-none bg-transparent text-chatbox-tint-primary placeholder:text-[var(--chatbox-tint-tertiary)]',
+              }}
+              size="sm"
+              id={dom.messageInputID}
+              ref={inputRef}
+              placeholder={t('Type your question here...') || ''}
+              bg="transparent"
+              autosize={true}
+              minRows={2}
+              maxRows={Math.max(4, Math.floor(viewportHeight / 100))}
+              value={messageInput}
+              autoFocus={!isSmallScreen}
+              readOnly={isCompactionRunning}
+              onChange={onMessageInput}
+              onKeyDown={onKeyDown}
+              onPaste={onPaste}
+            />
 
             {(!!pictureKeys.length || !!attachments.length || !!links.length) && (
-              <Flex align="center" wrap="wrap" onClick={() => dom.focusMessageInput()}>
+              <Flex align="center" wrap="wrap" px="sm" pb="xs" onClick={() => dom.focusMessageInput()}>
                 {pictureKeys?.map((picKey) => (
                   <ImageMiniCard key={picKey} storageKey={picKey} onDelete={() => onImageDeleteClick(picKey)} />
                 ))}
@@ -1221,12 +1179,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               </Flex>
             )}
 
-            {/* Toolbar Row */}
-            <Flex
-              align="center"
-              gap={0}
-              className={cn('shrink-0 w-full justify-between', isSmallScreen && 'pt-1.5 mt-0.5')}
-            >
+            {/* Toolbar row — mock .bar (rail bg + send on the right) */}
+            <Flex align="center" gap={0} className="composer-bar shrink-0 w-full">
               {/* Hidden file inputs */}
               <ImageUploadInput ref={pictureInputRef} onChange={onFileInputChange} />
               <input
@@ -1239,7 +1193,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               />
 
               {/* Left Group: Tool Buttons */}
-              <Flex align="center" gap={0}>
+              <Flex align="center" gap={0} className="min-w-0 flex-1 flex-wrap">
                 <AttachmentMenu
                   onImageUploadClick={onImageUploadClick}
                   onFileUploadClick={onFileUploadClick}
@@ -1304,24 +1258,27 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   </Tooltip>
                 )}
 
-                {sessionType === 'chat' && !isOpenClawModel && !isSmallScreen && CHATBOX_BUILD_PLATFORM !== 'android' && (
-                  <Tooltip
-                    label={t('Agent Mode: Enables autonomous multi-step tool use')}
-                    position="top"
-                    withArrow
-                    disabled={isSmallScreen}
-                  >
-                    <UnstyledButton onClick={toggleAgentMode} className={toolbarButtonClass}>
-                      <IconRobot
-                        size={toolbarIconSize}
-                        strokeWidth={1.8}
-                        className={
-                          agentMode ? 'text-[var(--chatbox-tint-brand)]' : 'text-[var(--chatbox-tint-secondary)]'
-                        }
-                      />
-                    </UnstyledButton>
-                  </Tooltip>
-                )}
+                {sessionType === 'chat' &&
+                  !isOpenClawModel &&
+                  !isSmallScreen &&
+                  CHATBOX_BUILD_PLATFORM !== 'android' && (
+                    <Tooltip
+                      label={t('Agent Mode: Enables autonomous multi-step tool use')}
+                      position="top"
+                      withArrow
+                      disabled={isSmallScreen}
+                    >
+                      <UnstyledButton onClick={toggleAgentMode} className={toolbarButtonClass}>
+                        <IconRobot
+                          size={toolbarIconSize}
+                          strokeWidth={1.8}
+                          className={
+                            agentMode ? 'text-[var(--chatbox-tint-brand)]' : 'text-[var(--chatbox-tint-secondary)]'
+                          }
+                        />
+                      </UnstyledButton>
+                    </Tooltip>
+                  )}
 
                 {!isSmallScreen &&
                   (showRollbackThreadButton ? (
@@ -1407,8 +1364,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 )}
               </Flex>
 
-              {/* Right Group: Token Count + Model Selector */}
-              <Flex align="center" gap={0}>
+              {/* Right Group: Token Count + Model Selector + Send (mock .bar-right) */}
+              <Flex align="center" gap={4} className="shrink-0">
                 {!isSmallScreen && (
                   <TokenCountMenu
                     currentInputTokens={currentInputTokens}
@@ -1468,24 +1425,50 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       duration: 200,
                     }}
                   >
-                    <UnstyledButton className={cn(toolbarButtonClass, isSmallScreen && 'px-2.5')}>
-                      {!!model && <ProviderImageIcon size={18} provider={model.provider} />}
+                    <UnstyledButton className={cn(toolbarButtonClass, 'model-picker-trigger', isSmallScreen && 'px-2.5')}>
+                      {!!model && <ProviderImageIcon size={15} provider={model.provider} />}
                       <Text
-                        size={isSmallScreen ? 'xs' : 'sm'}
+                        size="xs"
                         className={cn(
-                          'text-[var(--chatbox-tint-secondary)] truncate',
-                          isSmallScreen ? 'max-w-[108px]' : 'max-w-[160px]'
+                          'text-[var(--chatbox-tint-secondary)] truncate font-[family-name:var(--chatbox-font-mono)] tabular-nums',
+                          isSmallScreen ? 'max-w-[108px]' : 'max-w-[140px]'
                         )}
+                        style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '-0.01em' }}
                       >
                         {modelSelectorDisplayText}
                       </Text>
                       <IconChevronRight
-                        size={14}
-                        className="text-[var(--chatbox-tint-tertiary)] rotate-90 flex-shrink-0"
+                        size={11}
+                        stroke={1.75}
+                        className="text-[var(--chatbox-tint-tertiary)] flex-shrink-0 opacity-75"
+                        style={{ transform: 'translateY(0.5px) rotate(90deg)' }}
                       />
                     </UnstyledButton>
                   </ModelSelector>
                 </Tooltip>
+
+                <ActionIcon
+                  disabled={sendDisabled}
+                  variant="filled"
+                  color={generating && disableSubmit ? 'dark' : 'chatbox-brand'}
+                  className="composer-send shadow-none"
+                  onClick={generating && disableSubmit ? onStopGenerating : () => handleSubmit()}
+                  style={
+                    !(generating && disableSubmit) && sendDisabled
+                      ? {
+                          backgroundColor: 'var(--chatbox-background-tertiary)',
+                          color: 'var(--chatbox-tint-tertiary)',
+                          opacity: 1,
+                        }
+                      : undefined
+                  }
+                >
+                  {generating && disableSubmit ? (
+                    <ScalableIcon icon={IconPlayerStopFilled} size={14} />
+                  ) : (
+                    <ScalableIcon icon={IconArrowUp} size={14} />
+                  )}
+                </ActionIcon>
               </Flex>
             </Flex>
           </Stack>

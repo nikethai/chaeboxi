@@ -105,22 +105,15 @@ export const SettingsModal: FC<SettingsModalProps> = () => {
 
 export default SettingsModal
 
+/**
+ * Open Settings as a real app page (not a modal).
+ * Desktop and mobile both use `/settings/*` routes inside the main shell.
+ */
 export function navigateToSettings(path?: string) {
-  if (window.matchMedia(`(max-width:${getThemeDesign('light', 16, 'en').breakpoints?.values?.sm || 640}px)`).matches) {
-    router.navigate({
-      to: `/settings${path ? (path.startsWith('/') ? path : `/${path}`) : ''}`,
-    })
-  } else {
-    router.navigate({
-      to: router.state.location.pathname,
-      search: {
-        settings: `/settings${path ? (path.startsWith('/') ? path : `/${path}`) : ''}`,
-      },
-      mask: {
-        to: '/settings',
-      },
-    })
-  }
+  const suffix = path ? (path.startsWith('/') ? path : `/${path}`) : '/provider'
+  const to = `/settings${suffix === '/' ? '/provider' : suffix}`
+  // TanStack typed routes: cast because path is dynamic (provider id, etc.)
+  void router.navigate({ to: to as '/settings/provider' })
 }
 
 const RootRoute = createRootRoute({

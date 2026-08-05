@@ -10,9 +10,8 @@ import {
   Tooltip as Tooltip1,
 } from '@mantine/core'
 import Box from '@mui/material/Box'
-import Grid from '@mui/material/Grid'
-import Typography from '@mui/material/Typography'
 import { useTheme } from '@mui/material/styles'
+import Typography from '@mui/material/Typography'
 import {
   createMessage,
   type Message,
@@ -85,18 +84,18 @@ import {
   submitNewUserMessage,
 } from '@/stores/sessionActions'
 import * as toastActions from '@/stores/toastActions'
+import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 import ActionMenu, { type ActionMenuItemProps } from '../ActionMenu'
 import {
   deriveMessageArtifacts,
   getPreviousArtifactVersion,
-  isContainRenderableCode,
   MessageArtifact as InlineArtifact,
+  isContainRenderableCode,
 } from '../Artifact'
-import { AssistantAvatar, SystemAvatar, UserAvatar } from '../common/Avatar'
+import { SystemAvatar } from '../common/Avatar'
 import { ScalableIcon } from '../common/ScalableIcon'
 import Loading from '../icons/Loading'
 import { ReasoningContentUI } from '../message-parts/ReasoningContentUI'
-import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
 // Tool/thinking renderers are agent-only — lazy-load them and skip on Android.
 // CHATBOX_BUILD_PLATFORM is a Vite-defined compile-time constant so the
@@ -108,8 +107,9 @@ const ThinkingGroupUI = isAgentEnabled
 const ToolCallPartUI = isAgentEnabled
   ? lazy(() => import('../message-parts/ToolCallPartUI').then((m) => ({ default: m.ToolCallPartUI })))
   : null
-import { SourceCardList } from '../search/SourceCardList'
+
 import FollowUpSuggestions from '../search/FollowUpSuggestions'
+import { SourceCardList } from '../search/SourceCardList'
 import { MessageAttachmentGrid } from './MessageAttachmentGrid'
 import MessageErrTips from './MessageErrTips'
 import MessageStatuses from './MessageLoading'
@@ -136,21 +136,18 @@ const _Message: FC<Props> = (props) => {
     collapseThreshold,
     buttonGroup = 'auto',
     small,
-    assistantAvatarKey,
-    sessionPicUrl,
+    assistantAvatarKey: _assistantAvatarKey,
+    sessionPicUrl: _sessionPicUrl,
   } = props
 
   const { t } = useTranslation()
   const theme = useTheme()
   const isSamllScreen = useIsSmallScreen()
   const {
-    userAvatarKey,
+    userAvatarKey: _userAvatarKey,
     showMessageTimestamp,
-    showModelName,
     showWordCount,
-    showTokenUsed,
     showFirstTokenLatency,
-    showTokenSpeed,
     enableMarkdownRendering,
     enableLaTeXRendering,
     enableMermaidRendering,
@@ -407,36 +404,19 @@ const _Message: FC<Props> = (props) => {
     throw new Error('Manual error triggered from Message component for testing ErrorBoundary')
   }
 
+  // Per-message token/model chrome removed — session totals live in SessionStatusBar (dock statusline).
+  // Keep only critical finish-reason signals under the message.
   const tips: string[] = []
-  if (props.sessionType === 'chat' || !props.sessionType) {
-    if (showWordCount && !msg.generating) {
-      // 兼容旧版本没有提前计算的消息
-      tips.push(`word count: ${msg.wordCount !== undefined ? msg.wordCount : countWord(getMessageText(msg))}`)
-    }
-    if (showTokenUsed && msg.role === 'assistant' && !msg.generating) {
-      tips.push(`tokens used: ${msg.usage?.totalTokens ? msg.usage.totalTokens : msg.tokensUsed || 'unknown'}`)
-      // `tokens used: ${msg.usage?.totalTokens ? `${msg.usage.totalTokens}${msg.usage.cachedInputTokens ? `(cached: ${msg.usage.cachedInputTokens})` : ''}` : msg.tokensUsed || 'unknown'}`
-    }
-    if (showFirstTokenLatency && msg.role === 'assistant' && !msg.generating) {
-      const latency = msg.firstTokenLatency ? `${msg.firstTokenLatency}ms` : 'unknown'
-      tips.push(`first token latency: ${latency}`)
-    }
-    if (showTokenSpeed && msg.role === 'assistant' && !msg.generating) {
-      const speed = msg.tokenSpeed !== undefined ? `${msg.tokenSpeed} tok/s` : 'unknown'
-      tips.push(`token speed: ${speed}`)
-    }
-    if (showModelName && props.msg.role === 'assistant') {
-      tips.push(`model: ${props.msg.model || 'unknown'}`)
-    }
-  } else if (props.sessionType === 'picture') {
-    if (showModelName && props.msg.role === 'assistant') {
-      tips.push(`model: ${props.msg.model || 'unknown'}`)
-      tips.push(`style: ${props.msg.style || 'unknown'}`)
-    }
-  }
-
   if (msg.finishReason && ['content-filter', 'length', 'error'].includes(msg.finishReason)) {
     tips.push(`finish reason: ${msg.finishReason}`)
+  }
+  // Optional debug metrics (settings) — still not the noisy default "tokens used / model" line
+  if (showWordCount && !msg.generating && (props.sessionType === 'chat' || !props.sessionType)) {
+    tips.push(`word count: ${msg.wordCount !== undefined ? msg.wordCount : countWord(getMessageText(msg))}`)
+  }
+  if (showFirstTokenLatency && msg.role === 'assistant' && !msg.generating) {
+    const latency = msg.firstTokenLatency ? `${msg.firstTokenLatency}ms` : 'unknown'
+    tips.push(`first token latency: ${latency}`)
   }
 
   // 消息时间戳
@@ -619,6 +599,10 @@ const _Message: FC<Props> = (props) => {
   )
   const [actionMenuOpened, setActionMenuOpened] = useState(false)
 
+  const isUser = msg.role === 'user'
+  const isAssistant = msg.role === 'assistant'
+  const isSystem = msg.role === 'system'
+
   return (
     <Box
       ref={ref}
@@ -627,343 +611,307 @@ const _Message: FC<Props> = (props) => {
       className={cn(
         'group/message',
         'msg-block',
-        isSamllScreen ? 'px-1.5 py-2' : 'px-2 py-1.5',
+        'msg-turn',
         msg.generating ? 'rendering' : 'render-done',
         { user: 'user-msg', system: 'system-msg', assistant: 'assistant-msg', tool: 'tool-msg' }[msg.role || 'user'],
         className,
         'w-full'
       )}
-      sx={{
-        paddingBottom: '0.1rem',
-        paddingX: '1rem',
-        [theme.breakpoints.down('sm')]: {
-          paddingX: '0.2rem',
-        },
-      }}
     >
-      <Grid container wrap="nowrap" spacing={1.5}>
-        <Grid item>
-          <Box className={cn('relative', msg.role !== 'assistant' ? 'mt-1' : isSamllScreen ? 'mt-1.5' : 'mt-2')}>
+      {/* Mock DNA: no You/Chaeboxi labels, no avatar column on normal chat.
+          System messages keep a small mark; generating shows a thin loader. */}
+      {isSystem && (
+        <Box className="mb-2 relative w-fit">
+          <SystemAvatar size="sm" sessionType={props.sessionType} onClick={onClickAssistantAvatar} />
+        </Box>
+      )}
+      {isAssistant && msg.generating && (
+        <Flex className="mb-2" align="center" gap={6}>
+          <Loader size={14} classNames={{ root: "after:content-[''] after:border-[2px]" }} />
+          <Text size="xs" c="chatbox-tertiary">
+            …
+          </Text>
+        </Flex>
+      )}
+      <div className={cn('w-full', isUser && 'flex flex-col items-end')}>
+        <MessageStatuses statuses={msg.status} />
+        <div className={cn('msg-bubble', isUser ? 'inline-block' : 'w-full')}>
+          <Box
+            ref={messageContentRef}
+            className={cn('msg-content', { 'msg-content-small': small })}
+            sx={small ? { fontSize: theme.typography.body2.fontSize } : {}}
+            onMouseUp={handleSelectionMouseUp}
+          >
+            {msg.citations?.length ? <SourceCardList citations={msg.citations} /> : null}
+            {msg.reasoningContent && (
+              <ReasoningContentUI message={msg} onCopyReasoningContent={onCopyReasoningContent} />
+            )}
             {
-              {
-                assistant: (
-                  <AssistantAvatar
-                    avatarKey={assistantAvatarKey}
-                    picUrl={sessionPicUrl}
-                    sessionType={props.sessionType}
-                    onClick={onClickAssistantAvatar}
-                  />
-                ),
-                user: <UserAvatar avatarKey={userAvatarKey} onClick={() => navigateToSettings('/chat')} />,
-                system: <SystemAvatar sessionType={props.sessionType} onClick={onClickAssistantAvatar} />,
-                tool: null,
-              }[msg.role]
+              // 这里的空行仅仅是为了在只发送文件时消息气泡的美观
+              // 正常情况下，应该考虑优化 msg-content 的样式。现在这里是一个临时的偷懒方式。
+              getMessageText(msg, true, true).trim() === '' && <p></p>
             }
-            {msg.role === 'assistant' && msg.generating && (
-              <Flex className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                <Loader size={32} className=" " classNames={{ root: "after:content-[''] after:border-[2px]" }} />
-              </Flex>
+            {groupedParts.length > 0 && (
+              <div>
+                {groupedParts.map((group, groupIndex) =>
+                  group.type === 'thinking-group' ? (
+                    ThinkingGroupUI ? (
+                      <div key={`thinking-group-${msg.id}-${group.startIndex}`}>
+                        <Suspense fallback={null}>
+                          <ThinkingGroupUI
+                            message={msg}
+                            parts={group.parts}
+                            isLastGroup={groupIndex === groupedParts.length - 1}
+                          />
+                        </Suspense>
+                      </div>
+                    ) : null
+                  ) : group.part.type === 'reasoning' ? (
+                    <div key={`reasoning-${msg.id}-${group.index}`}>
+                      <ReasoningContentUI
+                        message={msg}
+                        part={group.part}
+                        onCopyReasoningContent={onCopyReasoningContent}
+                      />
+                    </div>
+                  ) : group.part.type === 'text' ? (
+                    <div key={`text-${msg.id}-${group.index}`}>
+                      {enableMarkdownRendering && !isCollapsed ? (
+                        <Markdown
+                          uniqueId={`${msg.id}-${group.index}`}
+                          enableLaTeXRendering={enableLaTeXRendering}
+                          enableMermaidRendering={enableMermaidRendering}
+                          generating={msg.generating}
+                          citations={msg.citations}
+                        >
+                          {group.part.text || ''}
+                        </Markdown>
+                      ) : (
+                        <div className="break-words whitespace-pre-line">
+                          {needCollapse && isCollapsed
+                            ? `${group.part.text.slice(0, collapseThreshold)}...`
+                            : group.part.text}
+                          {needCollapse && isCollapsed && CollapseButton}
+                        </div>
+                      )}
+                    </div>
+                  ) : group.part.type === 'info' ? (
+                    <Flex key={`info-${group.part.text}`} className="mb-2 ">
+                      <Flex
+                        className="bg-chatbox-background-brand-secondary border-0 border-l-2 border-solid border-chatbox-tint-brand rounded-r-md"
+                        align="center"
+                        gap="xxs"
+                        px="xs"
+                      >
+                        <ScalableIcon icon={IconInfoCircle} size={16} className="flex-none text-chatbox-tint-brand" />
+
+                        <Text size="xs" c="chatbox-brand">
+                          {group.part.text}
+                        </Text>
+                      </Flex>
+                    </Flex>
+                  ) : group.part.type === 'image' ? (
+                    props.sessionType !== 'picture' && (
+                      <div key={`image-${group.part.storageKey}`} className="mt-2">
+                        <PictureGallery
+                          key={`image-${group.part.storageKey}`}
+                          pictures={[group.part]}
+                          compact={msg.role === 'user'}
+                        />
+                        {(group.part as { ocrResult?: string }).ocrResult && (
+                          <div
+                            className="my-2 p-2 bg-chatbox-background-brand-secondary rounded-md cursor-pointer hover:bg-chatbox-background-brand-secondary-hover transition-colors"
+                            onClick={async (e) => {
+                              e.stopPropagation()
+                              await NiceModal.show('content-viewer', {
+                                title: t('OCR Text Content'),
+                                content: (group.part as { ocrResult?: string }).ocrResult || '',
+                              })
+                            }}
+                          >
+                            <Typography variant="caption" className="text-gray-600 dark:text-gray-400 block mb-1">
+                              {t('OCR Text')} ({(group.part as { ocrResult?: string }).ocrResult?.length || 0}{' '}
+                              {t('characters')})
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              className="line-clamp-2 text-gray-700 dark:text-gray-300"
+                              title={(group.part as { ocrResult?: string }).ocrResult}
+                            >
+                              {(group.part as { ocrResult?: string }).ocrResult}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              className="text-blue-500 hover:text-blue-600 mt-1 inline-block"
+                            >
+                              {t('Click to view full text')}
+                            </Typography>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  ) : group.part.type === 'tool-call' ? (
+                    ToolCallPartUI ? (
+                      <Suspense fallback={null} key={group.part.toolCallId}>
+                        <ToolCallPartUI part={group.part as MessageToolCallPart} />
+                      </Suspense>
+                    ) : null
+                  ) : null
+                )}
+              </div>
             )}
           </Box>
-        </Grid>
-        <Grid item xs sm container sx={{ width: '0px', paddingRight: isSamllScreen ? '8px' : '15px' }}>
-          <Grid item xs>
-            <MessageStatuses statuses={msg.status} />
-            <div
-              className={cn(
-                'max-w-full inline-block',
-                msg.role !== 'assistant'
-                  ? isSamllScreen
-                    ? 'bg-chatbox-background-secondary px-3.5 py-2 rounded-2xl'
-                    : 'bg-chatbox-background-secondary px-4 rounded-lg'
-                  : 'w-full'
-              )}
-            >
-              <Box
-                ref={messageContentRef}
-                className={cn('msg-content', { 'msg-content-small': small })}
-                sx={small ? { fontSize: theme.typography.body2.fontSize } : {}}
-                onMouseUp={handleSelectionMouseUp}
-              >
-                {msg.citations?.length ? <SourceCardList citations={msg.citations} /> : null}
-                {msg.reasoningContent && (
-                  <ReasoningContentUI message={msg} onCopyReasoningContent={onCopyReasoningContent} />
-                )}
-                {
-                  // 这里的空行仅仅是为了在只发送文件时消息气泡的美观
-                  // 正常情况下，应该考虑优化 msg-content 的样式。现在这里是一个临时的偷懒方式。
-                  getMessageText(msg, true, true).trim() === '' && <p></p>
-                }
-                {groupedParts.length > 0 && (
-                  <div>
-                    {groupedParts.map((group, groupIndex) =>
-                      group.type === 'thinking-group' ? (
-                        ThinkingGroupUI ? (
-                          <div key={`thinking-group-${msg.id}-${group.startIndex}`}>
-                            <Suspense fallback={null}>
-                              <ThinkingGroupUI
-                                message={msg}
-                                parts={group.parts}
-                                isLastGroup={groupIndex === groupedParts.length - 1}
-                              />
-                            </Suspense>
-                          </div>
-                        ) : null
-                      ) : group.part.type === 'reasoning' ? (
-                        <div key={`reasoning-${msg.id}-${group.index}`}>
-                          <ReasoningContentUI
-                            message={msg}
-                            part={group.part}
-                            onCopyReasoningContent={onCopyReasoningContent}
-                          />
-                        </div>
-                      ) : group.part.type === 'text' ? (
-                        <div key={`text-${msg.id}-${group.index}`}>
-                          {enableMarkdownRendering && !isCollapsed ? (
-                            <Markdown
-                              uniqueId={`${msg.id}-${group.index}`}
-                              enableLaTeXRendering={enableLaTeXRendering}
-                              enableMermaidRendering={enableMermaidRendering}
-                              generating={msg.generating}
-                              citations={msg.citations}
-                            >
-                              {group.part.text || ''}
-                            </Markdown>
-                          ) : (
-                            <div className="break-words whitespace-pre-line">
-                              {needCollapse && isCollapsed
-                                ? `${group.part.text.slice(0, collapseThreshold)}...`
-                                : group.part.text}
-                              {needCollapse && isCollapsed && CollapseButton}
-                            </div>
-                          )}
-                        </div>
-                      ) : group.part.type === 'info' ? (
-                        <Flex key={`info-${group.part.text}`} className="mb-2 ">
-                          <Flex
-                            className="bg-chatbox-background-brand-secondary border-0 border-l-2 border-solid border-chatbox-tint-brand rounded-r-md"
-                            align="center"
-                            gap="xxs"
-                            px="xs"
-                          >
-                            <ScalableIcon
-                              icon={IconInfoCircle}
-                              size={16}
-                              className="flex-none text-chatbox-tint-brand"
-                            />
-
-                            <Text size="xs" c="chatbox-brand">
-                              {group.part.text}
-                            </Text>
-                          </Flex>
-                        </Flex>
-                      ) : group.part.type === 'image' ? (
-                        props.sessionType !== 'picture' && (
-                          <div key={`image-${group.part.storageKey}`} className="mt-2">
-                            <PictureGallery
-                              key={`image-${group.part.storageKey}`}
-                              pictures={[group.part]}
-                              compact={msg.role === 'user'}
-                            />
-                            {(group.part as { ocrResult?: string }).ocrResult && (
-                              <div
-                                className="my-2 p-2 bg-chatbox-background-brand-secondary rounded-md cursor-pointer hover:bg-chatbox-background-brand-secondary-hover transition-colors"
-                                onClick={async (e) => {
-                                  e.stopPropagation()
-                                  await NiceModal.show('content-viewer', {
-                                    title: t('OCR Text Content'),
-                                    content: (group.part as { ocrResult?: string }).ocrResult || '',
-                                  })
-                                }}
-                              >
-                                <Typography variant="caption" className="text-gray-600 dark:text-gray-400 block mb-1">
-                                  {t('OCR Text')} ({(group.part as { ocrResult?: string }).ocrResult?.length || 0}{' '}
-                                  {t('characters')})
-                                </Typography>
-                                <Typography
-                                  variant="body2"
-                                  className="line-clamp-2 text-gray-700 dark:text-gray-300"
-                                  title={(group.part as { ocrResult?: string }).ocrResult}
-                                >
-                                  {(group.part as { ocrResult?: string }).ocrResult}
-                                </Typography>
-                                <Typography
-                                  variant="caption"
-                                  className="text-blue-500 hover:text-blue-600 mt-1 inline-block"
-                                >
-                                  {t('Click to view full text')}
-                                </Typography>
-                              </div>
-                            )}
-                          </div>
-                        )
-                      ) : group.part.type === 'tool-call' ? (
-                        ToolCallPartUI ? (
-                          <Suspense fallback={null} key={group.part.toolCallId}>
-                            <ToolCallPartUI part={group.part as MessageToolCallPart} />
-                          </Suspense>
-                        ) : null
-                      ) : null
-                    )}
-                  </div>
-                )}
-              </Box>
-              {props.sessionType === 'picture' && msg.contentParts.filter((p) => p.type === 'image').length > 0 && (
-                <PictureGallery
-                  pictures={msg.contentParts.filter((p) => p.type === 'image')}
-                  onReport={platform.formFactor === 'mobile' ? onReport : undefined}
-                />
-              )}
-              {needArtifact && (
-                <Flex direction="column" gap={4} mt="sm">
-                  {currentArtifact?.version && (
-                    <Text size="xs" c="chatbox-tertiary">
-                      {t('Artifact v{{version}}', { version: currentArtifact.version })}
-                    </Text>
-                  )}
-                  <InlineArtifact
-                    sessionId={sessionId}
-                    messageId={msg.id}
-                    messageContent={messageText}
-                    preview={previewArtifact}
-                    setPreview={setPreviewArtifact}
-                  />
-                </Flex>
-              )}
-              <MessageErrTips msg={msg} />
-              {needCollapse && !isCollapsed && CollapseButton}
-
-              {msg.generating && msg.contentParts.length === 0 && <Loading />}
-
-              {msg.generating && msg.role === 'assistant' && showTokenSpeed && msg.tokenSpeed !== undefined && (
-                <Text size="xs" c="chatbox-tertiary" className="mt-0.5">
-                  ⚡ {msg.tokenSpeed} tok/s
+          {props.sessionType === 'picture' && msg.contentParts.filter((p) => p.type === 'image').length > 0 && (
+            <PictureGallery
+              pictures={msg.contentParts.filter((p) => p.type === 'image')}
+              onReport={platform.formFactor === 'mobile' ? onReport : undefined}
+            />
+          )}
+          {needArtifact && (
+            <Flex direction="column" gap={4} mt="sm">
+              {currentArtifact?.version && (
+                <Text size="xs" c="chatbox-tertiary">
+                  {t('Artifact v{{version}}', { version: currentArtifact.version })}
                 </Text>
               )}
-
-              {!msg.generating && msg.role === 'assistant' && tips.length > 0 && (
-                <Text c="chatbox-tertiary">{tips.join(', ')}</Text>
-              )}
-            </div>
-            <TextSelectionToolbar
-              opened={!!selectionToolbar}
-              position={selectionToolbar ? { x: selectionToolbar.x, y: selectionToolbar.y } : null}
-              onExplain={onExplainSelection}
-              onTranslate={onTranslateSelection}
-              onCopy={onCopySelection}
-              onClose={clearSelectionToolbar}
-            />
-            {(msg.files || msg.links) && <MessageAttachmentGrid files={msg.files} links={msg.links} />}
-
-            {/* actions */}
-            {buttonGroup !== 'none' && !msg.generating && (
-              <Flex
-                gap={0}
-                m="4px -4px -4px -4px"
-                className={clsx(
-                  'group-hover/message:opacity-100 opacity-0 transition-opacity',
-                  actionMenuOpened || buttonGroup === 'always' ? 'opacity-100' : '',
-                  isSamllScreen ? 'sticky bottom-4' : ''
-                )}
-                align="center"
-              >
-                <Flex
-                  gap={0}
-                  className={
-                    isSamllScreen
-                      ? 'p-xxs bg-chatbox-background-primary rounded-md border-[0.5px] border-solid border-chatbox-border-primary shadow-sm'
-                      : ''
-                  }
-                >
-                  {!isSamllScreen && !msg.generating && msg.role === 'assistant' && (
-                    <MessageActionIcon icon={IconReload} tooltip={t('Reply Again')} onClick={handleRefresh} />
-                  )}
-
-                  {!isSamllScreen && msg.role !== 'assistant' && (
-                    <MessageActionIcon icon={IconArrowDown} tooltip={t('Reply Again Below')} onClick={onGenerateMore} />
-                  )}
-
-                  {
-                    // Chatbox-AI 模型不支持编辑消息
-                    !isSamllScreen &&
-                      !msg.model?.startsWith('Chatbox-AI') &&
-                      // 图片会话中，助手消息无需编辑
-                      !(msg.role === 'assistant' && props.sessionType === 'picture') && (
-                        <MessageActionIcon icon={IconPencil} tooltip={t('edit')} onClick={onEditClick} />
-                      )
-                  }
-
-                  {!isSamllScreen && !(props.sessionType === 'picture' && msg.role === 'assistant') && (
-                    <MessageActionIcon icon={IconCopy} tooltip={t('copy')} onClick={onCopyMsg} />
-                  )}
-
-                  {!isSamllScreen && msg.role === 'assistant' && (
-                    <MessageActionIcon
-                      icon={msg.feedback?.rating === 'up' ? IconThumbUpFilled : IconThumbUp}
-                      tooltip={t('Thumbs Up')}
-                      color={msg.feedback?.rating === 'up' ? 'chatbox-success' : 'chatbox-secondary'}
-                      onClick={() => toggleFeedbackRating('up')}
-                    />
-                  )}
-
-                  {!isSamllScreen && msg.role === 'assistant' && (
-                    <MessageActionIcon
-                      icon={msg.feedback?.rating === 'down' ? IconThumbDownFilled : IconThumbDown}
-                      tooltip={t('Thumbs Down')}
-                      color={msg.feedback?.rating === 'down' ? 'chatbox-error' : 'chatbox-secondary'}
-                      onClick={() => toggleFeedbackRating('down')}
-                    />
-                  )}
-
-                  {!isSamllScreen && msg.role === 'assistant' && isComfyUIReady && (
-                    <MessageActionIcon
-                      icon={IconPhoto}
-                      tooltip={t('Send to Image Creator')}
-                      onClick={handleSendToImageCreator}
-                    />
-                  )}
-
-                  {!isSamllScreen && !msg.generating && props.sessionType === 'picture' && msg.role === 'assistant' && (
-                    <MessageActionIcon
-                      icon={IconPhotoPlus}
-                      tooltip={t('Generate More Images Below')}
-                      onClick={onGenerateMore}
-                    />
-                  )}
-
-                  <ActionMenu
-                    items={actionMenuItems}
-                    opened={actionMenuOpened}
-                    onChange={(opened) => setActionMenuOpened(opened)}
-                  >
-                    <MessageActionIcon icon={IconDotsVertical} tooltip={t('More')} />
-                  </ActionMenu>
-                </Flex>
-              </Flex>
-            )}
-            {msg.role === 'assistant' && msg.feedback?.rating === 'down' && (
-              <Textarea
-                mt="xs"
-                autosize
-                minRows={2}
-                maxRows={4}
-                value={feedbackText}
-                placeholder={t('Optional feedback')}
-                onChange={(event) => setFeedbackText(event.currentTarget.value)}
-                onBlur={saveFeedbackText}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
-                    event.currentTarget.blur()
-                  }
-                }}
+              <InlineArtifact
+                sessionId={sessionId}
+                messageId={msg.id}
+                messageContent={messageText}
+                preview={previewArtifact}
+                setPreview={setPreviewArtifact}
               />
+            </Flex>
+          )}
+          <MessageErrTips msg={msg} />
+          {needCollapse && !isCollapsed && CollapseButton}
+
+          {msg.generating && msg.contentParts.length === 0 && <Loading />}
+
+          {!msg.generating && tips.length > 0 && (
+            <Text size="xs" c="chatbox-tertiary" className="mt-1 opacity-80">
+              {tips.join(' · ')}
+            </Text>
+          )}
+        </div>
+        <TextSelectionToolbar
+          opened={!!selectionToolbar}
+          position={selectionToolbar ? { x: selectionToolbar.x, y: selectionToolbar.y } : null}
+          onExplain={onExplainSelection}
+          onTranslate={onTranslateSelection}
+          onCopy={onCopySelection}
+          onClose={clearSelectionToolbar}
+        />
+        {(msg.files || msg.links) && <MessageAttachmentGrid files={msg.files} links={msg.links} />}
+
+        {/* actions — hover-only, GPU-safe opacity/transform */}
+        {buttonGroup !== 'none' && !msg.generating && (
+          <Flex
+            gap={0}
+            mt={4}
+            className={clsx(
+              'msg-actions',
+              (actionMenuOpened || buttonGroup === 'always') && 'is-visible',
+              isSamllScreen ? 'sticky bottom-4' : '',
+              isUser && 'justify-end'
             )}
-            {msg.role === 'assistant' && !msg.generating && msg.citations?.length ? (
-              <FollowUpSuggestions sessionId={sessionId} citations={msg.citations} searchQuery={msg.searchQuery} />
-            ) : null}
-          </Grid>
-        </Grid>
-      </Grid>
+            align="center"
+          >
+            <Flex
+              gap={0}
+              className={
+                isSamllScreen
+                  ? 'p-xxs bg-chatbox-background-primary rounded-md border-[0.5px] border-solid border-chatbox-border-primary'
+                  : ''
+              }
+            >
+              {!isSamllScreen && !msg.generating && msg.role === 'assistant' && (
+                <MessageActionIcon icon={IconReload} tooltip={t('Reply Again')} onClick={handleRefresh} />
+              )}
+
+              {!isSamllScreen && msg.role !== 'assistant' && (
+                <MessageActionIcon icon={IconArrowDown} tooltip={t('Reply Again Below')} onClick={onGenerateMore} />
+              )}
+
+              {
+                // Chatbox-AI 模型不支持编辑消息
+                !isSamllScreen &&
+                  !msg.model?.startsWith('Chatbox-AI') &&
+                  // 图片会话中，助手消息无需编辑
+                  !(msg.role === 'assistant' && props.sessionType === 'picture') && (
+                    <MessageActionIcon icon={IconPencil} tooltip={t('edit')} onClick={onEditClick} />
+                  )
+              }
+
+              {!isSamllScreen && !(props.sessionType === 'picture' && msg.role === 'assistant') && (
+                <MessageActionIcon icon={IconCopy} tooltip={t('copy')} onClick={onCopyMsg} />
+              )}
+
+              {!isSamllScreen && msg.role === 'assistant' && (
+                <MessageActionIcon
+                  icon={msg.feedback?.rating === 'up' ? IconThumbUpFilled : IconThumbUp}
+                  tooltip={t('Thumbs Up')}
+                  color={msg.feedback?.rating === 'up' ? 'chatbox-success' : 'chatbox-secondary'}
+                  onClick={() => toggleFeedbackRating('up')}
+                />
+              )}
+
+              {!isSamllScreen && msg.role === 'assistant' && (
+                <MessageActionIcon
+                  icon={msg.feedback?.rating === 'down' ? IconThumbDownFilled : IconThumbDown}
+                  tooltip={t('Thumbs Down')}
+                  color={msg.feedback?.rating === 'down' ? 'chatbox-error' : 'chatbox-secondary'}
+                  onClick={() => toggleFeedbackRating('down')}
+                />
+              )}
+
+              {!isSamllScreen && msg.role === 'assistant' && isComfyUIReady && (
+                <MessageActionIcon
+                  icon={IconPhoto}
+                  tooltip={t('Send to Image Creator')}
+                  onClick={handleSendToImageCreator}
+                />
+              )}
+
+              {!isSamllScreen && !msg.generating && props.sessionType === 'picture' && msg.role === 'assistant' && (
+                <MessageActionIcon
+                  icon={IconPhotoPlus}
+                  tooltip={t('Generate More Images Below')}
+                  onClick={onGenerateMore}
+                />
+              )}
+
+              <ActionMenu
+                items={actionMenuItems}
+                opened={actionMenuOpened}
+                onChange={(opened) => setActionMenuOpened(opened)}
+              >
+                <MessageActionIcon icon={IconDotsVertical} tooltip={t('More')} />
+              </ActionMenu>
+            </Flex>
+          </Flex>
+        )}
+        {msg.role === 'assistant' && msg.feedback?.rating === 'down' && (
+          <Textarea
+            mt="xs"
+            autosize
+            minRows={2}
+            maxRows={4}
+            value={feedbackText}
+            placeholder={t('Optional feedback')}
+            onChange={(event) => setFeedbackText(event.currentTarget.value)}
+            onBlur={saveFeedbackText}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                event.currentTarget.blur()
+              }
+            }}
+          />
+        )}
+        {msg.role === 'assistant' && !msg.generating && msg.citations?.length ? (
+          <FollowUpSuggestions sessionId={sessionId} citations={msg.citations} searchQuery={msg.searchQuery} />
+        ) : null}
+      </div>
     </Box>
   )
 }

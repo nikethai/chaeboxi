@@ -49,8 +49,12 @@ export const ProviderHeader = ({
         ? 'text-chatbox-tint-gray'
         : ''
 
-  // Desktop 版本的容器样式
-  const desktopContainerClass = `${isClickable ? 'cursor-pointer select-none hover:bg-chatbox-background-primary-hover' : ''} ${padding} sticky top-0 z-10 bg-chatbox-background-primary border-0 border-b border-solid border-chatbox-border-primary ${className}`
+  // Desktop: mono section rail (studio picker)
+  const desktopContainerClass = clsx(
+    'model-picker-provider sticky top-0 z-10',
+    isClickable && 'cursor-pointer select-none',
+    className
+  )
 
   // Mobile 版本的容器样式
   const mobileContainerClass = `${padding} ${isMobile ? 'text-chatbox-tint-tertiary' : ''} sticky top-0 z-10 bg-chatbox-background-primary ${className}`
@@ -101,8 +105,11 @@ export const ProviderHeader = ({
         {showChevron && !isFavorite && (
           <ScalableIcon
             icon={IconChevronDown}
-            size={12}
-            className={clsx('transition-transform', isCollapsed ? '-rotate-90' : '')}
+            size={11}
+            className={clsx(
+              'transition-transform text-[var(--chatbox-tint-tertiary)]',
+              isCollapsed ? '-rotate-90' : ''
+            )}
           />
         )}
         {isFavorite ? (
@@ -112,11 +119,17 @@ export const ProviderHeader = ({
         ) : (
           <ScalableIcon icon={ProviderIcon} size={iconSize} provider={provider.id} className={iconClass} />
         )}
-        <Text span c={textColor} size="sm" fw={textWeight}>
+        <Text
+          span
+          c={isMobile ? textColor : 'chatbox-tertiary'}
+          size="xs"
+          fw={isMobile ? textWeight : 500}
+          className={!isMobile ? 'model-picker-provider-name' : undefined}
+        >
           {provider.name}
         </Text>
         {(showModelCount || isMobile) && modelCount !== undefined && (
-          <Text span c="dimmed" size="xs" ml="auto">
+          <Text span c="dimmed" size="xs" ml="auto" className="model-picker-provider-count tabular-nums">
             {modelCount}
           </Text>
         )}

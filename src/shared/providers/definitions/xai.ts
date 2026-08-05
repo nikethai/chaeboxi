@@ -1,4 +1,5 @@
 import { ModelProviderEnum, ModelProviderType } from '../../types'
+import { resolveXaiBearer } from '../oauth/xai-auth'
 import { defineProvider } from '../registry'
 import XAI from './models/xai'
 
@@ -8,9 +9,14 @@ export const xaiProvider = defineProvider({
   type: ModelProviderType.OpenAI,
   urls: {
     website: 'https://x.ai/',
+    apiKey: 'https://console.x.ai/',
+    docs: 'https://docs.x.ai/',
   },
+  description:
+    'Sign in with SuperGrok or X Premium (OAuth), or use a developer API key from console.x.ai. Subscription and API billing are separate.',
   defaultSettings: {
     apiHost: 'https://api.x.ai',
+    authMode: 'oauth',
     models: [
       {
         modelId: 'grok-4-1-fast-reasoning',
@@ -22,12 +28,17 @@ export const xaiProvider = defineProvider({
         contextWindow: 2_000_000,
         capabilities: ['vision', 'tool_use'],
       },
+      {
+        modelId: 'grok-build-0.1',
+        contextWindow: 1_000_000,
+        capabilities: ['tool_use'],
+      },
     ],
   },
   createModel: (config) => {
     return new XAI(
       {
-        apiKey: config.providerSetting.apiKey || '',
+        apiKey: resolveXaiBearer(config.providerSetting),
         cloudflareClientId: config.providerSetting.cloudflareClientId,
         cloudflareClientSecret: config.providerSetting.cloudflareClientSecret,
         model: config.model,
@@ -40,6 +51,6 @@ export const xaiProvider = defineProvider({
     )
   },
   getDisplayName: (modelId, providerSettings) => {
-    return `xAI API (${providerSettings?.models?.find((m) => m.modelId === modelId)?.nickname || modelId})`
+    return `xAI (${providerSettings?.models?.find((m) => m.modelId === modelId)?.nickname || modelId})`
   },
 })

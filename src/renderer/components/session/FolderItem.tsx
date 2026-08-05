@@ -71,23 +71,26 @@ function FolderItem({
   return (
     <Flex
       align="center"
-      gap="xs"
-      mx="xs"
-      px="xs"
+      gap={6}
+      mx={6}
+      px={10}
       py={6}
-      className={clsx('rounded-sm group/folder-item', !implicit && 'hover:bg-chatbox-background-gray-secondary')}
+      className={clsx(
+        'group/folder-item rounded-full',
+        !implicit && 'hover:bg-[var(--chatbox-background-tertiary)] cursor-pointer'
+      )}
       onClick={onToggle}
     >
       <ActionIcon variant="transparent" size={18} color="chatbox-tertiary">
         <ScalableIcon icon={expanded ? IconChevronDown : IconChevronRight} size={14} />
       </ActionIcon>
 
-      <Text span size="sm" c="chatbox-secondary" fw={600}>
+      <Text span size="sm" c="chatbox-secondary" fw={500} className="tracking-tight" style={{ fontSize: '0.875rem' }}>
         {emoji ? `${emoji} ` : ''}
         {name}
       </Text>
 
-      <Text span size="xs" c="chatbox-tertiary" flex={1}>
+      <Text span size="xs" c="chatbox-tertiary" flex={1} style={{ fontSize: '0.75rem' }}>
         {count}
       </Text>
 

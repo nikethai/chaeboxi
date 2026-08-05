@@ -1,6 +1,6 @@
 import { ActionIcon, Box, Collapse, Text } from '@mantine/core'
 import type { Message, MessageReasoningPart } from '@shared/types'
-import { IconCopy } from '@tabler/icons-react'
+import { IconBulb, IconCopy } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { type FC, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,8 +10,8 @@ import { formatElapsedTime, formatWorkedDuration, useThinkingTimer } from '@/hoo
 import { ScalableIcon } from '../common/ScalableIcon'
 
 /**
- * Reasoning chrome — mock `.worked` DNA (Grok / ChatGPT canvas):
- * plain tertiary label + chevron, no bordered Paper / yellow bulb card.
+ * Reasoning chrome — Grok thinking bar DNA:
+ * rounded card, bulb mark, duration label, expand chevron + copy.
  */
 export const ReasoningContentUI: FC<{
   message: Message
@@ -42,38 +42,41 @@ export const ReasoningContentUI: FC<{
   }, [])
 
   const label = isThinking
-    ? t('Working…')
+    ? t('Thinking…')
     : shouldShowTimer && displayTime > 0
-      ? t('Worked for {{duration}}', { duration: formatWorkedDuration(displayTime) })
-      : t('Worked')
+      ? t('Thought for {{duration}}', { duration: formatWorkedDuration(displayTime) })
+      : t('Thought')
 
   return (
     <div className={clsx('msg-worked', isSmallScreen && 'mx-0.5')}>
       <div className="msg-worked-row">
         <button type="button" className="msg-worked-toggle" onClick={toggleExpanded} aria-expanded={isExpanded}>
+          <IconBulb size={16} stroke={1.5} className="msg-worked-bulb" aria-hidden />
           <span className={clsx(isThinking && 'animate-shimmer shimmer-text')}>{label}</span>
           {isThinking && reasoningContent.length > 0 && shouldShowTimer && (
             <span className="msg-worked-live">({formatElapsedTime(displayTime)})</span>
           )}
+        </button>
+        <span className="msg-worked-actions">
+          {reasoningContent.length > 0 && (
+            <ActionIcon
+              variant="subtle"
+              color="chatbox-secondary"
+              size="sm"
+              className="msg-worked-copy"
+              onClick={(e) => {
+                e.stopPropagation()
+                onCopyReasoningContent(reasoningContent)(e)
+              }}
+              aria-label={t('Copy reasoning content')}
+            >
+              <ScalableIcon icon={IconCopy} size={14} />
+            </ActionIcon>
+          )}
           <span className={clsx('msg-worked-chevron', isExpanded && 'is-open')} aria-hidden>
             ›
           </span>
-        </button>
-        {reasoningContent.length > 0 && (
-          <ActionIcon
-            variant="subtle"
-            color="chatbox-secondary"
-            size="sm"
-            className="msg-worked-copy"
-            onClick={(e) => {
-              e.stopPropagation()
-              onCopyReasoningContent(reasoningContent)(e)
-            }}
-            aria-label={t('Copy reasoning content')}
-          >
-            <ScalableIcon icon={IconCopy} size={14} />
-          </ActionIcon>
-        )}
+        </span>
       </div>
 
       <Collapse in={isExpanded}>

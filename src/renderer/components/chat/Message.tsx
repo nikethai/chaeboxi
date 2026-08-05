@@ -36,6 +36,7 @@ import {
   type IconProps,
   IconQuoteFilled,
   IconReload,
+  IconSettings,
   IconThumbDown,
   IconThumbDownFilled,
   IconThumbUp,
@@ -617,11 +618,16 @@ const _Message: FC<Props> = (props) => {
         'w-full'
       )}
     >
-      {/* Mock DNA: no You/Chaeboxi labels, no avatar column (incl. system gear).
-          System is a quiet caption row; generating shows a thin loader. */}
+      {/* Grok DNA: system gear mark above card; no You/Chaeboxi labels. */}
       {isSystem && (
-        <button type="button" className="msg-system-label" onClick={onClickAssistantAvatar}>
-          {t('System')}
+        <button
+          type="button"
+          className="msg-system-mark"
+          onClick={onClickAssistantAvatar}
+          aria-label={t('System')}
+          title={t('System')}
+        >
+          <IconSettings size={15} stroke={1.5} />
         </button>
       )}
       {isAssistant && msg.generating && (

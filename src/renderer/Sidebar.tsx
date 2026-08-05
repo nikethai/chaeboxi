@@ -15,14 +15,15 @@ import SwipeableDrawer from '@mui/material/SwipeableDrawer'
 import {
   IconArchive,
   IconChevronUp,
-  IconCirclePlus,
   IconCode,
-  IconFolder,
+  IconEdit,
+  IconFolderPlus,
   IconInfoCircle,
   IconLayoutSidebarLeftCollapse,
   IconLogout,
   IconMessageChatbot,
   IconPhotoPlus,
+  IconSearch,
   IconSettings,
   IconUser,
 } from '@tabler/icons-react'
@@ -31,7 +32,6 @@ import clsx from 'clsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AdaptiveModal } from './components/common/AdaptiveModal'
-import { ScalableIcon } from './components/common/ScalableIcon'
 import ThemeSwitchButton from './components/dev/ThemeSwitchButton'
 import SessionList from './components/session/SessionList'
 import { FORCE_ENABLE_DEV_PAGES } from './dev/devToolsConfig'
@@ -61,6 +61,7 @@ export default function Sidebar() {
   const showSidebar = useUIStore((s) => s.showSidebar)
   const setShowSidebar = useUIStore((s) => s.setShowSidebar)
   const setSidebarWidth = useUIStore((s) => s.setSidebarWidth)
+  const setOpenSearchDialog = useUIStore((s) => s.setOpenSearchDialog)
 
   const sessionListViewportRef = useRef<HTMLDivElement>(null)
 
@@ -211,112 +212,99 @@ export default function Sidebar() {
           className="relative studio-rail"
         >
           {needRoomForMacWindowControls && <Box className="title-bar flex-[0_0_44px]" />}
-          <Flex align="center" justify="space-between" px="md" pt="md" pb="sm">
-            <Flex align="center" gap="sm" miw={0}>
-              <Image src={icon} w={22} h={22} className="shrink-0" />
-              <Stack gap={2} miw={0}>
-                <Text span c="chatbox-primary" size="md" lh={1.1} fw={700} className="tracking-tight">
-                  Chaeboxi
-                </Text>
-                <Text
-                  span
-                  size="xs"
-                  c="chatbox-tertiary"
-                  className="font-[family-name:var(--chatbox-font-mono)] uppercase tracking-wider"
-                  style={{ fontSize: '0.7rem', letterSpacing: '0.04em' }}
-                >
-                  Studio
-                </Text>
-              </Stack>
+
+          {/* Rail head — Grok DNA: wordmark + collapse */}
+          <Flex align="center" justify="space-between" px="sm" pt="sm" pb="xs" className="rail-head">
+            <Flex align="center" gap={8} miw={0}>
+              <Image src={icon} w={20} h={20} className="shrink-0 rounded-[5px]" />
+              <Text span c="chatbox-primary" size="sm" lh={1.2} fw={600} className="tracking-tight truncate">
+                Chaeboxi
+              </Text>
               {FORCE_ENABLE_DEV_PAGES && <ThemeSwitchButton size="xs" />}
             </Flex>
-
-            <Tooltip label={t('Collapse')} openDelay={1000} withArrow>
-              <ActionIcon variant="subtle" color="chatbox-tertiary" size={28} onClick={() => setShowSidebar(false)}>
-                <IconLayoutSidebarLeftCollapse size={16} />
+            <Tooltip label={t('Collapse')} openDelay={800} withArrow>
+              <ActionIcon
+                variant="subtle"
+                color="chatbox-tertiary"
+                size={28}
+                radius="md"
+                onClick={() => setShowSidebar(false)}
+                aria-label={t('Collapse')}
+              >
+                <IconLayoutSidebarLeftCollapse size={16} stroke={1.5} />
               </ActionIcon>
             </Tooltip>
           </Flex>
 
-          <Box px="sm" pb="sm" pt={2}>
-            <Button
-              fullWidth
-              color="chatbox-brand"
-              variant="filled"
-              h={40}
-              radius="md"
-              fw={600}
-              styles={{
-                root: {
-                  letterSpacing: '-0.01em',
-                  background: 'var(--chatbox-background-brand-primary)',
-                  '&:hover': { background: 'var(--chatbox-background-brand-primary-hover)' },
-                },
-                label: { width: '100%' },
-                inner: { justifyContent: 'space-between' },
+          {/* Quiet nav stack — Grok: icon + label rows, no solid CTA block */}
+          <nav className="rail-nav" aria-label={t('Navigation')}>
+            <button
+              type="button"
+              className="rail-nav-item"
+              onClick={() => {
+                setOpenSearchDialog(true, true)
+                closeSidebarIfMobile()
               }}
-              onClick={handleCreateNewSession}
-              rightSection={
-                !isSmallScreen ? (
-                  <Text
-                    component="span"
-                    size="xs"
-                    className="opacity-80 border border-white/25 rounded"
-                    style={{
-                      fontSize: '0.7rem',
-                      fontFamily: 'var(--chatbox-font-mono)',
-                      fontWeight: 500,
-                      padding: '0.12rem 0.32rem',
-                    }}
-                  >
-                    ⌘N
-                  </Text>
-                ) : undefined
-              }
-              leftSection={<ScalableIcon icon={IconCirclePlus} size={16} />}
             >
-              {t('New Chat')}
-            </Button>
-          </Box>
+              <IconSearch size={18} stroke={1.5} aria-hidden />
+              <span>{t('Search')}</span>
+            </button>
+            <button type="button" className="rail-nav-item" onClick={handleCreateNewSession}>
+              <IconEdit size={18} stroke={1.5} aria-hidden />
+              <span>{t('New Chat')}</span>
+              {!isSmallScreen && <kbd className="rail-nav-kbd">⌘N</kbd>}
+            </button>
+            <button
+              type="button"
+              className="rail-nav-item"
+              onClick={() => {
+                handleCreateNewPictureSession()
+              }}
+            >
+              <IconPhotoPlus size={18} stroke={1.5} aria-hidden />
+              <span>{t('Imagine')}</span>
+            </button>
+            {CHATBOX_BUILD_PLATFORM !== 'android' && (
+              <button
+                type="button"
+                className="rail-nav-item"
+                onClick={() => {
+                  navigate({ to: '/copilots' })
+                  closeSidebarIfMobile()
+                }}
+              >
+                <IconMessageChatbot size={18} stroke={1.5} aria-hidden />
+                <span>{t('Copilots')}</span>
+                {copilotCount > 0 && <em className="rail-nav-badge">{copilotCount}</em>}
+              </button>
+            )}
+          </nav>
 
-          <Flex px="md" pb="sm" gap="xs">
-            <Button
-              variant="default"
-              flex={1}
-              h={34}
-              radius="md"
-              fw={500}
-              styles={{
-                root: {
-                  background: 'var(--chatbox-background-primary)',
-                  borderColor: 'var(--chatbox-border-primary)',
-                  color: 'var(--chatbox-tint-secondary)',
-                },
-              }}
-              onClick={() => setFolderModalOpened(true)}
-            >
-              <ScalableIcon icon={IconFolder} size={15} className="mr-1.5" />
-              {t('New Folder')}
-            </Button>
+          {/* Projects / History chrome tools */}
+          <Flex px="sm" pb={6} pt={2} gap={4} align="center" className="rail-tools">
+            <Tooltip label={t('New Folder')} withArrow>
+              <ActionIcon
+                size={28}
+                radius="md"
+                variant="subtle"
+                color="chatbox-tertiary"
+                onClick={() => setFolderModalOpened(true)}
+                aria-label={t('New Folder')}
+              >
+                <IconFolderPlus size={16} stroke={1.5} />
+              </ActionIcon>
+            </Tooltip>
             <Tooltip label={showArchived ? t('Show Active Chats') : t('Show Archived Chats')} withArrow>
               <ActionIcon
-                size={34}
+                size={28}
                 radius="md"
-                variant={showArchived ? 'filled' : 'default'}
-                color={showArchived ? 'chatbox-brand' : 'chatbox-gray'}
-                styles={
-                  showArchived
-                    ? undefined
-                    : {
-                        root: {
-                          background: 'var(--chatbox-background-primary)',
-                          border: '1px solid var(--chatbox-border-primary)',
-                        },
-                      }
-                }
+                variant={showArchived ? 'light' : 'subtle'}
+                color={showArchived ? 'chatbox-brand' : 'chatbox-tertiary'}
                 onClick={() => setShowArchived((value) => !value)}
+                aria-label={showArchived ? t('Show Active Chats') : t('Show Archived Chats')}
+                aria-pressed={showArchived}
               >
-                <IconArchive size={16} />
+                <IconArchive size={16} stroke={1.5} />
               </ActionIcon>
             </Tooltip>
           </Flex>
@@ -382,9 +370,7 @@ export default function Sidebar() {
                 {CHATBOX_BUILD_PLATFORM !== 'android' && (
                   <Menu.Item
                     leftSection={<IconMessageChatbot size={15} stroke={1.5} />}
-                    rightSection={
-                      copilotCount > 0 ? <em className="user-menu-badge">{copilotCount}</em> : undefined
-                    }
+                    rightSection={copilotCount > 0 ? <em className="user-menu-badge">{copilotCount}</em> : undefined}
                     onClick={() => {
                       navigate({ to: '/copilots' })
                       closeSidebarIfMobile()

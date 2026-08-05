@@ -1,5 +1,6 @@
 import { Alert, Button, Flex, Loader, SegmentedControl, Stack, Text, TextInput } from '@mantine/core'
 import {
+  humanizeOAuthNetworkError,
   pollDeviceAuth,
   resolveXaiAuthMode,
   settingsPatchFromOAuthTokens,
@@ -92,7 +93,7 @@ export function XaiAuthSection({ providerSettings, setProviderSettings }: XaiAut
         err instanceof XaiOAuthError
           ? err.message
           : err instanceof Error
-            ? err.message
+            ? humanizeOAuthNetworkError(err)
             : t('Sign-in failed. Please try again.')
       setErrorMessage(message)
       setPhase('error')

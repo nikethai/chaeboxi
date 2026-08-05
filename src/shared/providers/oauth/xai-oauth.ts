@@ -3,7 +3,11 @@
  *
  * Uses the public Grok CLI OAuth client (same pattern as Hermes, OpenCode, etc.).
  * Endpoints confirmed via OIDC discovery at https://auth.x.ai/.well-known/openid-configuration
+ *
+ * Network: defaults to Tauri desktop HTTP IPC (no CORS). Pass fetchImpl to override (tests).
  */
+
+import { defaultOAuthFetch } from './desktop-http-fetch'
 
 export const XAI_OAUTH_CLIENT_ID = 'b1a00492-073a-47ea-816f-4c329264a828'
 
@@ -58,8 +62,26 @@ export class XaiOAuthError extends Error {
 
 type FetchLike = typeof fetch
 
+function resolveFetch(fetchImpl?: FetchLike): FetchLike {
+  return fetchImpl || defaultOAuthFetch()
+}
+
 function formBody(params: Record<string, string>): string {
   return new URLSearchParams(params).toString()
+}
+
+/** Map raw network failures to a clearer user-facing message. */
+export function humanizeOAuthNetworkError(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err)
+  if (
+    message === 'Load failed' ||
+    message.includes('Failed to fetch') ||
+    message.includes('NetworkError') ||
+    message.includes('CORS')
+  ) {
+    return 'Could not reach auth.x.ai (network/CORS). Use the desktop app build, check your connection, then try again.'
+  }
+  return message
 }
 
 function parseJsonSafe(text: string): unknown {
@@ -108,21 +130,26 @@ export async function startDeviceAuth(
     fetchImpl?: FetchLike
   } = {}
 ): Promise<XaiDeviceCodeResponse> {
-  const fetchImpl = options.fetchImpl || fetch
+  const fetchImpl = resolveFetch(options.fetchImpl)
   const clientId = options.clientId || XAI_OAUTH_CLIENT_ID
   const scope = options.scope || XAI_OAUTH_SCOPES
 
-  const res = await fetchImpl(XAI_DEVICE_CODE_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Accept: 'application/json',
-    },
-    body: formBody({
-      client_id: clientId,
-      scope,
-    }),
-  })
+  let res: Response
+  try {
+    res = await fetchImpl(XAI_DEVICE_CODE_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'application/json',
+      },
+      body: formBody({
+        client_id: clientId,
+        scope,
+      }),
+    })
+  } catch (err) {
+    throw new XaiOAuthError(humanizeOAuthNetworkError(err), 'network_error')
+  }
 
   const text = await res.text()
   const json = parseJsonSafe(text)
@@ -166,22 +193,30 @@ export async function pollDeviceAuthOnce(
     now?: number
   } = {}
 ): Promise<PollDeviceAuthResult> {
-  const fetchImpl = options.fetchImpl || fetch
+  const fetchImpl = resolveFetch(options.fetchImpl)
   const clientId = options.clientId || XAI_OAUTH_CLIENT_ID
   const now = options.now ?? Date.now()
 
-  const res = await fetchImpl(XAI_TOKEN_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Accept: 'application/json',
-    },
-    body: formBody({
-      grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
-      device_code: deviceCode,
-      client_id: clientId,
-    }),
-  })
+  let res: Response
+  try {
+    res = await fetchImpl(XAI_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'application/json',
+      },
+      body: formBody({
+        grant_type: 'urn:ietf:params:oauth:grant-type:device_code',
+        device_code: deviceCode,
+        client_id: clientId,
+      }),
+    })
+  } catch (err) {
+    return {
+      status: 'error',
+      error: new XaiOAuthError(humanizeOAuthNetworkError(err), 'network_error'),
+    }
+  }
 
   const text = await res.text()
   const json = parseJsonSafe(text) as Record<string, unknown> | undefined
@@ -269,22 +304,27 @@ export async function refreshAccessToken(
     now?: number
   } = {}
 ): Promise<XaiOAuthTokens> {
-  const fetchImpl = options.fetchImpl || fetch
+  const fetchImpl = resolveFetch(options.fetchImpl)
   const clientId = options.clientId || XAI_OAUTH_CLIENT_ID
   const now = options.now ?? Date.now()
 
-  const res = await fetchImpl(XAI_TOKEN_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      Accept: 'application/json',
-    },
-    body: formBody({
-      grant_type: 'refresh_token',
-      refresh_token: refreshToken,
-      client_id: clientId,
-    }),
-  })
+  let res: Response
+  try {
+    res = await fetchImpl(XAI_TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'application/json',
+      },
+      body: formBody({
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+        client_id: clientId,
+      }),
+    })
+  } catch (err) {
+    throw new XaiOAuthError(humanizeOAuthNetworkError(err), 'network_error')
+  }
 
   const text = await res.text()
   const json = parseJsonSafe(text) as Record<string, unknown> | undefined

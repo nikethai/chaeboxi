@@ -62,11 +62,15 @@ import {
   getQwenPresetModels,
   QwenPlanSelector,
 } from '@/components/settings/QwenPlanSelector'
+import { GeminiAntigravityAuthSection } from '@/components/settings/GeminiAntigravityAuthSection'
 import { OpenAICodexAuthSection } from '@/components/settings/OpenAICodexAuthSection'
 import { XaiAuthSection } from '@/components/settings/XaiAuthSection'
 import {
+  isGeminiAntigravityOAuthSignedIn,
   isOpenAICodexOAuthSignedIn,
   isXaiOAuthSignedIn,
+  resolveGeminiAuthMode,
+  resolveGeminiCredential,
   resolveOpenAIAuthMode,
   resolveOpenAIBearer,
   resolveXaiAuthMode,
@@ -252,10 +256,13 @@ function ProviderSettings({ providerId }: { providerId: string }) {
     baseInfo?.id === ModelProviderEnum.XAI && resolveXaiAuthMode(providerSettings) === 'oauth'
   const isOpenAICodexOAuthMode =
     baseInfo?.id === ModelProviderEnum.OpenAI && resolveOpenAIAuthMode(providerSettings) === 'oauth'
-  const isSubscriptionOAuthMode = isXaiOAuthMode || isOpenAICodexOAuthMode
+  const isGeminiAntigravityOAuthMode =
+    baseInfo?.id === ModelProviderEnum.Gemini && resolveGeminiAuthMode(providerSettings) === 'oauth'
+  const isSubscriptionOAuthMode = isXaiOAuthMode || isOpenAICodexOAuthMode || isGeminiAntigravityOAuthMode
   const isSubscriptionOAuthSignedIn =
     (baseInfo?.id === ModelProviderEnum.XAI && isXaiOAuthSignedIn(providerSettings)) ||
-    (baseInfo?.id === ModelProviderEnum.OpenAI && isOpenAICodexOAuthSignedIn(providerSettings))
+    (baseInfo?.id === ModelProviderEnum.OpenAI && isOpenAICodexOAuthSignedIn(providerSettings)) ||
+    (baseInfo?.id === ModelProviderEnum.Gemini && isGeminiAntigravityOAuthSignedIn(providerSettings))
   const isBuiltinOpenAICompatible =
     !!baseInfo &&
     !baseInfo.isCustom &&
@@ -266,8 +273,9 @@ function ProviderSettings({ providerId }: { providerId: string }) {
       [ModelProviderEnum.OpenAIResponses, ModelProviderEnum.Claude, ModelProviderEnum.Gemini].includes(
         baseInfo?.id as ModelProviderEnum
       )) &&
-    // Hide API Host for ChatGPT subscription path (fixed WHAM backend)
-    !isOpenAICodexOAuthMode
+    // Hide API Host for subscription OAuth paths (fixed backends)
+    !isOpenAICodexOAuthMode &&
+    !isGeminiAntigravityOAuthMode
 
   const handleApiKeyChange = (e: ChangeEvent<HTMLInputElement>) => {
     setProviderSettings({
@@ -567,7 +575,8 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         {/* Provider description — dual-auth providers have their own help copy */}
         {baseInfo.description &&
           baseInfo.id !== ModelProviderEnum.XAI &&
-          baseInfo.id !== ModelProviderEnum.OpenAI && (
+          baseInfo.id !== ModelProviderEnum.OpenAI &&
+          baseInfo.id !== ModelProviderEnum.Gemini && (
           <Stack gap="xxs">
             <Text span size="xs" c="chatbox-tertiary">
               {t(baseInfo.description)}
@@ -583,6 +592,14 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         {/* OpenAI dual auth: ChatGPT subscription (Codex) or Platform API key */}
         {baseInfo.id === ModelProviderEnum.OpenAI && (
           <OpenAICodexAuthSection
+            providerSettings={providerSettings}
+            setProviderSettings={setProviderSettings}
+          />
+        )}
+
+        {/* Gemini dual auth: Antigravity Google OAuth or AI Studio API key */}
+        {baseInfo.id === ModelProviderEnum.Gemini && (
+          <GeminiAntigravityAuthSection
             providerSettings={providerSettings}
             setProviderSettings={setProviderSettings}
           />
@@ -638,7 +655,8 @@ function ProviderSettings({ providerId }: { providerId: string }) {
             {baseInfo.urls?.apiKey &&
               baseInfo.id !== ModelProviderEnum.Qwen &&
               baseInfo.id !== ModelProviderEnum.XAI &&
-              baseInfo.id !== ModelProviderEnum.OpenAI && (
+              baseInfo.id !== ModelProviderEnum.OpenAI &&
+              baseInfo.id !== ModelProviderEnum.Gemini && (
               <Button
                 variant="subtle"
                 size="compact-xs"
@@ -683,6 +701,11 @@ function ProviderSettings({ providerId }: { providerId: string }) {
               {isOpenAICodexOAuthMode && resolveOpenAIBearer(providerSettings) ? (
                 <Text size="xs" c="chatbox-secondary">
                   {t('Uses your ChatGPT subscription')}
+                </Text>
+              ) : null}
+              {isGeminiAntigravityOAuthMode && resolveGeminiCredential(providerSettings) ? (
+                <Text size="xs" c="chatbox-secondary">
+                  {t('Uses your Google / Antigravity session')}
                 </Text>
               ) : null}
             </Flex>

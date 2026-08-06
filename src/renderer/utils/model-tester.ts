@@ -4,6 +4,7 @@ import type { Config, Settings } from '@shared/types'
 import type { ModelDependencies } from '@shared/types/adapters'
 import { tool } from 'ai'
 import { z } from 'zod'
+import { refreshGeminiAntigravityAuthIfNeeded } from '@/utils/gemini-antigravity-auth-refresh'
 import { refreshOpenAICodexAuthIfNeeded } from '@/utils/openai-codex-auth-refresh'
 import { refreshXaiAuthIfNeeded } from '@/utils/xai-auth-refresh'
 
@@ -50,6 +51,7 @@ export async function testModelCapabilities(options: TestModelOptions): Promise<
   try {
     let authReadySettings = await refreshXaiAuthIfNeeded(settings, providerId)
     authReadySettings = await refreshOpenAICodexAuthIfNeeded(authReadySettings, providerId)
+    authReadySettings = await refreshGeminiAntigravityAuthIfNeeded(authReadySettings, providerId)
     const modelInstance = getModel(
       { ...authReadySettings, provider: providerId, modelId },
       authReadySettings,

@@ -120,8 +120,19 @@ export default class DesktopPlatform implements Platform {
     return this.ipc.invoke('getSettings')
   }
 
+  /**
+   * Keys shared across all desktop windows via Tauri disk store.
+   * Sessions must be shared so quick chat + main webview stay in sync
+   * (each window has its own React Query cache / may partition IndexedDB).
+   */
   private needStoreInFile(key: string): boolean {
-    return key === 'configs' || key === 'settings' || key === 'configVersion'
+    return (
+      key === 'configs' ||
+      key === 'settings' ||
+      key === 'configVersion' ||
+      key === 'chat-sessions-list' ||
+      key.startsWith('session:')
+    )
   }
 
   public async setStoreValue(key: string, value: any) {
@@ -141,7 +152,20 @@ export default class DesktopPlatform implements Platform {
   }
   public async getStoreValue(key: string) {
     if (this.needStoreInFile(key)) {
-      return this.ipc.invoke('getStoreValue', key)
+      let value = await this.ipc.invoke('getStoreValue', key)
+      // One-time migrate: older builds stored sessions only in IndexedDB
+      if ((value === null || value === undefined) && (key.startsWith('session:') || key === 'chat-sessions-list')) {
+        const json = await store.getItem<string>(key)
+        if (json) {
+          try {
+            value = typeof json === 'string' ? JSON.parse(json) : json
+            await this.ipc.invoke('setStoreValue', key, typeof json === 'string' ? json : JSON.stringify(value))
+          } catch (error) {
+            console.error(`Failed to migrate stored value for key "${key}":`, error)
+          }
+        }
+      }
+      return value ?? null
     } else {
       const json = await store.getItem<string>(key)
       if (!json) return null

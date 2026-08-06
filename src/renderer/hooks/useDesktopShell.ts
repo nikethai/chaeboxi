@@ -1,5 +1,6 @@
 /**
- * Desktop shell bootstrap: tray lifecycle events, screenshot attach, quick-window navigation.
+ * Desktop shell bootstrap: tray lifecycle, screenshot attach, quick-window navigation,
+ * and cross-window session sync (quick ↔ main).
  */
 import { getDefaultStore } from 'jotai'
 import { useEffect, useRef } from 'react'
@@ -10,7 +11,7 @@ import { router } from '@/router'
 import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import * as atoms from '@/stores/atoms'
-import { listSessionsMeta } from '@/stores/chatStore'
+import { invalidateAndRefetchSession, listSessionsMeta } from '@/stores/chatStore'
 import { settingsStore } from '@/stores/settingsStore'
 import * as toastActions from '@/stores/toastActions'
 
@@ -143,12 +144,55 @@ export function useDesktopShell() {
       }
     })
 
+    // Cross-window session sync: other webview wrote a session → reload from shared store
+    let unsubSession: (() => void) | undefined
+    let sessionListenDisposed = false
+    void (async () => {
+      try {
+        const { listen } = await import('@tauri-apps/api/event')
+        const dispose = await listen<{ sessionId?: string | null }>('session:changed', (event) => {
+          const sid = event.payload?.sessionId
+          void invalidateAndRefetchSession(sid || null)
+        })
+        if (sessionListenDisposed) {
+          dispose()
+        } else {
+          unsubSession = dispose
+        }
+      } catch {
+        // non-tauri
+      }
+    })()
+
+    // When this window is focused/shown again, force-refetch active session
+    // (staleTime: Infinity would otherwise keep pre-hide messages forever)
+    const refetchActiveSession = () => {
+      const path = router.state.location.pathname
+      const match = path.match(/^\/session\/([^/]+)/)
+      let sid: string | null = match?.[1] || null
+      if (!sid && path === '/quick') {
+        try {
+          sid = JSON.parse(localStorage.getItem('_currentSessionIdCachedAtom') || 'null') as string | null
+        } catch {
+          sid = null
+        }
+      }
+      void invalidateAndRefetchSession(sid)
+    }
+
+    const unsubFocus = platform.onWindowFocused?.(refetchActiveSession)
+    const unsubShow = platform.onWindowShow?.(refetchActiveSession)
+
     return () => {
+      sessionListenDisposed = true
       unsubNav?.()
       unsubPlatformNav?.()
       unsubShot?.()
       unsubErr?.()
       unsubHide?.()
+      unsubSession?.()
+      unsubFocus?.()
+      unsubShow?.()
     }
   }, [t])
 }

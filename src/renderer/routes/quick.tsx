@@ -171,7 +171,12 @@ function QuickChatPage() {
   }, [session])
 
   const openFullApp = useCallback(async () => {
+    // Ensure main reloads this session from shared store before/as it focuses
     if (sessionId) {
+      const { broadcastSessionChanged, invalidateAndRefetchSession } = await import('@/stores/chatStore')
+      await broadcastSessionChanged(sessionId)
+      // Local no-op for main; main will also get event + focus refetch
+      void invalidateAndRefetchSession(sessionId)
       await platform.openSessionInMain?.(sessionId)
     } else {
       await platform.showMainWindow?.()

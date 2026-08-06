@@ -54,13 +54,25 @@ const DesktopActionMenu: FC<ActionMenuProps> = ({
   const theme = useMantineTheme()
 
   return (
-    <Menu position={position} {...menuProps}>
+    <Menu
+      position={position}
+      radius="md"
+      shadow="md"
+      offset={6}
+      classNames={{
+        dropdown: 'action-menu-dropdown',
+        item: 'action-menu-item',
+        itemSection: 'action-menu-item-section',
+        itemLabel: 'action-menu-item-label',
+      }}
+      {...menuProps}
+    >
       <Menu.Target>{children}</Menu.Target>
 
-      <Menu.Dropdown miw={150} onClick={(e) => e.stopPropagation()}>
+      <Menu.Dropdown miw={180} onClick={(e) => e.stopPropagation()}>
         {items.map((item, index) =>
           item.divider ? (
-            <Divider key={`divider-${item.divider}-${index}`} className="my-xxs" />
+            <Divider key={`divider-${item.divider}-${index}`} className="action-menu-divider my-1" />
           ) : item.doubleCheck ? (
             <DoubleCheckMenuItem
               key={`${item.text}${index}`}
@@ -75,7 +87,7 @@ const DesktopActionMenu: FC<ActionMenuProps> = ({
           ) : (
             <Menu.Item
               key={`${item.text}${index}`}
-              leftSection={item.icon ? <ScalableIcon icon={item.icon} size={14} /> : undefined}
+              leftSection={item.icon ? <ScalableIcon icon={item.icon} size={15} stroke={1.5} /> : undefined}
               color={item.color || 'chatbox-primary'}
               style={{
                 color: theme.variantColorResolver({ color: item.color || 'chatbox-primary', theme, variant: 'light' })

@@ -447,8 +447,13 @@ export async function generate(
     const dependencies = await createModelDependencies()
     const { refreshXaiAuthIfNeeded } = await import('@/utils/xai-auth-refresh')
     const { refreshOpenAICodexAuthIfNeeded } = await import('@/utils/openai-codex-auth-refresh')
+    const { refreshGeminiAntigravityAuthIfNeeded } = await import('@/utils/gemini-antigravity-auth-refresh')
     let authReadySettings = await refreshXaiAuthIfNeeded(globalSettings, effectiveSettings.provider)
     authReadySettings = await refreshOpenAICodexAuthIfNeeded(authReadySettings, effectiveSettings.provider)
+    authReadySettings = await refreshGeminiAntigravityAuthIfNeeded(
+      authReadySettings,
+      effectiveSettings.provider
+    )
     const model = getModel(effectiveSettings, authReadySettings, configs, dependencies)
     const sessionKnowledgeBaseMap = uiStore.getState().sessionKnowledgeBaseMap
     const knowledgeBase = sessionKnowledgeBaseMap[sessionId]

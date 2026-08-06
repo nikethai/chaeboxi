@@ -1,6 +1,12 @@
 import { ModelProviderEnum, ModelProviderType } from '../../types'
+import {
+  resolveGeminiAntigravityProjectId,
+  resolveGeminiAuthMode,
+  resolveGeminiCredential,
+} from '../oauth/gemini-antigravity-auth'
 import { defineProvider } from '../registry'
 import Gemini from './models/gemini'
+import GeminiAntigravity from './models/gemini-antigravity'
 
 export const geminiProvider = defineProvider({
   id: ModelProviderEnum.Gemini,
@@ -8,9 +14,14 @@ export const geminiProvider = defineProvider({
   type: ModelProviderType.Gemini,
   urls: {
     website: 'https://gemini.google.com/',
+    apiKey: 'https://aistudio.google.com/apikey',
+    docs: 'https://ai.google.dev/gemini-api/docs',
   },
+  description:
+    'Sign in with Google (Antigravity / experimental subscription quota) or use an AI Studio API key. Subscription and API billing are separate. Google sign-in is unofficial and may carry account risk.',
   defaultSettings: {
     apiHost: 'https://generativelanguage.googleapis.com',
+    authMode: 'api_key',
     // https://ai.google.dev/models/gemini
     models: [
       {
@@ -58,6 +69,22 @@ export const geminiProvider = defineProvider({
     ],
   },
   createModel: (config) => {
+    const mode = resolveGeminiAuthMode(config.providerSetting)
+    if (mode === 'oauth') {
+      return new GeminiAntigravity(
+        {
+          apiKey: resolveGeminiCredential(config.providerSetting),
+          projectId: resolveGeminiAntigravityProjectId(config.providerSetting),
+          model: config.model,
+          temperature: config.settings.temperature,
+          topP: config.settings.topP,
+          maxOutputTokens: config.settings.maxTokens,
+          stream: config.settings.stream,
+          useProxy: false,
+        },
+        config.dependencies
+      )
+    }
     return new Gemini(
       {
         geminiAPIKey: config.providerSetting.apiKey || '',
@@ -72,6 +99,8 @@ export const geminiProvider = defineProvider({
     )
   },
   getDisplayName: (modelId, providerSettings) => {
-    return `Gemini API (${providerSettings?.models?.find((m) => m.modelId === modelId)?.nickname || modelId})`
+    const mode = resolveGeminiAuthMode(providerSettings)
+    const nick = providerSettings?.models?.find((m) => m.modelId === modelId)?.nickname || modelId
+    return mode === 'oauth' ? `Gemini Antigravity (${nick})` : `Gemini API (${nick})`
   },
 })

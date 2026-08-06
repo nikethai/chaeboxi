@@ -13,6 +13,30 @@ The provider system uses a centralized registry. Adding a new provider requires:
 
 That's it. No more scattered switch statements or setting-util files.
 
+## Dual-auth providers (subscription OAuth + API key)
+
+Some providers support **two connection modes** via `ProviderSettings.authMode` (`oauth` | `api_key`) and `ProviderSettings.oauth`:
+
+| Provider | OAuth path | API key path |
+|----------|------------|--------------|
+| xAI | Device-code → SuperGrok / X Premium | console.x.ai |
+| OpenAI | Device-code → ChatGPT Codex / WHAM | platform.openai.com |
+| Gemini | PKCE Google sign-in → Antigravity / Cloud Code Assist (`cloudcode-pa`) | AI Studio |
+
+Shared pieces:
+
+- OAuth helpers under `src/shared/providers/oauth/`
+- Auth UI section under `src/renderer/components/settings/*AuthSection.tsx`
+- Chat-time token refresh under `src/renderer/utils/*-auth-refresh.ts` (wired in `generation.ts` + `model-tester.ts`)
+- `createModel` branches on `resolve*AuthMode` (see `definitions/openai.ts`, `definitions/gemini.ts`)
+
+**Gemini Antigravity notes:**
+
+- Experimental / unofficial third-party path — show risk UI; default remains `api_key`
+- Auth is browser PKCE + paste redirect URL (localhost callback often fails in app webviews)
+- Chat uses envelope + SSE unwrap in `definitions/models/gemini-antigravity.ts`
+- Do not fall back to API key while `authMode === 'oauth'`
+
 ## Step-by-Step Guide
 
 ### Step 1: Add Provider to Enum

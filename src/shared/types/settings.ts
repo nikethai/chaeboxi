@@ -81,6 +81,12 @@ export const ProviderSettingsSchema = z.object({
       /** Plan type from JWT claims when available (plus, pro, team, …) */
       planType: z.string().optional().catch(undefined),
       idToken: z.string().optional().catch(undefined),
+      /** Google Cloud / Cloud Code Assist project id (Antigravity / Gemini OAuth) */
+      projectId: z.string().optional().catch(undefined),
+      /** Signed-in Google account email (display only) */
+      email: z.string().optional().catch(undefined),
+      /** User accepted experimental Antigravity/Google OAuth risk notice */
+      riskAcceptedAt: z.number().optional().catch(undefined),
     })
     .optional()
     .catch(undefined),

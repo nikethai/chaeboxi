@@ -1,17 +1,5 @@
 import NiceModal from '@ebay/nice-modal-react'
-import {
-  ActionIcon,
-  Box,
-  Button,
-  Flex,
-  Loader,
-  Menu,
-  Stack,
-  Text,
-  Textarea,
-  Tooltip,
-  UnstyledButton,
-} from '@mantine/core'
+import { ActionIcon, Box, Button, Flex, Stack, Text, Textarea, Tooltip, UnstyledButton } from '@mantine/core'
 import { useViewportSize } from '@mantine/hooks'
 import {
   getFileAcceptString,
@@ -21,29 +9,10 @@ import {
 } from '@shared/file-extensions'
 import { getOrCreateGatewayClient } from '@shared/models/openclaw'
 import { getModel } from '@shared/providers'
-import { formatNumber } from '@shared/utils'
-import {
-  IconAdjustmentsHorizontal,
-  IconAlertCircle,
-  IconArrowBackUp,
-  IconArrowUp,
-  IconChevronRight,
-  IconCirclePlus,
-  IconFilePencil,
-  IconFolder,
-  IconHammer,
-  IconLink,
-  IconPhoto,
-  IconPlayerStopFilled,
-  IconPlus,
-  IconRobot,
-  IconSettings,
-  IconVocabulary,
-  IconWorldWww,
-} from '@tabler/icons-react'
+import { IconAlertCircle, IconArrowUp, IconChevronRight, IconFolder, IconPlayerStopFilled } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { useAtom, useAtomValue } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import _, { pick } from 'lodash'
 import type React from 'react'
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
@@ -67,20 +36,20 @@ import { trackingEvent } from '@/packages/event'
 import { replacePromptTemplateVars } from '@/packages/model-calls/message-utils'
 import { getModelContextWindowSync } from '@/packages/model-context'
 import * as picUtils from '@/packages/pic_utils'
+import { isWebSearchConfigured } from '@/packages/web-search/is-configured'
 import platform from '@/platform'
 import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import * as atoms from '@/stores/atoms'
 import { compactionUIStateMapAtom } from '@/stores/atoms/compactionAtoms'
+import { composerTokenMenuAtom } from '@/stores/atoms/uiAtoms'
 import * as chatStore from '@/stores/chatStore'
 import { useSession, useSessionSettings } from '@/stores/chatStore'
 import { usePromptPresets } from '@/stores/promptPresetsStore'
 import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 import { delay } from '@/utils'
-import { featureFlags } from '@/utils/feature-flags'
 import { trackEvent } from '@/utils/track'
-import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 import type { KnowledgeBase, Message, SessionType, ShortcutSendValue } from '../../../shared/types'
 import { ModelProviderEnum } from '../../../shared/types'
 import * as dom from '../../hooks/dom'
@@ -90,10 +59,9 @@ import { CompactionStatus } from '../chat/CompactionStatus'
 import { CompressionModal } from '../common/CompressionModal'
 import { ScalableIcon } from '../common/ScalableIcon'
 import ProviderImageIcon from '../icons/ProviderImageIcon'
-import KnowledgeBaseMenu from '../knowledge-base/KnowledgeBaseMenu'
 import ModelSelector from '../ModelSelector'
-import MCPMenu from '../mcp/MCPMenu'
 import { FileMiniCard, ImageMiniCard, LinkMiniCard } from './Attachments'
+import ComposerToolsMenu from './ComposerToolsMenu'
 import { ImageUploadInput } from './ImageUploadInput'
 import OpenClawCommandPicker, { filterOpenClawCommands, getCommandAlias } from './OpenClawCommandPicker'
 import PresetPicker, { filterPresets } from './PresetPicker'
@@ -108,7 +76,6 @@ import {
   storeLinkPromise,
 } from './preprocessState'
 import QueuedMessageList from './QueuedMessageList'
-import TokenCountMenu from './TokenCountMenu'
 
 export type InputBoxPayload = {
   constructedMessage: Message
@@ -177,18 +144,19 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const currentSessionId = sessionId
     const isNewSession = currentSessionId === 'new'
 
-    // Session-level web browsing mode
+    // Session-level web browsing mode (default ON when search is configured)
     const sessionWebBrowsingMap = useUIStore((s) => s.sessionWebBrowsingMap)
     const setSessionWebBrowsing = useUIStore((s) => s.setSessionWebBrowsing)
     const updateCurrentWebBrowsingDisplay = useUIStore((s) => s.updateCurrentWebBrowsingDisplay)
-    // Get session-specific value, or use default.
+    const extensionWebSearch = useSettingsStore((s) => s.extension.webSearch)
+    const webSearchConfigured = useMemo(() => isWebSearchConfigured(extensionWebSearch), [extensionWebSearch])
     const webBrowsingMode = useMemo(() => {
       const sessionValue = sessionWebBrowsingMap[currentSessionId || 'new']
       if (sessionValue !== undefined) {
         return sessionValue
       }
-      return false
-    }, [sessionWebBrowsingMap, currentSessionId])
+      return webSearchConfigured
+    }, [sessionWebBrowsingMap, currentSessionId, webSearchConfigured])
 
     // this is used for keyboard shortcut. if we don't provide this, kbd wont know what to set when it's a new session(it doesnt have provider info)
     useEffect(() => {
@@ -382,12 +350,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       return null
     }, [modelInfo?.contextWindow, model?.modelId])
 
-    // Calculate token usage percentage
-    const tokenPercentage = useMemo(() => {
-      if (!effectiveContextWindow || effectiveContextWindow <= 0) return null
-      return Math.round((totalTokens / effectiveContextWindow) * 100)
-    }, [totalTokens, effectiveContextWindow])
-
     useEffect(() => {
       if (!currentSessionId || isNewSession) {
         setIsCompacting(false)
@@ -419,6 +381,52 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       },
       [currentSessionId, isNewSession]
     )
+
+    // Publish token menu state to statusline (composer chip removed)
+    const setComposerTokenMenu = useSetAtom(composerTokenMenuAtom)
+    useEffect(() => {
+      if (!currentSessionId) {
+        setComposerTokenMenu(null)
+        return
+      }
+      setComposerTokenMenu({
+        sessionId: currentSessionId,
+        currentInputTokens,
+        contextTokens,
+        totalTokens,
+        isCalculating,
+        pendingTasks,
+        totalContextMessages: messageCount,
+        contextWindow: effectiveContextWindow ?? undefined,
+        currentMessageCount: currentContextMessageIds?.length ?? 0,
+        maxContextMessageCount: currentSessionMergedSettings?.maxContextMessageCount,
+        autoCompactionEnabled,
+        isCompacting,
+        contextWindowKnown,
+        onCompressClick: !isNewSession ? () => setShowCompressionModal(true) : undefined,
+        onAutoCompactionChange: !isNewSession ? handleAutoCompactionChange : undefined,
+      })
+      return () => {
+        setComposerTokenMenu((prev) => (prev?.sessionId === currentSessionId ? null : prev))
+      }
+    }, [
+      currentSessionId,
+      currentInputTokens,
+      contextTokens,
+      totalTokens,
+      isCalculating,
+      pendingTasks,
+      messageCount,
+      effectiveContextWindow,
+      currentContextMessageIds?.length,
+      currentSessionMergedSettings?.maxContextMessageCount,
+      autoCompactionEnabled,
+      isCompacting,
+      contextWindowKnown,
+      isNewSession,
+      handleAutoCompactionChange,
+      setComposerTokenMenu,
+    ])
 
     const [showSelectModelErrorTip, setShowSelectModelErrorTip] = useState(false)
     useEffect(() => {
@@ -1287,215 +1295,41 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 accept={getFileAcceptString()}
               />
 
-              {/* Left Group: Tool Buttons */}
+              {/* Left Group: single overflow control */}
               <Flex align="center" gap={0} className="min-w-0 flex-1 flex-wrap">
-                <AttachmentMenu
+                <ComposerToolsMenu
+                  isOpenClawModel={isOpenClawModel}
+                  sessionType={sessionType}
+                  webBrowsingMode={webBrowsingMode}
+                  webSearchConfigured={webSearchConfigured}
+                  onWebBrowsingChange={(enabled) => {
+                    setWebBrowsingMode(enabled)
+                    dom.focusMessageInput()
+                  }}
+                  agentMode={agentMode}
+                  onToggleAgentMode={toggleAgentMode}
+                  knowledgeBaseId={knowledgeBase?.id}
+                  onSelectKnowledgeBase={handleKnowledgeBaseSelect}
+                  showRollbackThreadButton={showRollbackThreadButton}
+                  onStartNewThread={onStartNewThread ? startNewThread : undefined}
+                  onRollbackThread={onRollbackThread ? rollbackThread : undefined}
+                  onClickSessionSettings={
+                    onClickSessionSettings
+                      ? () => {
+                          void onClickSessionSettings()
+                        }
+                      : undefined
+                  }
                   onImageUploadClick={onImageUploadClick}
                   onFileUploadClick={onFileUploadClick}
-                  handleAttachLink={handleAttachLink}
-                  t={t}
+                  onAttachLink={handleAttachLink}
+                  toolbarButtonClass={toolbarButtonClass}
+                  toolbarIconSize={toolbarIconSize}
                 />
-
-                {featureFlags.mcp && !isOpenClawModel && (
-                  <MCPMenu>
-                    {(enabledTools) => (
-                      <UnstyledButton className={toolbarButtonClass}>
-                        <IconHammer
-                          size={toolbarIconSize}
-                          strokeWidth={1.8}
-                          className={
-                            enabledTools > 0
-                              ? 'text-[var(--chatbox-tint-brand)]'
-                              : 'text-[var(--chatbox-tint-secondary)]'
-                          }
-                        />
-                        {enabledTools > 0 && (
-                          <Text size="xs" className="text-[var(--chatbox-tint-brand)]">
-                            {enabledTools}
-                          </Text>
-                        )}
-                      </UnstyledButton>
-                    )}
-                  </MCPMenu>
-                )}
-
-                {featureFlags.knowledgeBase && !isSmallScreen && !isOpenClawModel && (
-                  <KnowledgeBaseMenu currentKnowledgeBaseId={knowledgeBase?.id} onSelect={handleKnowledgeBaseSelect}>
-                    <UnstyledButton className={toolbarButtonClass}>
-                      <IconVocabulary
-                        size={toolbarIconSize}
-                        strokeWidth={1.8}
-                        className={
-                          knowledgeBase ? 'text-[var(--chatbox-tint-brand)]' : 'text-[var(--chatbox-tint-secondary)]'
-                        }
-                      />
-                    </UnstyledButton>
-                  </KnowledgeBaseMenu>
-                )}
-
-                {!isOpenClawModel && (
-                  <Tooltip label={t('Web Search')} position="top" withArrow disabled={isSmallScreen}>
-                    <UnstyledButton
-                      onClick={() => {
-                        setWebBrowsingMode(!webBrowsingMode)
-                        dom.focusMessageInput()
-                      }}
-                      className={toolbarButtonClass}
-                    >
-                      <IconWorldWww
-                        size={toolbarIconSize}
-                        strokeWidth={1.8}
-                        className={
-                          webBrowsingMode ? 'text-[var(--chatbox-tint-brand)]' : 'text-[var(--chatbox-tint-secondary)]'
-                        }
-                      />
-                    </UnstyledButton>
-                  </Tooltip>
-                )}
-
-                {sessionType === 'chat' &&
-                  !isOpenClawModel &&
-                  !isSmallScreen &&
-                  CHATBOX_BUILD_PLATFORM !== 'android' && (
-                    <Tooltip
-                      label={t('Agent Mode: Enables autonomous multi-step tool use')}
-                      position="top"
-                      withArrow
-                      disabled={isSmallScreen}
-                    >
-                      <UnstyledButton onClick={toggleAgentMode} className={toolbarButtonClass}>
-                        <IconRobot
-                          size={toolbarIconSize}
-                          strokeWidth={1.8}
-                          className={
-                            agentMode ? 'text-[var(--chatbox-tint-brand)]' : 'text-[var(--chatbox-tint-secondary)]'
-                          }
-                        />
-                      </UnstyledButton>
-                    </Tooltip>
-                  )}
-
-                {!isSmallScreen &&
-                  (showRollbackThreadButton ? (
-                    <Tooltip label={t('Rollback Thread')} position="top" withArrow>
-                      <UnstyledButton onClick={rollbackThread} className={toolbarButtonClass}>
-                        <IconArrowBackUp
-                          size={toolbarIconSize}
-                          strokeWidth={1.8}
-                          className="text-[var(--chatbox-tint-secondary)]"
-                        />
-                      </UnstyledButton>
-                    </Tooltip>
-                  ) : (
-                    <Tooltip label={t('New Thread')} position="top" withArrow>
-                      <UnstyledButton
-                        onClick={startNewThread}
-                        disabled={!onStartNewThread}
-                        className={cn(toolbarButtonClass, 'disabled:opacity-50')}
-                      >
-                        <IconFilePencil
-                          size={toolbarIconSize}
-                          strokeWidth={1.8}
-                          className="text-[var(--chatbox-tint-secondary)]"
-                        />
-                      </UnstyledButton>
-                    </Tooltip>
-                  ))}
-
-                {!isSmallScreen && (
-                  <Tooltip label={t('Conversation Settings')} position="top" withArrow>
-                    <UnstyledButton
-                      onClick={onClickSessionSettings}
-                      disabled={!onClickSessionSettings}
-                      className={cn(toolbarButtonClass, 'disabled:opacity-50')}
-                    >
-                      <IconAdjustmentsHorizontal
-                        size={toolbarIconSize}
-                        strokeWidth={1.8}
-                        className="text-[var(--chatbox-tint-secondary)]"
-                      />
-                    </UnstyledButton>
-                  </Tooltip>
-                )}
-
-                {/* Mobile: Settings menu */}
-                {isSmallScreen && (
-                  <Menu
-                    trigger="click"
-                    openDelay={100}
-                    closeDelay={100}
-                    keepMounted
-                    transitionProps={{
-                      transition: 'pop',
-                      duration: 200,
-                    }}
-                  >
-                    <Menu.Target>
-                      <UnstyledButton className={toolbarButtonClass}>
-                        <IconSettings
-                          size={toolbarIconSize}
-                          strokeWidth={1.8}
-                          className="text-[var(--chatbox-tint-secondary)]"
-                        />
-                      </UnstyledButton>
-                    </Menu.Target>
-                    <Menu.Dropdown>
-                      <Menu.Item leftSection={<ScalableIcon icon={IconPlus} size={16} />} onClick={startNewThread}>
-                        {t('New Thread')}
-                      </Menu.Item>
-                      {sessionType === 'chat' && !isOpenClawModel && CHATBOX_BUILD_PLATFORM !== 'android' && (
-                        <Menu.Item leftSection={<ScalableIcon icon={IconRobot} size={16} />} onClick={toggleAgentMode}>
-                          {t('Agent Mode')}
-                        </Menu.Item>
-                      )}
-                      <Menu.Item
-                        leftSection={<ScalableIcon icon={IconAdjustmentsHorizontal} size={16} />}
-                        onClick={onClickSessionSettings}
-                      >
-                        {t('Conversation Settings')}
-                      </Menu.Item>
-                    </Menu.Dropdown>
-                  </Menu>
-                )}
               </Flex>
 
-              {/* Right Group: Token Count + Model Selector + Send (mock .bar-right) */}
+              {/* Right Group: Model Selector + Send (token menu lives on statusline) */}
               <Flex align="center" gap={4} className="shrink-0">
-                {!isSmallScreen && (
-                  <TokenCountMenu
-                    currentInputTokens={currentInputTokens}
-                    contextTokens={contextTokens}
-                    totalTokens={totalTokens}
-                    isCalculating={isCalculating}
-                    pendingTasks={pendingTasks}
-                    totalContextMessages={messageCount}
-                    contextWindow={effectiveContextWindow ?? undefined}
-                    currentMessageCount={currentContextMessageIds?.length ?? 0}
-                    maxContextMessageCount={currentSessionMergedSettings?.maxContextMessageCount}
-                    onCompressClick={sessionId && !isNewSession ? () => setShowCompressionModal(true) : undefined}
-                    autoCompactionEnabled={autoCompactionEnabled}
-                    isCompacting={isCompacting}
-                    contextWindowKnown={contextWindowKnown}
-                    onAutoCompactionChange={sessionId && !isNewSession ? handleAutoCompactionChange : undefined}
-                  >
-                    <Flex
-                      align="center"
-                      gap="2"
-                      className={`${toolbarButtonClass} text-xs cursor-pointer hover:text-chatbox-tint-secondary ${
-                        tokenPercentage && tokenPercentage > 80 ? 'text-red-500' : 'text-chatbox-tint-tertiary'
-                      }`}
-                    >
-                      <ScalableIcon icon={IconArrowUp} size={14} />
-                      {isCalculating && <Loader size={10} />}
-                      <Text span size="xs" className="whitespace-nowrap" c="inherit">
-                        {isCalculating ? '~' : ''}
-                        {formatNumber(totalTokens)}
-                        {tokenPercentage !== null && tokenPercentage > 10 && ` (${tokenPercentage}%)`}
-                      </Text>
-                    </Flex>
-                  </TokenCountMenu>
-                )}
-
                 {/* Model Selector */}
                 <Tooltip
                   label={
@@ -1581,52 +1415,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     )
   }
 )
-
-// Reusable attachment menu component with lightweight style
-const AttachmentMenu: React.FC<{
-  onImageUploadClick: () => void
-  onFileUploadClick: () => void
-  handleAttachLink: () => void
-  t: (key: string) => string
-}> = ({ onImageUploadClick, onFileUploadClick, handleAttachLink, t }) => {
-  const isSmallScreen = useIsSmallScreen()
-  const toolbarIconSize = isSmallScreen ? 22 : 18
-  const toolbarButtonClass = cn(
-    'flex items-center gap-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors',
-    isSmallScreen ? 'px-2.5 py-1.5 rounded-xl min-h-9' : 'px-2 py-1'
-  )
-  return (
-    <Menu
-      shadow="md"
-      trigger={isSmallScreen ? 'click' : 'hover'}
-      position="top-start"
-      openDelay={100}
-      closeDelay={100}
-      keepMounted
-      transitionProps={{
-        transition: 'pop',
-        duration: 200,
-      }}
-    >
-      <Menu.Target>
-        <UnstyledButton className={toolbarButtonClass}>
-          <IconCirclePlus size={toolbarIconSize} strokeWidth={1.8} className="text-[var(--chatbox-tint-secondary)]" />
-        </UnstyledButton>
-      </Menu.Target>
-      <Menu.Dropdown>
-        <Menu.Item leftSection={<IconPhoto size={16} />} onClick={onImageUploadClick}>
-          {t('Attach Image')}
-        </Menu.Item>
-        <Menu.Item leftSection={<IconFolder size={16} />} onClick={onFileUploadClick}>
-          {t('Select File')}
-        </Menu.Item>
-        <Menu.Item leftSection={<IconLink size={16} />} onClick={handleAttachLink}>
-          {t('Attach Link')}
-        </Menu.Item>
-      </Menu.Dropdown>
-    </Menu>
-  )
-}
 
 // Memoize the InputBox component to prevent unnecessary re-renders during streaming
 export default memo(InputBox)

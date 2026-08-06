@@ -1,6 +1,6 @@
 import { ActionIcon, Box, Collapse, Group, Text } from '@mantine/core'
 import type { Message, MessageContentParts, MessageReasoningPart, MessageToolCallPart } from '@shared/types'
-import { IconBulb, IconCircleCheckFilled, IconCircleXFilled, IconCopy, IconLoader } from '@tabler/icons-react'
+import { IconBulb, IconCircleXFilled, IconCopy, IconLoader } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { type FC, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -135,31 +135,30 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
       <div className="msg-worked-row">
         <button type="button" className="msg-worked-toggle" onClick={toggleExpanded} aria-expanded={isExpanded}>
           <span className={clsx('msg-worked-label', isThinking && 'animate-shimmer shimmer-text')}>{headerLabel}</span>
-          {toolCount > 0 && (
+          {/* Attention chips only — hide zero success noise when all tools succeeded */}
+          {toolCount > 0 && hasAttentionToolState && (
             <Group gap={6} ml={4} wrap="nowrap" className="shrink-0">
-              <Group gap={3} wrap="nowrap">
-                <ScalableIcon icon={IconCircleXFilled} size={12} color="var(--chatbox-tint-error)" />
-                <Text size="xs" fw={500} className="tabular-nums" style={{ color: 'var(--chatbox-tint-error)' }}>
-                  {toolStatusCounts.failed}
-                </Text>
-              </Group>
-              <Group gap={3} wrap="nowrap">
-                <ScalableIcon
-                  icon={IconLoader}
-                  size={12}
-                  className={toolStatusCounts.running > 0 ? 'animate-spin' : undefined}
-                  color="var(--chatbox-tint-brand)"
-                />
-                <Text size="xs" fw={500} className="tabular-nums" style={{ color: 'var(--chatbox-tint-brand)' }}>
-                  {toolStatusCounts.running}
-                </Text>
-              </Group>
-              <Group gap={3} wrap="nowrap">
-                <ScalableIcon icon={IconCircleCheckFilled} size={12} color="var(--chatbox-tint-success)" />
-                <Text size="xs" fw={500} className="tabular-nums" style={{ color: 'var(--chatbox-tint-success)' }}>
-                  {toolStatusCounts.succeeded}
-                </Text>
-              </Group>
+              {toolStatusCounts.failed > 0 && (
+                <Group gap={3} wrap="nowrap">
+                  <ScalableIcon icon={IconCircleXFilled} size={12} color="var(--chatbox-tint-error)" />
+                  <Text size="xs" fw={500} className="tabular-nums" style={{ color: 'var(--chatbox-tint-error)' }}>
+                    {toolStatusCounts.failed}
+                  </Text>
+                </Group>
+              )}
+              {toolStatusCounts.running > 0 && (
+                <Group gap={3} wrap="nowrap">
+                  <ScalableIcon
+                    icon={IconLoader}
+                    size={12}
+                    className="animate-spin"
+                    color="var(--chatbox-tint-brand)"
+                  />
+                  <Text size="xs" fw={500} className="tabular-nums" style={{ color: 'var(--chatbox-tint-brand)' }}>
+                    {toolStatusCounts.running}
+                  </Text>
+                </Group>
+              )}
             </Group>
           )}
           {isThinking && elapsedTime > 0 && shouldShowTimer && (
@@ -183,7 +182,8 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
         )}
       </div>
 
-      {(isThinking || isExpanded) && statusLine && (
+      {/* Live preview only when collapsed — expanded body is the single source of content */}
+      {isThinking && !isExpanded && statusLine && (
         <div className="msg-worked-status">
           <IconBulb size={15} stroke={1.5} className="msg-worked-bulb" aria-hidden />
           <span className="msg-worked-status-text">{statusLine}</span>

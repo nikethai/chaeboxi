@@ -3,7 +3,6 @@ import { formatNumber } from '@shared/utils'
 import { IconFileZip } from '@tabler/icons-react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { ScalableIcon } from '../common/ScalableIcon'
 
 type Props = {
@@ -43,7 +42,6 @@ const TokenCountMenu: FC<Props> = ({
   onAutoCompactionChange,
 }) => {
   const { t } = useTranslation()
-  const isSmallScreen = useIsSmallScreen()
 
   const autoCompactionToggle = onAutoCompactionChange !== undefined && (
     <Menu.Item closeMenuOnClick={false} style={{ cursor: 'default' }}>
@@ -82,9 +80,7 @@ const TokenCountMenu: FC<Props> = ({
 
   return (
     <Menu
-      trigger={isSmallScreen ? 'click' : 'hover'}
-      openDelay={100}
-      closeDelay={100}
+      trigger="click"
       position="top"
       shadow="md"
       keepMounted

@@ -77,8 +77,8 @@ export default function Toolbar({ sessionId }: { sessionId: string }) {
       {showUpdateNotification && <UpdateAvailableButton />}
 
       <Button
-        h={32}
-        px="sm"
+        h={34}
+        px="md"
         radius="md"
         variant="subtle"
         color="chatbox-tertiary"

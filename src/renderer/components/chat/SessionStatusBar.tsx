@@ -1,14 +1,18 @@
 /**
  * SessionStatusBar — Claude Code / Codex style dock statusline.
  * Summarizes session totals under the composer; not per-message chrome.
+ * Token segment opens context/compress menu (composer chip removed).
  */
 
 import { Flex, Text, Tooltip } from '@mantine/core'
 import type { Message } from '@shared/types'
 import { formatNumber } from '@shared/utils'
-import { useMemo, type FC } from 'react'
+import { useAtomValue } from 'jotai'
+import { type FC, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import TokenCountMenu from '@/components/InputBox/TokenCountMenu'
 import { aggregateSessionCosts, formatCost } from '@/packages/cost-tracking'
+import { composerTokenMenuAtom } from '@/stores/atoms/uiAtoms'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
 export type SessionStatusBarProps = {
@@ -16,6 +20,7 @@ export type SessionStatusBarProps = {
   modelLabel?: string
   generating?: boolean
   providerId?: string
+  sessionId?: string
 }
 
 function lastAssistantModel(messages: Message[]): string | undefined {
@@ -28,8 +33,9 @@ function lastAssistantModel(messages: Message[]): string | undefined {
   return undefined
 }
 
-const SessionStatusBar: FC<SessionStatusBarProps> = ({ messages, modelLabel, generating, providerId }) => {
+const SessionStatusBar: FC<SessionStatusBarProps> = ({ messages, modelLabel, generating, providerId, sessionId }) => {
   const { t } = useTranslation()
+  const tokenMenu = useAtomValue(composerTokenMenuAtom)
 
   const metrics = useMemo(() => aggregateSessionCosts(messages), [messages])
   const model = modelLabel || lastAssistantModel(messages) || '—'
@@ -39,6 +45,23 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({ messages, modelLabel, gen
 
   const providerShort = providerId ? String(providerId) : undefined
 
+  const menuForSession = tokenMenu && sessionId && tokenMenu.sessionId === sessionId ? tokenMenu : null
+
+  const tokSegment = (
+    <button type="button" className="session-statusline-tok" aria-label={t('Estimated Token Usage')}>
+      <span className="session-statusline-key">tok</span>
+      <span className="session-statusline-val">
+        {hasUsage ? formatNumber(totalTokens) : menuForSession ? formatNumber(menuForSession.totalTokens) : '—'}
+        {hasUsage && (
+          <span className="session-statusline-muted">
+            {' '}
+            ↑{formatNumber(metrics.totalInputTokens)} ↓{formatNumber(metrics.totalOutputTokens)}
+          </span>
+        )}
+      </span>
+    </button>
+  )
+
   return (
     <div className="session-statusline" role="status" aria-live="polite">
       <Flex className="session-statusline-inner" align="center" justify="space-between" gap="sm">
@@ -46,9 +69,7 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({ messages, modelLabel, gen
           <span className={`session-statusline-dot ${generating ? 'is-live' : ''}`} aria-hidden />
           <Text className="session-statusline-seg" lineClamp={1} title={model}>
             <span className="session-statusline-key">{t('model')}</span>
-            <span className="session-statusline-val">
-              {providerShort ? `${providerShort} · ${model}` : model}
-            </span>
+            <span className="session-statusline-val">{providerShort ? `${providerShort} · ${model}` : model}</span>
           </Text>
           {generating && (
             <Text className="session-statusline-live" size="xs">
@@ -65,28 +86,38 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({ messages, modelLabel, gen
             </Text>
           </Tooltip>
 
-          <Tooltip
-            label={
-              hasUsage
-                ? `${t('Input')}: ${formatNumber(metrics.totalInputTokens)} · ${t('Output')}: ${formatNumber(metrics.totalOutputTokens)}`
-                : t('No token usage yet')
-            }
-            withArrow
-            openDelay={400}
-          >
-            <Text className="session-statusline-seg">
-              <span className="session-statusline-key">tok</span>
-              <span className="session-statusline-val">
-                {hasUsage ? formatNumber(totalTokens) : '—'}
-                {hasUsage && (
-                  <span className="session-statusline-muted">
-                    {' '}
-                    ↑{formatNumber(metrics.totalInputTokens)} ↓{formatNumber(metrics.totalOutputTokens)}
-                  </span>
-                )}
-              </span>
-            </Text>
-          </Tooltip>
+          {menuForSession ? (
+            <TokenCountMenu
+              currentInputTokens={menuForSession.currentInputTokens}
+              contextTokens={menuForSession.contextTokens}
+              totalTokens={menuForSession.totalTokens}
+              isCalculating={menuForSession.isCalculating}
+              pendingTasks={menuForSession.pendingTasks}
+              totalContextMessages={menuForSession.totalContextMessages}
+              contextWindow={menuForSession.contextWindow}
+              currentMessageCount={menuForSession.currentMessageCount}
+              maxContextMessageCount={menuForSession.maxContextMessageCount}
+              onCompressClick={menuForSession.onCompressClick}
+              autoCompactionEnabled={menuForSession.autoCompactionEnabled}
+              isCompacting={menuForSession.isCompacting}
+              contextWindowKnown={menuForSession.contextWindowKnown}
+              onAutoCompactionChange={menuForSession.onAutoCompactionChange}
+            >
+              {tokSegment}
+            </TokenCountMenu>
+          ) : (
+            <Tooltip
+              label={
+                hasUsage
+                  ? `${t('Input')}: ${formatNumber(metrics.totalInputTokens)} · ${t('Output')}: ${formatNumber(metrics.totalOutputTokens)}`
+                  : t('No token usage yet')
+              }
+              withArrow
+              openDelay={400}
+            >
+              <Text className="session-statusline-seg">{tokSegment}</Text>
+            </Tooltip>
+          )}
 
           {CHATBOX_BUILD_PLATFORM !== 'android' && hasUsage && metrics.actualCost > 0 && (
             <Tooltip label={t('Session cost estimate')} withArrow openDelay={400}>

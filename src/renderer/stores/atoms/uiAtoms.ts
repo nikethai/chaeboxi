@@ -30,5 +30,29 @@ export const inputBoxPreConstructedMessageFamily = atomFamily((_sessionId: strin
   atom(defaultPreConstructedMessageState())
 )
 
+/**
+ * Composer → statusline bridge for token menu (compress / auto-compaction / breakdown).
+ * Written by InputBox; read by SessionStatusBar so telemetry lives on the statusline only.
+ */
+export type ComposerTokenMenuState = {
+  sessionId: string
+  currentInputTokens: number
+  contextTokens: number
+  totalTokens: number
+  isCalculating?: boolean
+  pendingTasks?: number
+  totalContextMessages?: number
+  contextWindow?: number
+  currentMessageCount?: number
+  maxContextMessageCount?: number
+  autoCompactionEnabled?: boolean
+  isCompacting?: boolean
+  contextWindowKnown?: boolean
+  onCompressClick?: () => void
+  onAutoCompactionChange?: (enabled: boolean) => void
+}
+
+export const composerTokenMenuAtom = atom<ComposerTokenMenuState | null>(null)
+
 // Atom to store collapsed state of providers
 export const collapsedProvidersAtom = atomWithStorage<Record<string, boolean>>('collapsedProviders', {})

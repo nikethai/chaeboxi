@@ -384,6 +384,20 @@ describe('provider settings schema', () => {
     expect(parsed.providers?.openai?.imagePromptPositiveTagsPrepend).toBe('best quality, cinematic lighting')
   })
 
+  it('defaults desktop shell settings and screenshot shortcut', () => {
+    const base = defaults.settings()
+    const { screenshotToChat: _omit, ...legacyShortcuts } = base.shortcuts
+    const parsed = SettingsSchema.parse({
+      ...base,
+      keepInTray: undefined,
+      shortcuts: legacyShortcuts,
+    })
+    expect(parsed.keepInTray).toBe(true)
+    expect(parsed.quickWindowAlwaysOnTop).toBe(true)
+    expect(parsed.trayIntroSeen).toBe(false)
+    expect(parsed.shortcuts.screenshotToChat).toBe('Alt+Shift+S')
+  })
+
   it('parses comfyui agent image flow settings', () => {
     const parsed = ProviderSettingsSchema.parse({
       comfyuiLoras: [

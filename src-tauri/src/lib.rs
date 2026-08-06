@@ -43,6 +43,9 @@ use tokio_tungstenite::{
 };
 use uuid::Uuid;
 
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+mod desktop_shell;
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "type")]
 enum McpTransportConfig {
@@ -1957,6 +1960,11 @@ async fn ipc_invoke(
     channel: String,
     args: Vec<Value>,
 ) -> CommandResult<Value> {
+    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    if let Some(result) = desktop_shell::handle_ipc(&app, &channel, &args).await {
+        return result;
+    }
+
     match channel.as_str() {
         "getStoreValue" => {
             let key = get_arg_string(&args, 0)?;
@@ -2164,7 +2172,7 @@ async fn ipc_invoke(
                 .map_err(|err| format!("invalid http request payload: {err}"))?;
             http_request(&request).await
         }
-        "ensureShortcutConfig" => Ok(Value::Null),
+        "ensureShortcutConfig" => Ok(Value::Null), // desktop handled above via desktop_shell
         "shouldUseDarkColors" => {
             let theme = window
                 .theme()
@@ -2290,6 +2298,16 @@ async fn ipc_invoke(
         "window:close" => {
             #[cfg(not(target_os = "android"))]
             {
+                #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+                {
+                    if desktop_shell::keep_in_tray_enabled(&app) {
+                        let _ = window.hide();
+                        if window.label() == "main" {
+                            let _ = app.emit("shell:hidden-to-tray", json!({}));
+                        }
+                        return Ok(Value::Null);
+                    }
+                }
                 window
                     .close()
                     .map_err(|err| format!("window close failed: {err}"))?;
@@ -3207,8 +3225,16 @@ pub fn run() {
         let _ = fix_path_env::fix();
     }
 
-    tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
+    let mut builder = tauri::Builder::default().plugin(tauri_plugin_opener::init());
+
+    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    {
+        builder = builder
+            .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+            .manage(desktop_shell::ShellState::default());
+    }
+
+    builder
         .manage(AppState {
             next_mcp_id: AtomicU64::new(0),
             next_kb_id: AtomicI64::new(0),
@@ -3222,9 +3248,17 @@ pub fn run() {
             let chunks = load_all_kb_chunks_from_disk(handle);
 
             let state: State<AppState> = app.state();
-            *state.store.lock().unwrap() = store;
+            *state.store.lock().unwrap() = store.clone();
             *state.blobs.lock().unwrap() = blobs;
             state.kb.lock().unwrap().file_chunks = chunks;
+
+            #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+            {
+                if let Err(err) = desktop_shell::setup_tray(handle) {
+                    eprintln!("[shell] tray setup failed: {err}");
+                }
+                desktop_shell::seed_from_store(handle, &store);
+            }
 
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.emit("window-show", json!({}));
@@ -3232,7 +3266,32 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| match event {
+            WindowEvent::CloseRequested { api, .. } => {
+                #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+                {
+                    if desktop_shell::keep_in_tray_enabled(window.app_handle()) {
+                        api.prevent_close();
+                        let _ = window.hide();
+                        if window.label() == "main" {
+                            let _ = window.app_handle().emit("shell:hidden-to-tray", json!({}));
+                        }
+                        return;
+                    }
+                }
+                let _ = api;
+            }
             WindowEvent::Focused(true) => {
+                #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+                {
+                    // Only one chat window at a time (Dock / hotkey / tray)
+                    let label = window.label().to_string();
+                    let app = window.app_handle().clone();
+                    if label == "main" {
+                        desktop_shell::hide_quick(&app);
+                    } else if label == "quick" {
+                        desktop_shell::hide_main(&app);
+                    }
+                }
                 let _ = window.emit("window:focused", json!({}));
             }
             WindowEvent::ThemeChanged(_) => {

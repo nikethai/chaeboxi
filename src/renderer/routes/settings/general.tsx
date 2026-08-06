@@ -205,6 +205,28 @@ export function RouteComponent() {
 
           <Stack gap="xl">
             <Switch
+              label={t('Keep running in menu bar / system tray')}
+              description={t(
+                'When enabled, closing the window hides Chaeboxi instead of quitting. Use the menu bar icon or hotkey to reopen.'
+              )}
+              checked={settings.keepInTray !== false}
+              onChange={(e) =>
+                setSettings({
+                  keepInTray: e.currentTarget.checked,
+                })
+              }
+            />
+            <Switch
+              label={t('Quick chat always on top')}
+              description={t('Keep the floating quick chat window above other apps.')}
+              checked={settings.quickWindowAlwaysOnTop !== false}
+              onChange={(e) =>
+                setSettings({
+                  quickWindowAlwaysOnTop: e.currentTarget.checked,
+                })
+              }
+            />
+            <Switch
               label={t('Launch at system startup')}
               checked={settings.autoLaunch}
               onChange={(e) =>

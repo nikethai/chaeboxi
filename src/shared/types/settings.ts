@@ -237,6 +237,8 @@ const ShortcutToggleWindowValueSchema = z.enum(shortcutToggleWindowValues as [st
 
 const ShortcutSettingSchema = z.object({
   quickToggle: ShortcutToggleWindowValueSchema,
+  /** Global hotkey for interactive screenshot → attach to quick chat */
+  screenshotToChat: z.string().default('Alt+Shift+S').catch('Alt+Shift+S'),
   inputBoxFocus: z.string(),
   inputBoxWebBrowsingMode: z.string(),
   newChat: z.string(),
@@ -481,6 +483,13 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
   autoLaunch: z.boolean().default(false),
   autoUpdate: z.boolean().default(true), // 是否自动检查更新
   betaUpdate: z.boolean().default(false), // 是否自动检查 beta 更新
+
+  /** Keep process running in menu bar / system tray when window is closed (desktop) */
+  keepInTray: z.boolean().default(true).catch(true),
+  /** Floating quick chat stays above other windows */
+  quickWindowAlwaysOnTop: z.boolean().default(true).catch(true),
+  /** First-run toast for close-to-tray has been shown */
+  trayIntroSeen: z.boolean().default(false).catch(false),
 
   shortcuts: ShortcutSettingSchema,
 

@@ -7,6 +7,7 @@ import { useSystemLanguageWhenInit } from '@/hooks/useDefaultSystemLanguage'
 import { useI18nEffect } from '@/hooks/useI18nEffect'
 import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
 import { useSidebarWidth } from '@/hooks/useScreenChange'
+import { useDesktopShell } from '@/hooks/useDesktopShell'
 import useShortcut from '@/hooks/useShortcut'
 import '@/modals'
 import NiceModal from '@ebay/nice-modal-react'
@@ -41,7 +42,7 @@ import Grid from '@mui/material/Grid'
 import { ThemeProvider } from '@mui/material/styles'
 import { createRootRoute, Outlet, useLocation } from '@tanstack/react-router'
 import { useSetAtom } from 'jotai'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { navigateToSettings } from '@/modals/Settings'
 import { getOS } from '@/packages/navigator'
 import PictureDialog from '@/pages/PictureDialog'
@@ -60,10 +61,19 @@ function Root() {
   const spellCheck = useSettingsStore((state) => state.spellCheck)
   const language = useLanguage()
   const initialized = useRef(false)
+  const [isQuickWindow, setIsQuickWindow] = useState(false)
 
   const setOpenAboutDialog = useUIStore((s) => s.setOpenAboutDialog)
 
   const setRemoteConfig = useSetAtom(atoms.remoteConfigAtom)
+
+  useDesktopShell()
+
+  useEffect(() => {
+    void platform.getWindowLabel?.().then((label) => {
+      setIsQuickWindow(label === 'quick')
+    })
+  }, [])
 
   useEffect(() => {
     if (initialized.current) {
@@ -160,6 +170,8 @@ function Root() {
     }
   }, [needRoomForMacWindowControls])
 
+  const isQuickRoute = isQuickWindow || location.pathname === '/quick'
+
   return (
     <Box
       className="box-border App"
@@ -171,7 +183,16 @@ function Root() {
         color: 'var(--chatbox-tint-primary)',
       }}
     >
-      {platform.type === 'desktop' && (getOS() === 'Windows' || getOS() === 'Linux') && <ExitFullscreenButton />}
+      {platform.type === 'desktop' && !isQuickRoute && (getOS() === 'Windows' || getOS() === 'Linux') && (
+        <ExitFullscreenButton />
+      )}
+      {isQuickRoute ? (
+        <ErrorBoundary name="quick">
+          <Box className="h-full min-h-0 flex flex-col flex-1">
+            <Outlet />
+          </Box>
+        </ErrorBoundary>
+      ) : (
       <Grid container className="h-full" sx={{ minHeight: 0 }}>
         <Sidebar />
         <Box
@@ -196,6 +217,7 @@ function Root() {
           </ErrorBoundary>
         </Box>
       </Grid>
+      )}
       {/* 对话设置 */}
       {/* <AppStoreRatingDialog /> */}
       {/* 代码预览 */}

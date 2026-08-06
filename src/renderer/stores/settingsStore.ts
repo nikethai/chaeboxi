@@ -173,6 +173,13 @@ settingsStore.subscribe((state, prevState) => {
   if (Boolean(state.autoLaunch) !== Boolean(prevState.autoLaunch)) {
     platform.ensureAutoLaunch(state.autoLaunch)
   }
+  // Desktop shell: tray / floating quick window
+  if (Boolean(state.keepInTray) !== Boolean(prevState.keepInTray)) {
+    void platform.setKeepInTray?.(Boolean(state.keepInTray))
+  }
+  if (Boolean(state.quickWindowAlwaysOnTop) !== Boolean(prevState.quickWindowAlwaysOnTop)) {
+    void platform.setQuickWindowAlwaysOnTop?.(Boolean(state.quickWindowAlwaysOnTop))
+  }
 })
 
 export function useSettingsStore<U>(selector: Parameters<typeof useStore<typeof settingsStore, U>>[1]) {

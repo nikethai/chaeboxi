@@ -104,8 +104,13 @@ export function settings(): Settings {
     autoUpdate: true,
     betaUpdate: false,
 
+    keepInTray: true,
+    quickWindowAlwaysOnTop: true,
+    trayIntroSeen: false,
+
     shortcuts: {
       quickToggle: 'Alt+`', // 快速切换窗口显隐的快捷键
+      screenshotToChat: 'Alt+Shift+S', // 截图并附加到快速聊天
       inputBoxFocus: 'mod+i', // 聚焦输入框的快捷键
       inputBoxWebBrowsingMode: 'mod+e', // 切换输入框的 web 浏览模式的快捷键
       newChat: 'mod+n', // 新建聊天的快捷键

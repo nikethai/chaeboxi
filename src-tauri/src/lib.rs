@@ -31,7 +31,12 @@ use std::{
 use sys_locale::get_locale;
 use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow, WindowEvent};
 #[cfg(not(target_os = "android"))]
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+#[cfg(not(target_os = "android"))]
+use tokio::net::TcpListener;
+#[cfg(not(target_os = "android"))]
 use tokio::process::Command;
+use tokio::sync::oneshot;
 use tokio_tungstenite::{
     connect_async,
     tungstenite::{client::IntoClientRequest, Message},
@@ -116,6 +121,8 @@ struct AppState {
     kb: Mutex<KnowledgeBaseState>,
     next_kb_id: AtomicI64,
     next_file_id: AtomicI64,
+    /// Cancels an in-flight local OAuth callback listener (desktop PKCE).
+    oauth_cancel: Mutex<Option<oneshot::Sender<()>>>,
 }
 
 type CommandResult<T> = Result<T, String>;
@@ -1726,6 +1733,222 @@ async fn call_tool_for_config(
     }
 }
 
+/// HTML shown after Google redirects to the local OAuth callback.
+fn oauth_callback_success_html() -> &'static str {
+    r#"<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Signed in — Chaeboxi</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background:#0f1419; color:#e7e9ea; }
+    .card { max-width: 28rem; padding: 2rem; border-radius: 12px; background:#1a2332; text-align:center; line-height:1.5; }
+    h1 { font-size: 1.25rem; margin: 0 0 0.75rem; }
+    p { margin: 0; color:#8b98a5; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Sign-in complete</h1>
+    <p>You can close this tab and return to Chaeboxi.</p>
+  </div>
+</body>
+</html>"#
+}
+
+fn oauth_callback_error_html(message: &str) -> String {
+    format!(
+        r#"<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"/><title>Sign-in failed</title>
+<style>body{{font-family:system-ui,sans-serif;padding:2rem;background:#0f1419;color:#e7e9ea}} .err{{color:#f4212e}}</style>
+</head><body><h1 class="err">Sign-in failed</h1><p>{}</p><p>Return to Chaeboxi and try again.</p></body></html>"#,
+        message.replace('<', "&lt;").replace('>', "&gt;")
+    )
+}
+
+/// Parse first request line path+query from a raw HTTP request buffer.
+fn extract_http_request_target(request: &str) -> Option<String> {
+    let first_line = request.lines().next()?.trim();
+    // GET /oauth-callback?code=... HTTP/1.1
+    let mut parts = first_line.split_whitespace();
+    let method = parts.next()?;
+    if method != "GET" && method != "HEAD" {
+        return None;
+    }
+    parts.next().map(|s| s.to_string())
+}
+
+fn is_oauth_result_path(path_and_query: &str) -> bool {
+    path_and_query.contains("code=") || path_and_query.contains("error=")
+}
+
+#[cfg(not(target_os = "android"))]
+async fn read_http_request_head(
+    stream: &mut tokio::net::TcpStream,
+) -> Result<String, String> {
+    let mut buf = vec![0u8; 8192];
+    let mut collected = Vec::new();
+    loop {
+        let n = stream
+            .read(&mut buf)
+            .await
+            .map_err(|err| format!("read oauth request failed: {err}"))?;
+        if n == 0 {
+            break;
+        }
+        collected.extend_from_slice(&buf[..n]);
+        if collected.windows(4).any(|w| w == b"\r\n\r\n") || collected.len() > 64 * 1024 {
+            break;
+        }
+    }
+    String::from_utf8(collected).map_err(|err| format!("invalid oauth request encoding: {err}"))
+}
+
+#[cfg(not(target_os = "android"))]
+async fn write_http_response(
+    stream: &mut tokio::net::TcpStream,
+    status: &str,
+    body: &str,
+) -> Result<(), String> {
+    let response = format!(
+        "HTTP/1.1 {status}\r\nContent-Type: text/html; charset=utf-8\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    );
+    stream
+        .write_all(response.as_bytes())
+        .await
+        .map_err(|err| format!("write oauth response failed: {err}"))?;
+    let _ = stream.shutdown().await;
+    Ok(())
+}
+
+/// Bind 127.0.0.1:port and wait for Google's OAuth redirect (one shot).
+#[cfg(not(target_os = "android"))]
+async fn wait_for_local_oauth_callback(
+    port: u16,
+    timeout: Duration,
+    mut cancel: oneshot::Receiver<()>,
+) -> CommandResult<String> {
+    let addr = format!("127.0.0.1:{port}");
+    let listener = TcpListener::bind(&addr)
+        .await
+        .map_err(|err| format!("Could not bind OAuth callback on {addr}: {err}. Close other apps using port {port} or paste the redirect URL manually."))?;
+
+    let deadline = tokio::time::Instant::now() + timeout;
+
+    loop {
+        let accept_fut = listener.accept();
+        tokio::pin!(accept_fut);
+
+        let accepted = tokio::select! {
+            biased;
+            _ = &mut cancel => {
+                return Err("OAuth callback cancelled".to_string());
+            }
+            _ = tokio::time::sleep_until(deadline) => {
+                return Err("OAuth timed out waiting for browser redirect. Try again.".to_string());
+            }
+            result = &mut accept_fut => result,
+        };
+
+        let (mut stream, _) =
+            accepted.map_err(|err| format!("accept oauth connection failed: {err}"))?;
+
+        let request = match read_http_request_head(&mut stream).await {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+
+        let Some(target) = extract_http_request_target(&request) else {
+            let _ = write_http_response(&mut stream, "405 Method Not Allowed", "Method not allowed").await;
+            continue;
+        };
+
+        // Ignore favicon / noise; keep listening for the real callback
+        if !is_oauth_result_path(&target) {
+            let _ = write_http_response(&mut stream, "204 No Content", "").await;
+            continue;
+        }
+
+        let full_url = if target.starts_with("http://") || target.starts_with("https://") {
+            target
+        } else {
+            format!("http://localhost:{port}{target}")
+        };
+
+        if full_url.contains("error=") {
+            let msg = full_url
+                .split("error_description=")
+                .nth(1)
+                .and_then(|s| s.split('&').next())
+                .map(|s| urlencoding_decode(s))
+                .filter(|s| !s.is_empty())
+                .unwrap_or_else(|| "Access denied or error from Google".to_string());
+            let _ = write_http_response(&mut stream, "400 Bad Request", &oauth_callback_error_html(&msg)).await;
+            return Err(msg);
+        }
+
+        let _ = write_http_response(&mut stream, "200 OK", oauth_callback_success_html()).await;
+        return Ok(full_url);
+    }
+}
+
+/// Minimal query-value decode for error_description (space as + or %20).
+fn urlencoding_decode(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let bytes = input.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        match bytes[i] {
+            b'+' => {
+                out.push(' ');
+                i += 1;
+            }
+            b'%' if i + 2 < bytes.len() => {
+                let hex = &input[i + 1..i + 3];
+                if let Ok(v) = u8::from_str_radix(hex, 16) {
+                    out.push(v as char);
+                    i += 3;
+                } else {
+                    out.push('%');
+                    i += 1;
+                }
+            }
+            c => {
+                out.push(c as char);
+                i += 1;
+            }
+        }
+    }
+    out
+}
+
+fn register_oauth_cancel(state: &AppState) -> oneshot::Receiver<()> {
+    let (tx, rx) = oneshot::channel();
+    if let Ok(mut guard) = state.oauth_cancel.lock() {
+        if let Some(prev) = guard.take() {
+            let _ = prev.send(());
+        }
+        *guard = Some(tx);
+    }
+    rx
+}
+
+fn clear_oauth_cancel(state: &AppState) {
+    if let Ok(mut guard) = state.oauth_cancel.lock() {
+        *guard = None;
+    }
+}
+
+fn cancel_oauth_callback(state: &AppState) {
+    if let Ok(mut guard) = state.oauth_cancel.lock() {
+        if let Some(tx) = guard.take() {
+            let _ = tx.send(());
+        }
+    }
+}
+
 #[tauri::command]
 async fn ipc_invoke(
     window: WebviewWindow,
@@ -1897,6 +2120,43 @@ async fn ipc_invoke(
                     .open_url(&url, None::<&str>)
                     .map_err(|err| format!("open link failed: {err}"))?;
             }
+            Ok(Value::Null)
+        }
+        // Desktop PKCE: bind 127.0.0.1:port and wait for Google redirect (auto sign-in).
+        // args[0] optional: { port?: number, timeoutMs?: number }
+        "oauth:waitForLocalCallback" => {
+            #[cfg(target_os = "android")]
+            {
+                return Err(
+                    "Local OAuth callback is only available on desktop. Paste the redirect URL instead."
+                        .to_string(),
+                );
+            }
+            #[cfg(not(target_os = "android"))]
+            {
+                let opts = args.first().cloned().unwrap_or(Value::Object(Default::default()));
+                let port = opts
+                    .get("port")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(51121) as u16;
+                let timeout_ms = opts
+                    .get("timeoutMs")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(5 * 60 * 1000);
+                let cancel_rx = register_oauth_cancel(&*state);
+                let result = wait_for_local_oauth_callback(
+                    port,
+                    Duration::from_millis(timeout_ms),
+                    cancel_rx,
+                )
+                .await;
+                clear_oauth_cancel(&*state);
+                let full_url = result?;
+                Ok(json!({ "redirectUrl": full_url }))
+            }
+        }
+        "oauth:cancelLocalCallback" => {
+            cancel_oauth_callback(&*state);
             Ok(Value::Null)
         }
         "http:request" => {

@@ -45,6 +45,9 @@ import { uiStore } from '../uiStore'
 import { createNewFork, findMessageLocation } from './forks'
 import { insertMessageAfter, modifyMessage, submitNewUserMessage } from './messages'
 import { messageQueueStore } from './messageQueue'
+import { getSessionWebBrowsing } from './session-web-browsing'
+
+export { getSessionWebBrowsing }
 import { runCompactionWithUIState } from '@/packages/context-management'
 import type { MessagePlanPart, MessageToolCallPart } from '@shared/types'
 import {
@@ -293,19 +296,6 @@ function getCopilotSettings(copilotId: string | undefined): {
     if (!detail) return null
     return { ...detail.modelSettings, maxSteps: detail.maxSteps, toolAccess: detail.toolAccess, hooks: detail.hooks }
   }
-}
-
-/**
- * Get session-level web browsing setting
- * Returns user's explicit setting if set, otherwise returns default based on provider
- */
-export function getSessionWebBrowsing(sessionId: string, _provider: string | undefined): boolean {
-  const sessionValue = uiStore.getState().sessionWebBrowsingMap[sessionId]
-  if (sessionValue !== undefined) {
-    return sessionValue
-  }
-  // Default: disabled unless explicitly enabled by the user.
-  return false
 }
 
 /**

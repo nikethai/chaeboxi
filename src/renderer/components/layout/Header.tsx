@@ -1,12 +1,13 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { ActionIcon, Flex, Title, Tooltip } from '@mantine/core'
+import { ActionIcon, Flex, TextInput, Title, Tooltip } from '@mantine/core'
 import type { Session } from '@shared/types'
-import { IconLayoutSidebarLeftExpand, IconMenu2, IconPencil } from '@tabler/icons-react'
+import { IconCheck, IconLayoutSidebarLeftExpand, IconMenu2, IconPencil, IconSettings, IconX } from '@tabler/icons-react'
 import clsx from 'clsx'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { updateSession } from '@/stores/chatStore'
 import { scheduleGenerateNameAndThreadName, scheduleGenerateThreadName } from '@/stores/sessionActions'
 import * as settingActions from '@/stores/settingActions'
 import { useUIStore } from '@/stores/uiStore'
@@ -24,6 +25,14 @@ export default function Header(props: { session: Session }) {
   const { needRoomForMacWindowControls } = useNeedRoomForWinControls()
 
   const { session: currentSession } = props
+  const [renaming, setRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState(currentSession.name)
+
+  useEffect(() => {
+    if (!renaming) {
+      setRenameValue(currentSession.name)
+    }
+  }, [currentSession.name, renaming])
 
   // 会话名称自动生成
   useEffect(() => {
@@ -48,11 +57,34 @@ export default function Header(props: { session: Session }) {
     }
   }, [currentSession])
 
-  const editCurrentSession = () => {
+  const openSessionSettings = () => {
     if (!currentSession) {
       return
     }
     NiceModal.show('session-settings', { session: currentSession })
+  }
+
+  const startRename = () => {
+    setRenameValue(currentSession.name)
+    setRenaming(true)
+  }
+
+  const cancelRename = () => {
+    setRenaming(false)
+    setRenameValue(currentSession.name)
+  }
+
+  const commitRename = async () => {
+    const nextName = renameValue.trim() || currentSession.name
+    if (nextName !== currentSession.name) {
+      await updateSession(currentSession.id, (s) => {
+        if (!s) {
+          throw new Error(`Session ${currentSession.id} not found`)
+        }
+        return { ...s, name: nextName }
+      })
+    }
+    setRenaming(false)
   }
 
   // Traffic lights sit over the sidebar when open; only inset the main header when expand is shown
@@ -75,6 +107,7 @@ export default function Header(props: { session: Session }) {
             color="chatbox-tertiary"
             mr={isSmallScreen ? 'xs' : 'sm'}
             onClick={() => setShowSidebar(!showSidebar)}
+            aria-label={showSidebar ? t('Hide sidebar') : t('Show sidebar')}
           >
             {isSmallScreen ? <IconMenu2 /> : <IconLayoutSidebarLeftExpand />}
           </ActionIcon>
@@ -85,33 +118,114 @@ export default function Header(props: { session: Session }) {
         align="center"
         gap="xxs"
         flex={1}
-        className={isSmallScreen ? 'min-w-0 px-1' : ''}
-        {...(isSmallScreen ? { justify: 'center' } : {})}
+        className={isSmallScreen ? 'min-w-0 px-1' : 'min-w-0'}
+        {...(isSmallScreen && !renaming ? { justify: 'center' } : {})}
       >
-        <Title
-          order={4}
-          fz={isSmallScreen ? 17 : '0.95rem'}
-          fw={600}
-          lineClamp={1}
-          className={clsx('tracking-tight', isSmallScreen && 'max-w-[72vw] text-center leading-tight')}
-          style={{ letterSpacing: '-0.02em' }}
-        >
-          {currentSession?.name}
-        </Title>
+        {renaming ? (
+          <Flex align="center" gap={4} flex={1} maw={isSmallScreen ? '100%' : 420} className="min-w-0">
+            <TextInput
+              value={renameValue}
+              onChange={(e) => setRenameValue(e.currentTarget.value)}
+              autoFocus
+              size="xs"
+              flex={1}
+              aria-label={t('Name')}
+              classNames={{
+                input: '!text-chatbox-tint-primary !font-semibold !tracking-tight',
+              }}
+              styles={{
+                input: {
+                  fontSize: isSmallScreen ? 16 : '0.95rem',
+                  minHeight: 30,
+                  height: 30,
+                },
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void commitRename()
+                } else if (e.key === 'Escape') {
+                  e.preventDefault()
+                  cancelRename()
+                }
+              }}
+              onBlur={() => {
+                // Defer so check/cancel clicks still register
+                window.setTimeout(() => {
+                  if (document.activeElement?.closest?.('[data-session-rename-actions]')) {
+                    return
+                  }
+                  void commitRename()
+                }, 0)
+              }}
+            />
+            <Flex gap={2} data-session-rename-actions className="controls shrink-0">
+              <ActionIcon
+                variant="subtle"
+                color="chatbox-success"
+                size={28}
+                className="active:scale-[0.96] transition-transform"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => void commitRename()}
+                aria-label={t('Save')}
+              >
+                <IconCheck size={16} stroke={1.75} />
+              </ActionIcon>
+              <ActionIcon
+                variant="subtle"
+                color="chatbox-tertiary"
+                size={28}
+                className="active:scale-[0.96] transition-transform"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={cancelRename}
+                aria-label={t('Cancel')}
+              >
+                <IconX size={16} stroke={1.75} />
+              </ActionIcon>
+            </Flex>
+          </Flex>
+        ) : (
+          <>
+            <Title
+              order={4}
+              fz={isSmallScreen ? 17 : '0.95rem'}
+              fw={600}
+              lineClamp={1}
+              className={clsx('tracking-tight cursor-text', isSmallScreen && 'max-w-[60vw] text-center leading-tight')}
+              style={{ letterSpacing: '-0.02em' }}
+              onDoubleClick={startRename}
+              title={t('Double-click to rename')}
+            >
+              {currentSession?.name}
+            </Title>
 
-        <Tooltip label={t('Customize settings for the current conversation')}>
-          <ActionIcon
-            className="controls"
-            variant="subtle"
-            color="chatbox-tertiary"
-            size={isSmallScreen ? 24 : 22}
-            onClick={() => {
-              editCurrentSession()
-            }}
-          >
-            <ScalableIcon icon={IconPencil} size={isSmallScreen ? 16 : 15} />
-          </ActionIcon>
-        </Tooltip>
+            <Tooltip label={t('Rename')}>
+              <ActionIcon
+                className="controls active:scale-[0.96] transition-transform"
+                variant="subtle"
+                color="chatbox-tertiary"
+                size={isSmallScreen ? 24 : 22}
+                onClick={startRename}
+                aria-label={t('Rename')}
+              >
+                <ScalableIcon icon={IconPencil} size={isSmallScreen ? 16 : 15} />
+              </ActionIcon>
+            </Tooltip>
+
+            <Tooltip label={t('Session options')}>
+              <ActionIcon
+                className="controls active:scale-[0.96] transition-transform"
+                variant="subtle"
+                color="chatbox-tertiary"
+                size={isSmallScreen ? 24 : 22}
+                onClick={openSessionSettings}
+                aria-label={t('Session options')}
+              >
+                <ScalableIcon icon={IconSettings} size={isSmallScreen ? 16 : 15} />
+              </ActionIcon>
+            </Tooltip>
+          </>
+        )}
       </Flex>
 
       <Toolbar sessionId={currentSession.id} />

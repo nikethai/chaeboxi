@@ -82,35 +82,47 @@ function FolderItem({
       align="center"
       gap={6}
       mx={6}
-      px={10}
-      py={6}
+      px={8}
+      py={5}
       className={clsx(
-        'group/folder-item rounded-full',
+        'group/folder-item project-folder-row',
         !implicit && 'hover:bg-[var(--chatbox-background-tertiary)] cursor-pointer'
       )}
       onClick={onToggle}
     >
-      <ActionIcon variant="transparent" size={18} color="chatbox-tertiary" aria-hidden>
-        <ScalableIcon icon={expanded ? IconChevronDown : IconChevronRight} size={14} />
+      <ActionIcon variant="transparent" size={20} color="chatbox-tertiary" aria-hidden className="shrink-0">
+        <ScalableIcon
+          icon={expanded ? IconChevronDown : IconChevronRight}
+          size={13}
+          className={clsx('project-folder-chevron', expanded && 'is-open')}
+        />
       </ActionIcon>
 
-      <IconStack2 size={15} stroke={1.5} className="project-row-icon" aria-hidden />
+      <IconStack2 size={14} stroke={1.5} className="project-row-icon" aria-hidden />
 
       <Text
         span
-        size="sm"
-        c="chatbox-secondary"
-        fw={500}
-        className="tracking-tight truncate"
-        style={{ fontSize: '0.875rem' }}
+        size="xs"
+        c="chatbox-tertiary"
+        fw={550}
+        className="tracking-tight truncate project-folder-name"
+        style={{ fontSize: '0.8125rem', letterSpacing: '-0.01em' }}
       >
         {name}
       </Text>
 
-      <Text span size="xs" c="chatbox-tertiary" flex={1} className="tabular-nums" style={{ fontSize: '0.75rem' }}>
+      <Text
+        span
+        size="xs"
+        c="chatbox-tertiary"
+        flex={1}
+        className="tabular-nums project-folder-count"
+        style={{ fontSize: '0.6875rem' }}
+      >
         {count}
       </Text>
 
+      {/* Hover-only + on desktop; always available on small screens + inside menu */}
       {!implicit && onCreateChat && (
         <Tooltip label={t('New Chat')} withArrow openDelay={400}>
           <ActionIcon
@@ -128,7 +140,7 @@ function FolderItem({
               onCreateChat()
             }}
           >
-            <ScalableIcon icon={IconPlus} size={16} />
+            <ScalableIcon icon={IconPlus} size={15} />
           </ActionIcon>
         </Tooltip>
       )}
@@ -149,12 +161,13 @@ function FolderItem({
               'active:scale-[0.96] transition-transform',
               isSmallScreen || menuOpened ? '' : 'group-hover/folder-item:visible invisible'
             )}
+            aria-label={t('Project options')}
             onClick={(event) => {
               event.stopPropagation()
               event.preventDefault()
             }}
           >
-            <ScalableIcon icon={IconDots} size={16} />
+            <ScalableIcon icon={IconDots} size={15} />
           </ActionIcon>
         </ActionMenu>
       )}

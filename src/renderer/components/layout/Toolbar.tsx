@@ -1,6 +1,7 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { ActionIcon, Button, Flex } from '@mantine/core'
 import {
+  IconArrowsHorizontal,
   IconClearAll,
   IconCode,
   IconDeviceFloppy,
@@ -10,7 +11,7 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 import { useSetAtom } from 'jotai'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useIsLargeScreen, useIsSmallScreen } from '@/hooks/useScreenChange'
 import platform from '@/platform'
@@ -19,11 +20,9 @@ import * as atoms from '@/stores/atoms'
 import { deleteSession, getSession } from '@/stores/chatStore'
 import { clear as clearSession } from '@/stores/sessionActions'
 import { useUIStore } from '@/stores/uiStore'
-import ActionMenu from '../ActionMenu'
-import Broom from '../icons/Broom'
-import LayoutExpand from '../icons/LayoutExpand'
-import LayoutShrink from '../icons/LayoutShrink'
+import ActionMenu, { type ActionMenuItemProps } from '../ActionMenu'
 import { ScalableIcon } from '../common/ScalableIcon'
+import Broom from '../icons/Broom'
 import UpdateAvailableButton from '../UpdateAvailableButton'
 
 /**
@@ -72,13 +71,75 @@ export default function Toolbar({ sessionId }: { sessionId: string }) {
     }
   }, [sessionId, t])
 
+  // Full-width lived as a middle toolbar icon with broken custom SVGs (no size → empty square).
+  // Keep the capability in the overflow menu; primary chrome stays Search + More only.
+  const overflowItems = useMemo<ActionMenuItemProps[]>(() => {
+    const items: ActionMenuItemProps[] = [
+      {
+        text: t('Thread History'),
+        icon: IconHistory,
+        onClick: () => setThreadHistoryDrawerOpen(true),
+      },
+      {
+        text: t('Export Chat'),
+        icon: IconDeviceFloppy,
+        onClick: handleExportAndSave,
+      },
+    ]
+
+    if (isLargeScreen) {
+      items.push({
+        text: widthFull ? t('Exit full width') : t('Full width'),
+        icon: IconArrowsHorizontal,
+        onClick: () => setWidthFull(!widthFull),
+      })
+    }
+
+    if (process.env.NODE_ENV === 'development') {
+      items.push({
+        text: t('View Session JSON'),
+        icon: IconCode,
+        onClick: handleViewSessionJson,
+      })
+    }
+
+    items.push(
+      { divider: true },
+      {
+        doubleCheck: { color: 'chatbox-error' },
+        text: t('Clear All Messages'),
+        icon: isSmallScreen ? IconClearAll : Broom,
+        onClick: handleSessionClean,
+      },
+      {
+        doubleCheck: { color: 'chatbox-error' },
+        text: t('Delete Current Session'),
+        icon: IconTrash,
+        color: 'chatbox-error',
+        onClick: handleSessionDelete,
+      }
+    )
+
+    return items
+  }, [
+    handleSessionClean,
+    handleSessionDelete,
+    handleViewSessionJson,
+    isLargeScreen,
+    isSmallScreen,
+    setThreadHistoryDrawerOpen,
+    setWidthFull,
+    t,
+    widthFull,
+  ])
+
   return !isSmallScreen ? (
     <Flex align="center" gap="sm" className="controls">
       {showUpdateNotification && <UpdateAvailableButton />}
 
       <Button
-        h={32}
-        px="sm"
+        h={34}
+        px="md"
         radius="md"
         variant="subtle"
         color="chatbox-tertiary"
@@ -90,64 +151,7 @@ export default function Toolbar({ sessionId }: { sessionId: string }) {
         {t('Search')}...
       </Button>
 
-      {isLargeScreen && (
-        <ActionIcon
-          variant="subtle"
-          size={32}
-          color="chatbox-secondary"
-          className="active:scale-[0.96] transition-transform"
-          onClick={() => setWidthFull(!widthFull)}
-          aria-label={widthFull ? t('Exit full width') : t('Full width')}
-        >
-          {widthFull ? <LayoutExpand strokeWidth={1.8} /> : <LayoutShrink strokeWidth={1.8} />}
-        </ActionIcon>
-      )}
-
-      <ActionMenu
-        position="bottom-end"
-        items={[
-          {
-            text: t('Thread History'),
-            icon: IconHistory,
-            onClick: () => setThreadHistoryDrawerOpen(true),
-          },
-          {
-            text: t('Export Chat'),
-            icon: IconDeviceFloppy,
-            onClick: handleExportAndSave,
-          },
-          ...(process.env.NODE_ENV === 'development'
-            ? [
-                {
-                  text: t('View Session JSON'),
-                  icon: IconCode,
-                  onClick: handleViewSessionJson,
-                },
-              ]
-            : []),
-          {
-            divider: true,
-          },
-          {
-            doubleCheck: {
-              color: 'chatbox-error',
-            },
-            text: t('Clear All Messages'),
-            icon: Broom,
-            color: 'chatbox-primary',
-            onClick: handleSessionClean,
-          },
-          {
-            doubleCheck: {
-              color: 'chatbox-error',
-            },
-            text: t('Delete Current Session'),
-            icon: IconTrash,
-            color: 'chatbox-error',
-            onClick: handleSessionDelete,
-          },
-        ]}
-      >
+      <ActionMenu position="bottom-end" items={overflowItems}>
         <ActionIcon
           variant="subtle"
           size={32}
@@ -161,56 +165,17 @@ export default function Toolbar({ sessionId }: { sessionId: string }) {
     </Flex>
   ) : (
     <Flex align="center" gap="xs">
-      <ActionIcon variant="subtle" size={30} color="chatbox-secondary" onClick={() => setOpenSearchDialog(true)}>
+      <ActionIcon
+        variant="subtle"
+        size={30}
+        color="chatbox-secondary"
+        onClick={() => setOpenSearchDialog(true)}
+        aria-label={t('Search')}
+      >
         <IconSearch strokeWidth={1.8} />
       </ActionIcon>
-      <ActionMenu
-        position="bottom-end"
-        items={[
-          {
-            text: t('Thread History'),
-            icon: IconHistory,
-            onClick: () => setThreadHistoryDrawerOpen(true),
-          },
-
-          {
-            text: t('Export Chat'),
-            icon: IconDeviceFloppy,
-            onClick: handleExportAndSave,
-          },
-          ...(process.env.NODE_ENV === 'development'
-            ? [
-                {
-                  text: t('View Session JSON'),
-                  icon: IconCode,
-                  onClick: handleViewSessionJson,
-                },
-              ]
-            : []),
-          {
-            divider: true,
-          },
-          {
-            doubleCheck: {
-              color: 'chatbox-error',
-            },
-            text: t('Clear All Messages'),
-            icon: IconClearAll,
-            color: 'chatbox-primary',
-            onClick: handleSessionClean,
-          },
-          {
-            doubleCheck: {
-              color: 'chatbox-error',
-            },
-            text: t('Delete Current Session'),
-            icon: IconTrash,
-            color: 'chatbox-primary',
-            onClick: handleSessionDelete,
-          },
-        ]}
-      >
-        <ActionIcon variant="subtle" size={30} color="chatbox-secondary">
+      <ActionMenu position="bottom-end" items={overflowItems}>
+        <ActionIcon variant="subtle" size={30} color="chatbox-secondary" aria-label={t('More actions')}>
           <IconDots strokeWidth={1.8} />
         </ActionIcon>
       </ActionMenu>

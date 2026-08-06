@@ -17,21 +17,8 @@ import platform from '@/platform'
 import * as chatStore from '../chatStore'
 import { settingsStore } from '../settingsStore'
 import { getAllMessageList } from '../sessionHelpers'
-import { uiStore } from '../uiStore'
 import { messageQueueStore } from './messageQueue'
-
-/**
- * Get session-level web browsing setting
- * Returns user's explicit setting if set, otherwise returns default based on provider
- */
-function getSessionWebBrowsing(sessionId: string, _provider: string | undefined): boolean {
-  const sessionValue = uiStore.getState().sessionWebBrowsingMap[sessionId]
-  if (sessionValue !== undefined) {
-    return sessionValue
-  }
-  // Default: disabled unless explicitly enabled by the user.
-  return false
-}
+import { getSessionWebBrowsing } from './session-web-browsing'
 
 /**
  * 在当前主题的最后插入一条消息。

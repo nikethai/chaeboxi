@@ -23,7 +23,7 @@ import * as latex from '../packages/latex'
 import { isRenderableCodeLanguage } from './Artifact'
 import 'katex/dist/katex.min.css' // `rehype-katex` does not import the CSS for you
 import NiceModal from '@ebay/nice-modal-react'
-import { ActionIcon, Flex, Loader, Stack, Text, Tooltip, useComputedColorScheme } from '@mantine/core'
+import { ActionIcon, Flex, Loader, Text, Tooltip, useComputedColorScheme } from '@mantine/core'
 import {
   IconBrandCpp,
   IconBrandCSharp,
@@ -61,11 +61,11 @@ import { visit } from 'unist-util-visit'
 import { useCopied } from '@/hooks/useCopied'
 import { deployHtmlToEdgeOne } from '../packages/edgeone'
 import * as toastActions from '../stores/toastActions'
-import { CitationBadge } from './search/CitationBadge'
+import { ScalableIcon } from './common/ScalableIcon'
 import IconDart from './icons/Dart'
 import IconJava from './icons/Java'
 import { MessageMermaid, SVGPreview } from './Mermaid'
-import { ScalableIcon } from './common/ScalableIcon'
+import { CitationBadge } from './search/CitationBadge'
 
 const CODE_BLOCK_COLLAPSE_LINE_THRESHOLD = 7
 
@@ -498,98 +498,104 @@ const BlockCode = memo(
       toggleCollapsed()
     }
 
+    const actionsActive = copied || deploying
+
     return (
-      <Stack gap={0}>
-        <Flex
-          justify="space-between"
-          className={clsx(
-            'p-xs bg-chatbox-background-secondary rounded-t-md border border-solid border-[var(--chatbox-border-primary)]',
-            !needCollapse || !collapsed ? 'sticky top-0 z-10' : ''
-          )}
-        >
-          <Flex align="center" gap="xs">
+      <div className="code-fence my-2">
+        <div className={clsx('code-fence-header', (!needCollapse || !collapsed) && 'is-sticky')}>
+          <Flex align="center" gap={6} miw={0}>
             {generating ? (
               <Loader size={10} />
             ) : (
-              <ScalableIcon size={16} icon={icon} color="var(--chatbox-tint-tertiary)" />
+              <ScalableIcon size={14} icon={icon} color="var(--chatbox-tint-tertiary)" />
             )}
-            <Text span c="chatbox-tertiary" fw="600" className="font-mono">
+            <Text span className="code-fence-lang truncate">
               {languageName}
             </Text>
           </Flex>
 
-          <Flex gap="xs" align="center">
+          <div className={clsx('code-fence-actions', actionsActive && 'is-active')}>
             {!hiddenCodeCopyButton && (
-              <Tooltip label={t('copy')} withArrow openDelay={1000}>
+              <Tooltip label={copied ? t('Copied') : t('Copy')} withArrow openDelay={400}>
                 <ActionIcon
-                  variant="transparent"
+                  variant="subtle"
                   color={copied ? 'chatbox-success' : 'chatbox-tertiary'}
-                  size={20}
+                  size={28}
+                  radius="md"
+                  className="active:scale-[0.96] transition-transform"
                   onClick={onClickCopy}
+                  aria-label={t('Copy')}
                 >
-                  {copied ? <IconCheck /> : <IconCopy />}
+                  {copied ? <IconCheck size={15} stroke={1.75} /> : <IconCopy size={15} stroke={1.75} />}
                 </ActionIcon>
               </Tooltip>
             )}
 
             {isRenderableCode && (
-              <Tooltip label={t('Open as Artifact')} withArrow openDelay={1000}>
-                <ActionIcon variant="transparent" color="chatbox-tertiary" size={20} onClick={onClickArtifact}>
-                  <IconPlayerPlayFilled />
+              <Tooltip label={t('Open as Artifact')} withArrow openDelay={400}>
+                <ActionIcon
+                  variant="subtle"
+                  color="chatbox-tertiary"
+                  size={28}
+                  radius="md"
+                  className="active:scale-[0.96] transition-transform"
+                  onClick={onClickArtifact}
+                  aria-label={t('Open as Artifact')}
+                >
+                  <IconPlayerPlayFilled size={14} />
                 </ActionIcon>
               </Tooltip>
             )}
 
             {canDeploy && (
-              <Tooltip label={t('Publish Webpage')} withArrow openDelay={1000}>
+              <Tooltip label={t('Publish Webpage')} withArrow openDelay={400}>
                 <ActionIcon
-                  variant="transparent"
+                  variant="subtle"
                   color="chatbox-tertiary"
-                  size={20}
+                  size={28}
+                  radius="md"
+                  className="active:scale-[0.96] transition-transform"
                   onClick={onClickDeploy}
                   disabled={deploying}
+                  aria-label={t('Publish Webpage')}
                 >
-                  {deploying ? <Loader size={12} /> : <IconWorldUpload />}
+                  {deploying ? <Loader size={12} /> : <IconWorldUpload size={15} stroke={1.75} />}
                 </ActionIcon>
               </Tooltip>
             )}
 
             {needCollapse && (
-              <Tooltip label={collapsed ? t('Expand') : t('Collapse')} withArrow openDelay={1000}>
+              <Tooltip label={collapsed ? t('Expand') : t('Collapse')} withArrow openDelay={400}>
                 <ActionIcon
-                  variant="transparent"
+                  variant="subtle"
                   color="chatbox-tertiary"
-                  size={20}
+                  size={28}
+                  radius="md"
                   onClick={onClickCollapse}
-                  className={clsx('transition-transform ease-linear', !collapsed ? 'rotate-90' : '')}
+                  className={clsx('active:scale-[0.96] transition-transform', !collapsed && 'rotate-90')}
+                  aria-label={collapsed ? t('Expand') : t('Collapse')}
                 >
-                  <IconChevronRight />
+                  <IconChevronRight size={15} stroke={1.75} />
                 </ActionIcon>
               </Tooltip>
             )}
-          </Flex>
-        </Flex>
+          </div>
+        </div>
 
-        <Stack
-          className={clsx(
-            'border border-t-0 border-solid border-[var(--chatbox-border-primary)] rounded-b-md',
-            needCollapse && collapsed ? 'h-[10rem]' : ''
-          )}
-        >
+        <div className={clsx('code-fence-body', needCollapse && collapsed && 'is-collapsed')}>
           <SyntaxHighlighter
             style={colorScheme !== 'light' ? oneDark : oneLight}
             language={language}
             PreTag="div"
             showLineNumbers
             customStyle={{
-              marginTop: '0',
-              margin: '0',
-              borderTopLeftRadius: '0',
-              borderTopRightRadius: '0',
-              borderBottomLeftRadius: 'var(--chatbox-radius-md)',
-              borderBottomRightRadius: 'var(--chatbox-radius-md)',
+              margin: 0,
+              padding: '0.75rem 0.85rem',
+              borderRadius: 0,
               border: 'none',
-              background: 'transparent !important',
+              background: 'transparent',
+              fontSize: '0.8125rem',
+              lineHeight: 1.55,
               ...(generating && needCollapse && collapsed
                 ? {
                     overflow: 'hidden',
@@ -599,14 +605,21 @@ const BlockCode = memo(
                   }
                 : {}),
             }}
+            lineNumberStyle={{
+              minWidth: '2.25em',
+              paddingRight: '0.85em',
+              opacity: 0.45,
+              fontVariantNumeric: 'tabular-nums',
+            }}
             codeTagProps={{
               className: '!bg-transparent',
+              style: { fontFamily: 'var(--chatbox-font-mono)' },
             }}
           >
             {children}
           </SyntaxHighlighter>
-        </Stack>
-      </Stack>
+        </div>
+      </div>
     )
   }
 )

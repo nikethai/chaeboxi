@@ -3,6 +3,7 @@ import {
   ActionIcon,
   Box,
   Button,
+  Collapse,
   FileButton,
   Flex,
   Input,
@@ -12,6 +13,7 @@ import {
   Text,
   Textarea,
   Tooltip,
+  UnstyledButton,
 } from '@mantine/core'
 import { chatSessionSettings, pictureSessionSettings } from '@shared/defaults'
 import {
@@ -23,20 +25,20 @@ import {
   type SessionSettings,
 } from '@shared/types'
 import { isReasoningReplayAvailable } from '@shared/utils/reasoning-replay'
-import { IconInfoCircle, IconTrash } from '@tabler/icons-react'
+import { IconChevronDown, IconInfoCircle, IconTrash } from '@tabler/icons-react'
 import { pick } from 'lodash'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AssistantAvatar } from '@/components/common/Avatar'
 import { AdaptiveModal } from '@/components/common/AdaptiveModal'
+import { AssistantAvatar } from '@/components/common/Avatar'
 import LazyNumberInput from '@/components/common/LazyNumberInput'
 import MaxContextMessageCountSlider from '@/components/common/MaxContextMessageCountSlider'
-import SliderWithInput from '@/components/common/SliderWithInput'
-import { SystemPromptPresetPicker } from '@/components/SystemPromptPresets'
-import { handleImageInputAndSave } from '@/components/Image'
-import ImageStyleSelect from '@/components/ImageStyleSelect'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import SegmentedControl from '@/components/common/SegmentedControl'
+import SliderWithInput from '@/components/common/SliderWithInput'
+import { handleImageInputAndSave } from '@/components/Image'
+import ImageStyleSelect from '@/components/ImageStyleSelect'
+import { SystemPromptPresetPicker } from '@/components/SystemPromptPresets'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { trackingEvent } from '@/packages/event'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
@@ -64,6 +66,7 @@ const SessionSettingsModal = NiceModal.create(
     }, [session])
 
     const [systemPrompt, setSystemPrompt] = useState('')
+    const [advancedOpen, setAdvancedOpen] = useState(false)
     useEffect(() => {
       if (!session) {
         setSystemPrompt('')
@@ -72,6 +75,11 @@ const SessionSettingsModal = NiceModal.create(
         setSystemPrompt(systemMessage ? getMessageText(systemMessage) : '')
       }
     }, [session])
+
+    // Reset progressive disclosure when a different session is opened
+    useEffect(() => {
+      setAdvancedOpen(false)
+    }, [session?.id])
 
     const onReset = (event: React.MouseEvent) => {
       event.stopPropagation()
@@ -154,76 +162,78 @@ const SessionSettingsModal = NiceModal.create(
           modal.resolve()
           modal.hide()
         }}
-        // fullScreen={isSmallScreen}
         centered
-        size="lg"
-        title={t('Conversation Settings')}
+        size="md"
+        title={t('Session options')}
         onFocus={(e) => e.stopPropagation()}
         trapFocus={false}
-        // fullWidth
       >
         <div style={{ maxHeight: '60vh', overflowY: 'auto', overflowX: 'hidden' }}>
-          <Stack>
-            <FileButton
-              accept="image/png,image/jpeg"
-              onChange={(file) => {
-                if (file) {
-                  const key = StorageKeyGenerator.picture(`assistant-avatar:${session?.id}`)
-                  handleImageInputAndSave(file, key, () => setEditingData({ ...editingData, assistantAvatarKey: key }))
-                }
-              }}
-            >
-              {(props) => (
-                <Flex justify="center">
-                  <Flex className="relative">
+          <Stack gap="md">
+            {/* Compact identity row — avatar demoted, name primary */}
+            <Flex align="center" gap="sm">
+              <FileButton
+                accept="image/png,image/jpeg"
+                onChange={(file) => {
+                  if (file) {
+                    const key = StorageKeyGenerator.picture(`assistant-avatar:${session?.id}`)
+                    handleImageInputAndSave(file, key, () =>
+                      setEditingData({ ...editingData, assistantAvatarKey: key })
+                    )
+                  }
+                }}
+              >
+                {(props) => (
+                  <Flex className="relative shrink-0">
                     <AssistantAvatar
-                      size={isSmallScreen ? 64 : 80}
+                      size={40}
                       avatarKey={editingData.assistantAvatarKey}
                       picUrl={editingData.picUrl}
                       sessionType={editingData.type}
                       {...props}
                     />
-
                     {editingData.assistantAvatarKey && (
                       <ActionIcon
                         color="chatbox-error"
-                        size={24}
+                        size={18}
                         radius="xl"
-                        bottom={0}
-                        right={0}
+                        bottom={-2}
+                        right={-2}
                         className="absolute"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation()
                           setEditingData({ ...editingData, assistantAvatarKey: undefined })
                         }}
+                        aria-label={t('Remove avatar')}
                       >
-                        <ScalableIcon icon={IconTrash} size={18} />
+                        <ScalableIcon icon={IconTrash} size={12} />
                       </ActionIcon>
                     )}
                   </Flex>
-                </Flex>
-              )}
-            </FileButton>
+                )}
+              </FileButton>
 
-            <Input.Wrapper label={t('name')}>
-              <Input
-                placeholder={t('name')}
-                autoFocus={!isSmallScreen}
-                value={editingData.name}
-                onChange={(e) => setEditingData({ ...editingData, name: e.target.value })}
-                classNames={{
-                  input: '!text-chatbox-tint-primary',
-                }}
-              />
-            </Input.Wrapper>
+              <Input.Wrapper label={t('Name')} className="flex-1 min-w-0">
+                <Input
+                  placeholder={t('Name')}
+                  autoFocus={!isSmallScreen}
+                  value={editingData.name}
+                  onChange={(e) => setEditingData({ ...editingData, name: e.target.value })}
+                  classNames={{
+                    input: '!text-chatbox-tint-primary',
+                  }}
+                />
+              </Input.Wrapper>
+            </Flex>
 
             {editingData.settings?.provider !== ModelProviderEnum.OpenClaw && (
               <Stack gap="xs">
                 <Textarea
-                  label={t('Instruction (System Prompt)')}
+                  label={t('System prompt')}
                   placeholder={t('Copilot Prompt Demo') || ''}
                   autosize
                   minRows={2}
-                  maxRows={12}
+                  maxRows={8}
                   value={systemPrompt}
                   onChange={(event) => setSystemPrompt(event.target.value)}
                   classNames={{
@@ -237,50 +247,73 @@ const SessionSettingsModal = NiceModal.create(
               </Stack>
             )}
 
-            <Stack className=" border border-solid border-chatbox-border-primary rounded-md">
-              <Flex
-                align="center"
-                justify="space-between"
-                px="md"
-                py="sm"
-                className="border-0 border-b border-solid border-chatbox-border-primary"
+            {/* Advanced model settings — collapsed by default */}
+            <Stack gap={0} className="border border-solid border-chatbox-border-primary rounded-lg overflow-hidden">
+              <UnstyledButton
+                onClick={() => setAdvancedOpen((v) => !v)}
+                className="w-full px-3 py-2.5 hover:bg-[var(--chatbox-background-tertiary)] transition-colors"
+                aria-expanded={advancedOpen}
               >
-                <Text fw={700}>{t('Specific model settings')}</Text>
-                <Button size="compact-sm" color="chatbox-secondary" variant="light" onClick={onReset}>
-                  {t('Reset')}
-                </Button>
-              </Flex>
+                <Flex align="center" justify="space-between" gap="sm">
+                  <Text size="sm" fw={600} c="chatbox-primary">
+                    {t('Model settings')}
+                  </Text>
+                  <Flex align="center" gap={6}>
+                    {advancedOpen && (
+                      <Button
+                        size="compact-xs"
+                        color="chatbox-secondary"
+                        variant="light"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onReset(e)
+                        }}
+                      >
+                        {t('Reset')}
+                      </Button>
+                    )}
+                    <IconChevronDown
+                      size={16}
+                      stroke={1.5}
+                      className="text-chatbox-tint-tertiary transition-transform duration-150"
+                      style={{ transform: advancedOpen ? 'rotate(180deg)' : undefined }}
+                    />
+                  </Flex>
+                </Flex>
+              </UnstyledButton>
 
-              <Box px="md" py="sm">
-                {isChatSession(session) && (
-                  <ChatConfig
-                    settings={editingData.settings}
-                    onSettingsChange={(d) =>
-                      setEditingData((_data) => {
-                        if (_data) {
-                          return {
-                            ..._data,
-                            settings: {
-                              ..._data?.settings,
-                              ...d,
-                            },
+              <Collapse in={advancedOpen}>
+                <Box px="md" py="sm" className="border-0 border-t border-solid border-chatbox-border-primary">
+                  {isChatSession(session) && (
+                    <ChatConfig
+                      settings={editingData.settings}
+                      onSettingsChange={(d) =>
+                        setEditingData((_data) => {
+                          if (_data) {
+                            return {
+                              ..._data,
+                              settings: {
+                                ..._data?.settings,
+                                ...d,
+                              },
+                            }
+                          } else {
+                            return null
                           }
-                        } else {
-                          return null
-                        }
-                      })
-                    }
-                  />
-                )}
-                {isPictureSession(session) && <PictureConfig dataEdit={editingData} setDataEdit={setEditingData} />}
-              </Box>
+                        })
+                      }
+                    />
+                  )}
+                  {isPictureSession(session) && <PictureConfig dataEdit={editingData} setDataEdit={setEditingData} />}
+                </Box>
+              </Collapse>
             </Stack>
           </Stack>
         </div>
 
         <AdaptiveModal.Actions>
           <AdaptiveModal.CloseButton onClick={onCancel} />
-          <Button onClick={onSave}>{t('save')}</Button>
+          <Button onClick={onSave}>{t('Save')}</Button>
         </AdaptiveModal.Actions>
       </AdaptiveModal>
     )

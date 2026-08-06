@@ -28,6 +28,11 @@ Desktop AI copilot chrome that feels like a focused studio tool — Grok + ChatG
 | Actions | Hidden by default; full opacity on hover; last assistant message always visible (`is-visible`); opacity/transform only |
 | Chrome | No topbar bottom border; no dock `border-top` |
 | Composer | Resting **layered box-shadow** (theme tokens); no hard border; no brand ring at rest; no gradient glow |
+| Composer hover/focus | Soft ambient lift (`--chatbox-composer-shadow-hover` / `-focus`); brand mix ≤~20%; no neon wash |
+| Code fences | Theme-following shell (`.code-fence`); quiet mono lang chip; actions fade in on hover/focus |
+| Session rename | Inline header rename (pencil / double-click); full config via **Session options** progressive disclosure |
+| Session overflow menu | Title Case labels; grouped; danger separated; full-width lives in overflow (not empty toolbar icon) |
+| Projects | Section-like folder rows; hover-only `+` on desktop; New Chat also in menu |
 | Composer tools | Single **`+` overflow** (click-primary) for attach / web / MCP / KB / agent / thread / settings — not always-on icon rail |
 | Auto tools | Web search **default ON** when configured; MCP tools from **enabled servers** always attached for tool-capable models; agent mode **opt-in**; KB **explicit select** |
 | Telemetry | Session statusline is SoT for tok/$/msg; **no composer token chip**; click statusline `tok` for compress / auto-compaction |

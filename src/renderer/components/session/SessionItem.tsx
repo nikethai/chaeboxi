@@ -1,5 +1,5 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { ActionIcon, Button, Flex, Select, Text } from '@mantine/core'
+import { ActionIcon, Button, Flex, Select, Text, TextInput } from '@mantine/core'
 import type { SessionMeta } from '@shared/types'
 import {
   IconArchive,
@@ -7,6 +7,7 @@ import {
   IconDots,
   IconEdit,
   IconFolder,
+  IconSettings,
   IconStar,
   IconStarFilled,
   IconTrash,
@@ -49,32 +50,49 @@ function SessionItem(props: Props) {
 
   const [menuOpened, setMenuOpened] = useState(false)
   const [folderModalOpened, setFolderModalOpened] = useState(false)
+  const [renameModalOpened, setRenameModalOpened] = useState(false)
+  const [renameValue, setRenameValue] = useState(session.name)
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(session.folderId ?? null)
 
   useEffect(() => {
     setSelectedFolderId(session.folderId ?? null)
   }, [session.folderId])
 
+  useEffect(() => {
+    if (!renameModalOpened) {
+      setRenameValue(session.name)
+    }
+  }, [renameModalOpened, session.name])
+
   const actionMenuItems = useMemo<ActionMenuItemProps[]>(
     () => [
       {
-        text: t('edit'),
+        text: t('Rename'),
         icon: IconEdit,
-        onClick: async () => {
-          await NiceModal.show('session-settings', {
-            session: await getSession(session.id),
-          })
+        onClick: () => {
+          setRenameModalOpened(true)
+          setRenameValue(session.name)
         },
       },
       {
-        text: t('copy'),
+        text: t('Duplicate'),
         icon: IconCopy,
         onClick: () => {
           copyAndSwitchSession(session)
         },
       },
       {
-        text: session.starred ? t('unstar') : t('star'),
+        text: t('Session options'),
+        icon: IconSettings,
+        onClick: async () => {
+          await NiceModal.show('session-settings', {
+            session: await getSession(session.id),
+          })
+        },
+      },
+      { divider: true },
+      {
+        text: session.starred ? t('Unstar') : t('Star'),
         icon: session.starred ? IconStarFilled : IconStar,
         onClick: () => {
           void updateSessionStore(session.id, (s) => {
@@ -107,8 +125,9 @@ function SessionItem(props: Props) {
       { divider: true },
       {
         doubleCheck: true,
-        text: t('delete'),
+        text: t('Delete'),
         icon: IconTrash,
+        color: 'chatbox-error',
         onClick: async () => {
           try {
             await deleteSessionStore(session.id)
@@ -147,6 +166,17 @@ function SessionItem(props: Props) {
       }
     })
     setFolderModalOpened(false)
+  }
+
+  const handleSaveRename = async () => {
+    const nextName = renameValue.trim() || session.name
+    await updateSessionStore(session.id, (s) => {
+      if (!s) {
+        throw new Error(`Session ${session.id} not found`)
+      }
+      return { ...s, name: nextName }
+    })
+    setRenameModalOpened(false)
   }
 
   return (
@@ -200,6 +230,34 @@ function SessionItem(props: Props) {
           </ActionIcon>
         </ActionMenu>
       </Flex>
+
+      <AdaptiveModal
+        opened={renameModalOpened}
+        onClose={() => setRenameModalOpened(false)}
+        title={t('Rename')}
+        centered
+        size="sm"
+      >
+        <TextInput
+          label={t('Name')}
+          value={renameValue}
+          onChange={(e) => setRenameValue(e.currentTarget.value)}
+          data-autofocus
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              void handleSaveRename()
+            }
+          }}
+          classNames={{
+            input: '!text-chatbox-tint-primary',
+          }}
+        />
+        <AdaptiveModal.Actions>
+          <AdaptiveModal.CloseButton onClick={() => setRenameModalOpened(false)} />
+          <Button onClick={() => void handleSaveRename()}>{t('Save')}</Button>
+        </AdaptiveModal.Actions>
+      </AdaptiveModal>
 
       <AdaptiveModal
         opened={folderModalOpened}

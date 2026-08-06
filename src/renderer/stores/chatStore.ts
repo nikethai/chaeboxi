@@ -40,6 +40,22 @@ const QueryKeys = {
   ChatSession: (id: string) => ['chat-session', id],
 }
 
+export { QueryKeys as ChatQueryKeys }
+
+/**
+ * Notify other desktop windows that a session (or the list) changed on disk.
+ * Dual-webview quick/main each have their own React Query cache.
+ */
+export async function broadcastSessionChanged(sessionId?: string | null) {
+  if (typeof window === 'undefined') return
+  try {
+    const { emit } = await import('@tauri-apps/api/event')
+    await emit('session:changed', { sessionId: sessionId || null })
+  } catch {
+    // Non-desktop or emit unavailable — no-op
+  }
+}
+
 // MARK: session list operations
 
 // list sessions meta
@@ -116,6 +132,21 @@ export async function getSession(sessionId: string) {
   return await queryClient.fetchQuery(getSessionQueryOptions(sessionId))
 }
 
+/** Drop local React Query cache and re-read session(s) from shared storage. */
+export async function invalidateAndRefetchSession(sessionId?: string | null) {
+  if (sessionId) {
+    await queryClient.invalidateQueries({ queryKey: QueryKeys.ChatSession(sessionId) })
+    // Force storage re-read even with staleTime: Infinity
+    await queryClient.fetchQuery(getSessionQueryOptions(sessionId)).catch((err) => {
+      log.error('refetch session failed', sessionId, err)
+    })
+  }
+  await queryClient.invalidateQueries({ queryKey: QueryKeys.ChatSessionsList })
+  await queryClient.fetchQuery(listSessionsMetaQueryOptions).catch((err) => {
+    log.error('refetch session list failed', err)
+  })
+}
+
 export function useSession(sessionId: string | null) {
   const { data: session, ...rest } = useQuery({
     ...getSessionQueryOptions(sessionId!),
@@ -156,6 +187,7 @@ export async function createSession(newSession: Omit<Session, 'id'>, previousId?
     }
     return [...sessions, sMeta]
   })
+  void broadcastSessionChanged(session.id)
   return session
 }
 
@@ -198,6 +230,7 @@ export async function updateSessionWithMessages(sessionId: string, updater: Upda
     })
   }
   _setSessionCache(sessionId, updated)
+  void broadcastSessionChanged(sessionId)
   return updated
 }
 

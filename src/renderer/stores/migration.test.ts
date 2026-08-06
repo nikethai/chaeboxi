@@ -22,13 +22,17 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
  *   - Mobile: Fully migrated to IndexedDB - all data in IndexedDB
  *   - Desktop: Split storage - sessions in IndexedDB, configs/settings/configVersion stay in IPC file
  *
- * v1.17.0 (config version 12-13) [CURRENT]
+ * v1.17.0 (config version 12-13)
  *   - Mobile: Migrated to SQLite for better performance - all data in SQLite
- *   - Desktop: No change from v1.16.1 - sessions in IndexedDB, configs/settings/configVersion in IPC file
+ *   - Desktop: sessions still IndexedDB at this point
+ *
+ * Later (multi-window quick chat):
+ *   - Desktop: sessions + chat-sessions-list moved to shared IPC file storage so
+ *     main + quick webviews share one session source of truth
  *
  * Key Points:
  *   - Desktop has ALWAYS kept configVersion/settings/configs in file storage (never in IndexedDB)
- *   - Desktop only moved session data to IndexedDB in v1.16.1
+ *   - Desktop session storage: file → IndexedDB (v1.16.1) → shared IPC file (quick-chat)
  *   - Mobile storage evolution: localStorage → SQLite (v1.9.11) → IndexedDB (v1.16.1) → SQLite (v1.17.0)
  *
  * Migration Logic:
@@ -523,28 +527,27 @@ describe('migrateStorage test', () => {
     // Should get all values from old storage
     expect(mockOldStorage.getAllStoreValues).toHaveBeenCalled()
 
-    // In v1.17.0: settings, configs, configVersion should stay in file (IPC)
-    // They should NOT be migrated to IndexedDB
+    // Settings, configs, configVersion stay in file (IPC) — never in IndexedDB
     const localforageKeys = Object.keys(localforageData)
     expect(localforageKeys).not.toContain(StorageKey.Settings)
     expect(localforageKeys).not.toContain(StorageKey.Configs)
     expect(localforageKeys).not.toContain(StorageKey.ConfigVersion)
 
-    // Session data should be migrated to IndexedDB
-    expect(localforageKeys).toContain(StorageKey.ChatSessionsList)
-    expect(localforageKeys).toContain('session:1')
-    expect(localforageKeys).toContain('session:2')
+    // Sessions + list stay in IPC file (multi-window shared). Other keys → IndexedDB.
+    const ipcKeys = Object.keys(ipcFileData)
+    expect(ipcKeys).toContain(StorageKey.ChatSessionsList)
+    expect(ipcKeys).toContain('session:1')
+    expect(ipcKeys).toContain('session:2')
     expect(localforageKeys).toContain('some-other-key')
+    expect(localforageKeys).not.toContain(StorageKey.ChatSessionsList)
+    expect(localforageKeys).not.toContain('session:1')
 
-    // Only session-related keys should be deleted from old storage
-    // Settings, configs, configVersion are NOT deleted because they stay in file storage
+    // Only non-file keys deleted from old storage
     const deletedKeys = mockOldStorage.delStoreValue.mock.calls.map((call: unknown[]) => call[0])
-    expect(deletedKeys).toContain(StorageKey.ChatSessionsList)
-    expect(deletedKeys).toContain('session:1')
-    expect(deletedKeys).toContain('session:2')
     expect(deletedKeys).toContain('some-other-key')
-
-    // These should NOT be deleted because they stay in file storage
+    expect(deletedKeys).not.toContain(StorageKey.ChatSessionsList)
+    expect(deletedKeys).not.toContain('session:1')
+    expect(deletedKeys).not.toContain('session:2')
     expect(deletedKeys).not.toContain(StorageKey.Settings)
     expect(deletedKeys).not.toContain(StorageKey.Configs)
     expect(deletedKeys).not.toContain(StorageKey.ConfigVersion)
@@ -770,21 +773,23 @@ describe('migrateStorage test', () => {
     // Should get all values from old storage
     expect(mockOldStorage.getAllStoreValues).toHaveBeenCalled()
 
-    // Session data should be migrated to IndexedDB
-    expect(localforageData[StorageKey.ChatSessionsList]).toBeDefined()
-    expect(localforageData['session:desk1']).toBeDefined()
+    // Sessions stay on IPC file; other keys → IndexedDB
+    expect(ipcFileData[StorageKey.ChatSessionsList]).toBeDefined()
+    expect(ipcFileData['session:desk1']).toBeDefined()
     expect(localforageData['custom-key']).toBeDefined()
+    expect(localforageData[StorageKey.ChatSessionsList]).toBeUndefined()
+    expect(localforageData['session:desk1']).toBeUndefined()
 
     // Settings, configs, configVersion should NOT be in IndexedDB (they stay in file)
     expect(localforageData[StorageKey.Settings]).toBeUndefined()
     expect(localforageData[StorageKey.Configs]).toBeUndefined()
     expect(localforageData[StorageKey.ConfigVersion]).toBeUndefined()
 
-    // Session keys should be deleted from old file storage
+    // Only non-file keys deleted from old file storage
     const deletedKeys = mockOldStorage.delStoreValue.mock.calls.map((call: unknown[]) => call[0])
-    expect(deletedKeys).toContain(StorageKey.ChatSessionsList)
-    expect(deletedKeys).toContain('session:desk1')
     expect(deletedKeys).toContain('custom-key')
+    expect(deletedKeys).not.toContain(StorageKey.ChatSessionsList)
+    expect(deletedKeys).not.toContain('session:desk1')
 
     // Settings/configs/configVersion should NOT be deleted (stay in file)
     expect(deletedKeys).not.toContain(StorageKey.Settings)

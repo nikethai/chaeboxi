@@ -74,9 +74,20 @@ async function doMigrateStorage(oldStorage: Storage) {
       }
     }
   } else if (platform.type === 'desktop') {
-    // for desktop copy all except settings, configs and configVersion, then delete old key
+    // Desktop hybrid storage:
+    // - settings / configs / configVersion: always IPC file
+    // - sessions + chat-sessions-list: shared IPC file (multi-window quick chat)
+    // - other keys: IndexedDB
+    // Only copy keys that leave file storage; do not delete session/settings keys from file.
+    const staysInFile = (k: string) =>
+      k === 'settings' ||
+      k === 'configs' ||
+      k === 'configVersion' ||
+      k === 'chat-sessions-list' ||
+      k.startsWith('session:')
+
     const kvs = await oldStorage.getAllStoreValues()
-    const keys = Object.keys(kvs).filter((k) => !['settings', 'configs', 'configVersion'].includes(k))
+    const keys = Object.keys(kvs).filter((k) => !staysInFile(k))
     for (let index = 0; index < keys.length; index++) {
       const key = keys[index]
       try {

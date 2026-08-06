@@ -330,6 +330,54 @@
     padding: var(--chatbox-dock-pad-y) var(--chatbox-col-pad-x) var(--chatbox-dock-pad-b);
   }
 
+  /* Floating quick chat — same conversation DNA as full session */
+  .quick-chat-shell {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden; /* no horizontal scrollbar in floating panel */
+    /* slightly tighter content column in a floating frame */
+    --chatbox-col: min(42rem, 100%);
+    --chatbox-col-pad-x: 1rem;
+  }
+  .quick-chat-header {
+    border-bottom: none;
+    min-width: 0;
+  }
+  .quick-chat-shell .session-thread {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+    padding: 0.35rem var(--chatbox-col-pad-x) 0.5rem;
+  }
+  .quick-chat-shell .session-dock {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+  .quick-chat-shell .session-dock-pad {
+    min-width: 0;
+    padding-top: 0.45rem;
+    padding-bottom: 0.4rem;
+  }
+  .quick-chat-shell .chat-col,
+  .quick-chat-shell .chat-col-full {
+    max-width: 100%;
+    min-width: 0;
+  }
+  /* Wide media / code must shrink inside the floating frame */
+  .quick-chat-shell img,
+  .quick-chat-shell video,
+  .quick-chat-shell pre,
+  .quick-chat-shell table {
+    max-width: 100%;
+  }
+  .quick-chat-shell pre {
+    overflow-x: auto;
+  }
+  .quick-chat-hints {
+    user-select: none;
+  }
+
   .studio-rail {
     background: var(--chatbox-background-rail) !important;
     border-right: 1px solid var(--chatbox-border-primary);

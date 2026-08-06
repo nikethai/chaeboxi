@@ -37,9 +37,9 @@ export {
   generateMoreInNewFork,
   genMessageContext,
   getMessageThreadContext,
-  getSessionWebBrowsing,
   regenerateInNewFork,
 } from './generation'
+export { getSessionWebBrowsing } from './session-web-browsing'
 // Message operations (5 functions)
 export { insertMessage, insertMessageAfter, modifyMessage, removeMessage, submitNewUserMessage } from './messages'
 

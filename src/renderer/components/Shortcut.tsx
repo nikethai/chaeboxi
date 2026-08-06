@@ -27,6 +27,8 @@ function formatKey(key: string) {
     down: '↓',
     left: '←',
     right: '→',
+    backquote: '`',
+    '`': '`',
   }
   const MAC_KEY_MAPS: Record<string, string> = {
     ...COMMON_KEY_MAPS,
@@ -64,6 +66,11 @@ function formatKey(key: string) {
     default:
       return COMMON_KEY_MAPS[lowercaseKey] || keyLabel
   }
+}
+
+/** Public helper for UI hints (e.g. quick chat footer). */
+export function formatShortcutLabel(key: string) {
+  return formatKey(key)
 }
 
 export function Keys(props: {
@@ -107,6 +114,11 @@ export function ShortcutConfig(props: {
       name: 'quickToggle',
       keys: shortcuts.quickToggle,
       options: shortcutToggleWindowValues,
+    },
+    {
+      label: t('Screenshot to Chat'),
+      name: 'screenshotToChat',
+      keys: shortcuts.screenshotToChat || 'Alt+Shift+S',
     },
     {
       label: t('Focus on the Input Box'),

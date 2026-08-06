@@ -86,6 +86,8 @@ export interface MessageListRef {
 export interface MessageListProps {
   className?: string
   currentSession: Session
+  /** Stick conversation to bottom (compact / quick chat panels) */
+  alignToBottom?: boolean
 }
 
 const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) => {
@@ -93,7 +95,7 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
   const isSmallScreen = useIsSmallScreen()
   const widthFull = useUIStore((s) => s.widthFull)
 
-  const { currentSession } = props
+  const { currentSession, alignToBottom = false } = props
 
   const currentThreadHash = useMemo(
     () => currentSession && getCurrentThreadHistoryHash(currentSession),
@@ -280,14 +282,15 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
             data={currentMessageList}
             ref={virtuoso}
             followOutput="smooth"
-            {...(sessionScrollPositionCache.has(currentSession.id)
+            alignToBottom={alignToBottom}
+            {...(sessionScrollPositionCache.has(currentSession.id) && !alignToBottom
               ? {
                   restoreStateFrom: sessionScrollPositionCache.get(currentSession.id),
                   // 需要额外设置 initialScrollTop，否则恢复位置后 scrollTop 为 0。这时如果用户没有滚动，那么下次保存时 scrollTop 将记为 0，导致下一次恢复时位置始终为顶部。
                   initialScrollTop: sessionScrollPositionCache.get(currentSession.id)?.scrollTop,
                 }
               : {
-                  initialTopMostItemIndex: currentMessageList.length - 1,
+                  initialTopMostItemIndex: Math.max(0, currentMessageList.length - 1),
                 })}
             increaseViewportBy={{ top: 2000, bottom: 2000 }}
             itemContent={(index, msg) => {

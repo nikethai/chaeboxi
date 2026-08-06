@@ -110,12 +110,32 @@ export interface Platform extends Storage {
 
   onMaximizedChange(callback: (isMaximized: boolean) => void): () => void
 
+  // Desktop shell (tray / quick window / screenshot) — desktop only
+  setKeepInTray?(enabled: boolean): Promise<void>
+  setQuickWindowAlwaysOnTop?(enabled: boolean): Promise<void>
+  showQuickWindow?(): Promise<void>
+  showMainWindow?(): Promise<void>
+  openSessionInMain?(sessionId: string): Promise<void>
+  captureScreenshotRegion?(): Promise<ScreenshotImagePayload | null>
+  readClipboardImage?(): Promise<ScreenshotImagePayload | null>
+  getWindowLabel?(): Promise<string>
+  onShellNavigate?(callback: (path: string) => void): () => void
+  onScreenshotCaptured?(callback: (payload: ScreenshotImagePayload) => void): () => void
+  onScreenshotError?(callback: (message: string) => void): () => void
+  onHiddenToTray?(callback: () => void): () => void
+
   // Terminal command execution (Desktop only)
   executeCommand?(
     command: string,
     cwd?: string,
     timeoutMs?: number
   ): Promise<{ exitCode: number; stdout: string; stderr: string }>
+}
+
+export type ScreenshotImagePayload = {
+  mimeType: string
+  base64: string
+  fileName: string
 }
 
 export interface Exporter {

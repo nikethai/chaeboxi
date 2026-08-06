@@ -3,15 +3,41 @@
 import type { DesktopIPC } from '@shared/desktop-ipc-types'
 import type { Config, Settings, ShortcutSetting } from '@shared/types'
 import { cache } from '@shared/utils/cache'
+import { listen as tauriListen } from '@tauri-apps/api/event'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import localforage from 'localforage'
 import { v4 as uuidv4 } from 'uuid'
 import { parseLocale } from '@/i18n/parser'
 import { type ImageGenerationStorage, IndexedDBImageGenerationStorage } from '@/storage/ImageGenerationStorage'
 import { getOS } from '../packages/navigator'
-import type { Platform, PlatformType, FormFactor } from './interfaces'
+import type { FormFactor, Platform, PlatformType, ScreenshotImagePayload } from './interfaces'
 import DesktopKnowledgeBaseController from './knowledge-base/desktop-controller'
 import WebExporter from './web_exporter'
 import { parseTextFileLocally } from './web_platform_utils'
+
+function listenShellEvent<T>(eventName: string, callback: (payload: T) => void): () => void {
+  let unlisten: (() => void) | null = null
+  let disposed = false
+  void tauriListen<T>(eventName, (event) => {
+    if (!disposed) {
+      callback(event.payload)
+    }
+  })
+    .then((dispose) => {
+      if (disposed) {
+        dispose()
+      } else {
+        unlisten = dispose
+      }
+    })
+    .catch((err) => {
+      console.error(`[desktop-shell] listen failed: ${eventName}`, err)
+    })
+  return () => {
+    disposed = true
+    unlisten?.()
+  }
+}
 
 const store = localforage.createInstance({ name: 'chatboxstore' })
 
@@ -323,5 +349,75 @@ export default class DesktopPlatform implements Platform {
     timeoutMs?: number
   ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
     return this.ipc.invoke('execute_command', JSON.stringify({ command, cwd, timeoutMs }))
+  }
+
+  public async setKeepInTray(enabled: boolean): Promise<void> {
+    return this.ipc.invoke('shell:setKeepInTray', enabled)
+  }
+
+  public async setQuickWindowAlwaysOnTop(enabled: boolean): Promise<void> {
+    return this.ipc.invoke('shell:setQuickAlwaysOnTop', enabled)
+  }
+
+  public async showQuickWindow(): Promise<void> {
+    return this.ipc.invoke('shell:showQuick')
+  }
+
+  public async showMainWindow(): Promise<void> {
+    return this.ipc.invoke('shell:showMain')
+  }
+
+  public async openSessionInMain(sessionId: string): Promise<void> {
+    return this.ipc.invoke('shell:openSessionInMain', sessionId)
+  }
+
+  public async captureScreenshotRegion(): Promise<ScreenshotImagePayload | null> {
+    try {
+      return await this.ipc.invoke('shell:captureScreenshot')
+    } catch {
+      return null
+    }
+  }
+
+  public async readClipboardImage(): Promise<ScreenshotImagePayload | null> {
+    try {
+      return await this.ipc.invoke('shell:readClipboardImage')
+    } catch {
+      return null
+    }
+  }
+
+  public async getWindowLabel(): Promise<string> {
+    try {
+      return getCurrentWindow().label
+    } catch {
+      return 'main'
+    }
+  }
+
+  public onShellNavigate(callback: (path: string) => void): () => void {
+    return listenShellEvent<string>('shell:navigate', (path) => {
+      if (typeof path === 'string') {
+        callback(path)
+      }
+    })
+  }
+
+  public onScreenshotCaptured(callback: (payload: ScreenshotImagePayload) => void): () => void {
+    return listenShellEvent<ScreenshotImagePayload>('shell:screenshot-captured', (payload) => {
+      if (payload?.base64) {
+        callback(payload)
+      }
+    })
+  }
+
+  public onScreenshotError(callback: (message: string) => void): () => void {
+    return listenShellEvent<{ message?: string }>('shell:screenshot-error', (payload) => {
+      callback(payload?.message || 'Screenshot failed')
+    })
+  }
+
+  public onHiddenToTray(callback: () => void): () => void {
+    return listenShellEvent('shell:hidden-to-tray', () => callback())
   }
 }

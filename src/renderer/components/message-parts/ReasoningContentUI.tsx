@@ -87,8 +87,8 @@ export const ReasoningContentUI: FC<{
         )}
       </div>
 
-      {/* Live / expanded status — Grok bulb line */}
-      {(isThinking || isExpanded) && statusLine && (
+      {/* Live preview only when collapsed — expanded body is the single source of content */}
+      {isThinking && !isExpanded && statusLine && (
         <div className="msg-worked-status">
           <IconBulb size={15} stroke={1.5} className="msg-worked-bulb" aria-hidden />
           <span className="msg-worked-status-text">{statusLine}</span>

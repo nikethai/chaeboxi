@@ -268,6 +268,7 @@ function RouteComponent() {
           modelLabel={model?.modelId}
           providerId={model?.provider}
           generating={!!lastGeneratingMessage}
+          sessionId={currentSession.id}
         />
       </div>
       <ThreadHistoryDrawer session={currentSession} />

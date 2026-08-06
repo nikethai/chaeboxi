@@ -23,10 +23,14 @@ Desktop AI copilot chrome that feels like a focused studio tool — Grok + ChatG
 | Content column | `--chatbox-col: 48rem` + `--chatbox-col-pad-x: 1.5rem` shared by blank home, thread + composer |
 | Dock pad | `--chatbox-dock-pad-y` / `--chatbox-dock-pad-b` on `.session-dock-pad` (home + session) |
 | Messages | Assistant open prose full column; user right-aligned pill; no “You/Chaeboxi” labels |
-| Thinking | Grok plain text: “Worked for 3s ›” — no card border; expand for body + optional bulb status |
+| Thinking | Grok plain text: “Worked for 3s ›” — no card border; expand for body; **status preview only while streaming + collapsed** (never duplicate body) |
+| Tools UI | Quiet header when all succeed; attention chips only on fail/running; expanded tools as soft timeline steps (no heavy card borders) |
 | Actions | Hidden by default; full opacity on hover; last assistant message always visible (`is-visible`); opacity/transform only |
 | Chrome | No topbar bottom border; no dock `border-top` |
 | Composer | Resting **layered box-shadow** (theme tokens); no hard border; no brand ring at rest; no gradient glow |
+| Composer tools | Single **`+` overflow** (click-primary) for attach / web / MCP / KB / agent / thread / settings — not always-on icon rail |
+| Auto tools | Web search **default ON** when configured; MCP tools from **enabled servers** always attached for tool-capable models; agent mode **opt-in**; KB **explicit select** |
+| Telemetry | Session statusline is SoT for tok/$/msg; **no composer token chip**; click statusline `tok` for compress / auto-compaction |
 | Rail brand | Left-aligned `ChaeboxiWordmark`; no collapse control in brand row (hide via menu / resizer double-click) |
 | Projects | User-facing “Project” (storage may stay `Folder`); shared outline icon; **no emoji UI** |
 | Keyboard | Enter send; Shift+Enter and Alt+Enter newline (default send is Enter) |
@@ -67,12 +71,15 @@ Blank home, thread content, and composer left edges **must** align.
 - Huge pill radius (24px+) on chat chrome
 - Separate max-widths for blank home / messages vs composer
 - Always-visible dense action toolbars on every message
+- Always-visible multi-icon composer capability rail (use single `+` overflow)
+- Composer token chip duplicating statusline telemetry
 - Letter-circle avatars as brand identity
 - Heavy dividers under topbar / above dock
 - Solid primary-colored resting border on composer
 - Brand/indigo outer glow or gradient wash on composer
-- Emoji as project icons
+- Emoji as project icons or product chrome icons
 - Collapse control next to product wordmark
+- Requiring users to enable web/MCP per turn when already configured
 
 ## Keyboard
 

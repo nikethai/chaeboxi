@@ -307,7 +307,12 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
               }
               onClick={() => onToggleAgentMode?.()}
             >
-              {t('Agent Mode')}
+              <Flex direction="column" gap={2}>
+                <Text size="sm">{t('Agent Mode')}</Text>
+                <Text size="xs" c="dimmed" style={{ lineHeight: 1.3 }}>
+                  {t('Multi-step tools & agent loops (uses more tokens).')}
+                </Text>
+              </Flex>
             </Menu.Item>
           </>
         )}

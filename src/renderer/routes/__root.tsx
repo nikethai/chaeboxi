@@ -4,10 +4,10 @@ import Toasts from '@/components/common/Toasts'
 import ExitFullscreenButton from '@/components/layout/ExitFullscreenButton'
 import useAppTheme from '@/hooks/useAppTheme'
 import { useSystemLanguageWhenInit } from '@/hooks/useDefaultSystemLanguage'
+import { useDesktopShell } from '@/hooks/useDesktopShell'
 import { useI18nEffect } from '@/hooks/useI18nEffect'
 import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
-import { useSidebarWidth } from '@/hooks/useScreenChange'
-import { useDesktopShell } from '@/hooks/useDesktopShell'
+import { useIsSmallScreen, useSidebarEffectiveWidth } from '@/hooks/useScreenChange'
 import useShortcut from '@/hooks/useShortcut'
 import '@/modals'
 import NiceModal from '@ebay/nice-modal-react'
@@ -104,7 +104,10 @@ function Root() {
   }, [setOpenAboutDialog, setRemoteConfig, location.pathname])
 
   const showSidebar = useUIStore((s) => s.showSidebar)
-  const sidebarWidth = useSidebarWidth()
+  const sidebarWidth = useSidebarEffectiveWidth()
+  // Desktop always offsets for expanded or icon rail; mobile only when drawer open
+  const isSmallScreen = useIsSmallScreen()
+  const offsetMainForSidebar = isSmallScreen ? showSidebar : true
 
   // Legacy desktop used ?settings=/settings/... modal; always use full-page routes now
   useEffect(() => {
@@ -193,30 +196,33 @@ function Root() {
           </Box>
         </ErrorBoundary>
       ) : (
-      <Grid container className="h-full" sx={{ minHeight: 0 }}>
-        <Sidebar />
-        <Box
-          className="h-full w-full min-h-0"
-          sx={{
-            flexGrow: 1,
-            minHeight: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            backgroundColor: 'var(--chatbox-background-primary)',
-            ...(showSidebar
-              ? language === 'ar'
-                ? { paddingRight: { sm: `${sidebarWidth}px` } }
-                : { paddingLeft: { sm: `${sidebarWidth}px` } }
-              : {}),
-          }}
-        >
-          <ErrorBoundary name="main">
-            <Box className="h-full min-h-0 flex flex-col flex-1">
-              <Outlet />
-            </Box>
-          </ErrorBoundary>
-        </Box>
-      </Grid>
+        <Grid container className="h-full" sx={{ minHeight: 0 }}>
+          <Sidebar />
+          <Box
+            className="h-full w-full min-h-0"
+            sx={{
+              flexGrow: 1,
+              minHeight: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              backgroundColor: 'var(--chatbox-background-primary)',
+              ...(offsetMainForSidebar
+                ? language === 'ar'
+                  ? {
+                      paddingRight: { sm: `${sidebarWidth}px` },
+                      transition: 'padding 220ms cubic-bezier(0.2, 0, 0, 1)',
+                    }
+                  : { paddingLeft: { sm: `${sidebarWidth}px` }, transition: 'padding 220ms cubic-bezier(0.2, 0, 0, 1)' }
+                : {}),
+            }}
+          >
+            <ErrorBoundary name="main">
+              <Box className="h-full min-h-0 flex flex-col flex-1">
+                <Outlet />
+              </Box>
+            </ErrorBoundary>
+          </Box>
+        </Grid>
       )}
       {/* 对话设置 */}
       {/* <AppStoreRatingDialog /> */}

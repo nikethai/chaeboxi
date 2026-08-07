@@ -7,23 +7,25 @@
 
 import { createGoogleGenerativeAI, type GoogleGenerativeAIProviderOptions } from '@ai-sdk/google'
 import type { LanguageModelV3 } from '@ai-sdk/provider'
+import { generateText } from 'ai'
 import AbstractAISDKModel, { type CallSettings } from '../../../models/abstract-ai-sdk'
+import { ApiError } from '../../../models/errors'
 import type { CallChatCompletionOptions } from '../../../models/types'
 import { createFetchWithProxy } from '../../../models/utils/fetch-proxy'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
-import {
-  buildAntigravityRequestHeaders,
-  GEMINI_ANTIGRAVITY_API_BASE,
-  GEMINI_ANTIGRAVITY_DEFAULT_PROJECT_ID,
-  GEMINI_ANTIGRAVITY_ENDPOINT_FALLBACKS,
-} from '../../oauth/gemini-antigravity-oauth'
 import {
   fetchGeminiAntigravityModels,
   GEMINI_ANTIGRAVITY_DEFAULT_MODELS,
   resolveAntigravityChatModelId,
   resolveAntigravityThinkingLevel,
 } from '../../oauth/gemini-antigravity-models'
+import {
+  buildAntigravityRequestHeaders,
+  GEMINI_ANTIGRAVITY_API_BASE,
+  GEMINI_ANTIGRAVITY_DEFAULT_PROJECT_ID,
+  GEMINI_ANTIGRAVITY_ENDPOINT_FALLBACKS,
+} from '../../oauth/gemini-antigravity-oauth'
 
 interface Options {
   apiKey: string
@@ -37,6 +39,29 @@ interface Options {
 }
 
 type FetchFunction = typeof globalThis.fetch
+
+type GeminiAspectRatio = NonNullable<NonNullable<GoogleGenerativeAIProviderOptions['imageConfig']>['aspectRatio']>
+
+/** Studio + Antigravity image-capable model ids / patterns. */
+function isGeminiImageModel(modelId: string): boolean {
+  const id = modelId.toLowerCase()
+  if (
+    id.includes('flash-image') ||
+    id.includes('pro-image') ||
+    id.includes('imagen') ||
+    (id.includes('gemini') && id.includes('image'))
+  ) {
+    return true
+  }
+  return [
+    'gemini-2.5-flash-image',
+    'gemini-2.5-flash-image-preview',
+    'gemini-3-pro-image-preview',
+    'gemini-3-pro-image',
+    'gemini-3.1-flash-image-preview',
+    'gemini-3.1-flash-image',
+  ].includes(modelId)
+}
 
 function headersToRecord(headers?: HeadersInit): Record<string, string> {
   const out: Record<string, string> = {}
@@ -73,8 +98,18 @@ function prepareAntigravityInnerRequest(
       ? { ...(request.generationConfig as Record<string, unknown>) }
       : {}
 
+  // Image generation: do not inject thinkingConfig — breaks responseModalities IMAGE
+  const responseModalities = gen.responseModalities
+  const isImageGen =
+    Array.isArray(responseModalities) && responseModalities.some((m) => String(m).toUpperCase() === 'IMAGE')
   const thinkingLevel = resolveAntigravityThinkingLevel(sourceModelId) || resolveAntigravityThinkingLevel(chatModelId)
-  if (thinkingLevel && chatModelId.toLowerCase().includes('gemini-3')) {
+  if (
+    !isImageGen &&
+    thinkingLevel &&
+    chatModelId.toLowerCase().includes('gemini-3') &&
+    !/image|imagen/i.test(chatModelId) &&
+    !/image|imagen/i.test(sourceModelId)
+  ) {
     const existingTc =
       gen.thinkingConfig && typeof gen.thinkingConfig === 'object'
         ? { ...(gen.thinkingConfig as Record<string, unknown>) }
@@ -114,9 +149,7 @@ export function createAntigravityFetch(options: {
 }): FetchFunction {
   const projectId = options.projectId || GEMINI_ANTIGRAVITY_DEFAULT_PROJECT_ID
   const inner = options.innerFetch || globalThis.fetch.bind(globalThis)
-  const bases = (options.endpointFallbacks || GEMINI_ANTIGRAVITY_ENDPOINT_FALLBACKS).map((b) =>
-    b.replace(/\/+$/, '')
-  )
+  const bases = (options.endpointFallbacks || GEMINI_ANTIGRAVITY_ENDPOINT_FALLBACKS).map((b) => b.replace(/\/+$/, ''))
   // If caller forced a single apiBase, try it first then fallbacks
   const orderedBases = options.apiBase
     ? [options.apiBase.replace(/\/+$/, ''), ...bases.filter((b) => b !== options.apiBase?.replace(/\/+$/, ''))]
@@ -135,8 +168,7 @@ export function createAntigravityFetch(options: {
       return inner(input, init)
     }
 
-    const modelMatch =
-      url.match(/models\/([^/:?]+)/)?.[1] || url.match(/model=([^&]+)/)?.[1] || undefined
+    const modelMatch = url.match(/models\/([^/:?]+)/)?.[1] || url.match(/model=([^&]+)/)?.[1] || undefined
     const sourceModelId = modelMatch ? decodeURIComponent(modelMatch) : 'gemini-2.5-flash'
     const chatModelId = resolveAntigravityChatModelId(sourceModelId)
     const wantsStream = /streamGenerateContent|alt=sse|:streamGenerateContent/i.test(url)
@@ -409,7 +441,75 @@ export default class GeminiAntigravity extends AbstractAISDKModel {
     })
   }
 
+  /**
+   * Image generation via generateText + responseModalities (same path as Studio Gemini paint).
+   * Uses Antigravity fetch rewrite so subscription OAuth works.
+   */
+  public async paint(
+    params: {
+      prompt: string
+      images?: { imageUrl: string }[]
+      num: number
+      aspectRatio?: string
+    },
+    signal?: AbortSignal,
+    callback?: (picBase64: string) => void,
+    _onProviderJobUpdate?: (data: { providerJobId?: string; queueNumber?: number }) => void
+  ): Promise<string[]> {
+    const rawId = this.options.model.modelId
+    const chatId = this.chatModelId()
+    if (!isGeminiImageModel(rawId) && !isGeminiImageModel(chatId)) {
+      throw new ApiError('This Gemini Antigravity model does not support image generation')
+    }
+
+    // Empty options — paint does not need chat tools/provider option overrides
+    const provider = this.getProvider({} as CallChatCompletionOptions)
+    const model = provider.chat(chatId)
+
+    const results: string[] = []
+    for (let i = 0; i < Math.max(1, params.num || 1); i++) {
+      const providerOptions: GoogleGenerativeAIProviderOptions = {
+        responseModalities: ['TEXT', 'IMAGE'],
+      }
+      if (params.aspectRatio && params.aspectRatio !== 'auto') {
+        providerOptions.imageConfig = { aspectRatio: params.aspectRatio as GeminiAspectRatio }
+      }
+
+      const result = await generateText({
+        model,
+        messages: [{ role: 'user', content: params.prompt }],
+        abortSignal: signal,
+        providerOptions: {
+          google: providerOptions,
+        },
+      })
+
+      for (const file of result.files || []) {
+        const b64 = typeof file.base64 === 'string' ? file.base64 : null
+        const mediaType = file.mediaType || 'image/png'
+        if (b64 && mediaType.startsWith('image/')) {
+          const dataUrl = b64.startsWith('data:') ? b64 : `data:${mediaType};base64,${b64}`
+          results.push(dataUrl)
+          callback?.(dataUrl)
+        }
+      }
+
+      // Some gateways put images only in steps/content — dig as fallback
+      if (results.length === 0 && Array.isArray((result as { steps?: unknown[] }).steps)) {
+        // no-op reserved; AI SDK files is the primary channel
+      }
+    }
+
+    if (results.length === 0) {
+      throw new ApiError(
+        `Antigravity image generation returned no image files for model "${chatId}". Try gemini-3-pro-image-preview with an API key, or use xAI grok-imagine-image.`
+      )
+    }
+    return results
+  }
+
   protected getImageModel() {
+    // Image gen uses generateText path in paint(); not the AI SDK imageModel API
     return null
   }
 }

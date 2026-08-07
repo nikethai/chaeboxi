@@ -93,7 +93,6 @@ export interface MessageListProps {
 const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) => {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
-  const widthFull = useUIStore((s) => s.widthFull)
 
   const { currentSession, alignToBottom = false } = props
 
@@ -298,7 +297,7 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
                 <Stack
                   key={msg.id}
                   gap={0}
-                  className={cn(widthFull ? 'chat-col-full' : 'chat-col', index === 0 && 'pt-2')}
+                  className={cn('chat-col', index === 0 && 'pt-2')}
                 >
                   {currentThreadHash[msg.id] && (
                     <ThreadLabel thread={currentThreadHash[msg.id]} sessionId={currentSession.id} />
@@ -434,7 +433,7 @@ function ForkNav(props: { sessionId: string; msgId: string; forks: NonNullable<S
         position="bottom"
         items={[
           {
-            text: t('expand'),
+            text: t('Expand'),
             icon: IconAlignRight,
             onClick: () => expandFork(sessionId, msgId),
           },
@@ -443,8 +442,9 @@ function ForkNav(props: { sessionId: string; msgId: string; forks: NonNullable<S
           },
           {
             doubleCheck: true,
-            text: t('delete'),
+            text: t('Delete'),
             icon: IconTrash,
+            color: 'chatbox-error',
             onClick: () => deleteFork(sessionId, msgId),
           },
         ]}
@@ -526,7 +526,7 @@ const ThreadLabel: FC<ThreadLabelProps> = memo(({ thread, sessionId }) => {
           { divider: true },
           {
             doubleCheck: true,
-            text: t('delete'),
+            text: t('Delete'),
             icon: IconTrash,
             onClick: handleDeleteThread,
           },

@@ -20,7 +20,7 @@ import { CSS } from '@dnd-kit/utilities'
 import NiceModal from '@ebay/nice-modal-react'
 import { ActionIcon, Button, Select, Text, TextInput, Tooltip, UnstyledButton } from '@mantine/core'
 import type { Folder, SessionMeta } from '@shared/types'
-import { IconChevronDown, IconFolderPlus, IconTrash } from '@tabler/icons-react'
+import { IconChevronDown, IconFolderPlus, IconTrash, IconX } from '@tabler/icons-react'
 import { useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
 import type { MutableRefObject, ReactNode } from 'react'
@@ -33,6 +33,7 @@ import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { trackingEvent } from '@/packages/event'
 import { getSession, updateSession, updateSessionList, useSessionList } from '@/stores/chatStore'
 import { createEmpty } from '@/stores/sessionActions'
+import { useUIStore } from '@/stores/uiStore'
 import { AdaptiveModal } from '../common/AdaptiveModal'
 import FolderItem from './FolderItem'
 import SessionItem from './SessionItem'
@@ -208,8 +209,14 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
     return next
   }, [historySessions, projectGroups, t])
 
+  const recentsCoachingDismissed = useUIStore((s) => s.recentsCoachingDismissed)
+  const setRecentsCoachingDismissed = useUIStore((s) => s.setRecentsCoachingDismissed)
+
   const showRecentsCoaching =
-    !showArchived && projectGroups.length > 0 && historySessions.length >= RECENTS_COACHING_THRESHOLD
+    !showArchived &&
+    !recentsCoachingDismissed &&
+    projectGroups.length > 0 &&
+    historySessions.length >= RECENTS_COACHING_THRESHOLD
 
   const rowItems = useMemo<SectionRow[]>(() => {
     const rows: SectionRow[] = []
@@ -539,9 +546,22 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
 
               if (row.type === 'coaching') {
                 return (
-                  <Text size="xs" c="chatbox-tertiary" px="md" py={4} className="rail-coaching-hint">
-                    {row.message}
-                  </Text>
+                  <div className="rail-coaching-row">
+                    <Text size="xs" c="chatbox-tertiary" className="rail-coaching-hint flex-1 min-w-0">
+                      {row.message}
+                    </Text>
+                    <ActionIcon
+                      size={22}
+                      radius="sm"
+                      variant="subtle"
+                      color="chatbox-tertiary"
+                      className="rail-coaching-dismiss active:scale-[0.96] transition-transform"
+                      onClick={() => setRecentsCoachingDismissed(true)}
+                      aria-label={t('Dismiss')}
+                    >
+                      <IconX size={12} stroke={1.5} />
+                    </ActionIcon>
+                  </div>
                 )
               }
 

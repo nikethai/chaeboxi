@@ -21,6 +21,8 @@ export const uiStore = createStore(
         messageScrollingAtTop: false,
         messageScrollingAtBottom: false,
         showSidebar: platform.formFactor !== 'mobile',
+        /** Desktop only: expanded tree vs icon-only rail (never fully hidden). */
+        sidebarLayout: 'expanded' as 'expanded' | 'rail',
         sidebarMode: 'chat' as 'chat' | 'task',
         openSearchDialog: false,
         searchDialogGlobalOnly: false, // 是否只显示全局搜索（用于对话列表）
@@ -42,9 +44,10 @@ export const uiStore = createStore(
           }[]
           onSave?: () => void
         } | null,
-        widthFull: false, // Stored UI preference
         showCopilotsInNewSession: false,
         sidebarWidth: null as number | null, // Custom sidebar width, null means use default
+        /** User dismissed the Recents coaching banner once. */
+        recentsCoachingDismissed: false,
       },
       (set, get) => ({
         addToast: (content: string, duration?: number) => {
@@ -69,8 +72,18 @@ export const uiStore = createStore(
           set((state) => (state.showSidebar === showSidebar ? state : { showSidebar }))
         },
 
+        setSidebarLayout: (sidebarLayout: 'expanded' | 'rail') => {
+          set((state) => (state.sidebarLayout === sidebarLayout ? state : { sidebarLayout }))
+        },
+
         setSidebarMode: (sidebarMode: 'chat' | 'task') => {
           set({ sidebarMode })
+        },
+
+        setRecentsCoachingDismissed: (recentsCoachingDismissed: boolean) => {
+          set((state) =>
+            state.recentsCoachingDismissed === recentsCoachingDismissed ? state : { recentsCoachingDismissed }
+          )
         },
 
         setOpenSearchDialog: (openSearchDialog: boolean, globalOnly = false) => {
@@ -91,10 +104,6 @@ export const uiStore = createStore(
 
         setPictureShow: (pictureShow: ReturnType<typeof get>['pictureShow']) => {
           set({ pictureShow })
-        },
-
-        setWidthFull: (widthFull: boolean) => {
-          set((state) => (state.widthFull === widthFull ? state : { widthFull }))
         },
 
         setMessageListElement: (messageListElement: RefObject<HTMLDivElement> | null) => {
@@ -210,13 +219,24 @@ export const uiStore = createStore(
     ),
     {
       name: 'ui-store',
-      version: 0,
+      version: 1,
       partialize: (state) => ({
-        widthFull: state.widthFull,
+        sidebarLayout: state.sidebarLayout,
         showCopilotsInNewSession: state.showCopilotsInNewSession,
         sidebarWidth: state.sidebarWidth,
         sessionWebBrowsingMap: state.sessionWebBrowsingMap,
+        recentsCoachingDismissed: state.recentsCoachingDismissed,
       }),
+      migrate: (persisted) => {
+        const state = (persisted || {}) as Record<string, unknown>
+        // Drop legacy widthFull; default layout expanded
+        const { widthFull: _removed, ...rest } = state
+        return {
+          ...rest,
+          sidebarLayout: rest.sidebarLayout === 'rail' ? 'rail' : 'expanded',
+          recentsCoachingDismissed: Boolean(rest.recentsCoachingDismissed),
+        }
+      },
       storage: safeStorage,
     }
   )

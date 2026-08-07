@@ -28,6 +28,7 @@ import SliderWithInput from '@/components/common/SliderWithInput'
 import { Divider } from '@/components/common/Divider'
 import { handleImageInputAndSave } from '@/components/Image'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
+import { GenerateAvatarButton } from '@/components/settings/GenerateAvatarButton'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import { usePromptPresets } from '@/stores/promptPresetsStore'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -61,7 +62,7 @@ export function RouteComponent() {
           <Text size="xs" c="chatbox-secondary">
             {t('User Avatar')}
           </Text>
-          <Flex align="center" gap="xs">
+          <Flex align="center" gap="xs" wrap="wrap">
             <UserAvatar size={56} avatarKey={settings.userAvatarKey} />
             <FileButton
               onChange={(file) => {
@@ -82,6 +83,7 @@ export function RouteComponent() {
                 </Button>
               )}
             </FileButton>
+            <GenerateAvatarButton kind="user" onSaved={(key) => setSettings({ userAvatarKey: key })} />
             {!!settings.userAvatarKey && (
               <Button color="chatbox-gray" size="xs" onClick={() => setSettings({ userAvatarKey: undefined })}>
                 {t('Delete')}
@@ -95,7 +97,7 @@ export function RouteComponent() {
           <Text size="xs" c="chatbox-secondary">
             {t('Default Assistant Avatar')}
           </Text>
-          <Flex align="center" gap="xs">
+          <Flex align="center" gap="xs" wrap="wrap">
             <AssistantAvatar avatarKey={settings.defaultAssistantAvatarKey} size={56} />
             <FileButton
               onChange={(file) => {
@@ -116,6 +118,10 @@ export function RouteComponent() {
                 </Button>
               )}
             </FileButton>
+            <GenerateAvatarButton
+              kind="assistant"
+              onSaved={(key) => setSettings({ defaultAssistantAvatarKey: key })}
+            />
             {!!settings.defaultAssistantAvatarKey && (
               <Button
                 color="chatbox-gray"

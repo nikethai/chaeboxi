@@ -121,7 +121,7 @@ vi.mock('@/stores/settingsStore', () => ({
 vi.mock('@/stores/uiStore', () => ({
   uiStore: {
     getState: () => ({
-      widthFull: false,
+      sidebarLayout: 'expanded',
       messageScrolling: null,
       setMessageListElement: vi.fn(),
     }),

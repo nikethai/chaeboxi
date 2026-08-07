@@ -34,7 +34,13 @@ import {
 } from '@/packages/context-management/attachment-payload'
 import { generateImage, streamText } from '@/packages/model-calls'
 import { getModelDisplayName } from '@/packages/model-setting-utils'
+import {
+  buildSkillContextBlocks,
+  resolveSkillActivations,
+  selectCatalogForInject,
+} from '@/packages/skills'
 import { estimateTokensFromMessages } from '@/packages/token'
+import { mergeSkillsList, refreshAgentSkills, userSkillsAtom } from '@/stores/skillsStore'
 import { getVideoLimits } from '@/packages/video'
 import platform from '@/platform'
 import storage from '@/storage'
@@ -553,6 +559,34 @@ export async function generate(
         if (planningToolsInstructions) {
           const planningSystemMsg = createMessage('system', planningToolsInstructions)
           promptMsgs.unshift(planningSystemMsg)
+        }
+
+        // Skills: progressive catalog + activated bodies (explicit $ / pin / auto)
+        // Ensure agent folders have been scanned at least once this session.
+        try {
+          await refreshAgentSkills()
+        } catch {
+          // non-fatal — builtins + user skills still work
+        }
+        const priorUserMsg = [...messages.slice(0, targetMsgIx)].reverse().find((m) => m.role === 'user')
+        const storedUserSkills = getDefaultStore().get(userSkillsAtom)
+        const skillPackages = mergeSkillsList(Array.isArray(storedUserSkills) ? storedUserSkills : [])
+        const skillActivations = resolveSkillActivations({
+          skills: skillPackages,
+          explicitSkillIds: priorUserMsg?.skillIds,
+          pinnedSkillIds: session.pinnedSkillIds,
+          userText: priorUserMsg ? getMessageText(priorUserMsg) : '',
+          autoSkills: session.autoSkills,
+        })
+        const skillById = new Map(skillPackages.map((s) => [s.id, s]))
+        const skillCatalog = selectCatalogForInject(skillPackages, skillActivations)
+        const skillContext = buildSkillContextBlocks(skillCatalog, skillActivations, skillById)
+        if (skillContext) {
+          promptMsgs.unshift(createMessage('system', skillContext))
+        }
+        if (skillActivations.length > 0) {
+          targetMsg = { ...targetMsg, skillActivations }
+          await modifyMessage(sessionId, targetMsg, false, true)
         }
 
         const { result } = await streamText(model, {

@@ -3214,7 +3214,133 @@ async fn ipc_invoke(
             }
         }
 
+        // Discover Agent Skills (SKILL.md) from Claude/Codex/Cursor/agents/grok folders
+        "skills:scan" => {
+            #[cfg(target_os = "android")]
+            {
+                Err("'skills:scan' is not available on Android".to_string())
+            }
+            #[cfg(not(target_os = "android"))]
+            {
+                let roots = get_arg(&args, 0)?
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default();
+                let mut root_reports = Vec::new();
+                let mut skills = Vec::new();
+                const MAX_SKILLS: usize = 500;
+
+                for root_val in roots {
+                    let Some(root_raw) = root_val.as_str() else {
+                        continue;
+                    };
+                    let root_path = expand_skill_root_path(root_raw);
+                    let origin = skill_origin_from_path(&root_path);
+                    let path = PathBuf::from(&root_path);
+                    let exists = path.is_dir();
+                    root_reports.push(json!({
+                        "origin": origin,
+                        "path": root_path,
+                        "exists": exists,
+                    }));
+                    if !exists {
+                        continue;
+                    }
+
+                    let Ok(entries) = fs::read_dir(&path) else {
+                        continue;
+                    };
+
+                    for entry in entries.flatten() {
+                        if skills.len() >= MAX_SKILLS {
+                            break;
+                        }
+                        let entry_path = entry.path();
+                        // Skip hidden / system dirs
+                        let folder_name = entry
+                            .file_name()
+                            .to_string_lossy()
+                            .to_string();
+                        if folder_name.starts_with('.') {
+                            continue;
+                        }
+                        if !entry_path.is_dir() {
+                            // Allow flat SKILL.md at root of skills dir (rare)
+                            if entry_path.file_name().and_then(|n| n.to_str()) == Some("SKILL.md") {
+                                if let Ok(content) = fs::read_to_string(&entry_path) {
+                                    skills.push(json!({
+                                        "origin": origin,
+                                        "rootDir": root_path,
+                                        "folderName": path.file_name().and_then(|n| n.to_str()).unwrap_or("skill"),
+                                        "skillPath": entry_path.to_string_lossy(),
+                                        "content": content,
+                                    }));
+                                }
+                            }
+                            continue;
+                        }
+
+                        let skill_md = entry_path.join("SKILL.md");
+                        if skill_md.is_file() {
+                            if let Ok(content) = fs::read_to_string(&skill_md) {
+                                skills.push(json!({
+                                    "origin": origin,
+                                    "rootDir": root_path,
+                                    "folderName": folder_name,
+                                    "skillPath": skill_md.to_string_lossy(),
+                                    "content": content,
+                                }));
+                            }
+                        }
+                    }
+                }
+
+                Ok(json!({
+                    "roots": root_reports,
+                    "skills": skills,
+                }))
+            }
+        }
+
         _ => Err(format!("unknown ipc channel: {channel}")),
+    }
+}
+
+#[cfg(not(target_os = "android"))]
+fn expand_skill_root_path(path: &str) -> String {
+    let expanded = expand_user_path(path);
+    let pb = PathBuf::from(&expanded);
+    if pb.is_absolute() {
+        return expanded;
+    }
+    // Resolve relative roots against process cwd (useful when launched from a repo)
+    if let Ok(cwd) = std::env::current_dir() {
+        return cwd.join(pb).to_string_lossy().to_string();
+    }
+    expanded
+}
+
+#[cfg(not(target_os = "android"))]
+fn skill_origin_from_path(path: &str) -> &'static str {
+    let lower = path.replace('\\', "/").to_lowercase();
+    if lower.contains("/.claude/skills") {
+        "claude"
+    } else if lower.contains("/.codex/skills") {
+        "codex"
+    } else if lower.contains("/.cursor/skills") {
+        "cursor"
+    } else if lower.contains("/.agents/skills") {
+        "agents"
+    } else if lower.contains("/.grok/skills") {
+        "grok"
+    } else if lower.contains("/.gemini/skills") {
+        "gemini"
+    } else if lower.contains("/opencode/skills") {
+        "opencode"
+    } else if lower.ends_with("/skills") || lower.contains("/skills") {
+        "project"
+    } else {
+        "unknown"
     }
 }
 

@@ -119,6 +119,14 @@ export interface CopilotDetail {
   }
 }
 
+/** Product name: Agent (persona). Alias of CopilotDetail during rename migration. */
+export type AgentDetail = CopilotDetail
+
+/** Slack-style multi-agent room caps (v1). */
+export const MAX_ROOM_AGENTS = 3
+export const MAX_ROOM_ROUNDS = 2
+export const MAX_AGENT_TURNS_PER_USER_MSG = 6
+
 export interface PromptPreset {
   id: string
   name: string

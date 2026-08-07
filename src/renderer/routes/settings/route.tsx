@@ -78,8 +78,8 @@ const ITEMS = [
   ...(CHATBOX_BUILD_PLATFORM !== 'android'
     ? [
         {
-          key: 'copilots',
-          label: 'Copilots',
+          key: 'agents',
+          label: 'Agents',
           icon: <IconMessageChatbot className="w-full h-full" />,
         },
       ]

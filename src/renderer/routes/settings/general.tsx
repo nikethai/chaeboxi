@@ -1038,7 +1038,7 @@ const ImportExportDataSection = () => {
           { label: t('Settings'), value: ExportDataItem.Setting },
           { label: t('API Keys'), value: ExportDataItem.Key },
           { label: t('Chat History'), value: ExportDataItem.Conversations },
-          { label: t('My Copilots'), value: ExportDataItem.Copilot },
+          { label: t('My Agents'), value: ExportDataItem.Copilot },
         ].map(({ label, value }) => (
           <Checkbox
             key={value}

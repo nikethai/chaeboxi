@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chaeboxi Logo Candidates</title>
+  <style>
+    :root {
+      --void: #121214;
+      --rail: #16161a;
+      --panel: #1c1c21;
+      --lift: #24242b;
+      --ink: #ececec;
+      --ink-2: #a8a8ae;
+      --ink-3: #6e6e76;
+      --line: #2a2a32;
+      --line-2: #36363f;
+      --indigo: #5b63d4;
+      --indigo-soft: rgba(91, 99, 212, 0.18);
+      --indigo-mid: rgba(91, 99, 212, 0.35);
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --card-bg: #1c1c21;
+      --page-bg: #121214;
+      --shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+      --radius: 11px;
+      --font: "Satoshi", "Inter", "SF Pro Display", system-ui, -apple-system, sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    html[data-theme="light"] {
+      --void: #f4f4f6;
+      --rail: #ececef;
+      --panel: #ffffff;
+      --lift: #f8f8fa;
+      --ink: #121214;
+      --ink-2: #4a4a52;
+      --ink-3: #6e6e76;
+      --line: #e2e2e8;
+      --line-2: #d0d0d8;
+      --indigo-soft: rgba(91, 99, 212, 0.12);
+      --indigo-mid: rgba(91, 99, 212, 0.28);
+      --card-bg: #ffffff;
+      --page-bg: #f4f4f6;
+      --shadow: 0 12px 36px rgba(18, 18, 20, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--page-bg);
+      color: var(--ink);
+      line-height: 1.55;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .shell {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 1.75rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .brand-block h1 {
+      margin: 0 0 0.35rem;
+      font-size: 1.65rem;
+      font-weight: 650;
+      letter-spacing: -0.03em;
+    }
+
+    .brand-block h1 span { color: var(--indigo); }
+
+    .brand-block p {
+      margin: 0;
+      color: var(--ink-2);
+      max-width: 42rem;
+      font-size: 0.95rem;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    button, .btn {
+      appearance: none;
+      border: 1px solid var(--line-2);
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 9px;
+      padding: 0.5rem 0.85rem;
+      font: inherit;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+    }
+
+    button:hover, .btn:hover {
+      background: var(--lift);
+      border-color: var(--indigo-mid);
+    }
+
+    button.active {
+      background: var(--indigo-soft);
+      border-color: var(--indigo);
+      color: var(--ink);
+    }
+
+    button.primary {
+      background: var(--indigo);
+      border-color: var(--indigo);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    button.primary:hover { filter: brightness(1.08); }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      align-items: center;
+      margin-bottom: 1.25rem;
+    }
+
+    .toolbar .label {
+      color: var(--ink-3);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-right: 0.15rem;
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+
+    .stats {
+      margin-left: auto;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--ink-3);
+    }
+
+    .picks-bar {
+      display: none;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      padding: 0.85rem 1rem;
+      margin-bottom: 1.25rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--indigo-mid);
+      background: var(--indigo-soft);
+    }
+
+    .picks-bar.visible { display: flex; }
+
+    .picks-bar strong { font-weight: 600; }
+    .picks-bar code {
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      color: var(--indigo);
+    }
+
+    section.round { margin-bottom: 2.25rem; }
+
+    .round-head {
+      display: flex;
+      align-items: baseline;
+      gap: 0.75rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .round-head h2 {
+      margin: 0;
+      font-size: 1.05rem;
+      letter-spacing: -0.02em;
+    }
+
+    .round-head .badge {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.2rem 0.5rem;
+      border-radius: 999px;
+      border: 1px solid var(--line-2);
+      color: var(--ink-2);
+    }
+
+    .round-head .badge.hot {
+      border-color: var(--indigo);
+      color: var(--indigo);
+      background: var(--indigo-soft);
+    }
+
+    .round-head .badge.cool {
+      color: var(--ink-3);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
+    }
+
+    .grid.wide {
+      grid-template-columns: 1fr;
+    }
+
+    @media (min-width: 900px) {
+      .grid.wide {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .card {
+      position: relative;
+      background: var(--card-bg);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      transition: border-color 0.15s ease, transform 0.15s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card:hover { border-color: var(--line-2); }
+    .card.selected {
+      border-color: var(--indigo);
+      box-shadow: 0 0 0 1px var(--indigo), var(--shadow);
+    }
+
+    .card.recommended::before {
+      content: "Recommended";
+      position: absolute;
+      top: 0.7rem;
+      left: 0.7rem;
+      z-index: 2;
+      font-size: 0.68rem;
+      font-weight: 650;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: 0.25rem 0.5rem;
+      border-radius: 999px;
+      background: var(--indigo);
+      color: #fff;
+    }
+
+    .preview {
+      position: relative;
+      aspect-ratio: 1;
+      background:
+        linear-gradient(45deg, var(--rail) 25%, transparent 25%),
+        linear-gradient(-45deg, var(--rail) 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, var(--rail) 75%),
+        linear-gradient(-45deg, transparent 75%, var(--rail) 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+      background-color: var(--panel);
+      display: grid;
+      place-items: center;
+      cursor: zoom-in;
+      overflow: hidden;
+    }
+
+    .card.wide .preview { aspect-ratio: 16 / 9; }
+
+    .preview img {
+      max-width: 88%;
+      max-height: 88%;
+      object-fit: contain;
+      border-radius: 8px;
+      transition: transform 0.25s ease;
+      background: #fff;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+    }
+
+    .card:hover .preview img { transform: scale(1.06); }
+
+    .meta {
+      padding: 0.9rem 1rem 1rem;
+      border-top: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      flex: 1;
+    }
+
+    .meta-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+      align-items: flex-start;
+    }
+
+    .meta h3 {
+      margin: 0;
+      font-size: 0.98rem;
+      letter-spacing: -0.02em;
+    }
+
+    .meta .id {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      color: var(--indigo);
+      background: var(--indigo-soft);
+      padding: 0.15rem 0.4rem;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+
+    .meta p {
+      margin: 0;
+      font-size: 0.82rem;
+      color: var(--ink-2);
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+    }
+
+    .tag {
+      font-size: 0.68rem;
+      color: var(--ink-3);
+      border: 1px solid var(--line);
+      padding: 0.12rem 0.4rem;
+      border-radius: 999px;
+    }
+
+    .tag.score-high { color: var(--ok); border-color: rgba(52, 211, 153, 0.35); }
+    .tag.score-mid { color: var(--warn); border-color: rgba(251, 191, 36, 0.35); }
+    .tag.score-low { color: var(--ink-3); }
+
+    .row {
+      display: flex;
+      gap: 0.4rem;
+      margin-top: auto;
+      padding-top: 0.25rem;
+    }
+
+    .row button, .row a.btn {
+      flex: 1;
+      text-align: center;
+      text-decoration: none;
+      font-size: 0.8rem;
+    }
+
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      display: none;
+      place-items: center;
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(8px);
+      padding: 1.5rem;
+    }
+
+    .lightbox.open { display: grid; }
+
+    .lightbox-inner {
+      position: relative;
+      max-width: min(920px, 100%);
+      max-height: 90vh;
+      background: var(--panel);
+      border: 1px solid var(--line-2);
+      border-radius: 14px;
+      padding: 1rem;
+      box-shadow: var(--shadow);
+    }
+
+    .lightbox-inner img {
+      display: block;
+      max-width: 100%;
+      max-height: calc(90vh - 5rem);
+      margin: 0 auto;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .lightbox-caption {
+      margin-top: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: center;
+      color: var(--ink-2);
+      font-size: 0.9rem;
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 0.6rem;
+      right: 0.6rem;
+      width: 2rem;
+      height: 2rem;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      padding: 0;
+      line-height: 1;
+    }
+
+    footer {
+      margin-top: 2rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--line);
+      color: var(--ink-3);
+      font-size: 0.82rem;
+    }
+
+    footer kbd {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      border: 1px solid var(--line-2);
+      border-bottom-width: 2px;
+      border-radius: 5px;
+      padding: 0.05rem 0.35rem;
+      color: var(--ink-2);
+    }
+
+    .note {
+      margin: 0 0 1.25rem;
+      padding: 0.85rem 1rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--line);
+      background: var(--panel);
+      color: var(--ink-2);
+      font-size: 0.88rem;
+    }
+
+    .note strong { color: var(--ink); }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand-block">
+        <h1><span>Chaeboxi</span> Logo Candidates</h1>
+        <p>
+          Compare marks against the design system: dark-first, solid indigo
+          <code style="color:var(--indigo);font-family:var(--mono);font-size:0.85em">#5b63d4</code>,
+          no Chatbox mascot. Click a card to shortlist. Hover to enlarge; click preview to fullscreen.
+        </p>
+      </div>
+      <div class="actions">
+        <button type="button" id="themeBtn" title="Toggle theme">Theme: Dark</button>
+        <button type="button" id="clearBtn">Clear picks</button>
+        <button type="button" class="primary" id="copyBtn">Copy picks</button>
+      </div>
+    </header>
+
+    <div class="note">
+      <strong>Locked direction: K (open cube).</strong>
+      Compare light-background variants <strong>K2–K5</strong> below.
+      Best contrast on light tile: <strong>K5</strong> (indigo mark). Softest match to original: <strong>K2</strong> / <strong>K3</strong>.
+      Reply with one ID (e.g. <strong>K2</strong> or <strong>K5</strong>) to lock the final mark.
+    </div>
+
+    <div class="toolbar">
+      <span class="label">Filter</span>
+      <div class="chips">
+        <button type="button" class="filter active" data-filter="k-light">K light only</button>
+        <button type="button" class="filter" data-filter="all">All</button>
+        <button type="button" class="filter" data-filter="round2">Round 2 only</button>
+        <button type="button" class="filter" data-filter="round1">Round 1 only</button>
+        <button type="button" class="filter" data-filter="recommended">Recommended</button>
+        <button type="button" class="filter" data-filter="icon">App icons</button>
+        <button type="button" class="filter" data-filter="wordmark">Wordmarks</button>
+      </div>
+      <div class="stats" id="stats">11 candidates</div>
+    </div>
+
+    <div class="picks-bar" id="picksBar">
+      <strong>Your shortlist:</strong>
+      <code id="picksText">—</code>
+      <button type="button" class="primary" id="copyPicksInline">Copy IDs</button>
+    </div>
+
+    <!-- K CHOSEN — LIGHT BG -->
+    <section class="round" data-round="k-light">
+      <div class="round-head">
+        <h2>Chosen: K — light background variants</h2>
+        <span class="badge hot">Your pick · pick final shade</span>
+      </div>
+      <div class="grid" id="grid-k-light"></div>
+    </section>
+
+    <!-- ROUND 2 -->
+    <section class="round" data-round="round2">
+      <div class="round-head">
+        <h2>Round 2 — Premium / competitive</h2>
+        <span class="badge hot">Aim for ChatGPT-class</span>
+      </div>
+      <div class="grid" id="grid-round2"></div>
+    </section>
+
+    <!-- ROUND 1 -->
+    <section class="round" data-round="round1">
+      <div class="round-head">
+        <h2>Round 1 — Early exploration</h2>
+        <span class="badge cool">Mostly rejected (generic AI)</span>
+      </div>
+      <div class="grid" id="grid-round1"></div>
+    </section>
+
+    <footer>
+      Assets live under <code style="font-family:var(--mono);color:var(--ink-2)">assets/logo-design/2026-08-05-chaeboxi/</code>.
+      Shortcuts: <kbd>T</kbd> theme · <kbd>Esc</kbd> close lightbox · click card to toggle pick.
+      After you decide, reply with e.g. <strong>H</strong>, <strong>J</strong>, or <strong>hybrid H on dark tile</strong>.
+    </footer>
+  </div>
+
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true">
+    <div class="lightbox-inner">
+      <button type="button" class="lightbox-close" id="lightboxClose" aria-label="Close">×</button>
+      <img id="lightboxImg" alt="" />
+      <div class="lightbox-caption">
+        <span id="lightboxCap"></span>
+        <a class="btn" id="lightboxDl" download href="#">Download</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const LOGOS = [
+      {
+        id: "K2",
+        round: "k-light",
+        title: "K · light periwinkle",
+        file: "round-2/K2-light-periwinkle-cube.jpg",
+        desc: "Original open-cube mark on lighter periwinkle tile (~#9EA8E8). Closest to original K with softer bg.",
+        tags: ["chosen", "light-bg", "cube"],
+        score: "high",
+        recommended: true,
+        kind: "icon",
+      },
+      {
+        id: "K3",
+        round: "k-light",
+        title: "K · soft blue + fill",
+        file: "round-2/K3-soft-blue-open-cube.jpg",
+        desc: "Very light blue-gray tile; cube has soft face fills. Airier dock presence.",
+        tags: ["chosen", "light-bg", "soft"],
+        score: "high",
+        recommended: true,
+        kind: "icon",
+      },
+      {
+        id: "K4",
+        round: "k-light",
+        title: "K · pastel lavender",
+        file: "round-2/K4-pastel-lavender-cube.jpg",
+        desc: "Near-white pastel tile. Elegant but lower contrast (white mark on light bg) — may need darker stroke for tray.",
+        tags: ["chosen", "light-bg", "low-contrast"],
+        score: "mid",
+        recommended: false,
+        kind: "icon",
+      },
+      {
+        id: "K5",
+        round: "k-light",
+        title: "K · off-white + indigo cube",
+        file: "round-2/K5-offwhite-indigo-cube.jpg",
+        desc: "Lightest tile + indigo #5b63d4 cube stroke. Best contrast on light bg; maps to brand accent.",
+        tags: ["chosen", "light-bg", "indigo-mark"],
+        score: "high",
+        recommended: true,
+        kind: "icon",
+      },
+      {
+        id: "J",
+        round: "round2",
+        title: "Dock knot C",
+        file: "round-2/J-dock-icon-knot-c.jpg",
+        desc: "Dark tile + indigo ribbon C. Closest to premium dock icon quality; abstract, dark-first.",
+        tags: ["app-icon", "abstract", "dark-tile"],
+        score: "high",
+        recommended: true,
+        kind: "icon",
+      },
+      {
+        id: "H",
+        round: "round2",
+        title: "Monogram C + box",
+        file: "round-2/H-monogram-c-box.jpg",
+        desc: "On-name mark: C fused with a box. Best system mark — scales to 16px, trademarkable.",
+        tags: ["monogram", "system-mark", "scalable"],
+        score: "high",
+        recommended: true,
+        kind: "icon",
+      },
+      {
+        id: "G",
+        round: "round2",
+        title: "Infinity loop tile",
+        file: "round-2/G-infinity-loop-mark.jpg",
+        desc: "Indigo app tile with cut infinity ribbon. Clean dock look; slightly generic AI infinity.",
+        tags: ["app-icon", "tile"],
+        score: "mid",
+        recommended: false,
+        kind: "icon",
+      },
+      {
+        id: "K",
+        round: "round2",
+        title: "Open cube (original dark)",
+        file: "round-2/K-dock-icon-open-cube.jpg",
+        desc: "Original K: open cube on dark indigo tile. Kept for side-by-side vs light variants.",
+        tags: ["app-icon", "cube", "original"],
+        score: "mid",
+        recommended: false,
+        kind: "icon",
+      },
+      {
+        id: "F",
+        round: "round2",
+        title: "Ribbon cut diamond",
+        file: "round-2/F-abstract-ribbon-cut.jpg",
+        desc: "Diamond box with slash ribbon. Distinctive motion energy; may feel aggressive for a studio tool.",
+        tags: ["abstract", "energy"],
+        score: "mid",
+        recommended: false,
+        kind: "icon",
+      },
+      {
+        id: "I",
+        round: "round2",
+        title: "Premium wordmark",
+        file: "round-2/I-wordmark-premium.jpg",
+        desc: "Wordmark only with indigo accent e. Use with a mark for marketing/about — not a dock icon alone.",
+        tags: ["wordmark", "lockup"],
+        score: "high",
+        recommended: true,
+        kind: "wordmark",
+        wide: true,
+      },
+      {
+        id: "A",
+        round: "round1",
+        title: "Bubble + network",
+        file: "A-app-icon-bubble-network.jpg",
+        desc: "Solid bubble with constellation nodes. Generic multi-model AI cliché.",
+        tags: ["bubble", "nodes"],
+        score: "low",
+        recommended: false,
+        kind: "icon",
+      },
+      {
+        id: "B",
+        round: "round1",
+        title: "Hex + chat cutout",
+        file: "B-app-icon-hex-chat.jpg",
+        desc: "Hexagon with chat negative space. Cleaner, still common tech shape language.",
+        tags: ["hex", "chat"],
+        score: "mid",
+        recommended: false,
+        kind: "icon",
+      },
+      {
+        id: "C",
+        round: "round1",
+        title: "Lettermark C monoline",
+        file: "C-app-icon-lettermark-c.jpg",
+        desc: "Double-stroke C that becomes a chat tail. Readable, a bit chat-app generic.",
+        tags: ["lettermark", "monoline"],
+        score: "mid",
+        recommended: false,
+        kind: "icon",
+      },
+      {
+        id: "D",
+        round: "round1",
+        title: "Studio cursor frame",
+        file: "D-app-icon-studio-cursor.jpg",
+        desc: "Rounded square + caret. Linear/Raycast-ish, but weak brand ownership.",
+        tags: ["lineart", "studio"],
+        score: "low",
+        recommended: false,
+        kind: "icon",
+      },
+      {
+        id: "E",
+        round: "round1",
+        title: "Combination lockup",
+        file: "E-lockup-combination-wordmark.jpg",
+        desc: "Bubble + dots + Chaeboxi word. Classic chat SaaS lockup; not distinctive enough.",
+        tags: ["lockup", "wordmark"],
+        score: "low",
+        recommended: false,
+        kind: "wordmark",
+        wide: true,
+      },
+    ];
+
+    const picks = new Set(JSON.parse(localStorage.getItem("chaeboxi-logo-picks") || "[]"));
+
+    const gridK = document.getElementById("grid-k-light");
+    const grid2 = document.getElementById("grid-round2");
+    const grid1 = document.getElementById("grid-round1");
+    const picksBar = document.getElementById("picksBar");
+    const picksText = document.getElementById("picksText");
+    const stats = document.getElementById("stats");
+    const lightbox = document.getElementById("lightbox");
+    const lightboxImg = document.getElementById("lightboxImg");
+    const lightboxCap = document.getElementById("lightboxCap");
+    const lightboxDl = document.getElementById("lightboxDl");
+    let filter = "k-light";
+
+    function scoreLabel(score) {
+      if (score === "high") return { text: "Strong", cls: "score-high" };
+      if (score === "mid") return { text: "OK", cls: "score-mid" };
+      return { text: "Weak", cls: "score-low" };
+    }
+
+    function matchesFilter(logo) {
+      if (filter === "all") return true;
+      if (filter === "k-light") return logo.round === "k-light";
+      if (filter === "round1") return logo.round === "round1";
+      if (filter === "round2") return logo.round === "round2";
+      if (filter === "recommended") return logo.recommended;
+      if (filter === "icon") return logo.kind === "icon";
+      if (filter === "wordmark") return logo.kind === "wordmark";
+      return true;
+    }
+
+    function persist() {
+      localStorage.setItem("chaeboxi-logo-picks", JSON.stringify([...picks]));
+    }
+
+    function updatePicksUI() {
+      const list = [...picks].sort();
+      if (list.length) {
+        picksBar.classList.add("visible");
+        picksText.textContent = list.join(", ");
+      } else {
+        picksBar.classList.remove("visible");
+        picksText.textContent = "—";
+      }
+    }
+
+    function openLightbox(logo) {
+      lightboxImg.src = logo.file;
+      lightboxImg.alt = logo.title;
+      lightboxCap.textContent = `${logo.id} — ${logo.title}`;
+      lightboxDl.href = logo.file;
+      lightboxDl.download = logo.file.split("/").pop();
+      lightbox.classList.add("open");
+    }
+
+    function closeLightbox() {
+      lightbox.classList.remove("open");
+    }
+
+    function cardHTML(logo) {
+      const s = scoreLabel(logo.score);
+      const selected = picks.has(logo.id) ? "selected" : "";
+      const rec = logo.recommended ? "recommended" : "";
+      const wide = logo.wide ? "wide" : "";
+      const tags = logo.tags
+        .map((t) => `<span class="tag">${t}</span>`)
+        .join("");
+      return `
+        <article class="card ${selected} ${rec} ${wide}" data-id="${logo.id}" data-round="${logo.round}" data-kind="${logo.kind}">
+          <div class="preview" data-zoom="${logo.id}" title="Click to enlarge">
+            <img src="${logo.file}" alt="${logo.id}: ${logo.title}" loading="lazy" />
+          </div>
+          <div class="meta">
+            <div class="meta-top">
+              <h3>${logo.title}</h3>
+              <span class="id">${logo.id}</span>
+            </div>
+            <p>${logo.desc}</p>
+            <div class="tags">
+              <span class="tag ${s.cls}">${s.text}</span>
+              ${tags}
+            </div>
+            <div class="row">
+              <button type="button" class="pick-btn" data-pick="${logo.id}">
+                ${picks.has(logo.id) ? "Picked ✓" : "Pick"}
+              </button>
+              <a class="btn" href="${logo.file}" download>Download</a>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    function render() {
+      const rk = LOGOS.filter((l) => l.round === "k-light" && matchesFilter(l));
+      const r2 = LOGOS.filter((l) => l.round === "round2" && matchesFilter(l));
+      const r1 = LOGOS.filter((l) => l.round === "round1" && matchesFilter(l));
+
+      gridK.innerHTML = rk.map(cardHTML).join("") || `<p style="color:var(--ink-3)">No matches.</p>`;
+      grid2.innerHTML = r2.map(cardHTML).join("") || `<p style="color:var(--ink-3)">No matches.</p>`;
+      grid1.innerHTML = r1.map(cardHTML).join("") || `<p style="color:var(--ink-3)">No matches.</p>`;
+
+      // wide grid for wordmark-heavy rows
+      grid2.classList.toggle("wide", filter === "wordmark");
+      grid1.classList.toggle("wide", filter === "wordmark");
+
+      document.querySelectorAll(".round").forEach((sec) => {
+        const round = sec.dataset.round;
+        const any = LOGOS.some((l) => l.round === round && matchesFilter(l));
+        sec.style.display = any ? "" : "none";
+      });
+
+      const visible = LOGOS.filter(matchesFilter).length;
+      stats.textContent = `${visible} shown · ${picks.size} picked`;
+      updatePicksUI();
+    }
+
+    document.body.addEventListener("click", (e) => {
+      const zoom = e.target.closest("[data-zoom]");
+      if (zoom) {
+        const logo = LOGOS.find((l) => l.id === zoom.dataset.zoom);
+        if (logo) openLightbox(logo);
+        return;
+      }
+
+      const pickBtn = e.target.closest("[data-pick]");
+      if (pickBtn) {
+        const id = pickBtn.dataset.pick;
+        if (picks.has(id)) picks.delete(id);
+        else picks.add(id);
+        persist();
+        render();
+        return;
+      }
+
+      // click card chrome (not buttons/links) toggles pick
+      const card = e.target.closest(".card");
+      if (card && !e.target.closest("button, a, .preview")) {
+        const id = card.dataset.id;
+        if (picks.has(id)) picks.delete(id);
+        else picks.add(id);
+        persist();
+        render();
+      }
+    });
+
+    document.querySelectorAll(".filter").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        filter = btn.dataset.filter;
+        document.querySelectorAll(".filter").forEach((b) => b.classList.toggle("active", b === btn));
+        render();
+      });
+    });
+
+    function setTheme(theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+      document.getElementById("themeBtn").textContent =
+        theme === "dark" ? "Theme: Dark" : "Theme: Light";
+      localStorage.setItem("chaeboxi-logo-theme", theme);
+    }
+
+    document.getElementById("themeBtn").addEventListener("click", () => {
+      const next =
+        document.documentElement.getAttribute("data-theme") === "dark"
+          ? "light"
+          : "dark";
+      setTheme(next);
+    });
+
+    function copyPicks() {
+      const text = [...picks].sort().join(", ") || "(none)";
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById("copyBtn");
+        const prev = btn.textContent;
+        btn.textContent = "Copied!";
+        setTimeout(() => (btn.textContent = prev), 1200);
+      });
+    }
+
+    document.getElementById("copyBtn").addEventListener("click", copyPicks);
+    document.getElementById("copyPicksInline").addEventListener("click", copyPicks);
+    document.getElementById("clearBtn").addEventListener("click", () => {
+      picks.clear();
+      persist();
+      render();
+    });
+
+    document.getElementById("lightboxClose").addEventListener("click", closeLightbox);
+    lightbox.addEventListener("click", (e) => {
+      if (e.target === lightbox) closeLightbox();
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeLightbox();
+      if (e.key === "t" || e.key === "T") {
+        if (e.target.matches("input, textarea")) return;
+        document.getElementById("themeBtn").click();
+      }
+    });
+
+    setTheme(localStorage.getItem("chaeboxi-logo-theme") || "dark");
+    render();
+  </script>
+</body>
+</html>

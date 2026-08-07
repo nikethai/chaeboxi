@@ -1,13 +1,17 @@
 import { useMantineTheme } from '@mantine/core'
-import useMediaQuery from '@mui/material/useMediaQuery'
 import { useTheme } from '@mui/material/styles'
+import useMediaQuery from '@mui/material/useMediaQuery'
 import { useEffect } from 'react'
 import { useUIStore } from '../stores/uiStore'
+
+/** Desktop icon-only rail width (px). Expanded width uses useSidebarWidth(). */
+export const SIDEBAR_ICON_RAIL_WIDTH = 56
 
 export default function useScreenChange() {
   const setShowSidebar = useUIStore((s) => s.setShowSidebar)
   const realIsSmallScreen = useIsSmallScreen()
   useEffect(() => {
+    // Desktop: always keep drawer open (expanded or icon rail). Mobile: closed by default.
     setShowSidebar(!realIsSmallScreen)
   }, [realIsSmallScreen, setShowSidebar])
 }
@@ -55,6 +59,17 @@ export function useSidebarWidth() {
   } else {
     return 280 * scale
   }
+}
+
+/** Desktop: expanded tree width or 56px icon rail. Mobile callers still use 75vw for the drawer. */
+export function useSidebarEffectiveWidth() {
+  const expandedWidth = useSidebarWidth()
+  const isSmallScreen = useIsSmallScreen()
+  const sidebarLayout = useUIStore((s) => s.sidebarLayout)
+  if (isSmallScreen) {
+    return expandedWidth
+  }
+  return sidebarLayout === 'rail' ? SIDEBAR_ICON_RAIL_WIDTH : expandedWidth
 }
 
 export function useInputBoxHeight(): { min: number; max: number } {

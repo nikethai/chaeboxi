@@ -48,7 +48,7 @@ interface DesktopModelSelectorProps {
   searchPosition?: 'top' | 'bottom'
 }
 
-// Search + All/Favorite — studio toolbar density
+// Search + All/Favorite — pinned toolbar (not sticky-inside scroller)
 const SearchBox = ({
   search,
   activeTab,
@@ -69,8 +69,21 @@ const SearchBox = ({
         value={search}
         onChange={(event) => onSearchChange(event.currentTarget.value)}
         placeholder={t('Search models') as string}
+        aria-label={t('Search models') as string}
         variant="unstyled"
         className="flex-1 min-w-0"
+        rightSection={
+          search ? (
+            <button
+              type="button"
+              className="model-picker-search-clear active:scale-[0.96]"
+              onClick={() => onSearchChange('')}
+              aria-label={t('Clear') as string}
+            >
+              ×
+            </button>
+          ) : null
+        }
         styles={{
           input: {
             padding: 0,
@@ -242,9 +255,9 @@ export const DesktopModelSelector = forwardRef<HTMLDivElement, DesktopModelSelec
           )}
         </Combobox.Target>
 
-        <Combobox.Dropdown className="model-picker-dropdown !p-0 overflow-hidden">
+        <Combobox.Dropdown className="model-picker-dropdown !p-0 overflow-hidden flex flex-col">
           {searchAtTop && (
-            <div className="model-picker-toolbar sticky top-0 z-10">
+            <div className="model-picker-toolbar shrink-0">
               <SearchBox
                 search={search}
                 activeTab={activeTab}
@@ -255,7 +268,11 @@ export const DesktopModelSelector = forwardRef<HTMLDivElement, DesktopModelSelec
             </div>
           )}
 
-          <Combobox.Options mah={360} style={{ overflowY: 'auto' }} className="model-picker-options px-1.5 pb-1.5">
+          <Combobox.Options
+            mah={360}
+            style={{ overflowY: 'auto', flex: '1 1 auto' }}
+            className="model-picker-options px-1.5 pb-1.5 pt-1"
+          >
             {showAuto && activeTab === 'all' && (
               <Combobox.Option
                 value={''}
@@ -274,7 +291,12 @@ export const DesktopModelSelector = forwardRef<HTMLDivElement, DesktopModelSelec
                   {activeTab === 'favorite' ? t('No favorite models') : t('No eligible models available')}
                 </Text>
                 {activeTab === 'all' && (
-                  <Button variant="light" size="compact-xs" color="chatbox-brand" onClick={() => navigateToSettings('/provider')}>
+                  <Button
+                    variant="light"
+                    size="compact-xs"
+                    color="chatbox-brand"
+                    onClick={() => navigateToSettings('/provider')}
+                  >
                     {t('Set up providers')}
                   </Button>
                 )}
@@ -350,7 +372,7 @@ export const DesktopModelSelector = forwardRef<HTMLDivElement, DesktopModelSelec
           </Combobox.Options>
 
           {!searchAtTop && (
-            <div className="model-picker-toolbar sticky bottom-0 z-10">
+            <div className="model-picker-toolbar shrink-0">
               <SearchBox
                 search={search}
                 activeTab={activeTab}

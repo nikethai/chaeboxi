@@ -1,4 +1,4 @@
-import { ActionIcon, Box, Button, Flex, Menu, Stack, TextInput, Tooltip, UnstyledButton } from '@mantine/core'
+import { ActionIcon, Box, Button, Flex, Image, Menu, Stack, TextInput, Tooltip, UnstyledButton } from '@mantine/core'
 import SwipeableDrawer from '@mui/material/SwipeableDrawer'
 import {
   IconArchive,
@@ -8,6 +8,7 @@ import {
   IconFolderPlus,
   IconInfoCircle,
   IconLayoutSidebarLeftCollapse,
+  IconLayoutSidebarLeftExpand,
   IconLogout,
   IconPhotoPlus,
   IconSearch,
@@ -20,16 +21,23 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ChaeboxiWordmark from './components/brand/ChaeboxiWordmark'
 import { AdaptiveModal } from './components/common/AdaptiveModal'
+import { UserAvatar } from './components/common/Avatar'
 import ThemeSwitchButton from './components/dev/ThemeSwitchButton'
 import TitleBarRow from './components/layout/TitleBarRow'
 import SessionList from './components/session/SessionList'
 import { FORCE_ENABLE_DEV_PAGES } from './dev/devToolsConfig'
 import { useFolders } from './hooks/useFolders'
-import { useIsSmallScreen, useSidebarWidth } from './hooks/useScreenChange'
+import {
+  SIDEBAR_ICON_RAIL_WIDTH,
+  useIsSmallScreen,
+  useSidebarEffectiveWidth,
+  useSidebarWidth,
+} from './hooks/useScreenChange'
 import useVersion from './hooks/useVersion'
 import { navigateToSettings } from './modals/Settings'
 import { trackingEvent } from './packages/event'
-import { useLanguage } from './stores/settingsStore'
+import appIcon from './static/icon.png'
+import { useLanguage, useSettingsStore } from './stores/settingsStore'
 import { useUIStore } from './stores/uiStore'
 import { CHATBOX_BUILD_PLATFORM } from './variables'
 
@@ -39,16 +47,20 @@ export default function Sidebar() {
   const language = useLanguage()
   const navigate = useNavigate()
   const { addFolder } = useFolders()
+  const userAvatarKey = useSettingsStore((s) => s.userAvatarKey)
   const showSidebar = useUIStore((s) => s.showSidebar)
   const setShowSidebar = useUIStore((s) => s.setShowSidebar)
+  const sidebarLayout = useUIStore((s) => s.sidebarLayout)
+  const setSidebarLayout = useUIStore((s) => s.setSidebarLayout)
   const setSidebarWidth = useUIStore((s) => s.setSidebarWidth)
   const setOpenSearchDialog = useUIStore((s) => s.setOpenSearchDialog)
 
   const sessionListViewportRef = useRef<HTMLDivElement>(null)
 
-  const sidebarWidth = useSidebarWidth()
-
+  const expandedSidebarWidth = useSidebarWidth()
+  const effectiveSidebarWidth = useSidebarEffectiveWidth()
   const isSmallScreen = useIsSmallScreen()
+  const isIconRail = !isSmallScreen && sidebarLayout === 'rail'
 
   const [isResizing, setIsResizing] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
@@ -105,14 +117,14 @@ export default function Sidebar() {
 
   const handleResizeStart = useCallback(
     (e: React.MouseEvent) => {
-      if (isSmallScreen) return
+      if (isSmallScreen || isIconRail) return
       e.preventDefault()
       e.stopPropagation()
       setIsResizing(true)
       resizeStartX.current = e.clientX
-      resizeStartWidth.current = sidebarWidth
+      resizeStartWidth.current = expandedSidebarWidth
     },
-    [isSmallScreen, sidebarWidth]
+    [isSmallScreen, isIconRail, expandedSidebarWidth]
   )
 
   useEffect(() => {
@@ -150,16 +162,34 @@ export default function Sidebar() {
     setFolderModalOpened(false)
   }
 
+  // Desktop never fully hides — collapse to icon-only rail.
   const handleCollapseSidebar = useCallback(() => {
-    setShowSidebar(false)
-  }, [setShowSidebar])
+    if (isSmallScreen) {
+      setShowSidebar(false)
+      return
+    }
+    setSidebarLayout('rail')
+  }, [isSmallScreen, setShowSidebar, setSidebarLayout])
+
+  const handleExpandSidebar = useCallback(() => {
+    if (isSmallScreen) {
+      setShowSidebar(true)
+      return
+    }
+    setSidebarLayout('expanded')
+    setShowSidebar(true)
+  }, [isSmallScreen, setShowSidebar, setSidebarLayout])
+
+  // Desktop drawer stays open (rail or expanded); mobile uses temporary open/close.
+  const drawerOpen = isSmallScreen ? showSidebar : true
+  const drawerWidth = isSmallScreen ? '75vw' : isIconRail ? SIDEBAR_ICON_RAIL_WIDTH : effectiveSidebarWidth
 
   return (
     <>
       <SwipeableDrawer
         anchor={language === 'ar' ? 'right' : 'left'}
         variant={isSmallScreen ? 'temporary' : 'persistent'}
-        open={showSidebar}
+        open={drawerOpen}
         onClose={() => setShowSidebar(false)}
         onOpen={() => setShowSidebar(true)}
         ModalProps={{
@@ -170,9 +200,14 @@ export default function Sidebar() {
             backgroundImage: 'none',
             backgroundColor: 'var(--chatbox-background-rail)',
             boxSizing: 'border-box',
-            width: isSmallScreen ? '75vw' : sidebarWidth,
-            maxWidth: '75vw',
+            width: drawerWidth,
+            maxWidth: isSmallScreen ? '75vw' : undefined,
             borderRight: '1px solid var(--chatbox-border-primary)',
+            overflowX: 'hidden',
+            transition: 'width 220ms cubic-bezier(0.2, 0, 0, 1)',
+            '@media (prefers-reduced-motion: reduce)': {
+              transition: 'none',
+            },
           },
         }}
         SlideProps={language === 'ar' ? { direction: 'left' } : undefined}
@@ -187,98 +222,165 @@ export default function Sidebar() {
           gap={0}
           pt="var(--mobile-safe-area-inset-top, 0px)"
           pb="var(--mobile-safe-area-inset-bottom, 0px)"
-          className="relative studio-rail"
+          className={clsx('relative studio-rail', isIconRail && 'studio-rail--icon')}
         >
-          {/*
-            Rail head — brand left with nav (no mac traffic inset: 80px made logo look centered).
-            Traffic lights sit in the window corner; wordmark aligns with Search/New Chat.
-          */}
-          <TitleBarRow heightMode="desktop" macTrafficInset={false} justify="flex-start" className="rail-head">
-            <Flex align="center" gap={8} miw={0} justify="flex-start" className="controls min-w-0 w-full">
-              <ChaeboxiWordmark size="rail" />
-              {FORCE_ENABLE_DEV_PAGES && <ThemeSwitchButton size="xs" />}
-            </Flex>
+          {/* Brand */}
+          <TitleBarRow
+            heightMode="desktop"
+            macTrafficInset={false}
+            justify={isIconRail ? 'center' : 'flex-start'}
+            className="rail-head"
+          >
+            {isIconRail ? (
+              <Tooltip label="Chaeboxi" position="right" withArrow openDelay={300}>
+                <Image
+                  src={appIcon}
+                  w={28}
+                  h={28}
+                  alt="Chaeboxi"
+                  className="rounded-[6px] active:scale-[0.96] transition-transform"
+                />
+              </Tooltip>
+            ) : (
+              <Flex align="center" gap={8} miw={0} justify="flex-start" className="controls min-w-0 w-full">
+                <ChaeboxiWordmark size="rail" />
+                {FORCE_ENABLE_DEV_PAGES && <ThemeSwitchButton size="xs" />}
+              </Flex>
+            )}
           </TitleBarRow>
 
-          {/* Quiet nav stack — Grok: icon + label rows, no solid CTA block */}
-          <nav className="rail-nav" aria-label={t('Navigation')}>
-            <button
-              type="button"
-              className="rail-nav-item"
-              onClick={() => {
-                setOpenSearchDialog(true, true)
-                closeSidebarIfMobile()
-              }}
-            >
-              <IconSearch size={18} stroke={1.5} aria-hidden />
-              <span>{t('Search')}</span>
-            </button>
-            <button type="button" className="rail-nav-item" onClick={handleCreateNewSession}>
-              <IconEdit size={18} stroke={1.5} aria-hidden />
-              <span>{t('New Chat')}</span>
-              {!isSmallScreen && <kbd className="rail-nav-kbd">⌘N</kbd>}
-            </button>
-            <button
-              type="button"
-              className="rail-nav-item"
-              onClick={() => {
-                handleCreateNewPictureSession()
-              }}
-            >
-              <IconPhotoPlus size={18} stroke={1.5} aria-hidden />
-              <span>{t('Imagine')}</span>
-            </button>
+          {/* Nav — labels when expanded; icon-only tooltips in rail */}
+          <nav className={clsx('rail-nav', isIconRail && 'rail-nav--icon')} aria-label={t('Navigation')}>
+            {isIconRail ? (
+              <>
+                <Tooltip label={t('Search')} position="right" withArrow openDelay={300}>
+                  <button
+                    type="button"
+                    className="rail-icon-btn active:scale-[0.96]"
+                    onClick={() => {
+                      setOpenSearchDialog(true, true)
+                      closeSidebarIfMobile()
+                    }}
+                    aria-label={t('Search')}
+                  >
+                    <IconSearch size={18} stroke={1.5} aria-hidden />
+                  </button>
+                </Tooltip>
+                <Tooltip label={t('New Chat')} position="right" withArrow openDelay={300}>
+                  <button
+                    type="button"
+                    className="rail-icon-btn active:scale-[0.96]"
+                    onClick={handleCreateNewSession}
+                    aria-label={t('New Chat')}
+                  >
+                    <IconEdit size={18} stroke={1.5} aria-hidden />
+                  </button>
+                </Tooltip>
+                <Tooltip label={t('Imagine')} position="right" withArrow openDelay={300}>
+                  <button
+                    type="button"
+                    className="rail-icon-btn active:scale-[0.96]"
+                    onClick={handleCreateNewPictureSession}
+                    aria-label={t('Imagine')}
+                  >
+                    <IconPhotoPlus size={18} stroke={1.5} aria-hidden />
+                  </button>
+                </Tooltip>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  className="rail-nav-item"
+                  onClick={() => {
+                    setOpenSearchDialog(true, true)
+                    closeSidebarIfMobile()
+                  }}
+                >
+                  <IconSearch size={18} stroke={1.5} aria-hidden />
+                  <span>{t('Search')}</span>
+                </button>
+                <button type="button" className="rail-nav-item" onClick={handleCreateNewSession}>
+                  <IconEdit size={18} stroke={1.5} aria-hidden />
+                  <span>{t('New Chat')}</span>
+                  {!isSmallScreen && <kbd className="rail-nav-kbd">⌘N</kbd>}
+                </button>
+                <button type="button" className="rail-nav-item" onClick={handleCreateNewPictureSession}>
+                  <IconPhotoPlus size={18} stroke={1.5} aria-hidden />
+                  <span>{t('Imagine')}</span>
+                </button>
+              </>
+            )}
           </nav>
 
-          {/* Projects / History chrome tools */}
-          <Flex px="sm" pb={6} pt={2} gap={4} align="center" className="rail-tools">
-            <Tooltip label={t('New Project')} withArrow>
-              <ActionIcon
-                size={28}
-                radius="md"
-                variant="subtle"
-                color="chatbox-tertiary"
-                onClick={() => setFolderModalOpened(true)}
-                aria-label={t('New Project')}
-              >
-                <IconFolderPlus size={16} stroke={1.5} />
-              </ActionIcon>
-            </Tooltip>
-            <Tooltip label={showArchived ? t('Show Active Chats') : t('Show Archived Chats')} withArrow>
-              <ActionIcon
-                size={28}
-                radius="md"
-                variant={showArchived ? 'light' : 'subtle'}
-                color={showArchived ? 'chatbox-brand' : 'chatbox-tertiary'}
-                onClick={() => setShowArchived((value) => !value)}
-                aria-label={showArchived ? t('Show Active Chats') : t('Show Archived Chats')}
-                aria-pressed={showArchived}
-              >
-                <IconArchive size={16} stroke={1.5} />
-              </ActionIcon>
-            </Tooltip>
-          </Flex>
+          {!isIconRail && (
+            <>
+              <Flex px="sm" pb={6} pt={2} gap={4} align="center" className="rail-tools">
+                <Tooltip label={t('New Project')} withArrow>
+                  <ActionIcon
+                    size={28}
+                    radius="md"
+                    variant="subtle"
+                    color="chatbox-tertiary"
+                    onClick={() => setFolderModalOpened(true)}
+                    aria-label={t('New Project')}
+                    className="active:scale-[0.96] transition-transform"
+                  >
+                    <IconFolderPlus size={16} stroke={1.5} />
+                  </ActionIcon>
+                </Tooltip>
+                <Tooltip label={showArchived ? t('Show Active Chats') : t('Show Archived Chats')} withArrow>
+                  <ActionIcon
+                    size={28}
+                    radius="md"
+                    variant={showArchived ? 'light' : 'subtle'}
+                    color={showArchived ? 'chatbox-brand' : 'chatbox-tertiary'}
+                    onClick={() => setShowArchived((value) => !value)}
+                    aria-label={showArchived ? t('Show Active Chats') : t('Show Archived Chats')}
+                    aria-pressed={showArchived}
+                    className="active:scale-[0.96] transition-transform"
+                  >
+                    <IconArchive size={16} stroke={1.5} />
+                  </ActionIcon>
+                </Tooltip>
+              </Flex>
 
-          <Box className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            <SessionList
-              sessionListViewportRef={sessionListViewportRef}
-              showArchived={showArchived}
-              onCreateProject={() => setFolderModalOpened(true)}
-            />
-          </Box>
+              <Box className="flex-1 min-h-0 flex flex-col overflow-hidden">
+                <SessionList
+                  sessionListViewportRef={sessionListViewportRef}
+                  showArchived={showArchived}
+                  onCreateProject={() => setFolderModalOpened(true)}
+                />
+              </Box>
+            </>
+          )}
 
-          {/* Account footer — mock rail-foot: menu above, user trigger below */}
-          <div className="rail-foot">
+          {isIconRail && <Box className="flex-1 min-h-0" />}
+
+          {/* Account footer — expand sits above user (chrome control, then identity) */}
+          <div className={clsx('rail-foot', isIconRail && 'rail-foot--icon')}>
+            {isIconRail && (
+              <Tooltip label={t('Expand sidebar')} position="right" withArrow openDelay={300}>
+                <button
+                  type="button"
+                  className="rail-icon-btn rail-expand-btn active:scale-[0.96]"
+                  onClick={handleExpandSidebar}
+                  aria-label={t('Expand sidebar')}
+                >
+                  <IconLayoutSidebarLeftExpand size={18} stroke={1.5} aria-hidden />
+                </button>
+              </Tooltip>
+            )}
             <Menu
               shadow="md"
-              width={accountMenuWidth ?? 'target'}
-              position="top"
+              width={isIconRail ? 220 : (accountMenuWidth ?? 'target')}
+              position={isIconRail ? 'right-end' : 'top'}
               withinPortal
               offset={6}
               middlewares={{ flip: true, shift: false, size: true }}
               opened={accountMenuOpen}
               onChange={(open) => {
-                if (open) {
+                if (open && !isIconRail) {
                   syncAccountMenuWidth()
                 }
                 setAccountMenuOpen(open)
@@ -288,35 +390,56 @@ export default function Sidebar() {
               }}
             >
               <Menu.Target>
-                <UnstyledButton
-                  ref={accountTriggerRef}
-                  className="user-trigger"
-                  data-expanded={accountMenuOpen ? 'true' : 'false'}
-                  aria-expanded={accountMenuOpen}
-                  aria-haspopup="menu"
-                  onMouseEnter={syncAccountMenuWidth}
-                >
-                  <span className="user-avatar" aria-hidden>
-                    <IconUser size={16} stroke={1.5} />
-                  </span>
-                  <span className="user-meta">
-                    <strong>{displayName}</strong>
-                    <span>{displaySubtitle}</span>
-                  </span>
-                  <span className="user-chevron" aria-hidden>
-                    <IconChevronUp size={16} stroke={1.75} />
-                  </span>
-                </UnstyledButton>
+                {isIconRail ? (
+                  <Tooltip label={displayName} position="right" withArrow openDelay={300} disabled={accountMenuOpen}>
+                    <UnstyledButton
+                      ref={accountTriggerRef}
+                      className="rail-icon-btn user-trigger-icon active:scale-[0.96]"
+                      data-expanded={accountMenuOpen ? 'true' : 'false'}
+                      aria-expanded={accountMenuOpen}
+                      aria-haspopup="menu"
+                      aria-label={displayName}
+                    >
+                      <UserAvatar size={28} avatarKey={userAvatarKey} />
+                    </UnstyledButton>
+                  </Tooltip>
+                ) : (
+                  <UnstyledButton
+                    ref={accountTriggerRef}
+                    className="user-trigger"
+                    data-expanded={accountMenuOpen ? 'true' : 'false'}
+                    aria-expanded={accountMenuOpen}
+                    aria-haspopup="menu"
+                    onMouseEnter={syncAccountMenuWidth}
+                  >
+                    <span className="user-avatar" aria-hidden>
+                      <UserAvatar size={32} avatarKey={userAvatarKey} />
+                    </span>
+                    <span className="user-meta">
+                      <strong>{displayName}</strong>
+                      <span>{displaySubtitle}</span>
+                    </span>
+                    <span className="user-chevron" aria-hidden>
+                      <IconChevronUp size={16} stroke={1.75} />
+                    </span>
+                  </UnstyledButton>
+                )}
               </Menu.Target>
 
               <Menu.Dropdown>
                 <Menu.Label>{t('Workspace')}</Menu.Label>
                 {!isSmallScreen && (
                   <Menu.Item
-                    leftSection={<IconLayoutSidebarLeftCollapse size={15} stroke={1.5} />}
-                    onClick={handleCollapseSidebar}
+                    leftSection={
+                      isIconRail ? (
+                        <IconLayoutSidebarLeftExpand size={15} stroke={1.5} />
+                      ) : (
+                        <IconLayoutSidebarLeftCollapse size={15} stroke={1.5} />
+                      )
+                    }
+                    onClick={isIconRail ? handleExpandSidebar : handleCollapseSidebar}
                   >
-                    {t('Hide Sidebar')}
+                    {isIconRail ? t('Expand sidebar') : t('Collapse to icons')}
                   </Menu.Item>
                 )}
                 <Menu.Item
@@ -386,7 +509,6 @@ export default function Sidebar() {
                   className="user-menu-item-danger"
                   leftSection={<IconLogout size={15} stroke={1.5} />}
                   onClick={() => {
-                    // Local CE has no cloud account — About is the closest account surface
                     navigate({ to: '/about' })
                     closeSidebarIfMobile()
                   }}
@@ -396,11 +518,11 @@ export default function Sidebar() {
               </Menu.Dropdown>
             </Menu>
           </div>
-          {!isSmallScreen && (
+          {!isSmallScreen && !isIconRail && (
             <Box
               onMouseDown={handleResizeStart}
               onDoubleClick={handleCollapseSidebar}
-              title={t('Drag to resize · double-click to hide')}
+              title={t('Drag to resize · double-click to collapse to icons')}
               className={clsx('sidebar-resizer', isResizing && 'is-resizing', language === 'ar' ? 'left-0' : 'right-0')}
             />
           )}

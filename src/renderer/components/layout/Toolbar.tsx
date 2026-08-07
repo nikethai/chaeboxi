@@ -1,22 +1,11 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { ActionIcon, Button, Flex } from '@mantine/core'
-import {
-  IconArrowsHorizontal,
-  IconClearAll,
-  IconCode,
-  IconDeviceFloppy,
-  IconDots,
-  IconHistory,
-  IconSearch,
-  IconTrash,
-} from '@tabler/icons-react'
-import { useSetAtom } from 'jotai'
+import { IconClearAll, IconCode, IconDeviceFloppy, IconDots, IconSearch, IconTrash } from '@tabler/icons-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useIsLargeScreen, useIsSmallScreen } from '@/hooks/useScreenChange'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import platform from '@/platform'
 import { router } from '@/router'
-import * as atoms from '@/stores/atoms'
 import { deleteSession, getSession } from '@/stores/chatStore'
 import { clear as clearSession } from '@/stores/sessionActions'
 import { useUIStore } from '@/stores/uiStore'
@@ -32,13 +21,9 @@ import UpdateAvailableButton from '../UpdateAvailableButton'
 export default function Toolbar({ sessionId }: { sessionId: string }) {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
-  const isLargeScreen = useIsLargeScreen()
 
   const [showUpdateNotification, setShowUpdateNotification] = useState(false)
   const setOpenSearchDialog = useUIStore((s) => s.setOpenSearchDialog)
-  const setThreadHistoryDrawerOpen = useSetAtom(atoms.showThreadHistoryDrawerAtom)
-  const widthFull = useUIStore((s) => s.widthFull)
-  const setWidthFull = useUIStore((s) => s.setWidthFull)
 
   useEffect(() => {
     const offUpdateDownloaded = platform.onUpdateDownloaded(() => {
@@ -71,29 +56,15 @@ export default function Toolbar({ sessionId }: { sessionId: string }) {
     }
   }, [sessionId, t])
 
-  // Full-width lived as a middle toolbar icon with broken custom SVGs (no size → empty square).
-  // Keep the capability in the overflow menu; primary chrome stays Search + More only.
+  // Primary chrome stays Search + More only (Thread History / Full width removed).
   const overflowItems = useMemo<ActionMenuItemProps[]>(() => {
     const items: ActionMenuItemProps[] = [
-      {
-        text: t('Thread History'),
-        icon: IconHistory,
-        onClick: () => setThreadHistoryDrawerOpen(true),
-      },
       {
         text: t('Export Chat'),
         icon: IconDeviceFloppy,
         onClick: handleExportAndSave,
       },
     ]
-
-    if (isLargeScreen) {
-      items.push({
-        text: widthFull ? t('Exit full width') : t('Full width'),
-        icon: IconArrowsHorizontal,
-        onClick: () => setWidthFull(!widthFull),
-      })
-    }
 
     if (process.env.NODE_ENV === 'development') {
       items.push({
@@ -121,17 +92,7 @@ export default function Toolbar({ sessionId }: { sessionId: string }) {
     )
 
     return items
-  }, [
-    handleSessionClean,
-    handleSessionDelete,
-    handleViewSessionJson,
-    isLargeScreen,
-    isSmallScreen,
-    setThreadHistoryDrawerOpen,
-    setWidthFull,
-    t,
-    widthFull,
-  ])
+  }, [handleSessionClean, handleSessionDelete, handleViewSessionJson, isSmallScreen, t])
 
   return !isSmallScreen ? (
     <Flex align="center" gap="sm" className="controls">

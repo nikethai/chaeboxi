@@ -148,7 +148,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const { height: viewportHeight } = useViewportSize()
     const pasteLongTextAsAFile = useSettingsStore((state) => state.pasteLongTextAsAFile)
     const shortcuts = useSettingsStore((state) => state.shortcuts)
-    const widthFull = useUIStore((s) => s.widthFull) || fullWidth
+    const widthFull = fullWidth
 
     const currentSessionId = sessionId
     const isNewSession = currentSessionId === 'new'

@@ -71,6 +71,11 @@ import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import { navigateToSettings } from '@/modals/Settings'
 import { copyToClipboard } from '@/packages/navigator'
+import {
+  contentPartsHaveTaskTools,
+  isTaskTrackingTool,
+  snapshotTasksFromContentParts,
+} from '@/packages/tools/task-tools'
 import { countWord } from '@/packages/word-count'
 import platform from '@/platform'
 import storage from '@/storage'
@@ -107,6 +112,9 @@ const ThinkingGroupUI = isAgentEnabled
   : null
 const ToolCallPartUI = isAgentEnabled
   ? lazy(() => import('../message-parts/ToolCallPartUI').then((m) => ({ default: m.ToolCallPartUI })))
+  : null
+const TodoAppCard = isAgentEnabled
+  ? lazy(() => import('../message-parts/TodoAppCard').then((m) => ({ default: m.TodoAppCard })))
   : null
 
 import FollowUpSuggestions from '../search/FollowUpSuggestions'
@@ -460,39 +468,47 @@ const _Message: FC<Props> = (props) => {
     let currentGroup: typeof contentParts = []
     let groupStartIndex = 0
 
-    for (let i = 0; i < contentParts.length; i++) {
-      const part = contentParts[i]
-      if (part.type === 'reasoning' || part.type === 'tool-call') {
-        if (currentGroup.length === 0) {
-          groupStartIndex = i
-        }
-        currentGroup.push(part)
-      } else {
-        // Flush any pending thinking group
-        if (currentGroup.length > 0) {
-          if (currentGroup.length > 1) {
-            groups.push({ type: 'thinking-group', parts: [...currentGroup], startIndex: groupStartIndex })
-          } else {
-            groups.push({ type: 'single', part: currentGroup[0], index: groupStartIndex })
-          }
-          currentGroup = []
-        }
-        groups.push({ type: 'single', part, index: i })
-      }
-    }
-    // Flush remaining
-    if (currentGroup.length > 0) {
+    const flushThinkingGroup = () => {
+      if (currentGroup.length === 0) return
       if (currentGroup.length > 1) {
         groups.push({ type: 'thinking-group', parts: [...currentGroup], startIndex: groupStartIndex })
       } else {
         groups.push({ type: 'single', part: currentGroup[0], index: groupStartIndex })
       }
+      currentGroup = []
     }
+
+    for (let i = 0; i < contentParts.length; i++) {
+      const part = contentParts[i]
+      // Task tools are coalesced into TodoAppCard — keep them out of thinking groups
+      const isTaskTool = part.type === 'tool-call' && isTaskTrackingTool(part.toolName)
+      if ((part.type === 'reasoning' || part.type === 'tool-call') && !isTaskTool) {
+        if (currentGroup.length === 0) {
+          groupStartIndex = i
+        }
+        currentGroup.push(part)
+      } else {
+        flushThinkingGroup()
+        groups.push({ type: 'single', part, index: i })
+      }
+    }
+    flushThinkingGroup()
 
     return groups
     // eslint-disable-next-line react-hooks/exhaustive-deps -- contentParts may be mutated in place during streaming;
     // include length and generating flag so the memo recomputes when parts are pushed or generation ends
   }, [contentParts, contentParts.length, msg.generating])
+
+  const messageTaskSnapshot = useMemo(
+    () => (contentPartsHaveTaskTools(contentParts) ? snapshotTasksFromContentParts(contentParts) : []),
+    [contentParts, contentParts.length, msg.generating]
+  )
+  const firstTaskToolGroupIndex = useMemo(() => {
+    if (!isAgentEnabled || !TodoAppCard) return -1
+    return groupedParts.findIndex(
+      (g) => g.type === 'single' && g.part.type === 'tool-call' && isTaskTrackingTool(g.part.toolName)
+    )
+  }, [groupedParts, contentParts.length, msg.generating])
 
   const CollapseButton = (
     <span
@@ -758,7 +774,18 @@ const _Message: FC<Props> = (props) => {
                       </div>
                     )
                   ) : group.part.type === 'tool-call' ? (
-                    ToolCallPartUI ? (
+                    isTaskTrackingTool(group.part.toolName) ? (
+                      groupIndex === firstTaskToolGroupIndex && TodoAppCard ? (
+                        <Suspense fallback={null} key={`todo-app-${msg.id}`}>
+                          <TodoAppCard
+                            sessionId={sessionId}
+                            snapshot={messageTaskSnapshot}
+                            interactive
+                            skipEnterAnimation={!msg.generating}
+                          />
+                        </Suspense>
+                      ) : null
+                    ) : ToolCallPartUI ? (
                       <Suspense fallback={null} key={group.part.toolCallId}>
                         <ToolCallPartUI part={group.part as MessageToolCallPart} />
                       </Suspense>

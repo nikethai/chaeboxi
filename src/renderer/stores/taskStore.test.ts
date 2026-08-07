@@ -1,20 +1,42 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import { generateTaskId, taskStore } from './taskStore'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { generateTaskId, MAX_SESSION_TASKS, taskStore } from './taskStore'
+
+const storageMock = vi.hoisted(() => ({
+  getItem: vi.fn(async (_key: string, initial: unknown) => initial),
+  setItem: vi.fn(async () => undefined),
+  setItemNow: vi.fn(async () => undefined),
+  removeItem: vi.fn(async () => undefined),
+}))
+
+vi.mock('@/storage', () => ({
+  default: storageMock,
+}))
+
+vi.mock('@/storage/StoreStorage', () => ({
+  StorageKeyGenerator: {
+    sessionTasks: (sessionId: string) => `session:${sessionId}:tasks`,
+  },
+}))
 
 describe('taskStore', () => {
+  beforeEach(() => {
+    taskStore.getState()._resetForTests()
+    storageMock.getItem.mockReset()
+    storageMock.setItem.mockReset()
+    storageMock.setItemNow.mockReset()
+    storageMock.removeItem.mockReset()
+    storageMock.getItem.mockImplementation(async (_key: string, initial: unknown) => initial)
+  })
+
   afterEach(() => {
-    // Clear all tasks between tests
-    const state = taskStore.getState()
-    const sessionIds = [...new Set(state.tasks.map((t) => t.sessionId))]
-    for (const sid of sessionIds) {
-      state.clearSessionTasks(sid)
-    }
+    taskStore.getState()._resetForTests()
   })
 
   describe('createTask', () => {
     it('should create a task with pending status', () => {
       const id = generateTaskId()
-      taskStore.getState().createTask('session-1', id, 'Test task')
+      const result = taskStore.getState().createTask('session-1', id, 'Test task')
+      expect(result.ok).toBe(true)
       const tasks = taskStore.getState().getSessionTasks('session-1')
 
       expect(tasks).toHaveLength(1)
@@ -36,6 +58,22 @@ describe('taskStore', () => {
 
       const tasks = taskStore.getState().getSessionTasks('session-1')
       expect(tasks).toHaveLength(2)
+    })
+
+    it('should reject empty titles', () => {
+      const result = taskStore.getState().createTask('session-1', generateTaskId(), '   ')
+      expect(result.ok).toBe(false)
+      expect(taskStore.getState().getSessionTasks('session-1')).toHaveLength(0)
+    })
+
+    it('should enforce max session task cap', () => {
+      for (let i = 0; i < MAX_SESSION_TASKS; i++) {
+        const r = taskStore.getState().createTask('session-1', `id-${i}`, `Task ${i}`)
+        expect(r.ok).toBe(true)
+      }
+      const overflow = taskStore.getState().createTask('session-1', 'overflow', 'Too many')
+      expect(overflow.ok).toBe(false)
+      expect(taskStore.getState().getSessionTasks('session-1')).toHaveLength(MAX_SESSION_TASKS)
     })
   })
 
@@ -90,6 +128,17 @@ describe('taskStore', () => {
     })
   })
 
+  describe('toggleTaskDone', () => {
+    it('should toggle between done and pending', () => {
+      const id = generateTaskId()
+      taskStore.getState().createTask('session-1', id, 'Toggle me')
+      taskStore.getState().toggleTaskDone(id)
+      expect(taskStore.getState().tasks.find((t) => t.id === id)?.status).toBe('done')
+      taskStore.getState().toggleTaskDone(id)
+      expect(taskStore.getState().tasks.find((t) => t.id === id)?.status).toBe('pending')
+    })
+  })
+
   describe('getSessionTasks', () => {
     it('should return only tasks for the given session', () => {
       taskStore.getState().createTask('session-1', generateTaskId(), 'Task A')
@@ -118,6 +167,31 @@ describe('taskStore', () => {
 
       expect(taskStore.getState().getSessionTasks('session-1')).toHaveLength(0)
       expect(taskStore.getState().getSessionTasks('session-2')).toHaveLength(1)
+      expect(storageMock.removeItem).toHaveBeenCalled()
+    })
+  })
+
+  describe('hydrateSessionTasks', () => {
+    it('should load tasks from storage once', async () => {
+      storageMock.getItem.mockResolvedValueOnce([
+        {
+          id: 'disk-1',
+          sessionId: 'session-1',
+          title: 'From disk',
+          status: 'pending',
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ])
+
+      await taskStore.getState().hydrateSessionTasks('session-1')
+      expect(taskStore.getState().getSessionTasks('session-1')).toHaveLength(1)
+      expect(taskStore.getState().getSessionTasks('session-1')[0].title).toBe('From disk')
+
+      // Second hydrate should no-op
+      storageMock.getItem.mockClear()
+      await taskStore.getState().hydrateSessionTasks('session-1')
+      expect(storageMock.getItem).not.toHaveBeenCalled()
     })
   })
 

@@ -16,6 +16,7 @@ import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 import * as scrollActions from '@/stores/scrollActions'
 import { modifyMessage, removeCurrentThread, startNewThread, submitNewUserMessage } from '@/stores/sessionActions'
 import { getAllMessageList } from '@/stores/sessionHelpers'
+import { taskStore } from '@/stores/taskStore'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
 // Agent-mode panels are not used on Android. Use compile-time conditional
@@ -59,6 +60,12 @@ function RouteComponent() {
       scrollActions.scrollToBottom('auto') // 每次启动时自动滚动到底部
     }, 200)
   }, [])
+
+  // Hydrate persisted in-chat todos for this session (reload-safe checklist)
+  useEffect(() => {
+    if (!currentSessionId) return
+    void taskStore.getState().hydrateSessionTasks(currentSessionId)
+  }, [currentSessionId])
 
   // currentSession变化时（包括session settings变化），存下当前的settings作为新Session的默认值
   const currentSessionType = currentSession?.type

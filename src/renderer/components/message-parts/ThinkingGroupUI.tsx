@@ -8,12 +8,14 @@ import Markdown from '@/components/Markdown'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { formatElapsedTime, formatWorkedDuration, useThinkingTimer } from '@/hooks/useThinkingTimer'
 import { copyToClipboard } from '@/packages/navigator'
+import { isTaskTrackingTool } from '@/packages/tools/task-tools'
 import * as toastActions from '@/stores/toastActions'
 import { ScalableIcon } from '../common/ScalableIcon'
 import { ToolCallPartUI } from './ToolCallPartUI'
 
 interface ThinkingGroupUIProps {
   message: Message
+  sessionId?: string
   parts: MessageContentParts
   isLastGroup: boolean
 }
@@ -28,9 +30,14 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
 
   const reasoningParts = useMemo(() => parts.filter((p) => p.type === 'reasoning') as MessageReasoningPart[], [parts])
   const toolCallParts = useMemo(() => parts.filter((p) => p.type === 'tool-call') as MessageToolCallPart[], [parts])
-  const toolCount = toolCallParts.length
+  // Task tools are coalesced into TodoAppCard outside this group — exclude from quiet tool chrome
+  const visibleToolCallParts = useMemo(
+    () => toolCallParts.filter((p) => !isTaskTrackingTool(p.toolName)),
+    [toolCallParts]
+  )
+  const toolCount = visibleToolCallParts.length
   const toolStatusCounts = useMemo(() => {
-    return toolCallParts.reduce(
+    return visibleToolCallParts.reduce(
       (counts, part) => {
         if (part.state === 'error') {
           counts.failed += 1
@@ -45,7 +52,7 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
       },
       { failed: 0, running: 0, succeeded: 0 }
     )
-  }, [toolCallParts])
+  }, [visibleToolCallParts])
   const hasAttentionToolState = toolStatusCounts.failed > 0 || toolStatusCounts.running > 0
   const [isExpanded, setIsExpanded] = useState<boolean>(() => hasAttentionToolState)
 
@@ -205,7 +212,7 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
                   {part.text}
                 </Markdown>
               </Box>
-            ) : part.type === 'tool-call' ? (
+            ) : part.type === 'tool-call' && !isTaskTrackingTool(part.toolName) ? (
               <Box key={`group-tool-${part.toolCallId}`} py={4}>
                 <ToolCallPartUI part={part as MessageToolCallPart} />
               </Box>

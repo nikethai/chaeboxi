@@ -283,6 +283,13 @@ export async function deleteSession(id: string) {
   cleanupSessionAtomCache(id)
   clearScrollPositionCache(id)
   delete sessionUpdateQueues[id]
+  // Clear in-chat todo checklist for this session (memory + disk)
+  try {
+    const { taskStore } = await import('@/stores/taskStore')
+    taskStore.getState().clearSessionTasks(id)
+  } catch (err) {
+    console.error('Failed to clear session tasks on delete', id, err)
+  }
 }
 
 // MARK: session settings operations

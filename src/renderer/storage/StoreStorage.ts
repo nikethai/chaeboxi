@@ -24,6 +24,10 @@ export const StorageKeyGenerator = {
   session(id: string) {
     return `session:${id}`
   },
+  /** Agent task checklist for a chat session (reload-safe). */
+  sessionTasks(sessionId: string) {
+    return `session:${sessionId}:tasks`
+  },
   picture(category: string) {
     return `picture:${category}:${uuidv4()}`
   },

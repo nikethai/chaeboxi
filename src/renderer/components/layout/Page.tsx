@@ -1,5 +1,5 @@
 import { ActionIcon, Box, Flex, Title } from '@mantine/core'
-import { IconLayoutSidebarLeftExpand, IconMenu2 } from '@tabler/icons-react'
+import { IconMenu2 } from '@tabler/icons-react'
 import type { FC } from 'react'
 import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
@@ -20,8 +20,13 @@ export const Page: FC<PageProps> = ({ children, title, left, right }) => {
   const isSmallScreen = useIsSmallScreen()
   const { needRoomForMacWindowControls } = useNeedRoomForWinControls()
 
-  const showDefaultToggle = !left && (!showSidebar || isSmallScreen)
+  // Mobile only — desktop rail expand lives on the sidebar foot
+  const showDefaultToggle = !left && isSmallScreen
   const macTrafficInset = showDefaultToggle && needRoomForMacWindowControls
+
+  const handleSidebarToggle = () => {
+    setShowSidebar(!showSidebar)
+  }
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-[var(--chatbox-background-primary)]">
@@ -35,14 +40,15 @@ export const Page: FC<PageProps> = ({ children, title, left, right }) => {
           (showDefaultToggle && (
             <Flex align="center">
               <ActionIcon
-                className="controls"
+                className="controls active:scale-[0.96] transition-transform"
                 variant="subtle"
                 size={isSmallScreen ? 24 : 28}
                 color={isSmallScreen ? 'chatbox-secondary' : 'chatbox-tertiary'}
                 mr="sm"
-                onClick={() => setShowSidebar(!showSidebar)}
+                onClick={handleSidebarToggle}
+                aria-label={showSidebar ? 'Hide sidebar' : 'Show sidebar'}
               >
-                {isSmallScreen ? <IconMenu2 /> : <IconLayoutSidebarLeftExpand />}
+                <IconMenu2 />
               </ActionIcon>
             </Flex>
           ))}

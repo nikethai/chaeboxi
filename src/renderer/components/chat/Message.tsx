@@ -525,12 +525,12 @@ const _Message: FC<Props> = (props) => {
             },
             !msg.model?.startsWith('Chatbox-AI') &&
               !(msg.role === 'assistant' && props.sessionType === 'picture') && {
-                text: t('edit'),
+                text: t('Edit'),
                 icon: IconPencil,
                 onClick: onEditClick,
               },
             !(props.sessionType === 'picture' && msg.role === 'assistant') && {
-              text: t('copy'),
+              text: t('Copy'),
               icon: IconCopy,
               onClick: onCopyMsg,
             },
@@ -544,7 +544,7 @@ const _Message: FC<Props> = (props) => {
           ].filter((i) => !!i)
         : []),
       {
-        text: t('quote'),
+        text: t('Quote'),
         icon: IconQuoteFilled,
         onClick: quoteMsg,
       },
@@ -552,7 +552,7 @@ const _Message: FC<Props> = (props) => {
       ...(msg.role === 'assistant' && platform.formFactor === 'mobile'
         ? [
             {
-              text: t('report'),
+              text: t('Report'),
               icon: IconMessageReport,
               onClick: onReport,
             },
@@ -575,8 +575,9 @@ const _Message: FC<Props> = (props) => {
         : []),
       {
         doubleCheck: true,
-        text: t('delete'),
+        text: t('Delete'),
         icon: IconTrash,
+        color: 'chatbox-error' as const,
         onClick: onDelMsg,
       },
     ],

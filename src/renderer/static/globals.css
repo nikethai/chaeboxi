@@ -476,6 +476,77 @@
     line-height: 1.3;
   }
 
+  /* Icon-only collapsed rail (56px) */
+  .studio-rail--icon .rail-head {
+    justify-content: center !important;
+    padding-left: 0.35rem !important;
+    padding-right: 0.35rem !important;
+  }
+
+  .rail-nav--icon {
+    align-items: center;
+    gap: 4px;
+    padding: 0.25rem 0.35rem 0.5rem;
+  }
+
+  .rail-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    min-height: 40px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: var(--chatbox-tint-secondary);
+    cursor: pointer;
+    transition:
+      background-color 140ms cubic-bezier(0.2, 0, 0, 1),
+      color 140ms cubic-bezier(0.2, 0, 0, 1),
+      transform 140ms cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  .rail-icon-btn:hover {
+    background: var(--chatbox-background-tertiary);
+    color: var(--chatbox-tint-primary);
+  }
+
+  .rail-icon-spacer {
+    flex: 1 1 auto;
+    min-height: 8px;
+  }
+
+  /* Icon rail foot: expand (chrome) above user (identity) */
+  .rail-foot--icon {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    padding: 0.35rem 0.35rem 0.75rem;
+  }
+
+  .rail-foot--icon .rail-expand-btn {
+    color: var(--chatbox-tint-tertiary);
+  }
+
+  .rail-foot--icon .rail-expand-btn:hover {
+    color: var(--chatbox-tint-primary);
+  }
+
+  /* Soft separation between expand and account */
+  .rail-foot--icon .user-trigger-icon {
+    margin-top: 2px;
+  }
+
+  .user-trigger-icon {
+    color: var(--chatbox-tint-secondary);
+  }
+
   .rail-tools {
     border-bottom: 1px solid transparent;
   }
@@ -501,9 +572,10 @@
   }
 
   .rail-section-label {
-    font-size: 0.78rem;
-    font-weight: 500;
-    letter-spacing: -0.01em;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     color: var(--chatbox-tint-tertiary);
     transition: color 120ms var(--chatbox-ease);
   }
@@ -554,6 +626,19 @@
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
   }
 
+  .studio-rail-row-active::before {
+    content: '';
+    position: absolute;
+    inset-inline-start: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 3px;
+    height: 55%;
+    border-radius: 999px;
+    background: var(--chatbox-tint-brand);
+    opacity: 0.9;
+  }
+
   :root[data-mantine-color-scheme='dark'] .studio-rail-row-active {
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
   }
@@ -564,8 +649,24 @@
 
   /* Nested under expanded project */
   .rail-session-nested {
-    margin-inline-start: 0.65rem;
-    padding-inline-start: 0.85rem !important;
+    margin-inline-start: 0.85rem;
+    padding-inline-start: 0.95rem !important;
+  }
+
+  .rail-coaching-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    padding: 4px 12px 6px;
+  }
+
+  .rail-coaching-dismiss {
+    flex-shrink: 0;
+    opacity: 0.55;
+  }
+
+  .rail-coaching-dismiss:hover {
+    opacity: 1;
   }
 
   .rail-session-time {
@@ -2107,11 +2208,29 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--chatbox-background-tertiary);
+  background: transparent;
   border: 1px solid var(--chatbox-border-primary);
   color: var(--chatbox-tint-secondary);
   overflow: hidden;
   flex-shrink: 0;
+  padding: 0;
+}
+
+.user-avatar .mantine-Avatar-root {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+}
+
+.rail-foot--icon .user-trigger-icon {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 50%;
+}
+
+.rail-foot--icon .user-trigger-icon .mantine-Avatar-root {
+  width: 28px !important;
+  height: 28px !important;
 }
 
 .user-meta {
@@ -2538,10 +2657,49 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
 }
 
 .model-picker-toolbar {
+  /* Opaque pinned chrome — list scrolls in sibling Options only (no underlap). */
+  position: relative;
+  z-index: 2;
   background: var(--chatbox-background-secondary);
-  /* soft separator instead of hard border */
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent);
-  padding: var(--mp-pad, 6px) 10px;
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent),
+    0 6px 12px color-mix(in srgb, var(--chatbox-tint-primary) 4%, transparent);
+  padding: var(--mp-pad, 8px) 10px;
+}
+
+.model-picker-search-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--chatbox-tint-tertiary);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 120ms cubic-bezier(0.2, 0, 0, 1), color 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.model-picker-search-clear:hover {
+  background: var(--chatbox-background-tertiary);
+  color: var(--chatbox-tint-secondary);
+}
+
+/* Shared studio search field (Session list, settings, etc.) */
+.studio-search-field .mantine-TextInput-input:focus,
+.studio-search-field .mantine-TextInput-input:focus-within,
+.studio-search-field[data-focus] .mantine-TextInput-input {
+  border-color: color-mix(in srgb, var(--chatbox-tint-brand) 45%, transparent) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--chatbox-tint-brand) 22%, transparent) !important;
+}
+
+.model-picker-search-field:focus-within {
+  border-color: color-mix(in srgb, var(--chatbox-tint-brand) 40%, transparent) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--chatbox-tint-brand) 18%, transparent) !important;
 }
 
 .model-picker-search {

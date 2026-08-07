@@ -1,7 +1,7 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { ActionIcon, Flex, TextInput, Title, Tooltip } from '@mantine/core'
 import type { Session } from '@shared/types'
-import { IconCheck, IconLayoutSidebarLeftExpand, IconMenu2, IconPencil, IconSettings, IconX } from '@tabler/icons-react'
+import { IconCheck, IconMenu2, IconPencil, IconSettings, IconX } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,7 +20,6 @@ export default function Header(props: { session: Session }) {
   const { t } = useTranslation()
   const showSidebar = useUIStore((s) => s.showSidebar)
   const setShowSidebar = useUIStore((s) => s.setShowSidebar)
-
   const isSmallScreen = useIsSmallScreen()
   const { needRoomForMacWindowControls } = useNeedRoomForWinControls()
 
@@ -87,9 +86,14 @@ export default function Header(props: { session: Session }) {
     setRenaming(false)
   }
 
-  // Traffic lights sit over the sidebar when open; only inset the main header when expand is shown
-  const showSidebarToggle = !showSidebar || isSmallScreen
+  // Mobile only: hamburger for temporary drawer.
+  // Desktop icon rail has expand above the user control — no duplicate in chat header.
+  const showSidebarToggle = isSmallScreen
   const macTrafficInset = showSidebarToggle && needRoomForMacWindowControls
+
+  const handleSidebarToggle = () => {
+    setShowSidebar(!showSidebar)
+  }
 
   return (
     <TitleBarRow
@@ -101,15 +105,15 @@ export default function Header(props: { session: Session }) {
       {showSidebarToggle && (
         <Flex align="center">
           <ActionIcon
-            className="controls"
+            className="controls active:scale-[0.96] transition-transform"
             variant="subtle"
             size={isSmallScreen ? 30 : 28}
             color="chatbox-tertiary"
             mr={isSmallScreen ? 'xs' : 'sm'}
-            onClick={() => setShowSidebar(!showSidebar)}
+            onClick={handleSidebarToggle}
             aria-label={showSidebar ? t('Hide sidebar') : t('Show sidebar')}
           >
-            {isSmallScreen ? <IconMenu2 /> : <IconLayoutSidebarLeftExpand />}
+            <IconMenu2 />
           </ActionIcon>
         </Flex>
       )}

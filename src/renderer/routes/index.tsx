@@ -39,7 +39,6 @@ function Index() {
   const setNewSessionState = useUIStore((s) => s.setNewSessionState)
   const addSessionKnowledgeBase = useUIStore((s) => s.addSessionKnowledgeBase)
   const showCopilotsInNewSession = useUIStore((s) => s.showCopilotsInNewSession)
-  const widthFull = useUIStore((s) => s.widthFull)
   const sessionWebBrowsingMap = useUIStore((s) => s.sessionWebBrowsingMap)
   const setSessionWebBrowsing = useUIStore((s) => s.setSessionWebBrowsing)
   const clearSessionWebBrowsing = useUIStore((s) => s.clearSessionWebBrowsing)
@@ -270,7 +269,7 @@ function Index() {
         <div className="session-dock">
           <Stack gap="sm" className="session-dock-pad">
             {session.copilotId ? (
-              <Box className={widthFull ? 'chat-col-full' : 'chat-col'}>
+              <Box className="chat-col">
                 <Stack gap="sm" className="w-full">
                   <Flex align="center" gap="sm">
                     <CopilotItem
@@ -327,7 +326,6 @@ const MAX_COPILOTS_TO_SHOW = 10
 const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect?(copilot?: CopilotDetail): void }) => {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
-  const widthFull = useUIStore((s) => s.widthFull)
   const { copilots: myCopilots } = useMyCopilots()
   const { copilots: remoteCopilots } = useRemoteCopilots()
 
@@ -358,7 +356,7 @@ const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect
   }
 
   return (
-    <Box className={widthFull ? 'chat-col-full' : 'chat-col'}>
+    <Box className="chat-col">
       <Stack gap="xs" className="w-full">
         <Flex align="center" justify="space-between">
           <Text

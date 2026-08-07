@@ -11,6 +11,7 @@ import {
   IconKeyboard,
   IconMessageChatbot,
   IconMessages,
+  IconSparkles,
   IconWorldWww,
 } from '@tabler/icons-react'
 import { createFileRoute, Link, Outlet, useCanGoBack, useRouter, useRouterState } from '@tanstack/react-router'
@@ -68,6 +69,11 @@ const ITEMS = [
     key: 'chat',
     label: 'Chat Settings',
     icon: <IconMessages className="w-full h-full" />,
+  },
+  {
+    key: 'skills',
+    label: 'Skills',
+    icon: <IconSparkles className="w-full h-full" />,
   },
   ...(CHATBOX_BUILD_PLATFORM !== 'android'
     ? [

@@ -363,6 +363,19 @@ export const MessageSchema = z.object({
   isSummary: z.boolean().optional(), // Marks message as a compaction summary
   feedback: MessageFeedbackSchema.optional().catch(undefined),
   artifacts: z.array(MessageArtifactSchema).optional().catch(undefined),
+  /** Explicit skill package ids selected via $ tags / chips on this user message */
+  skillIds: z.array(z.string()).optional().catch(undefined),
+  /** Skills that were actually activated for this turn (assistant message) */
+  skillActivations: z
+    .array(
+      z.object({
+        skillId: z.string(),
+        name: z.string(),
+        mode: z.enum(['explicit', 'session', 'auto']),
+      })
+    )
+    .optional()
+    .catch(undefined),
 })
 
 // Compaction point schema (for context management)
@@ -423,6 +436,10 @@ export const SessionSchema = z.object({
   threadName: z.string().optional(),
   messageForksHash: z.record(z.string(), MessageForkSchema).optional(),
   compactionPoints: z.array(CompactionPointSchema).optional(),
+  /** Session-pinned skill package ids (always activated when enabled) */
+  pinnedSkillIds: z.array(z.string()).optional().catch(undefined),
+  /** When true/undefined, host may auto-select skills for a turn */
+  autoSkills: z.boolean().optional().catch(undefined),
 })
 
 export const SessionMetaSchema = SessionSchema.pick({

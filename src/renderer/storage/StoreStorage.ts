@@ -11,6 +11,7 @@ export enum StorageKey {
   MyFolders = 'myFolders',
   PromptPresets = 'promptPresets',
   SystemPromptPresets = 'systemPromptPresets',
+  Skills = 'skills',
   ConfigVersion = 'configVersion',
   RemoteConfig = 'remoteConfig',
   ChatSessionsList = 'chat-sessions-list',

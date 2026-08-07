@@ -18,7 +18,7 @@ if (platform.type !== 'desktop') {
 
 export async function tickStorageTask() {
   const allBlobKeys = await storage.getBlobKeys()
-  const prefixes = ['picture:', 'file:', 'parseUrl-', 'parseFile-']
+  const prefixes = ['picture:', 'file:', 'parseUrl-', 'parseFile-', 'video_uniq:', 'file_uniq:']
   const storageKeys = allBlobKeys.filter((key) => prefixes.some((prefix) => key.startsWith(prefix)))
   if (storageKeys.length === 0) {
     return
@@ -42,6 +42,12 @@ export async function tickStorageTask() {
       for (const file of msg.files || []) {
         if (file.storageKey) {
           needDeletedSet.delete(file.storageKey)
+        }
+        if (file.posterStorageKey) {
+          needDeletedSet.delete(file.posterStorageKey)
+        }
+        for (const frameKey of file.sampledFrameKeys || []) {
+          needDeletedSet.delete(frameKey)
         }
       }
       for (const part of msg.contentParts || []) {

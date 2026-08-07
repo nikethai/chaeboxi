@@ -113,6 +113,15 @@ vi.mock('./toolsets/file', () => ({
   },
 }))
 
+vi.mock('./toolsets/video', () => ({
+  default: {
+    description: '',
+    tools: {},
+  },
+  initVideoToolBudget: vi.fn(),
+  resetVideoToolBudget: vi.fn(),
+}))
+
 vi.mock('./toolsets/task-tracking', () => ({
   default: {
     description: '',

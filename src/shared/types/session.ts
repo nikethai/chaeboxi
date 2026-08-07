@@ -152,6 +152,16 @@ export const MessageFileSchema = z.object({
   tokenCalculatedAt: TokenCalculatedAtSchema,
   lineCount: z.number().optional(),
   byteLength: z.number().optional(),
+  /** document (default) vs video frame-sampling attachments */
+  mediaKind: z.enum(['document', 'video']).optional(),
+  durationSec: z.number().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  posterStorageKey: z.string().optional(),
+  /** Auto-sampled frame picture storage keys for this attachment */
+  sampledFrameKeys: z.array(z.string()).optional(),
+  /** Timestamps (sec) aligned with sampledFrameKeys */
+  sampledFrameTimestamps: z.array(z.number()).optional(),
 })
 
 export const MessageLinkSchema = z.object({
@@ -426,6 +436,9 @@ export const SessionMetaSchema = SessionSchema.pick({
   assistantAvatarKey: true,
   picUrl: true,
   type: true,
+}).extend({
+  /** Last activity time for rail Recents / day groups (from latest message timestamp). */
+  updatedAt: z.number().optional(),
 })
 
 export const SessionThreadBriefSchema = z.object({

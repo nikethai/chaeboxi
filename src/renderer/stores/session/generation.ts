@@ -28,12 +28,14 @@ import { buildContextForAI } from '@/packages/context-management'
 import {
   buildAttachmentWrapperPrefix,
   buildAttachmentWrapperSuffix,
+  buildVideoAttachmentWrapper,
   MAX_INLINE_FILE_LINES,
   PREVIEW_LINES,
 } from '@/packages/context-management/attachment-payload'
 import { generateImage, streamText } from '@/packages/model-calls'
 import { getModelDisplayName } from '@/packages/model-setting-utils'
 import { estimateTokensFromMessages } from '@/packages/token'
+import { getVideoLimits } from '@/packages/video'
 import platform from '@/platform'
 import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
@@ -859,11 +861,12 @@ export async function genMessageContext(
   }
 
   // Pre-fetch all blob contents in parallel to avoid N+1 sequential fetches
+  // Skip video blobs (large binary data URLs) — videos only need metadata tags
   const allStorageKeys = new Set<string>()
   for (const msg of contextMessages) {
     if (msg.files) {
       for (const file of msg.files) {
-        if (file.storageKey) {
+        if (file.storageKey && file.mediaKind !== 'video') {
           allStorageKeys.add(file.storageKey)
         }
       }
@@ -945,40 +948,62 @@ export async function genMessageContext(
 
     let attachmentIndex = 1
     if (msg.files && msg.files.length > 0) {
+      const videoLimits = getVideoLimits(platform.formFactor === 'desktop' ? 'desktop' : 'mobile')
       for (const file of msg.files) {
-        if (file.storageKey) {
+        if (!file.storageKey) {
+          continue
+        }
+
+        // Video attachments: metadata only (frames already in contentParts as images)
+        if (file.mediaKind === 'video') {
           msg = cloneMessage(msg)
-          const content = blobContents.get(file.storageKey) ?? ''
-          if (content) {
-            const fileLines = content.split('\n').length
-            const shouldUseToolForThisFile = modelSupportToolUseForFile && fileLines > MAX_INLINE_FILE_LINES
+          const attachment = buildVideoAttachmentWrapper({
+            attachmentIndex: attachmentIndex++,
+            fileName: file.name,
+            fileKey: file.storageKey,
+            durationSec: file.durationSec,
+            byteLength: file.byteLength,
+            width: file.width,
+            height: file.height,
+            sampledFrameCount: file.sampledFrameKeys?.length ?? 0,
+            maxFramesPerTurn: videoLimits.maxFramesPerVideoPerTurn,
+            toolEnabled: modelSupportToolUseForFile,
+          })
+          msg = mergeMessages(msg, createMessage(msg.role, attachment))
+          continue
+        }
 
-            const prefix = buildAttachmentWrapperPrefix({
-              attachmentIndex: attachmentIndex++,
-              fileName: file.name,
-              fileKey: file.storageKey,
-              fileLines,
-              fileSize: content.length,
-            })
+        msg = cloneMessage(msg)
+        const content = blobContents.get(file.storageKey) ?? ''
+        if (content) {
+          const fileLines = content.split('\n').length
+          const shouldUseToolForThisFile = modelSupportToolUseForFile && fileLines > MAX_INLINE_FILE_LINES
 
-            let contentToAdd = content
-            let isTruncated = false
-            if (shouldUseToolForThisFile) {
-              const lines = content.split('\n')
-              contentToAdd = lines.slice(0, PREVIEW_LINES).join('\n')
-              isTruncated = true
-            }
+          const prefix = buildAttachmentWrapperPrefix({
+            attachmentIndex: attachmentIndex++,
+            fileName: file.name,
+            fileKey: file.storageKey,
+            fileLines,
+            fileSize: content.length,
+          })
 
-            const suffix = buildAttachmentWrapperSuffix({
-              isTruncated,
-              previewLines: isTruncated ? PREVIEW_LINES : undefined,
-              totalLines: isTruncated ? fileLines : undefined,
-              fileKey: isTruncated ? file.storageKey : undefined,
-            })
-
-            const attachment = prefix + contentToAdd + '\n' + suffix
-            msg = mergeMessages(msg, createMessage(msg.role, attachment))
+          let contentToAdd = content
+          let isTruncated = false
+          if (shouldUseToolForThisFile) {
+            const lines = content.split('\n')
+            contentToAdd = lines.slice(0, PREVIEW_LINES).join('\n')
+            isTruncated = true
           }
+
+          const suffix = buildAttachmentWrapperSuffix({
+            isTruncated,
+            previewLines: isTruncated ? PREVIEW_LINES : undefined,
+            totalLines: isTruncated ? fileLines : undefined,
+            fileKey: isTruncated ? file.storageKey : undefined,
+          })
+
+          const attachment = prefix + contentToAdd + '\n' + suffix
+          msg = mergeMessages(msg, createMessage(msg.role, attachment))
         }
       }
     }

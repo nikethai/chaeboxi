@@ -10,6 +10,13 @@ export interface PreprocessedFile {
   lineCount?: number
   byteLength?: number
   error?: string
+  mediaKind?: 'document' | 'video'
+  durationSec?: number
+  width?: number
+  height?: number
+  posterStorageKey?: string
+  sampledFrameKeys?: string[]
+  sampledFrameTimestamps?: number[]
 }
 
 export interface PreprocessedLink {

@@ -119,14 +119,14 @@ export function isEpubFilePath(filePath: string) {
 export const allSupportedExts = [...officeExts, ...textExts, ...epubExts]
 
 // Unsupported file types (for user notification)
-// Includes: iWork files (except numbers), audio/video files, binary files, etc.
+// Includes: iWork files (except numbers), audio, unsupported video containers, binary files, etc.
 export const unsupportedPatterns = {
   // iWork files (except numbers)
   iwork: ['.pages', '.key'],
   // Audio files
   audio: ['.mp3', '.wav', '.flac', '.aac', '.ogg', '.wma', '.m4a', '.aiff', '.alac', '.ape', '.opus', '.mid', '.midi'],
-  // Video files
-  video: ['.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm', '.m4v', '.mpeg', '.mpg', '.3gp', '.ts'],
+  // Video containers we do not decode in v1 (AI-readable videos are handled separately)
+  video: ['.avi', '.mkv', '.mov', '.wmv', '.flv', '.m4v', '.mpeg', '.mpg', '.3gp', '.ts'],
   // Binary/executable files
   binary: ['.exe', '.dll', '.so', '.dylib', '.bin', '.dat', '.dmg', '.iso', '.img', '.app', '.msi', '.deb', '.rpm'],
   // Archive files
@@ -134,6 +134,9 @@ export const unsupportedPatterns = {
   // Image files (images are handled separately, but these formats are not supported as attachments)
   image: ['.psd', '.ai', '.sketch', '.fig', '.xd', '.raw', '.cr2', '.nef', '.arw', '.dng', '.heic'],
 }
+
+/** Video extensions the chat video path can decode via HTMLVideoElement (v1). */
+export const aiReadableVideoExts = ['.mp4', '.webm']
 
 /**
  * Check if the file is a supported type
@@ -185,6 +188,24 @@ export function isAiReadableImageFile(file: Pick<File, 'name' | 'type'>): boolea
 }
 
 /**
+ * Whether this file should use the video (frame-sampling) attachment lane.
+ * Unsupported containers in unsupportedPatterns.video stay out of this path.
+ */
+export function isAiReadableVideoFile(file: Pick<File, 'name' | 'type'>): boolean {
+  if (getUnsupportedFileType(file.name) === 'video') {
+    return false
+  }
+  const lower = file.name.toLowerCase()
+  if (aiReadableVideoExts.some((ext) => lower.endsWith(ext))) {
+    return true
+  }
+  if (file.type === 'video/mp4' || file.type === 'video/webm') {
+    return true
+  }
+  return false
+}
+
+/**
  * i18n key (English source string) for an unsupported file.
  * Use with t(key, { fileName }) when the key includes {{fileName}}.
  */
@@ -196,7 +217,7 @@ export function getUnsupportedFileI18nKey(fileName: string): string {
     case 'audio':
       return 'Audio files are not supported'
     case 'video':
-      return 'Video files are not supported'
+      return 'This video format is not supported. Please use MP4 or WebM.'
     case 'binary':
       return 'Binary/executable files are not supported'
     case 'archive':
@@ -213,8 +234,8 @@ export function getUnsupportedFileI18nKey(fileName: string): string {
  * Used for input[type="file"] and dropzone accept configuration
  */
 export function getFileAcceptString(): string {
-  // Images the vision path can read + documents/text the parser can read
-  const exts = [...aiReadableImageExts, ...allSupportedExts, '.numbers']
+  // Images + AI-readable videos + documents/text the parser can read
+  const exts = [...aiReadableImageExts, ...aiReadableVideoExts, ...allSupportedExts, '.numbers']
   return exts.join(',')
 }
 
@@ -229,6 +250,9 @@ export function getFileAcceptConfig(): Record<string, string[]> {
     'image/png': ['.png'],
     'image/webp': ['.webp'],
     'image/gif': ['.gif'],
+    // Video files (frame-sampling lane)
+    'video/mp4': ['.mp4'],
+    'video/webm': ['.webm'],
     // Text files
     'text/plain': ['.txt', '.log', '.nfo', '.ini', '.conf', '.config', '.env'],
     'text/markdown': ['.md', '.mdx'],

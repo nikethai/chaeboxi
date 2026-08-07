@@ -15,8 +15,8 @@ import { getModelDisplayName } from '@/packages/model-setting-utils'
 import { estimateTokensFromMessages } from '@/packages/token'
 import platform from '@/platform'
 import * as chatStore from '../chatStore'
-import { settingsStore } from '../settingsStore'
 import { getAllMessageList } from '../sessionHelpers'
+import { settingsStore } from '../settingsStore'
 import { messageQueueStore } from './messageQueue'
 import { getSessionWebBrowsing } from './session-web-browsing'
 
@@ -143,7 +143,16 @@ export async function submitNewUserMessage(
 
   const globalSettings = settingsStore.getState().getSettings()
 
-  // 根据需要，插入空白的回复消息
+  // Resolve agent room membership early (Slack-style multi-agent)
+  const { resolveSpeakers } = await import('@shared/agent-room')
+  const { applyRoomMembership, runAgentRoomDiscussion, shouldRunMultiAgentRoom } = await import('./multi-agent-room')
+  const { getBuiltInCopilotById } = await import('@/hooks/useCopilots')
+
+  const roomAfterMembership = await applyRoomMembership(sessionId, newUserMsg.mentionedAgentIds)
+  const speakers = resolveSpeakers(roomAfterMembership, newUserMsg.mentionedAgentIds)
+  const isMultiAgentRoom = needGenerating && shouldRunMultiAgentRoom(newUserMsg.mentionedAgentIds, roomAfterMembership)
+
+  // 根据需要，插入空白的回复消息（multi-agent room creates its own assistants)
   let newAssistantMsg = createMessage('assistant', '')
   if (newUserMsg.files && newUserMsg.files.length > 0) {
     if (!newAssistantMsg.status) {
@@ -163,7 +172,19 @@ export async function submitNewUserMessage(
       mode: 'local',
     })
   }
-  if (needGenerating) {
+
+  // Label single-agent speaker on the assistant bubble
+  if (speakers.length === 1) {
+    const speakerId = speakers[0]
+    const detail = getBuiltInCopilotById(speakerId)
+    newAssistantMsg = {
+      ...newAssistantMsg,
+      agentId: speakerId,
+      name: detail?.name,
+    }
+  }
+
+  if (needGenerating && !isMultiAgentRoom) {
     newAssistantMsg.generating = true
     await insertMessage(sessionId, newAssistantMsg)
   }
@@ -218,7 +239,7 @@ export async function submitNewUserMessage(
       error: `${error.message}`, // 这么写是为了避免类型问题
       status: [],
     }
-    if (needGenerating) {
+    if (needGenerating && !isMultiAgentRoom) {
       await modifyMessage(sessionId, newAssistantMsg)
     } else {
       await insertMessage(sessionId, newAssistantMsg)
@@ -231,11 +252,21 @@ export async function submitNewUserMessage(
     if (freshSession?.planMode && freshSession?.agentMode && !freshSession?.planPhase) {
       await chatStore.updateSession(sessionId, { planPhase: 'planning' })
     }
+
+    if (isMultiAgentRoom) {
+      await runAgentRoomDiscussion(sessionId, {
+        mentionedAgentIds: newUserMsg.mentionedAgentIds,
+        truncateTokenLimit,
+      })
+      return
+    }
+
     await generate(sessionId, newAssistantMsg, {
       operationType: 'send_message',
       truncateTokenLimit,
       prefetchedSession: freshSession ?? undefined,
       prefetchedSettings: settings,
+      speakerAgentId: speakers[0],
     })
   }
 }

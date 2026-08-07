@@ -376,6 +376,10 @@ export const MessageSchema = z.object({
     )
     .optional()
     .catch(undefined),
+  /** Agent persona id that produced this assistant message (multi-agent room speaker) */
+  agentId: z.string().optional().catch(undefined),
+  /** Agent persona ids @-mentioned on this user message */
+  mentionedAgentIds: z.array(z.string()).optional().catch(undefined),
 })
 
 // Compaction point schema (for context management)
@@ -411,7 +415,10 @@ export const FolderSchema = z.object({
   id: z.string(),
   name: z.string(),
   emoji: z.string().optional(),
+  /** @deprecated Prefer defaultAgentId; kept for migration dual-read */
   defaultCopilotId: z.string().optional(),
+  /** Default agent persona for sessions created in this folder */
+  defaultAgentId: z.string().optional(),
   order: z.number(),
 })
 
@@ -423,7 +430,10 @@ export const SessionSchema = z.object({
   messages: z.array(MessageSchema),
   starred: z.boolean().optional(),
   hidden: z.boolean().optional(), // Hidden from session list (e.g., migrated picture sessions)
+  /** @deprecated Prefer agentIds; dual-written as agentIds[0] for one release */
   copilotId: z.string().optional(),
+  /** Room members: agent persona ids in this session (Slack-style multi-agent) */
+  agentIds: z.array(z.string()).optional().catch(undefined),
   folderId: z.string().optional(),
   tags: z.array(z.string()).optional(),
   archived: z.boolean().optional(),

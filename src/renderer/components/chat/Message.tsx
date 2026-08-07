@@ -648,7 +648,17 @@ const _Message: FC<Props> = (props) => {
           <IconSettings size={15} stroke={1.5} />
         </button>
       )}
-      {isAssistant && msg.generating && (
+      {isAssistant && (msg.agentId || msg.name) && (
+        <Flex className="mb-1.5" align="center" gap={6}>
+          <Text size="xs" fw={600} c="chatbox-secondary" className="truncate max-w-[240px]">
+            {msg.name || t('Agent')}
+          </Text>
+          {msg.generating ? (
+            <Loader size={12} classNames={{ root: "after:content-[''] after:border-[2px]" }} />
+          ) : null}
+        </Flex>
+      )}
+      {isAssistant && msg.generating && !(msg.agentId || msg.name) && (
         <Flex className="mb-1.5" align="center" gap={6}>
           <Loader size={14} classNames={{ root: "after:content-[''] after:border-[2px]" }} />
           <Text size="xs" c="chatbox-tertiary">

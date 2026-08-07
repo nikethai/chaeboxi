@@ -66,6 +66,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { Gallery, Item as GalleryItem } from 'react-photoswipe-gallery'
 import Markdown from '@/components/Markdown'
+import SkillActivationsBar from '@/components/chat/SkillActivationsBar'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import { navigateToSettings } from '@/modals/Settings'
@@ -809,6 +810,10 @@ const _Message: FC<Props> = (props) => {
           onClose={clearSelectionToolbar}
         />
         {(msg.files || msg.links) && <MessageAttachmentGrid files={msg.files} links={msg.links} />}
+
+        {isAssistant && msg.skillActivations && msg.skillActivations.length > 0 && !msg.generating && (
+          <SkillActivationsBar activations={msg.skillActivations} className="mt-2.5" />
+        )}
 
         {/* actions — hover-only, GPU-safe opacity/transform */}
         {buttonGroup !== 'none' && !msg.generating && (

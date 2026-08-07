@@ -96,7 +96,7 @@ function OpenClawCommandPicker({
       shadow="md"
       radius="md"
       withBorder
-      className="absolute left-0 right-0 bottom-full mb-2 overflow-hidden z-20"
+      className="absolute left-0 right-0 bottom-full mb-2 overflow-hidden z-50"
       style={{ backgroundColor: 'var(--chatbox-background-primary)' }}
     >
       <Stack gap={0}>

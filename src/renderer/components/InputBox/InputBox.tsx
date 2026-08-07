@@ -43,6 +43,11 @@ import {
 import { trackingEvent } from '@/packages/event'
 import { replacePromptTemplateVars } from '@/packages/model-calls/message-utils'
 import { getModelContextWindowSync } from '@/packages/model-context'
+import {
+  extractSkillNamesFromText,
+  getActiveSkillDollarQuery,
+  stripSkillDollarTokens,
+} from '@/packages/skills'
 import * as picUtils from '@/packages/pic_utils'
 import { formatBytesForDisplay, formatDurationForDisplay, getVideoLimits } from '@/packages/video'
 import { isWebSearchConfigured } from '@/packages/web-search/is-configured'
@@ -55,12 +60,13 @@ import { composerTokenMenuAtom } from '@/stores/atoms/uiAtoms'
 import * as chatStore from '@/stores/chatStore'
 import { useSession, useSessionSettings } from '@/stores/chatStore'
 import { usePromptPresets } from '@/stores/promptPresetsStore'
+import { useSkills } from '@/stores/skillsStore'
 import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 import { delay } from '@/utils'
 import { trackEvent } from '@/utils/track'
-import type { KnowledgeBase, Message, SessionType, ShortcutSendValue } from '../../../shared/types'
-import { ModelProviderEnum } from '../../../shared/types'
+import type { KnowledgeBase, Message, SessionType, ShortcutSendValue, SkillPackage } from '../../../shared/types'
+import { ModelProviderEnum, SKILL_EXPLICIT_MAX } from '../../../shared/types'
 import * as dom from '../../hooks/dom'
 import * as sessionHelpers from '../../stores/sessionHelpers'
 import * as toastActions from '../../stores/toastActions'
@@ -74,6 +80,7 @@ import ComposerToolsMenu from './ComposerToolsMenu'
 import { ImageUploadInput } from './ImageUploadInput'
 import OpenClawCommandPicker, { filterOpenClawCommands, getCommandAlias } from './OpenClawCommandPicker'
 import PresetPicker, { filterPresets } from './PresetPicker'
+import SkillPicker, { filterSkills } from './SkillPicker'
 import {
   cleanupFile,
   cleanupLink,
@@ -181,6 +188,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     const { messageInput, setMessageInput, clearDraft } = useMessageInput(initialMessage, { isNewSession })
     const { promptPresets } = usePromptPresets()
+    const { enabledSkills, skills: allSkills } = useSkills()
+    /** Session-sticky skill chips selected via $ */
+    const [selectedSkills, setSelectedSkills] = useState<SkillPackage[]>([])
+    const [skillPickerDismissed, setSkillPickerDismissed] = useState(false)
+    const [skillHighlightIndex, setSkillHighlightIndex] = useState(0)
 
     // Pre-constructed message state (scoped by session)
     const [preConstructedMessage, setPreConstructedMessage] = useAtom(
@@ -531,6 +543,35 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         !openClawPickerDismissed,
       [isOpenClawModel, messageInput, sessionType, openClawPickerDismissed]
     )
+    const skillDollarQuery = useMemo(
+      () => (sessionType === 'chat' ? getActiveSkillDollarQuery(messageInput) : null),
+      [messageInput, sessionType]
+    )
+    const showSkillPicker = useMemo(
+      () =>
+        sessionType === 'chat' &&
+        skillDollarQuery !== null &&
+        !showPresetPicker &&
+        !showOpenClawCommandPicker &&
+        !skillPickerDismissed &&
+        selectedSkills.length < SKILL_EXPLICIT_MAX,
+      [
+        sessionType,
+        skillDollarQuery,
+        showPresetPicker,
+        showOpenClawCommandPicker,
+        skillPickerDismissed,
+        selectedSkills.length,
+      ]
+    )
+    const filteredSkills = useMemo(
+      () =>
+        filterSkills(
+          enabledSkills.filter((s) => !selectedSkills.some((sel) => sel.id === s.id)),
+          skillDollarQuery || ''
+        ).slice(0, 8),
+      [enabledSkills, selectedSkills, skillDollarQuery]
+    )
     const presetQuery = useMemo(() => (showPresetPicker ? messageInput.slice(1) : ''), [messageInput, showPresetPicker])
     const openClawCommandQuery = useMemo(
       () => (showOpenClawCommandPicker ? messageInput.slice(1) : ''),
@@ -575,8 +616,27 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     useEffect(() => {
       setPresetHighlightIndex(0)
+      setSkillHighlightIndex(0)
       setOpenClawPickerDismissed(false)
-    }, [presetQuery, messageInput])
+      setSkillPickerDismissed(false)
+    }, [presetQuery, skillDollarQuery, messageInput])
+
+    const handleSkillSelect = useCallback(
+      (skill: SkillPackage) => {
+        setSelectedSkills((prev) => {
+          if (prev.some((s) => s.id === skill.id) || prev.length >= SKILL_EXPLICIT_MAX) return prev
+          return [...prev, skill]
+        })
+        // Remove trailing $partial token from draft
+        setMessageInput((prev) => prev.replace(/(?:^|[\s([{])\$[a-z0-9-]*$/i, (m) => m.replace(/\$.*$/, '')).replace(/\s+$/, ' '))
+        resetHistoryIndex()
+        dom.focusMessageInput()
+        setTimeout(() => {
+          dom.setMessageInputCursorToEnd()
+        }, 0)
+      },
+      [resetHistoryIndex, setMessageInput]
+    )
 
     const handlePresetSelect = useCallback(
       async (presetId: string) => {
@@ -644,6 +704,37 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
         // Sample video frames for vision models right before send
         let constructedMessage = preConstructedMessage.message
+
+        // Attach skills from $ chips + inline $tokens; strip $tokens from text to model
+        {
+          const rawText = constructedMessage.contentParts.find((p) => p.type === 'text')?.text || ''
+          const namesFromText = extractSkillNamesFromText(rawText)
+          const nameToSkill = new Map(allSkills.map((s) => [s.name, s]))
+          const skillIds: string[] = []
+          const seen = new Set<string>()
+          for (const s of selectedSkills) {
+            if (!seen.has(s.id)) {
+              seen.add(s.id)
+              skillIds.push(s.id)
+            }
+          }
+          for (const name of namesFromText) {
+            const s = nameToSkill.get(name)
+            if (s && !seen.has(s.id) && skillIds.length < SKILL_EXPLICIT_MAX) {
+              seen.add(s.id)
+              skillIds.push(s.id)
+            }
+          }
+          const cleanedText = stripSkillDollarTokens(rawText)
+          constructedMessage = {
+            ...constructedMessage,
+            skillIds: skillIds.length ? skillIds : undefined,
+            contentParts: constructedMessage.contentParts.map((p) =>
+              p.type === 'text' ? { ...p, text: cleanedText } : p
+            ),
+          }
+        }
+
         const hasVideo = constructedMessage.files?.some((f) => f.mediaKind === 'video')
         if (hasVideo && model?.provider && model?.modelId) {
           setIsSamplingVideoFrames(true)
@@ -736,6 +827,45 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     )
 
     const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (showSkillPicker) {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault()
+          if (filteredSkills.length > 0) {
+            setSkillHighlightIndex((index) => (index + 1) % filteredSkills.length)
+          }
+          return
+        }
+        if (event.key === 'ArrowUp') {
+          event.preventDefault()
+          if (filteredSkills.length > 0) {
+            setSkillHighlightIndex((index) => (index - 1 + filteredSkills.length) % filteredSkills.length)
+          }
+          return
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          setSkillPickerDismissed(true)
+          return
+        }
+        if (
+          event.key === 'Enter' &&
+          !event.shiftKey &&
+          !event.ctrlKey &&
+          !event.altKey &&
+          !event.metaKey &&
+          filteredSkills[skillHighlightIndex]
+        ) {
+          event.preventDefault()
+          handleSkillSelect(filteredSkills[skillHighlightIndex])
+          return
+        }
+        if (event.key === 'Tab' && filteredSkills[skillHighlightIndex]) {
+          event.preventDefault()
+          handleSkillSelect(filteredSkills[skillHighlightIndex])
+          return
+        }
+      }
+
       if (showPresetPicker || showOpenClawCommandPicker) {
         const activePickerItems = showOpenClawCommandPicker ? filteredOpenClawCommands : filteredPresets
 
@@ -1298,7 +1428,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           {currentSessionId && <CompactionStatus sessionId={currentSessionId} />}
           {currentSessionId && <QueuedMessageList sessionId={currentSessionId} />}
           <Stack
-            className={cn('composer-card relative justify-between', isFileDragActive && 'composer-card-drag-active')}
+            className={cn(
+              'composer-card relative justify-between',
+              isFileDragActive && 'composer-card-drag-active',
+              (showSkillPicker || showPresetPicker || showOpenClawCommandPicker) && 'composer-card-picker-open'
+            )}
             gap={0}
           >
             <div
@@ -1335,6 +1469,37 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 query={openClawCommandQuery}
               />
             )}
+            {showSkillPicker && (
+              <SkillPicker
+                skills={enabledSkills}
+                highlightedIndex={skillHighlightIndex}
+                onHighlightChange={setSkillHighlightIndex}
+                onSelect={handleSkillSelect}
+                query={skillDollarQuery || ''}
+                excludeIds={selectedSkills.map((s) => s.id)}
+              />
+            )}
+
+            {selectedSkills.length > 0 && (
+              <div className="composer-skill-chips">
+                {selectedSkills.map((skill) => (
+                  <span key={skill.id} className="composer-skill-chip">
+                    <span className="composer-skill-chip-sigil" aria-hidden>
+                      $
+                    </span>
+                    <span>{skill.name}</span>
+                    <button
+                      type="button"
+                      className="composer-skill-chip-remove"
+                      aria-label={t('Remove skill')}
+                      onClick={() => setSelectedSkills((prev) => prev.filter((s) => s.id !== skill.id))}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* Text area — full width of card (mock .composer textarea) */}
             <Textarea
@@ -1364,7 +1529,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               size="sm"
               id={dom.messageInputID}
               ref={inputRef}
-              placeholder={t('Type your question here...') || ''}
+              placeholder={t('Type your question here… Use $ to tag skills') || ''}
               bg="transparent"
               autosize={true}
               minRows={2}

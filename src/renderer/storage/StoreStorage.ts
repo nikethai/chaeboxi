@@ -32,6 +32,10 @@ export const StorageKeyGenerator = {
   fileUniqKey(file: File) {
     return `file_uniq:${file.name}:${file.size}:${file.lastModified}`
   },
+  /** Stable key for uploaded video binary (data URL blob). */
+  videoUniqKey(file: File) {
+    return `video_uniq:${file.name}:${file.size}:${file.lastModified}`
+  },
   linkUniqKey(url: string) {
     return `link_uniq:${url}`
   },

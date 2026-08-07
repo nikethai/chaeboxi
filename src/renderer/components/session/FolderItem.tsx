@@ -90,7 +90,13 @@ function FolderItem({
       )}
       onClick={onToggle}
     >
-      <ActionIcon variant="transparent" size={20} color="chatbox-tertiary" aria-hidden className="shrink-0">
+      <ActionIcon
+        variant="transparent"
+        size={28}
+        color="chatbox-tertiary"
+        aria-hidden
+        className="shrink-0 active:scale-[0.96] transition-transform"
+      >
         <ScalableIcon
           icon={expanded ? IconChevronDown : IconChevronRight}
           size={13}

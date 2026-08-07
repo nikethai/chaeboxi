@@ -12,6 +12,7 @@ import NiceModal from '@ebay/nice-modal-react'
 import { t } from 'i18next'
 import { uniqueId } from 'lodash'
 import { createModelDependencies } from '@/adapters'
+import platform from '@/platform'
 import type { ModelDependencies } from '@shared/types/adapters'
 import type { ToolApprovalModalResult } from '@/modals/ToolApproval'
 import { settingsStore } from '@/stores/settingsStore'
@@ -47,6 +48,7 @@ import fileToolSet from './toolsets/file'
 import { getToolSet } from './toolsets/knowledge-base'
 import generateImageToolSet, { generateImageTool } from './toolsets/generate-image'
 import taskTrackingToolSet from './toolsets/task-tracking'
+import videoToolSet, { initVideoToolBudget, resetVideoToolBudget } from './toolsets/video'
 import websearchToolSet, { parseLinkTool, webSearchTool } from './toolsets/web-search'
 
 function extractSearchMetadataFromToolCalls(result: StreamTextResult): Partial<StreamTextResult> {
@@ -336,7 +338,10 @@ export async function streamText(
     tools: customTools,
   } = params
   const globalSettings = settingsStore.getState().getSettings()
-  const hasFileOrLink = params.messages.some((m) => m.files?.length || m.links?.length)
+  const hasDocumentFileOrLink = params.messages.some(
+    (m) => m.links?.length || m.files?.some((f) => f.mediaKind !== 'video')
+  )
+  const hasVideoAttachment = params.messages.some((m) => m.files?.some((f) => f.mediaKind === 'video'))
 
   const controller = new AbortController()
   const cancel = () => controller.abort()
@@ -353,9 +358,25 @@ export async function streamText(
   const dependencies = await createModelDependencies()
 
   // for model not support tool use, use prompt engineering to handle knowledge base and web search
-  const needFileToolSet = hasFileOrLink && model.isSupportToolUse()
+  const needFileToolSet = hasDocumentFileOrLink && model.isSupportToolUse()
+  const needVideoToolSet = hasVideoAttachment && model.isSupportToolUse() && model.isSupportVision()
   const kbNotSupported = knowledgeBase && !model.isSupportToolUse('knowledge-base')
   const webNotSupported = webBrowsing && !model.isSupportToolUse('web-browsing')
+
+  // Seed video frame budget with auto-sampled frames already attached
+  if (needVideoToolSet) {
+    const preUsed = new Map<string, number>()
+    for (const m of params.messages) {
+      for (const f of m.files || []) {
+        if (f.mediaKind === 'video' && f.storageKey && f.sampledFrameKeys?.length) {
+          preUsed.set(f.storageKey, (preUsed.get(f.storageKey) ?? 0) + f.sampledFrameKeys.length)
+        }
+      }
+    }
+    initVideoToolBudget(platform.formFactor === 'desktop' ? 'desktop' : 'mobile', preUsed)
+  } else {
+    resetVideoToolBudget()
+  }
 
   // 1. inject system prompt for tool use
   let toolSetInstructions = ''
@@ -369,7 +390,8 @@ export async function streamText(
     }
   }
   const mcpTools = wrapMCPToolsWithApproval(sessionId, mcpController.getAvailableTools())
-  const hasFunctionTools = Object.keys(mcpTools).length > 0 || Boolean(kbToolSet) || Boolean(needFileToolSet)
+  const hasFunctionTools =
+    Object.keys(mcpTools).length > 0 || Boolean(kbToolSet) || Boolean(needFileToolSet) || Boolean(needVideoToolSet)
   const useGeminiGrounding = nativeWebSearch === 'gemini-grounding' && webBrowsing && !hasFunctionTools
 
   if (kbToolSet && !kbNotSupported) {
@@ -377,6 +399,9 @@ export async function streamText(
   }
   if (needFileToolSet) {
     toolSetInstructions += fileToolSet.description
+  }
+  if (needVideoToolSet) {
+    toolSetInstructions += videoToolSet.description
   }
   if (webBrowsing && !webNotSupported && !useGeminiGrounding) {
     toolSetInstructions += websearchToolSet.description
@@ -545,6 +570,14 @@ export async function streamText(
         }
       }
 
+      if (needVideoToolSet) {
+        const wrappedVideoTools = wrapMCPToolsWithApproval(sessionId, videoToolSet.tools as ToolSet)
+        tools = {
+          ...tools,
+          ...wrappedVideoTools,
+        }
+      }
+
       if (agentImageFlowInstructions && model.isSupportToolUse()) {
         const generateImageTools = wrapMCPToolsWithApproval(sessionId, {
           generate_image: generateImageTool,
@@ -595,5 +628,7 @@ export async function streamText(
       return { result, coreMessages }
     }
     throw err
+  } finally {
+    resetVideoToolBudget()
   }
 }

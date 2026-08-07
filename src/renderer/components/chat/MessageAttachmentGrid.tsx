@@ -37,6 +37,9 @@ export function MessageAttachmentGrid({ files, links }: MessageAttachmentGridPro
               fileType={file.fileType}
               byteLength={file.byteLength}
               storageKey={file.storageKey}
+              mediaKind={file.mediaKind}
+              posterStorageKey={file.posterStorageKey}
+              durationSec={file.durationSec}
             />
           </div>
         ))}

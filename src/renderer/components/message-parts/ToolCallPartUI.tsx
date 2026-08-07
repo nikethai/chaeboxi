@@ -13,6 +13,7 @@ import {
   IconExternalLink,
   IconLink,
   IconLoader,
+  IconMovie,
   IconSearch,
   IconTool,
   IconWorldWww,
@@ -23,8 +24,10 @@ import { useTranslation } from 'react-i18next'
 import z from 'zod'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { getToolName } from '@/packages/tools'
+import { formatDurationForDisplay } from '@/packages/video'
 import type { SearchResultItem } from '@/packages/web-search'
 import { ScalableIcon } from '../common/ScalableIcon'
+import { ImageInStorage } from '../Image'
 
 export { ReasoningContentUI } from './ReasoningContentUI'
 
@@ -73,6 +76,8 @@ const toolIconFor = (toolName: string) => {
       return IconWorldWww
     case 'parse_link':
       return IconLink
+    case 'read_video':
+      return IconMovie
     case 'file_search':
     case 'code_search':
     case 'query_knowledge_base':
@@ -361,6 +366,150 @@ const ParseLinkToolCallUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
   )
 }
 
+// ── Read video ───────────────────────────────────────────────────────────
+
+const ReadVideoToolCallPartSchema = MessageToolCallPartSchema.extend({
+  toolName: z.literal('read_video'),
+  args: z
+    .object({
+      fileKey: z.string().optional(),
+      mode: z.string().optional(),
+      maxFrames: z.number().optional(),
+      timestamps: z.array(z.number()).optional(),
+      intervalSec: z.number().optional(),
+      startSec: z.number().optional(),
+      endSec: z.number().optional(),
+    })
+    .passthrough()
+    .optional(),
+  result: z
+    .object({
+      fileKey: z.string().optional(),
+      durationSec: z.number().optional(),
+      frames: z
+        .array(
+          z.object({
+            timestampSec: z.number(),
+            storageKey: z.string(),
+            width: z.number().optional(),
+            height: z.number().optional(),
+          })
+        )
+        .optional(),
+      remainingBudget: z.number().optional(),
+      error: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
+})
+
+type ReadVideoToolCallPart = MessageToolCallPart<
+  {
+    fileKey?: string
+    mode?: string
+    maxFrames?: number
+    timestamps?: number[]
+    intervalSec?: number
+    startSec?: number
+    endSec?: number
+  },
+  {
+    fileKey?: string
+    durationSec?: number
+    frames?: Array<{ timestampSec: number; storageKey: string; width?: number; height?: number }>
+    remainingBudget?: number
+    error?: string
+  }
+>
+
+function readVideoSummary(
+  part: ReadVideoToolCallPart,
+  t: (key: string, opts?: Record<string, unknown>) => string
+): string | undefined {
+  if (part.state === 'call') return t('Reading video…')
+  if (part.state === 'error') return t('Failed')
+  const result = part.result
+  if (result?.error) return previewText(result.error, 72)
+  const frames = result?.frames ?? []
+  if (frames.length === 0) return t('No frames')
+  const times = frames.map((f) => f.timestampSec)
+  const minT = Math.min(...times)
+  const maxT = Math.max(...times)
+  if (frames.length === 1) {
+    return t('{{count}} frame · {{time}}', {
+      count: 1,
+      time: formatDurationForDisplay(minT),
+    })
+  }
+  return t('{{count}} frames · {{start}}–{{end}}', {
+    count: frames.length,
+    start: formatDurationForDisplay(minT),
+    end: formatDurationForDisplay(maxT),
+  })
+}
+
+const ReadVideoToolCallUI: FC<{ part: ReadVideoToolCallPart }> = ({ part }) => {
+  const { t } = useTranslation()
+  const [expanded, setExpanded] = useState(false)
+  const summary = useMemo(() => readVideoSummary(part, t), [part, t])
+  const frames = part.result?.frames ?? []
+  const remainingBudget = part.result?.remainingBudget
+
+  return (
+    <div className="tool-step">
+      <ToolCallHeader
+        toolName={part.toolName}
+        state={part.state}
+        summary={summary}
+        expanded={expanded}
+        onClick={() => setExpanded((v) => !v)}
+      />
+      <Collapse in={expanded}>
+        <ToolStepBody>
+          <Stack gap="sm">
+            {part.state === 'error' || part.result?.error ? (
+              <Text size="sm" c="var(--chatbox-tint-error)" m={0}>
+                {previewText(part.result?.error || part.result) || t('Failed')}
+              </Text>
+            ) : frames.length > 0 ? (
+              <div>
+                <FieldLabel>{t('Frames')}</FieldLabel>
+                <div className="tool-video-filmstrip" role="list">
+                  {frames.map((frame, index) => (
+                    <div
+                      key={`${frame.storageKey}-${frame.timestampSec}`}
+                      className="tool-video-filmstrip-item"
+                      role="listitem"
+                      style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}
+                    >
+                      <div className="tool-video-filmstrip-thumb">
+                        <ImageInStorage storageKey={frame.storageKey} className="size-full object-cover" />
+                      </div>
+                      <span className="tool-video-filmstrip-time font-mono tabular-nums">
+                        {formatDurationForDisplay(frame.timestampSec)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {remainingBudget !== undefined && (
+                  <Text size="xs" c="chatbox-tertiary" mt={6} className="font-mono tabular-nums" m={0}>
+                    {t('Remaining frame budget: {{count}}', { count: remainingBudget })}
+                  </Text>
+                )}
+              </div>
+            ) : part.state === 'result' ? (
+              <Text size="sm" c="chatbox-tertiary" m={0}>
+                {t('No frames')}
+              </Text>
+            ) : null}
+            <TechnicalDetails args={part.args} result={part.result} />
+          </Stack>
+        </ToolStepBody>
+      </Collapse>
+    </div>
+  )
+}
+
 // ── Generic tools ────────────────────────────────────────────────────────
 
 const GeneralToolCallUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
@@ -436,6 +585,12 @@ export const ToolCallPartUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
   }
   if (part.toolName === 'parse_link') {
     return <ParseLinkToolCallUI part={part} />
+  }
+  if (part.toolName === 'read_video') {
+    const parsedPart = ReadVideoToolCallPartSchema.safeParse(part)
+    if (parsedPart.success) {
+      return <ReadVideoToolCallUI part={parsedPart.data as ReadVideoToolCallPart} />
+    }
   }
   return <GeneralToolCallUI part={part} />
 }

@@ -54,6 +54,62 @@ export function buildAttachmentWrapperSuffix(params: AttachmentWrapperSuffixPara
   return suffix
 }
 
+export interface VideoAttachmentWrapperParams {
+  attachmentIndex: number
+  fileName: string
+  fileKey: string
+  durationSec?: number
+  byteLength?: number
+  width?: number
+  height?: number
+  sampledFrameCount?: number
+  maxFramesPerTurn?: number
+  toolEnabled?: boolean
+}
+
+/** Metadata-only video attachment block (never includes binary). */
+export function buildVideoAttachmentWrapper(params: VideoAttachmentWrapperParams): string {
+  const {
+    attachmentIndex,
+    fileName,
+    fileKey,
+    durationSec,
+    byteLength,
+    width,
+    height,
+    sampledFrameCount = 0,
+    maxFramesPerTurn,
+    toolEnabled = false,
+  } = params
+
+  let body = '\n\n<ATTACHMENT_VIDEO>\n'
+  body += `<FILE_INDEX>${attachmentIndex}</FILE_INDEX>\n`
+  body += `<FILE_NAME>${fileName}</FILE_NAME>\n`
+  body += `<FILE_KEY>${fileKey}</FILE_KEY>\n`
+  if (durationSec !== undefined) {
+    body += `<DURATION_SEC>${durationSec.toFixed(2)}</DURATION_SEC>\n`
+  }
+  if (byteLength !== undefined) {
+    body += `<FILE_SIZE>${byteLength} bytes</FILE_SIZE>\n`
+  }
+  if (width && height) {
+    body += `<RESOLUTION>${width}x${height}</RESOLUTION>\n`
+  }
+  body += `<SAMPLED_FRAMES>${sampledFrameCount}</SAMPLED_FRAMES>\n`
+  if (maxFramesPerTurn !== undefined) {
+    body += `<MAX_FRAMES_PER_TURN>${maxFramesPerTurn}</MAX_FRAMES_PER_TURN>\n`
+  }
+  if (toolEnabled) {
+    body +=
+      '<HINT>Sampled frames are attached as images with timestamps. Use read_video with FILE_KEY to extract additional frames at specific times within remaining budget.</HINT>\n'
+  } else {
+    body +=
+      '<HINT>Sampled frames from this video are attached as images with timestamps in the user message.</HINT>\n'
+  }
+  body += '</ATTACHMENT_VIDEO>\n'
+  return body
+}
+
 export function selectMessagesForSendContext(params: SelectMessagesForSendContextParams): Message[] {
   const { settings, msgs, compactionPoints, preserveLastUserMessage = true, keepToolCallRounds = 2 } = params
 

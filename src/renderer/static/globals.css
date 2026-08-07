@@ -2810,6 +2810,361 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
   background: var(--chatbox-background-tertiary) !important;
 }
 
+/* ── In-chat Todo App (studio checklist mini-app) ── */
+.todo-app {
+  margin-top: 0.65rem;
+  margin-bottom: 0.35rem;
+  max-width: 100%;
+}
+
+.todo-app-shell {
+  padding: 4px;
+  border-radius: 11px;
+  border: 1px solid var(--chatbox-border-primary);
+  background: color-mix(in srgb, var(--chatbox-background-secondary) 70%, transparent);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, #fff 4%, transparent) inset,
+    0 8px 24px -16px rgba(0, 0, 0, 0.45);
+}
+
+.todo-app-core {
+  border-radius: 9px;
+  border: 1px solid var(--chatbox-border-primary);
+  background: var(--chatbox-background-secondary);
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 6%, transparent);
+}
+
+.todo-app-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 36px;
+  padding: 0.4rem 0.7rem;
+  border: none;
+  border-bottom: 1px solid var(--chatbox-border-primary);
+  background: var(--chatbox-background-rail);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background-color 140ms var(--chatbox-ease),
+    opacity 140ms var(--chatbox-ease);
+}
+
+.todo-app-head:hover {
+  background: var(--chatbox-background-tertiary);
+}
+
+.todo-app-head:active {
+  transform: scale(0.99);
+}
+
+.todo-app-eyebrow {
+  font-family: var(--chatbox-font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--chatbox-tint-tertiary);
+}
+
+.todo-app-count {
+  font-family: var(--chatbox-font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--chatbox-tint-secondary);
+}
+
+.todo-app-live {
+  margin-left: 0.15rem;
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--chatbox-tint-brand);
+  opacity: 0.9;
+}
+
+.todo-app-chevron {
+  margin-left: auto;
+  display: inline-flex;
+  font-size: 0.95rem;
+  line-height: 1;
+  color: var(--chatbox-tint-tertiary);
+  transform: rotate(0deg);
+  transition: transform 180ms var(--chatbox-ease);
+}
+
+.todo-app-chevron.is-open {
+  transform: rotate(90deg);
+}
+
+.todo-app-progress-track {
+  height: 2px;
+  margin: 0;
+  background: var(--chatbox-border-primary);
+  overflow: hidden;
+}
+
+.todo-app-progress-fill {
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  background: var(--chatbox-tint-brand);
+  transition: transform 280ms var(--chatbox-ease);
+}
+
+.todo-app-progress-fill.is-warn {
+  background: var(--chatbox-tint-warning, #c9a227);
+}
+
+.todo-app-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem 0.35rem 0.45rem;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.todo-app-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 36px;
+  padding: 0.25rem 0.35rem;
+  border-radius: 7px;
+  opacity: 0;
+  transform: translateY(6px);
+  animation: todo-app-row-in 320ms var(--chatbox-ease) forwards;
+}
+
+.todo-app.is-static .todo-app-row {
+  opacity: 1;
+  transform: none;
+  animation: none;
+}
+
+@keyframes todo-app-row-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .todo-app-row {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+
+  .todo-app-progress-fill,
+  .todo-app-chevron,
+  .todo-app-glyph.is-done {
+    transition: none !important;
+  }
+}
+
+.todo-app-row:hover {
+  background: color-mix(in srgb, var(--chatbox-background-tertiary) 65%, transparent);
+}
+
+.todo-app-row.is-complete .todo-app-title {
+  color: var(--chatbox-tint-tertiary);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.todo-app-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin: -4px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--chatbox-tint-secondary);
+  cursor: default;
+  flex-shrink: 0;
+  border-radius: 9px;
+  transition:
+    transform 120ms var(--chatbox-ease),
+    background-color 120ms var(--chatbox-ease),
+    color 120ms var(--chatbox-ease);
+}
+
+.todo-app-check.is-interactive {
+  cursor: pointer;
+}
+
+.todo-app-check.is-interactive:hover {
+  background: color-mix(in srgb, var(--chatbox-background-tertiary) 80%, transparent);
+  color: var(--chatbox-tint-primary);
+}
+
+.todo-app-check.is-interactive:active {
+  transform: scale(0.96);
+}
+
+.todo-app-check:disabled {
+  opacity: 0.85;
+}
+
+.todo-app-glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 1.5px solid var(--chatbox-border-secondary);
+  color: transparent;
+}
+
+.todo-app-glyph.is-pending {
+  background: transparent;
+}
+
+.todo-app-glyph.is-progress {
+  border-color: color-mix(in srgb, var(--chatbox-tint-brand) 55%, transparent);
+  background: color-mix(in srgb, var(--chatbox-tint-brand) 18%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--chatbox-tint-brand) 12%, transparent);
+  animation: statusline-pulse 1.2s ease-in-out infinite;
+}
+
+.todo-app-glyph.is-done {
+  border-color: color-mix(in srgb, var(--chatbox-tint-success, #4fb286) 50%, transparent);
+  background: color-mix(in srgb, var(--chatbox-tint-success, #4fb286) 22%, transparent);
+  color: var(--chatbox-tint-success, #4fb286);
+  transition:
+    transform 200ms var(--chatbox-ease),
+    opacity 200ms var(--chatbox-ease),
+    filter 200ms var(--chatbox-ease);
+}
+
+.todo-app-glyph.is-failed {
+  border-color: color-mix(in srgb, var(--chatbox-tint-error) 50%, transparent);
+  background: color-mix(in srgb, var(--chatbox-tint-error) 16%, transparent);
+  color: var(--chatbox-tint-error);
+}
+
+.todo-app-row-main {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.todo-app-title {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--chatbox-tint-primary);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.todo-app-row-meta {
+  font-family: var(--chatbox-font-mono);
+  font-size: 0.65rem;
+  color: var(--chatbox-tint-tertiary);
+  flex-shrink: 0;
+}
+
+.todo-app-status {
+  font-size: 0.65rem;
+  font-weight: 500;
+  color: var(--chatbox-tint-tertiary);
+  flex-shrink: 0;
+  letter-spacing: -0.01em;
+}
+
+.todo-app-status.is-in-progress {
+  color: var(--chatbox-tint-brand);
+}
+
+.todo-app-status.is-done {
+  color: var(--chatbox-tint-tertiary);
+}
+
+.todo-app-status.is-failed {
+  color: var(--chatbox-tint-error);
+}
+
+/* Sticky dock chip for session tasks */
+.todo-dock .todo-dock-panel {
+  overflow: hidden;
+}
+
+.todo-dock-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  width: 100%;
+  min-height: 36px;
+  padding: 0.4rem 0.7rem;
+  border: none;
+  background: var(--chatbox-background-rail);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 120ms var(--chatbox-ease);
+}
+
+.todo-dock-chip:hover {
+  background: var(--chatbox-background-tertiary);
+}
+
+.todo-dock-chip:active {
+  transform: scale(0.995);
+}
+
+.todo-dock-chip-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--chatbox-tint-primary);
+}
+
+.todo-dock-chip-count {
+  font-family: var(--chatbox-font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--chatbox-tint-secondary);
+}
+
+.todo-dock-chip-badge {
+  margin-left: 0.1rem;
+}
+
+.todo-dock-chip-chevron {
+  margin-left: auto;
+  color: var(--chatbox-tint-tertiary);
+  transition: transform 180ms var(--chatbox-ease);
+}
+
+.todo-dock-chip-chevron.is-open {
+  transform: rotate(180deg);
+}
+
+.todo-dock-body {
+  border-top: 1px solid var(--chatbox-border-primary);
+}
+
+.todo-dock-list {
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.todo-dock-row {
+  min-height: 28px;
+}
+
 /* ── Settings page (full route, not modal) ── */
 .settings-page {
   background: var(--chatbox-background-primary);

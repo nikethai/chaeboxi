@@ -24,6 +24,7 @@ import { useTranslation } from 'react-i18next'
 import z from 'zod'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { getToolName } from '@/packages/tools'
+import { isTaskTrackingTool } from '@/packages/tools/task-tools'
 import { formatDurationForDisplay } from '@/packages/video'
 import type { SearchResultItem } from '@/packages/web-search'
 import { ScalableIcon } from '../common/ScalableIcon'
@@ -577,6 +578,10 @@ const GeneralToolCallUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
 // ── Router ───────────────────────────────────────────────────────────────
 
 export const ToolCallPartUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
+  // Task tools render as TodoAppCard (coalesced) — hide raw steps to avoid noise.
+  if (isTaskTrackingTool(part.toolName)) {
+    return null
+  }
   if (part.toolName === 'web_search') {
     const parsedPart = WebBrowsingToolCallPartSchema.safeParse(part)
     if (parsedPart.success) {

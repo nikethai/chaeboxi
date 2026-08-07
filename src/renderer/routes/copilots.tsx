@@ -55,9 +55,9 @@ import {
 } from '../../shared/types'
 
 export const Route = createFileRoute('/copilots')({
-  // Copilots moved under Settings — keep legacy path as redirect
+  // Copilots moved under Settings as Agents — keep legacy path as redirect
   beforeLoad: () => {
-    throw redirect({ to: '/settings/copilots' })
+    throw redirect({ to: '/settings/agents' })
   },
   component: () => null,
 })
@@ -152,14 +152,14 @@ export function CopilotsContent() {
               <MantineSwitch
                 checked={showCopilotsInNewSession}
                 onChange={(event) => setShowCopilotsInNewSession(event.currentTarget.checked)}
-                label={t('Show Copilots in New Session')}
+                label={t('Show Agents in New Session')}
               />
             </Box>
           </Box>
 
           <Box sx={{ mb: 4 }}>
             <Text size="md" fw={700} mb={2} c="chatbox-primary">
-              {t('My Copilots')}
+              {t('My Agents')}
             </Text>
 
             <MantineButton
@@ -171,7 +171,7 @@ export function CopilotsContent() {
                 getEmptyCopilot().then(setCopilotEdit)
               }}
             >
-              {t('Create New Copilot')}
+              {t('Create New Agent')}
             </MantineButton>
 
             <Box
@@ -207,7 +207,7 @@ export function CopilotsContent() {
 
           <Box>
             <Text size="md" fw={700} mb={2} c="chatbox-primary">
-              {t('Chatbox Featured')}
+              {t('Featured Agents')}
             </Text>
 
             <Box
@@ -477,7 +477,7 @@ function CopilotForm(props: CopilotFormProps) {
       <TextField
         autoFocus={!isSmallScreen}
         margin="dense"
-        label={t('Copilot Name')}
+        label={t('Agent Name')}
         fullWidth
         variant="outlined"
         placeholder={t('My Assistant') || ''}
@@ -487,7 +487,7 @@ function CopilotForm(props: CopilotFormProps) {
       />
       <TextField
         margin="dense"
-        label={t('Copilot Prompt')}
+        label={t('Agent Prompt')}
         placeholder={t('Copilot Prompt Demo') || ''}
         fullWidth
         variant="outlined"
@@ -513,7 +513,7 @@ function CopilotForm(props: CopilotFormProps) {
         />
         <TextField
           margin="dense"
-          label={t('Copilot Avatar URL')}
+          label={t('Agent Avatar URL')}
           placeholder="http://xxxxx/xxx.png"
           fullWidth
           variant="outlined"
@@ -722,7 +722,7 @@ function CopilotForm(props: CopilotFormProps) {
             {t('Tool Access')}
           </Typography>
           <Typography variant="caption" color="text.secondary">
-            {t('Control which tools this copilot can use')}
+            {t('Control which tools this agent can use')}
           </Typography>
         </Box>
         <Box sx={{ px: 2, py: 1.5 }}>

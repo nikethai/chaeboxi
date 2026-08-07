@@ -103,19 +103,25 @@ function Index() {
   useEffect(() => {
     const { copilotId } = routerState.location.search
     if (copilotId) {
-      setSession((old) => ({ ...old, copilotId }))
+      setSession((old) => ({ ...old, copilotId, agentIds: [copilotId] }))
     }
   }, [routerState.location.search])
 
   const handleSubmit = useCallback(
     async ({ constructedMessage, needGenerating = true, onUserMessageReady }: InputBoxPayload) => {
+      const agentIds = session.agentIds?.length
+        ? session.agentIds
+        : session.copilotId
+          ? [session.copilotId]
+          : constructedMessage.mentionedAgentIds
       const newSession = await createSessionStore({
         name: session.name,
         type: 'chat',
         assistantAvatarKey: session.assistantAvatarKey,
         picUrl: session.picUrl,
         messages: session.messages,
-        copilotId: session.copilotId,
+        copilotId: agentIds?.[0] ?? session.copilotId,
+        agentIds,
         agentMode: session.agentMode,
         settings: session.settings,
       })
@@ -283,7 +289,7 @@ function Index() {
                       radius="md"
                       c="chatbox-tertiary"
                       variant="subtle"
-                      onClick={() => setSession((old) => ({ ...old, copilotId: undefined }))}
+                      onClick={() => setSession((old) => ({ ...old, copilotId: undefined, agentIds: undefined }))}
                     >
                       <ScalableIcon icon={IconX} size={18} />
                     </ActionIcon>
@@ -298,7 +304,15 @@ function Index() {
               </Box>
             ) : (
               showCopilotsInNewSession && (
-                <CopilotPicker onSelect={(copilot) => setSession((old) => ({ ...old, copilotId: copilot?.id }))} />
+                <CopilotPicker
+                  onSelect={(copilot) =>
+                    setSession((old) => ({
+                      ...old,
+                      copilotId: copilot?.id,
+                      agentIds: copilot?.id ? [copilot.id] : undefined,
+                    }))
+                  }
+                />
               )
             )}
 
@@ -365,7 +379,7 @@ const CopilotPicker = ({ selectedId, onSelect }: { selectedId?: string; onSelect
             className="uppercase tracking-wider"
             style={{ fontFamily: 'var(--chatbox-font-mono)', fontSize: '0.7rem', letterSpacing: '0.08em' }}
           >
-            {t('My Copilots')}
+            {t('My Agents')}
           </Text>
 
           {!isSmallScreen && (

@@ -1,29 +1,29 @@
 import * as Sentry from '@sentry/react'
-import { getDefaultStore } from 'jotai'
 import { getModel } from '@shared/models'
 import { AIProviderNoImplementedPaintError, ApiError, BaseError, NetworkError, OCRError } from '@shared/models/errors'
-import type { ToolSet } from 'ai'
 import type { OnResultChangeWithCancel } from '@shared/models/types'
 import {
   COPILOT_MAX_STEPS_DEFAULT,
-  type CopilotToolAccess,
   type CompactionPoint,
   type CopilotHook,
+  type CopilotToolAccess,
   createMessage,
   type Message,
   type MessageImagePart,
   type MessagePicture,
-  type PlanPhase,
   ModelProviderEnum,
+  type PlanPhase,
   type Session,
   type SessionSettings,
   type SessionType,
   type Settings,
 } from '@shared/types'
 import { cloneMessage, getMessageText, mergeMessages } from '@shared/utils/message'
+import type { ToolSet } from 'ai'
+import { getDefaultStore } from 'jotai'
 import { createModelDependencies } from '@/adapters'
-import * as appleAppStore from '@/packages/apple_app_store'
 import { getBuiltInCopilotById, myCopilotsAtom } from '@/hooks/useCopilots'
+import * as appleAppStore from '@/packages/apple_app_store'
 import { buildContextForAI } from '@/packages/context-management'
 import {
   buildAttachmentWrapperPrefix,
@@ -34,34 +34,31 @@ import {
 } from '@/packages/context-management/attachment-payload'
 import { generateImage, streamText } from '@/packages/model-calls'
 import { getModelDisplayName } from '@/packages/model-setting-utils'
-import {
-  buildSkillContextBlocks,
-  resolveSkillActivations,
-  selectCatalogForInject,
-} from '@/packages/skills'
+import { buildSkillContextBlocks, resolveSkillActivations, selectCatalogForInject } from '@/packages/skills'
 import { estimateTokensFromMessages } from '@/packages/token'
-import { mergeSkillsList, refreshAgentSkills, userSkillsAtom } from '@/stores/skillsStore'
 import { getVideoLimits } from '@/packages/video'
 import platform from '@/platform'
 import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
+import { mergeSkillsList, refreshAgentSkills, userSkillsAtom } from '@/stores/skillsStore'
 import { trackEvent } from '@/utils/track'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 import * as chatStore from '../chatStore'
 import { settingsStore } from '../settingsStore'
 import { uiStore } from '../uiStore'
 import { createNewFork, findMessageLocation } from './forks'
-import { insertMessageAfter, modifyMessage, submitNewUserMessage } from './messages'
 import { messageQueueStore } from './messageQueue'
+import { insertMessageAfter, modifyMessage, submitNewUserMessage } from './messages'
 import { getSessionWebBrowsing } from './session-web-browsing'
 
 export { getSessionWebBrowsing }
-import { runCompactionWithUIState } from '@/packages/context-management'
-import type { MessagePlanPart, MessageToolCallPart } from '@shared/types'
+
 import {
-  COMFYUI_AGENT_DEFAULT_RESEARCH_DOMAINS,
   COMFYUI_AGENT_DEFAULT_NORMALIZATION_PROMPT,
+  COMFYUI_AGENT_DEFAULT_RESEARCH_DOMAINS,
 } from '@shared/providers/definitions/comfyui'
+import type { MessagePlanPart, MessageToolCallPart } from '@shared/types'
+import { runCompactionWithUIState } from '@/packages/context-management'
 
 // Agent-only modules (toolsets, copilot hooks, agentImageFlow) are loaded
 // dynamically inside the corresponding agent-mode code paths so they can be
@@ -124,9 +121,7 @@ async function maybeAutoStartAgentImageFlow(
   const toolCallId = `generate_image_fallback_${Date.now()}`
 
   try {
-    const { startComfyUIAgentGeneration } = await import(
-      '@/packages/model-calls/toolsets/generate-image'
-    )
+    const { startComfyUIAgentGeneration } = await import('@/packages/model-calls/toolsets/generate-image')
     const generationResult = await startComfyUIAgentGeneration({
       prompt: inferredPrompt,
     })
@@ -371,6 +366,14 @@ export async function generate(
     truncateTokenLimit?: number
     prefetchedSession?: Session
     prefetchedSettings?: SessionSettings
+    /** Explicit speaker persona (multi-agent room or @ single agent) */
+    speakerAgentId?: string
+    /** Inject Slack-style room protocol; tools forced off when true */
+    roomMulti?: boolean
+    /** Display names of all room participants for protocol text */
+    participantNames?: string[]
+    /** Skip processing message queue after this turn (intermediate multi-agent turns) */
+    skipQueuedMessages?: boolean
   }
 ) {
   let shouldProcessQueuedMessages = false
@@ -383,9 +386,9 @@ export async function generate(
     return
   }
 
-  // Overlay copilot model settings (temperature, topP, maxTokens) if the
-  // session has a linked copilot that defines overrides.
-  const copilotOverrides = getCopilotSettings(session.copilotId)
+  // Overlay agent/copilot model settings. Prefer explicit speaker → message.agentId → room primary.
+  const speakerAgentId = options?.speakerAgentId ?? targetMsg.agentId ?? session.agentIds?.[0] ?? session.copilotId
+  const copilotOverrides = getCopilotSettings(speakerAgentId)
   const effectiveSettings: SessionSettings = copilotOverrides
     ? {
         ...settings,
@@ -448,10 +451,7 @@ export async function generate(
     const { refreshGeminiAntigravityAuthIfNeeded } = await import('@/utils/gemini-antigravity-auth-refresh')
     let authReadySettings = await refreshXaiAuthIfNeeded(globalSettings, effectiveSettings.provider)
     authReadySettings = await refreshOpenAICodexAuthIfNeeded(authReadySettings, effectiveSettings.provider)
-    authReadySettings = await refreshGeminiAntigravityAuthIfNeeded(
-      authReadySettings,
-      effectiveSettings.provider
-    )
+    authReadySettings = await refreshGeminiAntigravityAuthIfNeeded(authReadySettings, effectiveSettings.provider)
     const model = getModel(effectiveSettings, authReadySettings, configs, dependencies)
     const sessionKnowledgeBaseMap = uiStore.getState().sessionKnowledgeBaseMap
     const knowledgeBase = sessionKnowledgeBaseMap[sessionId]
@@ -463,8 +463,12 @@ export async function generate(
       webBrowsing &&
       effectiveSettings.provider === ModelProviderEnum.Gemini &&
       globalSettings.extension.webSearch.useGoogleGroundingForGemini !== false
+    // Multi-agent room discussion: no tool loops (v1)
+    const roomMulti = Boolean(options?.roomMulti)
     const maxSteps =
-      isAgentEnabled && session.agentMode ? (copilotOverrides?.maxSteps ?? COPILOT_MAX_STEPS_DEFAULT) : undefined
+      !roomMulti && isAgentEnabled && session.agentMode
+        ? (copilotOverrides?.maxSteps ?? COPILOT_MAX_STEPS_DEFAULT)
+        : undefined
     switch (session.type) {
       // Chat message generation
       case 'chat':
@@ -487,9 +491,54 @@ export async function generate(
           promptMsgs = promptMsgs.filter((message) => message.role !== 'system')
         }
 
-        // Execute pre-turn hooks and prepend context to messages
+        // Per-speaker agent system prompt (persona + optional room protocol)
+        if (speakerAgentId && effectiveSettings.provider !== ModelProviderEnum.OpenClaw) {
+          const agentDetail =
+            getBuiltInCopilotById(speakerAgentId) ??
+            (() => {
+              try {
+                const stored = getDefaultStore().get(myCopilotsAtom)
+                const list = Array.isArray(stored) ? stored : []
+                return list.find((c) => c.id === speakerAgentId)
+              } catch {
+                return undefined
+              }
+            })()
+          if (agentDetail?.prompt) {
+            const { buildRoomProtocol } = await import('@shared/agent-room')
+            const protocol =
+              roomMulti && options?.participantNames?.length
+                ? buildRoomProtocol(agentDetail.name, options.participantNames)
+                : roomMulti
+                  ? buildRoomProtocol(agentDetail.name, [agentDetail.name])
+                  : ''
+            const systemText = protocol ? `${agentDetail.prompt}\n\n${protocol}` : agentDetail.prompt
+            // Replace leading session system message with this speaker's persona
+            if (promptMsgs[0]?.role === 'system') {
+              promptMsgs = [createMessage('system', systemText), ...promptMsgs.slice(1)]
+            } else {
+              promptMsgs = [createMessage('system', systemText), ...promptMsgs]
+            }
+            // Label history assistants with names for models that support message.name
+            promptMsgs = promptMsgs.map((m) => {
+              if (m.role === 'assistant' && m.agentId && !m.name) {
+                const named =
+                  getBuiltInCopilotById(m.agentId) ??
+                  (Array.isArray(getDefaultStore().get(myCopilotsAtom))
+                    ? (getDefaultStore().get(myCopilotsAtom) as { id: string; name: string }[]).find(
+                        (c) => c.id === m.agentId
+                      )
+                    : undefined)
+                return named ? { ...m, name: named.name } : m
+              }
+              return m
+            })
+          }
+        }
+
+        // Execute pre-turn hooks and prepend context to messages (skip in multi-agent room for cost/noise)
         const preHookContext =
-          isAgentEnabled && copilotOverrides?.hooks?.preTurn
+          !roomMulti && isAgentEnabled && copilotOverrides?.hooks?.preTurn
             ? await (await import('@/packages/copilot-hooks')).executePreHooks(copilotOverrides.hooks.preTurn)
             : ''
         if (preHookContext) {
@@ -537,14 +586,15 @@ export async function generate(
         }
 
         // 2-phase execution: if planMode and not yet approved, generate plan first
-        const isPlanMode = isAgentEnabled && session.agentMode && effectiveSettings.planMode
+        // Room multi-agent: tools off (discussion-only)
+        const isPlanMode = !roomMulti && isAgentEnabled && session.agentMode && effectiveSettings.planMode
         const isPendingPlan = existingPlanPart?.status === 'pending'
 
         // Determine which tools to use based on phase
         let toolsToUse: ToolSet | undefined
         let planningToolsInstructions = ''
         const executionAgentImageFlowInstructions =
-          !isPlanMode || isExecutionPhase ? agentImageFlowInstructions : undefined
+          roomMulti || !(!isPlanMode || isExecutionPhase) ? undefined : agentImageFlowInstructions
 
         if (isPlanMode && !isExecutionPhase) {
           // Planning phase: use read-only tools
@@ -553,6 +603,9 @@ export async function generate(
           )
           toolsToUse = readonlyTools.tools
           planningToolsInstructions = readonlyTools.instructions
+        }
+        if (roomMulti) {
+          toolsToUse = undefined
         }
 
         // Inject planning tools instructions into system prompt if in planning phase
@@ -653,9 +706,7 @@ export async function generate(
           cancel: undefined,
           contentParts: finalContentParts,
           tokensUsed:
-            targetMsg.tokensUsed ??
-            result.usage?.totalTokens ??
-            estimateTokensFromMessages([...promptMsgs, targetMsg]),
+            targetMsg.tokensUsed ?? result.usage?.totalTokens ?? estimateTokensFromMessages([...promptMsgs, targetMsg]),
           status: [],
           finishReason: result.finishReason,
           usage: result.usage,
@@ -669,7 +720,7 @@ export async function generate(
         await modifyMessage(sessionId, targetMsg, true)
 
         // Execute post-turn hooks after generation (only in execution phase or non-plan mode)
-        if (isAgentEnabled && copilotOverrides?.hooks?.postTurn) {
+        if (!roomMulti && isAgentEnabled && copilotOverrides?.hooks?.postTurn) {
           const outputText = result.text ?? ''
           const { executePostHooks } = await import('@/packages/copilot-hooks')
           await executePostHooks(copilotOverrides.hooks.postTurn, outputText)
@@ -681,7 +732,7 @@ export async function generate(
           return
         }
 
-        shouldProcessQueuedMessages = true
+        shouldProcessQueuedMessages = !options?.skipQueuedMessages
         break
       }
       // Picture message generation

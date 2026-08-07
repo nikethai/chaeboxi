@@ -978,5 +978,20 @@
   "Unarchive": "Unarchive",
   "Unavailable": "Unavailable",
   "Uncategorized": "Uncategorized",
-  "Projects": "Projects"
+  "Projects": "Projects",
+  "Agents": "Agents",
+  "My Agents": "My Agents",
+  "Create New Agent": "Create New Agent",
+  "Show Agents in New Session": "Show Agents in New Session",
+  "Featured Agents": "Featured Agents",
+  "Agent Name": "Agent Name",
+  "Agent Prompt": "Agent Prompt",
+  "Agent Avatar URL": "Agent Avatar URL",
+  "Control which tools this agent can use": "Control which tools this agent can use",
+  "In this chat": "In this chat",
+  "Remove from room": "Remove from room",
+  "Remove agent": "Remove agent",
+  "No agents found": "No agents found",
+  "Type your question here… Use @ for agents, $ for skills": "Type your question here… Use @ for agents, $ for skills",
+  "Agent": "Agent"
 }

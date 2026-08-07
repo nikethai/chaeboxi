@@ -19,7 +19,7 @@ import { getThemeDesign } from '@/hooks/useAppTheme'
 import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
 import { router } from '@/router'
 import { RouteComponent as SettingsChatRouteComponent } from '@/routes/settings/chat'
-import { RouteComponent as SettingsCopilotsRouteComponent } from '@/routes/settings/copilots'
+import { RouteComponent as SettingsAgentsRouteComponent } from '@/routes/settings/agents'
 import { RouteComponent as SettingsDefaultModelsRouteComponent } from '@/routes/settings/default-models'
 import { RouteComponent as SettingsDocumentParserRouteComponent } from '@/routes/settings/document-parser'
 import { RouteComponent as SettingsGeneralRouteComponent } from '@/routes/settings/general'
@@ -139,8 +139,14 @@ const SettingsChatRoute = createRoute({
   getParentRoute: () => RootRoute,
 })
 
+const SettingsAgentsRoute = createRoute({
+  component: SettingsAgentsRouteComponent,
+  path: '/settings/agents',
+  getParentRoute: () => RootRoute,
+})
+// Legacy path alias for modal deep-links
 const SettingsCopilotsRoute = createRoute({
-  component: SettingsCopilotsRouteComponent,
+  component: SettingsAgentsRouteComponent,
   path: '/settings/copilots',
   getParentRoute: () => RootRoute,
 })
@@ -205,6 +211,7 @@ const routeTree = RootRoute.addChildren([
   SettingsIndexRoute,
   SettingsGeneralRoute,
   SettingsChatRoute,
+  SettingsAgentsRoute,
   SettingsCopilotsRoute,
   SettingsWebSearchRoute,
   SettingsMcpRoute,

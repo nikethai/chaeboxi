@@ -28,31 +28,34 @@ import { useUIStore } from '@/stores/uiStore'
 import ActionMenu, { type ActionMenuItemProps } from '../ActionMenu'
 import { AdaptiveModal } from '../common/AdaptiveModal'
 import { ScalableIcon } from '../common/ScalableIcon'
+import { formatRailRelativeTime } from './session-list-helpers'
 
 export interface Props {
+  nested?: boolean
   session: SessionMeta
   selected: boolean
 }
 
 function SessionItem(props: Props) {
-  const { session, selected } = props
+  const { session, selected, nested = false } = props
   const { t } = useTranslation()
   const { folders } = useFolders()
   const setShowSidebar = useUIStore((s) => s.setShowSidebar)
+  const isSmallScreen = useIsSmallScreen()
   const onClick = () => {
     switchCurrentSession(session.id)
     if (isSmallScreen) {
       setShowSidebar(false)
     }
   }
-  const isSmallScreen = useIsSmallScreen()
-  // const smallSize = theme.typography.pxToRem(20)
 
   const [menuOpened, setMenuOpened] = useState(false)
   const [folderModalOpened, setFolderModalOpened] = useState(false)
   const [renameModalOpened, setRenameModalOpened] = useState(false)
   const [renameValue, setRenameValue] = useState(session.name)
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(session.folderId ?? null)
+
+  const timeLabel = useMemo(() => formatRailRelativeTime(session.updatedAt), [session.updatedAt])
 
   useEffect(() => {
     setSelectedFolderId(session.folderId ?? null)
@@ -112,7 +115,7 @@ function SessionItem(props: Props) {
       },
       {
         text: session.archived ? t('Unarchive') : t('Archive'),
-        icon: IconArchive,
+        icon: session.archived ? IconArchive : IconArchive,
         onClick: () => {
           void updateSessionStore(session.id, (s) => {
             if (!s) {
@@ -131,7 +134,6 @@ function SessionItem(props: Props) {
         onClick: async () => {
           try {
             await deleteSessionStore(session.id)
-            // Only navigate if deleting the currently selected session
             if (selected) {
               router.navigate({ to: '/', replace: true })
             }
@@ -146,7 +148,7 @@ function SessionItem(props: Props) {
 
   const folderOptions = useMemo(
     () => [
-      { value: '', label: t('All') },
+      { value: '', label: t('Recents') },
       ...folders.map((folder) => ({
         value: folder.id,
         label: folder.name,
@@ -183,7 +185,11 @@ function SessionItem(props: Props) {
     <>
       <Flex
         align="center"
-        className={clsx('cursor-pointer group/session-item studio-rail-row', selected && 'studio-rail-row-active')}
+        className={clsx(
+          'cursor-pointer group/session-item studio-rail-row',
+          nested && 'rail-session-nested',
+          selected && 'studio-rail-row-active'
+        )}
         mx={6}
         px={10}
         py={7}
@@ -197,11 +203,23 @@ function SessionItem(props: Props) {
           size="sm"
           fw={selected ? 500 : 400}
           c={selected ? 'chatbox-primary' : 'chatbox-secondary'}
-          className="tracking-tight"
+          className="tracking-tight min-w-0"
           style={{ fontSize: '0.875rem', letterSpacing: '-0.01em' }}
         >
           {session.name}
         </Text>
+
+        {timeLabel && (
+          <Text
+            span
+            size="xs"
+            c="chatbox-tertiary"
+            className="tabular-nums shrink-0 rail-session-time"
+            style={{ fontSize: '0.6875rem', fontFamily: 'var(--chatbox-font-mono)' }}
+          >
+            {timeLabel}
+          </Text>
+        )}
 
         <ActionMenu
           type="desktop"
@@ -212,11 +230,12 @@ function SessionItem(props: Props) {
         >
           <ActionIcon
             variant="transparent"
-            size={20}
+            size={28}
             color={session.starred ? 'chatbox-brand' : 'chatbox-tertiary'}
-            className={
+            className={clsx(
+              'active:scale-[0.96] transition-transform shrink-0',
               isSmallScreen || session.starred || menuOpened ? '' : 'group-hover/session-item:visible invisible'
-            }
+            )}
             onClick={(event) => {
               event.stopPropagation()
               event.preventDefault()

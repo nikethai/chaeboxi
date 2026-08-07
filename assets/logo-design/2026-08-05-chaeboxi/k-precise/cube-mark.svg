@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Chaeboxi open-cube mark — monochrome via currentColor -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" fill="none" role="img" aria-label="Chaeboxi">
+  <g stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Isometric cube: top diamond + left + right; front-right face open with soft flap -->
+    <!-- Top face -->
+    <path d="M64 26 L96 44 L64 62 L32 44 Z"/>
+    <!-- Left face outline -->
+    <path d="M32 44 V76 L64 94 V62"/>
+    <!-- Right rear edge + bottom right (open face omits front-right plane fill) -->
+    <path d="M96 44 V62"/>
+    <path d="M64 94 L96 76"/>
+    <!-- Open flap (curved panel peeling from right face) -->
+    <path d="M96 50 C108 58 112 70 104 82 C98 80 92 74 90 66"/>
+    <!-- Hint of depth on open edge -->
+    <path d="M96 62 C100 68 100 74 96 76" opacity="0.55" stroke-width="4.5"/>
+  </g>
+</svg>

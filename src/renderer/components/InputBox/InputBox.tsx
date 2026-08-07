@@ -5,11 +5,19 @@ import {
   getFileAcceptString,
   getUnsupportedFileI18nKey,
   isAiReadableImageFile,
+  isAiReadableVideoFile,
   isSupportedFile,
 } from '@shared/file-extensions'
 import { getOrCreateGatewayClient } from '@shared/models/openclaw'
 import { getModel } from '@shared/providers'
-import { IconAlertCircle, IconArrowUp, IconChevronRight, IconFolder, IconPlayerStopFilled } from '@tabler/icons-react'
+import {
+  IconAlertCircle,
+  IconArrowUp,
+  IconChevronRight,
+  IconFolder,
+  IconLoader2,
+  IconPlayerStopFilled,
+} from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
@@ -36,6 +44,7 @@ import { trackingEvent } from '@/packages/event'
 import { replacePromptTemplateVars } from '@/packages/model-calls/message-utils'
 import { getModelContextWindowSync } from '@/packages/model-context'
 import * as picUtils from '@/packages/pic_utils'
+import { formatBytesForDisplay, formatDurationForDisplay, getVideoLimits } from '@/packages/video'
 import { isWebSearchConfigured } from '@/packages/web-search/is-configured'
 import platform from '@/platform'
 import storage from '@/storage'
@@ -205,6 +214,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     const [links, setLinks] = useAtom(atoms.inputBoxLinksFamily(currentSessionId || 'new'))
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [isSamplingVideoFrames, setIsSamplingVideoFrames] = useState(false)
+    const [visionBannerDismissed, setVisionBannerDismissed] = useState(false)
 
     useEffect(() => {
       const constructedMessage = sessionHelpers.constructUserMessage(
@@ -273,6 +284,39 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       )
       return `${modelInfo?.nickname || model.modelId}`
     }, [providers, model, t])
+
+    const hasVideoAttachments = useMemo(() => {
+      return (preConstructedMessage.preprocessedFiles || []).some((f) => f.mediaKind === 'video' && !f.error)
+    }, [preConstructedMessage.preprocessedFiles])
+
+    const modelSupportsVision = useMemo(() => {
+      if (!model) return true
+      const providerInfo = providers.find((p) => p.id === model.provider)
+      const modelInfo = (providerInfo?.models || providerInfo?.defaultSettings?.models)?.find(
+        (m) => m.modelId === model.modelId
+      )
+      // Unknown capability: don't nag; only warn when vision is explicitly absent
+      if (!modelInfo?.capabilities) return true
+      return modelInfo.capabilities.includes('vision')
+    }, [providers, model])
+
+    const showNonVisionVideoBanner = hasVideoAttachments && !modelSupportsVision && !visionBannerDismissed
+
+    const videoLimitsForUi = useMemo(() => getVideoLimits(platform.formFactor === 'desktop' ? 'desktop' : 'mobile'), [])
+    const videoDropLimitsHint = useMemo(
+      () => ({
+        minutes: Math.floor(videoLimitsForUi.maxDurationSec / 60),
+        size: formatBytesForDisplay(videoLimitsForUi.maxFileBytes),
+      }),
+      [videoLimitsForUi]
+    )
+
+    // Re-show banner when a new successful video is attached after dismiss
+    useEffect(() => {
+      if (!hasVideoAttachments) {
+        setVisionBannerDismissed(false)
+      }
+    }, [hasVideoAttachments])
 
     // Get model info for context window
     const modelInfo = useMemo(() => {
@@ -598,11 +642,48 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           return
         }
 
-        const messageTextForHistory =
-          preConstructedMessage.message.contentParts.find((p) => p.type === 'text')?.text || ''
+        // Sample video frames for vision models right before send
+        let constructedMessage = preConstructedMessage.message
+        const hasVideo = constructedMessage.files?.some((f) => f.mediaKind === 'video')
+        if (hasVideo && model?.provider && model?.modelId) {
+          setIsSamplingVideoFrames(true)
+          try {
+            const globalSettings = settingsStore.getState().getSettings()
+            const configs = await platform.getConfig()
+            const dependencies = await createModelDependencies()
+            const modelInstance = getModel(
+              {
+                provider: model.provider,
+                modelId: model.modelId,
+                ...currentSessionMergedSettings,
+              },
+              globalSettings,
+              configs,
+              dependencies
+            )
+            const supportsVision = modelInstance.isSupportVision()
+            constructedMessage = await sessionHelpers.enrichUserMessageWithVideoFrames(constructedMessage, {
+              modelSupportVision: supportsVision,
+              formFactor: platform.formFactor === 'desktop' ? 'desktop' : 'mobile',
+            })
+            // Soft banner already covers this when capabilities are known; keep toast only if banner hidden
+            if (!supportsVision && !showNonVisionVideoBanner) {
+              toastActions.add(
+                t('Current model does not support vision. Switch to a vision model to analyze video frames.')
+              )
+            }
+          } catch (err) {
+            console.error('Video frame enrichment failed:', err)
+            toastActions.add(t('Failed to process video frames. Try a shorter clip or different format.'))
+          } finally {
+            setIsSamplingVideoFrames(false)
+          }
+        }
+
+        const messageTextForHistory = constructedMessage.contentParts.find((p) => p.type === 'text')?.text || ''
 
         const params = {
-          constructedMessage: preConstructedMessage.message,
+          constructedMessage,
           needGenerating,
           onUserMessageReady: () => {
             // Re-enable submit as soon as the message is accepted so follow-up
@@ -855,6 +936,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     )
 
     const insertFiles = async (files: File[]) => {
+      const videoLimits = getVideoLimits(platform.formFactor === 'desktop' ? 'desktop' : 'mobile')
+
       for (const file of files) {
         // Vision lane: AI-readable images (canvas resize). Advanced formats toast and skip.
         if (file.type.startsWith('image/') || isAiReadableImageFile(file)) {
@@ -873,6 +956,87 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           } catch {
             toastUnsupportedFile(file.name)
           }
+          continue
+        }
+
+        // Video lane: mp4/webm → store blob + poster; frames sampled on send if vision
+        if (file.type.startsWith('video/') || isAiReadableVideoFile(file)) {
+          if (!isAiReadableVideoFile(file)) {
+            toastUnsupportedFile(file.name)
+            continue
+          }
+          if (file.size > videoLimits.maxFileBytes) {
+            toastActions.add(
+              t('Video is too large. Maximum size is {{max}}.', {
+                max: formatBytesForDisplay(videoLimits.maxFileBytes),
+              })
+            )
+            continue
+          }
+
+          setPreConstructedMessage((prev) => {
+            const existingVideos = (prev.preprocessedFiles || []).filter((f) => f.mediaKind === 'video' && !f.error)
+            const attachmentCount = prev.attachments.filter((a) => isAiReadableVideoFile(a)).length
+            if (
+              existingVideos.length >= videoLimits.maxVideosPerMessage ||
+              attachmentCount >= videoLimits.maxVideosPerMessage
+            ) {
+              toastActions.add(
+                t('You can attach at most {{count}} video(s) per message.', {
+                  count: videoLimits.maxVideosPerMessage,
+                })
+              )
+              return prev
+            }
+
+            const newAttachments = prev.attachments.find(
+              (f) => StorageKeyGenerator.fileUniqKey(f) === StorageKeyGenerator.fileUniqKey(file)
+            )
+              ? prev.attachments
+              : [...(prev.attachments || []), file]
+
+            const preprocessPromise = sessionHelpers
+              .preprocessVideo(file, {
+                formFactor: platform.formFactor === 'desktop' ? 'desktop' : 'mobile',
+              })
+              .then((preprocessedFile) => {
+                if (preprocessedFile.error?.startsWith('video_too_long:')) {
+                  const mins = preprocessedFile.error.split(':')[1]
+                  toastActions.add(t('Video is too long. Maximum duration is {{minutes}} minutes.', { minutes: mins }))
+                } else if (preprocessedFile.error?.startsWith('video_too_large:')) {
+                  toastActions.add(
+                    t('Video is too large. Maximum size is {{max}}.', {
+                      max: preprocessedFile.error.split(':')[1],
+                    })
+                  )
+                } else if (preprocessedFile.error) {
+                  toastActions.add(t('Failed to process video. Use MP4 or WebM.'))
+                }
+                setPreConstructedMessage((p) => onFileProcessed(p, file, preprocessedFile, 20))
+              })
+              .catch(() => {
+                toastActions.add(t('Failed to process video. Use MP4 or WebM.'))
+                setPreConstructedMessage((p) =>
+                  onFileProcessed(
+                    p,
+                    file,
+                    {
+                      file,
+                      content: '',
+                      storageKey: '',
+                      mediaKind: 'video',
+                      error: 'Failed to process video',
+                    },
+                    20
+                  )
+                )
+              })
+
+            return {
+              ...storeFilePromise(markFileProcessing(prev, file), file, preprocessPromise),
+              attachments: newAttachments,
+            }
+          })
           continue
         }
 
@@ -1125,8 +1289,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const sendDisabled = generating
       ? disableSubmit
         ? false
-        : isPreprocessing || isSubmitting || isCompactionRunning
-      : disableSubmit || isPreprocessing || isSubmitting || isCompactionRunning
+        : isPreprocessing || isSubmitting || isSamplingVideoFrames || isCompactionRunning
+      : disableSubmit || isPreprocessing || isSubmitting || isSamplingVideoFrames || isCompactionRunning
 
     return (
       <Box id={dom.InputBoxID} className="chat-input-shell">
@@ -1137,15 +1301,19 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             className={cn('composer-card relative justify-between', isFileDragActive && 'composer-card-drag-active')}
             gap={0}
           >
-            {isFileDragActive && (
-              <div className="composer-drop-overlay" aria-hidden>
-                <div className="composer-drop-overlay-content">
-                  <IconFolder className="composer-drop-overlay-icon" strokeWidth={1.5} size={28} />
-                  <span className="composer-drop-overlay-title">{t('Drop to attach')}</span>
-                  <span className="composer-drop-overlay-hint">{t('Images · PDFs · text · code')}</span>
-                </div>
+            <div
+              className={cn('composer-drop-overlay', isFileDragActive && 'is-active')}
+              aria-hidden={!isFileDragActive}
+            >
+              <div className="composer-drop-overlay-content">
+                <IconFolder className="composer-drop-overlay-icon" strokeWidth={1.5} size={28} />
+                <span className="composer-drop-overlay-title">{t('Drop to attach')}</span>
+                <span className="composer-drop-overlay-hint">{t('Images · video · PDFs · text · code')}</span>
+                <span className="composer-drop-overlay-limits font-mono tabular-nums">
+                  {t('MP4 · WebM · max {{minutes}} min · {{size}}', videoDropLimitsHint)}
+                </span>
               </div>
-            )}
+            </div>
             {showPresetPicker && (
               <PresetPicker
                 highlightedIndex={presetHighlightIndex}
@@ -1211,15 +1379,21 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
             {(!!pictureKeys.length || !!attachments.length || !!links.length) && (
               <Flex align="center" wrap="wrap" px="sm" pb="xs" onClick={() => dom.focusMessageInput()}>
-                {pictureKeys?.map((picKey) => (
-                  <ImageMiniCard key={picKey} storageKey={picKey} onDelete={() => onImageDeleteClick(picKey)} />
+                {pictureKeys?.map((picKey, picIndex) => (
+                  <ImageMiniCard
+                    key={picKey}
+                    storageKey={picKey}
+                    staggerIndex={picIndex}
+                    onDelete={() => onImageDeleteClick(picKey)}
+                  />
                 ))}
-                {attachments?.map((file) => {
+                {attachments?.map((file, fileIndex) => {
                   const fileKey = StorageKeyGenerator.fileUniqKey(file)
                   const status = preConstructedMessage.preprocessingStatus.files[fileKey]
                   const preprocessedFile = preConstructedMessage.preprocessedFiles.find(
                     (f) => StorageKeyGenerator.fileUniqKey(f.file) === fileKey
                   )
+                  const pictureOffset = pictureKeys?.length || 0
                   return (
                     <FileMiniCard
                       key={fileKey}
@@ -1227,6 +1401,21 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       fileType={file.type}
                       status={status}
                       errorMessage={preprocessedFile?.error}
+                      mediaKind={preprocessedFile?.mediaKind}
+                      posterStorageKey={preprocessedFile?.posterStorageKey}
+                      videoStorageKey={
+                        preprocessedFile?.mediaKind === 'video' && preprocessedFile.storageKey
+                          ? preprocessedFile.storageKey
+                          : undefined
+                      }
+                      durationSec={preprocessedFile?.durationSec}
+                      byteLength={preprocessedFile?.byteLength ?? file.size}
+                      staggerIndex={pictureOffset + fileIndex}
+                      durationLabel={
+                        preprocessedFile?.mediaKind === 'video' && preprocessedFile.durationSec !== undefined
+                          ? formatDurationForDisplay(preprocessedFile.durationSec)
+                          : undefined
+                      }
                       onErrorClick={() => {
                         if (preprocessedFile?.error) {
                           void NiceModal.show('file-parse-error', {
@@ -1252,17 +1441,59 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     />
                   )
                 })}
-                {links?.map((link) => {
+                {(isSamplingVideoFrames || showNonVisionVideoBanner) && (
+                  <div className="flex w-full basis-full flex-col gap-1.5 px-1 pb-1 pt-0.5">
+                    {isSamplingVideoFrames && (
+                      <div
+                        className="flex items-center gap-1.5 text-[11px] text-[var(--chatbox-tint-tertiary)]"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        <IconLoader2
+                          size={13}
+                          className="animate-spin shrink-0 text-[var(--chatbox-tint-brand)]"
+                          stroke={1.75}
+                        />
+                        <span className="truncate">{t('Sampling video frames…')}</span>
+                      </div>
+                    )}
+                    {showNonVisionVideoBanner && !isSamplingVideoFrames && (
+                      <div className="composer-video-vision-banner flex items-start gap-1.5 rounded-md px-2 py-1.5">
+                        <IconAlertCircle
+                          size={14}
+                          className="mt-0.5 shrink-0 text-[var(--chatbox-tint-tertiary)]"
+                          stroke={1.75}
+                        />
+                        <p className="m-0 min-w-0 flex-1 text-[11px] leading-snug text-[var(--chatbox-tint-tertiary)]">
+                          {t("This model can't see video frames. Switch to a vision model to analyze them.")}
+                        </p>
+                        <button
+                          type="button"
+                          className="shrink-0 rounded px-1 text-[10px] text-[var(--chatbox-tint-tertiary)] transition-opacity duration-150 hover:text-[var(--chatbox-tint-secondary)] active:scale-[0.96]"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setVisionBannerDismissed(true)
+                          }}
+                        >
+                          {t('Dismiss')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+                {links?.map((link, linkIndex) => {
                   const linkKey = StorageKeyGenerator.linkUniqKey(link.url)
                   const status = preConstructedMessage.preprocessingStatus.links[linkKey]
                   const preprocessedLink = preConstructedMessage.preprocessedLinks.find(
                     (l) => StorageKeyGenerator.linkUniqKey(l.url) === linkKey
                   )
+                  const attachOffset = (pictureKeys?.length || 0) + (attachments?.length || 0)
                   return (
                     <LinkMiniCard
                       key={linkKey}
                       url={link.url}
                       status={status}
+                      staggerIndex={attachOffset + linkIndex}
                       errorMessage={preprocessedLink?.error}
                       onErrorClick={() => {
                         if (preprocessedLink?.error) {
@@ -1378,28 +1609,39 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   </ModelSelector>
                 </Tooltip>
 
-                <ActionIcon
-                  disabled={sendDisabled}
-                  variant="filled"
-                  color={generating && disableSubmit ? 'dark' : 'chatbox-brand'}
-                  className="composer-send shadow-none"
-                  onClick={generating && disableSubmit ? onStopGenerating : () => handleSubmit()}
-                  style={
-                    !(generating && disableSubmit) && sendDisabled
-                      ? {
-                          backgroundColor: 'var(--chatbox-background-tertiary)',
-                          color: 'var(--chatbox-tint-tertiary)',
-                          opacity: 1,
-                        }
-                      : undefined
-                  }
-                >
-                  {generating && disableSubmit ? (
-                    <ScalableIcon icon={IconPlayerStopFilled} size={14} />
-                  ) : (
-                    <ScalableIcon icon={IconArrowUp} size={14} />
-                  )}
-                </ActionIcon>
+                <Tooltip label={t('Sampling video frames…')} disabled={!isSamplingVideoFrames} withArrow position="top">
+                  <ActionIcon
+                    disabled={sendDisabled}
+                    variant="filled"
+                    color={generating && disableSubmit ? 'dark' : 'chatbox-brand'}
+                    className="composer-send shadow-none"
+                    aria-label={
+                      isSamplingVideoFrames
+                        ? t('Sampling video frames…')
+                        : generating && disableSubmit
+                          ? t('Stop')
+                          : t('Send')
+                    }
+                    onClick={generating && disableSubmit ? onStopGenerating : () => handleSubmit()}
+                    style={
+                      !(generating && disableSubmit) && sendDisabled
+                        ? {
+                            backgroundColor: 'var(--chatbox-background-tertiary)',
+                            color: 'var(--chatbox-tint-tertiary)',
+                            opacity: 1,
+                          }
+                        : undefined
+                    }
+                  >
+                    {generating && disableSubmit ? (
+                      <ScalableIcon icon={IconPlayerStopFilled} size={14} />
+                    ) : isSamplingVideoFrames ? (
+                      <IconLoader2 size={14} className="animate-spin" stroke={1.75} />
+                    ) : (
+                      <ScalableIcon icon={IconArrowUp} size={14} />
+                    )}
+                  </ActionIcon>
+                </Tooltip>
               </Flex>
             </Flex>
           </Stack>

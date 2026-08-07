@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Chaeboxi · K Cube Studio</title>
+  <style>
+    :root {
+      --void: #121214;
+      --rail: #16161a;
+      --panel: #1c1c21;
+      --lift: #24242b;
+      --ink: #ececec;
+      --ink-2: #a8a8ae;
+      --ink-3: #6e6e76;
+      --line: #2a2a32;
+      --line-2: #36363f;
+      --indigo: #5b63d4;
+      --indigo-soft: rgba(91, 99, 212, 0.18);
+      --font: "Satoshi", "Inter", system-ui, -apple-system, sans-serif;
+      --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+      --radius: 11px;
+    }
+    html[data-theme="light"] {
+      --void: #f4f4f6;
+      --rail: #ececef;
+      --panel: #fff;
+      --lift: #f8f8fa;
+      --ink: #121214;
+      --ink-2: #4a4a52;
+      --ink-3: #6e6e76;
+      --line: #e2e2e8;
+      --line-2: #d0d0d8;
+      --indigo-soft: rgba(91, 99, 212, 0.12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--void);
+      color: var(--ink);
+      line-height: 1.5;
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+    .shell {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 1.75rem 1.25rem 3rem;
+    }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--line);
+    }
+    h1 {
+      margin: 0 0 0.3rem;
+      font-size: 1.45rem;
+      letter-spacing: -0.03em;
+    }
+    h1 span { color: var(--indigo); }
+    header p {
+      margin: 0;
+      color: var(--ink-2);
+      font-size: 0.92rem;
+      max-width: 36rem;
+    }
+    button {
+      appearance: none;
+      border: 1px solid var(--line-2);
+      background: var(--panel);
+      color: var(--ink);
+      border-radius: 9px;
+      padding: 0.5rem 0.85rem;
+      font: inherit;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    button:hover { background: var(--lift); }
+    button.primary {
+      background: var(--indigo);
+      border-color: var(--indigo);
+      color: #fff;
+      font-weight: 600;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.25rem;
+    }
+    @media (min-width: 900px) {
+      .layout { grid-template-columns: 1.1fr 0.9fr; align-items: start; }
+    }
+    .stage {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+    .stage-modes {
+      display: flex;
+      gap: 0.4rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .stage-modes button.active {
+      border-color: var(--indigo);
+      background: var(--indigo-soft);
+    }
+    .dock {
+      display: flex;
+      gap: 1.5rem;
+      align-items: flex-end;
+      justify-content: center;
+      flex-wrap: wrap;
+      width: 100%;
+      padding: 1.5rem 1rem;
+      border-radius: 12px;
+      background: var(--rail);
+      border: 1px solid var(--line);
+    }
+    .dock.mac { background: #1a1a1e; }
+    .dock.win { background: #0e639c22; }
+    .dock.light-ui { background: #e8e8ec; }
+    .icon-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .icon-wrap span {
+      font-size: 0.7rem;
+      color: var(--ink-3);
+      font-family: var(--mono);
+    }
+    canvas#icon {
+      border-radius: 22.5%;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.28);
+      cursor: default;
+    }
+    canvas#icon-sm {
+      border-radius: 22.5%;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    canvas#icon-xs {
+      border-radius: 22.5%;
+    }
+    .controls {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 1.1rem 1.15rem 1.25rem;
+    }
+    .controls h2 {
+      margin: 0 0 0.85rem;
+      font-size: 0.95rem;
+    }
+    .field {
+      margin-bottom: 0.95rem;
+    }
+    .field label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      color: var(--ink-2);
+      margin-bottom: 0.35rem;
+    }
+    .field label code {
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      color: var(--indigo);
+    }
+    .row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    input[type="color"] {
+      width: 42px;
+      height: 36px;
+      border: 1px solid var(--line-2);
+      border-radius: 8px;
+      padding: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+    input[type="range"] { flex: 1; }
+    input[type="text"] {
+      flex: 1;
+      border: 1px solid var(--line-2);
+      background: var(--rail);
+      color: var(--ink);
+      border-radius: 8px;
+      padding: 0.4rem 0.55rem;
+      font-family: var(--mono);
+      font-size: 0.82rem;
+    }
+    .presets {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.45rem;
+      margin-bottom: 1rem;
+    }
+    .preset {
+      aspect-ratio: 1;
+      border-radius: 10px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+    .preset.active { border-color: var(--indigo); }
+    .preset::after {
+      content: attr(data-name);
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      font-size: 0.55rem;
+      text-align: center;
+      padding: 0.15rem;
+      background: rgba(0,0,0,0.45);
+      color: #fff;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin-top: 0.5rem;
+    }
+    .hint {
+      margin-top: 0.85rem;
+      font-size: 0.8rem;
+      color: var(--ink-3);
+    }
+    .mark-mode {
+      display: flex;
+      gap: 0.4rem;
+      margin-bottom: 0.9rem;
+    }
+    .mark-mode button.active {
+      border-color: var(--indigo);
+      background: var(--indigo-soft);
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div>
+        <h1><span>K Cube</span> Studio — live lighten</h1>
+        <p>
+          Precise vector open-cube (not AI mush). Drag colors until the tile feels right.
+          Export PNG when happy. Original AI K is the <em>idea</em>; this is shippable geometry.
+        </p>
+      </div>
+      <button type="button" id="themeBtn">Theme</button>
+    </header>
+
+    <div class="layout">
+      <div class="stage">
+        <div class="stage-modes">
+          <button type="button" class="bg-mode active" data-bg="mac">macOS dock</button>
+          <button type="button" class="bg-mode" data-bg="light-ui">Light UI</button>
+          <button type="button" class="bg-mode" data-bg="win">Neutral</button>
+        </div>
+        <div class="dock mac" id="dock">
+          <div class="icon-wrap">
+            <canvas id="icon" width="256" height="256"></canvas>
+            <span>256</span>
+          </div>
+          <div class="icon-wrap">
+            <canvas id="icon-sm" width="128" height="128"></canvas>
+            <span>128</span>
+          </div>
+          <div class="icon-wrap">
+            <canvas id="icon-xs" width="64" height="64"></canvas>
+            <span>64</span>
+          </div>
+          <div class="icon-wrap">
+            <canvas id="icon-tiny" width="32" height="32"></canvas>
+            <span>32</span>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="button" class="primary" id="exportBtn">Download PNG 1024</button>
+          <button type="button" id="exportSvgBtn">Download SVG</button>
+          <button type="button" id="copyHexBtn">Copy hex recipe</button>
+        </div>
+      </div>
+
+      <div class="controls">
+        <h2>Background</h2>
+        <div class="presets" id="presets"></div>
+
+        <div class="field">
+          <label>Top <code id="bgTopVal">#DDE1F8</code></label>
+          <div class="row">
+            <input type="color" id="bgTop" value="#dde1f8" />
+            <input type="text" id="bgTopText" value="#DDE1F8" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Bottom <code id="bgBotVal">#C8CFF0</code></label>
+          <div class="row">
+            <input type="color" id="bgBot" value="#c8cff0" />
+            <input type="text" id="bgBotText" value="#C8CFF0" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Lightness lift <code id="liftVal">0</code></label>
+          <input type="range" id="lift" min="-40" max="60" value="0" />
+        </div>
+
+        <h2>Cube mark</h2>
+        <div class="mark-mode">
+          <button type="button" class="mark-btn active" data-mark="white">White cube</button>
+          <button type="button" class="mark-btn" data-mark="indigo">Indigo cube</button>
+          <button type="button" class="mark-btn" data-mark="custom">Custom</button>
+        </div>
+        <div class="field" id="markField" style="display:none">
+          <label>Mark color <code id="markVal">#5B63D4</code></label>
+          <div class="row">
+            <input type="color" id="mark" value="#5b63d4" />
+            <input type="text" id="markText" value="#5B63D4" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Stroke weight <code id="strokeVal">6</code></label>
+          <input type="range" id="stroke" min="4" max="9" step="0.5" value="6" />
+        </div>
+        <div class="field">
+          <label>Corner radius <code id="radiusVal">22.5%</code></label>
+          <input type="range" id="radius" min="18" max="28" step="0.5" value="22.5" />
+        </div>
+
+        <p class="hint">
+          Tip: for light tiles, use <strong>Indigo cube</strong>. For mid/light periwinkle tiles, white cube is fine.
+          If nothing feels right, the issue may be the cube shape — say so and we redesign the glyph, not just the color.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const PRESETS = [
+      { name: "Mist", top: "#DDE1F8", bot: "#C8CFF0", mark: "white" },
+      { name: "Sky", top: "#E8ECFB", bot: "#D4DBF5", mark: "white" },
+      { name: "Lilac", top: "#EDE8F8", bot: "#D9D0F0", mark: "white" },
+      { name: "Ice", top: "#EEF0F6", bot: "#E0E3EC", mark: "indigo" },
+      { name: "Paper", top: "#F5F5F8", bot: "#EBEBF2", mark: "indigo" },
+      { name: "Tint", top: "#E4E7FA", bot: "#C5CBF2", mark: "white" },
+      { name: "Warm", top: "#F3F1F8", bot: "#E6E2F0", mark: "indigo" },
+      { name: "Dark", top: "#6B72D9", bot: "#4F56C4", mark: "white" },
+    ];
+
+    const state = {
+      bgTop: "#DDE1F8",
+      bgBot: "#C8CFF0",
+      markMode: "white",
+      mark: "#5B63D4",
+      stroke: 6,
+      radius: 22.5,
+      lift: 0,
+    };
+
+    const canvases = [
+      document.getElementById("icon"),
+      document.getElementById("icon-sm"),
+      document.getElementById("icon-xs"),
+      document.getElementById("icon-tiny"),
+    ];
+
+    function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+
+    function hexToRgb(hex) {
+      const h = hex.replace("#", "");
+      const full = h.length === 3 ? h.split("").map((c) => c + c).join("") : h;
+      const n = parseInt(full, 16);
+      return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+    }
+
+    function rgbToHex(r, g, b) {
+      return (
+        "#" +
+        [r, g, b]
+          .map((v) => clamp(Math.round(v), 0, 255).toString(16).padStart(2, "0"))
+          .join("")
+          .toUpperCase()
+      );
+    }
+
+    function liftHex(hex, amount) {
+      const { r, g, b } = hexToRgb(hex);
+      return rgbToHex(r + amount * 2.2, g + amount * 2.2, b + amount * 2.4);
+    }
+
+    function markColor() {
+      if (state.markMode === "white") return "#FFFFFF";
+      if (state.markMode === "indigo") return "#5B63D4";
+      return state.mark;
+    }
+
+    function effectiveBg() {
+      return {
+        top: liftHex(state.bgTop, state.lift),
+        bot: liftHex(state.bgBot, state.lift),
+      };
+    }
+
+    /** Draw open-cube glyph into a square canvas with app-icon padding */
+    function drawIcon(canvas) {
+      const s = canvas.width;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, s, s);
+
+      const { top, bot } = effectiveBg();
+      const r = (state.radius / 100) * s;
+
+      // rounded rect tile
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(0, 0, s, s, r);
+      else {
+        // fallback
+        const rr = r;
+        ctx.moveTo(rr, 0);
+        ctx.arcTo(s, 0, s, s, rr);
+        ctx.arcTo(s, s, 0, s, rr);
+        ctx.arcTo(0, s, 0, 0, rr);
+        ctx.arcTo(0, 0, s, 0, rr);
+        ctx.closePath();
+      }
+      const grad = ctx.createLinearGradient(0, 0, 0, s);
+      grad.addColorStop(0, top);
+      grad.addColorStop(1, bot);
+      ctx.fillStyle = grad;
+      ctx.fill();
+
+      // subtle top gloss
+      ctx.save();
+      ctx.globalAlpha = 0.12;
+      const gloss = ctx.createLinearGradient(0, 0, 0, s * 0.45);
+      gloss.addColorStop(0, "#ffffff");
+      gloss.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = gloss;
+      ctx.fill();
+      ctx.restore();
+
+      // cube geometry in normalized 0..128 space, mapped with padding
+      const pad = s * 0.22;
+      const scale = (s - pad * 2) / 128;
+      const ox = pad;
+      const oy = pad;
+      const m = markColor();
+      const sw = state.stroke * scale * (128 / 48); // visual weight
+
+      ctx.strokeStyle = m;
+      ctx.lineWidth = Math.max(1.25, state.stroke * (s / 128) * 0.92);
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      function p(x, y) {
+        return [ox + x * scale, oy + y * scale];
+      }
+
+      function path(points, close) {
+        ctx.beginPath();
+        points.forEach(([x, y], i) => {
+          const [px, py] = p(x, y);
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        });
+        if (close) ctx.closePath();
+        ctx.stroke();
+      }
+
+      // Top face diamond
+      path([[64, 26], [96, 44], [64, 62], [32, 44]], true);
+      // Left face
+      path([[32, 44], [32, 76], [64, 94], [64, 62]], false);
+      // Right rear vertical
+      path([[96, 44], [96, 62]], false);
+      // Bottom right edge
+      path([[64, 94], [96, 76]], false);
+      // Open flap curve
+      ctx.beginPath();
+      const [a0x, a0y] = p(96, 50);
+      ctx.moveTo(a0x, a0y);
+      const [c1x, c1y] = p(108, 58);
+      const [c2x, c2y] = p(112, 70);
+      const [a1x, a1y] = p(104, 82);
+      ctx.bezierCurveTo(c1x, c1y, c2x, c2y, a1x, a1y);
+      const [c3x, c3y] = p(98, 80);
+      const [c4x, c4y] = p(92, 74);
+      const [a2x, a2y] = p(90, 66);
+      ctx.bezierCurveTo(c3x, c3y, c4x, c4y, a2x, a2y);
+      ctx.stroke();
+      // soft inner open edge
+      ctx.save();
+      ctx.globalAlpha = 0.5;
+      ctx.lineWidth = Math.max(1, ctx.lineWidth * 0.75);
+      ctx.beginPath();
+      const [b0x, b0y] = p(96, 62);
+      ctx.moveTo(b0x, b0y);
+      const [d1x, d1y] = p(100, 68);
+      const [d2x, d2y] = p(100, 74);
+      const [b1x, b1y] = p(96, 76);
+      ctx.bezierCurveTo(d1x, d1y, d2x, d2y, b1x, b1y);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function redraw() {
+      canvases.forEach(drawIcon);
+      document.getElementById("bgTopVal").textContent = effectiveBg().top;
+      document.getElementById("bgBotVal").textContent = effectiveBg().bot;
+      document.getElementById("markVal").textContent = markColor();
+      document.getElementById("strokeVal").textContent = String(state.stroke);
+      document.getElementById("radiusVal").textContent = state.radius + "%";
+      document.getElementById("liftVal").textContent = String(state.lift);
+    }
+
+    function setPreset(p, el) {
+      state.bgTop = p.top;
+      state.bgBot = p.bot;
+      state.markMode = p.mark;
+      state.lift = 0;
+      document.getElementById("bgTop").value = p.top;
+      document.getElementById("bgBot").value = p.bot;
+      document.getElementById("bgTopText").value = p.top;
+      document.getElementById("bgBotText").value = p.bot;
+      document.getElementById("lift").value = 0;
+      document.querySelectorAll(".preset").forEach((x) => x.classList.remove("active"));
+      if (el) el.classList.add("active");
+      document.querySelectorAll(".mark-btn").forEach((b) => {
+        b.classList.toggle("active", b.dataset.mark === state.markMode);
+      });
+      document.getElementById("markField").style.display =
+        state.markMode === "custom" ? "" : "none";
+      redraw();
+    }
+
+    // presets UI
+    const presetsEl = document.getElementById("presets");
+    PRESETS.forEach((p) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "preset";
+      b.dataset.name = p.name;
+      b.style.background = `linear-gradient(180deg, ${p.top}, ${p.bot})`;
+      b.title = p.name;
+      b.addEventListener("click", () => setPreset(p, b));
+      presetsEl.appendChild(b);
+    });
+    // default first preset
+    setPreset(PRESETS[0], presetsEl.children[0]);
+
+    function bindColor(id, textId, key) {
+      const c = document.getElementById(id);
+      const t = document.getElementById(textId);
+      c.addEventListener("input", () => {
+        state[key] = c.value.toUpperCase();
+        t.value = state[key];
+        redraw();
+      });
+      t.addEventListener("change", () => {
+        let v = t.value.trim();
+        if (!v.startsWith("#")) v = "#" + v;
+        state[key] = v.toUpperCase();
+        c.value = v;
+        t.value = state[key];
+        redraw();
+      });
+    }
+    bindColor("bgTop", "bgTopText", "bgTop");
+    bindColor("bgBot", "bgBotText", "bgBot");
+    bindColor("mark", "markText", "mark");
+
+    document.getElementById("lift").addEventListener("input", (e) => {
+      state.lift = Number(e.target.value);
+      redraw();
+    });
+    document.getElementById("stroke").addEventListener("input", (e) => {
+      state.stroke = Number(e.target.value);
+      redraw();
+    });
+    document.getElementById("radius").addEventListener("input", (e) => {
+      state.radius = Number(e.target.value);
+      redraw();
+    });
+
+    document.querySelectorAll(".mark-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.markMode = btn.dataset.mark;
+        document.querySelectorAll(".mark-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        document.getElementById("markField").style.display =
+          state.markMode === "custom" ? "" : "none";
+        redraw();
+      });
+    });
+
+    document.querySelectorAll(".bg-mode").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".bg-mode").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        const dock = document.getElementById("dock");
+        dock.className = "dock " + btn.dataset.bg;
+      });
+    });
+
+    document.getElementById("themeBtn").addEventListener("click", () => {
+      const cur = document.documentElement.getAttribute("data-theme");
+      document.documentElement.setAttribute("data-theme", cur === "dark" ? "light" : "dark");
+    });
+
+    function exportPNG() {
+      const c = document.createElement("canvas");
+      c.width = 1024;
+      c.height = 1024;
+      drawIcon(c);
+      c.toBlob((blob) => {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        const { top, bot } = effectiveBg();
+        a.download = `chaeboxi-k-cube-${top.replace("#", "")}-${markColor().replace("#", "")}.png`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+    }
+
+    function exportSVG() {
+      const { top, bot } = effectiveBg();
+      const m = markColor();
+      const sw = state.stroke;
+      const svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${top}"/>
+      <stop offset="100%" stop-color="${bot}"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="1024" height="1024" rx="${(state.radius / 100) * 1024}" fill="url(#tile)"/>
+  <g transform="translate(512 512) scale(5.2) translate(-64 -64)" stroke="${m}" fill="none" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M64 26 L96 44 L64 62 L32 44 Z"/>
+    <path d="M32 44 V76 L64 94 V62"/>
+    <path d="M96 44 V62"/>
+    <path d="M64 94 L96 76"/>
+    <path d="M96 50 C108 58 112 70 104 82 C98 80 92 74 86 66"/>
+    <path d="M96 62 C100 68 100 74 96 76" opacity="0.5" stroke-width="${sw * 0.75}"/>
+  </g>
+</svg>`;
+      const blob = new Blob([svg], { type: "image/svg+xml" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "chaeboxi-k-cube.svg";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    document.getElementById("exportBtn").addEventListener("click", exportPNG);
+    document.getElementById("exportSvgBtn").addEventListener("click", exportSVG);
+    document.getElementById("copyHexBtn").addEventListener("click", () => {
+      const { top, bot } = effectiveBg();
+      const recipe = `bgTop=${top} bgBot=${bot} mark=${markColor()} stroke=${state.stroke} radius=${state.radius}%`;
+      navigator.clipboard.writeText(recipe);
+    });
+  </script>
+</body>
+</html>

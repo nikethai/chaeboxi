@@ -3,8 +3,8 @@ import AppStoreRating from './AppStoreRating'
 import ArtifactPreview from './ArtifactPreview'
 import AttachLink from './AttachLink'
 import ClearSessionList from './ClearSessionList'
-import ContextOverflow from './ContextOverflow'
 import ContentViewer from './ContentViewer'
+import ContextOverflow from './ContextOverflow'
 import EdgeOneDeploySuccess from './EdgeOneDeploySuccess'
 import ExportChat from './ExportChat'
 import FileParseError from './FileParseError'
@@ -13,13 +13,17 @@ import MessageEdit from './MessageEdit'
 import ModelEdit from './ModelEdit'
 import ReportContent from './ReportContent'
 import SessionSettings from './SessionSettings'
-import ToolApproval from './ToolApproval'
 import ThreadNameEdit from './ThreadNameEdit'
+import ToolApproval from './ToolApproval'
+import VideoAttachmentPreview from './VideoAttachmentPreview'
+import VideoPlayer from './VideoPlayer'
 import Welcome from './Welcome'
 
 NiceModal.register('welcome', Welcome)
 NiceModal.register('file-parse-error', FileParseError)
 NiceModal.register('content-viewer', ContentViewer)
+NiceModal.register('video-player', VideoPlayer)
+NiceModal.register('video-attachment-preview', VideoAttachmentPreview)
 NiceModal.register('session-settings', SessionSettings)
 NiceModal.register('app-store-rating', AppStoreRating)
 NiceModal.register('artifact-preview', ArtifactPreview)

@@ -260,7 +260,11 @@ export default function Sidebar() {
           </Flex>
 
           <Box className="flex-1 min-h-0 flex flex-col overflow-hidden">
-            <SessionList sessionListViewportRef={sessionListViewportRef} showArchived={showArchived} />
+            <SessionList
+              sessionListViewportRef={sessionListViewportRef}
+              showArchived={showArchived}
+              onCreateProject={() => setFolderModalOpened(true)}
+            />
           </Box>
 
           {/* Account footer — mock rail-foot: menu above, user trigger below */}

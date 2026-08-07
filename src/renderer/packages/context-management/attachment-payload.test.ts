@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildAttachmentWrapperPrefix,
   buildAttachmentWrapperSuffix,
+  buildVideoAttachmentWrapper,
   MAX_INLINE_FILE_LINES,
   PREVIEW_LINES,
   selectMessagesForSendContext,
@@ -116,6 +117,31 @@ describe('attachment-payload', () => {
 
       expect(suffix).toContain('read_file or search_file_content tool')
       expect(suffix).toContain('FILE_KEY="storage_key_abc"')
+    })
+  })
+
+  describe('buildVideoAttachmentWrapper', () => {
+    it('should emit metadata-only ATTACHMENT_VIDEO block', () => {
+      const block = buildVideoAttachmentWrapper({
+        attachmentIndex: 1,
+        fileName: 'clip.mp4',
+        fileKey: 'video_uniq:clip.mp4:1:1',
+        durationSec: 12.5,
+        byteLength: 1024,
+        width: 1280,
+        height: 720,
+        sampledFrameCount: 4,
+        maxFramesPerTurn: 8,
+        toolEnabled: true,
+      })
+
+      expect(block).toContain('<ATTACHMENT_VIDEO>')
+      expect(block).toContain('</ATTACHMENT_VIDEO>')
+      expect(block).toContain('<FILE_KEY>video_uniq:clip.mp4:1:1</FILE_KEY>')
+      expect(block).toContain('<DURATION_SEC>12.50</DURATION_SEC>')
+      expect(block).toContain('<SAMPLED_FRAMES>4</SAMPLED_FRAMES>')
+      expect(block).toContain('read_video')
+      expect(block).not.toContain('base64')
     })
   })
 

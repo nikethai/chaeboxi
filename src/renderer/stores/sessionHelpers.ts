@@ -18,12 +18,27 @@ import { getLogger } from '@/lib/utils'
 import { PREVIEW_LINES } from '@/packages/context-management/attachment-payload'
 import * as localParser from '@/packages/local-parser'
 import { estimateTokens, getTokenizerType } from '@/packages/token'
+import {
+  dataUrlToBlob,
+  extractVideoFrames,
+  extractVideoPoster,
+  formatBytesForDisplay,
+  getVideoLimits,
+  loadVideoMetadata,
+  readAsDataUrl,
+} from '@/packages/video'
 import platform from '@/platform'
 import storage from '@/storage'
 import { StorageKey, StorageKeyGenerator } from '@/storage/StoreStorage'
 import { migrateSession, sortSessions } from '@/utils/session-utils'
 import * as defaults from '../../shared/defaults'
-import { createMessage, type Message, ModelProviderEnum, SessionSettingsSchema, TOKEN_CACHE_KEYS } from '../../shared/types'
+import {
+  createMessage,
+  type Message,
+  ModelProviderEnum,
+  SessionSettingsSchema,
+  TOKEN_CACHE_KEYS,
+} from '../../shared/types'
 import { lastUsedModelStore } from './lastUsedModelStore'
 import { getPlatformDefaultDocumentParser, settingsStore } from './settingsStore'
 
@@ -398,6 +413,174 @@ export async function preprocessLink(
 }
 
 /**
+ * Preprocess a video attachment: validate limits, store binary as data URL, extract poster.
+ * Does not auto-sample model frames (that happens on send when vision is available).
+ */
+export async function preprocessVideo(
+  file: File,
+  options?: { formFactor?: 'desktop' | 'mobile' | 'web'; signal?: AbortSignal }
+): Promise<{
+  file: File
+  content: string
+  storageKey: string
+  byteLength?: number
+  mediaKind: 'video'
+  durationSec?: number
+  width?: number
+  height?: number
+  posterStorageKey?: string
+  error?: string
+}> {
+  const formFactor = options?.formFactor ?? platform.formFactor
+  const limits = getVideoLimits(formFactor === 'desktop' ? 'desktop' : formFactor === 'mobile' ? 'mobile' : 'web')
+
+  try {
+    if (file.size > limits.maxFileBytes) {
+      throw new Error(
+        `video_too_large:${formatBytesForDisplay(limits.maxFileBytes)}`
+      )
+    }
+
+    const metadata = await loadVideoMetadata(file, options?.signal)
+    if (metadata.durationSec > limits.maxDurationSec) {
+      throw new Error(`video_too_long:${Math.floor(limits.maxDurationSec / 60)}`)
+    }
+
+    const storageKey = StorageKeyGenerator.videoUniqKey(file)
+    const existing = await storage.getBlob(storageKey).catch(() => null)
+    if (!existing) {
+      const dataUrl = await readAsDataUrl(file)
+      await storage.setBlob(storageKey, dataUrl)
+    }
+
+    const posterKey = StorageKeyGenerator.picture('video-poster')
+    const { posterDataUrl } = await extractVideoPoster(file, {
+      jpegQuality: limits.jpegQuality,
+      signal: options?.signal,
+    })
+    await storage.setBlob(posterKey, posterDataUrl)
+
+    return {
+      file,
+      content: '',
+      storageKey,
+      byteLength: file.size,
+      mediaKind: 'video',
+      durationSec: metadata.durationSec,
+      width: metadata.width,
+      height: metadata.height,
+      posterStorageKey: posterKey,
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error'
+    log.error(`preprocessVideo failed for ${file.name}:`, error)
+    return {
+      file,
+      content: '',
+      storageKey: '',
+      mediaKind: 'video',
+      error: message,
+    }
+  }
+}
+
+/**
+ * For vision models: sample default frames from video attachments and attach as images.
+ * Idempotent if sampledFrameKeys already present.
+ */
+export async function enrichUserMessageWithVideoFrames(
+  message: Message,
+  options: {
+    modelSupportVision: boolean
+    formFactor?: 'desktop' | 'mobile' | 'web'
+    signal?: AbortSignal
+  }
+): Promise<Message> {
+  if (!options.modelSupportVision || !message.files?.length) {
+    return message
+  }
+
+  const formFactor = options.formFactor ?? platform.formFactor
+  const limits = getVideoLimits(formFactor === 'desktop' ? 'desktop' : formFactor === 'mobile' ? 'mobile' : 'web')
+  const videos = message.files.filter((f) => f.mediaKind === 'video' && f.storageKey)
+  if (videos.length === 0) {
+    return message
+  }
+
+  let msg = message
+  const contentParts = [...(msg.contentParts || [])]
+  const updatedFiles = [...(msg.files || [])]
+
+  for (let i = 0; i < updatedFiles.length; i++) {
+    const file = updatedFiles[i]
+    if (file.mediaKind !== 'video' || !file.storageKey) {
+      continue
+    }
+    if (file.sampledFrameKeys?.length) {
+      continue
+    }
+
+    const dataUrl = await storage.getBlob(file.storageKey).catch(() => null)
+    if (!dataUrl) {
+      log.error(`Video blob missing for ${file.storageKey}`)
+      continue
+    }
+
+    try {
+      const blob = dataUrlToBlob(dataUrl)
+      const extracted = await extractVideoFrames(blob, {
+        maxFrames: limits.defaultAutoFrames,
+        mode: 'evenly_spaced',
+        jpegQuality: limits.jpegQuality,
+        signal: options.signal,
+      })
+
+      const frameKeys: string[] = []
+      const timestamps: number[] = []
+      for (const frame of extracted.frames) {
+        const key = StorageKeyGenerator.picture('video-frame')
+        await storage.setBlob(key, frame.dataUrl)
+        frameKeys.push(key)
+        timestamps.push(frame.timestampSec)
+        contentParts.push({ type: 'image', storageKey: key })
+      }
+
+      // Timestamp index as text so the model maps images to times
+      if (frameKeys.length > 0) {
+        const indexLines = timestamps
+          .map((t, idx) => `  - frame ${idx + 1}: t=${t.toFixed(2)}s (image storage)`)
+          .join('\n')
+        const textPart = contentParts.find((p) => p.type === 'text')
+        const indexBlock = `\n\n[Video frames from "${file.name}"]\n${indexLines}\n`
+        if (textPart && textPart.type === 'text') {
+          textPart.text = `${textPart.text}${indexBlock}`
+        } else {
+          contentParts.unshift({ type: 'text', text: indexBlock.trim() })
+        }
+      }
+
+      updatedFiles[i] = {
+        ...file,
+        durationSec: file.durationSec ?? extracted.metadata.durationSec,
+        width: file.width || extracted.metadata.width,
+        height: file.height || extracted.metadata.height,
+        sampledFrameKeys: frameKeys,
+        sampledFrameTimestamps: timestamps,
+      }
+    } catch (err) {
+      log.error(`Failed to sample frames for ${file.name}:`, err)
+    }
+  }
+
+  msg = {
+    ...msg,
+    contentParts,
+    files: updatedFiles,
+  }
+  return msg
+}
+
+/**
  * 构建用户消息，只包含元数据不包含内容
  * @param text 消息文本
  * @param pictureKeys 图片存储键列表
@@ -415,6 +598,14 @@ export function constructUserMessage(
     tokenCountMap?: Record<string, number>
     lineCount?: number
     byteLength?: number
+    mediaKind?: 'document' | 'video'
+    durationSec?: number
+    width?: number
+    height?: number
+    posterStorageKey?: string
+    sampledFrameKeys?: string[]
+    sampledFrameTimestamps?: number[]
+    error?: string
   }> = [],
   preprocessedLinks: Array<{
     url: string
@@ -436,15 +627,24 @@ export function constructUserMessage(
   }
 
   if (preprocessedFiles.length > 0) {
-    msg.files = preprocessedFiles.map((f) => ({
-      id: f.storageKey || f.file.name,
-      name: f.file.name,
-      fileType: f.file.type,
-      storageKey: f.storageKey,
-      tokenCountMap: f.tokenCountMap,
-      lineCount: f.lineCount,
-      byteLength: f.byteLength,
-    }))
+    msg.files = preprocessedFiles
+      .filter((f) => !f.error && f.storageKey)
+      .map((f) => ({
+        id: f.storageKey || f.file.name,
+        name: f.file.name,
+        fileType: f.file.type,
+        storageKey: f.storageKey,
+        tokenCountMap: f.tokenCountMap,
+        lineCount: f.lineCount,
+        byteLength: f.byteLength,
+        mediaKind: f.mediaKind,
+        durationSec: f.durationSec,
+        width: f.width,
+        height: f.height,
+        posterStorageKey: f.posterStorageKey,
+        sampledFrameKeys: f.sampledFrameKeys,
+        sampledFrameTimestamps: f.sampledFrameTimestamps,
+      }))
   }
 
   if (preprocessedLinks.length > 0) {
@@ -543,8 +743,8 @@ export function initEmptyPictureSession(): Omit<Session, 'id'> {
   }
 }
 
-export function getSessionMeta(session: SessionMeta) {
-  return pick(session, [
+export function getSessionMeta(session: SessionMeta & { messages?: { timestamp?: number }[] }): SessionMeta {
+  const base = pick(session, [
     'id',
     'name',
     'starred',
@@ -555,7 +755,27 @@ export function getSessionMeta(session: SessionMeta) {
     'assistantAvatarKey',
     'picUrl',
     'type',
-  ])
+  ]) as SessionMeta
+
+  if (Array.isArray(session.messages) && session.messages.length > 0) {
+    for (let i = session.messages.length - 1; i >= 0; i--) {
+      const timestamp = session.messages[i]?.timestamp
+      if (typeof timestamp === 'number') {
+        return { ...base, updatedAt: timestamp }
+      }
+    }
+  }
+
+  if (typeof session.updatedAt === 'number') {
+    return { ...base, updatedAt: session.updatedAt }
+  }
+
+  // New empty session (has messages array, often empty) — stamp now for Recents ordering/time
+  if (Array.isArray(session.messages)) {
+    return { ...base, updatedAt: Date.now() }
+  }
+
+  return base
 }
 
 function _searchSessions(regexp: RegExp, s: Session) {

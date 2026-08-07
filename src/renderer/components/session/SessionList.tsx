@@ -5,12 +5,12 @@ import {
   KeyboardSensor,
   MouseSensor,
   TouchSensor,
+  useDroppable,
   useSensor,
   useSensors,
 } from '@dnd-kit/core'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
@@ -18,26 +18,37 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import NiceModal from '@ebay/nice-modal-react'
-import { ActionIcon, Button, Select, TextInput, Tooltip, UnstyledButton } from '@mantine/core'
+import { ActionIcon, Button, Select, Text, TextInput, Tooltip, UnstyledButton } from '@mantine/core'
 import type { Folder, SessionMeta } from '@shared/types'
-import { IconChevronDown, IconTrash } from '@tabler/icons-react'
+import { IconChevronDown, IconFolderPlus, IconTrash } from '@tabler/icons-react'
 import { useRouterState } from '@tanstack/react-router'
+import clsx from 'clsx'
 import type { MutableRefObject, ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Virtuoso } from 'react-virtuoso'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useFolders } from '@/hooks/useFolders'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { trackingEvent } from '@/packages/event'
 import { getSession, updateSession, updateSessionList, useSessionList } from '@/stores/chatStore'
 import { createEmpty } from '@/stores/sessionActions'
 import { AdaptiveModal } from '../common/AdaptiveModal'
 import FolderItem from './FolderItem'
 import SessionItem from './SessionItem'
-
-const ALL_FOLDER_KEY = '__all__'
+import {
+  ALL_FOLDER_KEY,
+  type DayBucket,
+  folderDropId,
+  groupSessionsByDay,
+  parseDropTargetId,
+  RECENTS_COACHING_THRESHOLD,
+  RECENTS_DROP_ID,
+  reorderSessionsInSubset,
+} from './session-list-helpers'
 
 type Props = {
+  onCreateProject?(): void
   sessionListViewportRef: MutableRefObject<HTMLDivElement | null>
   showArchived?: boolean
 }
@@ -58,32 +69,54 @@ type RowItem =
     }
   | {
       folderKey: string
+      nested?: boolean
       session: SessionMeta
       type: 'session'
     }
+  | {
+      type: 'empty'
+      key: string
+      message: string
+    }
+  | {
+      type: 'day'
+      key: string
+      label: string
+    }
+  | {
+      type: 'coaching'
+      key: string
+      message: string
+    }
 
-function reorderSessionsInSubset(
-  sessions: SessionMeta[],
-  subsetIds: string[],
-  activeId: string,
-  overId: string
-): SessionMeta[] {
-  const subset = sessions.filter((session) => subsetIds.includes(session.id))
-  const oldIndex = subset.findIndex((session) => session.id === activeId)
-  const newIndex = subset.findIndex((session) => session.id === overId)
+type SectionRow =
+  | {
+      type: 'section'
+      key: string
+      label: string
+      open: boolean
+      onToggle: () => void
+      droppableId?: string
+      trailing?: ReactNode
+    }
+  | RowItem
 
-  if (oldIndex < 0 || newIndex < 0 || oldIndex === newIndex) {
-    return sessions
+function dayBucketLabel(bucket: DayBucket, t: (key: string) => string): string {
+  switch (bucket) {
+    case 'today':
+      return t('Today')
+    case 'yesterday':
+      return t('Yesterday')
+    case 'older':
+      return t('Older')
+    default:
+      return t('Older')
   }
-
-  const reorderedSubset = arrayMove(subset, oldIndex, newIndex)
-  let subsetIndex = 0
-
-  return sessions.map((session) => (subsetIds.includes(session.id) ? reorderedSubset[subsetIndex++] : session))
 }
 
-export default function SessionList({ sessionListViewportRef, showArchived = false }: Props) {
+export default function SessionList({ sessionListViewportRef, showArchived = false, onCreateProject }: Props) {
   const { t } = useTranslation()
+  const isSmallScreen = useIsSmallScreen()
   const { sessionMetaList: sortedSessions, refetch } = useSessionList()
   const { folders, removeFolder, updateFolder } = useFolders()
   const { copilots: myCopilots } = useMyCopilots()
@@ -91,7 +124,7 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
   const routerState = useRouterState()
   const [expandedFolders, setExpandedFolders] = useState<Record<string, boolean>>({})
   const [projectsOpen, setProjectsOpen] = useState(true)
-  const [historyOpen, setHistoryOpen] = useState(true)
+  const [recentsOpen, setRecentsOpen] = useState(true)
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null)
   const [folderName, setFolderName] = useState('')
   const [folderDefaultCopilotId, setFolderDefaultCopilotId] = useState<string | null>(null)
@@ -160,66 +193,93 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
     }
   }, [folders, visibleSessions])
 
-  // DnD subsets still keyed by folder (or ALL for history)
+  // DnD subsets keyed by folder (or ALL for recents)
   const groups = useMemo<FolderGroup[]>(() => {
-    const next: FolderGroup[] = []
-    if (historySessions.length > 0 || projectGroups.length === 0) {
-      next.push({
+    const next: FolderGroup[] = [
+      {
         key: ALL_FOLDER_KEY,
-        name: t('History'),
+        name: t('Recents'),
         count: historySessions.length,
         sessions: historySessions,
         implicit: true,
-      })
-    }
-    next.push(...projectGroups)
+      },
+      ...projectGroups,
+    ]
     return next
   }, [historySessions, projectGroups, t])
 
-  type SectionRow =
-    | { type: 'section'; key: string; label: string; open: boolean; onToggle: () => void; trailing?: ReactNode }
-    | RowItem
+  const showRecentsCoaching =
+    !showArchived && projectGroups.length > 0 && historySessions.length >= RECENTS_COACHING_THRESHOLD
 
   const rowItems = useMemo<SectionRow[]>(() => {
     const rows: SectionRow[] = []
 
-    // Projects — Grok-style collapsible section for folders
-    if (projectGroups.length > 0) {
-      rows.push({
-        type: 'section',
-        key: 'projects',
-        label: t('Projects'),
-        open: projectsOpen,
-        onToggle: () => setProjectsOpen((v) => !v),
-      })
+    // Projects — always visible
+    rows.push({
+      type: 'section',
+      key: 'projects',
+      label: t('Projects'),
+      open: projectsOpen,
+      onToggle: () => setProjectsOpen((v) => !v),
+      trailing: onCreateProject ? (
+        <Tooltip label={t('New Project')} openDelay={400} withArrow>
+          <ActionIcon
+            variant="subtle"
+            color="chatbox-tertiary"
+            size={28}
+            radius="sm"
+            className={clsx(
+              'active:scale-[0.96] transition-transform rail-section-add',
+              isSmallScreen ? '' : 'opacity-0 group-hover/rail-section:opacity-100 focus-visible:opacity-100'
+            )}
+            onClick={(e) => {
+              e.stopPropagation()
+              onCreateProject()
+            }}
+            aria-label={t('New Project')}
+          >
+            <IconFolderPlus size={15} stroke={1.5} />
+          </ActionIcon>
+        </Tooltip>
+      ) : undefined,
+    })
 
-      if (projectsOpen) {
+    if (projectsOpen) {
+      if (projectGroups.length === 0) {
+        rows.push({
+          type: 'empty',
+          key: 'projects-empty',
+          message: t('No projects yet'),
+        })
+      } else {
         for (const group of projectGroups) {
           const expanded = expandedFolders[group.key] ?? true
           rows.push({ type: 'folder', folder: group })
           if (expanded) {
             for (const session of group.sessions) {
-              rows.push({ type: 'session', session, folderKey: group.key })
+              rows.push({ type: 'session', session, folderKey: group.key, nested: true })
             }
           }
         }
       }
     }
 
-    // History — unfiled sessions (Grok History DNA)
+    // Recents — unfiled sessions
     rows.push({
       type: 'section',
-      key: 'history',
-      label: showArchived ? t('Archived') : t('History'),
-      open: historyOpen,
-      onToggle: () => setHistoryOpen((v) => !v),
+      key: 'recents',
+      label: showArchived ? t('Archived') : t('Recents'),
+      open: recentsOpen,
+      onToggle: () => setRecentsOpen((v) => !v),
+      droppableId: showArchived ? undefined : RECENTS_DROP_ID,
       trailing: (
         <Tooltip label={t('Clear Conversation List')} openDelay={600} withArrow>
           <ActionIcon
             variant="subtle"
             color="chatbox-tertiary"
-            size={22}
+            size={28}
             radius="sm"
+            className="active:scale-[0.96] transition-transform"
             onClick={(e) => {
               e.stopPropagation()
               void NiceModal.show('clear-session-list')
@@ -232,14 +292,58 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
       ),
     })
 
-    if (historyOpen) {
-      for (const session of historySessions) {
-        rows.push({ type: 'session', session, folderKey: ALL_FOLDER_KEY })
+    if (recentsOpen) {
+      if (showRecentsCoaching) {
+        rows.push({
+          type: 'coaching',
+          key: 'recents-coaching',
+          message: t('{{count}} chats not in a project — drag into a project to organize', {
+            count: historySessions.length,
+          }),
+        })
+      }
+
+      if (historySessions.length === 0) {
+        rows.push({
+          type: 'empty',
+          key: 'recents-empty',
+          message: showArchived ? t('No archived chats') : t('No recent chats'),
+        })
+      } else if (showArchived) {
+        for (const session of historySessions) {
+          rows.push({ type: 'session', session, folderKey: ALL_FOLDER_KEY })
+        }
+      } else {
+        const dayGroups = groupSessionsByDay(historySessions)
+        const useDayHeaders = dayGroups.length > 1 || dayGroups[0]?.bucket !== 'unknown'
+        for (const group of dayGroups) {
+          if (useDayHeaders && group.bucket !== 'unknown') {
+            rows.push({
+              type: 'day',
+              key: `day-${group.bucket}`,
+              label: dayBucketLabel(group.bucket, t),
+            })
+          }
+          for (const session of group.sessions) {
+            rows.push({ type: 'session', session, folderKey: ALL_FOLDER_KEY })
+          }
+        }
       }
     }
 
     return rows
-  }, [expandedFolders, historyOpen, historySessions, projectGroups, projectsOpen, showArchived, t])
+  }, [
+    expandedFolders,
+    historySessions,
+    isSmallScreen,
+    onCreateProject,
+    projectGroups,
+    projectsOpen,
+    recentsOpen,
+    showArchived,
+    showRecentsCoaching,
+    t,
+  ])
 
   const visibleSessionIds = useMemo(
     () =>
@@ -281,8 +385,51 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
       return
     }
 
+    // Cross-folder assign: drop on project row or Recents zone
+    const dropTarget = parseDropTargetId(overId)
+    if (dropTarget) {
+      const activeMeta = sortedSessions.find((s) => s.id === activeId)
+      if (!activeMeta) {
+        return
+      }
+
+      if (dropTarget.type === 'folder') {
+        if (activeMeta.folderId === dropTarget.folderId) {
+          return
+        }
+        setExpandedFolders((prev) => ({ ...prev, [dropTarget.folderId]: true }))
+        setProjectsOpen(true)
+        await updateSession(activeId, { folderId: dropTarget.folderId })
+        refetch()
+        return
+      }
+
+      // Recents
+      if (!activeMeta.folderId) {
+        return
+      }
+      setRecentsOpen(true)
+      await updateSession(activeId, { folderId: undefined })
+      refetch()
+      return
+    }
+
+    // Drop on another session: if different folder group, move into that session's folder
     const activeFolderKey = folderKeyBySessionId.get(activeId)
     const overFolderKey = folderKeyBySessionId.get(overId)
+
+    if (activeFolderKey && overFolderKey && activeFolderKey !== overFolderKey) {
+      const targetFolderId = overFolderKey === ALL_FOLDER_KEY ? undefined : overFolderKey
+      if (overFolderKey !== ALL_FOLDER_KEY) {
+        setExpandedFolders((prev) => ({ ...prev, [overFolderKey]: true }))
+        setProjectsOpen(true)
+      } else {
+        setRecentsOpen(true)
+      }
+      await updateSession(activeId, { folderId: targetFolderId })
+      refetch()
+      return
+    }
 
     if (!activeFolderKey || activeFolderKey !== overFolderKey) {
       return
@@ -334,7 +481,6 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
   }
 
   const handleCreateChatInFolder = async (folder: Folder) => {
-    // Expand so the new session is visible under the project
     setExpandedFolders((prev) => ({ ...prev, [folder.id]: true }))
     setProjectsOpen(true)
     await createEmpty('chat', {
@@ -365,71 +511,88 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
             itemContent={(_index, row) => {
               if (row.type === 'section') {
                 return (
-                  <UnstyledButton
-                    type="button"
-                    className="rail-section"
-                    onClick={row.onToggle}
-                    aria-expanded={row.open}
-                  >
-                    <span className="rail-section-label">{row.label}</span>
-                    <span className="rail-section-trail">
-                      {row.trailing}
-                      <IconChevronDown
-                        size={14}
-                        stroke={1.75}
-                        className={row.open ? 'rail-section-chevron is-open' : 'rail-section-chevron'}
-                        aria-hidden
-                      />
-                    </span>
-                  </UnstyledButton>
+                  <SectionHeader
+                    label={row.label}
+                    open={row.open}
+                    onToggle={row.onToggle}
+                    trailing={row.trailing}
+                    droppableId={row.droppableId}
+                  />
+                )
+              }
+
+              if (row.type === 'empty') {
+                return (
+                  <Text size="xs" c="chatbox-tertiary" px="md" py={6} className="rail-empty-hint">
+                    {row.message}
+                  </Text>
+                )
+              }
+
+              if (row.type === 'day') {
+                return (
+                  <div className="rail-day-header">
+                    <span>{row.label}</span>
+                  </div>
+                )
+              }
+
+              if (row.type === 'coaching') {
+                return (
+                  <Text size="xs" c="chatbox-tertiary" px="md" py={4} className="rail-coaching-hint">
+                    {row.message}
+                  </Text>
                 )
               }
 
               if (row.type === 'folder') {
                 const folder = folders.find((item) => item.id === row.folder.key)
                 return (
-                  <FolderItem
-                    count={row.folder.count}
-                    emoji={row.folder.emoji}
-                    expanded={expandedFolders[row.folder.key] ?? true}
-                    implicit={row.folder.implicit}
-                    name={row.folder.name}
-                    onCreateChat={
-                      row.folder.implicit || !folder
-                        ? undefined
-                        : () => {
-                            void handleCreateChatInFolder(folder)
-                          }
-                    }
-                    onDelete={
-                      row.folder.implicit || !folder
-                        ? undefined
-                        : () => {
-                            void handleDeleteFolder(folder)
-                          }
-                    }
-                    onRename={
-                      row.folder.implicit || !folder
-                        ? undefined
-                        : () => {
-                            setEditingFolder(folder)
-                          }
-                    }
-                    onSetDefaultCopilot={
-                      row.folder.implicit || !folder
-                        ? undefined
-                        : () => {
-                            setEditingFolder(folder)
-                          }
-                    }
-                    onToggle={() => toggleFolder(row.folder.key)}
-                  />
+                  <FolderDroppable id={folderDropId(row.folder.key)}>
+                    <FolderItem
+                      count={row.folder.count}
+                      emoji={row.folder.emoji}
+                      expanded={expandedFolders[row.folder.key] ?? true}
+                      implicit={row.folder.implicit}
+                      name={row.folder.name}
+                      onCreateChat={
+                        row.folder.implicit || !folder
+                          ? undefined
+                          : () => {
+                              void handleCreateChatInFolder(folder)
+                            }
+                      }
+                      onDelete={
+                        row.folder.implicit || !folder
+                          ? undefined
+                          : () => {
+                              void handleDeleteFolder(folder)
+                            }
+                      }
+                      onRename={
+                        row.folder.implicit || !folder
+                          ? undefined
+                          : () => {
+                              setEditingFolder(folder)
+                            }
+                      }
+                      onSetDefaultCopilot={
+                        row.folder.implicit || !folder
+                          ? undefined
+                          : () => {
+                              setEditingFolder(folder)
+                            }
+                      }
+                      onToggle={() => toggleFolder(row.folder.key)}
+                    />
+                  </FolderDroppable>
                 )
               }
 
               return (
                 <SortableItem id={row.session.id}>
                   <SessionItem
+                    nested={row.nested}
                     selected={routerState.location.pathname === `/session/${row.session.id}`}
                     session={row.session}
                   />
@@ -461,6 +624,51 @@ export default function SessionList({ sessionListViewportRef, showArchived = fal
         </AdaptiveModal.Actions>
       </AdaptiveModal>
     </>
+  )
+}
+
+function SectionHeader({
+  label,
+  open,
+  onToggle,
+  trailing,
+  droppableId,
+}: {
+  label: string
+  open: boolean
+  onToggle: () => void
+  trailing?: ReactNode
+  droppableId?: string
+}) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: droppableId || `section-static:${label}`,
+    disabled: !droppableId,
+  })
+
+  return (
+    <div ref={setNodeRef} className={clsx(isOver && droppableId && 'rail-drop-target')}>
+      <UnstyledButton type="button" className="rail-section group/rail-section" onClick={onToggle} aria-expanded={open}>
+        <span className="rail-section-label">{label}</span>
+        <span className="rail-section-trail">
+          {trailing}
+          <IconChevronDown
+            size={14}
+            stroke={1.75}
+            className={open ? 'rail-section-chevron is-open' : 'rail-section-chevron'}
+            aria-hidden
+          />
+        </span>
+      </UnstyledButton>
+    </div>
+  )
+}
+
+function FolderDroppable(props: { id: string; children?: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: props.id })
+  return (
+    <div ref={setNodeRef} className={clsx(isOver && 'rail-drop-target')}>
+      {props.children}
+    </div>
   )
 }
 

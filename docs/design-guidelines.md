@@ -2,7 +2,7 @@
 
 **Status:** Active design contract for the UI redesign  
 **Visual source of truth:** `plans/2026-08-05-ui-ux-redesign/mock-dark-shell.html`  
-**Last updated:** 2026-08-05
+**Last updated:** 2026-08-06
 
 ## Product intent
 
@@ -32,12 +32,13 @@ Desktop AI copilot chrome that feels like a focused studio tool — Grok + ChatG
 | Code fences | Theme-following shell (`.code-fence`); quiet mono lang chip; actions fade in on hover/focus |
 | Session rename | Inline header rename (pencil / double-click); full config via **Session options** progressive disclosure |
 | Session overflow menu | Title Case labels; grouped; danger separated; full-width lives in overflow (not empty toolbar icon) |
-| Projects | Section-like folder rows; hover-only `+` on desktop; New Chat also in menu |
+| Projects | Always-visible section (even when empty); section-like folder rows; hover-only project `+` + New Chat in menu; New Project on section trail **and** rail-tools |
+| Recents | Unfiled chats (`folderId` empty) — **not** a synthetic project; day groups + optional coaching when many unfiled; drag chat onto project / Recents |
 | Composer tools | Single **`+` overflow** (click-primary) for attach / web / MCP / KB / agent / thread / settings — not always-on icon rail |
 | Auto tools | Web search **default ON** when configured; MCP tools from **enabled servers** always attached for tool-capable models; agent mode **opt-in**; KB **explicit select** |
 | Telemetry | Session statusline is SoT for tok/$/msg; **no composer token chip**; click statusline `tok` for compress / auto-compaction |
 | Rail brand | Left-aligned `ChaeboxiWordmark`; no collapse control in brand row (hide via menu / resizer double-click) |
-| Projects | User-facing “Project” (storage may stay `Folder`); shared outline icon; **no emoji UI** |
+| Projects | User-facing “Project” (storage may stay `Folder`); shared outline icon; **no emoji UI**; never invent system “Uncategorized” folder |
 | Keyboard | Enter send; Shift+Enter and Alt+Enter newline (default send is Enter) |
 | Film grain | Mock only — **omit** in production |
 

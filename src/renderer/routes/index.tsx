@@ -1,8 +1,8 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { Button } from '@mantine/core'
+import { toSessionAgentFieldsFromSelection } from '@shared/new-chat-agents'
 import type { Session } from '@shared/types'
 import { ModelProviderEnum } from '@shared/types'
-import { toSessionAgentFieldsFromSelection } from '@shared/new-chat-agents'
 import { createFileRoute, useRouterState } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -14,7 +14,6 @@ import Page from '@/components/layout/Page'
 import NewChatAgentBar from '@/components/new-chat/NewChatAgentBar'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useProviders } from '@/hooks/useProviders'
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { createSession as createSessionStore } from '@/stores/chatStore'
 import { submitNewUserMessage, switchCurrentSession } from '@/stores/sessionActions'
 import { initEmptyChatSession } from '@/stores/sessionHelpers'
@@ -31,7 +30,6 @@ export const Route = createFileRoute('/')({
 
 function Index() {
   const { t } = useTranslation()
-  const isSmallScreen = useIsSmallScreen()
 
   const newSessionState = useUIStore((s) => s.newSessionState)
   const setNewSessionState = useUIStore((s) => s.setNewSessionState)
@@ -44,17 +42,8 @@ function Index() {
     id: 'new',
     ...initEmptyChatSession(),
   })
-  const [composerDraft, setComposerDraft] = useState('')
-  const [composerKey, setComposerKey] = useState(0)
-
-  const fillComposer = useCallback((text: string) => {
-    setComposerDraft(text)
-    setComposerKey((k) => k + 1)
-    localStorage.setItem('new-chat', text)
-    requestAnimationFrame(() => {
-      document.getElementById('message-input')?.focus()
-    })
-  }, [])
+  const [composerDraft] = useState('')
+  const [composerKey] = useState(0)
 
   const { providers } = useProviders()
 
@@ -125,7 +114,14 @@ function Index() {
     })
     // primaryAgent identity by id+prompt; avoid full object churn
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAgentIds.join(','), primaryAgent?.id, primaryAgent?.prompt, primaryAgent?.name, primaryAgent?.picUrl, primaryAgent?.emojiAvatar])
+  }, [
+    selectedAgentIds.join(','),
+    primaryAgent?.id,
+    primaryAgent?.prompt,
+    primaryAgent?.name,
+    primaryAgent?.picUrl,
+    primaryAgent?.emojiAvatar,
+  ])
 
   const routerState = useRouterState()
   useEffect(() => {

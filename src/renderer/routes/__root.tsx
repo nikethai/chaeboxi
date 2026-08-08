@@ -105,9 +105,10 @@ function Root() {
 
   const showSidebar = useUIStore((s) => s.showSidebar)
   const sidebarWidth = useSidebarEffectiveWidth()
-  // Desktop always offsets for expanded or icon rail; mobile only when drawer open
   const isSmallScreen = useIsSmallScreen()
-  const offsetMainForSidebar = isSmallScreen ? showSidebar : true
+  const isSettingsRoute = location.pathname === '/settings' || location.pathname.startsWith('/settings/')
+  // Settings owns its own navigation; keep the global chat sidebar out of this page.
+  const offsetMainForSidebar = !isSettingsRoute && (isSmallScreen ? showSidebar : true)
 
   // Legacy desktop used ?settings=/settings/... modal; always use full-page routes now
   useEffect(() => {
@@ -197,7 +198,7 @@ function Root() {
         </ErrorBoundary>
       ) : (
         <Grid container className="h-full" sx={{ minHeight: 0 }}>
-          <Sidebar />
+          {!isSettingsRoute && <Sidebar />}
           <Box
             className="h-full w-full min-h-0"
             sx={{

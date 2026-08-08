@@ -7,6 +7,7 @@ function task(partial: Partial<Task> & Pick<Task, 'id' | 'status'>): Task {
     sessionId: 's1',
     title: partial.title ?? partial.id,
     createdAt: partial.createdAt ?? 0,
+    updatedAt: partial.updatedAt ?? 0,
     ...partial,
   }
 }

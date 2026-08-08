@@ -1052,5 +1052,11 @@
   "Team of {{n}}": "Team of {{n}}",
   "View all agents": "View all agents",
   "Lead": "Lead",
-  "Clear": "Clear"
+  "Clear": "Clear",
+  "What can I help with?": "What can I help with?",
+  "Empty conversation": "Empty conversation",
+  "Review code": "Review code",
+  "Write a PR": "Write a PR",
+  "Debug issue": "Debug issue",
+  "Plan a feature": "Plan a feature"
 }

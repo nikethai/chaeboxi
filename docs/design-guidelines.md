@@ -8,6 +8,8 @@
 
 Desktop AI copilot chrome that feels like a focused studio tool — Grok + ChatGPT conversation DNA, not a generic “AI SaaS” template.
 
+**Blank / empty chat:** Gemini-quiet first paint — one short centered greeting + composer **vertically centered**. No chips/tags/manifesto, no agents combobox on blank (use `@` in composer or deep-link). On first send: greeting fades, dock eases to bottom (~420ms), then session thread loads with dock pinned bottom.
+
 ## Locked decisions
 
 | Token / rule | Value |

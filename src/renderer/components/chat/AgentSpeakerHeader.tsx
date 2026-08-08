@@ -1,5 +1,5 @@
 /**
- * Speaker chrome for agent-attributed assistant messages: avatar + name (+ Final badge).
+ * Speaker chrome for agent-attributed assistant messages: avatar + name (+ role badge).
  */
 
 import { Avatar, Flex, Loader, Text } from '@mantine/core'
@@ -11,55 +11,112 @@ export interface AgentSpeakerHeaderProps {
   agentId?: string
   name?: string
   generating?: boolean
-  roomRole?: 'turn' | 'synthesis'
+  roomRole?: 'turn' | 'synthesis' | 'plan' | 'do' | 'review' | 'deliver'
+  roomRound?: number
   className?: string
+  /** Visual grouping: first turn in a discussion run */
+  discussionGroupStart?: boolean
 }
 
-function AgentSpeakerHeader({ agentId, name, generating, roomRole, className }: AgentSpeakerHeaderProps) {
+function roleBadgeLabel(
+  roomRole: AgentSpeakerHeaderProps['roomRole'],
+  t: (k: string) => string
+): string | null {
+  switch (roomRole) {
+    case 'synthesis':
+      return t('Team answer')
+    case 'plan':
+      return t('Plan')
+    case 'do':
+      return t('Working')
+    case 'review':
+      return t('Review')
+    case 'deliver':
+      return t('Deliverable')
+    default:
+      return null
+  }
+}
+
+function AgentSpeakerHeader({
+  agentId,
+  name,
+  generating,
+  roomRole,
+  roomRound,
+  className,
+  discussionGroupStart,
+}: AgentSpeakerHeaderProps) {
   const { t } = useTranslation()
-  // Live resolve so remote catalog agents show real name/emoji (not humanized ids)
   const meta = useMemo(() => resolveAgentMeta(agentId), [agentId])
 
   const displayName = pickDisplayName(meta, name, t('Agent'))
   const emoji = meta?.emojiAvatar
   const picUrl = meta?.picUrl
   const accent = agentId ? agentAccentColor(agentId) : 'var(--chatbox-brand-primary, #228be6)'
-  const isFinal = roomRole === 'synthesis'
+  const badge = roleBadgeLabel(roomRole, t)
+  const isPrimary =
+    roomRole === 'synthesis' || roomRole === 'do' || roomRole === 'deliver'
+  const isCompactTurn = roomRole === 'turn' || roomRole === 'plan' || roomRole === 'review'
 
   return (
-    <Flex className={className} align="center" gap={8} mb={6}>
-      <div
-        className="shrink-0 rounded-full"
-        style={{
-          boxShadow: `0 0 0 2px ${accent}`,
-          lineHeight: 0,
-        }}
-        title={displayName}
-      >
-        <Avatar src={emoji ? undefined : picUrl} size={22} radius="xl" color="chatbox-brand">
-          {emoji || displayName.slice(0, 1).toUpperCase()}
-        </Avatar>
-      </div>
-      <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
-        <Text size="sm" fw={600} c="chatbox-primary" className="truncate max-w-[240px]" title={displayName}>
-          {displayName}
+    <div className={className}>
+      {discussionGroupStart ? (
+        <Text size="xs" c="chatbox-tertiary" mb={6} className="uppercase tracking-wide">
+          {t('Team discussion')}
+          {roomRound ? ` · ${t('Round')} ${roomRound}` : ''}
         </Text>
-        {isFinal ? (
+      ) : null}
+      <Flex align="center" gap={8} mb={isCompactTurn ? 4 : 6}>
+        <div
+          className="shrink-0 rounded-full"
+          style={{
+            boxShadow: `0 0 0 ${isPrimary ? 2 : 1.5}px ${accent}`,
+            lineHeight: 0,
+            opacity: isCompactTurn && !generating ? 0.92 : 1,
+          }}
+          title={displayName}
+        >
+          <Avatar src={emoji ? undefined : picUrl} size={isCompactTurn ? 20 : 22} radius="xl" color="chatbox-brand">
+            {emoji || displayName.slice(0, 1).toUpperCase()}
+          </Avatar>
+        </div>
+        <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
           <Text
-            size="xs"
+            size={isCompactTurn ? 'xs' : 'sm'}
             fw={600}
-            className="px-1.5 py-0.5 rounded"
-            style={{
-              background: 'var(--chatbox-background-brand-secondary, rgba(34,139,230,0.12))',
-              color: 'var(--chatbox-brand-primary, #228be6)',
-            }}
+            c="chatbox-primary"
+            className="truncate max-w-[240px]"
+            title={displayName}
           >
-            {t('Final answer')}
+            {displayName}
           </Text>
-        ) : null}
-        {generating ? <Loader size={12} classNames={{ root: "after:content-[''] after:border-[2px]" }} /> : null}
-      </div>
-    </Flex>
+          {roomRole === 'turn' && roomRound ? (
+            <Text size="xs" c="chatbox-tertiary">
+              R{roomRound}
+            </Text>
+          ) : null}
+          {badge ? (
+            <Text
+              size="xs"
+              fw={600}
+              className="px-1.5 py-0.5 rounded"
+              style={{
+                background: isPrimary
+                  ? 'var(--chatbox-background-brand-secondary, rgba(34,139,230,0.12))'
+                  : 'var(--chatbox-background-secondary, #16161a)',
+                color: isPrimary
+                  ? 'var(--chatbox-brand-primary, #228be6)'
+                  : 'var(--chatbox-tint-secondary, #a8a8ae)',
+              }}
+            >
+              {badge}
+            </Text>
+          ) : null}
+          {generating ? <Loader size={12} classNames={{ root: "after:content-[''] after:border-[2px]" }} /> : null}
+        </div>
+      </Flex>
+    </div>
   )
 }
 
@@ -68,11 +125,9 @@ function pickDisplayName(
   persistedName: string | undefined,
   fallback: string
 ): string {
-  // Catalog hit (built-in / local / remote) always wins — fixes old messages with humanized ids
   if (meta && !meta.isFallback && meta.name) {
     return meta.name
   }
-  // Persisted name from when the turn was created (if we had it)
   if (persistedName?.trim()) {
     return persistedName.trim()
   }

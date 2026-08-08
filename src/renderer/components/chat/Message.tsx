@@ -142,6 +142,8 @@ interface Props {
   small?: boolean
   assistantAvatarKey?: string
   sessionPicUrl?: string
+  /** First turn in a consecutive team discussion / plan / review run */
+  discussionGroupStart?: boolean
 }
 
 const _Message: FC<Props> = (props) => {
@@ -154,6 +156,7 @@ const _Message: FC<Props> = (props) => {
     small,
     assistantAvatarKey: _assistantAvatarKey,
     sessionPicUrl: _sessionPicUrl,
+    discussionGroupStart,
   } = props
 
   const { t } = useTranslation()
@@ -171,7 +174,8 @@ const _Message: FC<Props> = (props) => {
     autoCollapseCodeBlock,
   } = useSettingsStore((state) => state)
 
-  const [previewArtifact, setPreviewArtifact] = useState(autoPreviewArtifacts)
+  // Inline expand is manual; autoPreview opens the side workspace instead (Artifacts-style)
+  const [previewArtifact, setPreviewArtifact] = useState(false)
   const [shouldThrowError, setShouldThrowError] = useState(false)
   const [selectionToolbar, setSelectionToolbar] = useState<{ text: string; x: number; y: number } | null>(null)
   const [feedbackText, setFeedbackText] = useState(msg.feedback?.text ?? '')
@@ -670,6 +674,8 @@ const _Message: FC<Props> = (props) => {
           name={msg.name}
           generating={msg.generating}
           roomRole={msg.roomRole}
+          roomRound={msg.roomRound}
+          discussionGroupStart={discussionGroupStart}
         />
       )}
       {isAssistant && msg.generating && !(msg.agentId || msg.name) && (
@@ -849,6 +855,8 @@ const _Message: FC<Props> = (props) => {
                 messageContent={messageText}
                 preview={previewArtifact}
                 setPreview={setPreviewArtifact}
+                autoOpenWorkspace={autoPreviewArtifacts}
+                generating={!!msg.generating}
               />
             </Flex>
           )}

@@ -472,12 +472,18 @@ export async function generate(
     prefetchedSettings?: SessionSettings
     /** Explicit speaker persona (multi-agent room or @ single agent) */
     speakerAgentId?: string
-    /** Inject Slack-style room protocol; tools forced off when true */
+    /** Inject team-room protocol; tools off except do/deliver phases */
     roomMulti?: boolean
-    /** Multi-agent turn kind: short discussion vs final synthesis */
-    roomRole?: 'turn' | 'synthesis'
+    /** Multi-agent turn kind: discuss / team answer / work phases */
+    roomRole?: 'turn' | 'synthesis' | 'plan' | 'do' | 'review' | 'deliver'
     /** Display names of all room participants for protocol text */
     participantNames?: string[]
+    /** 1-based discuss round (for protocol) */
+    roomRound?: number
+    /** Stance label: Proposer / Critic / Integrator */
+    stanceLabel?: string
+    /** Lead name for work/team-answer protocols */
+    leadName?: string
     /** Skip processing message queue after this turn (intermediate multi-agent turns) */
     skipQueuedMessages?: boolean
   }
@@ -615,16 +621,27 @@ export async function generate(
           const names = options?.participantNames?.length ? options.participantNames : [speakerName]
           const roomRole = options?.roomRole ?? targetMsg.roomRole
           if (agentDetail?.prompt || roomMulti) {
-            const { buildRoomProtocol, buildSynthesisProtocol } = await import('@shared/agent-room')
+            const {
+              buildProtocolForRoomRole,
+              buildRoomContinuePrompt,
+            } = await import('@shared/agent-room')
             let protocol = ''
             if (roomMulti) {
-              protocol =
-                roomRole === 'synthesis'
-                  ? buildSynthesisProtocol(speakerName, names)
-                  : buildRoomProtocol(speakerName, names)
+              const role = roomRole ?? 'turn'
+              protocol = buildProtocolForRoomRole(role, speakerName, names, {
+                roomRound: options?.roomRound ?? targetMsg.roomRound,
+                stanceLabel: options?.stanceLabel,
+                leadName: options?.leadName,
+              })
             }
             const persona = agentDetail?.prompt?.trim() || `You are "${speakerName}", a helpful AI participant.`
-            const systemText = protocol ? `${persona}\n\n${protocol}` : persona
+            // Prefer mermaid fences for diagrams (app renders + zooms them; ASCII text blocks do not)
+            const { MERMAID_DIAGRAM_GUIDANCE } = await import('@shared/mermaid-diagram-guidance')
+            const baseSystem = [persona, protocol].filter(Boolean).join('\n\n')
+            const systemText =
+              baseSystem.includes('## Diagrams') || baseSystem.includes('```mermaid')
+                ? baseSystem
+                : `${baseSystem}\n\n${MERMAID_DIAGRAM_GUIDANCE}`
             // Replace leading session system message with this speaker's persona
             if (promptMsgs[0]?.role === 'system') {
               promptMsgs = [createMessage('system', systemText), ...promptMsgs.slice(1)]
@@ -639,21 +656,15 @@ export async function generate(
               }
               return m
             })
-          }
 
-          // Multi-agent: history often ends on assistant after prior speakers. Providers
-          // (esp. Gemini) frequently return empty completions unless the last message is user.
-          if (roomMulti) {
-            const lastPrompt = promptMsgs[promptMsgs.length - 1]
-            if (lastPrompt?.role === 'assistant') {
-              const { buildRoomContinuePrompt } = await import('@shared/agent-room')
-              promptMsgs = [
-                ...promptMsgs,
-                createMessage(
-                  'user',
-                  buildRoomContinuePrompt(speakerName, roomRole === 'synthesis' ? 'synthesis' : 'turn')
-                ),
-              ]
+            // Multi-agent: history often ends on assistant after prior speakers. Providers
+            // (esp. Gemini) frequently return empty completions unless the last message is user.
+            if (roomMulti) {
+              const lastPrompt = promptMsgs[promptMsgs.length - 1]
+              if (lastPrompt?.role === 'assistant') {
+                const role = roomRole ?? 'turn'
+                promptMsgs = [...promptMsgs, createMessage('user', buildRoomContinuePrompt(speakerName, role))]
+              }
             }
           }
         }
@@ -714,7 +725,10 @@ export async function generate(
         }
 
         // 2-phase execution: if planMode and not yet approved, generate plan first
-        // Room multi-agent: tools off (discussion-only)
+        // Team room: tools only on work do/deliver; discuss/plan/review stay tools-off
+        const { roomRoleAllowsTools } = await import('@shared/agent-room')
+        const roomRoleForTools = options?.roomRole ?? targetMsg.roomRole
+        const roomToolsAllowed = Boolean(roomMulti && roomRoleAllowsTools(roomRoleForTools))
         const isPlanMode = Boolean(!roomMulti && isAgentEnabled && session.agentMode && effectiveSettings.planMode)
         const isPendingPlan = existingPlanPart?.status === 'pending'
         managesPlanPhase = isPlanMode
@@ -723,7 +737,9 @@ export async function generate(
         let toolsToUse: ToolSet | undefined
         let planningToolsInstructions = ''
         const executionAgentImageFlowInstructions =
-          roomMulti || !(!isPlanMode || isExecutionPhase) ? undefined : agentImageFlowInstructions
+          (roomMulti && !roomToolsAllowed) || !(!isPlanMode || isExecutionPhase)
+            ? undefined
+            : agentImageFlowInstructions
 
         if (isPlanMode && !isExecutionPhase) {
           // Planning phase: use read-only tools
@@ -733,9 +749,8 @@ export async function generate(
           toolsToUse = readonlyTools.tools
           planningToolsInstructions = readonlyTools.instructions
         }
-        // Room multi: hard-disable tools. Passing `undefined` still lets streamText
-        // attach MCP + web_search (useCustomTools=false). Empty object = no tools.
-        if (roomMulti) {
+        // Room multi without tools: empty object = no tools (undefined still attaches MCP/web).
+        if (roomMulti && !roomToolsAllowed) {
           toolsToUse = {}
         }
 
@@ -768,18 +783,23 @@ export async function generate(
         if (skillContext) {
           promptMsgs.unshift(createMessage('system', skillContext))
         }
-        // Show skill chips only on normal replies or room synthesis (not every discussion turn)
+        // Show skill chips on normal replies, team answer, or work deliverable
         const showSkillChips =
           skillActivations.length > 0 &&
-          (!roomMulti || options?.roomRole === 'synthesis' || !options?.roomRole)
+          (!roomMulti ||
+            options?.roomRole === 'synthesis' ||
+            options?.roomRole === 'do' ||
+            options?.roomRole === 'deliver' ||
+            !options?.roomRole)
         if (showSkillChips) {
           targetMsg = { ...targetMsg, skillActivations }
           await modifyMessage(sessionId, targetMsg, false, true)
         }
 
-        // Agent coding tools (workspace write + terminal) only on execute turns, not plan-only
+        // Agent coding tools: solo agent execute, or team Work do/deliver with agentMode
         const isAgentExecuteTurn =
-          !roomMulti && isAgentEnabled && Boolean(session.agentMode) && (!isPlanMode || isExecutionPhase)
+          (!roomMulti && isAgentEnabled && Boolean(session.agentMode) && (!isPlanMode || isExecutionPhase)) ||
+          (roomToolsAllowed && isAgentEnabled && Boolean(session.agentMode))
 
         const { result } = await streamText(model, {
           sessionId: session.id,
@@ -794,16 +814,17 @@ export async function generate(
             void modifyMessage(sessionId, targetMsg, false, true)
           },
           providerOptions: effectiveSettings.providerOptions,
-          // Discussion/synthesis: pure chat only — no KB, web, or tool loops
-          knowledgeBase: roomMulti ? undefined : knowledgeBase,
-          webBrowsing: roomMulti ? false : webBrowsing,
-          nativeWebSearch: roomMulti ? undefined : useGeminiGrounding ? 'gemini-grounding' : undefined,
+          // Discuss/plan/review: pure chat. Work do/deliver: allow tools/web like solo agent.
+          knowledgeBase: roomMulti && !roomToolsAllowed ? undefined : knowledgeBase,
+          webBrowsing: roomMulti && !roomToolsAllowed ? false : webBrowsing,
+          nativeWebSearch:
+            roomMulti && !roomToolsAllowed ? undefined : useGeminiGrounding ? 'gemini-grounding' : undefined,
           agentImageFlowInstructions: executionAgentImageFlowInstructions,
           agentCoding: {
             enabled: isAgentExecuteTurn,
             workspaceRoot: session.workspaceRoot,
           },
-          maxSteps: roomMulti ? 1 : maxSteps,
+          maxSteps: roomMulti && !roomToolsAllowed ? 1 : maxSteps,
           tools: toolsToUse,
           toolAccess: copilotOverrides?.toolAccess,
         })

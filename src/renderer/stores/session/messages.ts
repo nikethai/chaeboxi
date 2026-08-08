@@ -143,10 +143,13 @@ export async function submitNewUserMessage(
 
   const globalSettings = settingsStore.getState().getSettings()
 
-  // Resolve agent room membership early (Slack-style multi-agent)
+  // Resolve agent room membership early (team multi-agent)
   const { resolveSpeakers } = await import('@shared/agent-room')
   const { applyRoomMembership, runAgentRoomDiscussion, shouldRunMultiAgentRoom } = await import('./multi-agent-room')
+  const { clearTeamRoomState } = await import('./team-room-state')
   const { getBuiltInCopilotById } = await import('@/hooks/useCopilots')
+
+  clearTeamRoomState(sessionId)
 
   const roomAfterMembership = await applyRoomMembership(sessionId, newUserMsg.mentionedAgentIds)
   const speakers = resolveSpeakers(roomAfterMembership, newUserMsg.mentionedAgentIds)

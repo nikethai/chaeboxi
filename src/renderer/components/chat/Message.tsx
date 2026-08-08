@@ -65,8 +65,9 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Gallery, Item as GalleryItem } from 'react-photoswipe-gallery'
-import Markdown from '@/components/Markdown'
+import AgentSpeakerHeader from '@/components/chat/AgentSpeakerHeader'
 import SkillActivationsBar from '@/components/chat/SkillActivationsBar'
+import Markdown from '@/components/Markdown'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import { navigateToSettings } from '@/modals/Settings'
@@ -84,10 +85,13 @@ import { useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 import '../../static/Block.css'
 import {
+  approveAndExecutePlan,
   generateMore,
   modifyMessage,
   regenerateInNewFork,
+  rejectPlan,
   removeMessage,
+  requestPlanChanges,
   submitNewUserMessage,
 } from '@/stores/sessionActions'
 import * as toastActions from '@/stores/toastActions'
@@ -116,6 +120,9 @@ const ToolCallPartUI = isAgentEnabled
 const TodoAppCard = isAgentEnabled
   ? lazy(() => import('../message-parts/TodoAppCard').then((m) => ({ default: m.TodoAppCard })))
   : null
+const PlanApproval = isAgentEnabled
+  ? lazy(() => import('../PlanApproval/PlanApproval').then((m) => ({ default: m.default })))
+  : null
 
 import FollowUpSuggestions from '../search/FollowUpSuggestions'
 import { SourceCardList } from '../search/SourceCardList'
@@ -135,6 +142,8 @@ interface Props {
   small?: boolean
   assistantAvatarKey?: string
   sessionPicUrl?: string
+  /** First turn in a consecutive team discussion / plan / review run */
+  discussionGroupStart?: boolean
 }
 
 const _Message: FC<Props> = (props) => {
@@ -147,6 +156,7 @@ const _Message: FC<Props> = (props) => {
     small,
     assistantAvatarKey: _assistantAvatarKey,
     sessionPicUrl: _sessionPicUrl,
+    discussionGroupStart,
   } = props
 
   const { t } = useTranslation()
@@ -164,7 +174,8 @@ const _Message: FC<Props> = (props) => {
     autoCollapseCodeBlock,
   } = useSettingsStore((state) => state)
 
-  const [previewArtifact, setPreviewArtifact] = useState(autoPreviewArtifacts)
+  // Inline expand is manual; autoPreview opens the side workspace instead (Artifacts-style)
+  const [previewArtifact, setPreviewArtifact] = useState(false)
   const [shouldThrowError, setShouldThrowError] = useState(false)
   const [selectionToolbar, setSelectionToolbar] = useState<{ text: string; x: number; y: number } | null>(null)
   const [feedbackText, setFeedbackText] = useState(msg.feedback?.text ?? '')
@@ -240,6 +251,15 @@ const _Message: FC<Props> = (props) => {
   const onGenerateMore = useCallback(() => {
     generateMore(sessionId, msg.id)
   }, [sessionId, msg.id])
+
+  const onApprovePlan = useCallback(() => approveAndExecutePlan(sessionId, msg.id), [sessionId, msg.id])
+
+  const onRequestPlanChanges = useCallback(
+    (feedback: string) => requestPlanChanges(sessionId, msg.id, feedback),
+    [sessionId, msg.id]
+  )
+
+  const onRejectPlan = useCallback(() => rejectPlan(sessionId, msg.id), [sessionId, msg.id])
 
   const onCopyMsg = useCallback(() => {
     copyToClipboard(getMessageText(msg, true, false))
@@ -648,7 +668,17 @@ const _Message: FC<Props> = (props) => {
           <IconSettings size={15} stroke={1.5} />
         </button>
       )}
-      {isAssistant && msg.generating && (
+      {isAssistant && (msg.agentId || msg.name) && (
+        <AgentSpeakerHeader
+          agentId={msg.agentId}
+          name={msg.name}
+          generating={msg.generating}
+          roomRole={msg.roomRole}
+          roomRound={msg.roomRound}
+          discussionGroupStart={discussionGroupStart}
+        />
+      )}
+      {isAssistant && msg.generating && !(msg.agentId || msg.name) && (
         <Flex className="mb-1.5" align="center" gap={6}>
           <Loader size={14} classNames={{ root: "after:content-[''] after:border-[2px]" }} />
           <Text size="xs" c="chatbox-tertiary">
@@ -773,6 +803,17 @@ const _Message: FC<Props> = (props) => {
                         )}
                       </div>
                     )
+                  ) : group.part.type === 'plan' ? (
+                    PlanApproval ? (
+                      <Suspense fallback={null} key={`plan-approval-${msg.id}-${group.index}`}>
+                        <PlanApproval
+                          planPart={group.part}
+                          onApprove={onApprovePlan}
+                          onRequestChanges={onRequestPlanChanges}
+                          onReject={onRejectPlan}
+                        />
+                      </Suspense>
+                    ) : null
                   ) : group.part.type === 'tool-call' ? (
                     isTaskTrackingTool(group.part.toolName) ? (
                       groupIndex === firstTaskToolGroupIndex && TodoAppCard ? (
@@ -814,6 +855,8 @@ const _Message: FC<Props> = (props) => {
                 messageContent={messageText}
                 preview={previewArtifact}
                 setPreview={setPreviewArtifact}
+                autoOpenWorkspace={autoPreviewArtifacts}
+                generating={!!msg.generating}
               />
             </Flex>
           )}

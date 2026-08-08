@@ -1,21 +1,21 @@
 import { google } from '@ai-sdk/google'
+import NiceModal from '@ebay/nice-modal-react'
 import { getModel } from '@shared/models'
 import { ChatboxAIAPIError, OCRError } from '@shared/models/errors'
-import { searchResultsToCitations } from '@shared/utils/search'
-import { shouldPreserveReasoningInContext } from '@shared/utils/reasoning-replay'
+import type { ModelDependencies } from '@shared/types/adapters'
 import { ToolRiskTier } from '@shared/types/mcp'
-import { getToolRiskTier } from '../tools/risk-engine'
 import { sequenceMessages } from '@shared/utils/message'
 import { getModelSettings } from '@shared/utils/model_settings'
+import { shouldPreserveReasoningInContext } from '@shared/utils/reasoning-replay'
+import { searchResultsToCitations } from '@shared/utils/search'
 import type { ModelMessage, ToolSet } from 'ai'
-import NiceModal from '@ebay/nice-modal-react'
 import { t } from 'i18next'
 import { uniqueId } from 'lodash'
 import { createModelDependencies } from '@/adapters'
-import platform from '@/platform'
-import type { ModelDependencies } from '@shared/types/adapters'
 import type { ToolApprovalModalResult } from '@/modals/ToolApproval'
+import platform from '@/platform'
 import { settingsStore } from '@/stores/settingsStore'
+import { formatActiveTaskContext, taskStore } from '@/stores/taskStore'
 import { getToolApproval, toolApprovalStore } from '@/stores/toolApprovalStore'
 import type {
   ModelInterface,
@@ -35,6 +35,7 @@ import type {
   StreamTextResult,
 } from '../../../shared/types'
 import { mcpController } from '../mcp/controller'
+import { getToolRiskTier } from '../tools/risk-engine'
 import { convertToModelMessages, injectModelSystemPrompt } from './message-utils'
 import { imageOCR } from './preprocess'
 import {
@@ -44,12 +45,32 @@ import {
   knowledgeBaseSearchByPromptEngineering,
   searchByPromptEngineering,
 } from './tools'
-import fileToolSet from './toolsets/file'
-import { getToolSet } from './toolsets/knowledge-base'
+import { attachmentFileToolSet, createWorkspaceFileToolSet } from './toolsets/file'
 import generateImageToolSet, { generateImageTool } from './toolsets/generate-image'
+import { getToolSet } from './toolsets/knowledge-base'
 import taskTrackingToolSet from './toolsets/task-tracking'
+import { createTerminalToolSet } from './toolsets/terminal'
 import videoToolSet, { initVideoToolBudget, resetVideoToolBudget } from './toolsets/video'
 import websearchToolSet, { parseLinkTool, webSearchTool } from './toolsets/web-search'
+
+/** Agent coding context: enables workspace write + terminal tools when set. */
+export type AgentCodingOptions = {
+  /** True when agent mode is active and this turn may execute (not plan-only). */
+  enabled: boolean
+  /** Absolute workspace root; required for write/terminal tools. */
+  workspaceRoot?: string
+}
+
+const TASK_TRACKING_TOOL_NAMES = ['create_task', 'update_task', 'list_tasks'] as const
+
+function areTaskToolsAllowed(toolAccess?: CopilotToolAccess): boolean {
+  if (!toolAccess?.tools?.length) return true
+  const accessSet = new Set(toolAccess.tools)
+  if (toolAccess.mode === 'allowlist') {
+    return TASK_TRACKING_TOOL_NAMES.every((name) => accessSet.has(name))
+  }
+  return TASK_TRACKING_TOOL_NAMES.every((name) => !accessSet.has(name))
+}
 
 function extractSearchMetadataFromToolCalls(result: StreamTextResult): Partial<StreamTextResult> {
   if (result.citations?.length) {
@@ -319,6 +340,8 @@ export async function streamText(
     webBrowsing?: boolean
     nativeWebSearch?: 'gemini-grounding'
     agentImageFlowInstructions?: string
+    /** Desktop agent coding: workspace file write + terminal (not gated on attachments). */
+    agentCoding?: AgentCodingOptions
     tools?: ToolSet
     maxSteps?: number
     toolAccess?: CopilotToolAccess
@@ -335,6 +358,7 @@ export async function streamText(
     toolAccess,
     allowedTools,
     agentImageFlowInstructions,
+    agentCoding,
     tools: customTools,
   } = params
   const globalSettings = settingsStore.getState().getSettings()
@@ -358,10 +382,16 @@ export async function streamText(
   const dependencies = await createModelDependencies()
 
   // for model not support tool use, use prompt engineering to handle knowledge base and web search
-  const needFileToolSet = hasDocumentFileOrLink && model.isSupportToolUse()
+  // Attachment tools (fileKey) only when user uploaded files/links
+  const needAttachmentFileToolSet = hasDocumentFileOrLink && model.isSupportToolUse()
+  const workspaceRoot = agentCoding?.workspaceRoot?.trim() || ''
+  const needWorkspaceCodingTools =
+    Boolean(agentCoding?.enabled) && Boolean(workspaceRoot) && platform.type === 'desktop' && model.isSupportToolUse()
   const needVideoToolSet = hasVideoAttachment && model.isSupportToolUse() && model.isSupportVision()
   const kbNotSupported = knowledgeBase && !model.isSupportToolUse('knowledge-base')
   const webNotSupported = webBrowsing && !model.isSupportToolUse('web-browsing')
+  const workspaceFileToolSet = needWorkspaceCodingTools ? createWorkspaceFileToolSet(workspaceRoot) : null
+  const terminalToolSet = needWorkspaceCodingTools ? createTerminalToolSet(workspaceRoot) : null
 
   // Seed video frame budget with auto-sampled frames already attached
   if (needVideoToolSet) {
@@ -390,15 +420,53 @@ export async function streamText(
     }
   }
   const mcpTools = wrapMCPToolsWithApproval(sessionId, mcpController.getAvailableTools())
+  // Task tools must be decided before grounding: Gemini forbids mixing provider tools
+  // (google.tools.googleSearch) with function tools. Counting tasks too late caused
+  // grounding + create_task together → INVALID_ARGUMENT / hung tool loops.
+  const taskToolsAvailable =
+    model.isSupportToolUse() &&
+    !customTools &&
+    areTaskToolsAllowed(toolAccess) &&
+    (!allowedTools ||
+      allowedTools.length === 0 ||
+      TASK_TRACKING_TOOL_NAMES.every((name) => allowedTools.includes(name)))
+  const needGenerateImageTool = Boolean(agentImageFlowInstructions) && model.isSupportToolUse()
   const hasFunctionTools =
-    Object.keys(mcpTools).length > 0 || Boolean(kbToolSet) || Boolean(needFileToolSet) || Boolean(needVideoToolSet)
+    Object.keys(mcpTools).length > 0 ||
+    Boolean(kbToolSet) ||
+    Boolean(needAttachmentFileToolSet) ||
+    Boolean(needWorkspaceCodingTools) ||
+    Boolean(needVideoToolSet) ||
+    taskToolsAvailable ||
+    needGenerateImageTool
+  // Native Gemini grounding only when there are no function tools at all.
   const useGeminiGrounding = nativeWebSearch === 'gemini-grounding' && webBrowsing && !hasFunctionTools
+
+  if (taskToolsAvailable && sessionId) {
+    await taskStore.getState().hydrateSessionTasks(sessionId)
+  }
 
   if (kbToolSet && !kbNotSupported) {
     toolSetInstructions += kbToolSet.description
   }
-  if (needFileToolSet) {
-    toolSetInstructions += fileToolSet.description
+  if (needAttachmentFileToolSet) {
+    toolSetInstructions += attachmentFileToolSet.description
+  }
+  if (workspaceFileToolSet) {
+    toolSetInstructions += workspaceFileToolSet.description
+  }
+  if (terminalToolSet) {
+    toolSetInstructions += terminalToolSet.description
+  }
+  if (agentCoding?.enabled && !needWorkspaceCodingTools) {
+    toolSetInstructions += `
+# Local coding tools unavailable
+
+You do NOT currently have filesystem write or terminal tools for this session.
+${platform.type !== 'desktop' ? '- Coding tools require the desktop app.' : ''}
+${!workspaceRoot ? '- No session workspace folder is set. Ask the user to set a workspace folder before scaffolding or writing project files on disk.' : ''}
+- You may still use task checklist tools and answer with code in chat when local write/terminal is unavailable.
+`
   }
   if (needVideoToolSet) {
     toolSetInstructions += videoToolSet.description
@@ -407,11 +475,13 @@ export async function streamText(
     toolSetInstructions += websearchToolSet.description
   }
 
-  // Task tracking tools are always available when the model supports tool use
-  if (model.isSupportToolUse()) {
+  if (taskToolsAvailable) {
     toolSetInstructions += taskTrackingToolSet.description
+    if (sessionId) {
+      toolSetInstructions += formatActiveTaskContext(taskStore.getState().getSessionTasks(sessionId))
+    }
   }
-  if (agentImageFlowInstructions && model.isSupportToolUse()) {
+  if (needGenerateImageTool) {
     toolSetInstructions += generateImageToolSet.description
     toolSetInstructions += `\n\n${agentImageFlowInstructions}`
   }
@@ -452,7 +522,7 @@ export async function streamText(
           modelName: model.modelId,
         }),
       })
-  }
+    }
 
     const includeAssistantReasoning = shouldPreserveReasoningInContext(sessionSettings, globalSettings)
 
@@ -562,11 +632,27 @@ export async function streamText(
         }
       }
 
-      if (needFileToolSet) {
-        const wrappedFileTools = wrapMCPToolsWithApproval(sessionId, fileToolSet.tools as ToolSet)
+      if (needAttachmentFileToolSet) {
+        const wrappedAttachmentTools = wrapMCPToolsWithApproval(sessionId, attachmentFileToolSet.tools)
         tools = {
           ...tools,
-          ...wrappedFileTools,
+          ...wrappedAttachmentTools,
+        }
+      }
+
+      if (workspaceFileToolSet) {
+        const wrappedWorkspaceTools = wrapMCPToolsWithApproval(sessionId, workspaceFileToolSet.tools)
+        tools = {
+          ...tools,
+          ...wrappedWorkspaceTools,
+        }
+      }
+
+      if (terminalToolSet) {
+        const wrappedTerminalTools = wrapMCPToolsWithApproval(sessionId, terminalToolSet.tools)
+        tools = {
+          ...tools,
+          ...wrappedTerminalTools,
         }
       }
 
@@ -578,7 +664,7 @@ export async function streamText(
         }
       }
 
-      if (agentImageFlowInstructions && model.isSupportToolUse()) {
+      if (needGenerateImageTool) {
         const generateImageTools = wrapMCPToolsWithApproval(sessionId, {
           generate_image: generateImageTool,
         })
@@ -588,8 +674,7 @@ export async function streamText(
         }
       }
 
-      // Task tracking tools are always available when the model supports tool use
-      if (model.isSupportToolUse()) {
+      if (taskToolsAvailable) {
         tools = {
           ...tools,
           ...taskTrackingToolSet.tools,

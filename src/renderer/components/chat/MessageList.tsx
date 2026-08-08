@@ -90,6 +90,11 @@ export interface MessageListProps {
   alignToBottom?: boolean
 }
 
+function isTeamRoomCompactRole(msg: { role?: string; roomRole?: string } | undefined): boolean {
+  if (!msg || msg.role !== 'assistant') return false
+  return msg.roomRole === 'turn' || msg.roomRole === 'plan' || msg.roomRole === 'review'
+}
+
 const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) => {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
@@ -280,7 +285,9 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
             className={platformType === 'win32' ? 'scrollbar-custom' : ''}
             data={currentMessageList}
             ref={virtuoso}
-            followOutput="smooth"
+            // Keep pinned to latest while user is at bottom; room orchestrator also
+            // forces scroll so multi-agent turns don't leave the viewport mid-list.
+            followOutput={(isAtBottom) => (isAtBottom ? 'smooth' : false)}
             alignToBottom={alignToBottom}
             {...(sessionScrollPositionCache.has(currentSession.id) && !alignToBottom
               ? {
@@ -293,8 +300,27 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
                 })}
             increaseViewportBy={{ top: 2000, bottom: 2000 }}
             itemContent={(index, msg) => {
+              const prevMsg = index > 0 ? currentMessageList[index - 1] : undefined
+              const nextMsg = currentMessageList[index + 1]
+              const isTeamDiscussRole = isTeamRoomCompactRole(msg)
+              const prevIsTeamDiscussRole = isTeamRoomCompactRole(prevMsg)
+              const nextIsTeamDiscussRole = isTeamRoomCompactRole(nextMsg)
+              const discussionGroupStart = Boolean(isTeamDiscussRole && !prevIsTeamDiscussRole)
+              const discussionGroupEnd = Boolean(isTeamDiscussRole && !nextIsTeamDiscussRole)
+              const isCompactRoomTurn = isTeamDiscussRole
               return (
-                <Stack key={msg.id} gap={0} className={cn('chat-col', index === 0 && 'pt-2')}>
+                <Stack
+                  key={msg.id}
+                  gap={0}
+                  className={cn(
+                    'chat-col',
+                    index === 0 && 'pt-2',
+                    isCompactRoomTurn &&
+                      'bg-[var(--chatbox-background-secondary,#16161a)]/35 border-x border-[var(--chatbox-border-primary,#2a2a32)] px-2',
+                    discussionGroupStart && 'mt-1 rounded-t-lg border-t pt-2',
+                    discussionGroupEnd && 'mb-1 rounded-b-lg border-b pb-2'
+                  )}
+                >
                   {currentThreadHash[msg.id] && (
                     <ThreadLabel thread={currentThreadHash[msg.id]} sessionId={currentSession.id} />
                   )}
@@ -313,13 +339,17 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
                         msg={msg}
                         sessionId={currentSession.id}
                         sessionType={currentSession.type || 'chat'}
-                        className={index === 0 ? 'pt-4' : index === currentMessageList.length - 1 ? '!pb-4' : ''}
+                        className={cn(
+                          index === 0 ? 'pt-4' : index === currentMessageList.length - 1 ? '!pb-4' : '',
+                          isCompactRoomTurn && '!pt-1 !pb-1'
+                        )}
                         collapseThreshold={msg.role === 'system' ? 150 : undefined}
                         buttonGroup={
                           index === currentMessageList.length - 1 && msg.role === 'assistant' ? 'always' : 'auto'
                         }
                         assistantAvatarKey={currentSession.assistantAvatarKey}
                         sessionPicUrl={currentSession.picUrl}
+                        discussionGroupStart={discussionGroupStart}
                       />
                     )}
                   </ErrorBoundary>

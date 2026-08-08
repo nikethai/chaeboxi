@@ -16,6 +16,7 @@ export { exportSessionChat } from './session/export'
 export { createNewFork, deleteFork, expandFork, switchFork } from './session/forks'
 // Re-export generation operations from session/generation.ts
 export {
+  approveAndExecutePlan,
   createLoadingPictures,
   generate,
   generateMore,
@@ -24,6 +25,8 @@ export {
   getMessageThreadContext,
   getSessionWebBrowsing,
   regenerateInNewFork,
+  rejectPlan,
+  requestPlanChanges,
 } from './session/generation'
 // Re-export message operations from session/messages.ts
 export {

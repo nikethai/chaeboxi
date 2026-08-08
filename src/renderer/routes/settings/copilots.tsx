@@ -1,10 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { CopilotsContent } from '@/routes/copilots'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/settings/copilots')({
-  component: RouteComponent,
+  // Copilots renamed to Agents — keep legacy path as redirect
+  beforeLoad: () => {
+    throw redirect({ to: '/settings/agents' })
+  },
+  component: () => null,
 })
-
-export function RouteComponent() {
-  return <CopilotsContent />
-}

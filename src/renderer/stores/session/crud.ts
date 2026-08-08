@@ -21,8 +21,10 @@ async function create(newSession: Omit<Session, 'id'>) {
 export type CreateEmptyOptions = {
   /** Assign the new session to a project folder */
   folderId?: string
-  /** Optional copilot to attach (e.g. project default) */
+  /** Optional agent/copilot to attach (e.g. project default) */
   copilotId?: string
+  /** Preferred: agent persona id(s) for the room */
+  agentIds?: string[]
 }
 
 /**
@@ -44,8 +46,16 @@ export async function createEmpty(type: 'chat' | 'picture', options?: CreateEmpt
   if (options?.folderId) {
     draft = { ...draft, folderId: options.folderId }
   }
-  if (options?.copilotId) {
-    draft = { ...draft, copilotId: options.copilotId }
+  const agentIds =
+    options?.agentIds && options.agentIds.length > 0
+      ? options.agentIds
+      : options?.copilotId
+        ? [options.copilotId]
+        : undefined
+  if (agentIds?.length) {
+    const { toSessionAgentFields } = await import('@shared/agent-room')
+    const fields = toSessionAgentFields(agentIds)
+    draft = { ...draft, agentIds: fields.agentIds, copilotId: fields.copilotId }
   }
 
   return await create(draft)

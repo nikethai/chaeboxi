@@ -3,7 +3,7 @@
  * Click-primary (no hover-only). Model auto-uses tools; this is override + progressive disclosure.
  */
 
-import { ActionIcon, Flex, Menu, Switch, Text, UnstyledButton } from '@mantine/core'
+import { ActionIcon, Button, Flex, Menu, Modal, Switch, Text, TextInput, UnstyledButton } from '@mantine/core'
 import type { KnowledgeBase } from '@shared/types'
 import {
   IconAdjustmentsHorizontal,
@@ -19,9 +19,10 @@ import {
   IconSettings2,
   IconVocabulary,
   IconWorldWww,
+  IconX,
 } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
-import { type FC, useMemo, useState } from 'react'
+import { type FC, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useKnowledgeBases } from '@/hooks/knowledge-base'
 import { useMCPServerStatus, useToggleMCPServer } from '@/hooks/mcp'
@@ -43,6 +44,9 @@ export type ComposerToolsMenuProps = {
   onWebBrowsingChange: (enabled: boolean) => void
   agentMode: boolean
   onToggleAgentMode?: () => void
+  /** Absolute workspace path for agent file/terminal tools (desktop). */
+  workspaceRoot?: string
+  onWorkspaceRootChange?: (workspaceRoot: string | undefined) => void
   knowledgeBaseId?: number
   onSelectKnowledgeBase?: (kb: KnowledgeBase | null) => void
   showRollbackThreadButton: boolean
@@ -64,6 +68,8 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
   onWebBrowsingChange,
   agentMode,
   onToggleAgentMode,
+  workspaceRoot,
+  onWorkspaceRootChange,
   knowledgeBaseId,
   onSelectKnowledgeBase,
   showRollbackThreadButton,
@@ -79,6 +85,8 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
   const [opened, setOpened] = useState(false)
+  const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false)
+  const [workspaceDraft, setWorkspaceDraft] = useState(workspaceRoot ?? '')
   const mcp = useMcpSettings()
   const onMcpEnabledChange = useToggleMCPServer()
   const { data: knowledgeBases } = useKnowledgeBases()
@@ -89,272 +97,365 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
   const showWeb = !isOpenClawModel
   const showAgent =
     sessionType === 'chat' && !isOpenClawModel && CHATBOX_BUILD_PLATFORM !== 'android' && Boolean(onToggleAgentMode)
+  // Desktop Tauri builds use CHATBOX_BUILD_PLATFORM=unknown; web/android cannot write FS.
+  const showWorkspace =
+    showAgent &&
+    CHATBOX_BUILD_PLATFORM !== 'web' &&
+    CHATBOX_BUILD_PLATFORM !== 'android' &&
+    Boolean(onWorkspaceRootChange)
+
+  useEffect(() => {
+    if (workspaceModalOpen) {
+      setWorkspaceDraft(workspaceRoot ?? '')
+    }
+  }, [workspaceModalOpen, workspaceRoot])
 
   const badgeActive = useMemo(() => {
     return (
       (!webBrowsingMode && webSearchConfigured) ||
       agentMode ||
+      Boolean(workspaceRoot) ||
       Boolean(knowledgeBaseId) ||
       (showMcp && mcpEnabledCount > 0)
     )
-  }, [webBrowsingMode, webSearchConfigured, agentMode, knowledgeBaseId, showMcp, mcpEnabledCount])
+  }, [webBrowsingMode, webSearchConfigured, agentMode, workspaceRoot, knowledgeBaseId, showMcp, mcpEnabledCount])
+
+  const workspaceLabel = useMemo(() => {
+    if (!workspaceRoot) return null
+    const parts = workspaceRoot.replace(/\\/g, '/').split('/').filter(Boolean)
+    return parts.at(-1) || workspaceRoot
+  }, [workspaceRoot])
+
+  const saveWorkspace = () => {
+    const next = workspaceDraft.trim()
+    onWorkspaceRootChange?.(next || undefined)
+    setWorkspaceModalOpen(false)
+    setOpened(false)
+  }
 
   return (
-    <Menu
-      opened={opened}
-      onChange={setOpened}
-      trigger="click"
-      position="top-start"
-      shadow="md"
-      width={280}
-      closeOnItemClick={false}
-      transitionProps={{ transition: 'pop', duration: 160 }}
-    >
-      <Menu.Target>
-        <UnstyledButton
-          className={cn(toolbarButtonClass, 'relative min-w-9 min-h-9 active:scale-[0.96] transition-transform')}
-          aria-label={t('Tools and attachments')}
-          aria-expanded={opened}
-        >
-          <IconPlus
-            size={toolbarIconSize}
-            strokeWidth={1.8}
-            className={badgeActive ? 'text-[var(--chatbox-tint-brand)]' : 'text-[var(--chatbox-tint-secondary)]'}
-          />
-          {badgeActive && (
-            <span
-              className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-[var(--chatbox-tint-brand)]"
-              aria-hidden
+    <>
+      <Menu
+        opened={opened}
+        onChange={setOpened}
+        trigger="click"
+        position="top-start"
+        shadow="md"
+        width={280}
+        closeOnItemClick={false}
+        transitionProps={{ transition: 'pop', duration: 160 }}
+      >
+        <Menu.Target>
+          <UnstyledButton
+            className={cn(toolbarButtonClass, 'relative min-w-9 min-h-9 active:scale-[0.96] transition-transform')}
+            aria-label={t('Tools and attachments')}
+            aria-expanded={opened}
+          >
+            <IconPlus
+              size={toolbarIconSize}
+              strokeWidth={1.8}
+              className={badgeActive ? 'text-[var(--chatbox-tint-brand)]' : 'text-[var(--chatbox-tint-secondary)]'}
             />
-          )}
-        </UnstyledButton>
-      </Menu.Target>
-
-      <Menu.Dropdown className="composer-tools-menu">
-        <Menu.Label fw={600}>{t('Attach')}</Menu.Label>
-        <Menu.Item
-          leftSection={<IconPhoto size={16} stroke={1.5} />}
-          onClick={() => {
-            onImageUploadClick()
-            setOpened(false)
-          }}
-        >
-          {t('Attach Image')}
-        </Menu.Item>
-        <Menu.Item
-          leftSection={<IconFolder size={16} stroke={1.5} />}
-          onClick={() => {
-            onFileUploadClick()
-            setOpened(false)
-          }}
-        >
-          {t('Select File')}
-        </Menu.Item>
-        <Menu.Item
-          leftSection={<IconLink size={16} stroke={1.5} />}
-          onClick={() => {
-            onAttachLink()
-            setOpened(false)
-          }}
-        >
-          {t('Attach Link')}
-        </Menu.Item>
-
-        {(showWeb || showMcp || showKb) && (
-          <>
-            <Menu.Divider />
-            <Menu.Label fw={600}>{t('Tools')}</Menu.Label>
-          </>
-        )}
-
-        {showWeb && (
-          <Menu.Item
-            leftSection={<IconWorldWww size={16} stroke={1.5} />}
-            closeMenuOnClick={false}
-            disabled={!webSearchConfigured && !webBrowsingMode}
-            rightSection={
-              <Switch
-                size="xs"
-                checked={webBrowsingMode}
-                disabled={!webSearchConfigured && !webBrowsingMode}
-                onChange={(e) => onWebBrowsingChange(e.currentTarget.checked)}
-                onClick={(e) => e.stopPropagation()}
+            {badgeActive && (
+              <span
+                className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-[var(--chatbox-tint-brand)]"
+                aria-hidden
               />
-            }
+            )}
+          </UnstyledButton>
+        </Menu.Target>
+
+        <Menu.Dropdown className="composer-tools-menu">
+          <Menu.Label fw={600}>{t('Attach')}</Menu.Label>
+          <Menu.Item
+            leftSection={<IconPhoto size={16} stroke={1.5} />}
             onClick={() => {
-              if (webSearchConfigured || webBrowsingMode) {
-                onWebBrowsingChange(!webBrowsingMode)
-              }
+              onImageUploadClick()
+              setOpened(false)
             }}
           >
-            <Flex direction="column" gap={2}>
-              <Text size="sm">{t('Web Search')}</Text>
-              {!webSearchConfigured && (
-                <Text size="xs" c="dimmed">
-                  {t('Configure in Settings')}
-                </Text>
-              )}
-            </Flex>
+            {t('Attach Image')}
           </Menu.Item>
-        )}
+          <Menu.Item
+            leftSection={<IconFolder size={16} stroke={1.5} />}
+            onClick={() => {
+              onFileUploadClick()
+              setOpened(false)
+            }}
+          >
+            {t('Select File')}
+          </Menu.Item>
+          <Menu.Item
+            leftSection={<IconLink size={16} stroke={1.5} />}
+            onClick={() => {
+              onAttachLink()
+              setOpened(false)
+            }}
+          >
+            {t('Attach Link')}
+          </Menu.Item>
 
-        {showMcp && (
-          <>
-            <Flex justify="space-between" align="center" px="sm" pt="xs">
-              <Text size="xs" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.04em' }}>
-                MCP {mcpEnabledCount > 0 ? `(${mcpEnabledCount})` : ''}
-              </Text>
-              <ActionIcon
-                variant="subtle"
-                size={22}
-                onClick={() => {
-                  setOpened(false)
-                  navigateToSettings('/mcp')
-                }}
-                aria-label={t('MCP Settings')}
-              >
-                <ScalableIcon icon={IconSettings2} size={14} color="var(--chatbox-tint-tertiary)" />
-              </ActionIcon>
-            </Flex>
-            {BUILTIN_MCP_SERVERS.map((server) => (
-              <McpServerRow
-                key={server.id}
-                id={server.id}
-                name={server.name}
-                enabled={mcp.enabledBuiltinServers.includes(server.id)}
-                onEnabledChange={onMcpEnabledChange}
-              />
-            ))}
-            {mcp.servers.map((server) => (
-              <McpServerRow
-                key={server.id}
-                id={server.id}
-                name={server.name}
-                enabled={server.enabled}
-                onEnabledChange={onMcpEnabledChange}
-              />
-            ))}
-            {!mcp.servers.length && !mcp.enabledBuiltinServers.length && (
-              <Menu.Item component={Link} to="/settings/mcp" onClick={() => setOpened(false)}>
-                {t('Add your first MCP server')}
-              </Menu.Item>
-            )}
-          </>
-        )}
+          {(showWeb || showMcp || showKb) && (
+            <>
+              <Menu.Divider />
+              <Menu.Label fw={600}>{t('Tools')}</Menu.Label>
+            </>
+          )}
 
-        {showKb && (
-          <>
-            <Flex justify="space-between" align="center" px="sm" pt="xs">
-              <Text size="xs" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.04em' }}>
-                {t('Knowledge Base')}
-              </Text>
-              <ActionIcon
-                variant="subtle"
-                size={22}
-                component={Link}
-                to="/settings/knowledge-base"
-                onClick={() => setOpened(false)}
-                aria-label={t('Knowledge Base Settings')}
-              >
-                <ScalableIcon icon={IconVocabulary} size={14} color="var(--chatbox-tint-tertiary)" />
-              </ActionIcon>
-            </Flex>
-            {knowledgeBases?.map((kb) => (
-              <Menu.Item
-                key={kb.id}
-                leftSection={<IconFile size={14} stroke={1.5} />}
-                rightSection={
-                  kb.id === knowledgeBaseId ? <IconCheck size={14} color="var(--chatbox-tint-brand)" /> : null
-                }
-                onClick={() => {
-                  if (kb.id === knowledgeBaseId) {
-                    onSelectKnowledgeBase?.(null)
-                  } else {
-                    onSelectKnowledgeBase?.(kb)
-                  }
-                }}
-              >
-                <Text size="sm" c={kb.id === knowledgeBaseId ? 'chatbox-brand' : undefined}>
-                  {kb.name}
-                </Text>
-              </Menu.Item>
-            ))}
-            {knowledgeBases?.length === 0 && (
-              <Menu.Item component={Link} to="/settings/knowledge-base" onClick={() => setOpened(false)}>
-                {t('Create')}
-              </Menu.Item>
-            )}
-            {knowledgeBaseId != null && (
-              <Menu.Item onClick={() => onSelectKnowledgeBase?.(null)}>{t('Clear knowledge base')}</Menu.Item>
-            )}
-          </>
-        )}
-
-        {showAgent && (
-          <>
-            <Menu.Divider />
-            <Menu.Label fw={600}>{t('Mode')}</Menu.Label>
+          {showWeb && (
             <Menu.Item
-              leftSection={<IconRobot size={16} stroke={1.5} />}
+              leftSection={<IconWorldWww size={16} stroke={1.5} />}
               closeMenuOnClick={false}
+              disabled={!webSearchConfigured && !webBrowsingMode}
               rightSection={
                 <Switch
                   size="xs"
-                  checked={agentMode}
-                  onChange={() => onToggleAgentMode?.()}
+                  checked={webBrowsingMode}
+                  disabled={!webSearchConfigured && !webBrowsingMode}
+                  onChange={(e) => onWebBrowsingChange(e.currentTarget.checked)}
                   onClick={(e) => e.stopPropagation()}
                 />
               }
-              onClick={() => onToggleAgentMode?.()}
+              onClick={() => {
+                if (webSearchConfigured || webBrowsingMode) {
+                  onWebBrowsingChange(!webBrowsingMode)
+                }
+              }}
             >
               <Flex direction="column" gap={2}>
-                <Text size="sm">{t('Agent Mode')}</Text>
-                <Text size="xs" c="dimmed" style={{ lineHeight: 1.3 }}>
-                  {t('Multi-step tools & agent loops (uses more tokens).')}
-                </Text>
+                <Text size="sm">{t('Web Search')}</Text>
+                {!webSearchConfigured && (
+                  <Text size="xs" c="dimmed">
+                    {t('Configure in Settings')}
+                  </Text>
+                )}
               </Flex>
             </Menu.Item>
-          </>
-        )}
+          )}
 
-        <Menu.Divider />
-        <Menu.Label fw={600}>{t('Session')}</Menu.Label>
-        {showRollbackThreadButton ? (
+          {showMcp && (
+            <>
+              <Flex justify="space-between" align="center" px="sm" pt="xs">
+                <Text size="xs" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.04em' }}>
+                  MCP {mcpEnabledCount > 0 ? `(${mcpEnabledCount})` : ''}
+                </Text>
+                <ActionIcon
+                  variant="subtle"
+                  size={22}
+                  onClick={() => {
+                    setOpened(false)
+                    navigateToSettings('/mcp')
+                  }}
+                  aria-label={t('MCP Settings')}
+                >
+                  <ScalableIcon icon={IconSettings2} size={14} color="var(--chatbox-tint-tertiary)" />
+                </ActionIcon>
+              </Flex>
+              {BUILTIN_MCP_SERVERS.map((server) => (
+                <McpServerRow
+                  key={server.id}
+                  id={server.id}
+                  name={server.name}
+                  enabled={mcp.enabledBuiltinServers.includes(server.id)}
+                  onEnabledChange={onMcpEnabledChange}
+                />
+              ))}
+              {mcp.servers.map((server) => (
+                <McpServerRow
+                  key={server.id}
+                  id={server.id}
+                  name={server.name}
+                  enabled={server.enabled}
+                  onEnabledChange={onMcpEnabledChange}
+                />
+              ))}
+              {!mcp.servers.length && !mcp.enabledBuiltinServers.length && (
+                <Menu.Item component={Link} to="/settings/mcp" onClick={() => setOpened(false)}>
+                  {t('Add your first MCP server')}
+                </Menu.Item>
+              )}
+            </>
+          )}
+
+          {showKb && (
+            <>
+              <Flex justify="space-between" align="center" px="sm" pt="xs">
+                <Text size="xs" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.04em' }}>
+                  {t('Knowledge Base')}
+                </Text>
+                <ActionIcon
+                  variant="subtle"
+                  size={22}
+                  component={Link}
+                  to="/settings/knowledge-base"
+                  onClick={() => setOpened(false)}
+                  aria-label={t('Knowledge Base Settings')}
+                >
+                  <ScalableIcon icon={IconVocabulary} size={14} color="var(--chatbox-tint-tertiary)" />
+                </ActionIcon>
+              </Flex>
+              {knowledgeBases?.map((kb) => (
+                <Menu.Item
+                  key={kb.id}
+                  leftSection={<IconFile size={14} stroke={1.5} />}
+                  rightSection={
+                    kb.id === knowledgeBaseId ? <IconCheck size={14} color="var(--chatbox-tint-brand)" /> : null
+                  }
+                  onClick={() => {
+                    if (kb.id === knowledgeBaseId) {
+                      onSelectKnowledgeBase?.(null)
+                    } else {
+                      onSelectKnowledgeBase?.(kb)
+                    }
+                  }}
+                >
+                  <Text size="sm" c={kb.id === knowledgeBaseId ? 'chatbox-brand' : undefined}>
+                    {kb.name}
+                  </Text>
+                </Menu.Item>
+              ))}
+              {knowledgeBases?.length === 0 && (
+                <Menu.Item component={Link} to="/settings/knowledge-base" onClick={() => setOpened(false)}>
+                  {t('Create')}
+                </Menu.Item>
+              )}
+              {knowledgeBaseId != null && (
+                <Menu.Item onClick={() => onSelectKnowledgeBase?.(null)}>{t('Clear knowledge base')}</Menu.Item>
+              )}
+            </>
+          )}
+
+          {showAgent && (
+            <>
+              <Menu.Divider />
+              <Menu.Label fw={600}>{t('Mode')}</Menu.Label>
+              <Menu.Item
+                leftSection={<IconRobot size={16} stroke={1.5} />}
+                closeMenuOnClick={false}
+                rightSection={
+                  <Switch
+                    size="xs"
+                    checked={agentMode}
+                    onChange={() => onToggleAgentMode?.()}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                }
+                onClick={() => onToggleAgentMode?.()}
+              >
+                <Flex direction="column" gap={2}>
+                  <Text size="sm">{t('Agent Mode')}</Text>
+                  <Text size="xs" c="dimmed" style={{ lineHeight: 1.3 }}>
+                    {t('Multi-step tools & agent loops (uses more tokens).')}
+                  </Text>
+                </Flex>
+              </Menu.Item>
+              {showWorkspace && (
+                <Menu.Item
+                  leftSection={<IconFolder size={16} stroke={1.5} />}
+                  rightSection={
+                    workspaceRoot ? (
+                      <ActionIcon
+                        size={18}
+                        variant="subtle"
+                        aria-label={t('Clear workspace')}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onWorkspaceRootChange?.(undefined)
+                        }}
+                      >
+                        <IconX size={12} />
+                      </ActionIcon>
+                    ) : null
+                  }
+                  onClick={() => {
+                    setWorkspaceModalOpen(true)
+                  }}
+                >
+                  <Flex direction="column" gap={2}>
+                    <Text size="sm">{t('Workspace folder')}</Text>
+                    <Text size="xs" c="dimmed" style={{ lineHeight: 1.3 }} lineClamp={1}>
+                      {workspaceLabel ? workspaceLabel : t('Required for file write & terminal tools')}
+                    </Text>
+                  </Flex>
+                </Menu.Item>
+              )}
+            </>
+          )}
+
+          <Menu.Divider />
+          <Menu.Label fw={600}>{t('Session')}</Menu.Label>
+          {showRollbackThreadButton ? (
+            <Menu.Item
+              leftSection={<IconArrowBackUp size={16} stroke={1.5} />}
+              onClick={() => {
+                onRollbackThread?.()
+                setOpened(false)
+              }}
+            >
+              {t('Rollback Thread')}
+            </Menu.Item>
+          ) : (
+            <Menu.Item
+              leftSection={<IconFilePencil size={16} stroke={1.5} />}
+              disabled={!onStartNewThread}
+              onClick={() => {
+                onStartNewThread?.()
+                setOpened(false)
+              }}
+            >
+              {t('New Thread')}
+            </Menu.Item>
+          )}
           <Menu.Item
-            leftSection={<IconArrowBackUp size={16} stroke={1.5} />}
+            leftSection={<IconAdjustmentsHorizontal size={16} stroke={1.5} />}
+            disabled={!onClickSessionSettings}
             onClick={() => {
-              onRollbackThread?.()
+              onClickSessionSettings?.()
               setOpened(false)
             }}
           >
-            {t('Rollback Thread')}
+            {t('Conversation Settings')}
           </Menu.Item>
-        ) : (
-          <Menu.Item
-            leftSection={<IconFilePencil size={16} stroke={1.5} />}
-            disabled={!onStartNewThread}
-            onClick={() => {
-              onStartNewThread?.()
-              setOpened(false)
-            }}
-          >
-            {t('New Thread')}
-          </Menu.Item>
-        )}
-        <Menu.Item
-          leftSection={<IconAdjustmentsHorizontal size={16} stroke={1.5} />}
-          disabled={!onClickSessionSettings}
-          onClick={() => {
-            onClickSessionSettings?.()
-            setOpened(false)
-          }}
-        >
-          {t('Conversation Settings')}
-        </Menu.Item>
 
-        {isSmallScreen && null}
-      </Menu.Dropdown>
-    </Menu>
+          {isSmallScreen && null}
+        </Menu.Dropdown>
+      </Menu>
+
+      <Modal
+        opened={workspaceModalOpen}
+        onClose={() => setWorkspaceModalOpen(false)}
+        title={t('Session workspace folder')}
+        centered
+        size="md"
+      >
+        <Flex direction="column" gap="sm">
+          <Text size="sm" c="dimmed">
+            {t(
+              'Agent file write and terminal tools are limited to this folder. Paste an absolute path (e.g. /Users/you/projects/my-app).'
+            )}
+          </Text>
+          <TextInput
+            label={t('Absolute path')}
+            placeholder="/Users/you/projects/my-app"
+            value={workspaceDraft}
+            onChange={(e) => setWorkspaceDraft(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                saveWorkspace()
+              }
+            }}
+            data-autofocus
+          />
+          <Flex justify="flex-end" gap="xs" mt="xs">
+            <Button variant="default" onClick={() => setWorkspaceModalOpen(false)}>
+              {t('Cancel')}
+            </Button>
+            <Button onClick={saveWorkspace}>{t('Save')}</Button>
+          </Flex>
+        </Flex>
+      </Modal>
+    </>
   )
 }
 

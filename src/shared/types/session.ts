@@ -318,7 +318,8 @@ export const MessageFeedbackSchema = z.object({
 
 export const MessageArtifactSchema = z.object({
   id: z.string(),
-  type: z.enum(['html']),
+  /** html = sandboxed preview; mermaid = diagram source (workspace may open either) */
+  type: z.enum(['html', 'mermaid']),
   title: z.string().optional(),
   language: z.string().optional(),
   content: z.string(),
@@ -376,6 +377,19 @@ export const MessageSchema = z.object({
     )
     .optional()
     .catch(undefined),
+  /** Agent persona id that produced this assistant message (multi-agent room speaker) */
+  agentId: z.string().optional().catch(undefined),
+  /** Agent persona ids @-mentioned on this user message */
+  mentionedAgentIds: z.array(z.string()).optional().catch(undefined),
+  /**
+   * Multi-agent room turn kind.
+   * - turn: short discussion message
+   * - synthesis: on-demand Team answer
+   * - plan / do / review / deliver: Work mode phases
+   */
+  roomRole: z.enum(['turn', 'synthesis', 'plan', 'do', 'review', 'deliver']).optional().catch(undefined),
+  /** 1-based discussion round for roomRole turn */
+  roomRound: z.number().int().positive().optional().catch(undefined),
 })
 
 // Compaction point schema (for context management)
@@ -411,7 +425,10 @@ export const FolderSchema = z.object({
   id: z.string(),
   name: z.string(),
   emoji: z.string().optional(),
+  /** @deprecated Prefer defaultAgentId; kept for migration dual-read */
   defaultCopilotId: z.string().optional(),
+  /** Default agent persona for sessions created in this folder */
+  defaultAgentId: z.string().optional(),
   order: z.number(),
 })
 
@@ -423,12 +440,21 @@ export const SessionSchema = z.object({
   messages: z.array(MessageSchema),
   starred: z.boolean().optional(),
   hidden: z.boolean().optional(), // Hidden from session list (e.g., migrated picture sessions)
+  /** @deprecated Prefer agentIds; dual-written as agentIds[0] for one release */
   copilotId: z.string().optional(),
+  /** Room members: agent persona ids in this session (Slack-style multi-agent) */
+  agentIds: z.array(z.string()).optional().catch(undefined),
+  /** Team room mode: discuss (default) or work together */
+  roomMode: z.enum(['discuss', 'work']).optional().catch(undefined),
+  /** Preferred lead agent for Team answer / Work execute (defaults to first speaker) */
+  roomLeadId: z.string().optional().catch(undefined),
   folderId: z.string().optional(),
   tags: z.array(z.string()).optional(),
   archived: z.boolean().optional(),
   assistantAvatarKey: z.string().optional(),
   agentMode: z.boolean().optional(),
+  /** Absolute path to the session workspace root for agent file/terminal tools (desktop). */
+  workspaceRoot: z.string().optional(),
   planMode: z.boolean().optional(),
   planPhase: PlanPhaseEnum.optional(),
   settings: SessionSettingsSchema.optional(),

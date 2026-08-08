@@ -5,7 +5,7 @@
   "identifier": "com.chaeboxi",
   "build": {
     "beforeDevCommand": "pnpm start:renderer",
-    "beforeBuildCommand": "pnpm build:renderer",
+    "beforeBuildCommand": "pnpm build:renderer && pnpm delete-sourcemaps",
     "devUrl": "http://localhost:1212",
     "frontendDist": "../release/app/dist/renderer"
   },

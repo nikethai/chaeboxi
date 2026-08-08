@@ -110,6 +110,8 @@ export function settings(): Settings {
 
     shortcuts: {
       quickToggle: 'Alt+`', // 快速切换窗口显隐的快捷键
+      quickAttachOrOpen: 'Alt+Shift+V', // 打开快速聊天并附加剪贴板内容
+      quickOpen: 'Alt+Shift+Space', // 仅打开快速聊天
       screenshotToChat: 'Alt+Shift+S', // 截图并附加到快速聊天
       inputBoxFocus: 'mod+i', // 聚焦输入框的快捷键
       inputBoxWebBrowsingMode: 'mod+e', // 切换输入框的 web 浏览模式的快捷键

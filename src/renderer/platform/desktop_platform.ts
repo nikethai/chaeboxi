@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { parseLocale } from '@/i18n/parser'
 import { type ImageGenerationStorage, IndexedDBImageGenerationStorage } from '@/storage/ImageGenerationStorage'
 import { getOS } from '../packages/navigator'
-import type { FormFactor, Platform, PlatformType, ScreenshotImagePayload } from './interfaces'
+import type { ClipboardCapturePayload, FormFactor, Platform, PlatformType, ScreenshotImagePayload } from './interfaces'
 import DesktopKnowledgeBaseController from './knowledge-base/desktop-controller'
 import WebExporter from './web_exporter'
 import { parseTextFileLocally } from './web_platform_utils'
@@ -403,6 +403,14 @@ export default class DesktopPlatform implements Platform {
     }
   }
 
+  public async notifyQuickRendererReady(): Promise<void> {
+    await this.ipc.invoke('shell:quickRendererReady')
+  }
+
+  public async notifyQuickRendererGone(): Promise<void> {
+    await this.ipc.invoke('shell:quickRendererGone')
+  }
+
   public async readClipboardImage(): Promise<ScreenshotImagePayload | null> {
     try {
       return await this.ipc.invoke('shell:readClipboardImage')
@@ -430,6 +438,14 @@ export default class DesktopPlatform implements Platform {
   public onScreenshotCaptured(callback: (payload: ScreenshotImagePayload) => void): () => void {
     return listenShellEvent<ScreenshotImagePayload>('shell:screenshot-captured', (payload) => {
       if (payload?.base64) {
+        callback(payload)
+      }
+    })
+  }
+
+  public onClipboardCaptured(callback: (payload: ClipboardCapturePayload) => void): () => void {
+    return listenShellEvent<ClipboardCapturePayload>('shell:clipboard-captured', (payload) => {
+      if (payload?.type === 'text' ? typeof payload.text === 'string' : Boolean(payload?.base64)) {
         callback(payload)
       }
     })

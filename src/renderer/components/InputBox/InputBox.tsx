@@ -63,6 +63,7 @@ import { useSkills } from '@/stores/skillsStore'
 import { useUIStore } from '@/stores/uiStore'
 import { delay } from '@/utils'
 import { trackEvent } from '@/utils/track'
+import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 import type { KnowledgeBase, Message, SessionType, ShortcutSendValue, SkillPackage } from '../../../shared/types'
 import { type AgentDetail, MAX_ROOM_AGENTS, ModelProviderEnum, SKILL_EXPLICIT_MAX } from '../../../shared/types'
 import * as dom from '../../hooks/dom'
@@ -120,6 +121,8 @@ export type InputBoxProps = {
   onClickSessionSettings?(): boolean | Promise<boolean>
   agentMode?: boolean
   onToggleAgentMode?(enabled: boolean): void
+  workspaceRoot?: string
+  onWorkspaceRootChange?(workspaceRoot: string | undefined): void
   /** Prefill composer (e.g. empty-state starters). Remount with a new key when changing. */
   initialMessage?: string
 }
@@ -140,6 +143,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       onClickSessionSettings,
       agentMode: controlledAgentMode,
       onToggleAgentMode,
+      workspaceRoot: controlledWorkspaceRoot,
+      onWorkspaceRootChange,
       initialMessage = '',
     },
     ref
@@ -218,7 +223,15 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const { session: currentSession } = useSession(sessionId || null)
     const { sessionSettings: currentSessionMergedSettings } = useSessionSettings(sessionId || null)
     const agentMode = controlledAgentMode ?? currentSession?.agentMode ?? false
+    const workspaceRoot = controlledWorkspaceRoot ?? currentSession?.workspaceRoot
     const isOpenClawModel = model?.provider === ModelProviderEnum.OpenClaw
+    const showWorkspaceHint =
+      agentMode &&
+      !workspaceRoot &&
+      !isOpenClawModel &&
+      CHATBOX_BUILD_PLATFORM !== 'android' &&
+      CHATBOX_BUILD_PLATFORM !== 'web' &&
+      Boolean(onWorkspaceRootChange)
 
     const toggleAgentMode = useCallback(() => {
       onToggleAgentMode?.(!agentMode)
@@ -1850,6 +1863,15 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               </Flex>
             )}
 
+            {showWorkspaceHint && (
+              <div className="flex items-start gap-1.5 px-3 pb-1.5 pt-0">
+                <IconFolder size={14} className="mt-0.5 shrink-0 text-[var(--chatbox-tint-tertiary)]" stroke={1.75} />
+                <p className="m-0 min-w-0 flex-1 text-[11px] leading-snug text-[var(--chatbox-tint-tertiary)]">
+                  {t('Set a workspace folder (Tools menu) so Agent can write files and run terminal commands on disk.')}
+                </p>
+              </div>
+            )}
+
             {/* Toolbar row — mock .bar (rail bg + send on the right) */}
             <Flex align="center" gap={0} className="composer-bar shrink-0 w-full">
               {/* Hidden file inputs */}
@@ -1876,6 +1898,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   }}
                   agentMode={agentMode}
                   onToggleAgentMode={toggleAgentMode}
+                  workspaceRoot={workspaceRoot}
+                  onWorkspaceRootChange={onWorkspaceRootChange}
                   knowledgeBaseId={knowledgeBase?.id}
                   onSelectKnowledgeBase={handleKnowledgeBaseSelect}
                   showRollbackThreadButton={showRollbackThreadButton}

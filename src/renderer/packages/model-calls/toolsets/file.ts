@@ -1,6 +1,8 @@
+import type { ToolSet } from 'ai'
 import { tool } from 'ai'
 import z from 'zod'
 import { MAX_INLINE_FILE_LINES, PREVIEW_LINES } from '@/packages/context-management/attachment-payload'
+import { resolveWorkspacePath } from '@/packages/tools/workspace-path'
 import platform from '@/platform'
 
 const DEFAULT_LINES = 200
@@ -28,15 +30,17 @@ const GREP_MAX_RESULTS = 100
 
 const toErrorMessage = (err: unknown): string => (err instanceof Error ? err.message : String(err))
 
-const toolSetDescription = `
+/** Attachment tools only — for uploaded chat files (fileKey blobs). */
+export const attachmentFileToolSetDescription = `
 Use these tools to read and search large user-uploaded files (marked with <ATTACHMENT_FILE></ATTACHMENT_FILE>).
 
 IMPORTANT:
 - Files with ≤${MAX_LINES} lines have their FULL content in <FILE_CONTENT> tags - read them directly without tools.
 - Files with >${MAX_LINES} lines only show the first ${PREVIEW_LINES} lines as preview in <FILE_CONTENT>, with a <TRUNCATED> tag indicating more content is available. Use these tools to read additional content beyond the preview.
+- These tools use \`fileKey\` from <FILE_KEY> tags. They do NOT write to the local filesystem.
 
 ## read_file
-Reads file content with line numbers (like \`cat -n\`).
+Reads uploaded file content with line numbers (like \`cat -n\`).
 - Returns up to ${DEFAULT_LINES} lines by default, max ${MAX_LINES} lines per call
 - Lines exceeding ${MAX_LINE_LENGTH} characters are truncated with "..."
 - Use \`lineOffset\` and \`maxLines\` to read specific portions
@@ -44,32 +48,38 @@ Reads file content with line numbers (like \`cat -n\`).
 - Call in parallel when reading multiple files
 
 ## search_file_content
-Searches for text patterns within a file.
+Searches for text patterns within an uploaded file.
 - Returns matching lines with line numbers and optional context
 - Use \`beforeContextLines\` / \`afterContextLines\` to include surrounding lines
 - Returns up to ${GREP_MAX_RESULTS} matches maximum
 - Call in parallel when searching multiple files
-
-## create_file
-Creates or overwrites a file on the local filesystem.
-- Requires an absolute file path and the full file content
-- Parent directories are created automatically if they don't exist
-- WARNING: This will overwrite existing files without confirmation
-
-## edit_file
-Edits a file by replacing a specific string with a new string.
-- Uses exact string matching (old_string must appear in the file)
-- Replaces only the first occurrence by default
-- The old_string must be unique enough to match the intended location
-
-## delete_file
-Deletes a file from the local filesystem.
-- Requires an absolute file path
-- The file must exist or the operation will fail
 `
 
+export function workspaceFileToolSetDescription(workspaceRoot: string): string {
+  return `
+# Workspace filesystem tools
+
+Session workspace root: \`${workspaceRoot}\`
+
+Use these tools to create and edit project files on the user's machine under the workspace root.
+- Prefer paths relative to the workspace root (e.g. \`src/App.tsx\`). Absolute paths must stay inside the root.
+- Parent directories are created automatically for \`create_file\`.
+- Do not attempt to write outside the workspace; those calls will fail.
+
+## create_file
+Creates or overwrites a file under the workspace with full content.
+
+## edit_file
+Replaces the first occurrence of \`old_string\` with \`new_string\` in a workspace file.
+- \`old_string\` must exist and be unique enough to match the intended location
+
+## delete_file
+Deletes a file under the workspace root.
+`
+}
+
 const readFileTool = tool({
-  description: 'Reads the content of a file uploaded by the user.',
+  description: 'Reads the content of a file uploaded by the user (attachment fileKey).',
   inputSchema: z.object({
     fileKey: z.string().describe('The identifier of the file to read within tag `<FILE_KEY>`.'),
     lineOffset: z
@@ -112,7 +122,7 @@ const readFileTool = tool({
 })
 
 const searchFileTool = tool({
-  description: 'Searches for a keyword or phrase within a file uploaded by the user.',
+  description: 'Searches for a keyword or phrase within a file uploaded by the user (attachment fileKey).',
   inputSchema: z.object({
     fileKey: z.string().describe('The identifier of the file to read within tag `<FILE_KEY>`.'),
     query: z.string().describe('The keyword or phrase to search for within the file.'),
@@ -179,75 +189,118 @@ const searchFileTool = tool({
   },
 })
 
-const createFileTool = tool({
-  description: 'Creates or overwrites a file at the given absolute path with the provided content.',
-  inputSchema: z.object({
-    path: z.string().describe('The absolute file path to create or overwrite.'),
-    content: z.string().describe('The full content to write to the file.'),
-  }),
-  execute: async (input: { path: string; content: string }) => {
-    try {
-      await platform.writeFile(input.path, input.content)
-      return { success: true, message: `File created successfully: ${input.path}` }
-    } catch (err) {
-      return { success: false, message: `Failed to create file: ${toErrorMessage(err)}` }
-    }
-  },
-})
+export const attachmentFileTools = {
+  read_file: readFileTool,
+  search_file_content: searchFileTool,
+} as ToolSet
 
-const editFileTool = tool({
-  description:
-    'Edits a file by replacing the first occurrence of old_string with new_string. The old_string must exist in the file.',
-  inputSchema: z.object({
-    path: z.string().describe('The absolute file path to edit.'),
-    old_string: z.string().min(1).describe('The exact string to find and replace. Must not be empty.'),
-    new_string: z.string().describe('The replacement string.'),
-  }),
-  execute: async (input: { path: string; old_string: string; new_string: string }) => {
-    try {
-      const content = await platform.readFileByPath(input.path)
-      if (!content.includes(input.old_string)) {
+export const attachmentFileToolSet = {
+  description: attachmentFileToolSetDescription,
+  tools: attachmentFileTools,
+}
+
+/** Workspace create/edit/delete tools confined to the session workspace root. */
+export function createWorkspaceFileTools(workspaceRoot: string): ToolSet {
+  const createFileTool = tool({
+    description:
+      'Creates or overwrites a file under the session workspace root. Prefer relative paths (e.g. src/App.tsx).',
+    inputSchema: z.object({
+      path: z.string().describe('File path relative to the workspace root, or an absolute path inside the workspace.'),
+      content: z.string().describe('The full content to write to the file.'),
+    }),
+    execute: async (input: { path: string; content: string }) => {
+      const resolved = resolveWorkspacePath(workspaceRoot, input.path)
+      if (!resolved.ok) {
+        return { success: false, message: resolved.error }
+      }
+      try {
+        await platform.writeFile(resolved.absolutePath, input.content)
         return {
-          success: false,
-          message: `old_string not found in file: ${input.path}`,
-          changes_made: 0,
+          success: true,
+          message: `File created successfully: ${resolved.absolutePath}`,
+          path: resolved.absolutePath,
         }
+      } catch (err) {
+        return { success: false, message: `Failed to create file: ${toErrorMessage(err)}` }
       }
-      const newContent = content.replace(input.old_string, input.new_string)
-      await platform.writeFile(input.path, newContent)
-      return {
-        success: true,
-        message: `File edited successfully: ${input.path}`,
-        changes_made: 1,
+    },
+  })
+
+  const editFileTool = tool({
+    description:
+      'Edits a workspace file by replacing the first occurrence of old_string with new_string. Path must be under the workspace root.',
+    inputSchema: z.object({
+      path: z.string().describe('File path relative to the workspace root, or an absolute path inside the workspace.'),
+      old_string: z.string().min(1).describe('The exact string to find and replace. Must not be empty.'),
+      new_string: z.string().describe('The replacement string.'),
+    }),
+    execute: async (input: { path: string; old_string: string; new_string: string }) => {
+      const resolved = resolveWorkspacePath(workspaceRoot, input.path)
+      if (!resolved.ok) {
+        return { success: false, message: resolved.error, changes_made: 0 }
       }
-    } catch (err) {
-      return { success: false, message: `Failed to edit file: ${toErrorMessage(err)}`, changes_made: 0 }
-    }
-  },
-})
+      try {
+        const content = await platform.readFileByPath(resolved.absolutePath)
+        if (!content.includes(input.old_string)) {
+          return {
+            success: false,
+            message: `old_string not found in file: ${resolved.absolutePath}`,
+            changes_made: 0,
+          }
+        }
+        const newContent = content.replace(input.old_string, input.new_string)
+        await platform.writeFile(resolved.absolutePath, newContent)
+        return {
+          success: true,
+          message: `File edited successfully: ${resolved.absolutePath}`,
+          path: resolved.absolutePath,
+          changes_made: 1,
+        }
+      } catch (err) {
+        return { success: false, message: `Failed to edit file: ${toErrorMessage(err)}`, changes_made: 0 }
+      }
+    },
+  })
 
-const deleteFileTool = tool({
-  description: 'Deletes a file at the given absolute path.',
-  inputSchema: z.object({
-    path: z.string().describe('The absolute file path to delete.'),
-  }),
-  execute: async (input: { path: string }) => {
-    try {
-      await platform.deleteFile(input.path)
-      return { success: true, message: `File deleted successfully: ${input.path}` }
-    } catch (err) {
-      return { success: false, message: `Failed to delete file: ${toErrorMessage(err)}` }
-    }
-  },
-})
+  const deleteFileTool = tool({
+    description: 'Deletes a file under the session workspace root.',
+    inputSchema: z.object({
+      path: z.string().describe('File path relative to the workspace root, or an absolute path inside the workspace.'),
+    }),
+    execute: async (input: { path: string }) => {
+      const resolved = resolveWorkspacePath(workspaceRoot, input.path)
+      if (!resolved.ok) {
+        return { success: false, message: resolved.error }
+      }
+      try {
+        await platform.deleteFile(resolved.absolutePath)
+        return {
+          success: true,
+          message: `File deleted successfully: ${resolved.absolutePath}`,
+          path: resolved.absolutePath,
+        }
+      } catch (err) {
+        return { success: false, message: `Failed to delete file: ${toErrorMessage(err)}` }
+      }
+    },
+  })
 
-export default {
-  description: toolSetDescription,
-  tools: {
-    read_file: readFileTool,
-    search_file_content: searchFileTool,
+  return {
     create_file: createFileTool,
     edit_file: editFileTool,
     delete_file: deleteFileTool,
-  },
+  } as ToolSet
+}
+
+export function createWorkspaceFileToolSet(workspaceRoot: string) {
+  return {
+    description: workspaceFileToolSetDescription(workspaceRoot),
+    tools: createWorkspaceFileTools(workspaceRoot),
+  }
+}
+
+/** @deprecated Prefer attachmentFileToolSet / createWorkspaceFileToolSet — kept for callers that import default. */
+export default {
+  description: attachmentFileToolSetDescription,
+  tools: attachmentFileTools,
 }

@@ -42,6 +42,15 @@ export {
 export { getSessionWebBrowsing } from './session-web-browsing'
 // Message operations (5 functions)
 export { insertMessage, insertMessageAfter, modifyMessage, removeMessage, submitNewUserMessage } from './messages'
+export {
+  applyRoomMembership,
+  keepDiscussing,
+  requestTeamAnswer,
+  runAgentRoomDiscussion,
+  runAgentRoomWork,
+  setSessionRoomMode,
+  shouldRunMultiAgentRoom,
+} from './multi-agent-room'
 
 // Naming operations (4 functions)
 export {

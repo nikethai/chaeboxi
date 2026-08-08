@@ -1,6 +1,6 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { Button, Flex, Text } from '@mantine/core'
-import { type Message, type ModelProvider, ModelProviderEnum } from '@shared/types'
+import { createMessage, type Message, type ModelProvider, ModelProviderEnum } from '@shared/types'
 import { IconMessage, IconShield } from '@tabler/icons-react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { type FC, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -11,12 +11,14 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import InputBox from '@/components/InputBox/InputBox'
 import Header from '@/components/layout/Header'
 import ThreadHistoryDrawer from '@/components/session/ThreadHistoryDrawer'
+import WorkspacePanel, { useWorkspaceChromeActive } from '@/components/workspace/WorkspacePanel'
 import { updateSessionWithMessages as updateSessionStore, useSession } from '@/stores/chatStore'
 import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 import * as scrollActions from '@/stores/scrollActions'
 import { modifyMessage, removeCurrentThread, startNewThread, submitNewUserMessage } from '@/stores/sessionActions'
 import { getAllMessageList } from '@/stores/sessionHelpers'
 import { taskStore } from '@/stores/taskStore'
+import { useUIStore } from '@/stores/uiStore'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
 // Agent-mode panels are not used on Android. Use compile-time conditional
@@ -151,6 +153,17 @@ function RouteComponent() {
     [currentSession]
   )
 
+  const onContinueTasks = useCallback(() => {
+    if (!currentSession) return
+    void submitNewUserMessage(currentSession.id, {
+      newUserMsg: createMessage(
+        'user',
+        'Continue the active task plan. First inspect the current tasks, then resume the next appropriate pending task. Update task statuses before responding.'
+      ),
+      needGenerating: true,
+    })
+  }, [currentSession])
+
   const onClickSessionSettings = useCallback(() => {
     if (!currentSession) {
       return false
@@ -184,100 +197,122 @@ function RouteComponent() {
 
   const isOpenClawProvider = currentSession?.settings?.provider === ModelProviderEnum.OpenClaw
   const [showSessionPanel, setShowSessionPanel] = useState(false)
+  const workspaceChromeActive = useWorkspaceChromeActive()
+  const setWorkspacePanel = useUIStore((s) => s.setWorkspacePanel)
+
+  // Close workspace when leaving this conversation so state doesn't leak
+  useEffect(() => {
+    return () => {
+      setWorkspacePanel(null)
+    }
+  }, [currentSessionId, setWorkspacePanel])
 
   return currentSession ? (
-    <div className="session-shell">
+    <div className={`session-shell ${workspaceChromeActive ? 'has-workspace' : ''}`}>
       <Header session={currentSession} />
 
-      {/* MessageList 设置 key，确保每个 session 对应新的 MessageList 实例 */}
-      <div className="session-thread">
-        <MessageList ref={messageListRef} key={`message-list${currentSessionId}`} currentSession={currentSession} />
-      </div>
-
-      {/* <ScrollButtons /> */}
-      {TaskProgress && (
-        <Suspense fallback={null}>
-          <TaskProgress sessionId={currentSession.id} />
-        </Suspense>
-      )}
-
-      {/* Agent chrome — compact strip above composer (OpenClaw + tool audit) */}
-      {isAgentEnabled && isOpenClawProvider && (
-        <div className="agent-dock">
-          <div className="agent-dock-bar chat-col">
-            <Flex align="center" justify="space-between" gap="sm" className="min-w-0 w-full">
-              <Text className="agent-dock-label" lineClamp={1}>
-                {t('Agent')}
-              </Text>
-              <Flex align="center" gap={6} className="shrink-0">
-                <button
-                  type="button"
-                  className={`agent-dock-chip ${showSessionPanel ? 'is-on' : ''}`}
-                  onClick={() => setShowSessionPanel((v) => !v)}
-                  aria-pressed={showSessionPanel}
-                >
-                  <IconMessage size={14} stroke={1.5} />
-                  <span>{t('Gateway')}</span>
-                </button>
-                <button
-                  type="button"
-                  className={`agent-dock-chip ${showToolAudit ? 'is-on' : ''}`}
-                  onClick={() => setShowToolAudit((v) => !v)}
-                  aria-pressed={showToolAudit}
-                >
-                  <IconShield size={14} stroke={1.5} />
-                  <span>{t('Audit')}</span>
-                </button>
-              </Flex>
-            </Flex>
-          </div>
-          {showSessionPanel && SessionPanel && (
-            <div className="agent-dock-panel chat-col">
-              <Suspense fallback={null}>
-                <SessionPanel />
-              </Suspense>
-            </div>
-          )}
-          {showToolAudit && ToolAuditPanel && (
-            <div className="agent-dock-panel chat-col">
-              <Suspense fallback={null}>
-                <ToolAuditPanel sessionId={currentSession.id} />
-              </Suspense>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="session-dock">
-        <div className="session-dock-pad">
-          <ErrorBoundary name="session-inputbox">
-            <InputBox
-              key={`input-box${currentSession.id}`}
-              sessionId={currentSession.id}
-              sessionType={currentSession.type}
-              model={model}
-              agentMode={currentSession.agentMode ?? false}
-              onStartNewThread={onStartNewThread}
-              onRollbackThread={onRollbackThread}
-              onSelectModel={onSelectModel}
-              onToggleAgentMode={(agentMode) => {
-                void updateSessionStore(currentSession.id, { agentMode })
-              }}
-              onClickSessionSettings={onClickSessionSettings}
-              generating={!!lastGeneratingMessage}
-              onSubmit={onSubmit}
-              onStopGenerating={onStopGenerating}
+      <div className="session-body-row">
+        <div className="session-main-col">
+          {/* MessageList 设置 key，确保每个 session 对应新的 MessageList 实例 */}
+          <div className="session-thread">
+            <MessageList
+              ref={messageListRef}
+              key={`message-list${currentSessionId}`}
+              currentSession={currentSession}
             />
-          </ErrorBoundary>
+          </div>
+
+          {/* Agent chrome — compact strip above composer (OpenClaw + tool audit) */}
+          {isAgentEnabled && isOpenClawProvider && (
+            <div className="agent-dock">
+              <div className="agent-dock-bar chat-col">
+                <Flex align="center" justify="space-between" gap="sm" className="min-w-0 w-full">
+                  <Text className="agent-dock-label" lineClamp={1}>
+                    {t('Agent')}
+                  </Text>
+                  <Flex align="center" gap={6} className="shrink-0">
+                    <button
+                      type="button"
+                      className={`agent-dock-chip ${showSessionPanel ? 'is-on' : ''}`}
+                      onClick={() => setShowSessionPanel((v) => !v)}
+                      aria-pressed={showSessionPanel}
+                    >
+                      <IconMessage size={14} stroke={1.5} />
+                      <span>{t('Gateway')}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`agent-dock-chip ${showToolAudit ? 'is-on' : ''}`}
+                      onClick={() => setShowToolAudit((v) => !v)}
+                      aria-pressed={showToolAudit}
+                    >
+                      <IconShield size={14} stroke={1.5} />
+                      <span>{t('Audit')}</span>
+                    </button>
+                  </Flex>
+                </Flex>
+              </div>
+              {showSessionPanel && SessionPanel && (
+                <div className="agent-dock-panel chat-col">
+                  <Suspense fallback={null}>
+                    <SessionPanel />
+                  </Suspense>
+                </div>
+              )}
+              {showToolAudit && ToolAuditPanel && (
+                <div className="agent-dock-panel chat-col">
+                  <Suspense fallback={null}>
+                    <ToolAuditPanel sessionId={currentSession.id} />
+                  </Suspense>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="session-dock">
+            <div className="session-dock-pad">
+              {TaskProgress && (
+                <Suspense fallback={null}>
+                  <TaskProgress sessionId={currentSession.id} onContinue={onContinueTasks} />
+                </Suspense>
+              )}
+              <ErrorBoundary name="session-inputbox">
+                <InputBox
+                  key={`input-box${currentSession.id}`}
+                  sessionId={currentSession.id}
+                  sessionType={currentSession.type}
+                  model={model}
+                  agentMode={currentSession.agentMode ?? false}
+                  workspaceRoot={currentSession.workspaceRoot}
+                  onStartNewThread={onStartNewThread}
+                  onRollbackThread={onRollbackThread}
+                  onSelectModel={onSelectModel}
+                  onToggleAgentMode={(agentMode) => {
+                    void updateSessionStore(currentSession.id, { agentMode })
+                  }}
+                  onWorkspaceRootChange={(workspaceRoot) => {
+                    void updateSessionStore(currentSession.id, { workspaceRoot })
+                  }}
+                  onClickSessionSettings={onClickSessionSettings}
+                  generating={!!lastGeneratingMessage}
+                  onSubmit={onSubmit}
+                  onStopGenerating={onStopGenerating}
+                />
+              </ErrorBoundary>
+            </div>
+            <SessionStatusBar
+              messages={currentMessageList}
+              modelLabel={model?.modelId}
+              providerId={model?.provider}
+              generating={!!lastGeneratingMessage}
+              sessionId={currentSession.id}
+            />
+          </div>
         </div>
-        <SessionStatusBar
-          messages={currentMessageList}
-          modelLabel={model?.modelId}
-          providerId={model?.provider}
-          generating={!!lastGeneratingMessage}
-          sessionId={currentSession.id}
-        />
+
+        <WorkspacePanel />
       </div>
+
       <ThreadHistoryDrawer session={currentSession} />
     </div>
   ) : (

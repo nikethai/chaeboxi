@@ -276,7 +276,7 @@ function ExportAndImport(props: { onCancel: () => void }) {
               { label: t('Settings'), value: ExportDataItem.Setting },
               { label: t('API Keys'), value: ExportDataItem.Key },
               { label: t('Chat History'), value: ExportDataItem.Conversations },
-              { label: t('My Copilots'), value: ExportDataItem.Copilot },
+              { label: t('My Agents'), value: ExportDataItem.Copilot },
             ].map((item) => (
               <FormControlLabel
                 key={item.value}

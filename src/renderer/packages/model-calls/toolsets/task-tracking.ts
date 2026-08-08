@@ -2,6 +2,8 @@ import { tool } from 'ai'
 import z from 'zod'
 import { generateTaskId, MAX_SESSION_TASKS, taskStore } from '@/stores/taskStore'
 
+export const TASK_TOOL_NAMES = ['create_task', 'update_task', 'list_tasks'] as const
+
 const toolSetDescription = `
 # Task tracking (checklist)
 
@@ -19,6 +21,8 @@ Use these tools to show a live checklist for multi-step work in the current sess
 - Prefer \`create_task\` once per step, then \`update_task\` for status changes. Do not recreate tasks.
 - At most **one** task should be \`in-progress\` at a time.
 - Mark a task \`done\` as soon as that step finishes — do not batch completions at the end.
+- On a follow-up request, inspect the active session tasks and resume an existing pending task instead of recreating it.
+- Before a final answer, update every task whose status changed in the current turn. Never infer \`done\` from prose alone.
 - Keep titles short and action-oriented (under ~80 chars).
 - Soft cap: ${MAX_SESSION_TASKS} tasks per session. Prefer finishing or failing items over growing the list forever.
 - Use \`list_tasks\` to recover state after long runs or if unsure of current ids.
@@ -55,6 +59,7 @@ export const createTaskTool = tool({
   }),
   execute: async (input: { title: string }, context: { sessionId?: string }) => {
     const sessionId = context.sessionId || 'default'
+    await taskStore.getState().hydrateSessionTasks(sessionId)
     const id = generateTaskId()
     const result = taskStore.getState().createTask(sessionId, id, input.title)
     if (!result.ok) {
@@ -79,10 +84,7 @@ export const updateTaskTool = tool({
     'Update an existing checklist task (status, title, or progress 0–100). Prefer this over creating duplicates.',
   inputSchema: z.object({
     id: z.string().describe('The task ID returned from create_task.'),
-    status: z
-      .enum(['pending', 'in-progress', 'done', 'failed'])
-      .optional()
-      .describe('New status for the task.'),
+    status: z.enum(['pending', 'in-progress', 'done', 'failed']).optional().describe('New status for the task.'),
     title: z.string().optional().describe('Updated short title.'),
     progress: z.number().min(0).max(100).optional().describe('Progress percentage (0-100).'),
   }),
@@ -91,6 +93,7 @@ export const updateTaskTool = tool({
     context: { sessionId?: string }
   ) => {
     const sessionId = context.sessionId || 'default'
+    await taskStore.getState().hydrateSessionTasks(sessionId)
     const state = taskStore.getState()
     const existing = state.tasks.find((t) => t.id === input.id)
     if (!existing) {
@@ -99,8 +102,13 @@ export const updateTaskTool = tool({
         ...sessionTasksPayload(sessionId),
       }
     }
-    // Prefer real session of the task over context default
-    const taskSessionId = existing.sessionId
+    if (existing.sessionId !== sessionId) {
+      return {
+        error: `Task with id "${input.id}" does not belong to the current session.`,
+        ...sessionTasksPayload(sessionId),
+      }
+    }
+
     const updated = state.updateTask(input.id, {
       status: input.status as 'pending' | 'in-progress' | 'done' | 'failed' | undefined,
       title: input.title,
@@ -109,25 +117,38 @@ export const updateTaskTool = tool({
     return {
       message: `Task "${input.id}" updated.`,
       task: updated,
-      ...sessionTasksPayload(taskSessionId),
+      ...sessionTasksPayload(sessionId),
     }
   },
 } as any)
 
 export const listTasksTool = tool({
   description: 'List all checklist tasks for the current session with status and progress.',
-  inputSchema: z.object({}),
-  execute: async (_input: Record<string, never>, context: { sessionId?: string }) => {
+  // Optional dummy field keeps schema non-empty for providers (e.g. Gemini) that reject empty objects.
+  inputSchema: z.object({
+    reason: z.string().optional().describe('Optional note; usually omit.'),
+  }),
+  execute: async (_input: { reason?: string }, context: { sessionId?: string }) => {
     const sessionId = context.sessionId || 'default'
+    await taskStore.getState().hydrateSessionTasks(sessionId)
     return sessionTasksPayload(sessionId)
   },
 } as any)
 
+/**
+ * Canonical task tools only. Do not register namespaced aliases (e.g. google:tasks:*)
+ * in the live tool map — colons and MCP-style prefixes break Gemini functionDeclarations
+ * (INVALID_ARGUMENT). History/UI still accept aliases via normalizeTaskToolName().
+ */
+export const CANONICAL_TASK_TOOLS = {
+  create_task: createTaskTool,
+  update_task: updateTaskTool,
+  list_tasks: listTasksTool,
+} as const
+
 export default {
   description: toolSetDescription,
   tools: {
-    create_task: createTaskTool,
-    update_task: updateTaskTool,
-    list_tasks: listTasksTool,
+    ...CANONICAL_TASK_TOOLS,
   },
 }

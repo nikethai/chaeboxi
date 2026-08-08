@@ -26,6 +26,7 @@ import type React from 'react'
 import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createModelDependencies } from '@/adapters'
+import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import useInputBoxHistory from '@/hooks/useInputBoxHistory'
 import { useKnowledgeBase } from '@/hooks/useKnowledgeBase'
 import { useMessageInput } from '@/hooks/useMessageInput'
@@ -34,6 +35,7 @@ import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import { navigateToSettings } from '@/modals/Settings'
 import type { GatewayCommandInfo } from '@/openclaw/gateway'
+import { getActiveAgentAtQuery, stripActiveAgentAtToken } from '@/packages/agents'
 import {
   getContextMessageIds,
   isAutoCompactionEnabled,
@@ -56,27 +58,31 @@ import { composerTokenMenuAtom } from '@/stores/atoms/uiAtoms'
 import * as chatStore from '@/stores/chatStore'
 import { useSession, useSessionSettings } from '@/stores/chatStore'
 import { usePromptPresets } from '@/stores/promptPresetsStore'
-import { useSkills } from '@/stores/skillsStore'
 import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
+import { useSkills } from '@/stores/skillsStore'
 import { useUIStore } from '@/stores/uiStore'
 import { delay } from '@/utils'
 import { trackEvent } from '@/utils/track'
+import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 import type { KnowledgeBase, Message, SessionType, ShortcutSendValue, SkillPackage } from '../../../shared/types'
-import { ModelProviderEnum, SKILL_EXPLICIT_MAX } from '../../../shared/types'
+import { type AgentDetail, MAX_ROOM_AGENTS, ModelProviderEnum, SKILL_EXPLICIT_MAX } from '../../../shared/types'
 import * as dom from '../../hooks/dom'
 import * as sessionHelpers from '../../stores/sessionHelpers'
 import * as toastActions from '../../stores/toastActions'
+import AgentRoomStrip from '../chat/AgentRoomStrip'
+import TeamRoomActions from '../chat/TeamRoomActions'
 import { CompactionStatus } from '../chat/CompactionStatus'
 import { CompressionModal } from '../common/CompressionModal'
 import { ScalableIcon } from '../common/ScalableIcon'
 import ProviderImageIcon from '../icons/ProviderImageIcon'
 import ModelSelector from '../ModelSelector'
+import AgentPicker, { filterAgents } from './AgentPicker'
 import { FileMiniCard, ImageMiniCard, LinkMiniCard } from './Attachments'
 import ComposerToolsMenu from './ComposerToolsMenu'
+import TeamModeSelect from './TeamModeSelect'
 import { ImageUploadInput } from './ImageUploadInput'
 import OpenClawCommandPicker, { filterOpenClawCommands, getCommandAlias } from './OpenClawCommandPicker'
 import PresetPicker, { filterPresets } from './PresetPicker'
-import SkillPicker, { filterSkills } from './SkillPicker'
 import {
   cleanupFile,
   cleanupLink,
@@ -88,6 +94,7 @@ import {
   storeLinkPromise,
 } from './preprocessState'
 import QueuedMessageList from './QueuedMessageList'
+import SkillPicker, { filterSkills } from './SkillPicker'
 
 export type InputBoxPayload = {
   constructedMessage: Message
@@ -116,8 +123,17 @@ export type InputBoxProps = {
   onClickSessionSettings?(): boolean | Promise<boolean>
   agentMode?: boolean
   onToggleAgentMode?(enabled: boolean): void
+  workspaceRoot?: string
+  onWorkspaceRootChange?(workspaceRoot: string | undefined): void
   /** Prefill composer (e.g. empty-state starters). Remount with a new key when changing. */
   initialMessage?: string
+  /**
+   * Blank / new-chat draft room members (sessionId === 'new' has no chatStore session).
+   * Used for Team mode visibility and room strip.
+   */
+  draftAgentIds?: string[]
+  draftRoomMode?: 'discuss' | 'work'
+  onDraftRoomModeChange?(mode: 'discuss' | 'work'): void
 }
 
 const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
@@ -136,7 +152,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       onClickSessionSettings,
       agentMode: controlledAgentMode,
       onToggleAgentMode,
+      workspaceRoot: controlledWorkspaceRoot,
+      onWorkspaceRootChange,
       initialMessage = '',
+      draftAgentIds,
+      draftRoomMode,
+      onDraftRoomModeChange,
     },
     ref
   ) => {
@@ -190,6 +211,20 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const [selectedSkills, setSelectedSkills] = useState<SkillPackage[]>([])
     const [skillPickerDismissed, setSkillPickerDismissed] = useState(false)
     const [skillHighlightIndex, setSkillHighlightIndex] = useState(0)
+    /** Turn-sticky agent chips selected via @ */
+    const [selectedAgents, setSelectedAgents] = useState<AgentDetail[]>([])
+    const [agentPickerDismissed, setAgentPickerDismissed] = useState(false)
+    const [agentHighlightIndex, setAgentHighlightIndex] = useState(0)
+    const { copilots: myAgents } = useMyCopilots()
+    const { copilots: remoteAgents } = useRemoteCopilots()
+    const allAgents = useMemo(() => {
+      const map = new Map<string, AgentDetail>()
+      for (const a of myAgents) map.set(a.id, a)
+      for (const a of remoteAgents || []) {
+        if (!map.has(a.id)) map.set(a.id, a)
+      }
+      return Array.from(map.values())
+    }, [myAgents, remoteAgents])
 
     // Pre-constructed message state (scoped by session)
     const [preConstructedMessage, setPreConstructedMessage] = useAtom(
@@ -210,7 +245,15 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const { session: currentSession } = useSession(sessionId || null)
     const { sessionSettings: currentSessionMergedSettings } = useSessionSettings(sessionId || null)
     const agentMode = controlledAgentMode ?? currentSession?.agentMode ?? false
+    const workspaceRoot = controlledWorkspaceRoot ?? currentSession?.workspaceRoot
     const isOpenClawModel = model?.provider === ModelProviderEnum.OpenClaw
+    const showWorkspaceHint =
+      agentMode &&
+      !workspaceRoot &&
+      !isOpenClawModel &&
+      CHATBOX_BUILD_PLATFORM !== 'android' &&
+      CHATBOX_BUILD_PLATFORM !== 'web' &&
+      Boolean(onWorkspaceRootChange)
 
     const toggleAgentMode = useCallback(() => {
       onToggleAgentMode?.(!agentMode)
@@ -553,6 +596,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       () => (sessionType === 'chat' ? getActiveSkillDollarQuery(messageInput) : null),
       [messageInput, sessionType]
     )
+    const agentAtQuery = useMemo(
+      () => (sessionType === 'chat' ? getActiveAgentAtQuery(messageInput) : null),
+      [messageInput, sessionType]
+    )
     const showSkillPicker = useMemo(
       () =>
         sessionType === 'chat' &&
@@ -570,6 +617,25 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         selectedSkills.length,
       ]
     )
+    const showAgentPicker = useMemo(
+      () =>
+        sessionType === 'chat' &&
+        agentAtQuery !== null &&
+        !showPresetPicker &&
+        !showOpenClawCommandPicker &&
+        !showSkillPicker &&
+        !agentPickerDismissed &&
+        selectedAgents.length < MAX_ROOM_AGENTS,
+      [
+        sessionType,
+        agentAtQuery,
+        showPresetPicker,
+        showOpenClawCommandPicker,
+        showSkillPicker,
+        agentPickerDismissed,
+        selectedAgents.length,
+      ]
+    )
     const filteredSkills = useMemo(
       () =>
         filterSkills(
@@ -578,6 +644,20 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         ).slice(0, 8),
       [enabledSkills, selectedSkills, skillDollarQuery]
     )
+    const filteredAgents = useMemo(
+      () =>
+        filterAgents(
+          allAgents.filter((a) => !selectedAgents.some((sel) => sel.id === a.id)),
+          agentAtQuery || ''
+        ).slice(0, 8),
+      [allAgents, selectedAgents, agentAtQuery]
+    )
+    const roomAgentIds = useMemo(() => {
+      if (isNewSession && draftAgentIds && draftAgentIds.length > 0) {
+        return draftAgentIds
+      }
+      return currentSession?.agentIds || (currentSession?.copilotId ? [currentSession.copilotId] : [])
+    }, [isNewSession, draftAgentIds, currentSession?.agentIds, currentSession?.copilotId])
     const presetQuery = useMemo(() => (showPresetPicker ? messageInput.slice(1) : ''), [messageInput, showPresetPicker])
     const openClawCommandQuery = useMemo(
       () => (showOpenClawCommandPicker ? messageInput.slice(1) : ''),
@@ -623,9 +703,52 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     useEffect(() => {
       setPresetHighlightIndex(0)
       setSkillHighlightIndex(0)
+      setAgentHighlightIndex(0)
       setOpenClawPickerDismissed(false)
       setSkillPickerDismissed(false)
-    }, [presetQuery, skillDollarQuery, messageInput])
+      setAgentPickerDismissed(false)
+    }, [presetQuery, skillDollarQuery, agentAtQuery, messageInput])
+
+    const handleAgentSelect = useCallback(
+      (agent: AgentDetail) => {
+        setSelectedAgents((prev) => {
+          if (prev.some((a) => a.id === agent.id) || prev.length >= MAX_ROOM_AGENTS) return prev
+          return [...prev, agent]
+        })
+        setMessageInput((prev) => stripActiveAgentAtToken(prev))
+        setAgentPickerDismissed(true)
+        dom.focusMessageInput()
+      },
+      [setMessageInput]
+    )
+
+    const handleRemoveRoomAgent = useCallback(
+      async (agentId: string) => {
+        if (!sessionId) return
+        const next = roomAgentIds.filter((id) => id !== agentId)
+        const { toSessionAgentFields } = await import('@shared/agent-room')
+        const fields = toSessionAgentFields(next)
+        await chatStore.updateSession(sessionId, {
+          agentIds: fields.agentIds,
+          copilotId: fields.copilotId,
+        })
+        setSelectedAgents((prev) => prev.filter((a) => a.id !== agentId))
+      },
+      [sessionId, roomAgentIds]
+    )
+
+    const handleRoomModeChange = useCallback(
+      async (mode: 'discuss' | 'work') => {
+        if (isNewSession) {
+          onDraftRoomModeChange?.(mode)
+          return
+        }
+        if (!sessionId) return
+        const { setSessionRoomMode } = await import('@/stores/session/multi-agent-room')
+        await setSessionRoomMode(sessionId, mode)
+      },
+      [isNewSession, onDraftRoomModeChange, sessionId]
+    )
 
     const handleSkillSelect = useCallback(
       (skill: SkillPackage) => {
@@ -714,6 +837,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         let constructedMessage = preConstructedMessage.message
 
         // Attach skills from $ chips + inline $tokens; strip $tokens from text to model
+        // Attach agents from @ chips
         {
           const rawText = constructedMessage.contentParts.find((p) => p.type === 'text')?.text || ''
           const namesFromText = extractSkillNamesFromText(rawText)
@@ -733,10 +857,14 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               skillIds.push(s.id)
             }
           }
-          const cleanedText = stripSkillDollarTokens(rawText)
+          let cleanedText = stripSkillDollarTokens(rawText)
+          cleanedText = stripActiveAgentAtToken(cleanedText)
+
+          const mentionedAgentIds = selectedAgents.map((a) => a.id).slice(0, MAX_ROOM_AGENTS)
           constructedMessage = {
             ...constructedMessage,
             skillIds: skillIds.length ? skillIds : undefined,
+            mentionedAgentIds: mentionedAgentIds.length ? mentionedAgentIds : undefined,
             contentParts: constructedMessage.contentParts.map((p) =>
               p.type === 'text' ? { ...p, text: cleanedText } : p
             ),
@@ -789,6 +917,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             // sends can enter the per-session queue while generation continues.
             setIsSubmitting(false)
             clearDraft()
+            setSelectedAgents([])
             setLinks([])
             setPreConstructedMessage({
               text: '',
@@ -835,6 +964,45 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     )
 
     const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (showAgentPicker) {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault()
+          if (filteredAgents.length > 0) {
+            setAgentHighlightIndex((index) => (index + 1) % filteredAgents.length)
+          }
+          return
+        }
+        if (event.key === 'ArrowUp') {
+          event.preventDefault()
+          if (filteredAgents.length > 0) {
+            setAgentHighlightIndex((index) => (index - 1 + filteredAgents.length) % filteredAgents.length)
+          }
+          return
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          setAgentPickerDismissed(true)
+          return
+        }
+        if (
+          event.key === 'Enter' &&
+          !event.shiftKey &&
+          !event.ctrlKey &&
+          !event.altKey &&
+          !event.metaKey &&
+          filteredAgents[agentHighlightIndex]
+        ) {
+          event.preventDefault()
+          handleAgentSelect(filteredAgents[agentHighlightIndex])
+          return
+        }
+        if (event.key === 'Tab' && filteredAgents[agentHighlightIndex]) {
+          event.preventDefault()
+          handleAgentSelect(filteredAgents[agentHighlightIndex])
+          return
+        }
+      }
+
       if (showSkillPicker) {
         if (event.key === 'ArrowDown') {
           event.preventDefault()
@@ -1430,16 +1598,27 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         : isPreprocessing || isSubmitting || isSamplingVideoFrames || isCompactionRunning
       : disableSubmit || isPreprocessing || isSubmitting || isSamplingVideoFrames || isCompactionRunning
 
+    const roomMode: 'discuss' | 'work' = isNewSession
+      ? draftRoomMode === 'work'
+        ? 'work'
+        : 'discuss'
+      : currentSession?.roomMode === 'work'
+        ? 'work'
+        : 'discuss'
+    const showRoomModeChip = roomAgentIds.length >= 2 || selectedAgents.length >= 2
+
     return (
       <Box id={dom.InputBoxID} className="chat-input-shell">
         <Stack className={cn(widthFull ? 'chat-col-full' : 'chat-col')} gap="xs">
           {currentSessionId && <CompactionStatus sessionId={currentSessionId} />}
           {currentSessionId && <QueuedMessageList sessionId={currentSessionId} />}
+          {currentSessionId ? <TeamRoomActions sessionId={currentSessionId} /> : null}
           <Stack
             className={cn(
               'composer-card relative justify-between',
               isFileDragActive && 'composer-card-drag-active',
-              (showSkillPicker || showPresetPicker || showOpenClawCommandPicker) && 'composer-card-picker-open'
+              (showSkillPicker || showAgentPicker || showPresetPicker || showOpenClawCommandPicker) &&
+                'composer-card-picker-open'
             )}
             gap={0}
           >
@@ -1477,6 +1656,16 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 query={openClawCommandQuery}
               />
             )}
+            {showAgentPicker && (
+              <AgentPicker
+                agents={allAgents}
+                highlightedIndex={agentHighlightIndex}
+                onHighlightChange={setAgentHighlightIndex}
+                onSelect={handleAgentSelect}
+                query={agentAtQuery || ''}
+                excludeIds={selectedAgents.map((a) => a.id)}
+              />
+            )}
             {showSkillPicker && (
               <SkillPicker
                 skills={enabledSkills}
@@ -1488,24 +1677,62 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               />
             )}
 
-            {selectedSkills.length > 0 && (
-              <div className="composer-skill-chips">
-                {selectedSkills.map((skill) => (
-                  <span key={skill.id} className="composer-skill-chip">
-                    <span className="composer-skill-chip-sigil" aria-hidden>
-                      $
-                    </span>
-                    <span>{skill.name}</span>
-                    <button
-                      type="button"
-                      className="composer-skill-chip-remove"
-                      aria-label={t('Remove skill')}
-                      onClick={() => setSelectedSkills((prev) => prev.filter((s) => s.id !== skill.id))}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
+            {/* Agent room + skills — shared horizontal inset (team mode lives next to model picker) */}
+            {(selectedAgents.length > 0 || roomAgentIds.length > 0 || selectedSkills.length > 0) && (
+              <div className="composer-meta-stack">
+                {selectedAgents.length > 0 ? (
+                  <div className="composer-meta-row">
+                    <span className="composer-meta-label">{t('This turn')}:</span>
+                    {selectedAgents.map((agent) => (
+                      <span key={agent.id} className="composer-skill-chip">
+                        <span className="composer-skill-chip-sigil" aria-hidden>
+                          @
+                        </span>
+                        <span>
+                          {agent.emojiAvatar ? `${agent.emojiAvatar} ` : ''}
+                          {agent.name}
+                        </span>
+                        <button
+                          type="button"
+                          className="composer-skill-chip-remove"
+                          aria-label={t('Remove agent')}
+                          onClick={() => setSelectedAgents((prev) => prev.filter((a) => a.id !== agent.id))}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                    <span className="composer-meta-label">· {t('You')}</span>
+                  </div>
+                ) : roomAgentIds.length > 0 ? (
+                  <AgentRoomStrip
+                    agentIds={roomAgentIds}
+                    sessionId={sessionId}
+                    embedded
+                    onRemove={sessionId ? handleRemoveRoomAgent : undefined}
+                  />
+                ) : null}
+
+                {selectedSkills.length > 0 ? (
+                  <div className="composer-meta-row">
+                    {selectedSkills.map((skill) => (
+                      <span key={skill.id} className="composer-skill-chip">
+                        <span className="composer-skill-chip-sigil" aria-hidden>
+                          $
+                        </span>
+                        <span>{skill.name}</span>
+                        <button
+                          type="button"
+                          className="composer-skill-chip-remove"
+                          aria-label={t('Remove skill')}
+                          onClick={() => setSelectedSkills((prev) => prev.filter((s) => s.id !== skill.id))}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             )}
 
@@ -1537,7 +1764,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               size="sm"
               id={dom.messageInputID}
               ref={inputRef}
-              placeholder={t('Type your question here…') || ''}
+              placeholder={t('Type your question here… Use @ for agents, $ for skills') || ''}
               bg="transparent"
               autosize={true}
               minRows={2}
@@ -1686,6 +1913,15 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               </Flex>
             )}
 
+            {showWorkspaceHint && (
+              <div className="flex items-start gap-1.5 px-3 pb-1.5 pt-0">
+                <IconFolder size={14} className="mt-0.5 shrink-0 text-[var(--chatbox-tint-tertiary)]" stroke={1.75} />
+                <p className="m-0 min-w-0 flex-1 text-[11px] leading-snug text-[var(--chatbox-tint-tertiary)]">
+                  {t('Set a workspace folder (Tools menu) so Agent can write files and run terminal commands on disk.')}
+                </p>
+              </div>
+            )}
+
             {/* Toolbar row — mock .bar (rail bg + send on the right) */}
             <Flex align="center" gap={0} className="composer-bar shrink-0 w-full">
               {/* Hidden file inputs */}
@@ -1712,6 +1948,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   }}
                   agentMode={agentMode}
                   onToggleAgentMode={toggleAgentMode}
+                  workspaceRoot={workspaceRoot}
+                  onWorkspaceRootChange={onWorkspaceRootChange}
                   knowledgeBaseId={knowledgeBase?.id}
                   onSelectKnowledgeBase={handleKnowledgeBaseSelect}
                   showRollbackThreadButton={showRollbackThreadButton}
@@ -1732,8 +1970,17 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 />
               </Flex>
 
-              {/* Right Group: Model Selector + Send (token menu lives on statusline) */}
+              {/* Right Group: Team mode (multi-agent) + Model + Send */}
               <Flex align="center" gap={4} className="shrink-0">
+                {showRoomModeChip ? (
+                  <TeamModeSelect
+                    value={roomMode}
+                    onChange={(mode) => void handleRoomModeChange(mode)}
+                    toolbarButtonClass={toolbarButtonClass}
+                    isSmallScreen={isSmallScreen}
+                  />
+                ) : null}
+
                 {/* Model Selector */}
                 <Tooltip
                   label={

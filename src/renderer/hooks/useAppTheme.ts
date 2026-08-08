@@ -64,7 +64,7 @@ export function getThemeDesign(realTheme: 'light' | 'dark', fontSize: number, la
       ...(realTheme === 'light'
         ? {
             background: {
-              default: '#f7f7f8',
+              default: '#ffffff',
               paper: '#ffffff',
             },
             primary: {
@@ -91,14 +91,14 @@ export function getThemeDesign(realTheme: 'light' | 'dark', fontSize: number, la
       MuiCssBaseline: {
         styleOverrides: {
           html: {
-            backgroundColor: realTheme === 'dark' ? '#121214' : '#f7f7f8',
+            backgroundColor: realTheme === 'dark' ? '#121214' : '#ffffff',
           },
           body: {
-            backgroundColor: realTheme === 'dark' ? '#121214' : '#f7f7f8',
+            backgroundColor: realTheme === 'dark' ? '#121214' : '#ffffff',
             color: realTheme === 'dark' ? '#ececec' : '#1a1a1e',
           },
           '#root': {
-            backgroundColor: realTheme === 'dark' ? '#121214' : '#f7f7f8',
+            backgroundColor: realTheme === 'dark' ? '#121214' : '#ffffff',
             minHeight: '100%',
           },
         },
@@ -114,7 +114,7 @@ export function getThemeDesign(realTheme: 'light' | 'dark', fontSize: number, la
       MuiDrawer: {
         styleOverrides: {
           paper: {
-            backgroundColor: realTheme === 'dark' ? '#16161a' : '#f0f0f2',
+            backgroundColor: realTheme === 'dark' ? '#16161a' : '#ffffff',
             backgroundImage: 'none',
             borderRight: realTheme === 'dark' ? '1px solid #2a2a32' : '1px solid #e4e4e8',
           },

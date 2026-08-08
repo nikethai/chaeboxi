@@ -9,12 +9,12 @@ import type { Message, ModelProvider } from '@shared/types'
 import { IconCamera, IconClipboard, IconExternalLink, IconSettings } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useAtom } from 'jotai'
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import MessageList, { type MessageListRef } from '@/components/chat/MessageList'
 import SessionStatusBar from '@/components/chat/SessionStatusBar'
-import InputBox from '@/components/InputBox/InputBox'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
+import InputBox from '@/components/InputBox/InputBox'
 import { formatShortcutLabel } from '@/components/Shortcut'
 import { attachScreenshotToComposer } from '@/hooks/useDesktopShell'
 import platform from '@/platform'
@@ -32,7 +32,7 @@ export const Route = createFileRoute('/quick')({
 
 function ShortcutHint({ label }: { label?: string }) {
   if (!label) return null
-  const parts = label.split(/[+\-]/).filter(Boolean)
+  const parts = label.split(/[+-]/).filter(Boolean)
   if (parts.length === 0) return null
   return (
     <span className="inline-flex items-center gap-0.5 opacity-70">
@@ -327,6 +327,7 @@ function QuickChatPage() {
               sessionType={session.type || 'chat'}
               model={model}
               agentMode={session.agentMode ?? false}
+              workspaceRoot={session.workspaceRoot}
               generating={Boolean(lastGenerating?.generating)}
               onSelectModel={onSelectModel}
               onSubmit={onSubmit}
@@ -334,6 +335,12 @@ function QuickChatPage() {
               onStartNewThread={onStartNewThread}
               onRollbackThread={onRollbackThread}
               onClickSessionSettings={onClickSessionSettings}
+              onToggleAgentMode={(agentMode) => {
+                void updateSessionWithMessages(session.id, { agentMode })
+              }}
+              onWorkspaceRootChange={(workspaceRoot) => {
+                void updateSessionWithMessages(session.id, { workspaceRoot })
+              }}
             />
           </ErrorBoundary>
           <Flex justify="space-between" align="center" mt={8} gap="sm" wrap="wrap" className="quick-chat-hints">

@@ -119,6 +119,18 @@ export interface CopilotDetail {
   }
 }
 
+/** Product name: Agent (persona). Alias of CopilotDetail during rename migration. */
+export type AgentDetail = CopilotDetail
+
+/** Team-room multi-agent caps. */
+export const MAX_ROOM_AGENTS = 3
+/** Default discuss rounds after a user message (back-and-forth). */
+export const MAX_ROOM_ROUNDS = 2
+/** Hard cap when user taps Keep discussing (includes initial rounds). */
+export const MAX_ROOM_KEEP_DISCUSS_ROUNDS = 3
+/** Headroom for up to MAX_ROOM_AGENTS speakers × rounds. */
+export const MAX_AGENT_TURNS_PER_USER_MSG = 6
+
 export interface PromptPreset {
   id: string
   name: string

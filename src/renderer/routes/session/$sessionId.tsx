@@ -1,6 +1,6 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { Button, Flex, Text } from '@mantine/core'
-import { type Message, type ModelProvider, ModelProviderEnum } from '@shared/types'
+import { createMessage, type Message, type ModelProvider, ModelProviderEnum } from '@shared/types'
 import { IconMessage, IconShield } from '@tabler/icons-react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { type FC, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -151,6 +151,17 @@ function RouteComponent() {
     [currentSession]
   )
 
+  const onContinueTasks = useCallback(() => {
+    if (!currentSession) return
+    void submitNewUserMessage(currentSession.id, {
+      newUserMsg: createMessage(
+        'user',
+        'Continue the active task plan. First inspect the current tasks, then resume the next appropriate pending task. Update task statuses before responding.'
+      ),
+      needGenerating: true,
+    })
+  }, [currentSession])
+
   const onClickSessionSettings = useCallback(() => {
     if (!currentSession) {
       return false
@@ -193,13 +204,6 @@ function RouteComponent() {
       <div className="session-thread">
         <MessageList ref={messageListRef} key={`message-list${currentSessionId}`} currentSession={currentSession} />
       </div>
-
-      {/* <ScrollButtons /> */}
-      {TaskProgress && (
-        <Suspense fallback={null}>
-          <TaskProgress sessionId={currentSession.id} />
-        </Suspense>
-      )}
 
       {/* Agent chrome — compact strip above composer (OpenClaw + tool audit) */}
       {isAgentEnabled && isOpenClawProvider && (
@@ -250,6 +254,12 @@ function RouteComponent() {
 
       <div className="session-dock">
         <div className="session-dock-pad">
+          {/* Session tasks: dock chrome above composer (collapsed by default) */}
+          {TaskProgress && (
+            <Suspense fallback={null}>
+              <TaskProgress sessionId={currentSession.id} onContinue={onContinueTasks} />
+            </Suspense>
+          )}
           <ErrorBoundary name="session-inputbox">
             <InputBox
               key={`input-box${currentSession.id}`}
@@ -257,11 +267,15 @@ function RouteComponent() {
               sessionType={currentSession.type}
               model={model}
               agentMode={currentSession.agentMode ?? false}
+              workspaceRoot={currentSession.workspaceRoot}
               onStartNewThread={onStartNewThread}
               onRollbackThread={onRollbackThread}
               onSelectModel={onSelectModel}
               onToggleAgentMode={(agentMode) => {
                 void updateSessionStore(currentSession.id, { agentMode })
+              }}
+              onWorkspaceRootChange={(workspaceRoot) => {
+                void updateSessionStore(currentSession.id, { workspaceRoot })
               }}
               onClickSessionSettings={onClickSessionSettings}
               generating={!!lastGeneratingMessage}

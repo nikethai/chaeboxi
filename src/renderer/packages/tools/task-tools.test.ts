@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest'
 import type { MessageContentParts } from '@shared/types'
+import { describe, expect, it } from 'vitest'
+import taskTrackingToolSet from '@/packages/model-calls/toolsets/task-tracking'
 import {
   contentPartsHaveTaskTools,
   isTaskTrackingTool,
+  normalizeTaskToolName,
   snapshotTasksFromContentParts,
 } from './task-tools'
 
@@ -12,6 +14,13 @@ describe('task-tools helpers', () => {
     expect(isTaskTrackingTool('update_task')).toBe(true)
     expect(isTaskTrackingTool('list_tasks')).toBe(true)
     expect(isTaskTrackingTool('web_search')).toBe(false)
+  })
+
+  it('normalizes provider-namespaced task tools', () => {
+    expect(normalizeTaskToolName('google:tasks:create_task')).toBe('create_task')
+    expect(normalizeTaskToolName('mcp__google__create_task')).toBe('create_task')
+    expect(isTaskTrackingTool('google:tasks:update_task')).toBe(true)
+    expect(isTaskTrackingTool('mcp__google__list_tasks')).toBe(true)
   })
 
   it('builds snapshot from create/update/list results', () => {
@@ -74,5 +83,9 @@ describe('task-tools helpers', () => {
     ]
     expect(contentPartsHaveTaskTools(parts)).toBe(false)
     expect(snapshotTasksFromContentParts(parts)).toEqual([])
+  })
+
+  it('live task toolset only advertises canonical names', () => {
+    expect(Object.keys(taskTrackingToolSet.tools).sort()).toEqual(['create_task', 'list_tasks', 'update_task'])
   })
 })

@@ -439,6 +439,8 @@ export const SessionSchema = z.object({
   archived: z.boolean().optional(),
   assistantAvatarKey: z.string().optional(),
   agentMode: z.boolean().optional(),
+  /** Absolute path to the session workspace root for agent file/terminal tools (desktop). */
+  workspaceRoot: z.string().optional(),
   planMode: z.boolean().optional(),
   planPhase: PlanPhaseEnum.optional(),
   settings: SessionSettingsSchema.optional(),

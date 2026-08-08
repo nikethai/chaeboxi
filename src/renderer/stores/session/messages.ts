@@ -248,9 +248,9 @@ export async function submitNewUserMessage(
   }
   // 根据需要，生成这条回复消息
   if (needGenerating) {
-    const freshSession = await chatStore.getSession(sessionId)
+    let freshSession = await chatStore.getSession(sessionId)
     if (freshSession?.planMode && freshSession?.agentMode && !freshSession?.planPhase) {
-      await chatStore.updateSession(sessionId, { planPhase: 'planning' })
+      freshSession = await chatStore.updateSession(sessionId, { planPhase: 'planning' })
     }
 
     if (isMultiAgentRoom) {

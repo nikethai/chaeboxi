@@ -1,11 +1,8 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { ActionIcon, Button, Flex, Stack, Text, Transition } from '@mantine/core'
-import { useThrottledCallback } from '@mantine/hooks'
+import { ActionIcon, Flex, Stack, Text } from '@mantine/core'
 import { ModelProviderEnum, type Session, type SessionThreadBrief } from '@shared/types'
 import {
   IconAlignRight,
-  IconArrowBarToUp,
-  IconArrowUp,
   IconChevronLeft,
   IconChevronRight,
   IconListTree,
@@ -20,7 +17,6 @@ import {
   type FC,
   forwardRef,
   memo,
-  type UIEventHandler,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -46,13 +42,14 @@ import {
 import { getAllMessageList, getCurrentThreadHistoryHash } from '@/stores/sessionHelpers'
 import { settingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
+import { isThreadVisuallyEmpty } from '@/utils/chat-starters'
 import ActionMenu from '../ActionMenu'
 
 import { ErrorBoundary } from '../common/ErrorBoundary'
 import { ScalableIcon } from '../common/ScalableIcon'
 import { BlockCodeCollapsedStateProvider } from '../Markdown'
+import EmptyThreadState from './EmptyThreadState'
 import Message from './Message'
-import MessageNavigation, { ScrollToBottomButton } from './MessageNavigation'
 import SummaryMessage from './SummaryMessage'
 
 // LRU-like cache with max size to prevent unbounded memory growth
@@ -128,128 +125,15 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
   const setMessageListElement = useUIStore((s) => s.setMessageListElement)
   const setMessageScrolling = useUIStore((s) => s.setMessageScrolling)
 
-  // message navigation handlers
-  const [messageNavigationVisible, setMessageNavigationVisible] = useState(false)
-  const handleMessageNavigationVisibleChanged = useCallback((v: boolean) => setMessageNavigationVisible(v), [])
+  const threadEmpty = useMemo(() => isThreadVisuallyEmpty(currentMessageList), [currentMessageList])
 
-  const handleScrollToTop = useCallback(() => {
-    virtuoso.current?.scrollToIndex({ index: 0, align: 'start', behavior: 'smooth' })
-  }, [])
-
-  const handleScrollToBottom = useCallback(() => {
-    virtuoso.current?.scrollTo({ top: Infinity, behavior: 'smooth' })
-  }, [])
-
-  const handleScrollToPrev = useCallback(() => {
-    if (messageListRef?.current && virtuoso?.current) {
-      const containerRect = messageListRef.current.getBoundingClientRect()
-      for (let i = 0; i < currentMessageList.length; i++) {
-        const msg = currentMessageList[i]
-        if (msg.role !== 'user' && msg.role !== 'assistant') {
-          continue
-        }
-        const msgElement = messageListRef.current.querySelector(
-          `[data-testid="virtuoso-item-list"] > [data-index="${i}"]`
-        )
-        if (msgElement) {
-          const rect = msgElement.getBoundingClientRect()
-          // 找到第一个出现在可视区域顶部的元素，滚动到上一条用户消息
-          if (rect.bottom > containerRect.top) {
-            for (let j = i - 1; j >= 0; j--) {
-              if (currentMessageList[j].role === 'user') {
-                virtuoso.current.scrollToIndex({
-                  index: j,
-                  align: 'start',
-                  offset: isSmallScreen ? -28 : 0,
-                  behavior: 'smooth',
-                })
-                return
-              }
-            }
-            // 没有上一条用户消息了，滚动到顶部
-            virtuoso.current.scrollToIndex({ index: 0, align: 'start', behavior: 'smooth' })
-            return
-          }
-        }
-      }
-    }
-  }, [currentMessageList, isSmallScreen])
-
-  const handleScrollToNext = useCallback(() => {
-    if (messageListRef?.current && virtuoso?.current) {
-      const containerRect = messageListRef.current.getBoundingClientRect()
-      for (let i = 0; i < currentMessageList.length; i++) {
-        const msg = currentMessageList[i]
-        if (msg.role !== 'user' && msg.role !== 'assistant') {
-          continue
-        }
-        const msgElement = messageListRef.current.querySelector(
-          `[data-testid="virtuoso-item-list"] > [data-index="${i}"]`
-        )
-        if (msgElement) {
-          const rect = msgElement.getBoundingClientRect()
-          // 找到第一个出现在可视区域顶部的元素，滚动到下一条用户消息
-          if (rect.bottom > containerRect.top) {
-            for (let j = i + 1; j < currentMessageList.length; j++) {
-              if (currentMessageList[j].role === 'user') {
-                virtuoso.current.scrollToIndex({ index: j, align: 'start', behavior: 'smooth' })
-                return
-              }
-            }
-            // 没有下一条用户消息了，滚动到底部
-            virtuoso.current.scrollToIndex({ index: currentMessageList.length - 1, align: 'end', behavior: 'smooth' })
-            return
-          }
-        }
-      }
-    }
-  }, [currentMessageList])
-
-  const [atBottom, setAtBottom] = useState(false)
-  const [atTop, setAtTop] = useState(false)
-
-  const [showScrollToPrev, setShowScrollToPrev] = useState(false)
-  const lastScrollTop = useRef<number>()
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current)
-      }
-    }
-  }, [])
-
-  const handleScrollTopThrottled = useThrottledCallback((scrollTop?: number) => {
-    if (typeof scrollTop === 'number' && typeof lastScrollTop.current === 'number') {
-      if (scrollTop > 0 && scrollTop < lastScrollTop.current) {
-        // 是向上滚动
-        setShowScrollToPrev(true)
-        if (timerRef.current) {
-          clearTimeout(timerRef.current)
-          timerRef.current = null
-        }
-        timerRef.current = setTimeout(() => setShowScrollToPrev(false), 3000)
-      } else {
-        setShowScrollToPrev(false)
-        if (timerRef.current) {
-          clearTimeout(timerRef.current)
-          timerRef.current = null
-        }
-      }
-    }
-    lastScrollTop.current = scrollTop
-  }, 256)
-
-  const handleScroll = useCallback<UIEventHandler>(
-    (e) => {
-      const scrollTop = e.currentTarget.scrollTop
-      if (e.currentTarget.scrollHeight - (scrollTop + e.currentTarget.clientHeight) >= 0) {
-        handleScrollTopThrottled(scrollTop)
-      }
+  const setPrefillText = useSetAtom(atoms.inputBoxPrefillTextFamily(currentSession.id))
+  const handlePickStarter = useCallback(
+    (fill: string) => {
+      setPrefillText(fill)
     },
-    [handleScrollTopThrottled]
+    [setPrefillText]
   )
-  // message navigation handlers end
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: 仅执行一次
   useEffect(() => {
@@ -280,146 +164,105 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
     <div className={cn('w-full h-full mx-auto', props.className)}>
       <BlockCodeCollapsedStateProvider defaultCollapsed={!!settingsStore.getState().autoCollapseCodeBlock}>
         <div className="overflow-hidden h-full relative" ref={messageListRef}>
-          <Virtuoso
-            style={{ scrollbarGutter: 'stable' }}
-            className={platformType === 'win32' ? 'scrollbar-custom' : ''}
-            data={currentMessageList}
-            ref={virtuoso}
-            // Keep pinned to latest while user is at bottom; room orchestrator also
-            // forces scroll so multi-agent turns don't leave the viewport mid-list.
-            followOutput={(isAtBottom) => (isAtBottom ? 'smooth' : false)}
-            alignToBottom={alignToBottom}
-            {...(sessionScrollPositionCache.has(currentSession.id) && !alignToBottom
-              ? {
-                  restoreStateFrom: sessionScrollPositionCache.get(currentSession.id),
-                  // 需要额外设置 initialScrollTop，否则恢复位置后 scrollTop 为 0。这时如果用户没有滚动，那么下次保存时 scrollTop 将记为 0，导致下一次恢复时位置始终为顶部。
-                  initialScrollTop: sessionScrollPositionCache.get(currentSession.id)?.scrollTop,
-                }
-              : {
-                  initialTopMostItemIndex: Math.max(0, currentMessageList.length - 1),
-                })}
-            increaseViewportBy={{ top: 2000, bottom: 2000 }}
-            itemContent={(index, msg) => {
-              const prevMsg = index > 0 ? currentMessageList[index - 1] : undefined
-              const nextMsg = currentMessageList[index + 1]
-              const isTeamDiscussRole = isTeamRoomCompactRole(msg)
-              const prevIsTeamDiscussRole = isTeamRoomCompactRole(prevMsg)
-              const nextIsTeamDiscussRole = isTeamRoomCompactRole(nextMsg)
-              const discussionGroupStart = Boolean(isTeamDiscussRole && !prevIsTeamDiscussRole)
-              const discussionGroupEnd = Boolean(isTeamDiscussRole && !nextIsTeamDiscussRole)
-              const isCompactRoomTurn = isTeamDiscussRole
-              return (
-                <Stack
-                  key={msg.id}
-                  gap={0}
-                  className={cn(
-                    'chat-col',
-                    index === 0 && 'pt-2',
-                    isCompactRoomTurn &&
-                      'bg-[var(--chatbox-background-secondary,#16161a)]/35 border-x border-[var(--chatbox-border-primary,#2a2a32)] px-2',
-                    discussionGroupStart && 'mt-1 rounded-t-lg border-t pt-2',
-                    discussionGroupEnd && 'mb-1 rounded-b-lg border-b pb-2'
-                  )}
-                >
-                  {currentThreadHash[msg.id] && (
-                    <ThreadLabel thread={currentThreadHash[msg.id]} sessionId={currentSession.id} />
-                  )}
-                  <ErrorBoundary name={`message-item`}>
-                    {msg.isSummary ? (
-                      <SummaryMessage
-                        msg={msg}
-                        className={index === 0 ? 'pt-4' : index === currentMessageList.length - 1 ? '!pb-4' : ''}
-                        isLatestSummary={msg.id === latestSummaryMessageId}
-                        onDelete={() => removeMessage(currentSession.id, msg.id)}
-                        sessionId={currentSession.id}
-                      />
-                    ) : (
-                      <Message
-                        id={msg.id}
-                        msg={msg}
-                        sessionId={currentSession.id}
-                        sessionType={currentSession.type || 'chat'}
-                        className={cn(
-                          index === 0 ? 'pt-4' : index === currentMessageList.length - 1 ? '!pb-4' : '',
-                          isCompactRoomTurn && '!pt-1 !pb-1'
-                        )}
-                        collapseThreshold={msg.role === 'system' ? 150 : undefined}
-                        buttonGroup={
-                          index === currentMessageList.length - 1 && msg.role === 'assistant' ? 'always' : 'auto'
-                        }
-                        assistantAvatarKey={currentSession.assistantAvatarKey}
-                        sessionPicUrl={currentSession.picUrl}
-                        discussionGroupStart={discussionGroupStart}
-                      />
-                    )}
-                  </ErrorBoundary>
-                  {currentSession.messageForksHash?.[msg.id] &&
-                    currentSession.messageForksHash[msg.id].lists.length > 1 && (
-                      <Flex justify="flex-end" mt={4} pr="md" mr="md" className="self-end">
-                        <ForkNav
-                          sessionId={currentSession.id}
-                          msgId={msg.id}
-                          forks={currentSession.messageForksHash[msg.id]}
-                        />
-                      </Flex>
-                    )}
-                </Stack>
-              )
-            }}
-            atTopStateChange={setAtTop}
-            atBottomStateChange={setAtBottom}
-            onScroll={handleScroll}
-          />
-
-          {!isSmallScreen ? (
-            <MessageNavigation
-              visible={messageNavigationVisible}
-              onVisibleChange={handleMessageNavigationVisibleChanged}
-              onScrollToTop={handleScrollToTop}
-              onScrollToBottom={handleScrollToBottom}
-              onScrollToPrev={handleScrollToPrev}
-              onScrollToNext={handleScrollToNext}
+          {threadEmpty ? (
+            <EmptyThreadState
+              sessionName={currentSession.name}
+              onPickStarter={handlePickStarter}
+              compact={alignToBottom || isSmallScreen}
             />
           ) : (
-            <>
-              <Transition mounted={showScrollToPrev && !atTop} transition="fade-down">
-                {(transitionStyle) => (
-                  <Flex
-                    style={transitionStyle}
-                    className="absolute z-10 top-0 left-0 right-0 leading-tight bg-chatbox-background-secondary"
+            <Virtuoso
+              style={{ scrollbarGutter: 'stable' }}
+              className={platformType === 'win32' ? 'scrollbar-custom' : ''}
+              data={currentMessageList}
+              ref={virtuoso}
+              // Keep pinned to latest while user is at bottom; room orchestrator also
+              // forces scroll so multi-agent turns don't leave the viewport mid-list.
+              followOutput={(isAtBottom) => (isAtBottom ? 'smooth' : false)}
+              alignToBottom={alignToBottom}
+              {...(sessionScrollPositionCache.has(currentSession.id) && !alignToBottom
+                ? {
+                    restoreStateFrom: sessionScrollPositionCache.get(currentSession.id),
+                    // 需要额外设置 initialScrollTop，否则恢复位置后 scrollTop 为 0。这时如果用户没有滚动，那么下次保存时 scrollTop 将记为 0，导致下一次恢复时位置始终为顶部。
+                    initialScrollTop: sessionScrollPositionCache.get(currentSession.id)?.scrollTop,
+                  }
+                : {
+                    initialTopMostItemIndex: Math.max(0, currentMessageList.length - 1),
+                  })}
+              increaseViewportBy={{ top: 2000, bottom: 2000 }}
+              itemContent={(index, msg) => {
+                const prevMsg = index > 0 ? currentMessageList[index - 1] : undefined
+                const nextMsg = currentMessageList[index + 1]
+                const isTeamDiscussRole = isTeamRoomCompactRole(msg)
+                const prevIsTeamDiscussRole = isTeamRoomCompactRole(prevMsg)
+                const nextIsTeamDiscussRole = isTeamRoomCompactRole(nextMsg)
+                const discussionGroupStart = Boolean(isTeamDiscussRole && !prevIsTeamDiscussRole)
+                const discussionGroupEnd = Boolean(isTeamDiscussRole && !nextIsTeamDiscussRole)
+                const isCompactRoomTurn = isTeamDiscussRole
+                return (
+                  <Stack
+                    key={msg.id}
+                    gap={0}
+                    className={cn(
+                      'chat-col',
+                      index === 0 && 'pt-2',
+                      isCompactRoomTurn &&
+                        'bg-[var(--chatbox-background-secondary,#16161a)]/35 border-x border-[var(--chatbox-border-primary,#2a2a32)] px-2',
+                      discussionGroupStart && 'mt-1 rounded-t-lg border-t pt-2',
+                      discussionGroupEnd && 'mb-1 rounded-b-lg border-b pb-2'
+                    )}
                   >
-                    {[
-                      { text: t('Return to the top'), icon: IconArrowBarToUp, onClick: handleScrollToTop },
-                      {
-                        text: t('Back to previous message'),
-                        icon: IconArrowUp,
-                        onClick: handleScrollToPrev,
-                      },
-                    ].map((item, idx) => (
-                      <Button
-                        key={item.text}
-                        variant="transparent"
-                        className={cn('w-1/2', idx === 0 ? 'border-r border-r-chatbox-border-primary' : '')}
-                        classNames={{
-                          section: '!mr-xxs',
-                        }}
-                        size="xs"
-                        h="auto"
-                        py={6}
-                        c="chatbox-tertiary"
-                        onClick={item.onClick}
-                        leftSection={<ScalableIcon icon={item.icon} size={16} />}
-                      >
-                        {item.text}
-                      </Button>
-                    ))}
-                  </Flex>
-                )}
-              </Transition>
-              <Transition mounted={!atBottom} transition="slide-up">
-                {(transitionStyle) => <ScrollToBottomButton onClick={handleScrollToBottom} style={transitionStyle} />}
-              </Transition>
-            </>
+                    {currentThreadHash[msg.id] && (
+                      <ThreadLabel thread={currentThreadHash[msg.id]} sessionId={currentSession.id} />
+                    )}
+                    <ErrorBoundary name={`message-item`}>
+                      {msg.isSummary ? (
+                        <SummaryMessage
+                          msg={msg}
+                          className={index === 0 ? 'pt-4' : index === currentMessageList.length - 1 ? '!pb-4' : ''}
+                          isLatestSummary={msg.id === latestSummaryMessageId}
+                          onDelete={() => removeMessage(currentSession.id, msg.id)}
+                          sessionId={currentSession.id}
+                        />
+                      ) : (
+                        <Message
+                          id={msg.id}
+                          msg={msg}
+                          sessionId={currentSession.id}
+                          sessionType={currentSession.type || 'chat'}
+                          className={cn(
+                            index === 0 ? 'pt-4' : index === currentMessageList.length - 1 ? '!pb-4' : '',
+                            isCompactRoomTurn && '!pt-1 !pb-1'
+                          )}
+                          collapseThreshold={msg.role === 'system' ? 150 : undefined}
+                          buttonGroup={
+                            // Quick chat (alignToBottom): no per-message chrome / More menu
+                            alignToBottom
+                              ? 'none'
+                              : index === currentMessageList.length - 1 && msg.role === 'assistant'
+                                ? 'always'
+                                : 'auto'
+                          }
+                          assistantAvatarKey={currentSession.assistantAvatarKey}
+                          sessionPicUrl={currentSession.picUrl}
+                          discussionGroupStart={discussionGroupStart}
+                        />
+                      )}
+                    </ErrorBoundary>
+                    {currentSession.messageForksHash?.[msg.id] &&
+                      currentSession.messageForksHash[msg.id].lists.length > 1 && (
+                        <Flex justify="flex-end" mt={4} pr="md" mr="md" className="self-end">
+                          <ForkNav
+                            sessionId={currentSession.id}
+                            msgId={msg.id}
+                            forks={currentSession.messageForksHash[msg.id]}
+                          />
+                        </Flex>
+                      )}
+                  </Stack>
+                )
+              }}
+            />
           )}
         </div>
       </BlockCodeCollapsedStateProvider>

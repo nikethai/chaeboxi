@@ -6,7 +6,7 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { ActionIcon, Flex, Kbd, Text, Tooltip } from '@mantine/core'
 import type { Message, ModelProvider } from '@shared/types'
-import { IconCamera, IconClipboard, IconExternalLink, IconSettings } from '@tabler/icons-react'
+import { IconCamera, IconClipboard, IconExternalLink } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useAtom } from 'jotai'
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -25,6 +25,7 @@ import { modifyMessage, removeCurrentThread, startNewThread, submitNewUserMessag
 import { getAllMessageList, initEmptyChatSession } from '@/stores/sessionHelpers'
 import { useSettingsStore } from '@/stores/settingsStore'
 import * as toastActions from '@/stores/toastActions'
+import { isThreadVisuallyEmpty } from '@/utils/chat-starters'
 
 export const Route = createFileRoute('/quick')({
   component: QuickChatPage,
@@ -94,6 +95,7 @@ function QuickChatPage() {
   }, [])
 
   const currentMessageList = useMemo(() => (session ? getAllMessageList(session) : []), [session])
+  const threadEmpty = useMemo(() => isThreadVisuallyEmpty(currentMessageList), [currentMessageList])
 
   const model = useMemo(() => {
     if (session?.settings?.provider && session?.settings?.modelId) {
@@ -271,6 +273,7 @@ function QuickChatPage() {
               variant="subtle"
               size={28}
               color="chatbox-tertiary"
+              className="active:scale-[0.96] transition-transform"
               onClick={() => void onScreenshot()}
               aria-label={t('Screenshot to Chat')}
             >
@@ -282,30 +285,21 @@ function QuickChatPage() {
               variant="subtle"
               size={28}
               color="chatbox-tertiary"
+              className="active:scale-[0.96] transition-transform"
               onClick={() => void onClipboard()}
               aria-label={t('Attach clipboard image')}
             >
               <IconClipboard size={16} stroke={1.5} />
             </ActionIcon>
           </Tooltip>
-          <Tooltip label={t('Session Settings')}>
+          <Tooltip label={t('Open full app')}>
             <ActionIcon
               variant="subtle"
               size={28}
               color="chatbox-tertiary"
-              onClick={() => void onClickSessionSettings()}
-              aria-label={t('Session Settings')}
-            >
-              <IconSettings size={16} stroke={1.5} />
-            </ActionIcon>
-          </Tooltip>
-          <Tooltip label={t('Open full window')}>
-            <ActionIcon
-              variant="subtle"
-              size={28}
-              color="chatbox-tertiary"
+              className="active:scale-[0.96] transition-transform"
               onClick={() => void openFullApp()}
-              aria-label={t('Open full window')}
+              aria-label={t('Open full app')}
             >
               <IconExternalLink size={16} stroke={1.5} />
             </ActionIcon>
@@ -343,7 +337,7 @@ function QuickChatPage() {
               }}
             />
           </ErrorBoundary>
-          <Flex justify="space-between" align="center" mt={8} gap="sm" wrap="wrap" className="quick-chat-hints">
+          <Flex justify="flex-start" align="center" mt={8} gap="sm" wrap="wrap" className="quick-chat-hints">
             <Text size="xs" c="dimmed" className="inline-flex items-center gap-1.5 flex-wrap">
               <span>{t('Toggle')}</span>
               <ShortcutHint label={quickToggle} />
@@ -351,14 +345,6 @@ function QuickChatPage() {
               <span>{t('Screenshot')}</span>
               <ShortcutHint label={shotKey} />
             </Text>
-            <button
-              type="button"
-              className="appearance-none border-0 bg-transparent p-0 text-xs font-medium text-[var(--chatbox-tint-primary)] transition-colors hover:text-[var(--chatbox-tint-white)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--chatbox-tint-brand)] inline-flex items-center gap-1 shrink-0"
-              onClick={() => void openFullApp()}
-            >
-              <IconExternalLink size={12} stroke={1.75} />
-              {t('Open full app')}
-            </button>
           </Flex>
         </div>
         <SessionStatusBar
@@ -367,6 +353,7 @@ function QuickChatPage() {
           providerId={model?.provider}
           generating={Boolean(lastGenerating?.generating)}
           sessionId={session.id}
+          empty={threadEmpty}
         />
       </div>
     </div>

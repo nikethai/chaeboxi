@@ -2022,6 +2022,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   >
                     <UnstyledButton
                       className={cn(toolbarButtonClass, 'model-picker-trigger', isSmallScreen && 'px-2.5 mobile-touch-target min-h-11')}
+                      aria-label={t('Select Model')}
                     >
                       {!!model && <ProviderImageIcon size={15} provider={model.provider} />}
                       <Text

@@ -1,4 +1,5 @@
 import type { Message } from '@shared/types'
+import { getMessageText } from '@shared/utils/message'
 import { describe, expect, test } from 'vitest'
 import { sequenceMessages } from '../../shared/utils/message'
 
@@ -252,6 +253,72 @@ L3
         expect(gotMessage).toEqual(expectedMessage)
       })
     })
+  })
+
+  test('keeps multi-agent assistant turns separate with bridge', () => {
+    const input: Message[] = [
+      { id: 'u1', role: 'user', contentParts: [{ type: 'text', text: 'Discuss API design' }] },
+      {
+        id: 'a1',
+        role: 'assistant',
+        name: 'Code Assistant',
+        agentId: 'builtin:code-assistant',
+        contentParts: [{ type: 'text', text: 'Use REST' }],
+      },
+      {
+        id: 'a2',
+        role: 'assistant',
+        name: 'Deep Researcher',
+        agentId: 'builtin:deep-researcher',
+        contentParts: [{ type: 'text', text: 'Consider GraphQL' }],
+      },
+    ]
+    const got = sequenceMessages(input)
+    // user + assistant A + bridge user + assistant B (not merged into one assistant)
+    expect(got.map((m) => m.role)).toEqual(['user', 'assistant', 'user', 'assistant'])
+    expect(got[1].name).toBe('Code Assistant')
+    expect(getMessageText(got[1])).toBe('Use REST')
+    expect(got[3].name).toBe('Deep Researcher')
+    expect(getMessageText(got[3])).toBe('Consider GraphQL')
+  })
+
+  test('three multi-agent speakers stay separate with bridges between each', () => {
+    const input: Message[] = [
+      { id: 'u1', role: 'user', contentParts: [{ type: 'text', text: 'Plan auth' }] },
+      {
+        id: 'a1',
+        role: 'assistant',
+        name: 'Code Assistant',
+        agentId: 'ca',
+        contentParts: [{ type: 'text', text: 'Use OAuth' }],
+      },
+      {
+        id: 'a2',
+        role: 'assistant',
+        name: 'IT Expert',
+        agentId: 'it',
+        contentParts: [{ type: 'text', text: 'Watch SSO costs' }],
+      },
+      {
+        id: 'a3',
+        role: 'assistant',
+        name: 'Product Manager',
+        agentId: 'pm',
+        contentParts: [{ type: 'text', text: 'Prefer simpler sign-in' }],
+      },
+    ]
+    const got = sequenceMessages(input)
+    expect(got.map((m) => m.role)).toEqual([
+      'user',
+      'assistant',
+      'user',
+      'assistant',
+      'user',
+      'assistant',
+    ])
+    expect(got[1].name).toBe('Code Assistant')
+    expect(got[3].name).toBe('IT Expert')
+    expect(got[5].name).toBe('Product Manager')
   })
 
   test('multiple calls should not accumulate quote prefixes', () => {

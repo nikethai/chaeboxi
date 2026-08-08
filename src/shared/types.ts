@@ -124,7 +124,9 @@ export type AgentDetail = CopilotDetail
 
 /** Slack-style multi-agent room caps (v1). */
 export const MAX_ROOM_AGENTS = 3
-export const MAX_ROOM_ROUNDS = 2
+/** One discussion pass so every tagged agent speaks once before synthesis (fewer empty/rate-limit fails). */
+export const MAX_ROOM_ROUNDS = 1
+/** Headroom for up to MAX_ROOM_AGENTS speakers × rounds. */
 export const MAX_AGENT_TURNS_PER_USER_MSG = 6
 
 export interface PromptPreset {

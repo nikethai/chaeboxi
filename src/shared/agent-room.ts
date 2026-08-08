@@ -62,10 +62,60 @@ export function buildRoomProtocol(speakerName: string, participantNames: string[
     `Other participants: ${othersList}. The user is also present and may interrupt anytime.`,
     'Rules:',
     '- Speak only as yourself. Do not role-play other agents or the user.',
+    '- Reply with plain helpful text only. Tools, web search, and function calls are NOT available this turn.',
+    '- Always write a non-empty reply (at least 2–4 sentences or tight bullets). Never return blank.',
+    '- Do NOT prefix your reply with your name or markdown like **Name:** — the UI already labels you.',
     '- Keep replies short and conversational (about 2–6 short paragraphs or tight bullets), like Slack.',
-    '- Build on prior points; disagree when useful. Do not write a full report unless asked.',
-    '- Do not summarize the whole discussion for everyone unless the user asks.',
+    '- Build on prior points; disagree when useful.',
+    '- Do NOT write the full final report — a synthesis turn will follow after discussion.',
   ].join('\n')
+}
+
+/**
+ * User-role bridge so multi-agent history does not end on assistant
+ * (Gemini/OpenAI require the last prompt message to be user for a reliable completion).
+ */
+export function buildRoomContinuePrompt(speakerName: string, roomRole: 'turn' | 'synthesis' = 'turn'): string {
+  if (roomRole === 'synthesis') {
+    return `(Your turn as "${speakerName}". Write the complete Final answer for the user now. Plain text only; do not call tools. Never return blank.)`
+  }
+  return `(Your turn as "${speakerName}". Continue the multi-agent discussion in character. Plain text only; do not call tools. Never return blank.)`
+}
+
+/**
+ * Protocol for the final council answer after multi-agent discussion.
+ * Lead agent (typically first mentioned) produces the full user-facing answer.
+ */
+export function buildSynthesisProtocol(leadName: string, participantNames: string[]): string {
+  const others = participantNames.filter((n) => n !== leadName)
+  const othersList = others.length > 0 ? others.join(', ') : 'none'
+  return [
+    '## Final answer protocol (council synthesis)',
+    `You are "${leadName}", the lead synthesizer for this multi-agent discussion.`,
+    `Other participants were: ${othersList}. The user is waiting for a complete answer.`,
+    'Rules:',
+    '- Tools, web search, and function calls are NOT available — answer from the discussion and your knowledge.',
+    '- Produce a complete, well-structured final answer the user can use and copy. Never return blank.',
+    '- Do NOT prefix with your name or **Name:** — the UI already labels you.',
+    '- Base the answer on the discussion above. Reconcile agreements; note important disagreements briefly.',
+    '- Do not invent consensus that did not appear in the discussion.',
+    '- Speak as yourself (the lead), not as a neutral moderator bot.',
+    '- Longer, structured output is allowed and expected for this turn only.',
+  ].join('\n')
+}
+
+/** First speaker in order is the synthesis lead (first @ mention / room order). */
+export function resolveSynthesisLead(speakers: string[]): string | undefined {
+  return speakers.length >= 2 ? speakers[0] : undefined
+}
+
+/** Whether a completed multi-agent room should append a synthesis turn. */
+export function shouldRunSynthesis(params: {
+  speakerCount: number
+  completedDiscussionTurns: number
+  interrupted: boolean
+}): boolean {
+  return params.speakerCount >= 2 && params.completedDiscussionTurns > 0 && !params.interrupted
 }
 
 /**

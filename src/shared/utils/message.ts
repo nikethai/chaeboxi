@@ -81,6 +81,14 @@ export function isEmptyMessage(message: Message): boolean {
   return getMessageText(message, true, true).length === 0 && !message.files?.length && !message.links?.length
 }
 
+/** Ensure assistant messages carry a display name for multi-agent history (API name field). */
+function withSpeakerName(message: Message): Message {
+  if (message.role !== 'assistant') return message
+  if (message.name) return message
+  if (message.agentId) return { ...message, name: message.agentId }
+  return message
+}
+
 export function countMessageWords(message: Message): number {
   return countWord(getMessageText(message))
 }
@@ -156,9 +164,34 @@ export function sequenceMessages(msgs: Message[]): Message[] {
     if (msg.role === 'system' || isEmptyMessage(msg)) {
       continue
     }
-    // Merge consecutive messages from the same role
+    // Merge consecutive messages from the same role — except multi-agent room turns
+    // with different speakers (must stay distinct so models see A↔B conversation).
     if (msg.role === next.role) {
-      next = mergeMessages(next, msg)
+      const sameSpeaker =
+        msg.role !== 'assistant' ||
+        (msg.agentId || msg.name || '') === (next.agentId || next.name || '')
+      if (sameSpeaker) {
+        next = mergeMessages(next, msg)
+        continue
+      }
+      // Different agent speakers: keep turns separate with a light user bridge
+      // so OpenAI/Gemini alternating-role constraints stay valid.
+      // Prefer message.name for attribution (no body prefix — avoids models echoing **Name:**).
+      if (!isEmptyMessage(next)) {
+        ret.push(withSpeakerName(next))
+        isFirstUserMsg = false
+        ret.push({
+          id: `multi_agent_bridge_${msg.id}`,
+          role: 'user',
+          contentParts: [
+            {
+              type: 'text',
+              text: '(Continue the multi-agent discussion. Reply as the next speaker only. Write plain text; do not call tools.)',
+            },
+          ],
+        })
+      }
+      next = withSpeakerName(cloneMessage(msg))
       continue
     }
     // Merge all assistant messages as a quote block if constructing the first user message

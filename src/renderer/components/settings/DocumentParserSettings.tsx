@@ -3,7 +3,7 @@ import type { DocumentParserType } from '@shared/types/settings'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AdaptiveSelect } from '@/components/AdaptiveSelect'
-import { platformCapabilities } from '@/platform'
+import platform, { platformCapabilities } from '@/platform'
 import { getPlatformDefaultDocumentParser, useSettingsStore } from '@/stores/settingsStore'
 
 const ALL_PARSER_OPTIONS: {

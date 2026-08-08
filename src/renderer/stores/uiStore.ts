@@ -44,6 +44,19 @@ export const uiStore = createStore(
           }[]
           onSave?: () => void
         } | null,
+        /**
+         * Side workspace (Claude Artifacts–style): chat left, preview right.
+         * HTML artifacts only — Mermaid stays inline in the chat card.
+         */
+        workspacePanel: null as
+          | null
+          | {
+              kind: 'html'
+              htmlCode: string
+              title?: string
+              messageId?: string
+            },
+        workspaceWidthPx: 520 as number,
         showCopilotsInNewSession: false,
         sidebarWidth: null as number | null, // Custom sidebar width, null means use default
         /** User dismissed the Recents coaching banner once. */
@@ -104,6 +117,15 @@ export const uiStore = createStore(
 
         setPictureShow: (pictureShow: ReturnType<typeof get>['pictureShow']) => {
           set({ pictureShow })
+        },
+
+        setWorkspacePanel: (workspacePanel: ReturnType<typeof get>['workspacePanel']) => {
+          set({ workspacePanel })
+        },
+
+        setWorkspaceWidthPx: (workspaceWidthPx: number) => {
+          const clamped = Math.min(720, Math.max(320, Math.round(workspaceWidthPx)))
+          set((state) => (state.workspaceWidthPx === clamped ? state : { workspaceWidthPx: clamped }))
         },
 
         setMessageListElement: (messageListElement: RefObject<HTMLDivElement> | null) => {
@@ -224,6 +246,7 @@ export const uiStore = createStore(
         sidebarLayout: state.sidebarLayout,
         showCopilotsInNewSession: state.showCopilotsInNewSession,
         sidebarWidth: state.sidebarWidth,
+        workspaceWidthPx: state.workspaceWidthPx,
         sessionWebBrowsingMap: state.sessionWebBrowsingMap,
         recentsCoachingDismissed: state.recentsCoachingDismissed,
       }),

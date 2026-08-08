@@ -1,9 +1,6 @@
-import NiceModal from '@ebay/nice-modal-react'
-import ReplayOutlinedIcon from '@mui/icons-material/ReplayOutlined'
-import StopCircleOutlinedIcon from '@mui/icons-material/StopCircleOutlined'
-import ButtonGroup from '@mui/material/ButtonGroup'
-import IconButton from '@mui/material/IconButton'
+import { ActionIcon, Text, Tooltip, UnstyledButton } from '@mantine/core'
 import type { Message, MessageArtifact as MessageArtifactRecord } from '@shared/types/session'
+import { IconCode, IconEye, IconLayoutSidebarRightExpand, IconPlayerStop, IconReload } from '@tabler/icons-react'
 import { debounce } from 'lodash'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,9 +8,8 @@ import { v4 as uuidv4 } from 'uuid'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import { getMessageThreadContext } from '@/stores/sessionActions'
+import { useUIStore } from '@/stores/uiStore'
 import { getMessageText } from '../../shared/utils/message'
-import ArrowRightIcon from './icons/ArrowRightIcon'
-import FullscreenIcon from './icons/FullscreenIcon'
 
 const RENDERABLE_CODE_LANGUAGES = ['html'] as const
 export type RenderableCodeLanguage = (typeof RENDERABLE_CODE_LANGUAGES)[number]
@@ -96,10 +92,25 @@ export function MessageArtifact(props: {
   messageContent: string
   preview: boolean
   setPreview: (preview: boolean) => void
+  /** When true, open side workspace once after the artifact is ready (auto-preview setting). */
+  autoOpenWorkspace?: boolean
+  generating?: boolean
 }) {
-  const { sessionId, messageId, messageContent, preview, setPreview } = props
+  const {
+    sessionId,
+    messageId,
+    messageContent,
+    preview,
+    setPreview,
+    autoOpenWorkspace = false,
+    generating = false,
+  } = props
 
   const [contextMessages, setContextMessages] = useState<Message[]>([])
+  const setWorkspacePanel = useUIStore((s) => s.setWorkspacePanel)
+  const didAutoOpen = useRef(false)
+  const prevGenerating = useRef(generating)
+  const pendingAutoOpen = useRef(false)
 
   useEffect(() => {
     async function fetchContextMessages(): Promise<Message[]> {
@@ -120,107 +131,182 @@ export function MessageArtifact(props: {
     return generateHtml([...contextMessages.map((m) => getMessageText(m)), messageContent])
   }, [contextMessages, messageContent])
 
-  return <ArtifactWithButtons htmlCode={htmlCode} preview={preview} setPreview={setPreview} />
+  // Mark auto-open only when this message finishes generating (not historical loads)
+  useEffect(() => {
+    const finished = prevGenerating.current && !generating
+    prevGenerating.current = generating
+    if (finished && autoOpenWorkspace) {
+      pendingAutoOpen.current = true
+    }
+  }, [generating, autoOpenWorkspace])
+
+  // Open side workspace once after finish + html is ready (no scroll fight)
+  useEffect(() => {
+    if (!pendingAutoOpen.current || didAutoOpen.current || !htmlCode || generating) return
+    didAutoOpen.current = true
+    pendingAutoOpen.current = false
+    setWorkspacePanel({
+      kind: 'html',
+      htmlCode,
+      title: 'HTML Artifact',
+      messageId,
+    })
+  }, [htmlCode, generating, messageId, setWorkspacePanel])
+
+  return (
+    <ArtifactWithButtons
+      htmlCode={htmlCode}
+      messageId={messageId}
+      preview={preview}
+      setPreview={setPreview}
+    />
+  )
 }
 
 export function ArtifactWithButtons(props: {
   htmlCode: string
+  messageId?: string
   preview: boolean
   setPreview: (preview: boolean) => void
 }) {
-  const { htmlCode, preview, setPreview } = props
+  const { htmlCode, messageId, preview, setPreview } = props
   const { t } = useTranslation()
   const [reloadSign, setReloadSign] = useState(0)
   const isSmallScreen = useIsSmallScreen()
+  const setWorkspacePanel = useUIStore((s) => s.setWorkspacePanel)
+
+  const openWorkspace = () => {
+    if (!htmlCode) return
+    setWorkspacePanel({
+      kind: 'html',
+      htmlCode,
+      title: t('Artifact'),
+      messageId,
+    })
+  }
 
   const onReplay = () => {
     setReloadSign(Math.random())
   }
   const onPreview = () => {
+    // Desktop: open side workspace (Artifacts mental model). Mobile: expand inline.
+    if (!isSmallScreen) {
+      openWorkspace()
+      return
+    }
     setPreview(true)
     setReloadSign(Math.random())
   }
   const onStopPreview = () => {
     setPreview(false)
   }
-  const onOpenFullscreen = async () => {
-    await NiceModal.show('artifact-preview', {
-      htmlCode,
-    })
-  }
+
   if (!preview) {
     return (
-      <div
-        className="w-full my-1 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-all duration-300 cursor-pointer overflow-hidden group"
-        onClick={onPreview}
-      >
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-7 h-7 bg-gradient-to-br from-blue-400 to-purple-500 rounded-full flex items-center justify-center">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                className="h-5 w-5 text-white"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <span className="text-lg font-semibold text-gray-700 dark:text-gray-300 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300">
-              {t('Preview')}
-            </span>
-          </div>
-          <div className="flex items-center justify-center">
-            <FullscreenIcon
-              className="mr-1 hover:bg-white hover:rounded  hover:text-gray-500
-                            p-1 w-8 h-8 text-gray-400 dark:text-gray-500 group-hover:text-blue-500 dark:group-hover:text-blue-400"
+      <div className="artifact-card">
+        <UnstyledButton type="button" className="artifact-card-main" onClick={onPreview}>
+          <span className="artifact-card-icon" aria-hidden>
+            <IconCode size={16} stroke={1.5} />
+          </span>
+          <span className="artifact-card-copy min-w-0">
+            <Text size="sm" fw={600} className="artifact-card-title">
+              {t('HTML Artifact')}
+            </Text>
+            <Text size="xs" className="artifact-card-sub">
+              {isSmallScreen ? t('Tap to preview') : t('Open in workspace')}
+            </Text>
+          </span>
+          <span className="artifact-card-chevron" aria-hidden>
+            <IconLayoutSidebarRightExpand size={18} stroke={1.5} />
+          </span>
+        </UnstyledButton>
+        <div className="artifact-card-actions">
+          <Tooltip label={t('Open in workspace')} openDelay={200}>
+            <ActionIcon
+              variant="subtle"
+              color="gray"
+              size={36}
+              radius="xl"
+              aria-label={t('Open in workspace')}
+              className="artifact-card-btn"
               onClick={(e) => {
-                e.preventDefault()
                 e.stopPropagation()
-                void onOpenFullscreen()
+                openWorkspace()
               }}
-            />
-            <ArrowRightIcon
-              className="hover:bg-white hover:rounded  hover:text-gray-500
-                            p-1 w-8 h-8 text-gray-400 dark:text-gray-500 group-hover:text-blue-500 dark:group-hover:text-blue-400"
-              onClick={() => setPreview(true)}
-            />
-          </div>
+            >
+              <IconLayoutSidebarRightExpand size={16} stroke={1.5} />
+            </ActionIcon>
+          </Tooltip>
+          {isSmallScreen ? (
+            <Tooltip label={t('Inline preview')} openDelay={200}>
+              <ActionIcon
+                variant="subtle"
+                color="gray"
+                size={36}
+                radius="xl"
+                aria-label={t('Inline preview')}
+                className="artifact-card-btn"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setPreview(true)
+                  setReloadSign(Math.random())
+                }}
+              >
+                <IconEye size={16} stroke={1.5} />
+              </ActionIcon>
+            </Tooltip>
+          ) : null}
         </div>
       </div>
     )
   }
+
   return (
-    <div
-      className={cn(
-        'w-full',
-        'border border-solid rounded border-gray-500/40',
-        'flex',
-        isSmallScreen ? 'flex-col-reverse' : 'flex-row'
-      )}
-    >
-      <Artifact htmlCode={htmlCode} reloadSign={reloadSign} />
-      <ButtonGroup
-        orientation={isSmallScreen ? 'horizontal' : 'vertical'}
-        className={cn(
-          'border-solid border-gray-500/20',
-          isSmallScreen ? 'border-r-0 border-b-1 border-l-0 border-t-0' : 'border-r-0 border-b-0 border-l-1 border-t-0'
-        )}
-      >
-        <IconButton onClick={onReplay} color="primary">
-          <ReplayOutlinedIcon />
-        </IconButton>
-        <IconButton onClick={onOpenFullscreen} color="primary">
-          <FullscreenIcon className="w-5 h-5" />
-        </IconButton>
-        <IconButton onClick={onStopPreview} color="error">
-          <StopCircleOutlinedIcon />
-        </IconButton>
-      </ButtonGroup>
+    <div className={cn('artifact-inline', isSmallScreen && 'artifact-inline--stack')}>
+      <div className="artifact-inline-frame">
+        <Artifact htmlCode={htmlCode} reloadSign={reloadSign} className="artifact-inline-iframe" />
+      </div>
+      <div className="artifact-inline-tools" role="toolbar" aria-label={t('Artifact controls')}>
+        <Tooltip label={t('Refresh')} openDelay={200}>
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size={36}
+            radius="xl"
+            onClick={onReplay}
+            aria-label={t('Refresh')}
+            className="artifact-card-btn"
+          >
+            <IconReload size={16} stroke={1.5} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label={t('Open in workspace')} openDelay={200}>
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size={36}
+            radius="xl"
+            onClick={openWorkspace}
+            aria-label={t('Open in workspace')}
+            className="artifact-card-btn"
+          >
+            <IconLayoutSidebarRightExpand size={16} stroke={1.5} />
+          </ActionIcon>
+        </Tooltip>
+        <Tooltip label={t('Close preview')} openDelay={200}>
+          <ActionIcon
+            variant="subtle"
+            color="gray"
+            size={36}
+            radius="xl"
+            onClick={onStopPreview}
+            aria-label={t('Close preview')}
+            className="artifact-card-btn"
+          >
+            <IconPlayerStop size={16} stroke={1.5} />
+          </ActionIcon>
+        </Tooltip>
+      </div>
     </div>
   )
 }

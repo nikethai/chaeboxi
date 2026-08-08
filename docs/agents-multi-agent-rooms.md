@@ -4,6 +4,24 @@
 
 **Agents** (formerly Copilots) are persona packages: prompt, avatar, model overrides, tools, and hooks.
 
+### Chaeboxi cast (built-in)
+
+Stable ids keep storage/overrides working; display names are producty:
+
+| Id | Name | Role | Stance | Tools (default) |
+|----|------|------|--------|-----------------|
+| `builtin:deep-researcher` | **Scout** | research | proposer | web_search, parse_link |
+| `builtin:code-assistant` | **Forge** | code | lead | file_read, file_write |
+| `builtin:writing-editor` | **Quill** | writing | critic | light denylist |
+| `builtin:data-analyst` | **Prism** | data | integrator | search / KB |
+| `builtin:task-planner` | **Atlas** | planning | integrator | task_* |
+
+### Avatar identity
+
+Resolve order: `avatarKey` (upload / AI gen) → `picUrl` → **procedural SVG** from id/seed/role. Letter-only avatars are not used for agents with a stable id. OpenClaw gateway agents use the same procedural resolver (`openclaw:${id}`). Settings → Agents includes avatar studio (upload, shuffle seed, generate with AI).
+
+Optional identity fields on `CopilotDetail` / `AgentDetail`: `description`, `role`, `stance`, `voice`, `avatarSeed`, `avatarKey`, `tags`.
+
 Chat sessions can host a **room** of up to **3** agent members. Users `@`-mention agents in the chat dock (same interaction class as `$skills`). With **2+** speakers, Chaeboxi runs a **Team room**:
 
 | Mode | Default | Behavior |
@@ -50,11 +68,11 @@ The user can interrupt anytime (new send aborts remaining queue).
 
 ## UX
 
-- Settings → **Agents** (`/settings/agents`; `/settings/copilots` redirects)
+- Settings → **Agents** (`/settings/agents`; `/copilots` redirects): gallery cards (avatar, description, cast badge) + progressive editor; **Community agents** secondary section for remote catalog
 - Composer: `@` chips for room members; **Team mode** compact dropdown next to model select when 2+ agents (Discuss | Work)
 - **New chat (blank):** multi-select up to 3 agents via **search combobox** + selected chips (prompt preview only for 1 agent); Team mode available before first send via draft props
 - Post-discuss bar: **Team answer** · **Keep discussing** · **Switch to Work**
-- Assistant bubbles with `agentId` show **avatar + name** via `AgentSpeakerHeader`
+- Assistant bubbles with `agentId` show **avatar + name** via `AgentSpeakerHeader` (shared `AgentAvatar` / `resolveAgentAvatar`)
 - Discuss/plan/review turns grouped visually as **Team discussion**
 - Team answer / Working / Deliverable badges on primary turns
 - Room strip live status: “Round 2/2 · Name speaking…”
@@ -93,5 +111,7 @@ deliver: lead (tools optional)
 | Generation | `src/renderer/stores/session/generation.ts` |
 | Submit wiring | `src/renderer/stores/session/messages.ts` |
 | Speaker UI | `AgentSpeakerHeader`, `Message.tsx`, `MessageList.tsx` |
+| Avatar resolve | `packages/agents/agent-avatar.ts`, `components/agents/AgentAvatar.tsx` |
+| Settings | `components/settings/agents/*`, route `/settings/agents` |
 | Actions bar | `TeamRoomActions.tsx` |
 | Dock UI | `InputBox`, `AgentPicker`, `AgentRoomStrip` |

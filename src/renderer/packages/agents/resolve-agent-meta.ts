@@ -3,16 +3,29 @@
  * Covers built-in, local custom, and remote catalog agents (same sources as @ picker).
  */
 
-import type { CopilotDetail } from '@shared/types'
+import type { AgentRole, AgentStance, CopilotDetail } from '@shared/types'
 import { getDefaultStore } from 'jotai'
 import { getBuiltInCopilotById, myCopilotsAtom } from '@/hooks/useCopilots'
 import queryClient from '@/stores/queryClient'
+import {
+  agentAvatarAccent,
+  resolveAgentAvatar,
+  type ResolvedAgentAvatar,
+} from './agent-avatar'
 
 export type AgentMeta = {
   id: string
   name: string
   emojiAvatar?: string
   picUrl?: string
+  avatarKey?: string
+  role?: AgentRole
+  stance?: AgentStance
+  description?: string
+  avatarSeed?: string
+  /** Resolved image for UI (blob / url / procedural). */
+  avatar: ResolvedAgentAvatar
+  accent: string
   /** True when id was not found in built-in / local / remote catalogs. */
   isFallback?: boolean
 }
@@ -24,7 +37,20 @@ export function getAgentDetailById(id: string | undefined | null): CopilotDetail
   if (!id) return null
 
   const builtin = getBuiltInCopilotById(id)
-  if (builtin) return builtin
+  if (builtin) {
+    // Merge local overrides (starred, avatar, etc.) over built-in defaults
+    try {
+      const stored = getDefaultStore().get(myCopilotsAtom)
+      const list = Array.isArray(stored) ? stored : []
+      const override = list.find((c) => c.id === id)
+      if (override) {
+        return { ...builtin, ...override, builtIn: true, prompt: override.prompt || builtin.prompt }
+      }
+    } catch {
+      // jotai store unavailable
+    }
+    return builtin
+  }
 
   try {
     const stored = getDefaultStore().get(myCopilotsAtom)
@@ -59,20 +85,32 @@ export function resolveAgentMeta(id: string | undefined | null): AgentMeta | nul
 
   const detail = getAgentDetailById(id)
   if (detail) {
+    const avatar =
+      resolveAgentAvatar(detail) ||
+      resolveAgentAvatar({ id: detail.id, role: detail.role, avatarSeed: detail.avatarSeed })!
     return {
       id: detail.id,
       name: detail.name,
       emojiAvatar: detail.emojiAvatar,
       picUrl: detail.picUrl,
+      avatarKey: detail.avatarKey,
+      role: detail.role,
+      stance: detail.stance,
+      description: detail.description,
+      avatarSeed: detail.avatarSeed,
+      avatar,
+      accent: avatar.kind === 'procedural' ? avatar.accent : agentAvatarAccent(detail.id, detail.avatarSeed),
       isFallback: false,
     }
   }
 
   // Unknown id (stale chip / race): still return meta so room orchestration does not skip the speaker.
+  const avatar = resolveAgentAvatar({ id, role: 'custom' })!
   return {
     id,
     name: humanizeAgentId(id),
-    emojiAvatar: '🤖',
+    avatar,
+    accent: avatar.kind === 'procedural' ? avatar.accent : agentAvatarAccent(id),
     isFallback: true,
   }
 }
@@ -90,11 +128,5 @@ function humanizeAgentId(id: string): string {
 
 /** Stable muted accent for multi-agent speaker chrome (CSS color string). */
 export function agentAccentColor(agentId: string): string {
-  let hash = 0
-  for (let i = 0; i < agentId.length; i++) {
-    hash = (hash * 31 + agentId.charCodeAt(i)) | 0
-  }
-  const hues = [210, 160, 280, 25, 340, 190]
-  const hue = hues[Math.abs(hash) % hues.length]
-  return `hsl(${hue} 45% 48%)`
+  return agentAvatarAccent(agentId)
 }

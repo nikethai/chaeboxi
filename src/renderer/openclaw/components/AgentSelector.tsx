@@ -3,9 +3,10 @@ import { IconChevronRight, IconRefresh, IconRobot } from '@tabler/icons-react'
 import { useAtom, useAtomValue } from 'jotai'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/lib/utils'
+import { AgentAvatar } from '@/components/agents/AgentAvatar'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import ProviderIcon from '@/components/icons/ProviderIcon'
+import { cn } from '@/lib/utils'
 import {
   openclawAgentsAtom,
   openclawGatewayStatusAtom,
@@ -118,7 +119,9 @@ export default function AgentSelector(props: AgentSelectorProps) {
               )}
             >
               <Flex justify="space-between" align="flex-start" gap="xs" w="100%">
-                <Flex direction="column" gap={4} style={{ flex: 1, minWidth: 0 }}>
+                <Flex gap="xs" align="flex-start" style={{ flex: 1, minWidth: 0 }}>
+                  <AgentAvatar size={22} agentId={agent.id} openClaw />
+                  <Flex direction="column" gap={4} style={{ flex: 1, minWidth: 0 }}>
                   <Text size="sm" fw={500} truncate="end">
                     {agent.name}
                   </Text>
@@ -127,6 +130,7 @@ export default function AgentSelector(props: AgentSelectorProps) {
                       {agent.description}
                     </Text>
                   )}
+                  </Flex>
                 </Flex>
                 {agent.capabilities && agent.capabilities.length > 0 && (
                   <Flex gap={4} wrap="wrap" justify="flex-end">

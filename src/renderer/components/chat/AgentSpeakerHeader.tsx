@@ -2,10 +2,11 @@
  * Speaker chrome for agent-attributed assistant messages: avatar + name (+ role badge).
  */
 
-import { Avatar, Flex, Loader, Text } from '@mantine/core'
+import { Flex, Loader, Text } from '@mantine/core'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { agentAccentColor, resolveAgentMeta } from '@/packages/agents'
+import { AgentAvatar } from '@/components/agents/AgentAvatar'
+import { resolveAgentMeta } from '@/packages/agents'
 
 export interface AgentSpeakerHeaderProps {
   agentId?: string
@@ -51,13 +52,12 @@ function AgentSpeakerHeader({
   const meta = useMemo(() => resolveAgentMeta(agentId), [agentId])
 
   const displayName = pickDisplayName(meta, name, t('Agent'))
-  const emoji = meta?.emojiAvatar
-  const picUrl = meta?.picUrl
-  const accent = agentId ? agentAccentColor(agentId) : 'var(--chatbox-brand-primary, #228be6)'
+  const accent = meta?.accent || 'var(--chatbox-brand-primary, #5b63d4)'
   const badge = roleBadgeLabel(roomRole, t)
   const isPrimary =
     roomRole === 'synthesis' || roomRole === 'do' || roomRole === 'deliver'
   const isCompactTurn = roomRole === 'turn' || roomRole === 'plan' || roomRole === 'review'
+  const avatarSize = isCompactTurn ? 20 : 22
 
   return (
     <div className={className}>
@@ -77,9 +77,7 @@ function AgentSpeakerHeader({
           }}
           title={displayName}
         >
-          <Avatar src={emoji ? undefined : picUrl} size={isCompactTurn ? 20 : 22} radius="xl" color="chatbox-brand">
-            {emoji || displayName.slice(0, 1).toUpperCase()}
-          </Avatar>
+          <AgentAvatar size={avatarSize} agentId={agentId} resolved={meta?.avatar} />
         </div>
         <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
           <Text

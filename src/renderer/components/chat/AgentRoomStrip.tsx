@@ -3,6 +3,7 @@ import type { AgentDetail } from '@shared/types'
 import { IconX } from '@tabler/icons-react'
 import { memo, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AgentAvatar } from '@/components/agents/AgentAvatar'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { cn } from '@/lib/utils'
 import {
@@ -55,9 +56,7 @@ function AgentRoomStrip({ agentIds, sessionId, onRemove, className, embedded }: 
             border: '1px solid var(--chatbox-border-primary)',
           }}
         >
-          <Text size="xs" component="span" className="shrink-0">
-            {agent.emojiAvatar || '🤖'}
-          </Text>
+          <AgentAvatar size={16} agent={agent} />
           <Text size="xs" fw={500} className="max-w-[120px] truncate" component="span">
             {agent.name}
           </Text>

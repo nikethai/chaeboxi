@@ -22,7 +22,7 @@ import {
 } from '@shared/agent-room'
 import { createMessage, type Message } from '@shared/types'
 import { getMessageText } from '@shared/utils/message'
-import { type AgentMeta, resolveAgentMeta } from '@/packages/agents'
+import { type AgentMeta, resolveAgentAvatar, resolveAgentMeta } from '@/packages/agents'
 import * as chatStore from '../chatStore'
 import * as scrollActions from '../scrollActions'
 import { generate } from './generation'
@@ -79,10 +79,13 @@ function messageHasUsableText(msg: Message | undefined): boolean {
 }
 
 function fallbackMeta(agentId: string): AgentMeta {
+  const avatar = resolveAgentAvatar({ id: agentId, role: 'custom' })!
   return {
     id: agentId,
     name: agentId,
-    emojiAvatar: '🤖',
+    avatar,
+    accent: avatar.kind === 'procedural' ? avatar.accent : 'var(--chatbox-tint-brand)',
+    isFallback: true,
   }
 }
 

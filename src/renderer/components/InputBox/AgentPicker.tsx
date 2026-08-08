@@ -2,13 +2,14 @@ import { Box, Paper, Stack, Text } from '@mantine/core'
 import type { AgentDetail } from '@shared/types'
 import { memo, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AgentAvatar } from '@/components/agents/AgentAvatar'
 import { fuzzyScoreAgent } from '@/packages/agents'
 
 export function filterAgents(agents: AgentDetail[], query: string) {
   const normalizedQuery = query.trim().toLowerCase()
   return agents
     .map((agent) => {
-      const haystack = [agent.name, agent.prompt?.slice(0, 120) || ''].join(' ')
+      const haystack = [agent.name, agent.description || '', agent.prompt?.slice(0, 120) || ''].join(' ')
       return {
         agent,
         score: fuzzyScoreAgent(haystack, normalizedQuery),
@@ -81,16 +82,14 @@ function AgentPicker({
                 onClick={() => onSelect(agent)}
               >
                 <FlexRow>
-                  <Text size="sm" className="mr-2 shrink-0">
-                    {agent.emojiAvatar || '🤖'}
-                  </Text>
+                  <AgentAvatar size={22} agent={agent} className="mr-1" />
                   <div className="min-w-0">
                     <Text size="sm" fw={500} className="truncate">
                       {agent.name}
                     </Text>
-                    {agent.prompt ? (
+                    {agent.description || agent.prompt ? (
                       <Text size="xs" c="chatbox-tertiary" className="truncate">
-                        {agent.prompt.slice(0, 80)}
+                        {(agent.description || agent.prompt || '').slice(0, 80)}
                       </Text>
                     ) : null}
                   </div>

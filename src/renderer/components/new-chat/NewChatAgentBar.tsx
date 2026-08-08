@@ -5,7 +5,6 @@
 
 import {
   ActionIcon,
-  Avatar,
   Box,
   Combobox,
   Flex,
@@ -21,6 +20,7 @@ import { IconSearch, IconX } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AgentAvatar } from '@/components/agents/AgentAvatar'
 import { filterAgents } from '@/components/InputBox/AgentPicker'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
@@ -159,13 +159,7 @@ function NewChatAgentBar({ agents, selectedIds, onChange, className }: NewChatAg
                   return (
                     <Combobox.Option key={agent.id} value={agent.id} disabled={disabled}>
                       <Flex align="center" gap="sm">
-                        <Avatar
-                          src={agent.emojiAvatar ? undefined : agent.picUrl}
-                          color="chatbox-brand"
-                          size={22}
-                        >
-                          {agent.emojiAvatar || agent.name.slice(0, 1)}
-                        </Avatar>
+                        <AgentAvatar size={22} agent={agent} />
                         <Text size="sm" fw={500} className="flex-1 truncate">
                           {agent.name}
                         </Text>
@@ -192,14 +186,7 @@ function NewChatAgentBar({ agents, selectedIds, onChange, className }: NewChatAg
           <Stack gap="xs">
             <Flex align="center" gap="xs" wrap="wrap">
               {selectedAgents.map((agent) => (
-                <AgentChip
-                  key={agent.id}
-                  name={agent.name}
-                  picUrl={agent.picUrl}
-                  emojiAvatar={agent.emojiAvatar}
-                  selected
-                  onRemove={() => applyToggle(agent.id)}
-                />
+                <AgentChip key={agent.id} agent={agent} selected onRemove={() => applyToggle(agent.id)} />
               ))}
               <ActionIcon
                 size={28}
@@ -230,15 +217,11 @@ function NewChatAgentBar({ agents, selectedIds, onChange, className }: NewChatAg
 }
 
 function AgentChip({
-  name,
-  picUrl,
-  emojiAvatar,
+  agent,
   selected,
   onRemove,
 }: {
-  name: string
-  picUrl?: string
-  emojiAvatar?: string
+  agent: AgentDetail
   selected?: boolean
   onRemove?(): void
 }) {
@@ -256,11 +239,9 @@ function AgentChip({
         isSmallScreen ? 'rounded-full' : 'rounded-md'
       )}
     >
-      <Avatar src={emojiAvatar ? undefined : picUrl} color="chatbox-brand" size={isSmallScreen ? 20 : 24}>
-        {emojiAvatar || name.slice(0, 1)}
-      </Avatar>
+      <AgentAvatar size={isSmallScreen ? 20 : 24} agent={agent} />
       <Text fw="600" c={selected ? 'chatbox-brand' : 'chatbox-primary'}>
-        {name}
+        {agent.name}
       </Text>
       {onRemove ? (
         <ActionIcon
@@ -271,7 +252,7 @@ function AgentChip({
             e.stopPropagation()
             onRemove()
           }}
-          aria-label={`Remove ${name}`}
+          aria-label={`Remove ${agent.name}`}
         >
           <IconX size={12} />
         </ActionIcon>

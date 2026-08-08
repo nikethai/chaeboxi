@@ -20,10 +20,12 @@ import { add as addToast } from '@/stores/toastActions'
 import { listAvailableImageModels, parseImageModelValue } from '@/utils/available-image-models'
 import { composeImageGenerationPrompt } from '@/utils/imagePrompt'
 
-const DEFAULT_PROMPTS: Record<'user' | 'assistant', string> = {
+const DEFAULT_PROMPTS: Record<'user' | 'assistant' | 'agent', string> = {
   user: 'Minimal flat vector avatar icon for a human user, soft rounded face silhouette, calm friendly style, solid background, no text, square composition',
   assistant:
     'Minimal flat vector avatar icon for an AI assistant robot, soft geometric face, friendly modern style, solid background, no text, square composition',
+  agent:
+    'Minimal flat vector emblem avatar for an AI agent, studio product icon style, soft geometric mark, indigo-friendly solid background, no text, no letters, no photoreal face, square composition, crisp edges',
 }
 
 function toDataUrl(pic: string): string {
@@ -43,17 +45,27 @@ function formatError(error: unknown, fallback: string): string {
 }
 
 export type GenerateAvatarButtonProps = {
-  kind: 'user' | 'assistant'
+  kind: 'user' | 'assistant' | 'agent'
+  /** Required for kind=agent (and overrides default keys for user/assistant). */
+  storageKey?: string
+  /** Override initial prompt (e.g. persona-aware agent prompt). */
+  defaultPrompt?: string
   onSaved: (storageKey: string) => void
 }
 
-export const GenerateAvatarButton: FC<GenerateAvatarButtonProps> = ({ kind, onSaved }) => {
+export const GenerateAvatarButton: FC<GenerateAvatarButtonProps> = ({
+  kind,
+  storageKey: storageKeyProp,
+  defaultPrompt,
+  onSaved,
+}) => {
   const { t } = useTranslation()
   const { providers } = useProviders()
   const imageModels = useMemo(() => listAvailableImageModels(providers), [providers])
 
+  const initialPrompt = defaultPrompt?.trim() || DEFAULT_PROMPTS[kind]
   const [opened, setOpened] = useState(false)
-  const [prompt, setPrompt] = useState(DEFAULT_PROMPTS[kind])
+  const [prompt, setPrompt] = useState(initialPrompt)
   const [preview, setPreview] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
   const [errorText, setErrorText] = useState<string | null>(null)
@@ -91,10 +103,10 @@ export const GenerateAvatarButton: FC<GenerateAvatarButtonProps> = ({ kind, onSa
 
   const reset = useCallback(() => {
     setPreview(null)
-    setPrompt(DEFAULT_PROMPTS[kind])
+    setPrompt(defaultPrompt?.trim() || DEFAULT_PROMPTS[kind])
     setGenerating(false)
     setErrorText(null)
-  }, [kind])
+  }, [kind, defaultPrompt])
 
   const handleClose = () => {
     setOpened(false)
@@ -191,9 +203,12 @@ export const GenerateAvatarButton: FC<GenerateAvatarButtonProps> = ({ kind, onSa
   const handleAccept = async () => {
     if (!preview) return
     const key =
-      kind === 'user'
+      storageKeyProp?.trim() ||
+      (kind === 'user'
         ? StorageKeyGenerator.picture('user-avatar')
-        : StorageKeyGenerator.picture('default-assistant-avatar')
+        : kind === 'assistant'
+          ? StorageKeyGenerator.picture('default-assistant-avatar')
+          : StorageKeyGenerator.picture(`agent-avatar:${Date.now()}`))
     await storage.setBlob(key, preview)
     onSaved(key)
     handleClose()

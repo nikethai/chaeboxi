@@ -95,6 +95,12 @@ export type CopilotHook =
   | { type: 'web-fetch'; url: string; extractAs: 'text' | 'json' }
   | { type: 'validate-format'; format: 'markdown' | 'json' | 'code' }
 
+/** Catalog role for built-in cast + custom agents. */
+export type AgentRole = 'research' | 'code' | 'writing' | 'data' | 'planning' | 'custom' | 'openclaw' | (string & {})
+
+/** Preferred multi-agent room stance (soft default; room may override). */
+export type AgentStance = 'proposer' | 'critic' | 'integrator' | 'lead' | 'neutral'
+
 export interface CopilotDetail {
   id: string
   name: string
@@ -117,6 +123,19 @@ export interface CopilotDetail {
     preTurn?: CopilotHook[]
     postTurn?: CopilotHook[]
   }
+  /** One-line card blurb for gallery / pickers. */
+  description?: string
+  /** Semantic role for avatar glyph + defaults. */
+  role?: AgentRole
+  /** Preferred room stance for multi-agent discuss/work. */
+  stance?: AgentStance
+  /** Short style line injected into speaker chrome / optional prompt assist. */
+  voice?: string
+  /** Seed for procedural avatar (default = id). */
+  avatarSeed?: string
+  /** Local blob storage key for uploaded / AI-generated avatar. */
+  avatarKey?: string
+  tags?: string[]
 }
 
 /** Product name: Agent (persona). Alias of CopilotDetail during rename migration. */

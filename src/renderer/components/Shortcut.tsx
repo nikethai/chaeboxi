@@ -1,4 +1,4 @@
-import { Box, Combobox, Flex, Input, InputBase, Kbd, Select, Table, Text, useCombobox } from '@mantine/core'
+import { Box, Combobox, Flex, InputBase, Kbd, Table, useCombobox } from '@mantine/core'
 import {
   type Settings,
   type ShortcutName,
@@ -7,8 +7,10 @@ import {
   shortcutToggleWindowValues,
 } from '@shared/types'
 import { IconAlertHexagon } from '@tabler/icons-react'
+import { type KeyboardEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getOS } from '@/packages/navigator'
+import * as toastActions from '@/stores/toastActions'
 import { ScalableIcon } from './common/ScalableIcon'
 
 const os = getOS()
@@ -38,12 +40,10 @@ function formatKey(key: string) {
     option: '⌥',
     alt: '⌥',
     tab: '⇥',
-    // shift: '⇧',
   }
   const WINDOWS_KEY_MAPS: Record<string, string> = {
     ...COMMON_KEY_MAPS,
     meta: 'Win',
-    // command: 'Win',
   }
   const LINUX_KEY_MAPS: Record<string, string> = {
     ...COMMON_KEY_MAPS,
@@ -51,9 +51,7 @@ function formatKey(key: string) {
     mod: 'Super',
     command: 'Super',
   }
-  if (!key) {
-    return ''
-  }
+  if (!key) return ''
   const lowercaseKey = key.toLowerCase()
   const keyLabel = key.length === 1 ? key.toUpperCase() : key
   switch (os) {
@@ -80,8 +78,6 @@ export function Keys(props: {
   onEdit?: () => void
   className?: string
 }) {
-  // const sizeClass = props.size === 'small' ? 'text-[0.55rem]' : 'text-sm'
-  const sizeClass = 'text-xs'
   const opacityClass = props.opacity !== undefined ? `opacity-${props.opacity * 100}` : ''
   return (
     <span className={`inline-block px-1 ${opacityClass} ${props.className || ''}`}>
@@ -89,7 +85,6 @@ export function Keys(props: {
         <Kbd key={key} className="mr-3xs">
           {formatKey(key)}
         </Kbd>
-        // <Key key={index}>{formatKey(key)}</Key>
       ))}
     </span>
   )
@@ -100,6 +95,7 @@ type ShortcutDataItem = {
   name?: ShortcutName
   keys: ShortcutSetting[ShortcutName]
   options?: string[]
+  recordable?: boolean
 }
 
 export function ShortcutConfig(props: {
@@ -116,9 +112,22 @@ export function ShortcutConfig(props: {
       options: shortcutToggleWindowValues,
     },
     {
+      label: t('Open Quick Chat with Clipboard'),
+      name: 'quickAttachOrOpen',
+      keys: shortcuts.quickAttachOrOpen,
+      recordable: true,
+    },
+    {
+      label: t('Open Quick Chat'),
+      name: 'quickOpen',
+      keys: shortcuts.quickOpen,
+      recordable: true,
+    },
+    {
       label: t('Screenshot to Chat'),
       name: 'screenshotToChat',
       keys: shortcuts.screenshotToChat || 'Alt+Shift+S',
+      recordable: true,
     },
     {
       label: t('Focus on the Input Box'),
@@ -136,11 +145,6 @@ export function ShortcutConfig(props: {
       keys: shortcuts.inputBoxSendMessage,
       options: shortcutSendValues,
     },
-    // {
-    //     label: t('Insert a New Line into the Input Box'),
-    //     // name: 'inputBoxInsertNewLine',
-    //     keys: shortcuts.inputBoxInsertNewLine,
-    // },
     {
       label: t('Send Without Generating Response'),
       name: 'inputBoxSendMessageWithoutResponse',
@@ -169,7 +173,6 @@ export function ShortcutConfig(props: {
     },
     {
       label: t('Navigate to the Specific Conversation'),
-      // name: 'sessionListNavTargetIndex',
       keys: 'mod+1-9',
     },
     {
@@ -184,30 +187,30 @@ export function ShortcutConfig(props: {
     },
     {
       label: t('Navigate to the Previous Option (in search dialog)'),
-      // name: 'optionNavUp',
       keys: shortcuts.optionNavUp,
     },
     {
       label: t('Navigate to the Next Option (in search dialog)'),
-      // name: 'optionNavDown',
       keys: shortcuts.optionNavDown,
     },
     {
       label: t('Select the Current Option (in search dialog)'),
-      // name: 'optionSelect',
       keys: shortcuts.optionSelect,
     },
   ]
-  const isConflict = (name: ShortcutName, shortcut: string) => {
-    for (const item of items) {
-      if (item.name && item.name !== name && item.keys === shortcut) {
-        return true
-      }
+  const isConflict = (name: ShortcutName, shortcut: string) =>
+    Boolean(shortcut) && items.some((item) => item.name && item.name !== name && item.keys === shortcut)
+
+  const updateShortcut = (name: ShortcutName, shortcut: string) => {
+    if (shortcut && isConflict(name, shortcut)) {
+      toastActions.add(t('This shortcut is already assigned to another action.'))
+      return
     }
-    return false
+    setShortcuts({ ...shortcuts, [name]: shortcut })
   }
+
   return (
-    <Box className="border border-solid  py-xs px-md rounded-xs border-chatbox-border-primary">
+    <Box className="border border-solid py-xs px-md rounded-xs border-chatbox-border-primary">
       <Table>
         <Table.Thead>
           <Table.Tr>
@@ -215,10 +218,9 @@ export function ShortcutConfig(props: {
             <Table.Th>{t('Hotkeys')}</Table.Th>
           </Table.Tr>
         </Table.Thead>
-
         <Table.Tbody>
-          {items.map(({ name, label, keys, options }) => (
-            <Table.Tr key={`${name}`}>
+          {items.map(({ name, label, keys, options, recordable }) => (
+            <Table.Tr key={`${name || label}`}>
               <Table.Td>{label}</Table.Td>
               <Table.Td>
                 {options ? (
@@ -226,13 +228,15 @@ export function ShortcutConfig(props: {
                     options={options}
                     value={keys}
                     onSelect={(val) => {
-                      if (name && setShortcuts) {
-                        setShortcuts({
-                          ...shortcuts,
-                          [name]: val,
-                        })
-                      }
+                      if (name) updateShortcut(name, val)
                     }}
+                    isConflict={name ? isConflict(name, keys) : false}
+                  />
+                ) : recordable && name ? (
+                  <ShortcutRecorder
+                    shortcut={keys}
+                    onChange={(shortcut) => updateShortcut(name, shortcut)}
+                    onClear={() => updateShortcut(name, '')}
                     isConflict={name ? isConflict(name, keys) : false}
                   />
                 ) : (
@@ -250,14 +254,72 @@ export function ShortcutConfig(props: {
 function ShortcutText(props: { shortcut: string; isConflict?: boolean; className?: string }) {
   const { shortcut, isConflict, className } = props
   const { t } = useTranslation()
-  if (shortcut === '') {
-    return <span className={`px-2 py-0.5 text-xs ${className || ''}`}>{t('None')}</span>
-  }
+  if (shortcut === '') return <span className={`px-2 py-0.5 text-xs ${className || ''}`}>{t('None')}</span>
   return (
     <Flex align="center" component="span" className={`py-0.5 text-xs ${className || ''}`} c="chatbox-error">
       <Keys keys={shortcut.split('+')} />
       {isConflict && <ScalableIcon icon={IconAlertHexagon} size={16} />}
     </Flex>
+  )
+}
+
+function ShortcutRecorder({
+  shortcut,
+  onChange,
+  onClear,
+  isConflict,
+}: {
+  shortcut: string
+  onChange: (shortcut: string) => void
+  onClear: () => void
+  isConflict?: boolean
+}) {
+  const { t } = useTranslation()
+  const [recording, setRecording] = useState(false)
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    if (event.key === 'Escape') {
+      if (!recording) {
+        onClear()
+      }
+      setRecording(false)
+      return
+    }
+    if (['Control', 'Alt', 'Shift', 'Meta'].includes(event.key)) return
+
+    const parts: string[] = []
+    if (event.metaKey) parts.push('CommandOrControl')
+    else if (event.ctrlKey) parts.push('Ctrl')
+    if (event.altKey) parts.push('Alt')
+    if (event.shiftKey) parts.push('Shift')
+
+    let key = event.key
+    if (key === ' ') key = 'Space'
+    else if (key === '`') key = '`'
+    else if (key.length === 1) key = key.toUpperCase()
+    parts.push(key)
+    onChange(parts.join('+'))
+    setRecording(false)
+  }
+  return (
+    <div className="inline-flex items-center gap-1">
+      <button
+        type="button"
+        className="min-w-[160px] text-left px-2 py-1 rounded border border-chatbox-border-primary"
+        onClick={() => setRecording(true)}
+        onKeyDown={recording ? handleKeyDown : undefined}
+        onBlur={() => setRecording(false)}
+        aria-label={t('Record shortcut')}
+      >
+        {recording ? t('Press keys…') : <ShortcutText shortcut={shortcut} isConflict={isConflict} />}
+      </button>
+      {!recording && shortcut && (
+        <button type="button" className="text-xs opacity-70 hover:opacity-100" onClick={onClear}>
+          {t('Clear')}
+        </button>
+      )}
+    </div>
   )
 }
 
@@ -297,12 +359,11 @@ function ShortcutSelect({
           <ShortcutText shortcut={value} isConflict={isConflict} />
         </InputBase>
       </Combobox.Target>
-
       <Combobox.Dropdown>
         <Combobox.Options>
-          {options.map((o) => (
-            <Combobox.Option key={o} value={o}>
-              <ShortcutText shortcut={o} />
+          {options.map((option) => (
+            <Combobox.Option key={option} value={option}>
+              <ShortcutText shortcut={option} />
             </Combobox.Option>
           ))}
         </Combobox.Options>

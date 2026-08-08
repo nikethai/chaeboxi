@@ -22,6 +22,11 @@ pub struct ShellState {
     pub quick_always_on_top: Mutex<bool>,
     /// Last registered accelerator strings for cleanup.
     pub registered_shortcuts: Mutex<Vec<String>>,
+    /// Clipboard or screenshot payload waiting for the quick renderer to consume it.
+    pub pending_clipboard_capture: Mutex<Option<Value>>,
+    pub pending_screenshot_capture: Mutex<Option<Value>>,
+    /// Whether the quick renderer has installed its shell event listeners.
+    pub quick_renderer_ready: Mutex<bool>,
 }
 
 impl Default for ShellState {
@@ -30,6 +35,9 @@ impl Default for ShellState {
             keep_in_tray: Mutex::new(true),
             quick_always_on_top: Mutex::new(true),
             registered_shortcuts: Mutex::new(Vec::new()),
+            pending_clipboard_capture: Mutex::new(None),
+            pending_screenshot_capture: Mutex::new(None),
+            quick_renderer_ready: Mutex::new(false),
         }
     }
 }
@@ -177,38 +185,44 @@ pub fn apply_shortcut_config(app: &AppHandle, config_json: &str) -> Result<(), S
     let value: Value =
         serde_json::from_str(config_json).map_err(|err| format!("invalid shortcut config: {err}"))?;
 
-    let quick_toggle = value
-        .get("quickToggle")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
-    let screenshot = value
-        .get("screenshotToChat")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
-
-    let mut next: Vec<(String, &'static str)> = Vec::new();
-    if let Some(acc) = normalize_accelerator(quick_toggle) {
-        next.push((acc, "quickToggle"));
+    let shortcut_fields = [
+        ("quickToggle", "quickToggle"),
+        ("quickAttachOrOpen", "quickAttachOrOpen"),
+        ("quickOpen", "quickOpen"),
+        ("screenshotToChat", "screenshotToChat"),
+    ];
+    let next: Vec<(String, &'static str)> = shortcut_fields
+        .into_iter()
+        .filter_map(|(field, action)| {
+            value
+                .get(field)
+                .and_then(Value::as_str)
+                .and_then(normalize_accelerator)
+                .map(|acc| (acc, action))
+        })
+        .collect();
+    for (index, (accelerator, _)) in next.iter().enumerate() {
+        if next[..index]
+            .iter()
+            .any(|(previous, _)| previous == accelerator)
+        {
+            return Err(format!("duplicate shortcut accelerator '{accelerator}'"));
+        }
     }
-    if let Some(acc) = normalize_accelerator(screenshot) {
-        next.push((acc, "screenshotToChat"));
-    }
 
-    // Unregister previous
     if let Some(state) = app.try_state::<ShellState>() {
-        if let Ok(mut prev) = state.registered_shortcuts.lock() {
-            for acc in prev.drain(..) {
-                let _ = app.global_shortcut().unregister(acc.as_str());
+        if let Ok(mut previous) = state.registered_shortcuts.lock() {
+            for accelerator in previous.drain(..) {
+                let _ = app.global_shortcut().unregister(accelerator.as_str());
             }
         }
     }
 
-    let app_handle = app.clone();
-    for (acc, action) in &next {
+    for (accelerator, action) in &next {
         let action = *action;
-        let shortcut: Shortcut = acc
+        let shortcut: Shortcut = accelerator
             .parse()
-            .map_err(|err| format!("invalid shortcut '{acc}': {err}"))?;
+            .map_err(|err| format!("invalid shortcut '{accelerator}': {err}"))?;
 
         app.global_shortcut()
             .on_shortcut(shortcut, move |app, _shortcut, event| {
@@ -219,13 +233,52 @@ pub fn apply_shortcut_config(app: &AppHandle, config_json: &str) -> Result<(), S
                     "quickToggle" => {
                         let _ = toggle_quick(app);
                     }
+                    "quickAttachOrOpen" => {
+                        let app2 = app.clone();
+                        tauri::async_runtime::spawn(async move {
+                            let payload = match read_clipboard_capture_payload() {
+                                Ok(payload) => payload,
+                                Err(err) => {
+                                    eprintln!("[shell] clipboard capture failed: {err}");
+                                    None
+                                }
+                            };
+                            let _ = show_quick(&app2);
+                            if let Some(payload) = payload {
+                                let renderer_ready = app2
+                                    .try_state::<ShellState>()
+                                    .and_then(|state| state.quick_renderer_ready.lock().ok().map(|ready| *ready))
+                                    .unwrap_or(false);
+                                if renderer_ready {
+                                    let _ = app2.emit("shell:clipboard-captured", payload);
+                                } else if let Some(state) = app2.try_state::<ShellState>() {
+                                    if let Ok(mut pending) = state.pending_clipboard_capture.lock() {
+                                        *pending = Some(payload);
+                                    }
+                                }
+                            }
+                        });
+                    }
+                    "quickOpen" => {
+                        let _ = show_quick(app);
+                    }
                     "screenshotToChat" => {
                         let app2 = app.clone();
                         tauri::async_runtime::spawn(async move {
                             match capture_region_image().await {
                                 Ok(payload) => {
                                     let _ = show_quick(&app2);
-                                    let _ = app2.emit("shell:screenshot-captured", payload);
+                                    let renderer_ready = app2
+                                        .try_state::<ShellState>()
+                                        .and_then(|state| state.quick_renderer_ready.lock().ok().map(|ready| *ready))
+                                        .unwrap_or(false);
+                                    if renderer_ready {
+                                        let _ = app2.emit("shell:screenshot-captured", payload);
+                                    } else if let Some(state) = app2.try_state::<ShellState>() {
+                                        if let Ok(mut pending) = state.pending_screenshot_capture.lock() {
+                                            *pending = Some(payload);
+                                        }
+                                    }
                                 }
                                 Err(err) => {
                                     let _ = app2.emit(
@@ -240,17 +293,14 @@ pub fn apply_shortcut_config(app: &AppHandle, config_json: &str) -> Result<(), S
                     _ => {}
                 }
             })
-            .map_err(|err| format!("register shortcut '{acc}' failed: {err}"))?;
+            .map_err(|err| format!("register shortcut '{accelerator}' failed: {err}"))?;
     }
 
     if let Some(state) = app.try_state::<ShellState>() {
-        if let Ok(mut prev) = state.registered_shortcuts.lock() {
-            *prev = next.into_iter().map(|(a, _)| a).collect();
+        if let Ok(mut previous) = state.registered_shortcuts.lock() {
+            *previous = next.into_iter().map(|(accelerator, _)| accelerator).collect();
         }
     }
-
-    // Silence unused warning if app_handle not used on all platforms
-    let _ = app_handle;
 
     Ok(())
 }
@@ -542,20 +592,36 @@ fn chrono_like_name() -> String {
 pub fn read_clipboard_image_payload() -> Result<Value, String> {
     let mut clipboard =
         arboard::Clipboard::new().map_err(|err| format!("clipboard unavailable: {err}"))?;
+    clipboard_image_payload(&mut clipboard)
+}
+
+fn clipboard_image_payload(clipboard: &mut arboard::Clipboard) -> Result<Value, String> {
     let image = clipboard
         .get_image()
         .map_err(|_| "no image on clipboard".to_string())?;
-
-    // Encode raw RGBA as PNG via image crate if available; otherwise store as uncompressed data URL fallback.
-    // Use a minimal PNG encoder via `image` — if not present, pack as rgba base64 (frontend may not like it).
-    // Prefer png crate via image.
     let png_bytes = rgba_to_png(image.width as u32, image.height as u32, &image.bytes)?;
     let b64 = STANDARD.encode(&png_bytes);
     Ok(json!({
+        "type": "image",
         "mimeType": "image/png",
         "base64": b64,
         "fileName": format!("clipboard-{}", chrono_like_name()),
     }))
+}
+
+fn read_clipboard_capture_payload() -> Result<Option<Value>, String> {
+    let mut clipboard =
+        arboard::Clipboard::new().map_err(|err| format!("clipboard unavailable: {err}"))?;
+    if let Ok(payload) = clipboard_image_payload(&mut clipboard) {
+        return Ok(Some(payload));
+    }
+    let text = clipboard
+        .get_text()
+        .map_err(|err| format!("clipboard text unavailable: {err}"))?;
+    if text.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(json!({ "type": "text", "text": text })))
 }
 
 fn rgba_to_png(width: u32, height: u32, bytes: &[u8]) -> Result<Vec<u8>, String> {
@@ -610,12 +676,41 @@ pub async fn handle_ipc(app: &AppHandle, channel: &str, args: &[Value]) -> Optio
             set_quick_always_on_top(app, enabled);
             Some(Ok(Value::Null))
         }
+        "shell:quickRendererReady" => {
+            let (clipboard, screenshot) = app
+                .try_state::<ShellState>()
+                .map(|state| {
+                    if let Ok(mut ready) = state.quick_renderer_ready.lock() {
+                        *ready = true;
+                    }
+                    let clipboard = state.pending_clipboard_capture.lock().ok().and_then(|mut p| p.take());
+                    let screenshot = state.pending_screenshot_capture.lock().ok().and_then(|mut p| p.take());
+                    (clipboard, screenshot)
+                })
+                .unwrap_or((None, None));
+            if let Some(window) = app.get_webview_window(QUICK_LABEL) {
+                if let Some(payload) = clipboard {
+                    let _ = window.emit("shell:clipboard-captured", payload);
+                }
+                if let Some(payload) = screenshot {
+                    let _ = window.emit("shell:screenshot-captured", payload);
+                }
+            }
+            Some(Ok(Value::Null))
+        }
+        "shell:quickRendererGone" => {
+            if let Some(state) = app.try_state::<ShellState>() {
+                if let Ok(mut ready) = state.quick_renderer_ready.lock() {
+                    *ready = false;
+                }
+            }
+            Some(Ok(Value::Null))
+        }
         "shell:showQuick" => Some(show_quick(app).map(|_| Value::Null)),
         "shell:hideQuick" => {
             hide_quick(app);
             Some(Ok(Value::Null))
         }
-        "shell:toggleQuick" => Some(toggle_quick(app).map(|_| Value::Null)),
         "shell:showMain" => {
             show_main(app);
             Some(Ok(Value::Null))

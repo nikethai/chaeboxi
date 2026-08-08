@@ -86,6 +86,13 @@ function QuickChatPage() {
     }
   }, [cachedSessionId, setCachedSessionId])
 
+  useEffect(() => {
+    void platform.notifyQuickRendererReady?.()
+    return () => {
+      void platform.notifyQuickRendererGone?.()
+    }
+  }, [])
+
   const currentMessageList = useMemo(() => (session ? getAllMessageList(session) : []), [session])
 
   const model = useMemo(() => {
@@ -346,7 +353,7 @@ function QuickChatPage() {
             </Text>
             <button
               type="button"
-              className="text-xs font-medium text-[var(--chatbox-tint-brand)] hover:underline inline-flex items-center gap-1 shrink-0"
+              className="appearance-none border-0 bg-transparent p-0 text-xs font-medium text-[var(--chatbox-tint-primary)] transition-colors hover:text-[var(--chatbox-tint-white)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--chatbox-tint-brand)] inline-flex items-center gap-1 shrink-0"
               onClick={() => void openFullApp()}
             >
               <IconExternalLink size={12} stroke={1.75} />

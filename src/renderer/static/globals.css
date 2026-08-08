@@ -31,29 +31,21 @@
   --chatbox-dock-pad-b: 1.1rem;
   /* composer surface — stronger lift so dock reads separate from void */
   --chatbox-composer-bg: #ffffff;
-  --chatbox-composer-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.08),
-    0 4px 14px rgba(0, 0, 0, 0.08),
-    0 18px 44px -12px rgba(0, 0, 0, 0.2);
+  --chatbox-composer-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 4px 14px rgba(0, 0, 0, 0.08), 0 18px 44px -12px
+    rgba(0, 0, 0, 0.2);
   /* hover: taller ambient, soft cool edge (no neon brand wash) */
-  --chatbox-composer-shadow-hover:
-    0 0 0 1px rgba(0, 0, 0, 0.1),
-    0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 12%, transparent),
-    0 8px 22px rgba(0, 0, 0, 0.1),
-    0 24px 52px -12px rgba(0, 0, 0, 0.22);
+  --chatbox-composer-shadow-hover: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 0 0 1px
+    color-mix(in srgb, var(--chatbox-tint-brand) 12%, transparent), 0 8px 22px rgba(0, 0, 0, 0.1), 0 24px 52px -12px
+    rgba(0, 0, 0, 0.22);
   /* focus: slightly stronger edge + depth, brand mix ≤ ~18% */
-  --chatbox-composer-shadow-focus:
-    0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 18%, rgba(0, 0, 0, 0.1)),
-    0 0 24px -4px color-mix(in srgb, var(--chatbox-tint-brand) 14%, transparent),
-    0 10px 26px rgba(0, 0, 0, 0.1),
-    0 28px 56px -12px rgba(0, 0, 0, 0.24);
-  --chatbox-composer-shadow-drag:
-    0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 42%, transparent),
-    0 6px 16px rgba(0, 0, 0, 0.1),
-    0 20px 48px -12px rgba(0, 0, 0, 0.22);
+  --chatbox-composer-shadow-focus: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 18%, rgba(0, 0, 0, 0.1)), 0 0
+    24px -4px color-mix(in srgb, var(--chatbox-tint-brand) 14%, transparent), 0 10px 26px rgba(0, 0, 0, 0.1), 0 28px
+    56px -12px rgba(0, 0, 0, 0.24);
+  --chatbox-composer-shadow-drag: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 42%, transparent), 0 6px 16px
+    rgba(0, 0, 0, 0.1), 0 20px 48px -12px rgba(0, 0, 0, 0.22);
   --chatbox-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --chatbox-font-ui: 'Satoshi', 'Segoe UI', system-ui, sans-serif;
-  --chatbox-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --chatbox-font-ui: "Satoshi", "Segoe UI", system-ui, sans-serif;
+  --chatbox-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   --chatbox-rail-width: 280px;
   /* window chrome — shared by sidebar rail head + main title bars */
   --chatbox-titlebar-height: 44px;
@@ -128,7 +120,7 @@
 }
 
 /* dark-first studio palette */
-:root[data-mantine-color-scheme='dark'] {
+:root[data-mantine-color-scheme="dark"] {
   --chatbox-background-user-bubble: #2c2c34; /* lift-2 — mock user pill */
   --chatbox-tint-primary: #ececec;
   --chatbox-tint-secondary: #a8a8ae;
@@ -195,28 +187,20 @@
 
   /* composer surface — deeper ambient on dark void */
   --chatbox-composer-bg: #222228;
-  --chatbox-composer-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.09),
-    0 6px 18px rgba(0, 0, 0, 0.55),
-    0 22px 52px -10px rgba(0, 0, 0, 0.72);
-  --chatbox-composer-shadow-hover:
-    0 0 0 1px rgba(255, 255, 255, 0.12),
-    0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 14%, transparent),
-    0 10px 26px rgba(0, 0, 0, 0.58),
-    0 28px 60px -10px rgba(0, 0, 0, 0.78);
-  --chatbox-composer-shadow-focus:
-    0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 20%, rgba(255, 255, 255, 0.1)),
-    0 0 28px -2px color-mix(in srgb, var(--chatbox-tint-brand) 16%, transparent),
-    0 12px 30px rgba(0, 0, 0, 0.58),
-    0 30px 64px -10px rgba(0, 0, 0, 0.8);
-  --chatbox-composer-shadow-drag:
-    0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 48%, transparent),
-    0 8px 20px rgba(0, 0, 0, 0.55),
-    0 24px 56px -10px rgba(0, 0, 0, 0.75);
+  --chatbox-composer-shadow: 0 0 0 1px rgba(255, 255, 255, 0.09), 0 6px 18px rgba(0, 0, 0, 0.55), 0 22px 52px -10px
+    rgba(0, 0, 0, 0.72);
+  --chatbox-composer-shadow-hover: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 0 0 1px
+    color-mix(in srgb, var(--chatbox-tint-brand) 14%, transparent), 0 10px 26px rgba(0, 0, 0, 0.58), 0 28px 60px -10px
+    rgba(0, 0, 0, 0.78);
+  --chatbox-composer-shadow-focus: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 20%, rgba(255, 255, 255, 0.1)),
+    0 0 28px -2px color-mix(in srgb, var(--chatbox-tint-brand) 16%, transparent), 0 12px 30px rgba(0, 0, 0, 0.58), 0
+    30px 64px -10px rgba(0, 0, 0, 0.8);
+  --chatbox-composer-shadow-drag: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 48%, transparent), 0 8px 20px
+    rgba(0, 0, 0, 0.55), 0 24px 56px -10px rgba(0, 0, 0, 0.75);
 }
 
-:root[data-mantine-color-scheme='light'][data-mantine-color-scheme],
-:root[data-mantine-color-scheme='dark'][data-mantine-color-scheme] {
+:root[data-mantine-color-scheme="light"][data-mantine-color-scheme],
+:root[data-mantine-color-scheme="dark"][data-mantine-color-scheme] {
   /* brand */
   --mantine-color-chatbox-brand-text: var(--chatbox-tint-brand);
   --mantine-color-chatbox-brand-filled: var(--chatbox-background-brand-primary);
@@ -402,6 +386,23 @@
   }
   .quick-chat-hints {
     user-select: none;
+  }
+
+  /* Keep the compact quick-chat footer clear of the composer's deep shadow. */
+  .quick-chat-shell .composer-card {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent),
+      0 3px 8px rgba(0, 0, 0, 0.24);
+  }
+  .quick-chat-shell .composer-card:focus-within:not(.composer-card-drag-active),
+  .quick-chat-shell .composer-card:hover:not(.composer-card-drag-active) {
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 18%, transparent),
+      0 4px 10px rgba(0, 0, 0, 0.28) !important;
+  }
+  .quick-chat-shell .composer-card.composer-card-drag-active,
+  .quick-chat-shell .composer-card.composer-card-drag-active:focus-within {
+    box-shadow: var(--chatbox-composer-shadow-drag) !important;
   }
 
   .studio-rail {
@@ -653,7 +654,7 @@
   }
 
   .studio-rail-row-active::before {
-    content: '';
+    content: "";
     position: absolute;
     inset-inline-start: 4px;
     top: 50%;
@@ -665,7 +666,7 @@
     opacity: 0.9;
   }
 
-  :root[data-mantine-color-scheme='dark'] .studio-rail-row-active {
+  :root[data-mantine-color-scheme="dark"] .studio-rail-row-active {
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
   }
 
@@ -1091,8 +1092,8 @@
     opacity: 1;
   }
 
-  :root[data-mantine-color-scheme='dark'] .msg-content hr,
-  :root[data-mantine-color-scheme='dark'] .assistant-msg .msg-content hr {
+  :root[data-mantine-color-scheme="dark"] .msg-content hr,
+  :root[data-mantine-color-scheme="dark"] .assistant-msg .msg-content hr {
     border-top-color: color-mix(in srgb, var(--chatbox-tint-primary) 12%, transparent);
   }
 
@@ -1649,7 +1650,11 @@
   /* Drag-over: brand catch without solid primary ring */
   .composer-card.composer-card-drag-active {
     border-color: transparent;
-    background: color-mix(in srgb, var(--chatbox-tint-brand) 10%, var(--chatbox-composer-bg, var(--chatbox-background-secondary)));
+    background: color-mix(
+      in srgb,
+      var(--chatbox-tint-brand) 10%,
+      var(--chatbox-composer-bg, var(--chatbox-background-secondary))
+    );
     box-shadow: var(--chatbox-composer-shadow-drag);
   }
 
@@ -1838,12 +1843,7 @@
     left: 0;
     z-index: 3;
     padding: 0.55rem 0.65rem 0.6rem;
-    background: linear-gradient(
-      to top,
-      rgba(0, 0, 0, 0.72) 0%,
-      rgba(0, 0, 0, 0.4) 55%,
-      transparent 100%
-    );
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0.4) 55%, transparent 100%);
     transition-property: opacity, transform;
     transition-duration: 180ms;
     transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
@@ -1994,7 +1994,7 @@
       0 1px 2px -1px rgba(0, 0, 0, 0.06);
   }
 
-  :root[data-mantine-color-scheme='dark'] .composer-attach-chip,
+  :root[data-mantine-color-scheme="dark"] .composer-attach-chip,
   .dark .composer-attach-chip {
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
   }
@@ -2061,7 +2061,7 @@
     outline-offset: -1px;
   }
 
-  :root[data-mantine-color-scheme='dark'] .tool-video-filmstrip-thumb,
+  :root[data-mantine-color-scheme="dark"] .tool-video-filmstrip-thumb,
   .dark .tool-video-filmstrip-thumb {
     outline-color: rgba(255, 255, 255, 0.1);
   }
@@ -2336,11 +2336,11 @@
   background: rgba(0, 0, 0, 0.3);
 }
 
-[data-mantine-color-scheme='dark'] .katex-display::-webkit-scrollbar-thumb {
+[data-mantine-color-scheme="dark"] .katex-display::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.2);
 }
 
-[data-mantine-color-scheme='dark'] .katex-display:hover::-webkit-scrollbar-thumb {
+[data-mantine-color-scheme="dark"] .katex-display:hover::-webkit-scrollbar-thumb {
   background: rgba(255, 255, 255, 0.3);
 }
 
@@ -2353,10 +2353,10 @@
   margin-top: var(--mobile-safe-area-inset-top);
   -webkit-app-region: no-drag;
 }
-html[data-need-room-for-mac-controls='true'] .pswp__counter {
+html[data-need-room-for-mac-controls="true"] .pswp__counter {
   padding-top: 1rem;
 }
-html[data-need-room-for-windows-controls='true'] .pswp__top-bar {
+html[data-need-room-for-windows-controls="true"] .pswp__top-bar {
   padding-right: 9rem;
 }
 
@@ -2435,11 +2435,11 @@ div[data-vaul-drawer] {
  * Filled primary CTAs: white label on brand indigo.
  * chatbox-brand is a flat CSS-var palette so Mantine can't auto-contrast.
  */
-button.mantine-Button-root[data-variant='filled']:not([data-disabled='true']):not(:disabled) {
+button.mantine-Button-root[data-variant="filled"]:not([data-disabled="true"]):not(:disabled) {
   --button-color: #ffffff;
   color: #ffffff;
 }
-button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
+button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   color: inherit;
 }
 
@@ -2473,8 +2473,8 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
 }
 
 .user-trigger:hover,
-.user-trigger[data-expanded='true'],
-.user-trigger[aria-expanded='true'] {
+.user-trigger[data-expanded="true"],
+.user-trigger[aria-expanded="true"] {
   background: var(--chatbox-background-tertiary);
   border-color: transparent;
 }
@@ -2542,8 +2542,8 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
   display: flex;
 }
 
-.user-trigger[data-expanded='true'] .user-chevron,
-.user-trigger[aria-expanded='true'] .user-chevron {
+.user-trigger[data-expanded="true"] .user-chevron,
+.user-trigger[aria-expanded="true"] .user-chevron {
   transform: rotate(180deg);
 }
 
@@ -2589,12 +2589,12 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
   color: var(--chatbox-tint-primary) !important;
 }
 
-.user-menu-dropdown .mantine-Menu-item[data-danger='true'],
+.user-menu-dropdown .mantine-Menu-item[data-danger="true"],
 .user-menu-dropdown .user-menu-item-danger {
   color: var(--chatbox-tint-secondary) !important;
 }
 
-.user-menu-dropdown .mantine-Menu-item[data-danger='true']:hover,
+.user-menu-dropdown .mantine-Menu-item[data-danger="true"]:hover,
 .user-menu-dropdown .user-menu-item-danger:hover {
   color: #f0a0a4 !important;
   background: rgba(242, 85, 90, 0.1) !important;
@@ -3292,7 +3292,7 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
 }
 
 .settings-nav-item-on::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   top: 8px;
@@ -3329,8 +3329,8 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
   -webkit-font-smoothing: antialiased;
 }
 
-[data-mantine-color-scheme='dark'] .model-picker-dropdown.mantine-Combobox-dropdown,
-[data-mantine-color-scheme='dark'] .model-picker-dropdown {
+[data-mantine-color-scheme="dark"] .model-picker-dropdown.mantine-Combobox-dropdown,
+[data-mantine-color-scheme="dark"] .model-picker-dropdown {
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.08),
     0 1px 2px rgba(0, 0, 0, 0.35),
@@ -3343,7 +3343,8 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
   position: relative;
   z-index: 2;
   background: var(--chatbox-background-secondary);
-  box-shadow: 0 1px 0 color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent),
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent),
     0 6px 12px color-mix(in srgb, var(--chatbox-tint-primary) 4%, transparent);
   padding: var(--mp-pad, 8px) 10px;
 }
@@ -3363,7 +3364,9 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
   font-size: 16px;
   line-height: 1;
   cursor: pointer;
-  transition: background-color 120ms cubic-bezier(0.2, 0, 0, 1), color 120ms cubic-bezier(0.2, 0, 0, 1);
+  transition:
+    background-color 120ms cubic-bezier(0.2, 0, 0, 1),
+    color 120ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .model-picker-search-clear:hover {
@@ -3524,7 +3527,7 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
 }
 
 .model-picker-option-on::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 3px;
   top: 8px;
@@ -3547,7 +3550,7 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
   flex-shrink: 0;
 }
 
-[data-mantine-color-scheme='dark'] .model-picker-option .model-picker-icon {
+[data-mantine-color-scheme="dark"] .model-picker-option .model-picker-icon {
   outline-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -3575,7 +3578,7 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
 }
 
 .model-picker-star::after {
-  content: '';
+  content: "";
   position: absolute;
   inset: -6px;
   /* extends hit area toward 40×40 without overlapping neighbors badly */
@@ -3620,7 +3623,7 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
   transform: scale(0.96);
 }
 
-.model-picker-trigger[data-expanded='true'] {
+.model-picker-trigger[data-expanded="true"] {
   box-shadow:
     inset 0 0 0 1px var(--chatbox-tint-brand),
     0 0 0 3px color-mix(in srgb, var(--chatbox-tint-brand) 18%, transparent);
@@ -3778,7 +3781,7 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
     0 20px 48px -12px rgba(0, 0, 0, 0.18) !important;
 }
 
-:root[data-mantine-color-scheme='dark'] .action-menu-dropdown {
+:root[data-mantine-color-scheme="dark"] .action-menu-dropdown {
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.06),
     0 10px 28px rgba(0, 0, 0, 0.45),
@@ -3814,7 +3817,7 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--chatbox-tint-primary) 4%, transparent);
 }
 
-:root[data-mantine-color-scheme='dark'] .code-fence {
+:root[data-mantine-color-scheme="dark"] .code-fence {
   background: color-mix(in srgb, var(--chatbox-background-secondary) 88%, #000 12%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
@@ -3893,7 +3896,7 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
   -webkit-font-smoothing: antialiased;
 }
 
-:root[data-mantine-color-scheme='light'] .mermaid-shell {
+:root[data-mantine-color-scheme="light"] .mermaid-shell {
   box-shadow:
     0 0 0 1px color-mix(in srgb, #000 6%, transparent),
     0 10px 32px -14px rgba(0, 0, 0, 0.12);
@@ -3911,7 +3914,7 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--chatbox-tint-primary) 5%, transparent);
 }
 
-:root[data-mantine-color-scheme='dark'] .mermaid-shell-inner {
+:root[data-mantine-color-scheme="dark"] .mermaid-shell-inner {
   background: color-mix(in srgb, var(--chatbox-background-secondary) 90%, #000 10%);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
@@ -4025,13 +4028,11 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
   padding: 1.15rem 1.25rem 1.35rem;
   cursor: grab;
   touch-action: pan-x pan-y;
-  background:
-    radial-gradient(
+  background: radial-gradient(
       120% 80% at 50% 0%,
       color-mix(in srgb, var(--chatbox-tint-brand) 5%, transparent),
       transparent 55%
-    ),
-    var(--chatbox-background-secondary);
+    ), var(--chatbox-background-secondary);
 }
 
 .mermaid-viewport:active {
@@ -4119,7 +4120,7 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
   outline-offset: -1px;
 }
 
-:root[data-mantine-color-scheme='dark'] .chaeboxi-wordmark-mark {
+:root[data-mantine-color-scheme="dark"] .chaeboxi-wordmark-mark {
   outline-color: rgba(255, 255, 255, 0.1);
 }
 
@@ -4227,11 +4228,13 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
   margin: 2px 0;
   cursor: pointer;
   color: var(--chatbox-tint-primary);
-  transition: background-color 140ms ease, transform 100ms ease;
+  transition:
+    background-color 140ms ease,
+    transform 100ms ease;
 }
 
-.search-dialog-item[aria-selected='true'],
-.search-dialog-item[data-selected='true'] {
+.search-dialog-item[aria-selected="true"],
+.search-dialog-item[data-selected="true"] {
   background: var(--chatbox-background-tertiary) !important;
   color: var(--chatbox-tint-primary) !important;
 }
@@ -4341,7 +4344,7 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
 }
 
 .workspace-panel-resizer::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 50%;
   left: 50%;
@@ -4351,7 +4354,9 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
   transform: translate(-50%, -50%);
   background: color-mix(in srgb, var(--chatbox-tint-primary) 12%, transparent);
   opacity: 0;
-  transition: opacity 160ms cubic-bezier(0.2, 0, 0, 1), background-color 160ms cubic-bezier(0.2, 0, 0, 1);
+  transition:
+    opacity 160ms cubic-bezier(0.2, 0, 0, 1),
+    background-color 160ms cubic-bezier(0.2, 0, 0, 1);
 }
 
 .workspace-panel-resizer:hover::after,
@@ -4375,7 +4380,7 @@ button.mantine-Button-root[data-variant='filled'] .mantine-Button-label {
   border-radius: 0;
 }
 
-:root[data-mantine-color-scheme='light'] .workspace-panel-inner {
+:root[data-mantine-color-scheme="light"] .workspace-panel-inner {
   box-shadow:
     -1px 0 0 color-mix(in srgb, #000 6%, transparent),
     -16px 0 36px -18px rgba(0, 0, 0, 0.1);

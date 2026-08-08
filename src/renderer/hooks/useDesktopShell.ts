@@ -5,8 +5,8 @@
 import { getDefaultStore } from 'jotai'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ScreenshotImagePayload } from '@/platform/interfaces'
 import platform from '@/platform'
+import type { ClipboardCapturePayload, ScreenshotImagePayload } from '@/platform/interfaces'
 import { router } from '@/router'
 import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
@@ -64,6 +64,19 @@ export async function attachScreenshotToComposer(payload: ScreenshotImagePayload
   })
 }
 
+async function applyClipboardCaptureToComposer(payload: ClipboardCapturePayload): Promise<void> {
+  const sessionId = await resolveTargetSessionId()
+  const store = getDefaultStore()
+  if (payload.type === 'text') {
+    if (payload.text) {
+      store.set(atoms.inputBoxPrefillTextFamily(sessionId), payload.text)
+    }
+    return
+  }
+  await attachScreenshotToComposer(payload)
+  document.getElementById('message-input')?.focus()
+}
+
 /**
  * Call once from root layout on desktop.
  */
@@ -101,17 +114,16 @@ export function useDesktopShell() {
     void (async () => {
       const label = await platform.getWindowLabel?.()
       if (label === 'quick' && router.state.location.pathname !== '/quick') {
-        void router.navigate({ to: '/quick' })
+        void router.navigate({ to: '/quick' as never })
       }
     })()
 
     const unsubShot = platform.onScreenshotCaptured?.(async (payload) => {
       try {
-        // Ensure we are on a chat surface
         const label = await platform.getWindowLabel?.()
         if (label === 'quick' || router.state.location.pathname === '/quick') {
           if (router.state.location.pathname !== '/quick') {
-            await router.navigate({ to: '/quick' })
+            await router.navigate({ to: '/quick' as never })
           }
         } else {
           const sid = await resolveTargetSessionId()
@@ -126,6 +138,23 @@ export function useDesktopShell() {
       } catch (err) {
         console.error('[shell] attach screenshot failed', err)
         toastActions.add(t('Failed to attach screenshot'))
+      }
+    })
+
+    const unsubClipboard = platform.onClipboardCaptured?.(async (payload) => {
+      try {
+        const label = await platform.getWindowLabel?.()
+        if (label !== 'quick') {
+          return
+        }
+        if (router.state.location.pathname !== '/quick') {
+          await router.navigate({ to: '/quick' as never })
+        }
+        await applyClipboardCaptureToComposer(payload)
+        toastActions.add(t('Clipboard content added to chat'))
+      } catch (err) {
+        console.error('[shell] apply clipboard content failed', err)
+        toastActions.add(t('Failed to add clipboard content'))
       }
     })
 
@@ -190,6 +219,7 @@ export function useDesktopShell() {
       unsubShot?.()
       unsubErr?.()
       unsubHide?.()
+      unsubClipboard?.()
       unsubSession?.()
       unsubFocus?.()
       unsubShow?.()

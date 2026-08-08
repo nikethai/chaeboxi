@@ -118,9 +118,12 @@ export interface Platform extends Storage {
   openSessionInMain?(sessionId: string): Promise<void>
   captureScreenshotRegion?(): Promise<ScreenshotImagePayload | null>
   readClipboardImage?(): Promise<ScreenshotImagePayload | null>
+  notifyQuickRendererReady?(): Promise<void>
+  notifyQuickRendererGone?(): Promise<void>
   getWindowLabel?(): Promise<string>
   onShellNavigate?(callback: (path: string) => void): () => void
   onScreenshotCaptured?(callback: (payload: ScreenshotImagePayload) => void): () => void
+  onClipboardCaptured?(callback: (payload: ClipboardCapturePayload) => void): () => void
   onScreenshotError?(callback: (message: string) => void): () => void
   onHiddenToTray?(callback: () => void): () => void
 
@@ -137,6 +140,7 @@ export type ScreenshotImagePayload = {
   base64: string
   fileName: string
 }
+export type ClipboardCapturePayload = { type: 'text'; text: string } | ({ type: 'image' } & ScreenshotImagePayload)
 
 export interface Exporter {
   exportBlob: (filename: string, blob: Blob, encoding?: 'utf8' | 'ascii' | 'utf16') => Promise<void>

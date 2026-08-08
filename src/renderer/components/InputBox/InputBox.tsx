@@ -45,8 +45,8 @@ import {
 import { trackingEvent } from '@/packages/event'
 import { replacePromptTemplateVars } from '@/packages/model-calls/message-utils'
 import { getModelContextWindowSync } from '@/packages/model-context'
-import * as picUtils from '@/packages/pic_utils'
 import { extractSkillNamesFromText, getActiveSkillDollarQuery, stripSkillDollarTokens } from '@/packages/skills'
+import * as picUtils from '@/packages/pic_utils'
 import { formatBytesForDisplay, formatDurationForDisplay, getVideoLimits } from '@/packages/video'
 import { isWebSearchConfigured } from '@/packages/web-search/is-configured'
 import platform from '@/platform'
@@ -204,6 +204,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     )
 
     const { messageInput, setMessageInput, clearDraft } = useMessageInput(initialMessage, { isNewSession })
+
     const { promptPresets } = usePromptPresets()
     const { enabledSkills, skills: allSkills } = useSkills()
     /** Session-sticky skill chips selected via $ */
@@ -229,9 +230,18 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const [preConstructedMessage, setPreConstructedMessage] = useAtom(
       atoms.inputBoxPreConstructedMessageFamily(currentSessionId || 'new')
     )
+    const [clipboardPrefillText, setClipboardPrefillText] = useAtom(
+      atoms.inputBoxPrefillTextFamily(currentSessionId || 'new')
+    )
     const pictureKeys = preConstructedMessage.pictureKeys || []
     const attachments = preConstructedMessage.attachments || []
-
+    useEffect(() => {
+      if (clipboardPrefillText === null) return
+      setMessageInput(clipboardPrefillText)
+      setClipboardPrefillText(null)
+      dom.focusMessageInput()
+      dom.setMessageInputCursorToEnd()
+    }, [clipboardPrefillText, setClipboardPrefillText, setMessageInput])
     const { session: currentSession } = useSession(sessionId || null)
     const { sessionSettings: currentSessionMergedSettings } = useSessionSettings(sessionId || null)
     const agentMode = controlledAgentMode ?? currentSession?.agentMode ?? false
@@ -1588,14 +1598,13 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         : isPreprocessing || isSubmitting || isSamplingVideoFrames || isCompactionRunning
       : disableSubmit || isPreprocessing || isSubmitting || isSamplingVideoFrames || isCompactionRunning
 
-    const roomMode: 'discuss' | 'work' =
-      isNewSession
-        ? draftRoomMode === 'work'
-          ? 'work'
-          : 'discuss'
-        : currentSession?.roomMode === 'work'
-          ? 'work'
-          : 'discuss'
+    const roomMode: 'discuss' | 'work' = isNewSession
+      ? draftRoomMode === 'work'
+        ? 'work'
+        : 'discuss'
+      : currentSession?.roomMode === 'work'
+        ? 'work'
+        : 'discuss'
     const showRoomModeChip = roomAgentIds.length >= 2 || selectedAgents.length >= 2
 
     return (

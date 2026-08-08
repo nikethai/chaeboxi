@@ -227,47 +227,12 @@ function Index() {
     return true
   }, [session])
 
-  const starters = useMemo(
-    () => [
-      {
-        n: '01',
-        title: t('Trace session store modules'),
-        hint: t('Architecture · TypeScript'),
-        fill: 'Map the session store modules and call out circular deps.',
-      },
-      {
-        n: '02',
-        title: t('PR: kill MUI drawer'),
-        hint: t('Write-up · shipping note'),
-        fill: 'Draft a PR description for replacing the MUI drawer with a custom rail.',
-      },
-      {
-        n: '03',
-        title: t('Stream cancel race'),
-        hint: t('Debug · concurrency'),
-        fill: 'Debug intermittent stream cancel when switching models mid-response.',
-      },
-      {
-        n: '04',
-        title: t('Composer context meter'),
-        hint: t('UX · tokens'),
-        fill: 'Propose token budget UI for the composer context meter.',
-      },
-    ],
-    [t]
-  )
-
   return (
     <Page title="">
       <div className="p-0 flex flex-col h-full session-shell">
         <div className="blank-workbench flex-1 min-h-0 overflow-auto">
           <div className="blank-copy">
             <h1 className="blank-title">{t('Pick a thread. Or start one.')}</h1>
-            <p className="blank-sub">
-              {t(
-                'Desktop copilot for people who live in providers, tools, and long context — not another soft chat toy.'
-              )}
-            </p>
             {!providers.length && (
               <Button
                 mt="md"
@@ -282,30 +247,6 @@ function Index() {
               </Button>
             )}
           </div>
-
-          {!isSmallScreen && (
-            <div className="blank-starters" role="list">
-              <header className="blank-starters-head">
-                <span>{t('Starters')}</span>
-                <span>{t('press to fill')}</span>
-              </header>
-              {starters.map((s) => (
-                <button
-                  key={s.n}
-                  type="button"
-                  className="blank-starter"
-                  role="listitem"
-                  onClick={() => fillComposer(s.fill)}
-                >
-                  <span className="blank-starter-n">{s.n}</span>
-                  <span>
-                    <span className="blank-starter-t">{s.title}</span>
-                    <span className="blank-starter-h">{s.hint}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className="session-dock">

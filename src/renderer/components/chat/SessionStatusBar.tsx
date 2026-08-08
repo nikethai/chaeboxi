@@ -21,6 +21,8 @@ export type SessionStatusBarProps = {
   generating?: boolean
   providerId?: string
   sessionId?: string
+  /** Quiet bar for empty threads (model only, no msg/tok noise) */
+  empty?: boolean
 }
 
 function lastAssistantModel(messages: Message[]): string | undefined {
@@ -33,7 +35,14 @@ function lastAssistantModel(messages: Message[]): string | undefined {
   return undefined
 }
 
-const SessionStatusBar: FC<SessionStatusBarProps> = ({ messages, modelLabel, generating, providerId, sessionId }) => {
+const SessionStatusBar: FC<SessionStatusBarProps> = ({
+  messages,
+  modelLabel,
+  generating,
+  providerId,
+  sessionId,
+  empty = false,
+}) => {
   const { t } = useTranslation()
   const tokenMenu = useAtomValue(composerTokenMenuAtom)
 
@@ -63,7 +72,7 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({ messages, modelLabel, gen
   )
 
   return (
-    <div className="session-statusline" role="status" aria-live="polite">
+    <div className={`session-statusline${empty ? ' is-empty' : ''}`} role="status" aria-live="polite">
       <Flex className="session-statusline-inner" align="center" justify="space-between" gap="sm">
         <Flex align="center" gap={10} miw={0} className="min-w-0">
           <span className={`session-statusline-dot ${generating ? 'is-live' : ''}`} aria-hidden />
@@ -76,58 +85,65 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({ messages, modelLabel, gen
               {t('generating')}
             </Text>
           )}
+          {empty && !generating && (
+            <Text className="session-statusline-muted-label" size="xs">
+              {t('Ready')}
+            </Text>
+          )}
         </Flex>
 
-        <Flex align="center" gap={12} className="shrink-0">
-          <Tooltip label={t('Messages in this thread')} withArrow openDelay={400}>
-            <Text className="session-statusline-seg">
-              <span className="session-statusline-key">msg</span>
-              <span className="session-statusline-val">{messages.length}</span>
-            </Text>
-          </Tooltip>
-
-          {menuForSession ? (
-            <TokenCountMenu
-              currentInputTokens={menuForSession.currentInputTokens}
-              contextTokens={menuForSession.contextTokens}
-              totalTokens={menuForSession.totalTokens}
-              isCalculating={menuForSession.isCalculating}
-              pendingTasks={menuForSession.pendingTasks}
-              totalContextMessages={menuForSession.totalContextMessages}
-              contextWindow={menuForSession.contextWindow}
-              currentMessageCount={menuForSession.currentMessageCount}
-              maxContextMessageCount={menuForSession.maxContextMessageCount}
-              onCompressClick={menuForSession.onCompressClick}
-              autoCompactionEnabled={menuForSession.autoCompactionEnabled}
-              isCompacting={menuForSession.isCompacting}
-              contextWindowKnown={menuForSession.contextWindowKnown}
-              onAutoCompactionChange={menuForSession.onAutoCompactionChange}
-            >
-              {tokSegment}
-            </TokenCountMenu>
-          ) : (
-            <Tooltip
-              label={
-                hasUsage
-                  ? `${t('Input')}: ${formatNumber(metrics.totalInputTokens)} · ${t('Output')}: ${formatNumber(metrics.totalOutputTokens)}`
-                  : t('No token usage yet')
-              }
-              withArrow
-              openDelay={400}
-            >
-              <Text className="session-statusline-seg">{tokSegment}</Text>
-            </Tooltip>
-          )}
-
-          {CHATBOX_BUILD_PLATFORM !== 'android' && hasUsage && metrics.actualCost > 0 && (
-            <Tooltip label={t('Session cost estimate')} withArrow openDelay={400}>
+        {!empty && (
+          <Flex align="center" gap={12} className="shrink-0">
+            <Tooltip label={t('Messages in this thread')} withArrow openDelay={400}>
               <Text className="session-statusline-seg">
-                <span className="session-statusline-key">$</span>
-                <span className="session-statusline-val">{formatCost(metrics.actualCost)}</span>
+                <span className="session-statusline-key">msg</span>
+                <span className="session-statusline-val">{messages.length}</span>
               </Text>
             </Tooltip>
-          )}
-        </Flex>
+
+            {menuForSession ? (
+              <TokenCountMenu
+                currentInputTokens={menuForSession.currentInputTokens}
+                contextTokens={menuForSession.contextTokens}
+                totalTokens={menuForSession.totalTokens}
+                isCalculating={menuForSession.isCalculating}
+                pendingTasks={menuForSession.pendingTasks}
+                totalContextMessages={menuForSession.totalContextMessages}
+                contextWindow={menuForSession.contextWindow}
+                currentMessageCount={menuForSession.currentMessageCount}
+                maxContextMessageCount={menuForSession.maxContextMessageCount}
+                onCompressClick={menuForSession.onCompressClick}
+                autoCompactionEnabled={menuForSession.autoCompactionEnabled}
+                isCompacting={menuForSession.isCompacting}
+                contextWindowKnown={menuForSession.contextWindowKnown}
+                onAutoCompactionChange={menuForSession.onAutoCompactionChange}
+              >
+                {tokSegment}
+              </TokenCountMenu>
+            ) : (
+              <Tooltip
+                label={
+                  hasUsage
+                    ? `${t('Input')}: ${formatNumber(metrics.totalInputTokens)} · ${t('Output')}: ${formatNumber(metrics.totalOutputTokens)}`
+                    : t('No token usage yet')
+                }
+                withArrow
+                openDelay={400}
+              >
+                <Text className="session-statusline-seg">{tokSegment}</Text>
+              </Tooltip>
+            )}
+
+            {CHATBOX_BUILD_PLATFORM !== 'android' && hasUsage && metrics.actualCost > 0 && (
+              <Tooltip label={t('Session cost estimate')} withArrow openDelay={400}>
+                <Text className="session-statusline-seg">
+                  <span className="session-statusline-key">$</span>
+                  <span className="session-statusline-val">{formatCost(metrics.actualCost)}</span>
+                </Text>
+              </Tooltip>
+            )}
+          </Flex>
+        )}
       </Flex>
     </div>
   )

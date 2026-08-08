@@ -3277,7 +3277,135 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   background: var(--chatbox-background-tertiary);
 }
 
-/* ── Settings page (full route, not modal) ── */
+/* ── Settings page (full route, not modal) ──
+ * make-interfaces-feel-better: concentric radii, shadow surfaces,
+ * press scale 0.96, 40px hit targets, interruptible transitions,
+ * staggered nav enter, optical icon alignment.
+ */
+.settings-shell {
+  --settings-shadow:
+    0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent),
+    0 1px 2px -1px rgba(0, 0, 0, 0.06),
+    0 2px 4px 0 rgba(0, 0, 0, 0.04);
+  --settings-shadow-hover:
+    0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 12%, transparent),
+    0 1px 2px -1px rgba(0, 0, 0, 0.08),
+    0 2px 6px 0 rgba(0, 0, 0, 0.06);
+}
+
+:root[data-mantine-color-scheme='dark'] .settings-shell {
+  --settings-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --settings-shadow-hover: 0 0 0 1px rgba(255, 255, 255, 0.13);
+}
+
+.settings-chrome-header {
+  /* hairline separation without hard divider weight */
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--chatbox-tint-primary) 7%, transparent) !important;
+}
+
+.settings-chrome-title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.settings-chrome-title-main {
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  text-wrap: balance;
+  color: var(--chatbox-tint-primary);
+  white-space: nowrap;
+}
+
+.settings-chrome-title-sep {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--chatbox-tint-tertiary);
+  opacity: 0.7;
+  flex: 0 0 auto;
+}
+
+.settings-chrome-title-section {
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--chatbox-tint-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* Shared chrome icon button (back + close) — one size, surface, motion */
+.settings-chrome-actions {
+  flex: 0 0 auto;
+}
+
+.settings-chrome-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  color: var(--chatbox-tint-secondary);
+  background: var(--chatbox-background-secondary);
+  box-shadow: var(--settings-shadow);
+  transition-property: transform, box-shadow, background-color, color;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.settings-chrome-btn::after {
+  content: '';
+  position: absolute;
+  inset: -4px; /* 32 + 8 → 40px hit */
+}
+
+.settings-chrome-btn:hover {
+  color: var(--chatbox-tint-primary);
+  background: var(--chatbox-background-tertiary);
+  box-shadow: var(--settings-shadow-hover);
+}
+
+.settings-chrome-btn:active {
+  transform: scale(0.96);
+}
+
+.settings-chrome-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 55%, transparent);
+  outline-offset: 2px;
+}
+
+/* chevron optical shift — left arrows sit slightly heavy on the left */
+.settings-chrome-back-icon {
+  margin-left: -1px;
+}
+
+/* Shortcut hint only — matches rail-nav-kbd / sidebar pattern, not a second button */
+.settings-chrome-kbd {
+  font-family: var(--chatbox-font-mono, ui-monospace, monospace);
+  font-size: 0.65rem;
+  font-weight: 500;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  line-height: 1.2;
+  color: var(--chatbox-tint-tertiary);
+  border: 1px solid var(--chatbox-border-primary);
+  border-radius: 4px;
+  padding: 0.15rem 0.35rem;
+  background: transparent;
+  user-select: none;
+  pointer-events: none;
+}
+
 .settings-page {
   background: var(--chatbox-background-primary);
 }
@@ -3286,13 +3414,34 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   background: var(--chatbox-background-rail) !important;
 }
 
+.settings-nav-link {
+  animation: settings-nav-in 360ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation-delay: calc(var(--settings-nav-i, 0) * 35ms);
+}
+
+.settings-nav-item {
+  transition-property: background-color, color, transform, box-shadow;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.settings-nav-item:not(.settings-nav-item-on):hover {
+  background: var(--chatbox-background-tertiary);
+  color: var(--chatbox-tint-primary);
+}
+
+.settings-nav-item:not(.settings-nav-item-on):active {
+  transform: scale(0.98);
+}
+
 .settings-nav-item-on {
   background: var(--chatbox-background-brand-secondary) !important;
   color: var(--chatbox-tint-primary) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 12%, transparent);
 }
 
 .settings-nav-item-on::before {
-  content: "";
+  content: '';
   position: absolute;
   left: 0;
   top: 8px;
@@ -3302,8 +3451,72 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   background: var(--chatbox-tint-brand);
 }
 
+.settings-nav-icon {
+  transition-property: opacity, transform;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.settings-nav-item:not(.settings-nav-item-on):hover .settings-nav-icon {
+  opacity: 1;
+  transform: scale(1.04);
+}
+
+.settings-nav-chevron {
+  transition-property: transform, opacity, color;
+  transition-duration: 150ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.settings-nav-item:hover .settings-nav-chevron {
+  transform: translateX(2px);
+  opacity: 1;
+  color: var(--chatbox-tint-secondary) !important;
+}
+
 .settings-content {
-  /* content pane uses app void surface */
+  animation: settings-content-in 280ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+@keyframes settings-nav-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes settings-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-nav-link,
+  .settings-content,
+  .settings-chrome-btn,
+  .settings-nav-item,
+  .settings-nav-icon,
+  .settings-nav-chevron {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .settings-chrome-btn:active,
+  .settings-nav-item:not(.settings-nav-item-on):active {
+    transform: none;
+  }
 }
 
 /* ── Model picker — make-interfaces-feel-better polish ──
@@ -3629,12 +3842,123 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
     0 0 0 3px color-mix(in srgb, var(--chatbox-tint-brand) 18%, transparent);
 }
 
+/* Empty session thread — docked starters, same DNA as blank home */
+.empty-thread {
+  height: 100%;
+  max-width: calc(var(--chatbox-col) + 2 * var(--chatbox-col-pad-x));
+  width: 100%;
+  margin: 0 auto;
+  padding: 2.25rem var(--chatbox-col-pad-x) 1.5rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 1.5rem;
+  overflow: auto;
+}
+
+.empty-thread--compact {
+  justify-content: center;
+  padding: 1rem var(--chatbox-col-pad-x);
+  gap: 0.85rem;
+}
+
+.empty-thread-copy {
+  max-width: 28rem;
+}
+
+.empty-thread-title {
+  margin: 0 0 0.4rem;
+  font-size: clamp(1.25rem, 2.4vw, 1.65rem);
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  text-wrap: balance;
+  color: var(--chatbox-tint-primary);
+}
+
+.empty-thread--compact .empty-thread-title {
+  font-size: 1.05rem;
+}
+
+.empty-thread-sub {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--chatbox-tint-secondary);
+  text-wrap: pretty;
+}
+
+.empty-thread-starters {
+  max-width: 26rem;
+  width: 100%;
+  align-self: flex-start;
+}
+
+.empty-thread-starters .blank-starter {
+  animation: empty-thread-starter-in 280ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+@keyframes empty-thread-starter-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .empty-thread-starters .blank-starter {
+    animation: none;
+  }
+}
+
+.empty-thread-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.empty-thread-chip {
+  appearance: none;
+  border: 1px solid var(--chatbox-border-primary);
+  background: var(--chatbox-background-secondary);
+  color: var(--chatbox-tint-secondary);
+  border-radius: 9999px;
+  padding: 0.35rem 0.7rem;
+  font: inherit;
+  font-size: 0.75rem;
+  line-height: 1.3;
+  cursor: pointer;
+  transition:
+    background-color 140ms var(--chatbox-ease, ease),
+    color 140ms var(--chatbox-ease, ease),
+    border-color 140ms var(--chatbox-ease, ease);
+}
+
+.empty-thread-chip:hover {
+  color: var(--chatbox-tint-primary);
+  background: var(--chatbox-background-tertiary);
+  border-color: var(--chatbox-border-secondary);
+}
+
+.empty-thread-chip:active {
+  transform: scale(0.96);
+}
+
 /* Session dock statusline — Claude Code / Codex DNA */
 .session-statusline {
   flex-shrink: 0;
   border-top: 1px solid var(--chatbox-border-primary);
   background: var(--chatbox-background-rail);
   padding: 0 var(--chatbox-col-pad-x);
+}
+
+.session-statusline.is-empty {
+  opacity: 0.92;
 }
 
 .session-statusline-inner {
@@ -3699,6 +4023,15 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   color: var(--chatbox-tint-tertiary);
   font-weight: 400;
   opacity: 0.85;
+}
+
+.session-statusline-muted-label {
+  color: var(--chatbox-tint-tertiary);
+  font-family: var(--chatbox-font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.9;
 }
 
 .session-statusline-live {

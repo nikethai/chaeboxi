@@ -21,12 +21,7 @@ import platform from '@/platform'
 import { currentSessionIdAtom } from '@/stores/atoms'
 import { createSession, listSessionsMeta, updateSessionWithMessages, useSession } from '@/stores/chatStore'
 import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
-import {
-  modifyMessage,
-  removeCurrentThread,
-  startNewThread,
-  submitNewUserMessage,
-} from '@/stores/sessionActions'
+import { modifyMessage, removeCurrentThread, startNewThread, submitNewUserMessage } from '@/stores/sessionActions'
 import { getAllMessageList, initEmptyChatSession } from '@/stores/sessionHelpers'
 import { useSettingsStore } from '@/stores/settingsStore'
 import * as toastActions from '@/stores/toastActions'
@@ -91,6 +86,13 @@ function QuickChatPage() {
     }
   }, [cachedSessionId, setCachedSessionId])
 
+  useEffect(() => {
+    void platform.notifyQuickRendererReady?.()
+    return () => {
+      void platform.notifyQuickRendererGone?.()
+    }
+  }, [])
+
   const currentMessageList = useMemo(() => (session ? getAllMessageList(session) : []), [session])
 
   const model = useMemo(() => {
@@ -104,10 +106,7 @@ function QuickChatPage() {
     return undefined
   }, [session?.settings?.provider, session?.settings?.modelId])
 
-  const lastGenerating = useMemo(
-    () => currentMessageList.find((m: Message) => m.generating),
-    [currentMessageList]
-  )
+  const lastGenerating = useMemo(() => currentMessageList.find((m: Message) => m.generating), [currentMessageList])
 
   const onSelectModel = useCallback(
     (provider: ModelProvider | string, modelId: string) => {
@@ -316,12 +315,7 @@ function QuickChatPage() {
 
       {/* Same thread as full session — full Message component stack */}
       <div className="session-thread">
-        <MessageList
-          ref={messageListRef}
-          key={`quick-ml-${sessionId}`}
-          currentSession={session}
-          alignToBottom
-        />
+        <MessageList ref={messageListRef} key={`quick-ml-${sessionId}`} currentSession={session} alignToBottom />
       </div>
 
       <div className="session-dock">
@@ -352,7 +346,7 @@ function QuickChatPage() {
             </Text>
             <button
               type="button"
-              className="text-xs font-medium text-[var(--chatbox-tint-brand)] hover:underline inline-flex items-center gap-1 shrink-0"
+              className="appearance-none border-0 bg-transparent p-0 text-xs font-medium text-[var(--chatbox-tint-primary)] transition-colors hover:text-[var(--chatbox-tint-white)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--chatbox-tint-brand)] inline-flex items-center gap-1 shrink-0"
               onClick={() => void openFullApp()}
             >
               <IconExternalLink size={12} stroke={1.75} />

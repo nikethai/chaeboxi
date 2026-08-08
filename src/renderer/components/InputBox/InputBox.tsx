@@ -43,11 +43,7 @@ import {
 import { trackingEvent } from '@/packages/event'
 import { replacePromptTemplateVars } from '@/packages/model-calls/message-utils'
 import { getModelContextWindowSync } from '@/packages/model-context'
-import {
-  extractSkillNamesFromText,
-  getActiveSkillDollarQuery,
-  stripSkillDollarTokens,
-} from '@/packages/skills'
+import { extractSkillNamesFromText, getActiveSkillDollarQuery, stripSkillDollarTokens } from '@/packages/skills'
 import * as picUtils from '@/packages/pic_utils'
 import { formatBytesForDisplay, formatDurationForDisplay, getVideoLimits } from '@/packages/video'
 import { isWebSearchConfigured } from '@/packages/web-search/is-configured'
@@ -187,6 +183,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     )
 
     const { messageInput, setMessageInput, clearDraft } = useMessageInput(initialMessage, { isNewSession })
+
     const { promptPresets } = usePromptPresets()
     const { enabledSkills, skills: allSkills } = useSkills()
     /** Session-sticky skill chips selected via $ */
@@ -198,9 +195,18 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const [preConstructedMessage, setPreConstructedMessage] = useAtom(
       atoms.inputBoxPreConstructedMessageFamily(currentSessionId || 'new')
     )
+    const [clipboardPrefillText, setClipboardPrefillText] = useAtom(
+      atoms.inputBoxPrefillTextFamily(currentSessionId || 'new')
+    )
     const pictureKeys = preConstructedMessage.pictureKeys || []
     const attachments = preConstructedMessage.attachments || []
-
+    useEffect(() => {
+      if (clipboardPrefillText === null) return
+      setMessageInput(clipboardPrefillText)
+      setClipboardPrefillText(null)
+      dom.focusMessageInput()
+      dom.setMessageInputCursorToEnd()
+    }, [clipboardPrefillText, setClipboardPrefillText, setMessageInput])
     const { session: currentSession } = useSession(sessionId || null)
     const { sessionSettings: currentSessionMergedSettings } = useSessionSettings(sessionId || null)
     const agentMode = controlledAgentMode ?? currentSession?.agentMode ?? false
@@ -628,7 +634,9 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           return [...prev, skill]
         })
         // Remove trailing $partial token from draft
-        setMessageInput((prev) => prev.replace(/(?:^|[\s([{])\$[a-z0-9-]*$/i, (m) => m.replace(/\$.*$/, '')).replace(/\s+$/, ' '))
+        setMessageInput((prev) =>
+          prev.replace(/(?:^|[\s([{])\$[a-z0-9-]*$/i, (m) => m.replace(/\$.*$/, '')).replace(/\s+$/, ' ')
+        )
         resetHistoryIndex()
         dom.focusMessageInput()
         setTimeout(() => {
@@ -1529,7 +1537,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               size="sm"
               id={dom.messageInputID}
               ref={inputRef}
-              placeholder={t('Type your question here… Use $ to tag skills') || ''}
+              placeholder={t('Type your question here…') || ''}
               bg="transparent"
               autosize={true}
               minRows={2}

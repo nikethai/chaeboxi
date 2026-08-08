@@ -30,6 +30,9 @@ export const inputBoxPreConstructedMessageFamily = atomFamily((_sessionId: strin
   atom(defaultPreConstructedMessageState())
 )
 
+/** One-shot text prefill requested by the desktop clipboard shortcut. */
+export const inputBoxPrefillTextFamily = atomFamily((_sessionId: string) => atom<string | null>(null))
+
 /**
  * Composer → statusline bridge for token menu (compress / auto-compaction / breakdown).
  * Written by InputBox; read by SessionStatusBar so telemetry lives on the statusline only.

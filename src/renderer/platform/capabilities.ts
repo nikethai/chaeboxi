@@ -10,6 +10,7 @@ export interface PlatformCapabilities {
   isMobileLayout: boolean
   isAndroidRuntime: boolean
   supportsMcpBootstrap: boolean
+  supportsMcpStdio: boolean
   supportsKnowledgeBase: boolean
   supportsDesktopOnlySettings: boolean
   supportsAgentSkillScan: boolean
@@ -28,6 +29,8 @@ export function createPlatformCapabilities({ type, formFactor, buildPlatform }: 
     isAndroidRuntime,
     // Tauri Android provides the desktop IPC transport, so HTTP MCP remains available.
     supportsMcpBootstrap: type === 'desktop',
+    // Android cannot spawn the local child processes required by stdio MCP servers.
+    supportsMcpStdio: isDesktopRuntime,
     supportsKnowledgeBase: isDesktopRuntime,
     supportsDesktopOnlySettings: isDesktopRuntime,
     supportsAgentSkillScan: isDesktopRuntime,

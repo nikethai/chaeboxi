@@ -1,4 +1,5 @@
 import type { SkillOrigin, SkillPackage } from '@shared/types'
+import { resolveAgentRootPathList } from '@/packages/agent-scan'
 import platform from '@/platform'
 import { parseSkillMd } from './parse-skill-md'
 
@@ -16,12 +17,19 @@ export interface SkillScanResult {
   skills: ScannedSkillFile[]
 }
 
+export type DiscoverAgentSkillsOptions = {
+  /** Session workspace root — project-local skills resolve under this path when set */
+  workspaceRoot?: string | null
+  extraRoots?: string[]
+}
+
 /**
  * User-global + project-relative skill roots shared with Claude / Codex / Cursor / etc.
  * Order matters for first-wins when same skill name appears in multiple trees.
+ * Project paths use hybrid scan: workspaceRoot when set, else process CWD.
  */
 export const AGENT_SKILL_ROOTS: Array<{ origin: SkillOrigin; path: string }> = [
-  // Project-local (cwd) — highest priority among filesystem sources
+  // Project-local — highest priority among filesystem sources
   { origin: 'project', path: './.claude/skills' },
   { origin: 'project', path: './.codex/skills' },
   { origin: 'project', path: './.agents/skills' },
@@ -46,14 +54,20 @@ function isDesktopSkillsScanAvailable(): boolean {
  * Scan standard agent skill directories on the local machine (desktop only).
  * Web/mobile: returns empty.
  */
-export async function scanAgentSkillFiles(extraRoots: string[] = []): Promise<SkillScanResult> {
+export async function scanAgentSkillFiles(
+  extraRootsOrOptions: string[] | DiscoverAgentSkillsOptions = []
+): Promise<SkillScanResult> {
   if (!isDesktopSkillsScanAvailable()) {
     return { roots: [], skills: [] }
   }
 
+  const options: DiscoverAgentSkillsOptions = Array.isArray(extraRootsOrOptions)
+    ? { extraRoots: extraRootsOrOptions }
+    : extraRootsOrOptions
+
   const roots = [
-    ...AGENT_SKILL_ROOTS.map((r) => r.path),
-    ...extraRoots.filter(Boolean),
+    ...resolveAgentRootPathList(AGENT_SKILL_ROOTS, { workspaceRoot: options.workspaceRoot }),
+    ...(options.extraRoots || []).filter(Boolean),
   ]
 
   try {
@@ -99,12 +113,14 @@ export function parseScannedSkills(scanned: ScannedSkillFile[]): SkillPackage[] 
   return [...byName.values()]
 }
 
-export async function discoverAgentSkills(extraRoots: string[] = []): Promise<{
+export async function discoverAgentSkills(
+  extraRootsOrOptions: string[] | DiscoverAgentSkillsOptions = []
+): Promise<{
   skills: SkillPackage[]
   roots: SkillScanResult['roots']
   scannedCount: number
 }> {
-  const scan = await scanAgentSkillFiles(extraRoots)
+  const scan = await scanAgentSkillFiles(extraRootsOrOptions)
   const skills = parseScannedSkills(scan.skills)
   return {
     skills,

@@ -173,6 +173,8 @@ export async function createSession(newSession: Omit<Session, 'id'>, previousId?
     },
   }
   await storage.setItemNow(StorageKeyGenerator.session(session.id), session)
+  // Prime React Query so first paint / submitNewUserMessage can read the session without a storage race.
+  queryClient.setQueryData(QueryKeys.ChatSession(session.id), session)
   const sMeta = getSessionMeta(session)
   await updateSessionList((sessions) => {
     if (!sessions) {

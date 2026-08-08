@@ -380,6 +380,12 @@ export const MessageSchema = z.object({
   agentId: z.string().optional().catch(undefined),
   /** Agent persona ids @-mentioned on this user message */
   mentionedAgentIds: z.array(z.string()).optional().catch(undefined),
+  /**
+   * Multi-agent room turn kind.
+   * - turn: short discussion message
+   * - synthesis: final full answer after discussion
+   */
+  roomRole: z.enum(['turn', 'synthesis']).optional().catch(undefined),
 })
 
 // Compaction point schema (for context management)

@@ -22,7 +22,7 @@ import { cloneMessage, getMessageText, mergeMessages } from '@shared/utils/messa
 import type { ToolSet } from 'ai'
 import { getDefaultStore } from 'jotai'
 import { createModelDependencies } from '@/adapters'
-import { getBuiltInCopilotById, myCopilotsAtom } from '@/hooks/useCopilots'
+import { getAgentDetailById } from '@/packages/agents'
 import * as appleAppStore from '@/packages/apple_app_store'
 import { buildContextForAI } from '@/packages/context-management'
 import {
@@ -389,13 +389,7 @@ async function getOverflowTruncateLimit(sessionId: string): Promise<number | und
 }
 
 /**
- * Retrieve copilot model-settings overrides from the live Jotai atom.
- *
- * Reading from `getDefaultStore().get(myCopilotsAtom)` gives us the value
- * that Jotai holds in memory right now, which is always up-to-date regardless
- * of whether the underlying debounced storage write has flushed yet.  This
- * avoids the race condition where a user edits copilot settings and immediately
- * sends a message before the debounced write completes.
+ * Retrieve agent model-settings overrides (built-in, local custom, remote catalog).
  */
 function getCopilotSettings(copilotId: string | undefined): {
   temperature?: number
@@ -406,18 +400,9 @@ function getCopilotSettings(copilotId: string | undefined): {
   hooks?: { preTurn?: CopilotHook[]; postTurn?: CopilotHook[] }
 } | null {
   if (!copilotId) return null
-  try {
-    const storedCopilots = getDefaultStore().get(myCopilotsAtom)
-    const copilots = Array.isArray(storedCopilots) ? storedCopilots : []
-    const copilot = copilots.find((c) => c.id === copilotId)
-    const detail = copilot ?? getBuiltInCopilotById(copilotId)
-    if (!detail) return null
-    return { ...detail.modelSettings, maxSteps: detail.maxSteps, toolAccess: detail.toolAccess, hooks: detail.hooks }
-  } catch {
-    const detail = getBuiltInCopilotById(copilotId)
-    if (!detail) return null
-    return { ...detail.modelSettings, maxSteps: detail.maxSteps, toolAccess: detail.toolAccess, hooks: detail.hooks }
-  }
+  const detail = getAgentDetailById(copilotId)
+  if (!detail) return null
+  return { ...detail.modelSettings, maxSteps: detail.maxSteps, toolAccess: detail.toolAccess, hooks: detail.hooks }
 }
 
 /**
@@ -489,6 +474,8 @@ export async function generate(
     speakerAgentId?: string
     /** Inject Slack-style room protocol; tools forced off when true */
     roomMulti?: boolean
+    /** Multi-agent turn kind: short discussion vs final synthesis */
+    roomRole?: 'turn' | 'synthesis'
     /** Display names of all room participants for protocol text */
     participantNames?: string[]
     /** Skip processing message queue after this turn (intermediate multi-agent turns) */
@@ -546,21 +533,29 @@ export async function generate(
   //   scrollActions.scrollToMessage(targetMsg.id, 'end')
   // }, 50) // Wait for message render to complete before scrolling to bottom
 
-  // Get the message list where target message is located (may be historical messages), get target message index
-  let messages = session.messages
+  // Re-fetch session after insert/modify so multi-agent turns always see the new message.
+  // Using the pre-modify snapshot can miss just-inserted assistant rows (silent empty turns).
+  const sessionForMessages = (await chatStore.getSession(sessionId)) ?? session
+  let messages = sessionForMessages.messages
   let targetMsgIx = messages.findIndex((m) => m.id === targetMsg.id)
-  if (targetMsgIx <= 0) {
-    if (!session.threads) {
-      return
-    }
-    for (const t of session.threads) {
-      messages = t.messages
-      targetMsgIx = messages.findIndex((m) => m.id === targetMsg.id)
-      if (targetMsgIx > 0) {
-        break
+  if (targetMsgIx < 0) {
+    if (sessionForMessages.threads) {
+      for (const t of sessionForMessages.threads) {
+        messages = t.messages
+        targetMsgIx = messages.findIndex((m) => m.id === targetMsg.id)
+        if (targetMsgIx >= 0) {
+          break
+        }
       }
     }
-    if (targetMsgIx <= 0) {
+    if (targetMsgIx < 0) {
+      targetMsg = {
+        ...targetMsg,
+        generating: false,
+        cancel: undefined,
+        error: 'Failed to locate assistant message in session',
+      }
+      await modifyMessage(sessionId, targetMsg, true)
       return
     }
   }
@@ -613,47 +608,53 @@ export async function generate(
         }
 
         // Per-speaker agent system prompt (persona + optional room protocol)
+        // Uses same catalog as @ picker (built-in + local + remote)
         if (speakerAgentId && effectiveSettings.provider !== ModelProviderEnum.OpenClaw) {
-          const agentDetail =
-            getBuiltInCopilotById(speakerAgentId) ??
-            (() => {
-              try {
-                const stored = getDefaultStore().get(myCopilotsAtom)
-                const list = Array.isArray(stored) ? stored : []
-                return list.find((c) => c.id === speakerAgentId)
-              } catch {
-                return undefined
-              }
-            })()
-          if (agentDetail?.prompt) {
-            const { buildRoomProtocol } = await import('@shared/agent-room')
-            const protocol =
-              roomMulti && options?.participantNames?.length
-                ? buildRoomProtocol(agentDetail.name, options.participantNames)
-                : roomMulti
-                  ? buildRoomProtocol(agentDetail.name, [agentDetail.name])
-                  : ''
-            const systemText = protocol ? `${agentDetail.prompt}\n\n${protocol}` : agentDetail.prompt
+          const agentDetail = getAgentDetailById(speakerAgentId)
+          const speakerName = agentDetail?.name || targetMsg.name || speakerAgentId
+          const names = options?.participantNames?.length ? options.participantNames : [speakerName]
+          const roomRole = options?.roomRole ?? targetMsg.roomRole
+          if (agentDetail?.prompt || roomMulti) {
+            const { buildRoomProtocol, buildSynthesisProtocol } = await import('@shared/agent-room')
+            let protocol = ''
+            if (roomMulti) {
+              protocol =
+                roomRole === 'synthesis'
+                  ? buildSynthesisProtocol(speakerName, names)
+                  : buildRoomProtocol(speakerName, names)
+            }
+            const persona = agentDetail?.prompt?.trim() || `You are "${speakerName}", a helpful AI participant.`
+            const systemText = protocol ? `${persona}\n\n${protocol}` : persona
             // Replace leading session system message with this speaker's persona
             if (promptMsgs[0]?.role === 'system') {
               promptMsgs = [createMessage('system', systemText), ...promptMsgs.slice(1)]
             } else {
               promptMsgs = [createMessage('system', systemText), ...promptMsgs]
             }
-            // Label history assistants with names for models that support message.name
+            // Label history assistants with catalog names for multi-agent context
             promptMsgs = promptMsgs.map((m) => {
               if (m.role === 'assistant' && m.agentId && !m.name) {
-                const named =
-                  getBuiltInCopilotById(m.agentId) ??
-                  (Array.isArray(getDefaultStore().get(myCopilotsAtom))
-                    ? (getDefaultStore().get(myCopilotsAtom) as { id: string; name: string }[]).find(
-                        (c) => c.id === m.agentId
-                      )
-                    : undefined)
+                const named = getAgentDetailById(m.agentId)
                 return named ? { ...m, name: named.name } : m
               }
               return m
             })
+          }
+
+          // Multi-agent: history often ends on assistant after prior speakers. Providers
+          // (esp. Gemini) frequently return empty completions unless the last message is user.
+          if (roomMulti) {
+            const lastPrompt = promptMsgs[promptMsgs.length - 1]
+            if (lastPrompt?.role === 'assistant') {
+              const { buildRoomContinuePrompt } = await import('@shared/agent-room')
+              promptMsgs = [
+                ...promptMsgs,
+                createMessage(
+                  'user',
+                  buildRoomContinuePrompt(speakerName, roomRole === 'synthesis' ? 'synthesis' : 'turn')
+                ),
+              ]
+            }
           }
         }
 
@@ -732,8 +733,10 @@ export async function generate(
           toolsToUse = readonlyTools.tools
           planningToolsInstructions = readonlyTools.instructions
         }
+        // Room multi: hard-disable tools. Passing `undefined` still lets streamText
+        // attach MCP + web_search (useCustomTools=false). Empty object = no tools.
         if (roomMulti) {
-          toolsToUse = undefined
+          toolsToUse = {}
         }
 
         // Inject planning tools instructions into system prompt if in planning phase
@@ -765,7 +768,11 @@ export async function generate(
         if (skillContext) {
           promptMsgs.unshift(createMessage('system', skillContext))
         }
-        if (skillActivations.length > 0) {
+        // Show skill chips only on normal replies or room synthesis (not every discussion turn)
+        const showSkillChips =
+          skillActivations.length > 0 &&
+          (!roomMulti || options?.roomRole === 'synthesis' || !options?.roomRole)
+        if (showSkillChips) {
           targetMsg = { ...targetMsg, skillActivations }
           await modifyMessage(sessionId, targetMsg, false, true)
         }
@@ -787,15 +794,16 @@ export async function generate(
             void modifyMessage(sessionId, targetMsg, false, true)
           },
           providerOptions: effectiveSettings.providerOptions,
-          knowledgeBase,
-          webBrowsing,
-          nativeWebSearch: useGeminiGrounding ? 'gemini-grounding' : undefined,
+          // Discussion/synthesis: pure chat only — no KB, web, or tool loops
+          knowledgeBase: roomMulti ? undefined : knowledgeBase,
+          webBrowsing: roomMulti ? false : webBrowsing,
+          nativeWebSearch: roomMulti ? undefined : useGeminiGrounding ? 'gemini-grounding' : undefined,
           agentImageFlowInstructions: executionAgentImageFlowInstructions,
           agentCoding: {
             enabled: isAgentExecuteTurn,
             workspaceRoot: session.workspaceRoot,
           },
-          maxSteps,
+          maxSteps: roomMulti ? 1 : maxSteps,
           tools: toolsToUse,
           toolAccess: copilotOverrides?.toolAccess,
         })
@@ -826,7 +834,24 @@ export async function generate(
         }
 
         // Build final content parts - remove any existing plan part and add the final one
-        const finalContentParts: Message['contentParts'] = targetMsg.contentParts.filter((part) => part.type !== 'plan')
+        let finalContentParts: Message['contentParts'] = targetMsg.contentParts.filter((part) => part.type !== 'plan')
+        // Backfill from result.text when streaming left contentParts empty (common on some providers)
+        const hasTextPart = finalContentParts.some((p) => p.type === 'text' && p.text?.trim())
+        if (!hasTextPart && result.text?.trim()) {
+          finalContentParts = [{ type: 'text', text: result.text }, ...finalContentParts]
+        }
+        // Room multi: strip model-echoed "**Name:**" prefixes (UI already shows speaker header)
+        if (roomMulti && (targetMsg.name || speakerAgentId)) {
+          const speakerLabel = targetMsg.name || speakerAgentId || ''
+          const prefixRe = new RegExp(
+            `^\\*\\*\\s*${speakerLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*:\\s*\\*\\*\\s*`,
+            'i'
+          )
+          finalContentParts = finalContentParts.map((part) => {
+            if (part.type !== 'text' || !part.text) return part
+            return { ...part, text: part.text.replace(prefixRe, '') }
+          })
+        }
         if (finalPlanPart) {
           finalContentParts.push(finalPlanPart)
         }

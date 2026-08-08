@@ -65,6 +65,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Gallery, Item as GalleryItem } from 'react-photoswipe-gallery'
+import AgentSpeakerHeader from '@/components/chat/AgentSpeakerHeader'
 import SkillActivationsBar from '@/components/chat/SkillActivationsBar'
 import Markdown from '@/components/Markdown'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
@@ -664,14 +665,12 @@ const _Message: FC<Props> = (props) => {
         </button>
       )}
       {isAssistant && (msg.agentId || msg.name) && (
-        <Flex className="mb-1.5" align="center" gap={6}>
-          <Text size="xs" fw={600} c="chatbox-secondary" className="truncate max-w-[240px]">
-            {msg.name || t('Agent')}
-          </Text>
-          {msg.generating ? (
-            <Loader size={12} classNames={{ root: "after:content-[''] after:border-[2px]" }} />
-          ) : null}
-        </Flex>
+        <AgentSpeakerHeader
+          agentId={msg.agentId}
+          name={msg.name}
+          generating={msg.generating}
+          roomRole={msg.roomRole}
+        />
       )}
       {isAssistant && msg.generating && !(msg.agentId || msg.name) && (
         <Flex className="mb-1.5" align="center" gap={6}>

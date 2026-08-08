@@ -393,7 +393,9 @@ export function RouteComponent() {
           <Switch
             label={t('Auto-preview artifacts')}
             checked={settings.autoPreviewArtifacts}
-            description={t('Automatically render generated artifacts (e.g., HTML with CSS, JS, Tailwind)')}
+            description={t(
+              'Automatically open finished HTML artifacts in the side workspace (chat stays open)'
+            )}
             onChange={() =>
               setSettings({
                 ...settings,

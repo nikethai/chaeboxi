@@ -318,7 +318,8 @@ export const MessageFeedbackSchema = z.object({
 
 export const MessageArtifactSchema = z.object({
   id: z.string(),
-  type: z.enum(['html']),
+  /** html = sandboxed preview; mermaid = diagram source (workspace may open either) */
+  type: z.enum(['html', 'mermaid']),
   title: z.string().optional(),
   language: z.string().optional(),
   content: z.string(),
@@ -383,9 +384,12 @@ export const MessageSchema = z.object({
   /**
    * Multi-agent room turn kind.
    * - turn: short discussion message
-   * - synthesis: final full answer after discussion
+   * - synthesis: on-demand Team answer
+   * - plan / do / review / deliver: Work mode phases
    */
-  roomRole: z.enum(['turn', 'synthesis']).optional().catch(undefined),
+  roomRole: z.enum(['turn', 'synthesis', 'plan', 'do', 'review', 'deliver']).optional().catch(undefined),
+  /** 1-based discussion round for roomRole turn */
+  roomRound: z.number().int().positive().optional().catch(undefined),
 })
 
 // Compaction point schema (for context management)
@@ -440,6 +444,10 @@ export const SessionSchema = z.object({
   copilotId: z.string().optional(),
   /** Room members: agent persona ids in this session (Slack-style multi-agent) */
   agentIds: z.array(z.string()).optional().catch(undefined),
+  /** Team room mode: discuss (default) or work together */
+  roomMode: z.enum(['discuss', 'work']).optional().catch(undefined),
+  /** Preferred lead agent for Team answer / Work execute (defaults to first speaker) */
+  roomLeadId: z.string().optional().catch(undefined),
   folderId: z.string().optional(),
   tags: z.array(z.string()).optional(),
   archived: z.boolean().optional(),

@@ -186,7 +186,7 @@ export function sequenceMessages(msgs: Message[]): Message[] {
           contentParts: [
             {
               type: 'text',
-              text: '(Continue the multi-agent discussion. Reply as the next speaker only. Write plain text; do not call tools.)',
+              text: '(Continue the multi-agent discussion. Reply as the next speaker only. Markdown OK; for diagrams use ```mermaid not ```text; do not call tools.)',
             },
           ],
         })

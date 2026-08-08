@@ -41,6 +41,14 @@ export function scrollToTop(behavior: 'auto' | 'smooth' = 'auto') {
 
 export function scrollToBottom(behavior: 'auto' | 'smooth' = 'auto') {
   clearAutoScroll()
+  const virtuoso = uiStore.getState().messageScrolling
+  // Prefer scrollTo Infinity so newly inserted room turns pin even before Virtuoso
+  // has fully measured the last index (multi-agent discuss used to stall mid-list).
+  virtuoso?.current?.scrollTo({ top: Number.MAX_SAFE_INTEGER, behavior })
+  // Second pass after layout so tall streamed messages stay in view
+  requestAnimationFrame(() => {
+    virtuoso?.current?.scrollToIndex({ index: 'LAST', align: 'end', behavior })
+  })
   return scrollToIndex('LAST', 'end', behavior)
 }
 

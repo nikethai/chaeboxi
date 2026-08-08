@@ -44,7 +44,11 @@ export { getSessionWebBrowsing } from './session-web-browsing'
 export { insertMessage, insertMessageAfter, modifyMessage, removeMessage, submitNewUserMessage } from './messages'
 export {
   applyRoomMembership,
+  keepDiscussing,
+  requestTeamAnswer,
   runAgentRoomDiscussion,
+  runAgentRoomWork,
+  setSessionRoomMode,
   shouldRunMultiAgentRoom,
 } from './multi-agent-room'
 

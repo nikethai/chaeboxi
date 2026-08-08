@@ -14,12 +14,10 @@ import Page from '@/components/layout/Page'
 import NewChatAgentBar from '@/components/new-chat/NewChatAgentBar'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useProviders } from '@/hooks/useProviders'
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { createSession as createSessionStore } from '@/stores/chatStore'
 import { submitNewUserMessage, switchCurrentSession } from '@/stores/sessionActions'
 import { initEmptyChatSession } from '@/stores/sessionHelpers'
 import { useUIStore } from '@/stores/uiStore'
-import { buildChatStarters } from '@/utils/chat-starters'
 
 export const Route = createFileRoute('/')({
   component: Index,
@@ -32,7 +30,6 @@ export const Route = createFileRoute('/')({
 
 function Index() {
   const { t } = useTranslation()
-  const isSmallScreen = useIsSmallScreen()
 
   const newSessionState = useUIStore((s) => s.newSessionState)
   const setNewSessionState = useUIStore((s) => s.setNewSessionState)
@@ -45,17 +42,8 @@ function Index() {
     id: 'new',
     ...initEmptyChatSession(),
   })
-  const [composerDraft, setComposerDraft] = useState('')
-  const [composerKey, setComposerKey] = useState(0)
-
-  const fillComposer = useCallback((text: string) => {
-    setComposerDraft(text)
-    setComposerKey((k) => k + 1)
-    localStorage.setItem('new-chat', text)
-    requestAnimationFrame(() => {
-      document.getElementById('message-input')?.focus()
-    })
-  }, [])
+  const [composerDraft] = useState('')
+  const [composerKey] = useState(0)
 
   const { providers } = useProviders()
 
@@ -235,19 +223,12 @@ function Index() {
     return true
   }, [session])
 
-  const starters = useMemo(() => buildChatStarters(t), [t])
-
   return (
     <Page title="">
       <div className="p-0 flex flex-col h-full session-shell">
         <div className="blank-workbench flex-1 min-h-0 overflow-auto">
           <div className="blank-copy">
             <h1 className="blank-title">{t('Pick a thread. Or start one.')}</h1>
-            <p className="blank-sub">
-              {t(
-                'Desktop copilot for people who live in providers, tools, and long context — not another soft chat toy.'
-              )}
-            </p>
             {!providers.length && (
               <Button
                 mt="md"
@@ -262,30 +243,6 @@ function Index() {
               </Button>
             )}
           </div>
-
-          {!isSmallScreen && (
-            <div className="blank-starters" role="list">
-              <header className="blank-starters-head">
-                <span>{t('Starters')}</span>
-                <span>{t('press to fill')}</span>
-              </header>
-              {starters.map((s) => (
-                <button
-                  key={s.n}
-                  type="button"
-                  className="blank-starter"
-                  role="listitem"
-                  onClick={() => fillComposer(s.fill)}
-                >
-                  <span className="blank-starter-n">{s.n}</span>
-                  <span>
-                    <span className="blank-starter-t">{s.title}</span>
-                    <span className="blank-starter-h">{s.hint}</span>
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className="session-dock">

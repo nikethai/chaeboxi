@@ -1,25 +1,55 @@
-import CloseIcon from '@mui/icons-material/Close'
-import SaveIcon from '@mui/icons-material/Save'
-import Fab from '@mui/material/Fab'
-import { useTheme } from '@mui/material/styles'
+/**
+ * Image lightbox (photos / raster only). Mermaid uses WorkspacePanel instead.
+ * Studio chrome: scrim + toolbar island (no MUI Fab).
+ */
+
+import { ActionIcon, Text, Tooltip, UnstyledButton } from '@mantine/core'
+import { IconDownload, IconX, IconZoomIn, IconZoomOut, IconZoomReset } from '@tabler/icons-react'
 import type { MessagePicture } from '@shared/types'
-import { useCallback, useEffect, useState } from 'react'
-import { TransformComponent, TransformWrapper } from 'react-zoom-pan-pinch'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { TransformComponent, TransformWrapper, useControls } from 'react-zoom-pan-pinch'
 import { Img } from '@/components/Image'
 import platform from '@/platform'
 import storage from '@/storage'
 import { useUIStore } from '@/stores/uiStore'
 
-export default function PictureDialog(props: {}) {
+export default function PictureDialog(_props: {}) {
   const pictureShow = useUIStore((s) => s.pictureShow)
-  if (!pictureShow) {
-    return null
-  }
-  if (!pictureShow.picture.url && !pictureShow.picture.storageKey) {
-    return null
-  }
+  if (!pictureShow) return null
+  if (!pictureShow.picture.url && !pictureShow.picture.storageKey) return null
   return (
     <_PictureDialog picture={pictureShow.picture} onSave={pictureShow.onSave} extraButtons={pictureShow.extraButtons} />
+  )
+}
+
+function ZoomToolbar() {
+  const { t } = useTranslation()
+  const { zoomIn, zoomOut, resetTransform } = useControls()
+  return (
+    <div className="picture-dialog-zoom">
+      <Tooltip label={t('Zoom out')}>
+        <ActionIcon variant="subtle" color="gray" size="md" onClick={() => zoomOut()} aria-label={t('Zoom out')}>
+          <IconZoomOut size={16} stroke={1.6} />
+        </ActionIcon>
+      </Tooltip>
+      <Tooltip label={t('Reset zoom')}>
+        <ActionIcon
+          variant="subtle"
+          color="gray"
+          size="md"
+          onClick={() => resetTransform()}
+          aria-label={t('Reset zoom')}
+        >
+          <IconZoomReset size={16} stroke={1.6} />
+        </ActionIcon>
+      </Tooltip>
+      <Tooltip label={t('Zoom in')}>
+        <ActionIcon variant="subtle" color="gray" size="md" onClick={() => zoomIn()} aria-label={t('Zoom in')}>
+          <IconZoomIn size={16} stroke={1.6} />
+        </ActionIcon>
+      </Tooltip>
+    </div>
   )
 }
 
@@ -32,37 +62,35 @@ function _PictureDialog(props: {
   }[]
 }) {
   const { picture, onSave, extraButtons } = props
-  const theme = useTheme()
+  const { t } = useTranslation()
   const setPictureShow = useUIStore((s) => s.setPictureShow)
   const [url, setUrl] = useState(picture.url)
+  const scrimRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     ;(async () => {
-      if (picture.url) {
-        return
-      }
+      if (picture.url) return
       if (picture.storageKey) {
         const base64 = await storage.getBlob(picture.storageKey)
         if (base64) {
-          const picBase64 = base64.startsWith('data:image/') ? base64 : `data:image/png;base64,${base64}`
-          setUrl(picBase64)
+          setUrl(base64.startsWith('data:image/') ? base64 : `data:image/png;base64,${base64}`)
         }
       }
     })()
   }, [picture.url, picture.storageKey])
 
-  const onClose = () => setPictureShow(null)
+  const onClose = useCallback(() => setPictureShow(null), [setPictureShow])
+
   const onSaveDefault = async () => {
-    if (!picture) {
+    if (onSave) {
+      onSave()
       return
     }
     const basename = `export_${Math.random().toString(36).substring(7)}`
     if (picture.storageKey) {
       const base64 = await storage.getBlob(picture.storageKey)
-      if (!base64) {
-        return
-      }
-      platform.exporter.exportImageFile(basename, base64)
+      if (base64) platform.exporter.exportImageFile(basename, base64)
+      return
     }
     if (picture.url) {
       if (picture.url.startsWith('data:image')) {
@@ -73,56 +101,38 @@ function _PictureDialog(props: {
     }
   }
 
-  // 点击 Esc 关闭
-  const onKeyDown = useCallback(
-    (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose()
-      }
-    },
-    [onClose]
-  )
   useEffect(() => {
-    window.addEventListener('keydown', onKeyDown)
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
     }
-  }, [onKeyDown])
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [onClose])
+
+  useEffect(() => {
+    scrimRef.current?.focus()
+  }, [])
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        zIndex: 2000,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-      }}
+      ref={scrimRef}
+      className="picture-dialog-scrim"
       onClick={onClose}
-      tabIndex={0}
+      tabIndex={-1}
+      role="dialog"
+      aria-modal="true"
+      aria-label={t('Image preview')}
     >
       <div
-        style={{
-          position: 'absolute',
-          top: 20,
-          right: 20,
-          zIndex: 1001,
-          display: 'flex',
-          gap: '12px',
-          paddingTop: 'var(--mobile-safe-area-inset-top, 0px)',
-          paddingRight: 'var(--mobile-safe-area-inset-right, 0px)',
-          paddingBottom: 'var(--mobile-safe-area-inset-bottom, 0px)',
-          paddingLeft: 'var(--mobile-safe-area-inset-left, 0px)',
+        className="picture-dialog-toolbar"
+        onClick={(e) => {
+          e.stopPropagation()
         }}
       >
         {extraButtons?.map((button, index) => (
-          <Fab
+          <UnstyledButton
             key={index}
+            className="picture-dialog-fab"
             onClick={(e) => {
               e.preventDefault()
               e.stopPropagation()
@@ -131,73 +141,58 @@ function _PictureDialog(props: {
             }}
           >
             {button.icon}
-          </Fab>
+          </UnstyledButton>
         ))}
-        <Fab
-          color="primary"
-          aria-label="save"
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            onSaveDefault()
-          }}
-        >
-          <SaveIcon />
-        </Fab>
-        <Fab
-          aria-label="close"
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            onClose()
-          }}
-        >
-          <CloseIcon />
-        </Fab>
+        <Tooltip label={t('Download')}>
+          <UnstyledButton
+            className="picture-dialog-fab is-primary"
+            aria-label={t('Download')}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              void onSaveDefault()
+            }}
+          >
+            <IconDownload size={18} stroke={1.6} />
+          </UnstyledButton>
+        </Tooltip>
+        <Tooltip label={t('Close')}>
+          <UnstyledButton
+            className="picture-dialog-fab"
+            aria-label={t('Close')}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              onClose()
+            }}
+          >
+            <IconX size={18} stroke={1.6} />
+          </UnstyledButton>
+        </Tooltip>
       </div>
-      {url && (
+
+      {url ? (
         <div
-          className="animate-in fade-in duration-300 ease-in-out"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            overflow: 'hidden',
-          }}
+          className="picture-dialog-stage"
+          onClick={(e) => e.stopPropagation()}
         >
-          <TransformWrapper initialScale={1} centerOnInit={true} minScale={0.1} maxScale={8} limitToBounds={false}>
+          <TransformWrapper initialScale={1} centerOnInit minScale={0.15} maxScale={8} limitToBounds={false}>
+            <div className="picture-dialog-controls-host">
+              <ZoomToolbar />
+            </div>
             <TransformComponent
-              wrapperStyle={{
-                width: '100%',
-                height: '100%',
-              }}
-              wrapperProps={{
-                onClick: (e) => {
-                  onClose()
-                },
-              }}
+              wrapperStyle={{ width: '100%', height: '100%' }}
               contentStyle={{
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                backgroundColor: theme.palette.background.default, // 透明的流程图、线框图需要背景色
-              }}
-              contentProps={{
-                onClick: (e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                },
+                width: '100%',
+                height: '100%',
               }}
             >
-              {/* 这里不能使用异步的 ImageInStorage，否则会导致图片位置不对 */}
               <Img
                 src={url}
-                className="max-w-[90vw] max-h-[90vh] w-auto h-auto object-contain"
+                className="picture-dialog-img"
                 onClick={(e) => {
                   e.preventDefault()
                   e.stopPropagation()
@@ -205,8 +200,11 @@ function _PictureDialog(props: {
               />
             </TransformComponent>
           </TransformWrapper>
+          <Text size="xs" className="picture-dialog-hint">
+            {t('Scroll or pinch to zoom · Esc to close')}
+          </Text>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }

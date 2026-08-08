@@ -257,8 +257,12 @@ export const CodeRenderer = memo(
     if (!String(children).includes('\n')) {
       return <InlineCode className={className}>{children}</InlineCode>
     }
-    if (language === 'mermaid' && enableMermaidRendering) {
-      return <MessageMermaid source={String(children)} theme={theme.palette.mode} generating={generating} />
+    const source = String(children)
+    const looksLikeMermaid =
+      language === 'mermaid' ||
+      ((language === 'text' || language === 'plaintext' || language === 'txt') && isLikelyMermaidSource(source))
+    if (looksLikeMermaid && enableMermaidRendering) {
+      return <MessageMermaid source={source} theme={theme.palette.mode} generating={generating} />
     }
 
     return (
@@ -296,6 +300,14 @@ const InlineCode = memo((props: { children: string; className?: string }) => {
     </code>
   )
 })
+
+/** Detect mermaid when models omit the language fence tag. */
+function isLikelyMermaidSource(source: string): boolean {
+  const head = source.trimStart().slice(0, 120).toLowerCase()
+  return /^(graph\b|flowchart\b|sequencediagram\b|classdiagram\b|statediagram\b|erdiagram\b|journey\b|gantt\b|pie\b|mindmap\b|timeline\b|gitgraph\b|c4context\b|xychart-beta\b|sankey-beta\b)/.test(
+    head
+  )
+}
 
 // Define the Context type
 interface BlockCodeCollapsedStateContextType {

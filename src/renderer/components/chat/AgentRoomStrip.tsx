@@ -1,20 +1,34 @@
-import { ActionIcon, Flex, Text, Tooltip } from '@mantine/core'
+import { ActionIcon, Text, Tooltip } from '@mantine/core'
 import type { AgentDetail } from '@shared/types'
 import { IconX } from '@tabler/icons-react'
-import { memo, useMemo } from 'react'
+import { memo, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
+import { cn } from '@/lib/utils'
+import {
+  getTeamRoomLive,
+  subscribeTeamRoomState,
+  type TeamRoomLiveStatus,
+} from '@/stores/session/team-room-state'
 
 export interface AgentRoomStripProps {
   agentIds: string[]
+  sessionId?: string
   onRemove?(agentId: string): void
   className?: string
+  /** When true, omit outer padding (parent provides composer-meta-stack inset) */
+  embedded?: boolean
 }
 
-function AgentRoomStrip({ agentIds, onRemove, className }: AgentRoomStripProps) {
+function AgentRoomStrip({ agentIds, sessionId, onRemove, className, embedded }: AgentRoomStripProps) {
   const { t } = useTranslation()
   const { copilots: myAgents } = useMyCopilots()
   const { copilots: remoteAgents } = useRemoteCopilots()
+  const [live, setLive] = useState<TeamRoomLiveStatus>(() => getTeamRoomLive())
+
+  useEffect(() => {
+    return subscribeTeamRoomState(() => setLive(getTeamRoomLive()))
+  }, [])
 
   const members = useMemo(() => {
     const byId = new Map<string, AgentDetail>()
@@ -26,24 +40,25 @@ function AgentRoomStrip({ agentIds, onRemove, className }: AgentRoomStripProps) 
 
   if (members.length === 0) return null
 
+  const liveForSession = sessionId && live?.sessionId === sessionId ? live : null
+  const statusText = liveForSession ? formatLiveStatus(liveForSession, t) : null
+
   return (
-    <Flex className={className} align="center" gap={6} wrap="wrap" px={4} py={4}>
-      <Text size="xs" c="chatbox-tertiary" className="shrink-0">
-        {t('In this chat')}:
-      </Text>
+    <div className={cn(embedded ? 'composer-meta-row' : 'composer-meta-row px-4 py-1', className)}>
+      <span className="composer-meta-label">{t('In this chat')}:</span>
       {members.map((agent) => (
-        <Flex
+        <span
           key={agent.id}
-          align="center"
-          gap={4}
-          className="rounded-full px-2 py-0.5"
+          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 max-w-full min-w-0"
           style={{
             background: 'var(--chatbox-background-secondary)',
             border: '1px solid var(--chatbox-border-primary)',
           }}
         >
-          <Text size="xs">{agent.emojiAvatar || '🤖'}</Text>
-          <Text size="xs" fw={500} className="max-w-[120px] truncate">
+          <Text size="xs" component="span" className="shrink-0">
+            {agent.emojiAvatar || '🤖'}
+          </Text>
+          <Text size="xs" fw={500} className="max-w-[120px] truncate" component="span">
             {agent.name}
           </Text>
           {onRemove ? (
@@ -54,18 +69,36 @@ function AgentRoomStrip({ agentIds, onRemove, className }: AgentRoomStripProps) 
                 color="gray"
                 onClick={() => onRemove(agent.id)}
                 aria-label={t('Remove from room')}
+                className="shrink-0"
               >
                 <IconX size={12} />
               </ActionIcon>
             </Tooltip>
           ) : null}
-        </Flex>
+        </span>
       ))}
-      <Text size="xs" c="chatbox-tertiary">
-        · {t('You')}
-      </Text>
-    </Flex>
+      <span className="composer-meta-label shrink-0">· {t('You')}</span>
+      {statusText ? (
+        <Text size="xs" c="chatbox-brand" fw={500} className="min-w-0">
+          {statusText}
+        </Text>
+      ) : null}
+    </div>
   )
+}
+
+function formatLiveStatus(live: NonNullable<TeamRoomLiveStatus>, t: (k: string) => string): string {
+  const who = live.speakerName || t('Agent')
+  if (live.phase === 'turn' && live.round) {
+    const total = live.totalRounds ? `/${live.totalRounds}` : ''
+    return `${t('Round')} ${live.round}${total} · ${who} ${t('speaking…')}`
+  }
+  if (live.phase === 'plan') return `${t('Plan')} · ${who}`
+  if (live.phase === 'do') return `${t('Working')} · ${who}`
+  if (live.phase === 'review') return `${t('Review')} · ${who}`
+  if (live.phase === 'deliver') return `${t('Deliverable')} · ${who}`
+  if (live.phase === 'synthesis') return `${t('Team answer')} · ${who}`
+  return `${who} ${t('speaking…')}`
 }
 
 export default memo(AgentRoomStrip)

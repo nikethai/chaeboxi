@@ -294,11 +294,7 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
             increaseViewportBy={{ top: 2000, bottom: 2000 }}
             itemContent={(index, msg) => {
               return (
-                <Stack
-                  key={msg.id}
-                  gap={0}
-                  className={cn('chat-col', index === 0 && 'pt-2')}
-                >
+                <Stack key={msg.id} gap={0} className={cn('chat-col', index === 0 && 'pt-2')}>
                   {currentThreadHash[msg.id] && (
                     <ThreadLabel thread={currentThreadHash[msg.id]} sessionId={currentSession.id} />
                   )}
@@ -329,7 +325,7 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
                   </ErrorBoundary>
                   {currentSession.messageForksHash?.[msg.id] &&
                     currentSession.messageForksHash[msg.id].lists.length > 1 && (
-                      <Flex justify="flex-end" mt={-16} pr="md" mr="md" className="z-10 self-end">
+                      <Flex justify="flex-end" mt={4} pr="md" mr="md" className="self-end">
                         <ForkNav
                           sessionId={currentSession.id}
                           msgId={msg.id}

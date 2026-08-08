@@ -237,6 +237,10 @@ const ShortcutToggleWindowValueSchema = z.enum(shortcutToggleWindowValues as [st
 
 const ShortcutSettingSchema = z.object({
   quickToggle: ShortcutToggleWindowValueSchema,
+  /** Global hotkey for opening quick chat with clipboard content */
+  quickAttachOrOpen: z.string().default('Alt+Shift+V').catch('Alt+Shift+V'),
+  /** Global hotkey for opening quick chat without clipboard import */
+  quickOpen: z.string().default('Alt+Shift+Space').catch('Alt+Shift+Space'),
   /** Global hotkey for interactive screenshot → attach to quick chat */
   screenshotToChat: z.string().default('Alt+Shift+S').catch('Alt+Shift+S'),
   inputBoxFocus: z.string(),

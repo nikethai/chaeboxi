@@ -145,7 +145,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
       >
         <Menu.Target>
           <UnstyledButton
-            className={cn(toolbarButtonClass, 'relative min-w-9 min-h-9 active:scale-[0.96] transition-transform')}
+            className={cn(toolbarButtonClass, 'relative min-w-9 min-h-9 active:scale-[0.96] transition-transform', isSmallScreen && 'mobile-touch-target')}
             aria-label={t('Tools and attachments')}
             aria-expanded={opened}
           >

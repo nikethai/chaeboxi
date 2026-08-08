@@ -442,7 +442,7 @@
     align-items: center;
     gap: 0.65rem;
     width: 100%;
-    min-height: 36px;
+    min-height: 44px;
     padding: 0.4rem 0.65rem;
     margin: 0;
     border: none;
@@ -2152,6 +2152,24 @@
     min-width: 36px !important;
     min-height: 32px !important;
     border-radius: 0.4375rem !important; /* r 7px */
+  }
+
+  /* Mobile primary controls use a consistent, comfortable 44px target. */
+  .mobile-touch-target {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  @media (max-width: 48em) {
+    .model-picker-trigger.mobile-touch-target,
+    .composer-send.mobile-touch-target {
+      height: 44px !important;
+    }
+
+    .rail-foot .mantine-Menu-item,
+    .composer-tools-menu .mantine-Menu-item {
+      min-height: 44px;
+    }
   }
 
   /*

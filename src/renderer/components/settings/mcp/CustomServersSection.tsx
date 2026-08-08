@@ -9,6 +9,7 @@ import { ScalableIcon } from '@/components/common/ScalableIcon'
 import { useToggleMCPServer } from '@/hooks/mcp'
 import { mcpController } from '@/packages/mcp/controller'
 import type { MCPServerConfig } from '@/packages/mcp/types'
+import { platformCapabilities } from '@/platform'
 import { useMcpSettings, useSettingsStore } from '@/stores/settingsStore'
 import { trackEvent } from '@/utils/track'
 import { ConfigModal } from './ConfigModal'
@@ -57,14 +58,19 @@ const CustomServersSection: FC<Props> = (props) => {
   const mcpSettings = useMcpSettings()
   const onEnabledChange = useToggleMCPServer()
   const [modal, setModal] = useState<{ config: MCPServerConfig; mode: 'add' | 'edit' } | null>(null)
+  const supportsMcpStdio = platformCapabilities.supportsMcpStdio
+  const supportedServers = mcpSettings.servers.filter((server) => supportsMcpStdio || server.transport.type !== 'stdio')
 
   useEffect(() => {
-    if (props.installConfig) {
+    if (props.installConfig && (supportsMcpStdio || props.installConfig.transport.type !== 'stdio')) {
       setModal({ mode: 'add', config: props.installConfig })
     }
-  }, [props.installConfig])
+  }, [props.installConfig, supportsMcpStdio])
 
   const handleServerUpdate = (config: MCPServerConfig) => {
+    if (!supportsMcpStdio && config.transport.type === 'stdio') {
+      return
+    }
     setSettings((draft) => {
       const index = draft.mcp.servers.findIndex((s) => s.id === config.id)
       if (index !== -1) {
@@ -89,7 +95,7 @@ const CustomServersSection: FC<Props> = (props) => {
   }
 
   const triggerAddServer = useCallback((entry?: MCPRegistryEntry) => {
-    if (entry) {
+    if (entry && platformCapabilities.supportsMcpStdio) {
       setModal({
         mode: 'add',
         config: {
@@ -119,10 +125,10 @@ const CustomServersSection: FC<Props> = (props) => {
 
   const triggerImportJson = async () => {
     const content = await navigator.clipboard.readText()
-    const servers = parseServersFromJson(content)
+    const servers = parseServersFromJson(content).filter((server) => supportsMcpStdio || server.transport.type !== 'stdio')
     trackEvent('import_mcp_servers_from_json', { count: servers.length })
     if (!servers.length) {
-      toast.error(t('No MCP servers parsed from clipboard'))
+      toast.error(t(supportsMcpStdio ? 'No MCP servers parsed from clipboard' : 'Only remote HTTP MCP servers are supported on Android'))
       return
     }
     setSettings((draft) => {
@@ -135,9 +141,14 @@ const CustomServersSection: FC<Props> = (props) => {
 
   return (
     <>
-      <Text size="sm" fw={600} mb={12}>
+      <Text size="sm" fw={600} mb={4}>
         {t('Custom MCP Servers')}
       </Text>
+      {!supportsMcpStdio && (
+        <Text size="xs" c="chatbox-tertiary" mb={12}>
+          {t('Android supports remote HTTP MCP servers only. Local stdio servers are unavailable.')}
+        </Text>
+      )}
       <SimpleGrid type="container" cols={{ base: 1, '450px': 2, '800px': 3, '1200px': 4 }}>
         <Paper
           tabIndex={-1}
@@ -147,7 +158,7 @@ const CustomServersSection: FC<Props> = (props) => {
           bd="1px dashed var(--chatbox-border-primary)"
           p="sm"
           className="cursor-pointer"
-          onClick={spotlight.open}
+          onClick={supportsMcpStdio ? spotlight.open : () => triggerAddServer()}
         >
           <Flex direction="column" justify="center" align="center" h="100%" gap={4}>
             <ActionIcon variant="filled" size="sm">
@@ -158,18 +169,16 @@ const CustomServersSection: FC<Props> = (props) => {
             </Text>
           </Flex>
         </Paper>
-        {mcpSettings.servers.map((server) => {
-          return (
-            <ServerCard
-              key={server.id}
-              config={server}
-              triggerEdit={(config) => setModal({ mode: 'edit', config })}
-              onEnabledChange={onEnabledChange}
-            />
-          )
-        })}
+        {supportedServers.map((server) => (
+          <ServerCard
+            key={server.id}
+            config={server}
+            triggerEdit={(config) => setModal({ mode: 'edit', config })}
+            onEnabledChange={onEnabledChange}
+          />
+        ))}
       </SimpleGrid>
-      <ServerRegistrySpotlight triggerAddServer={triggerAddServer} triggerImportJson={triggerImportJson} />
+      {supportsMcpStdio && <ServerRegistrySpotlight triggerAddServer={triggerAddServer} triggerImportJson={triggerImportJson} />}
       <ConfigModal
         mode={modal?.mode}
         config={modal ? modal.config : null}

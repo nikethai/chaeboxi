@@ -91,7 +91,8 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
   const onMcpEnabledChange = useToggleMCPServer()
   const { data: knowledgeBases } = useKnowledgeBases()
 
-  const mcpEnabledCount = mcp.servers.filter((s) => s.enabled).length + mcp.enabledBuiltinServers.length
+  const mcpServers = mcp.servers.filter((server) => platformCapabilities.supportsMcpStdio || server.transport.type !== 'stdio')
+  const mcpEnabledCount = mcpServers.filter((server) => server.enabled).length + mcp.enabledBuiltinServers.length
   const showMcp = featureFlags.mcp && !isOpenClawModel
   const showKb = featureFlags.knowledgeBase && !isOpenClawModel
   const showWeb = !isOpenClawModel
@@ -257,7 +258,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
                   onEnabledChange={onMcpEnabledChange}
                 />
               ))}
-              {mcp.servers.map((server) => (
+              {mcpServers.map((server) => (
                 <McpServerRow
                   key={server.id}
                   id={server.id}
@@ -266,7 +267,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
                   onEnabledChange={onMcpEnabledChange}
                 />
               ))}
-              {!mcp.servers.length && !mcp.enabledBuiltinServers.length && (
+              {!mcpServers.length && !mcp.enabledBuiltinServers.length && (
                 <Menu.Item component={Link} to="/settings/mcp" onClick={() => setOpened(false)}>
                   {t('Add your first MCP server')}
                 </Menu.Item>

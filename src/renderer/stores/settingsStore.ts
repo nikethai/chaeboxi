@@ -10,7 +10,7 @@ import { createStore, useStore } from 'zustand'
 import { createJSONStorage, persist, subscribeWithSelector } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { getLogger } from '@/lib/utils'
-import platform from '@/platform'
+import { platformCapabilities } from '@/platform'
 import storage from '@/storage'
 
 const log = getLogger('settings-store')
@@ -21,7 +21,7 @@ const log = getLogger('settings-store')
  * - Mobile/Web: 'none' (only basic text file support by default)
  */
 export function getPlatformDefaultDocumentParser(): DocumentParserConfig {
-  return platform.type === 'desktop' ? { type: 'local' } : { type: 'none' }
+  return platformCapabilities.supportsDesktopOnlySettings ? { type: 'local' } : { type: 'none' }
 }
 
 function stripChatboxPaidFeatures(settings: any) {

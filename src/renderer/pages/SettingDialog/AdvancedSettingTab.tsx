@@ -16,7 +16,7 @@ import { Accordion, AccordionDetails, AccordionSummary } from '@/components/Acco
 import TextFieldReset from '@/components/common/TextFieldReset'
 import { ShortcutConfig } from '@/components/Shortcut'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import platform from '@/platform'
+import { platformCapabilities } from '@/platform'
 import storage, { StorageKey } from '@/storage'
 import { migrateOnData } from '@/stores/migration'
 import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
@@ -89,7 +89,7 @@ export default function AdvancedSettingTab(props: Props) {
         </AccordionDetails>
       </Accordion>
 
-      {platform.type === 'desktop' && (
+      {platformCapabilities.supportsDesktopOnlySettings && (
         <Box className="mt-2">
           <FormGroup>
             <FormControlLabel
@@ -106,7 +106,7 @@ export default function AdvancedSettingTab(props: Props) {
           </FormGroup>
         </Box>
       )}
-      {platform.type === 'desktop' && (
+      {platformCapabilities.supportsDesktopOnlySettings && (
         <Box className="mt-2">
           <FormGroup>
             <FormControlLabel

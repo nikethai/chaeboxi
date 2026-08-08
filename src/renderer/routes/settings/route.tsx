@@ -23,9 +23,8 @@ import Divider from '@/components/common/Divider'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import Page from '@/components/layout/Page'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import platform from '@/platform'
+import { platformCapabilities } from '@/platform'
 import { featureFlags } from '@/utils/feature-flags'
-import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
 const ITEMS = [
   {
@@ -76,7 +75,7 @@ const ITEMS = [
     label: 'Skills',
     icon: <IconSparkles className="w-full h-full" />,
   },
-  ...(CHATBOX_BUILD_PLATFORM !== 'android'
+  ...(platformCapabilities.supportsDesktopOnlySettings
     ? [
         {
           key: 'agents',
@@ -85,7 +84,7 @@ const ITEMS = [
         },
       ]
     : []),
-  ...(platform.formFactor === 'mobile'
+  ...(platformCapabilities.isMobileLayout
     ? []
     : [
         {

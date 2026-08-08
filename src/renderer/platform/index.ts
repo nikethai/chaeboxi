@@ -1,5 +1,6 @@
 import DesktopPlatform from './desktop_platform'
 import type { Platform, PlatformType } from './interfaces'
+import { createPlatformCapabilities } from './capabilities'
 import { createTauriIPCAdapter, isTauriRuntime } from './tauri_ipc_adapter'
 import TestPlatform from './test_platform'
 import WebPlatform from './web_platform'
@@ -36,6 +37,11 @@ function initPlatform(): Platform {
 }
 
 const platform = initPlatform()
+export const platformCapabilities = createPlatformCapabilities({
+  type: platform.type,
+  formFactor: platform.formFactor,
+  buildPlatform: CHATBOX_BUILD_PLATFORM,
+})
 export default platform
 
 /**
@@ -49,5 +55,5 @@ export const isCapacitorMobile = platform.type === 'mobile' && !isTauriRuntime()
  * Tauri Android reports 'mobile' even though platform.type is 'desktop'.
  */
 export function getEffectivePlatformType(): PlatformType {
-  return platform.formFactor === 'mobile' ? 'mobile' : platform.type
+  return platformCapabilities.isAndroidRuntime ? 'mobile' : platform.type
 }

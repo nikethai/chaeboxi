@@ -1,0 +1,35 @@
+import type { FormFactor, PlatformType } from './interfaces'
+
+export interface PlatformCapabilityInput {
+  type: PlatformType
+  formFactor: FormFactor
+  buildPlatform: 'unknown' | 'ios' | 'android' | 'web'
+}
+
+export interface PlatformCapabilities {
+  isMobileLayout: boolean
+  isAndroidRuntime: boolean
+  supportsMcpBootstrap: boolean
+  supportsKnowledgeBase: boolean
+  supportsDesktopOnlySettings: boolean
+  supportsAgentSkillScan: boolean
+}
+
+/**
+ * Centralizes platform support decisions. Runtime capabilities deliberately do
+ * not derive from formFactor, which controls layout only.
+ */
+export function createPlatformCapabilities({ type, formFactor, buildPlatform }: PlatformCapabilityInput): PlatformCapabilities {
+  const isAndroidRuntime = buildPlatform === 'android'
+  const isDesktopRuntime = type === 'desktop' && !isAndroidRuntime
+
+  return {
+    isMobileLayout: formFactor === 'mobile',
+    isAndroidRuntime,
+    // Tauri Android provides the desktop IPC transport, so HTTP MCP remains available.
+    supportsMcpBootstrap: type === 'desktop',
+    supportsKnowledgeBase: isDesktopRuntime,
+    supportsDesktopOnlySettings: isDesktopRuntime,
+    supportsAgentSkillScan: isDesktopRuntime,
+  }
+}

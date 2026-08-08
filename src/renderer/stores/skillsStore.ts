@@ -20,7 +20,13 @@ export const userSkillsAtom = atomWithStorage<SkillPackage[]>(StorageKey.Skills,
 let agentSkillsCache: SkillPackage[] = []
 let agentScanRoots: SkillScanResult['roots'] = []
 let agentScanPromise: Promise<void> | null = null
+/** Workspace key used for last successful scan (`__cwd__` when unset) */
+let agentScanWorkspaceKey = ''
 const agentSkillsListeners = new Set<() => void>()
+
+function workspaceScanKey(workspaceRoot?: string | null): string {
+  return workspaceRoot?.trim() || '__cwd__'
+}
 
 function notifyAgentSkillsListeners() {
   for (const listener of agentSkillsListeners) {
@@ -77,20 +83,34 @@ function mergeSkills(userSkills: SkillPackage[], agentSkills: SkillPackage[] = a
   return sortSkills(merged)
 }
 
-export async function refreshAgentSkills(): Promise<{
+export async function refreshAgentSkills(options?: {
+  workspaceRoot?: string | null
+  /** Force rescan even if workspace key unchanged */
+  force?: boolean
+}): Promise<{
   count: number
   roots: SkillScanResult['roots']
 }> {
+  const key = workspaceScanKey(options?.workspaceRoot)
+
+  // Reuse cache when same workspace already scanned
+  if (!options?.force && !agentScanPromise && agentScanWorkspaceKey === key) {
+    return { count: agentSkillsCache.length, roots: agentScanRoots }
+  }
+
   if (agentScanPromise) {
     await agentScanPromise
-    return { count: agentSkillsCache.length, roots: agentScanRoots }
+    if (!options?.force && agentScanWorkspaceKey === key) {
+      return { count: agentSkillsCache.length, roots: agentScanRoots }
+    }
   }
 
   agentScanPromise = (async () => {
     try {
-      const result = await discoverAgentSkills()
+      const result = await discoverAgentSkills({ workspaceRoot: options?.workspaceRoot })
       agentSkillsCache = result.skills
       agentScanRoots = result.roots
+      agentScanWorkspaceKey = key
       notifyAgentSkillsListeners()
     } catch (error) {
       console.warn('[skills] agent refresh failed', error)
@@ -204,8 +224,8 @@ export function useSkills() {
     return serializeSkillMd(skill)
   }
 
-  const rescanAgentSkills = useCallback(async () => {
-    return refreshAgentSkills()
+  const rescanAgentSkills = useCallback(async (workspaceRoot?: string | null) => {
+    return refreshAgentSkills({ workspaceRoot, force: true })
   }, [])
 
   return {

@@ -67,6 +67,31 @@ function normalizeTitle(title: string): string {
   return title.replace(/\s+/g, ' ').trim()
 }
 
+const MAX_ACTIVE_TASK_CONTEXT = 12
+
+export function formatActiveTaskContext(tasks: Task[]): string {
+  const activeTasks = tasks
+    .filter((task) => task.status === 'pending' || task.status === 'in-progress')
+    .sort((left, right) => left.createdAt - right.createdAt || left.id.localeCompare(right.id))
+    .slice(0, MAX_ACTIVE_TASK_CONTEXT)
+
+  const doneCount = tasks.filter((task) => task.status === 'done').length
+  const failedCount = tasks.filter((task) => task.status === 'failed').length
+
+  if (activeTasks.length === 0) {
+    return `\n\n## Active session tasks\nNo active tasks. Create a checklist only if the current request is genuinely multi-step.\n`
+  }
+
+  const lines = activeTasks.map(
+    (task) =>
+      `- ${task.id}: ${JSON.stringify(task.title)} [${task.status}${task.progress === undefined ? '' : `, ${task.progress}%`}]`
+  )
+
+  return `\n\n## Active session tasks\nThese tasks are authoritative. Reuse their IDs instead of creating duplicates.\n${lines.join(
+    '\n'
+  )}\nCompleted: ${doneCount}; failed: ${failedCount}; active: ${activeTasks.length}\n`
+}
+
 export const taskStore = createStore<TaskState>()(
   immer((set, get) => ({
     tasks: [],
@@ -110,29 +135,46 @@ export const taskStore = createStore<TaskState>()(
       set((state) => {
         const task = state.tasks.find((t) => t.id === id)
         if (!task) return
+
+        if (updates.status === 'in-progress') {
+          for (const sibling of state.tasks) {
+            if (sibling.sessionId === task.sessionId && sibling.id !== task.id && sibling.status === 'in-progress') {
+              sibling.status = 'pending'
+              delete sibling.progress
+              sibling.updatedAt = Date.now()
+            }
+          }
+        }
+
         if (updates.title !== undefined) {
           const cleaned = normalizeTitle(updates.title)
           if (cleaned) task.title = cleaned
         }
         if (updates.status !== undefined) task.status = updates.status
-        if (updates.progress !== undefined) task.progress = Math.max(0, Math.min(100, updates.progress))
+        if (updates.status === 'done') {
+          task.progress = 100
+        } else if (updates.status === 'pending' && updates.progress === undefined) {
+          delete task.progress
+        } else if (updates.progress !== undefined) {
+          task.progress = Math.max(0, Math.min(100, updates.progress))
+        }
         task.updatedAt = Date.now()
         updated = { ...task }
         sessionId = task.sessionId
       })
       if (sessionId) {
-        schedulePersist(sessionId, () => get().getSessionTasks(sessionId!))
+        const persistedSessionId = sessionId
+        schedulePersist(persistedSessionId, () => get().getSessionTasks(persistedSessionId))
       }
       return updated
     },
 
     toggleTaskDone: (id) => {
       const existing = get().tasks.find((t) => t.id === id)
-      if (!existing) return null
+      if (!existing || existing.status === 'failed') return null
       const nextStatus: TaskStatus = existing.status === 'done' ? 'pending' : 'done'
       return get().updateTask(id, {
         status: nextStatus,
-        progress: nextStatus === 'done' ? 100 : undefined,
       })
     },
 
@@ -168,7 +210,7 @@ export const taskStore = createStore<TaskState>()(
           // Keep any in-memory tasks for this session (e.g. created mid-hydrate); merge by id
           const memory = state.tasks.filter((t) => t.sessionId === sessionId)
           const memoryIds = new Set(memory.map((t) => t.id))
-          const fromDisk = stored.filter((t) => t && t.id && t.sessionId === sessionId && !memoryIds.has(t.id))
+          const fromDisk = stored.filter((t) => t?.id && t.sessionId === sessionId && !memoryIds.has(t.id))
           // Drop prior session rows then re-add memory + disk (memory wins)
           state.tasks = [...state.tasks.filter((t) => t.sessionId !== sessionId), ...fromDisk, ...memory]
         })

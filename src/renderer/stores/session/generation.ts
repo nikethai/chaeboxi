@@ -41,6 +41,7 @@ import platform from '@/platform'
 import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import { mergeSkillsList, refreshAgentSkills, userSkillsAtom } from '@/stores/skillsStore'
+import { flushSessionTasks } from '@/stores/taskStore'
 import { trackEvent } from '@/utils/track'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 import * as chatStore from '../chatStore'
@@ -65,6 +66,115 @@ import { runCompactionWithUIState } from '@/packages/context-management'
 // tree-shaken from the Android bundle. CHATBOX_BUILD_PLATFORM === 'android'
 // gates ensure the dynamic imports never execute on mobile.
 const isAgentEnabled = CHATBOX_BUILD_PLATFORM !== 'android'
+const planDecisionInFlight = new Set<string>()
+
+function getMessageFromSession(session: Session, messageId: string): Message | null {
+  const location = findMessageLocation(session, messageId)
+  return location ? location.list[location.index] : null
+}
+
+function getPlanPart(message: Message): MessagePlanPart | null {
+  return message.contentParts.find((part): part is MessagePlanPart => part.type === 'plan') ?? null
+}
+
+function withPlanPart(
+  contentParts: Message['contentParts'],
+  planPart: MessagePlanPart | undefined
+): Message['contentParts'] {
+  if (!planPart) return contentParts
+  const withoutPlan = contentParts.filter((part) => part.type !== 'plan')
+  return [...withoutPlan, planPart]
+}
+
+function withPlanStatus(message: Message, status: MessagePlanPart['status']): Message {
+  let found = false
+  const contentParts = message.contentParts.map((part) => {
+    if (part.type !== 'plan') return part
+    found = true
+    return { ...part, status }
+  })
+  if (!found) {
+    throw new Error('The proposed plan is no longer available.')
+  }
+  return { ...message, contentParts }
+}
+
+async function updatePendingPlanStatus(
+  sessionId: string,
+  messageId: string,
+  status: Extract<MessagePlanPart['status'], 'approved' | 'rejected'>
+): Promise<{ message: Message; plan: MessagePlanPart }> {
+  const session = await chatStore.getSession(sessionId)
+  if (!session) {
+    throw new Error('The session is no longer available.')
+  }
+  const message = getMessageFromSession(session, messageId)
+  if (!message || message.generating) {
+    throw new Error('The proposed plan is no longer available.')
+  }
+  const plan = getPlanPart(message)
+  if (!plan || plan.status !== 'pending') {
+    throw new Error('This plan has already been decided.')
+  }
+  const updatedMessage = withPlanStatus(message, status)
+  await modifyMessage(sessionId, updatedMessage, true)
+  return { message: updatedMessage, plan }
+}
+
+export async function approveAndExecutePlan(sessionId: string, messageId: string) {
+  const key = `${sessionId}:${messageId}`
+  if (planDecisionInFlight.has(key)) return
+  planDecisionInFlight.add(key)
+  try {
+    await updatePendingPlanStatus(sessionId, messageId, 'approved')
+    await chatStore.updateSession(sessionId, { planPhase: 'executing' })
+
+    const session = await chatStore.getSession(sessionId)
+    const message = session ? getMessageFromSession(session, messageId) : null
+    if (!session || !message) {
+      throw new Error('The approved plan could not be resumed.')
+    }
+    await generate(sessionId, message, { operationType: 'send_message', prefetchedSession: session })
+  } finally {
+    planDecisionInFlight.delete(key)
+  }
+}
+
+export async function rejectPlan(sessionId: string, messageId: string) {
+  const key = `${sessionId}:${messageId}`
+  if (planDecisionInFlight.has(key)) return
+  planDecisionInFlight.add(key)
+  try {
+    await updatePendingPlanStatus(sessionId, messageId, 'rejected')
+    await chatStore.updateSession(sessionId, { planPhase: undefined })
+  } finally {
+    planDecisionInFlight.delete(key)
+  }
+}
+
+export async function requestPlanChanges(sessionId: string, messageId: string, feedback: string) {
+  const trimmedFeedback = feedback.trim()
+  if (!trimmedFeedback) {
+    throw new Error('Describe the changes you want before requesting a revision.')
+  }
+
+  const key = `${sessionId}:${messageId}`
+  if (planDecisionInFlight.has(key)) return
+  planDecisionInFlight.add(key)
+  try {
+    const { plan } = await updatePendingPlanStatus(sessionId, messageId, 'rejected')
+    await chatStore.updateSession(sessionId, { planPhase: 'planning' })
+    await submitNewUserMessage(sessionId, {
+      newUserMsg: createMessage(
+        'user',
+        `Please revise the proposed plan based on this feedback. Do not execute the task yet.\n\n## Previous plan\n${plan.planText}\n\n## Feedback\n${trimmedFeedback}`
+      ),
+      needGenerating: true,
+    })
+  } finally {
+    planDecisionInFlight.delete(key)
+  }
+}
 
 function buildAgentImageFlowInstruction(settings: Settings): string | undefined {
   const comfyuiSettings = settings.providers?.[ModelProviderEnum.ComfyUI]
@@ -167,8 +277,13 @@ You MUST output a MessagePlanPart with your plan. The plan should:
 4. Be specific enough for execution
 
 ## Tools Available in Planning Mode
-You have access to read-only tools: web_search, read_file, search_file_content, and knowledge_base search.
-Use these to gather information needed for your plan.
+You have access to **read-only** tools only:
+- web_search / parse_link (when browsing is enabled)
+- read_file / search_file_content for **uploaded chat attachments** (fileKey) when present
+- knowledge_base search when a knowledge base is selected
+
+You do **NOT** have create_file, edit_file, delete_file, or terminal in planning mode.
+After the user approves the plan, execution will use workspace write + terminal tools (desktop, when a workspace folder is set).
 
 ## Important
 - Do NOT execute the task - only create a plan
@@ -215,14 +330,14 @@ async function getReadOnlyToolsForPlanning(
     }
   }
 
-  // Add file tools
-  if (fileToolSet?.tools) {
-    if (fileToolSet.tools.read_file) {
-      tools.read_file = fileToolSet.tools.read_file
-    }
-    if (fileToolSet.tools.search_file_content) {
-      tools.search_file_content = fileToolSet.tools.search_file_content
-    }
+  // Attachment read tools only (no create/edit/delete) — honest for planning
+  const attachmentTools =
+    fileToolSetModule.attachmentFileTools ?? fileToolSetModule.attachmentFileToolSet?.tools ?? fileToolSet?.tools
+  if (attachmentTools?.read_file) {
+    tools.read_file = attachmentTools.read_file
+  }
+  if (attachmentTools?.search_file_content) {
+    tools.search_file_content = attachmentTools.search_file_content
   }
 
   // Add knowledge base tools
@@ -239,12 +354,16 @@ async function getReadOnlyToolsForPlanning(
     }
   }
 
-  // Build instructions string
+  // Build instructions string — attachment description only (never workspace write docs)
   if (websearchToolSet?.description) {
     instructions += '\n\n' + websearchToolSet.description
   }
-  if (fileToolSet?.description) {
-    instructions += '\n\n' + fileToolSet.description
+  const attachmentDescription =
+    fileToolSetModule.attachmentFileToolSetDescription ??
+    fileToolSetModule.attachmentFileToolSet?.description ??
+    fileToolSet?.description
+  if (attachmentDescription) {
+    instructions += '\n\n' + attachmentDescription
   }
   if (kbInstructions) {
     instructions += '\n\n' + kbInstructions
@@ -377,6 +496,8 @@ export async function generate(
   }
 ) {
   let shouldProcessQueuedMessages = false
+  let activeExecutionPlan: MessagePlanPart | undefined
+  let managesPlanPhase = false
   // Get dependent data — use pre-fetched values when available to avoid redundant async lookups
   const session = options?.prefetchedSession ?? (await chatStore.getSession(sessionId))
   const settings = options?.prefetchedSettings ?? (await chatStore.getSessionSettings(sessionId))
@@ -548,12 +669,16 @@ export async function generate(
         // Check for existing plan in targetMsg (for 2-phase execution)
         const existingPlanPart = targetMsg.contentParts.find((part): part is MessagePlanPart => part.type === 'plan')
         const isExecutionPhase = existingPlanPart?.status === 'approved'
+        activeExecutionPlan = isExecutionPhase ? existingPlanPart : undefined
 
         // If we have an approved plan, inject it into the prompt for context
         if (isExecutionPhase && existingPlanPart) {
+          const workspaceHint = session.workspaceRoot
+            ? `Workspace root: ${session.workspaceRoot}. Use create_file / edit_file / terminal under this root.`
+            : 'No workspace folder is set — filesystem write and terminal tools are unavailable until the user sets one.'
           const planInjection = createMessage(
             'system',
-            `## APPROVED EXECUTION PLAN\n\n${existingPlanPart.planText}\n\nProceed with executing this plan using all available tools.`
+            `## APPROVED EXECUTION PLAN\n\n${existingPlanPart.planText}\n\nProceed with executing this plan using all available tools.\n\n${workspaceHint}`
           )
           promptMsgs.unshift(planInjection)
         }
@@ -571,7 +696,9 @@ export async function generate(
           // explicit assignment is both faster and more correct.
           targetMsg = {
             ...targetMsg,
-            contentParts: updated.contentParts ?? targetMsg.contentParts,
+            contentParts: updated.contentParts
+              ? withPlanPart(updated.contentParts, activeExecutionPlan)
+              : targetMsg.contentParts,
             cancel: updated.cancel ?? targetMsg.cancel,
             status: textLength > 0 ? [] : targetMsg.status,
             firstTokenLatency,
@@ -587,8 +714,9 @@ export async function generate(
 
         // 2-phase execution: if planMode and not yet approved, generate plan first
         // Room multi-agent: tools off (discussion-only)
-        const isPlanMode = !roomMulti && isAgentEnabled && session.agentMode && effectiveSettings.planMode
+        const isPlanMode = Boolean(!roomMulti && isAgentEnabled && session.agentMode && effectiveSettings.planMode)
         const isPendingPlan = existingPlanPart?.status === 'pending'
+        managesPlanPhase = isPlanMode
 
         // Determine which tools to use based on phase
         let toolsToUse: ToolSet | undefined
@@ -642,6 +770,10 @@ export async function generate(
           await modifyMessage(sessionId, targetMsg, false, true)
         }
 
+        // Agent coding tools (workspace write + terminal) only on execute turns, not plan-only
+        const isAgentExecuteTurn =
+          !roomMulti && isAgentEnabled && Boolean(session.agentMode) && (!isPlanMode || isExecutionPhase)
+
         const { result } = await streamText(model, {
           sessionId: session.id,
           messages: promptMsgs,
@@ -659,8 +791,13 @@ export async function generate(
           webBrowsing,
           nativeWebSearch: useGeminiGrounding ? 'gemini-grounding' : undefined,
           agentImageFlowInstructions: executionAgentImageFlowInstructions,
+          agentCoding: {
+            enabled: isAgentExecuteTurn,
+            workspaceRoot: session.workspaceRoot,
+          },
           maxSteps,
           tools: toolsToUse,
+          toolAccess: copilotOverrides?.toolAccess,
         })
 
         // Extract plan text from result if in planning phase
@@ -718,6 +855,11 @@ export async function generate(
           groundingMetadata: result.groundingMetadata ?? targetMsg.groundingMetadata,
         }
         await modifyMessage(sessionId, targetMsg, true)
+        await flushSessionTasks(sessionId)
+
+        if (isExecutionPhase) {
+          await chatStore.updateSession(sessionId, { planPhase: undefined })
+        }
 
         // Execute post-turn hooks after generation (only in execution phase or non-plan mode)
         if (!roomMulti && isAgentEnabled && copilotOverrides?.hooks?.postTurn) {
@@ -729,6 +871,7 @@ export async function generate(
         // In plan mode with pending plan, don't process queued messages yet - wait for approval
         if (isPlanMode && !isExecutionPhase && !isPendingPlan) {
           // Planning phase just completed with pending plan - wait for user approval
+          await chatStore.updateSession(sessionId, { planPhase: 'awaiting_approval' })
           return
         }
 
@@ -797,6 +940,7 @@ export async function generate(
     const causeError = ocrError?.cause
     targetMsg = {
       ...targetMsg,
+      contentParts: withPlanPart(targetMsg.contentParts, activeExecutionPlan),
       generating: false,
       cancel: undefined,
       errorCode: ocrError ? (causeError instanceof BaseError ? causeError.code : errorCode) : errorCode,
@@ -815,6 +959,9 @@ export async function generate(
       status: [],
     }
     await modifyMessage(sessionId, targetMsg, true)
+    if (managesPlanPhase) {
+      await chatStore.updateSession(sessionId, { planPhase: undefined })
+    }
     shouldProcessQueuedMessages = true
   }
 

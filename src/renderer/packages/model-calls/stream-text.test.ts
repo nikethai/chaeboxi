@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createMessage, ModelProviderEnum, type Message, type StreamTextResult } from '@shared/types'
 import type { ModelInterface } from '@shared/models/types'
+import { createMessage, type Message, ModelProviderEnum, type StreamTextResult } from '@shared/types'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const {
   createAndGenerateMock,
@@ -22,12 +22,14 @@ const {
       content: message.contentParts.map((part) => ('text' in part ? part.text : '')).join('\n'),
     }))
   ),
-  injectModelSystemPromptMock: vi.fn((_: string, messages: Message[], instructions: string, role: 'system' | 'user') => {
-    if (!instructions) {
-      return messages
+  injectModelSystemPromptMock: vi.fn(
+    (_: string, messages: Message[], instructions: string, role: 'system' | 'user') => {
+      if (!instructions) {
+        return messages
+      }
+      return [createMessage(role, instructions), ...messages]
     }
-    return [createMessage(role, instructions), ...messages]
-  }),
+  ),
 }))
 
 const settingsState = vi.hoisted(() => ({
@@ -111,6 +113,27 @@ vi.mock('./toolsets/file', () => ({
     description: '',
     tools: {},
   },
+  attachmentFileToolSet: {
+    description: '',
+    tools: {},
+  },
+  createWorkspaceFileToolSet: vi.fn(() => ({
+    description: 'workspace tools',
+    tools: {
+      create_file: { description: 'create', execute: vi.fn() },
+      edit_file: { description: 'edit', execute: vi.fn() },
+      delete_file: { description: 'delete', execute: vi.fn() },
+    },
+  })),
+}))
+
+vi.mock('./toolsets/terminal', () => ({
+  createTerminalToolSet: vi.fn(() => ({
+    description: 'terminal tools',
+    tools: {
+      terminal: { description: 'terminal', execute: vi.fn() },
+    },
+  })),
 }))
 
 vi.mock('./toolsets/video', () => ({

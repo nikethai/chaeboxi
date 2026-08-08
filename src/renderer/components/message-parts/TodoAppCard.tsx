@@ -74,15 +74,15 @@ export const TodoAppCard: FC<TodoAppCardProps> = ({
   const liveTasks = useMemo(() => allTasks.filter((task) => task.sessionId === sessionId), [allTasks, sessionId])
 
   const items: TaskSnapshot[] = useMemo(() => {
-    if (liveTasks.length > 0) {
-      return liveTasks.map((task) => ({
-        id: task.id,
-        title: task.title,
-        status: task.status,
-        progress: task.progress,
-      }))
+    if (snapshot.length > 0) {
+      return snapshot
     }
-    return snapshot
+    return liveTasks.map((task) => ({
+      id: task.id,
+      title: task.title,
+      status: task.status,
+      progress: task.progress,
+    }))
   }, [liveTasks, snapshot])
 
   const summary = useMemo(() => {

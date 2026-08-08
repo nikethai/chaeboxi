@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { generateTaskId, MAX_SESSION_TASKS, taskStore } from './taskStore'
+import { formatActiveTaskContext, generateTaskId, MAX_SESSION_TASKS, taskStore } from './taskStore'
 
 const storageMock = vi.hoisted(() => ({
   getItem: vi.fn(async (_key: string, initial: unknown) => initial),
@@ -85,6 +85,37 @@ describe('taskStore', () => {
 
       const task = taskStore.getState().tasks.find((t) => t.id === id)
       expect(task?.status).toBe('in-progress')
+    })
+
+    it('should keep only one task in progress per session', () => {
+      const firstId = generateTaskId()
+      const secondId = generateTaskId()
+      taskStore.getState().createTask('session-1', firstId, 'First task')
+      taskStore.getState().createTask('session-1', secondId, 'Second task')
+
+      taskStore.getState().updateTask(firstId, { status: 'in-progress', progress: 40 })
+      taskStore.getState().updateTask(secondId, { status: 'in-progress' })
+
+      const firstTask = taskStore.getState().tasks.find((task) => task.id === firstId)
+      expect(firstTask?.status).toBe('pending')
+      expect(firstTask).not.toHaveProperty('progress')
+      expect(taskStore.getState().tasks.find((task) => task.id === secondId)?.status).toBe('in-progress')
+    })
+
+    it('normalizes done and reopened task progress', () => {
+      const id = generateTaskId()
+      taskStore.getState().createTask('session-1', id, 'Reopen me')
+
+      taskStore.getState().updateTask(id, { status: 'done', progress: 20 })
+      expect(taskStore.getState().tasks.find((task) => task.id === id)).toMatchObject({
+        status: 'done',
+        progress: 100,
+      })
+
+      taskStore.getState().updateTask(id, { status: 'pending' })
+      const reopenedTask = taskStore.getState().tasks.find((task) => task.id === id)
+      expect(reopenedTask?.status).toBe('pending')
+      expect(reopenedTask).not.toHaveProperty('progress')
     })
 
     it('should update task title', () => {
@@ -205,6 +236,25 @@ describe('taskStore', () => {
     it('should start with task_ prefix', () => {
       const id = generateTaskId()
       expect(id).toMatch(/^task_/)
+    })
+  })
+
+  describe('formatActiveTaskContext', () => {
+    it('includes active tasks and excludes terminal task details', () => {
+      const first = taskStore.getState().createTask('session-1', 'pending-id', 'Continue this task')
+      const second = taskStore.getState().createTask('session-1', 'done-id', 'Already complete')
+      expect(first.ok).toBe(true)
+      expect(second.ok).toBe(true)
+      taskStore.getState().updateTask('pending-id', { status: 'in-progress', progress: 35 })
+      taskStore.getState().updateTask('done-id', { status: 'done' })
+
+      const context = formatActiveTaskContext(taskStore.getState().getSessionTasks('session-1'))
+
+      expect(context).toContain('pending-id')
+      expect(context).toContain('Continue this task')
+      expect(context).toContain('35%')
+      expect(context).not.toContain('Already complete')
+      expect(context).toContain('Completed: 1')
     })
   })
 })

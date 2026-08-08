@@ -4,8 +4,13 @@ import type { Task, TaskStatus } from '@/stores/taskStore'
 export const TASK_TOOL_NAMES = ['create_task', 'update_task', 'list_tasks'] as const
 export type TaskToolName = (typeof TASK_TOOL_NAMES)[number]
 
+export function normalizeTaskToolName(toolName: string): string {
+  const canonicalName = toolName.split(/[:/]|__/).at(-1)
+  return canonicalName && (TASK_TOOL_NAMES as readonly string[]).includes(canonicalName) ? canonicalName : toolName
+}
+
 export function isTaskTrackingTool(toolName: string): toolName is TaskToolName {
-  return (TASK_TOOL_NAMES as readonly string[]).includes(toolName)
+  return (TASK_TOOL_NAMES as readonly string[]).includes(normalizeTaskToolName(toolName))
 }
 
 export type TaskSnapshot = {
@@ -41,6 +46,7 @@ export function snapshotTasksFromContentParts(parts: MessageContentParts | undef
   for (const part of parts) {
     if (part.type !== 'tool-call' || !isTaskTrackingTool(part.toolName)) continue
     const toolPart = part as MessageToolCallPart
+    const toolName = normalizeTaskToolName(toolPart.toolName)
     const result = toolPart.result as Record<string, unknown> | undefined
     if (!result) continue
 
@@ -55,7 +61,7 @@ export function snapshotTasksFromContentParts(parts: MessageContentParts | undef
     if (single) byId.set(single.id, single)
 
     // create_task may return flat id/title/status
-    if (toolPart.toolName === 'create_task' && typeof result.id === 'string') {
+    if (toolName === 'create_task' && typeof result.id === 'string') {
       const flat = taskFromUnknown(result)
       if (flat) byId.set(flat.id, flat)
     }

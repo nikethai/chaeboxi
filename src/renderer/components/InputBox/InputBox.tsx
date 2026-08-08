@@ -1627,22 +1627,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               />
             )}
 
-            {(roomAgentIds.length > 0 || selectedAgents.length > 0) && (
-              <AgentRoomStrip
-                agentIds={
-                  selectedAgents.length > 0
-                    ? Array.from(new Set([...roomAgentIds, ...selectedAgents.map((a) => a.id)])).slice(
-                        0,
-                        MAX_ROOM_AGENTS
-                      )
-                    : roomAgentIds
-                }
-                onRemove={sessionId ? handleRemoveRoomAgent : undefined}
-              />
-            )}
-
-            {selectedAgents.length > 0 && (
-              <div className="composer-skill-chips">
+            {/* Unified agent row: room membership when idle; @ chips for this-turn selection (no duplicate strip) */}
+            {selectedAgents.length > 0 ? (
+              <div className="composer-skill-chips flex flex-wrap items-center gap-1.5 px-1">
+                <span className="text-xs shrink-0" style={{ color: 'var(--chatbox-tint-tertiary)' }}>
+                  {t('This turn')}:
+                </span>
                 {selectedAgents.map((agent) => (
                   <span key={agent.id} className="composer-skill-chip">
                     <span className="composer-skill-chip-sigil" aria-hidden>
@@ -1662,8 +1652,13 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     </button>
                   </span>
                 ))}
+                <span className="text-xs shrink-0" style={{ color: 'var(--chatbox-tint-tertiary)' }}>
+                  · {t('You')}
+                </span>
               </div>
-            )}
+            ) : roomAgentIds.length > 0 ? (
+              <AgentRoomStrip agentIds={roomAgentIds} onRemove={sessionId ? handleRemoveRoomAgent : undefined} />
+            ) : null}
 
             {selectedSkills.length > 0 && (
               <div className="composer-skill-chips">

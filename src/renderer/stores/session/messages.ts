@@ -173,14 +173,15 @@ export async function submitNewUserMessage(
     })
   }
 
-  // Label single-agent speaker on the assistant bubble
+  // Label single-agent speaker on the assistant bubble (built-in + custom agents)
   if (speakers.length === 1) {
     const speakerId = speakers[0]
-    const detail = getBuiltInCopilotById(speakerId)
+    const { resolveAgentMeta } = await import('@/packages/agents')
+    const meta = resolveAgentMeta(speakerId)
     newAssistantMsg = {
       ...newAssistantMsg,
       agentId: speakerId,
-      name: detail?.name,
+      name: meta?.name ?? getBuiltInCopilotById(speakerId)?.name,
     }
   }
 

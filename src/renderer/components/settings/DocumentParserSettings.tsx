@@ -3,7 +3,7 @@ import type { DocumentParserType } from '@shared/types/settings'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AdaptiveSelect } from '@/components/AdaptiveSelect'
-import platform from '@/platform'
+import { platformCapabilities } from '@/platform'
 import { getPlatformDefaultDocumentParser, useSettingsStore } from '@/stores/settingsStore'
 
 const ALL_PARSER_OPTIONS: {
@@ -42,7 +42,7 @@ export function DocumentParserSettings({ showTitle = true }: DocumentParserSetti
   const [connectionResult, setConnectionResult] = useState<boolean | undefined>()
 
   const parserOptions = useMemo(() => {
-    const isDesktop = platform.type === 'desktop'
+    const isDesktop = platformCapabilities.supportsDesktopOnlySettings
     return ALL_PARSER_OPTIONS.filter((opt) => {
       if (opt.desktopOnly && !isDesktop) return false
       if (opt.mobileWebOnly && isDesktop) return false

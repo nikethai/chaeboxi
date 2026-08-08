@@ -32,7 +32,7 @@ import { navigateToSettings } from '@/modals/Settings'
 import { BUILTIN_MCP_SERVERS } from '@/packages/mcp/builtin'
 import { useMcpSettings } from '@/stores/settingsStore'
 import { featureFlags } from '@/utils/feature-flags'
-import { CHATBOX_BUILD_PLATFORM } from '@/variables'
+import { platformCapabilities } from '@/platform'
 import { ScalableIcon } from '../common/ScalableIcon'
 import MCPStatus from '../mcp/MCPStatus'
 
@@ -96,13 +96,10 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
   const showKb = featureFlags.knowledgeBase && !isOpenClawModel
   const showWeb = !isOpenClawModel
   const showAgent =
-    sessionType === 'chat' && !isOpenClawModel && CHATBOX_BUILD_PLATFORM !== 'android' && Boolean(onToggleAgentMode)
+    sessionType === 'chat' && !isOpenClawModel && platformCapabilities.supportsDesktopOnlySettings && Boolean(onToggleAgentMode)
   // Desktop Tauri builds use CHATBOX_BUILD_PLATFORM=unknown; web/android cannot write FS.
   const showWorkspace =
-    showAgent &&
-    CHATBOX_BUILD_PLATFORM !== 'web' &&
-    CHATBOX_BUILD_PLATFORM !== 'android' &&
-    Boolean(onWorkspaceRootChange)
+    showAgent && Boolean(onWorkspaceRootChange)
 
   useEffect(() => {
     if (workspaceModalOpen) {

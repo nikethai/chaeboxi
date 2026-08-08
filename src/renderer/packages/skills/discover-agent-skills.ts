@@ -1,5 +1,5 @@
 import type { SkillOrigin, SkillPackage } from '@shared/types'
-import platform from '@/platform'
+import { platformCapabilities } from '@/platform'
 import { parseSkillMd } from './parse-skill-md'
 
 /** Raw scan hit from Tauri `skills:scan` */
@@ -39,7 +39,7 @@ export const AGENT_SKILL_ROOTS: Array<{ origin: SkillOrigin; path: string }> = [
 ]
 
 function isDesktopSkillsScanAvailable(): boolean {
-  return platform.type === 'desktop' && typeof window !== 'undefined' && typeof window.desktopAPI?.invoke === 'function'
+  return platformCapabilities.supportsAgentSkillScan && typeof window !== 'undefined' && typeof window.desktopAPI?.invoke === 'function'
 }
 
 /**

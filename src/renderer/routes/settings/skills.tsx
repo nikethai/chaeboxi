@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next'
 import { AGENT_SKILL_ROOTS, isValidSkillName } from '@/packages/skills'
 import { useSkills } from '@/stores/skillsStore'
 import { add as addToast } from '@/stores/toastActions'
-import platform from '@/platform'
+import { platformCapabilities } from '@/platform'
 
 export const Route = createFileRoute('/settings/skills')({
   component: RouteComponent,
@@ -44,7 +44,7 @@ export function RouteComponent() {
   const [importOpen, setImportOpen] = useState(false)
   const [importText, setImportText] = useState('')
   const [rescanning, setRescanning] = useState(false)
-  const isDesktop = platform.type === 'desktop'
+  const supportsAgentSkillScan = platformCapabilities.supportsAgentSkillScan
 
   const openCreate = () => {
     setEditing({
@@ -162,7 +162,7 @@ export function RouteComponent() {
           </Text>
         </Stack>
         <Flex gap="xs" wrap="wrap">
-          {isDesktop && (
+          {supportsAgentSkillScan && (
             <Button
               variant="default"
               leftSection={<IconRefresh size={16} />}
@@ -188,7 +188,7 @@ export function RouteComponent() {
         </Flex>
       </Flex>
 
-      {isDesktop && (
+      {supportsAgentSkillScan && (
         <Box
           p="md"
           style={{

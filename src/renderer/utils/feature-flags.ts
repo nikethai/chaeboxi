@@ -1,12 +1,9 @@
-import platform from '@/platform'
-import { CHATBOX_BUILD_PLATFORM } from '@/variables'
-
-const isAndroid = CHATBOX_BUILD_PLATFORM === 'android'
+import { platformCapabilities } from '@/platform'
 
 export const featureFlags = {
   // MCP is available on desktop and Tauri Android (HTTP transports only;
   // stdio servers are filtered out at bootstrap time for Android).
-  mcp: platform.type === 'desktop',
+  mcp: platformCapabilities.supportsMcpBootstrap,
   // Knowledge Base requires local filesystem operations not available on Android.
-  knowledgeBase: platform.type === 'desktop' && !isAndroid,
+  knowledgeBase: platformCapabilities.supportsKnowledgeBase,
 }

@@ -25,7 +25,7 @@ import { useTranslation } from 'react-i18next'
 import { AdaptiveSelect } from '@/components/AdaptiveSelect'
 import LazySlider from '@/components/common/LazySlider'
 import { languageNameMap, languages } from '@/i18n/locales'
-import platform from '@/platform'
+import { platformCapabilities } from '@/platform'
 import storage, { StorageKey } from '@/storage'
 import { recoverSessionList } from '@/stores/chatStore'
 import {
@@ -199,7 +199,7 @@ export function RouteComponent() {
       </Stack>
 
       {/* others */}
-      {platform.type === 'desktop' && (
+      {platformCapabilities.supportsDesktopOnlySettings && (
         <>
           <Divider />
 

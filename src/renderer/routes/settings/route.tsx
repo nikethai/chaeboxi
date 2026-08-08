@@ -13,6 +13,7 @@ import {
   IconMessages,
   IconSparkles,
   IconWorldWww,
+  IconX,
 } from '@tabler/icons-react'
 import { createFileRoute, Link, Outlet, useCanGoBack, useRouter, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
@@ -111,6 +112,14 @@ export function RouteComponent() {
   const canGoBack = useCanGoBack()
   const isSmallScreen = useIsSmallScreen()
 
+  const handleClose = () => {
+    if (canGoBack) {
+      router.history.back()
+      return
+    }
+    void router.navigate({ to: '/', replace: true })
+  }
+
   return (
     <Page
       title={t('Settings')}
@@ -123,10 +132,22 @@ export function RouteComponent() {
             color="chatbox-secondary"
             mr="sm"
             onClick={() => router.history.back()}
+            aria-label={t('Back')}
           >
             <IconChevronLeft />
           </ActionIcon>
         ) : undefined
+      }
+      right={
+        <ActionIcon
+          className="controls active:scale-[0.96] transition-transform"
+          variant="subtle"
+          size={28}
+          onClick={handleClose}
+          aria-label={t('Close')}
+        >
+          <IconX size={18} />
+        </ActionIcon>
       }
     >
       <SettingsRoot />

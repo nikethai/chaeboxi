@@ -3,11 +3,13 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { z } from 'zod'
 import { BuiltinServersSection } from '@/components/settings/mcp/BuiltinServersSection'
 import CustomServersSection from '@/components/settings/mcp/CustomServersSection'
 import { parseServerFromJson } from '@/components/settings/mcp/utils'
 import type { MCPServerConfig } from '@/packages/mcp/types'
+import { platformCapabilities } from '@/platform'
 import { decodeBase64 } from '@/utils/base64'
 
 const searchSchema = z.object({
@@ -30,7 +32,11 @@ export function RouteComponent() {
     if (searchParams.install) {
       try {
         const config = parseServerFromJson(decodeBase64(searchParams.install))
-        setInstallConfig(config)
+        if (config && (!platformCapabilities.supportsMcpStdio && config.transport.type === 'stdio')) {
+          toast.error(t('Local stdio MCP servers are unavailable on Android'))
+        } else {
+          setInstallConfig(config)
+        }
       } catch (err) {
         console.error(err)
       }
@@ -41,7 +47,7 @@ export function RouteComponent() {
         replace: true,
       })
     }
-  }, [searchParams.install, navigate])
+  }, [searchParams.install, navigate, t])
 
   return (
     <Box p="md">

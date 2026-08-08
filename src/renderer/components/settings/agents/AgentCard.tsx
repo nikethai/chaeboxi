@@ -2,7 +2,7 @@
  * Agent gallery card — avatar, name, description, actions.
  */
 
-import { ActionIcon, Badge, Flex, Menu, Text, UnstyledButton } from '@mantine/core'
+import { ActionIcon, Badge, Button, Flex, Menu, Text, UnstyledButton } from '@mantine/core'
 import type { CopilotDetail } from '@shared/types'
 import {
   IconDots,
@@ -46,9 +46,8 @@ export const AgentCard: FC<AgentCardProps> = ({
         'group relative flex flex-col gap-3 p-3.5 rounded-[11px]',
         'bg-[var(--chatbox-background-secondary)]',
         'shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_8px_24px_rgba(0,0,0,0.18)]',
-        'transition-[transform,box-shadow,background-color] duration-200',
-        'hover:bg-[var(--chatbox-background-tertiary)]',
-        'active:scale-[0.98]'
+        'transition-[box-shadow,background-color] duration-200',
+        'hover:bg-[var(--chatbox-background-tertiary)]'
       )}
       style={{ border: '1px solid var(--chatbox-border-primary)' }}
     >
@@ -97,7 +96,7 @@ export const AgentCard: FC<AgentCardProps> = ({
                 size={36}
                 radius="md"
                 aria-label={t('Agent actions')}
-                className="shrink-0 active:scale-[0.96] transition-transform"
+                className="shrink-0"
                 onClick={(e) => e.stopPropagation()}
               >
                 {detail.starred ? (
@@ -147,7 +146,7 @@ export const AgentCard: FC<AgentCardProps> = ({
             radius="md"
             aria-label={t('Use in chat')}
             onClick={onUse}
-            className="shrink-0 active:scale-[0.96] transition-transform"
+            className="shrink-0"
           >
             <ScalableIcon icon={IconPlayerPlay} size={16} />
           </ActionIcon>
@@ -156,28 +155,12 @@ export const AgentCard: FC<AgentCardProps> = ({
 
       {mode === 'local' && onEdit ? (
         <Flex gap="xs" mt="auto">
-          <UnstyledButton
-            onClick={onEdit}
-            className={cn(
-              'flex-1 text-center text-xs font-medium py-2 rounded-[9px]',
-              'bg-[var(--chatbox-background-primary)] text-[var(--chatbox-tint-secondary)]',
-              'hover:text-[var(--chatbox-tint-primary)] active:scale-[0.96] transition-transform'
-            )}
-            style={{ border: '1px solid var(--chatbox-border-primary)', minHeight: 40 }}
-          >
+          <Button variant="default" size="xs" onClick={onEdit} className="flex-1">
             {t('Edit')}
-          </UnstyledButton>
-          <UnstyledButton
-            onClick={onUse}
-            className={cn(
-              'flex-1 text-center text-xs font-semibold py-2 rounded-[9px]',
-              'bg-[var(--chatbox-background-brand-secondary)] text-[var(--chatbox-tint-brand)]',
-              'active:scale-[0.96] transition-transform'
-            )}
-            style={{ minHeight: 40 }}
-          >
+          </Button>
+          <Button variant="light" size="xs" onClick={onUse} className="flex-1">
             {t('Use')}
-          </UnstyledButton>
+          </Button>
         </Flex>
       ) : null}
     </div>

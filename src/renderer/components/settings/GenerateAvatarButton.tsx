@@ -227,7 +227,6 @@ export const GenerateAvatarButton: FC<GenerateAvatarButtonProps> = ({
           reset()
           setOpened(true)
         }}
-        className="active:scale-[0.96] transition-transform"
       >
         {t('Generate with AI')}
       </Button>

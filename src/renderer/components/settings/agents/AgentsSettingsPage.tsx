@@ -130,11 +130,10 @@ export function AgentsSettingsPage() {
           />
           <Button
             variant="light"
-            leftSection={<ScalableIcon icon={IconPlus} size={18} />}
+            leftSection={<ScalableIcon icon={IconPlus} size={16} />}
             onClick={() => {
               void getEmptyAgent().then(setCopilotEdit)
             }}
-            className="active:scale-[0.96] transition-transform"
           >
             {t('Create New Agent')}
           </Button>

@@ -3,6 +3,7 @@
  */
 
 import {
+  ActionIcon,
   Button,
   Checkbox,
   Collapse,
@@ -102,7 +103,7 @@ function SectionShell({
     >
       <UnstyledButton
         onClick={onToggle}
-        className="w-full px-3.5 py-3 flex items-center justify-between gap-2 text-left active:scale-[0.99] transition-transform"
+        className="w-full px-3.5 py-3 flex items-center justify-between gap-2 text-left"
         style={{ minHeight: 44 }}
       >
         <div className="min-w-0">
@@ -183,13 +184,11 @@ export const AgentEditor: FC<AgentEditorProps> = ({ copilotDetail, close, save }
             {t('Identity, persona, tools, and model overrides')}
           </Text>
         </div>
-        <Flex gap="xs">
-          <Button variant="default" onClick={close} className="active:scale-[0.96] transition-transform">
-            {t('cancel')}
+        <Flex gap="sm">
+          <Button variant="default" onClick={close}>
+            {t('Cancel')}
           </Button>
-          <Button onClick={handleSave} className="active:scale-[0.96] transition-transform">
-            {t('save')}
-          </Button>
+          <Button onClick={handleSave}>{t('Save')}</Button>
         </Flex>
       </Flex>
 
@@ -444,11 +443,11 @@ export const AgentEditor: FC<AgentEditorProps> = ({ copilotDetail, close, save }
           onChange={(e) => patch({ shared: e.currentTarget.checked })}
           label={t('Share with Chatbox')}
         />
-        <Flex gap="xs">
+        <Flex gap="sm">
           <Button variant="default" onClick={close}>
-            {t('cancel')}
+            {t('Cancel')}
           </Button>
-          <Button onClick={handleSave}>{t('save')}</Button>
+          <Button onClick={handleSave}>{t('Save')}</Button>
         </Flex>
       </Flex>
     </Stack>
@@ -493,13 +492,7 @@ function HookList({
       {hooks.map((hook, index) => (
         <HookEditor key={index} hook={hook} onChange={(h) => updateHook(index, h)} onRemove={() => removeHook(index)} />
       ))}
-      <Button
-        variant="light"
-        size="xs"
-        leftSection={<ScalableIcon icon={IconPlus} size={14} />}
-        onClick={addHook}
-        className="self-start active:scale-[0.96] transition-transform"
-      >
+      <Button variant="light" size="xs" leftSection={<ScalableIcon icon={IconPlus} size={14} />} onClick={addHook}>
         {t('Add Hook')}
       </Button>
     </Stack>
@@ -556,16 +549,9 @@ function HookEditor({
           allowDeselect={false}
           className="flex-1"
         />
-        <Button
-          variant="subtle"
-          color="red"
-          size="xs"
-          onClick={onRemove}
-          aria-label={t('Delete')}
-          className="active:scale-[0.96] transition-transform"
-        >
+        <ActionIcon variant="subtle" color="chatbox-error" size="sm" onClick={onRemove} aria-label={t('Delete')}>
           <ScalableIcon icon={IconTrash} size={14} />
-        </Button>
+        </ActionIcon>
       </Flex>
       {hook.type === 'inject-context' && (
         <Textarea

@@ -1,4 +1,4 @@
-import { Collapse, Flex, Stack, Tabs, Text, TextInput } from '@mantine/core'
+import { Button, Collapse, Flex, Stack, Tabs, Text, TextInput } from '@mantine/core'
 import type { ProviderModelInfo } from '@shared/types'
 import { IconSearch } from '@tabler/icons-react'
 import clsx from 'clsx'
@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import SwipeableViews from 'react-swipeable-views'
 import { Drawer } from 'vaul'
 import { useProviders } from '@/hooks/useProviders'
+import { navigateToSettings } from '@/modals/Settings'
 import { collapsedProvidersAtom } from '@/stores/atoms/uiAtoms'
 import { ScalableIcon } from '../common/ScalableIcon'
 import { ProviderHeader } from './ProviderHeader'
@@ -168,6 +169,17 @@ export const MobileModelSelector = forwardRef<HTMLDivElement, MobileModelSelecto
                       leftSection={<ScalableIcon icon={IconSearch} />}
                       className="mt-2"
                     />
+
+                    {!search && filteredProviders.length === 0 && (
+                      <Stack align="center" gap="xs" px="md" py="xl">
+                        <Text c="chatbox-tertiary" size="sm" ta="center">
+                          {t('Add a provider and model in settings to start chatting.')}
+                        </Text>
+                        <Button size="compact-sm" variant="light" onClick={() => navigateToSettings('/provider')}>
+                          {t('Open settings')}
+                        </Button>
+                      </Stack>
+                    )}
 
                     {showAuto && (
                       <Flex

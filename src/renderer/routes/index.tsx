@@ -1,8 +1,7 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { Button } from '@mantine/core'
-import type { Session } from '@shared/types'
-import { ModelProviderEnum } from '@shared/types'
 import { toSessionAgentFieldsFromSelection } from '@shared/new-chat-agents'
+import { ModelProviderEnum, type Session } from '@shared/types'
 import { createFileRoute, useRouterState } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -14,11 +13,11 @@ import Page from '@/components/layout/Page'
 import NewChatAgentBar from '@/components/new-chat/NewChatAgentBar'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useProviders } from '@/hooks/useProviders'
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { createSession as createSessionStore } from '@/stores/chatStore'
 import { submitNewUserMessage, switchCurrentSession } from '@/stores/sessionActions'
 import { initEmptyChatSession } from '@/stores/sessionHelpers'
 import { useUIStore } from '@/stores/uiStore'
+import BlankStateStarters from './-components/BlankStateStarters'
 
 export const Route = createFileRoute('/')({
   component: Index,
@@ -31,7 +30,6 @@ export const Route = createFileRoute('/')({
 
 function Index() {
   const { t } = useTranslation()
-  const isSmallScreen = useIsSmallScreen()
 
   const newSessionState = useUIStore((s) => s.newSessionState)
   const setNewSessionState = useUIStore((s) => s.setNewSessionState)
@@ -125,7 +123,14 @@ function Index() {
     })
     // primaryAgent identity by id+prompt; avoid full object churn
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAgentIds.join(','), primaryAgent?.id, primaryAgent?.prompt, primaryAgent?.name, primaryAgent?.picUrl, primaryAgent?.emojiAvatar])
+  }, [
+    selectedAgentIds.join(','),
+    primaryAgent?.id,
+    primaryAgent?.prompt,
+    primaryAgent?.name,
+    primaryAgent?.picUrl,
+    primaryAgent?.emojiAvatar,
+  ])
 
   const routerState = useRouterState()
   useEffect(() => {
@@ -233,6 +238,7 @@ function Index() {
         <div className="blank-workbench flex-1 min-h-0 overflow-auto">
           <div className="blank-copy">
             <h1 className="blank-title">{t('Pick a thread. Or start one.')}</h1>
+            <p className="blank-sub">{t('Start with a prompt or write your own below.')}</p>
             {!providers.length && (
               <Button
                 mt="md"
@@ -247,6 +253,7 @@ function Index() {
               </Button>
             )}
           </div>
+          {providers.length > 0 && <BlankStateStarters onSelect={fillComposer} />}
         </div>
 
         <div className="session-dock">

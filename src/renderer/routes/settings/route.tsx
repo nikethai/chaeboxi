@@ -11,6 +11,8 @@ import {
   IconMessageChatbot,
   IconMessages,
   IconSparkles,
+  IconTerminal2,
+  IconBolt,
   IconWorldWww,
 } from '@tabler/icons-react'
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
@@ -77,6 +79,16 @@ const ITEMS = [
     key: 'skills',
     label: 'Skills',
     icon: <IconSparkles className="w-full h-full" />,
+  },
+  {
+    key: 'commands',
+    label: 'Commands',
+    icon: <IconTerminal2 className="w-full h-full" />,
+  },
+  {
+    key: 'hooks',
+    label: 'Hooks',
+    icon: <IconBolt className="w-full h-full" />,
   },
   ...(CHATBOX_BUILD_PLATFORM !== 'android'
     ? [

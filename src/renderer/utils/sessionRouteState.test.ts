@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { getSessionRouteState } from './sessionState'
+import { getSessionRouteState } from './sessionRouteState'
 
 describe('getSessionRouteState', () => {
   test('identifies an initial pending session query as loading', () => {

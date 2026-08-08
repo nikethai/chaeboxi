@@ -20,7 +20,7 @@ import { getAllMessageList } from '@/stores/sessionHelpers'
 import { taskStore } from '@/stores/taskStore'
 import { useUIStore } from '@/stores/uiStore'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
-import { getSessionRouteState } from './sessionState'
+import { getSessionRouteState } from '@/utils/sessionRouteState'
 
 // Agent-mode panels are not used on Android. Use compile-time conditional
 // dynamic imports so the modules (and their @mantine/openclaw deps) are

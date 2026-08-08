@@ -110,7 +110,7 @@ function Root() {
   // Settings owns its own navigation; keep the global chat sidebar out of this page.
   const offsetMainForSidebar = !isSettingsRoute && (isSmallScreen ? showSidebar : true)
 
-  // Legacy desktop used ?settings=/settings/... modal; always use full-page routes now
+  // Legacy deep links used ?settings=/settings/...; rewrite to full-page /settings/* routes
   useEffect(() => {
     const settingsPath = (location.search as { settings?: string })?.settings
     if (typeof settingsPath === 'string' && settingsPath.length > 0) {
@@ -152,10 +152,8 @@ function Root() {
     if (platform.onNavigate) {
       // 移动端和其他平台的导航监听器
       return platform.onNavigate((path) => {
-        // 如果是 settings 路径，使用 navigateToSettings 以保持与主页面设置按钮一致的行为
-        // 在桌面端会打开 Modal，在移动端会正常导航
+        // Keep platform navigations aligned with in-app settings entry (full-page routes)
         if (path.startsWith('/settings')) {
-          // 提取 settings 之后的路径部分（包含查询参数）
           const settingsPath = path.substring('/settings'.length)
           navigateToSettings(settingsPath || '/')
         } else {

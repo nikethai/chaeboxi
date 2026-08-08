@@ -1,8 +1,8 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { Button } from '@mantine/core'
+import { toSessionAgentFieldsFromSelection } from '@shared/new-chat-agents'
 import type { Session } from '@shared/types'
 import { ModelProviderEnum } from '@shared/types'
-import { toSessionAgentFieldsFromSelection } from '@shared/new-chat-agents'
 import { createFileRoute, useRouterState } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -19,6 +19,7 @@ import { createSession as createSessionStore } from '@/stores/chatStore'
 import { submitNewUserMessage, switchCurrentSession } from '@/stores/sessionActions'
 import { initEmptyChatSession } from '@/stores/sessionHelpers'
 import { useUIStore } from '@/stores/uiStore'
+import { buildChatStarters } from '@/utils/chat-starters'
 
 export const Route = createFileRoute('/')({
   component: Index,
@@ -125,7 +126,14 @@ function Index() {
     })
     // primaryAgent identity by id+prompt; avoid full object churn
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedAgentIds.join(','), primaryAgent?.id, primaryAgent?.prompt, primaryAgent?.name, primaryAgent?.picUrl, primaryAgent?.emojiAvatar])
+  }, [
+    selectedAgentIds.join(','),
+    primaryAgent?.id,
+    primaryAgent?.prompt,
+    primaryAgent?.name,
+    primaryAgent?.picUrl,
+    primaryAgent?.emojiAvatar,
+  ])
 
   const routerState = useRouterState()
   useEffect(() => {
@@ -227,35 +235,7 @@ function Index() {
     return true
   }, [session])
 
-  const starters = useMemo(
-    () => [
-      {
-        n: '01',
-        title: t('Trace session store modules'),
-        hint: t('Architecture · TypeScript'),
-        fill: 'Map the session store modules and call out circular deps.',
-      },
-      {
-        n: '02',
-        title: t('PR: kill MUI drawer'),
-        hint: t('Write-up · shipping note'),
-        fill: 'Draft a PR description for replacing the MUI drawer with a custom rail.',
-      },
-      {
-        n: '03',
-        title: t('Stream cancel race'),
-        hint: t('Debug · concurrency'),
-        fill: 'Debug intermittent stream cancel when switching models mid-response.',
-      },
-      {
-        n: '04',
-        title: t('Composer context meter'),
-        hint: t('UX · tokens'),
-        fill: 'Propose token budget UI for the composer context meter.',
-      },
-    ],
-    [t]
-  )
+  const starters = useMemo(() => buildChatStarters(t), [t])
 
   return (
     <Page title="">

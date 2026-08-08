@@ -1,10 +1,9 @@
-import { ActionIcon, Box, Flex, Stack, Text } from '@mantine/core'
+import { Box, Flex, Stack, Text } from '@mantine/core'
 import {
   IconAdjustmentsHorizontal,
   IconBook,
   IconBox,
   IconCategory,
-  IconChevronLeft,
   IconChevronRight,
   IconCircleDottedLetterM,
   IconFileText,
@@ -14,16 +13,20 @@ import {
   IconSparkles,
   IconWorldWww,
 } from '@tabler/icons-react'
-import { createFileRoute, Link, Outlet, useCanGoBack, useRouter, useRouterState } from '@tanstack/react-router'
+import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Toaster } from 'sonner'
 import Divider from '@/components/common/Divider'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import Page from '@/components/layout/Page'
+import { SettingsBackButton, SettingsCloseButton } from '@/components/settings/SettingsChromeControls'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { closeSettings } from '@/modals/Settings'
 import platform from '@/platform'
 import { featureFlags } from '@/utils/feature-flags'
+import { getSettingsParentPath } from '@/utils/settings-navigation'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
 const ITEMS = [
@@ -104,29 +107,101 @@ export const Route = createFileRoute('/settings')({
   component: RouteComponent,
 })
 
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) {
+    return false
+  }
+  const tag = target.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+    return true
+  }
+  if (target.isContentEditable) {
+    return true
+  }
+  return Boolean(target.closest('[contenteditable="true"]'))
+}
+
+function hasOpenOverlay(): boolean {
+  return Boolean(
+    document.querySelector(
+      '.mantine-Modal-root[data-mounted], .mantine-Drawer-root[data-mounted], [role="dialog"][aria-modal="true"]'
+    )
+  )
+}
+
 export function RouteComponent() {
   const { t } = useTranslation()
-  const router = useRouter()
+  const navigate = useNavigate()
   const routerState = useRouterState()
-  const canGoBack = useCanGoBack()
   const isSmallScreen = useIsSmallScreen()
+  const pathname = routerState.location.pathname
+  const parentPath = getSettingsParentPath(pathname)
+  const showMobileBack = isSmallScreen && parentPath !== null
+
+  const sectionKey = pathname.split('/').filter(Boolean)[1]
+  const sectionLabel = useMemo(() => {
+    if (!sectionKey) return null
+    return ITEMS.find((item) => item.key === sectionKey)?.label ?? null
+  }, [sectionKey])
+
+  const handleClose = useCallback(() => {
+    closeSettings()
+  }, [])
+
+  const handleMobileBack = useCallback(() => {
+    if (!parentPath) {
+      closeSettings()
+      return
+    }
+    void navigate({ to: parentPath as never })
+  }, [navigate, parentPath])
+
+  // ESC exits settings when not editing and no overlay is open
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) {
+        return
+      }
+      if (isEditableTarget(e.target) || hasOpenOverlay()) {
+        return
+      }
+      e.preventDefault()
+      closeSettings()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
+  const title = (
+    <div className="settings-chrome-title min-w-0">
+      <span className="settings-chrome-title-main">{t('Settings')}</span>
+      {sectionLabel && !isSmallScreen && (
+        <>
+          <span className="settings-chrome-title-sep" aria-hidden>
+            /
+          </span>
+          <span className="settings-chrome-title-section">{t(sectionLabel)}</span>
+        </>
+      )}
+    </div>
+  )
 
   return (
     <Page
-      title={t('Settings')}
+      title={title}
+      className="settings-shell"
+      headerClassName="settings-chrome-header"
       left={
-        isSmallScreen && routerState.location.pathname !== '/settings' && canGoBack ? (
-          <ActionIcon
-            className="controls"
-            variant="subtle"
-            size={28}
-            color="chatbox-secondary"
-            mr="sm"
-            onClick={() => router.history.back()}
-          >
-            <IconChevronLeft />
-          </ActionIcon>
+        showMobileBack ? (
+          <Flex align="center" mr="xs" className="controls">
+            <SettingsBackButton onClick={handleMobileBack} />
+          </Flex>
         ) : undefined
+      }
+      right={
+        <Flex align="center" className="controls">
+          <SettingsCloseButton onClick={handleClose} showEscHint={!isSmallScreen} />
+        </Flex>
       }
     >
       <SettingsRoot />
@@ -138,7 +213,6 @@ export function RouteComponent() {
 export function SettingsRoot() {
   const { t } = useTranslation()
   const routerState = useRouterState()
-  const key = routerState.location.pathname.split('/')[2]
   const isSmallScreen = useIsSmallScreen()
 
   return (
@@ -146,7 +220,7 @@ export function SettingsRoot() {
       {(!isSmallScreen || routerState.location.pathname === '/settings') && (
         <Stack
           p={isSmallScreen ? 0 : 'sm'}
-          gap={4}
+          gap={isSmallScreen ? 0 : 2}
           w={isSmallScreen ? '100%' : 220}
           miw={isSmallScreen ? undefined : 200}
           maw={isSmallScreen ? undefined : 240}
@@ -155,7 +229,7 @@ export function SettingsRoot() {
             isSmallScreen ? 'w-full border-r-0' : 'flex-none border-r border-chatbox-border-primary'
           )}
         >
-          {ITEMS.map((item) => {
+          {ITEMS.map((item, index) => {
             const active =
               routerState.location.pathname === `/settings/${item.key}` ||
               routerState.location.pathname.startsWith(`/settings/${item.key}/`)
@@ -164,7 +238,8 @@ export function SettingsRoot() {
                 disabled={active}
                 key={item.key}
                 to={`/settings/${item.key}` as never}
-                className="block no-underline w-full"
+                className="settings-nav-link block no-underline w-full"
+                style={{ ['--settings-nav-i' as string]: index }}
               >
                 <Flex
                   component="span"
@@ -174,11 +249,11 @@ export function SettingsRoot() {
                   align="center"
                   c={active ? 'chatbox-primary' : 'chatbox-secondary'}
                   className={clsx(
-                    'settings-nav-item cursor-pointer select-none rounded-md relative',
-                    active ? 'settings-nav-item-on' : 'hover:bg-[var(--chatbox-background-tertiary)]'
+                    'settings-nav-item cursor-pointer select-none rounded-lg relative',
+                    active ? 'settings-nav-item-on' : undefined
                   )}
                 >
-                  <Box component="span" flex="0 0 auto" w={18} h={18} className="opacity-90">
+                  <Box component="span" flex="0 0 auto" w={18} h={18} className="settings-nav-icon opacity-90">
                     {item.icon}
                   </Box>
                   <Text
@@ -193,7 +268,11 @@ export function SettingsRoot() {
                     {t(item.label)}
                   </Text>
                   {isSmallScreen && (
-                    <ScalableIcon icon={IconChevronRight} size={18} className="!text-chatbox-tint-tertiary" />
+                    <ScalableIcon
+                      icon={IconChevronRight}
+                      size={18}
+                      className="settings-nav-chevron !text-chatbox-tint-tertiary"
+                    />
                   )}
                 </Flex>
 

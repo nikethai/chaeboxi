@@ -3302,6 +3302,261 @@ async fn ipc_invoke(
             }
         }
 
+        // Read agent hook config files (Claude settings.json / Cursor hooks.json)
+        "hooks:read-configs" => {
+            #[cfg(target_os = "android")]
+            {
+                Err("'hooks:read-configs' is not available on Android".to_string())
+            }
+            #[cfg(not(target_os = "android"))]
+            {
+                let paths = get_arg(&args, 0)?
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default();
+                let mut files = Vec::new();
+                for path_val in paths {
+                    let Some(path_raw) = path_val.as_str() else {
+                        continue;
+                    };
+                    let path_str = expand_skill_root_path(path_raw);
+                    let pb = PathBuf::from(&path_str);
+                    if pb.is_file() {
+                        match fs::read_to_string(&pb) {
+                            Ok(content) => {
+                                files.push(json!({
+                                    "path": path_str,
+                                    "content": content,
+                                    "exists": true,
+                                }));
+                            }
+                            Err(_) => {
+                                files.push(json!({
+                                    "path": path_str,
+                                    "content": "",
+                                    "exists": false,
+                                }));
+                            }
+                        }
+                    } else {
+                        files.push(json!({
+                            "path": path_str,
+                            "content": "",
+                            "exists": false,
+                        }));
+                    }
+                }
+                Ok(json!({ "files": files }))
+            }
+        }
+
+        // Run a shell hook with timeout, optional cwd, stdin JSON
+        "hooks:run-shell" => {
+            #[cfg(target_os = "android")]
+            {
+                Err("'hooks:run-shell' is not available on Android".to_string())
+            }
+            #[cfg(not(target_os = "android"))]
+            {
+                use std::io::{Read, Write};
+                use std::process::{Command, Stdio};
+                use std::time::Duration;
+
+                let opts = get_arg(&args, 0)?;
+                let command = opts
+                    .get("command")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| "hooks:run-shell requires command".to_string())?
+                    .to_string();
+                let timeout_ms = opts
+                    .get("timeoutMs")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(10_000)
+                    .min(30_000);
+                let stdin_data = opts
+                    .get("stdin")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let cwd = opts
+                    .get("cwd")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string())
+                    .filter(|s| !s.is_empty());
+
+                let mut cmd = if cfg!(target_os = "windows") {
+                    let mut c = Command::new("cmd");
+                    c.arg("/C").arg(&command);
+                    c
+                } else {
+                    let mut c = Command::new("sh");
+                    c.arg("-c").arg(&command);
+                    c
+                };
+
+                cmd.stdin(Stdio::piped())
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped());
+
+                if let Some(dir) = cwd {
+                    let dir_path = PathBuf::from(&dir);
+                    if dir_path.is_dir() {
+                        cmd.current_dir(dir_path);
+                    }
+                }
+
+                let mut child = cmd
+                    .spawn()
+                    .map_err(|e| format!("failed to spawn hook: {e}"))?;
+
+                if let Some(mut stdin) = child.stdin.take() {
+                    let _ = stdin.write_all(stdin_data.as_bytes());
+                    drop(stdin);
+                }
+
+                let start = std::time::Instant::now();
+                let wait_result = loop {
+                    match child.try_wait() {
+                        Ok(Some(status)) => break Ok(status),
+                        Ok(None) => {
+                            if start.elapsed() > Duration::from_millis(timeout_ms) {
+                                let _ = child.kill();
+                                let _ = child.wait();
+                                break Err("hook timeout".to_string());
+                            }
+                            std::thread::sleep(Duration::from_millis(50));
+                        }
+                        Err(e) => break Err(format!("wait error: {e}")),
+                    }
+                };
+
+                match wait_result {
+                    Ok(status) => {
+                        let mut stdout = String::new();
+                        let mut stderr = String::new();
+                        if let Some(mut out) = child.stdout.take() {
+                            let mut buf = Vec::new();
+                            let _ = out.read_to_end(&mut buf);
+                            stdout = String::from_utf8_lossy(&buf).to_string();
+                        }
+                        if let Some(mut err) = child.stderr.take() {
+                            let mut buf = Vec::new();
+                            let _ = err.read_to_end(&mut buf);
+                            stderr = String::from_utf8_lossy(&buf).to_string();
+                        }
+                        let exit_code = status.code().unwrap_or(1);
+                        Ok(json!({
+                            "exitCode": exit_code,
+                            "stdout": stdout.chars().take(8000).collect::<String>(),
+                            "stderr": stderr.chars().take(8000).collect::<String>(),
+                        }))
+                    }
+                    Err(msg) => Ok(json!({
+                        "exitCode": 1,
+                        "stdout": "",
+                        "stderr": msg,
+                    })),
+                }
+            }
+        }
+
+        // Discover slash commands: flat `name.md` or folder with body/COMMAND.md/SKILL.md
+        "commands:scan" => {
+            #[cfg(target_os = "android")]
+            {
+                Err("'commands:scan' is not available on Android".to_string())
+            }
+            #[cfg(not(target_os = "android"))]
+            {
+                let roots = get_arg(&args, 0)?
+                    .as_array()
+                    .cloned()
+                    .unwrap_or_default();
+                let mut root_reports = Vec::new();
+                let mut skills = Vec::new();
+                const MAX_COMMANDS: usize = 500;
+
+                for root_val in roots {
+                    let Some(root_raw) = root_val.as_str() else {
+                        continue;
+                    };
+                    let root_path = expand_skill_root_path(root_raw);
+                    let origin = command_origin_from_path(&root_path);
+                    let path = PathBuf::from(&root_path);
+                    let exists = path.is_dir();
+                    root_reports.push(json!({
+                        "origin": origin,
+                        "path": root_path,
+                        "exists": exists,
+                    }));
+                    if !exists {
+                        continue;
+                    }
+
+                    let Ok(entries) = fs::read_dir(&path) else {
+                        continue;
+                    };
+
+                    for entry in entries.flatten() {
+                        if skills.len() >= MAX_COMMANDS {
+                            break;
+                        }
+                        let entry_path = entry.path();
+                        let file_name = entry
+                            .file_name()
+                            .to_string_lossy()
+                            .to_string();
+                        if file_name.starts_with('.') {
+                            continue;
+                        }
+
+                        // Flat: review.md
+                        if entry_path.is_file() {
+                            let is_md = file_name.to_lowercase().ends_with(".md");
+                            if !is_md {
+                                continue;
+                            }
+                            if let Ok(content) = fs::read_to_string(&entry_path) {
+                                let base = file_name.trim_end_matches(".md").trim_end_matches(".MD");
+                                skills.push(json!({
+                                    "origin": origin,
+                                    "rootDir": root_path,
+                                    "folderName": base,
+                                    "skillPath": entry_path.to_string_lossy(),
+                                    "content": content,
+                                }));
+                            }
+                            continue;
+                        }
+
+                        // Folder: prefer COMMAND.md, then SKILL.md, then README.md
+                        if entry_path.is_dir() {
+                            for candidate in ["COMMAND.md", "SKILL.md", "command.md", "README.md"] {
+                                let md = entry_path.join(candidate);
+                                if md.is_file() {
+                                    if let Ok(content) = fs::read_to_string(&md) {
+                                        skills.push(json!({
+                                            "origin": origin,
+                                            "rootDir": root_path,
+                                            "folderName": file_name,
+                                            "skillPath": md.to_string_lossy(),
+                                            "content": content,
+                                        }));
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Ok(json!({
+                    "roots": root_reports,
+                    "skills": skills,
+                }))
+            }
+        }
+
         _ => Err(format!("unknown ipc channel: {channel}")),
     }
 }
@@ -3338,6 +3593,28 @@ fn skill_origin_from_path(path: &str) -> &'static str {
     } else if lower.contains("/opencode/skills") {
         "opencode"
     } else if lower.ends_with("/skills") || lower.contains("/skills") {
+        "project"
+    } else {
+        "unknown"
+    }
+}
+
+#[cfg(not(target_os = "android"))]
+fn command_origin_from_path(path: &str) -> &'static str {
+    let lower = path.replace('\\', "/").to_lowercase();
+    if lower.contains("/.claude/commands") {
+        "claude"
+    } else if lower.contains("/.codex/commands") {
+        "codex"
+    } else if lower.contains("/.cursor/commands") {
+        "cursor"
+    } else if lower.contains("/.agents/commands") {
+        "agents"
+    } else if lower.contains("/.grok/commands") {
+        "grok"
+    } else if lower.contains("/.gemini/commands") {
+        "gemini"
+    } else if lower.ends_with("/commands") || lower.contains("/commands") {
         "project"
     } else {
         "unknown"

@@ -12,6 +12,8 @@ export enum StorageKey {
   PromptPresets = 'promptPresets',
   SystemPromptPresets = 'systemPromptPresets',
   Skills = 'skills',
+  Commands = 'commands',
+  HookOverrides = 'hookOverrides',
   ConfigVersion = 'configVersion',
   RemoteConfig = 'remoteConfig',
   ChatSessionsList = 'chat-sessions-list',

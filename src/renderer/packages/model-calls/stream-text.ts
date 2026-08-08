@@ -691,6 +691,20 @@ ${!workspaceRoot ? '- No session workspace folder is set. Ask the user to set a 
       tools = Object.fromEntries(Object.entries(tools).filter(([name]) => allowedSet.has(name)))
     }
 
+    // Global PreToolUse / PostToolUse around every tool execute (after approval + access filters)
+    const toolHookWorkspace = workspaceRoot || agentCoding?.workspaceRoot || null
+    try {
+      const { refreshAgentHooks } = await import('@/stores/hooksStore')
+      await refreshAgentHooks({ workspaceRoot: toolHookWorkspace })
+    } catch {
+      // non-fatal — hooks cache may already be warm from PreTurn
+    }
+    const { wrapToolsWithLifecycleHooks } = await import('@/packages/hooks')
+    tools = wrapToolsWithLifecycleHooks(tools, {
+      sessionId,
+      workspaceRoot: toolHookWorkspace,
+    })
+
     console.debug('tools', tools)
 
     result = withSearchMetadata(

@@ -21,6 +21,18 @@ type FilteredProvider = {
   models?: ProviderModelInfo[]
 }
 
+export function shouldShowProviderSetup({
+  search,
+  providerCount,
+  showAuto,
+}: {
+  search: string
+  providerCount: number
+  showAuto?: boolean
+}): boolean {
+  return !search && providerCount === 0 && !showAuto
+}
+
 interface MobileModelSelectorProps {
   children: React.ReactNode
   showAuto?: boolean
@@ -170,7 +182,7 @@ export const MobileModelSelector = forwardRef<HTMLDivElement, MobileModelSelecto
                       className="mt-2"
                     />
 
-                    {!search && filteredProviders.length === 0 && (
+                    {shouldShowProviderSetup({ search, providerCount: filteredProviders.length, showAuto }) && (
                       <Stack align="center" gap="xs" px="md" py="xl">
                         <Text c="chatbox-tertiary" size="sm" ta="center">
                           {t('Add a provider and model in settings to start chatting.')}

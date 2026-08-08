@@ -10,7 +10,7 @@ import { createStore, useStore } from 'zustand'
 import { createJSONStorage, persist, subscribeWithSelector } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 import { getLogger } from '@/lib/utils'
-import { platformCapabilities } from '@/platform'
+import platform, { platformCapabilities } from '@/platform'
 import storage from '@/storage'
 
 const log = getLogger('settings-store')

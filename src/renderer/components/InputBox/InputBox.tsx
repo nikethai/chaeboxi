@@ -170,7 +170,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const toolbarIconSize = isSmallScreen ? 22 : 18
     const toolbarButtonClass = cn(
       'flex items-center gap-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors',
-      isSmallScreen ? 'px-2.5 py-1.5 rounded-xl min-h-9' : 'px-2 py-1'
+      isSmallScreen ? 'mobile-touch-target px-2.5 py-1.5 rounded-xl min-h-11' : 'px-2 py-1'
     )
     const { height: viewportHeight } = useViewportSize()
     const pasteLongTextAsAFile = useSettingsStore((state) => state.pasteLongTextAsAFile)
@@ -2021,7 +2021,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     }}
                   >
                     <UnstyledButton
-                      className={cn(toolbarButtonClass, 'model-picker-trigger', isSmallScreen && 'px-2.5')}
+                      className={cn(toolbarButtonClass, 'model-picker-trigger', isSmallScreen && 'px-2.5 mobile-touch-target min-h-11')}
                     >
                       {!!model && <ProviderImageIcon size={15} provider={model.provider} />}
                       <Text
@@ -2049,7 +2049,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     disabled={sendDisabled}
                     variant="filled"
                     color={generating && disableSubmit ? 'dark' : 'chatbox-brand'}
-                    className="composer-send shadow-none"
+                    className={cn('composer-send shadow-none', isSmallScreen && 'mobile-touch-target')}
                     aria-label={
                       isSamplingVideoFrames
                         ? t('Sampling video frames…')

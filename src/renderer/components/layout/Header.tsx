@@ -105,9 +105,9 @@ export default function Header(props: { session: Session }) {
       {showSidebarToggle && (
         <Flex align="center">
           <ActionIcon
-            className="controls active:scale-[0.96] transition-transform"
+            className="controls mobile-touch-target active:scale-[0.96] transition-transform"
             variant="subtle"
-            size={isSmallScreen ? 30 : 28}
+            size={isSmallScreen ? 32 : 28}
             color="chatbox-tertiary"
             mr={isSmallScreen ? 'xs' : 'sm'}
             onClick={handleSidebarToggle}

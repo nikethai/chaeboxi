@@ -1,26 +1,49 @@
-import { Badge, Button, Card, Group, Stack, Text } from '@mantine/core'
+import { Badge, Button, Card, Group, Stack, Text, Textarea } from '@mantine/core'
 import type { MessagePlanPart } from '@shared/types'
 import { IconCheck, IconX } from '@tabler/icons-react'
-import { type FC, useCallback } from 'react'
+import { type FC, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Markdown from '@/components/Markdown'
 
 interface PlanApprovalProps {
   planPart: MessagePlanPart
-  onApprove: () => void
-  onReject: () => void
+  onApprove: () => Promise<void>
+  onRequestChanges: (feedback: string) => Promise<void>
+  onReject: () => Promise<void>
 }
 
-const PlanApproval: FC<PlanApprovalProps> = ({ planPart, onApprove, onReject }) => {
+const PlanApproval: FC<PlanApprovalProps> = ({ planPart, onApprove, onRequestChanges, onReject }) => {
   const { t } = useTranslation()
+  const [feedback, setFeedback] = useState('')
+  const [showRevisionForm, setShowRevisionForm] = useState(false)
+  const [pendingAction, setPendingAction] = useState<'approve' | 'request-changes' | 'reject' | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const runAction = useCallback(async (action: NonNullable<typeof pendingAction>, operation: () => Promise<void>) => {
+    setPendingAction(action)
+    setError(null)
+    try {
+      await operation()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setPendingAction(null)
+    }
+  }, [])
 
   const handleApprove = useCallback(() => {
-    onApprove()
-  }, [onApprove])
+    void runAction('approve', onApprove)
+  }, [onApprove, runAction])
+
+  const handleRequestChanges = useCallback(() => {
+    void runAction('request-changes', () => onRequestChanges(feedback))
+  }, [feedback, onRequestChanges, runAction])
 
   const handleReject = useCallback(() => {
-    onReject()
-  }, [onReject])
+    void runAction('reject', onReject)
+  }, [onReject, runAction])
+
+  const isBusy = pendingAction !== null
 
   const statusBadge = (() => {
     switch (planPart.status) {
@@ -62,14 +85,66 @@ const PlanApproval: FC<PlanApprovalProps> = ({ planPart, onApprove, onReject }) 
         </Card.Section>
 
         {planPart.status === 'pending' && (
-          <Group justify="flex-end" gap="sm">
-            <Button variant="default" size="sm" leftSection={<IconX size={16} />} onClick={handleReject}>
-              {t('Reject')}
-            </Button>
-            <Button size="sm" leftSection={<IconCheck size={16} />} onClick={handleApprove}>
-              {t('Approve & Execute')}
-            </Button>
-          </Group>
+          <>
+            {showRevisionForm && (
+              <Stack gap="xs">
+                <Textarea
+                  label={t('Request changes')}
+                  placeholder={t('Describe what the revised plan should change')}
+                  value={feedback}
+                  onChange={(event) => setFeedback(event.currentTarget.value)}
+                  autosize
+                  minRows={3}
+                  disabled={isBusy}
+                />
+                <Group justify="flex-end" gap="sm">
+                  <Button variant="subtle" size="sm" onClick={() => setShowRevisionForm(false)} disabled={isBusy}>
+                    {t('Cancel')}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="light"
+                    onClick={handleRequestChanges}
+                    loading={pendingAction === 'request-changes'}
+                    disabled={!feedback.trim() || isBusy}
+                  >
+                    {t('Request revised plan')}
+                  </Button>
+                </Group>
+              </Stack>
+            )}
+            {!showRevisionForm && (
+              <Group justify="flex-end" gap="sm">
+                <Button
+                  variant="default"
+                  size="sm"
+                  leftSection={<IconX size={16} />}
+                  onClick={handleReject}
+                  loading={pendingAction === 'reject'}
+                  disabled={isBusy}
+                >
+                  {t('Reject')}
+                </Button>
+                <Button variant="light" size="sm" onClick={() => setShowRevisionForm(true)} disabled={isBusy}>
+                  {t('Request changes')}
+                </Button>
+                <Button
+                  size="sm"
+                  leftSection={<IconCheck size={16} />}
+                  onClick={handleApprove}
+                  loading={pendingAction === 'approve'}
+                  disabled={isBusy}
+                >
+                  {t('Approve & Execute')}
+                </Button>
+              </Group>
+            )}
+            {error && (
+              <Text size="xs" c="red">
+                {error}
+              </Text>
+            )}
+          </>
         )}
       </Stack>
     </Card>

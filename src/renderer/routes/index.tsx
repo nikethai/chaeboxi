@@ -123,6 +123,7 @@ function Index() {
         copilotId: agentIds?.[0] ?? session.copilotId,
         agentIds,
         agentMode: session.agentMode,
+        workspaceRoot: session.workspaceRoot,
         settings: session.settings,
       })
 
@@ -322,9 +323,11 @@ function Index() {
               sessionId="new"
               model={selectedModel}
               agentMode={session.agentMode ?? false}
+              workspaceRoot={session.workspaceRoot}
               initialMessage={composerDraft}
               onSelectModel={onSelectModel}
               onToggleAgentMode={(agentMode) => setSession((old) => ({ ...old, agentMode }))}
+              onWorkspaceRootChange={(workspaceRoot) => setSession((old) => ({ ...old, workspaceRoot }))}
               onClickSessionSettings={onClickSessionSettings}
               onSubmit={handleSubmit}
             />

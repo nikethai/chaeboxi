@@ -65,8 +65,8 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Gallery, Item as GalleryItem } from 'react-photoswipe-gallery'
-import Markdown from '@/components/Markdown'
 import SkillActivationsBar from '@/components/chat/SkillActivationsBar'
+import Markdown from '@/components/Markdown'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import { navigateToSettings } from '@/modals/Settings'
@@ -84,10 +84,13 @@ import { useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 import '../../static/Block.css'
 import {
+  approveAndExecutePlan,
   generateMore,
   modifyMessage,
   regenerateInNewFork,
+  rejectPlan,
   removeMessage,
+  requestPlanChanges,
   submitNewUserMessage,
 } from '@/stores/sessionActions'
 import * as toastActions from '@/stores/toastActions'
@@ -115,6 +118,9 @@ const ToolCallPartUI = isAgentEnabled
   : null
 const TodoAppCard = isAgentEnabled
   ? lazy(() => import('../message-parts/TodoAppCard').then((m) => ({ default: m.TodoAppCard })))
+  : null
+const PlanApproval = isAgentEnabled
+  ? lazy(() => import('../PlanApproval/PlanApproval').then((m) => ({ default: m.default })))
   : null
 
 import FollowUpSuggestions from '../search/FollowUpSuggestions'
@@ -240,6 +246,15 @@ const _Message: FC<Props> = (props) => {
   const onGenerateMore = useCallback(() => {
     generateMore(sessionId, msg.id)
   }, [sessionId, msg.id])
+
+  const onApprovePlan = useCallback(() => approveAndExecutePlan(sessionId, msg.id), [sessionId, msg.id])
+
+  const onRequestPlanChanges = useCallback(
+    (feedback: string) => requestPlanChanges(sessionId, msg.id, feedback),
+    [sessionId, msg.id]
+  )
+
+  const onRejectPlan = useCallback(() => rejectPlan(sessionId, msg.id), [sessionId, msg.id])
 
   const onCopyMsg = useCallback(() => {
     copyToClipboard(getMessageText(msg, true, false))
@@ -783,6 +798,17 @@ const _Message: FC<Props> = (props) => {
                         )}
                       </div>
                     )
+                  ) : group.part.type === 'plan' ? (
+                    PlanApproval ? (
+                      <Suspense fallback={null} key={`plan-approval-${msg.id}-${group.index}`}>
+                        <PlanApproval
+                          planPart={group.part}
+                          onApprove={onApprovePlan}
+                          onRequestChanges={onRequestPlanChanges}
+                          onReject={onRejectPlan}
+                        />
+                      </Suspense>
+                    ) : null
                   ) : group.part.type === 'tool-call' ? (
                     isTaskTrackingTool(group.part.toolName) ? (
                       groupIndex === firstTaskToolGroupIndex && TodoAppCard ? (

@@ -16,7 +16,7 @@ import { Accordion, AccordionDetails, AccordionSummary } from '@/components/Acco
 import TextFieldReset from '@/components/common/TextFieldReset'
 import { ShortcutConfig } from '@/components/Shortcut'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import { platformCapabilities } from '@/platform'
+import platform, { platformCapabilities } from '@/platform'
 import storage, { StorageKey } from '@/storage'
 import { migrateOnData } from '@/stores/migration'
 import { settingsStore, useSettingsStore } from '@/stores/settingsStore'

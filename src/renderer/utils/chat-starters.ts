@@ -1,12 +1,13 @@
 /**
  * Shared conversation starters for blank home + empty session thread.
- * Fill text is English source for the composer; titles/hints are i18n keys via t().
+ * Short chip labels (Gemini-style); fill text is English source for the composer.
  */
 
 export type ChatStarter = {
   n: string
-  /** i18n key or already-translated title (callers pass t()) */
+  /** Short chip label — already translated when built via t() */
   title: string
+  /** @deprecated kept for tests/back-compat; chips no longer show hints */
   hint: string
   /** Text inserted into the composer */
   fill: string
@@ -24,34 +25,31 @@ export type ChatStarterId = keyof typeof CHAT_STARTER_FILLS
 
 export type ChatStarterDef = {
   n: ChatStarterId
+  /** Short chip label i18n key */
   titleKey: string
-  hintKey: string
   fill: string
 }
 
+/** Gemini-style: short action labels, not essay titles */
 export const CHAT_STARTER_DEFS: ChatStarterDef[] = [
   {
     n: '01',
-    titleKey: 'Trace session store modules',
-    hintKey: 'Architecture · TypeScript',
+    titleKey: 'Review code',
     fill: CHAT_STARTER_FILLS['01'],
   },
   {
     n: '02',
-    titleKey: 'PR: kill MUI drawer',
-    hintKey: 'Write-up · shipping note',
+    titleKey: 'Write a PR',
     fill: CHAT_STARTER_FILLS['02'],
   },
   {
     n: '03',
-    titleKey: 'Stream cancel race',
-    hintKey: 'Debug · concurrency',
+    titleKey: 'Debug issue',
     fill: CHAT_STARTER_FILLS['03'],
   },
   {
     n: '04',
-    titleKey: 'Composer context meter',
-    hintKey: 'UX · tokens',
+    titleKey: 'Plan a feature',
     fill: CHAT_STARTER_FILLS['04'],
   },
 ]
@@ -60,7 +58,7 @@ export function buildChatStarters(t: (key: string) => string): ChatStarter[] {
   return CHAT_STARTER_DEFS.map((d) => ({
     n: d.n,
     title: t(d.titleKey),
-    hint: t(d.hintKey),
+    hint: '',
     fill: d.fill,
   }))
 }

@@ -1,6 +1,5 @@
-import { type FC, memo, useMemo } from 'react'
+import { type FC, memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { buildChatStarters } from '@/utils/chat-starters'
 
 export type EmptyThreadStateProps = {
   sessionName?: string
@@ -10,15 +9,14 @@ export type EmptyThreadStateProps = {
 }
 
 /**
- * Docked empty-thread content: short headline + shared starters.
- * Composer stays in the session dock (no layout flip on first send).
+ * Quiet empty-thread stage — greeting only (Gemini DNA).
+ * Composer stays in the session dock; no chips / tags / subcopy.
  */
-const EmptyThreadState: FC<EmptyThreadStateProps> = ({ sessionName, onPickStarter, compact = false }) => {
+const EmptyThreadState: FC<EmptyThreadStateProps> = ({ sessionName, compact = false }) => {
   const { t } = useTranslation()
-  const starters = useMemo(() => buildChatStarters(t), [t])
 
-  const title = sessionName && sessionName !== 'Untitled' ? sessionName : t('New thread')
-  const sub = t('Type below, or pick a starter to fill the composer.')
+  const hasName = Boolean(sessionName && sessionName !== 'Untitled')
+  const title = hasName ? sessionName! : t('What can I help with?')
 
   return (
     <div
@@ -26,51 +24,9 @@ const EmptyThreadState: FC<EmptyThreadStateProps> = ({ sessionName, onPickStarte
       role="region"
       aria-label={t('Empty conversation')}
     >
-      <div className="empty-thread-copy">
-        <h2 className="empty-thread-title">{title}</h2>
-        <p className="empty-thread-sub">{sub}</p>
+      <div className="empty-thread-stage">
+        <h2 className="empty-thread-title blank-enter">{title}</h2>
       </div>
-
-      {!compact && (
-        <div className="blank-starters empty-thread-starters" role="list">
-          <header className="blank-starters-head">
-            <span>{t('Starters')}</span>
-            <span>{t('press to fill')}</span>
-          </header>
-          {starters.map((s, i) => (
-            <button
-              key={s.n}
-              type="button"
-              className="blank-starter"
-              role="listitem"
-              style={{ animationDelay: `${i * 80}ms` }}
-              onClick={() => onPickStarter(s.fill)}
-            >
-              <span className="blank-starter-n">{s.n}</span>
-              <span>
-                <span className="blank-starter-t">{s.title}</span>
-                <span className="blank-starter-h">{s.hint}</span>
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {compact && (
-        <div className="empty-thread-chips" role="list">
-          {starters.slice(0, 3).map((s) => (
-            <button
-              key={s.n}
-              type="button"
-              className="empty-thread-chip"
-              role="listitem"
-              onClick={() => onPickStarter(s.fill)}
-            >
-              {s.title}
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

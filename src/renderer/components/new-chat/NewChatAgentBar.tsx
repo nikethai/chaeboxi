@@ -86,7 +86,7 @@ function NewChatAgentBar({ agents, selectedIds, onChange, className }: NewChatAg
   }
 
   return (
-    <Box className={clsx('chat-col', className)}>
+    <Box className={clsx('chat-col new-chat-agent-bar', className)}>
       <Stack gap="xs" className="w-full">
         <Flex align="center" justify="space-between" gap="sm" wrap="wrap">
           <Text
@@ -97,7 +97,7 @@ function NewChatAgentBar({ agents, selectedIds, onChange, className }: NewChatAg
           >
             {t('My Agents')}
           </Text>
-          <Text size="xs" c="chatbox-tertiary" className="shrink-0">
+          <Text size="xs" c="chatbox-tertiary" className="shrink-0 tabular-nums">
             {t('Select up to {{n}} for a team', { n: MAX_ROOM_AGENTS })}
           </Text>
         </Flex>
@@ -125,6 +125,7 @@ function NewChatAgentBar({ agents, selectedIds, onChange, className }: NewChatAg
                     size="sm"
                     variant="subtle"
                     color="gray"
+                    className="new-chat-agent-hit"
                     onClick={() => setQuery('')}
                     aria-label={t('Clear')}
                   >
@@ -140,9 +141,10 @@ function NewChatAgentBar({ agents, selectedIds, onChange, className }: NewChatAg
               onClick={() => combobox.openDropdown()}
               onFocus={() => combobox.openDropdown()}
               onBlur={() => combobox.closeDropdown()}
+              classNames={{ input: 'new-chat-agent-search' }}
               styles={{
                 input: {
-                  borderRadius: isSmallScreen ? 999 : 8,
+                  borderRadius: isSmallScreen ? 999 : 'var(--chatbox-radius-sm)',
                 },
               }}
             />
@@ -206,6 +208,7 @@ function NewChatAgentBar({ agents, selectedIds, onChange, className }: NewChatAg
                 radius="md"
                 c="chatbox-tertiary"
                 variant="subtle"
+                className="new-chat-agent-hit transition-transform duration-150 ease-out active:scale-[0.96]"
                 onClick={clearAll}
                 aria-label={t('Clear agents')}
               >
@@ -249,11 +252,10 @@ function AgentChip({
       gap={isSmallScreen ? 'xxs' : 'xs'}
       py="xs"
       px={isSmallScreen ? 'xs' : 'md'}
-      bd={selected ? 'none' : '1px solid var(--chatbox-border-primary)'}
-      bg={selected ? 'var(--chatbox-background-brand-secondary)' : 'transparent'}
+      bg={selected ? 'var(--chatbox-background-brand-secondary)' : 'var(--chatbox-background-secondary)'}
       className={clsx(
-        'shrink-0 shadow-[0px_2px_12px_0px_rgba(0,0,0,0.04)]',
-        isSmallScreen ? 'rounded-full' : 'rounded-md'
+        'shrink-0 new-chat-agent-chip transition-transform duration-150 ease-out active:scale-[0.96]',
+        isSmallScreen ? 'rounded-full' : 'rounded-[var(--chatbox-radius-sm)]'
       )}
     >
       <Avatar src={emojiAvatar ? undefined : picUrl} color="chatbox-brand" size={isSmallScreen ? 20 : 24}>
@@ -264,9 +266,10 @@ function AgentChip({
       </Text>
       {onRemove ? (
         <ActionIcon
-          size="xs"
+          size="sm"
           variant="subtle"
           color="gray"
+          className="new-chat-agent-hit"
           onClick={(e) => {
             e.stopPropagation()
             onRemove()

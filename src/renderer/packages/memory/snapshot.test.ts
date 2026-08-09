@@ -1,8 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { normalizeBank } from '@/packages/memory/clone'
 import * as persistence from '@/packages/memory/persistence'
+import {
+  buildMemorySyncSnapshot,
+  parseMemorySyncSnapshot,
+  serializeMemorySyncSnapshot,
+} from '@/packages/memory/snapshot'
 import storage from '@/storage'
-import type { MemoryBank } from '@shared/types/memory'
+import { defaultMemorySettings, emptyMemoryBank, type MemoryBank } from '@shared/types/memory'
 
 describe('normalizeBank sync fields', () => {
   it('preserves revision and deleted flags', () => {
@@ -74,5 +79,28 @@ describe('loadAllAgentBanks', () => {
     const result = await persistence.loadAllAgentBanks()
 
     expect(result).toEqual([{ agentId: 'agent-1', bank }])
+  })
+})
+
+describe('memory sync snapshot', () => {
+  it('round-trips settings, global bank, and agent banks', () => {
+    const settings = defaultMemorySettings()
+    const globalBank = emptyMemoryBank('global')
+    const agentBank = emptyMemoryBank('agent', 'agent-1')
+
+    const snapshot = buildMemorySyncSnapshot({
+      settings,
+      globalBank,
+      agentBanks: [{ agentId: 'agent-1', bank: agentBank }],
+    })
+
+    const reparsed = parseMemorySyncSnapshot(serializeMemorySyncSnapshot(snapshot))
+
+    expect(reparsed.schemaVersion).toBe(1)
+    expect(reparsed.settings).toEqual(settings)
+    expect(reparsed.globalBank).toEqual(globalBank)
+    expect(reparsed.agentBanks).toHaveLength(1)
+    expect(reparsed.agentBanks[0].agentId).toBe('agent-1')
+    expect(reparsed.agentBanks[0].bank).toEqual(agentBank)
   })
 })

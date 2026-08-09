@@ -12,6 +12,7 @@ import { navigateToSettings } from '@/modals/Settings'
 import { collapsedProvidersAtom } from '@/stores/atoms/uiAtoms'
 import { ScalableIcon } from '../common/ScalableIcon'
 import { ProviderHeader } from './ProviderHeader'
+import { shouldShowProviderSetup } from './mobileModelSelectorUtils'
 import { groupFavoriteModels, ModelItemInDrawer, SELECTED_BG_CLASS } from './shared'
 
 type FilteredProvider = {
@@ -19,18 +20,6 @@ type FilteredProvider = {
   name: string
   isCustom?: boolean
   models?: ProviderModelInfo[]
-}
-
-export function shouldShowProviderSetup({
-  search,
-  providerCount,
-  showAuto,
-}: {
-  search: string
-  providerCount: number
-  showAuto?: boolean
-}): boolean {
-  return !search && providerCount === 0 && !showAuto
 }
 
 interface MobileModelSelectorProps {

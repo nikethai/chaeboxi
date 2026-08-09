@@ -1,9 +1,5 @@
-/**
- * @vitest-environment jsdom
- */
-
 import { describe, expect, test } from 'vitest'
-import { shouldShowProviderSetup } from './MobileModelSelector'
+import { shouldShowProviderSetup } from './mobileModelSelectorUtils'
 
 describe('shouldShowProviderSetup', () => {
   test('keeps the Auto fallback available when no providers are configured', () => {

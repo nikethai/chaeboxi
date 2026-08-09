@@ -1,5 +1,5 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: <todo> */
-import { Flex, Stack, Text, Title } from '@mantine/core'
+import { Flex, Text } from '@mantine/core'
 import { SystemProviders } from '@shared/defaults'
 import { IconSelector } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
@@ -7,6 +7,11 @@ import { forwardRef, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import ModelSelector from '@/components/ModelSelector'
+import { SettingsCard } from '@/components/settings/SettingsCard'
+import { SettingsPage } from '@/components/settings/SettingsPage'
+import { SettingsPageHeader } from '@/components/settings/SettingsPageHeader'
+import { SettingsPrefRow } from '@/components/settings/SettingsPrefRow'
+import { SettingsSection } from '@/components/settings/SettingsSection'
 import { useSettingsStore } from '@/stores/settingsStore'
 
 export const Route = createFileRoute('/settings/default-models')({
@@ -18,155 +23,158 @@ export function RouteComponent() {
   const { setSettings, ...settings } = useSettingsStore((state) => state)
 
   return (
-    <Stack p="md" gap="xl">
-      <Title order={5}>{t('Default Models')}</Title>
+    <SettingsPage>
+      <SettingsPageHeader
+        title={t('Default Models')}
+        description={t('Models used when a session does not pick one explicitly.')}
+      />
 
-      <Stack gap="xs">
-        <Text fw={600}>{t('Default Chat Model')}</Text>
-
-        <ModelSelector
-          position="bottom-start"
-          transitionProps={{
-            transition: 'fade-down',
-            duration: 200,
-          }}
-          keepMounted
-          width={320}
-          showAuto={true}
-          autoText={t('Auto (Use Last Used)')!}
-          selectedProviderId={settings.defaultChatModel?.provider}
-          selectedModelId={settings.defaultChatModel?.model}
-          searchPosition="top"
-          onSelect={(provider, model) => {
-            console.log(provider, model)
-            setSettings({
-              defaultChatModel:
-                provider && model
-                  ? {
-                      provider,
-                      model,
-                    }
-                  : undefined,
-            })
-          }}
-        >
-          <ModelSelectContent
-            autoText={t('Auto (Use Last Used)')!}
-            provider={settings.defaultChatModel?.provider}
-            model={settings.defaultChatModel?.model}
+      <SettingsSection title={t('Models')}>
+        <SettingsCard divided>
+          <SettingsPrefRow
+            title={t('Default Chat Model')}
+            description={t('Chatbox will use this model as the default for new chats.')}
+            align="start"
+            control={
+              <ModelSelector
+                position="bottom-start"
+                transitionProps={{
+                  transition: 'fade-down',
+                  duration: 200,
+                }}
+                keepMounted
+                width={280}
+                showAuto={true}
+                autoText={t('Auto (Use Last Used)')!}
+                selectedProviderId={settings.defaultChatModel?.provider}
+                selectedModelId={settings.defaultChatModel?.model}
+                searchPosition="top"
+                onSelect={(provider, model) => {
+                  setSettings({
+                    defaultChatModel:
+                      provider && model
+                        ? {
+                            provider,
+                            model,
+                          }
+                        : undefined,
+                  })
+                }}
+              >
+                <ModelSelectContent
+                  autoText={t('Auto (Use Last Used)')!}
+                  provider={settings.defaultChatModel?.provider}
+                  model={settings.defaultChatModel?.model}
+                />
+              </ModelSelector>
+            }
           />
-        </ModelSelector>
 
-        <Text c="chatbox-tertiary" size="xs">
-          {t('Chatbox will use this model as the default for new chats.')}
-        </Text>
-      </Stack>
-
-      <Stack gap="xs">
-        <Text fw={600}>{t('Default Thread Naming Model')}</Text>
-
-        <ModelSelector
-          position="bottom-start"
-          width={320}
-          showAuto={true}
-          autoText={t('Auto (Use Chat Model)')!}
-          selectedProviderId={settings.threadNamingModel?.provider}
-          selectedModelId={settings.threadNamingModel?.model}
-          searchPosition="top"
-          onSelect={(provider, model) =>
-            setSettings({
-              threadNamingModel:
-                provider && model
-                  ? {
-                      provider,
-                      model,
-                    }
-                  : undefined,
-            })
-          }
-        >
-          <ModelSelectContent
-            autoText={t('Auto (Use Chat Model)')!}
-            provider={settings.threadNamingModel?.provider}
-            model={settings.threadNamingModel?.model}
+          <SettingsPrefRow
+            title={t('Default Thread Naming Model')}
+            description={t('Chatbox will automatically use this model to rename threads.')}
+            align="start"
+            control={
+              <ModelSelector
+                position="bottom-start"
+                width={280}
+                showAuto={true}
+                autoText={t('Auto (Use Chat Model)')!}
+                selectedProviderId={settings.threadNamingModel?.provider}
+                selectedModelId={settings.threadNamingModel?.model}
+                searchPosition="top"
+                onSelect={(provider, model) =>
+                  setSettings({
+                    threadNamingModel:
+                      provider && model
+                        ? {
+                            provider,
+                            model,
+                          }
+                        : undefined,
+                  })
+                }
+              >
+                <ModelSelectContent
+                  autoText={t('Auto (Use Chat Model)')!}
+                  provider={settings.threadNamingModel?.provider}
+                  model={settings.threadNamingModel?.model}
+                />
+              </ModelSelector>
+            }
           />
-        </ModelSelector>
 
-        <Text c="chatbox-tertiary" size="xs">
-          {t('Chatbox will automatically use this model to rename threads.')}
-        </Text>
-      </Stack>
-
-      <Stack gap="xs">
-        <Text fw={600}>{t('Search Term Construction Model')}</Text>
-
-        <ModelSelector
-          position="bottom-start"
-          width={320}
-          showAuto={true}
-          autoText={t('Auto (Use Chat Model)')!}
-          selectedProviderId={settings.searchTermConstructionModel?.provider}
-          selectedModelId={settings.searchTermConstructionModel?.model}
-          searchPosition="top"
-          onSelect={(provider, model) =>
-            setSettings({
-              searchTermConstructionModel:
-                provider && model
-                  ? {
-                      provider,
-                      model,
-                    }
-                  : undefined,
-            })
-          }
-        >
-          <ModelSelectContent
-            autoText={t('Auto (Use Chat Model)')!}
-            provider={settings.searchTermConstructionModel?.provider}
-            model={settings.searchTermConstructionModel?.model}
+          <SettingsPrefRow
+            title={t('Search Term Construction Model')}
+            description={t('Chatbox will automatically use this model to construct search term.')}
+            align="start"
+            control={
+              <ModelSelector
+                position="bottom-start"
+                width={280}
+                showAuto={true}
+                autoText={t('Auto (Use Chat Model)')!}
+                selectedProviderId={settings.searchTermConstructionModel?.provider}
+                selectedModelId={settings.searchTermConstructionModel?.model}
+                searchPosition="top"
+                onSelect={(provider, model) =>
+                  setSettings({
+                    searchTermConstructionModel:
+                      provider && model
+                        ? {
+                            provider,
+                            model,
+                          }
+                        : undefined,
+                  })
+                }
+              >
+                <ModelSelectContent
+                  autoText={t('Auto (Use Chat Model)')!}
+                  provider={settings.searchTermConstructionModel?.provider}
+                  model={settings.searchTermConstructionModel?.model}
+                />
+              </ModelSelector>
+            }
           />
-        </ModelSelector>
 
-        <Text c="chatbox-tertiary" size="xs">
-          {t('Chatbox will automatically use this model to construct search term.')}
-        </Text>
-      </Stack>
-      <Stack gap="xs">
-        <Text fw={600}>{t('OCR Model')}</Text>
-
-        <ModelSelector
-          position="bottom-start"
-          showAuto={true}
-          autoText={t('None')!}
-          width={320}
-          modelFilter={(model) => model.capabilities?.includes('vision') ?? false}
-          selectedProviderId={settings.ocrModel?.provider}
-          selectedModelId={settings.ocrModel?.model}
-          searchPosition="top"
-          onSelect={(provider, model) =>
-            setSettings({
-              ocrModel:
-                provider && model
-                  ? {
-                      provider,
-                      model,
-                    }
-                  : undefined,
-            })
-          }
-        >
-          <ModelSelectContent
-            autoText={t('None')!}
-            provider={settings.ocrModel?.provider}
-            model={settings.ocrModel?.model}
+          <SettingsPrefRow
+            title={t('OCR Model')}
+            description={t('Chatbox OCRs images with this model and sends the text to models without image support.')}
+            align="start"
+            control={
+              <ModelSelector
+                position="bottom-start"
+                showAuto={true}
+                autoText={t('None')!}
+                width={280}
+                modelFilter={(model) => model.capabilities?.includes('vision') ?? false}
+                selectedProviderId={settings.ocrModel?.provider}
+                selectedModelId={settings.ocrModel?.model}
+                searchPosition="top"
+                onSelect={(provider, model) =>
+                  setSettings({
+                    ocrModel:
+                      provider && model
+                        ? {
+                            provider,
+                            model,
+                          }
+                        : undefined,
+                  })
+                }
+              >
+                <ModelSelectContent
+                  autoText={t('None')!}
+                  provider={settings.ocrModel?.provider}
+                  model={settings.ocrModel?.model}
+                />
+              </ModelSelector>
+            }
           />
-        </ModelSelector>
-
-        <Text c="chatbox-tertiary" size="xs">
-          {t('Chatbox OCRs images with this model and sends the text to models without image support.')}
-        </Text>
-      </Stack>
-    </Stack>
+        </SettingsCard>
+      </SettingsSection>
+    </SettingsPage>
   )
 }
 
@@ -196,14 +204,14 @@ const ModelSelectContent = forwardRef<
       component="button"
       align="center"
       c="chatbox-tertiary"
-      w={320}
-      className="border-solid border border-chatbox-border-primary rounded-sm cursor-pointer bg-transparent"
+      w={280}
+      className="settings-model-trigger border-solid border border-chatbox-border-primary cursor-pointer"
       onClick={onClick}
     >
-      <Text span flex={1} className=" text-left">
+      <Text span flex={1} className="text-left" lineClamp={1}>
         {displayText}
       </Text>
-      <ScalableIcon icon={IconSelector} className=" text-inherit" />
+      <ScalableIcon icon={IconSelector} className="text-inherit" />
     </Flex>
   )
 })

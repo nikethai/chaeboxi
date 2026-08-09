@@ -13,7 +13,6 @@ import {
   Text,
   Textarea,
   TextInput,
-  Title,
   Tooltip,
 } from '@mantine/core'
 import { SystemProviders } from '@shared/defaults'
@@ -29,7 +28,6 @@ import {
   IconCircleCheck,
   IconDiscount2,
   IconExternalLink,
-  IconHelpCircle,
   IconPlus,
   IconRefresh,
   IconRestore,
@@ -47,6 +45,11 @@ import { AdaptiveModal } from '@/components/common/AdaptiveModal'
 import PopoverConfirm from '@/components/common/PopoverConfirm'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import { ModelList } from '@/components/ModelList'
+import { SettingsCard } from '@/components/settings/SettingsCard'
+import { SettingsPage } from '@/components/settings/SettingsPage'
+import { SettingsPageHeader } from '@/components/settings/SettingsPageHeader'
+import { SettingsCollapsible } from '@/components/settings/SettingsCollapsible'
+import { SettingsSection } from '@/components/settings/SettingsSection'
 import { getModelSettingUtil } from '@/packages/model-setting-utils'
 import platform from '@/platform'
 import { useLanguage, useProviderSettings, useSettingsStore } from '@/stores/settingsStore'
@@ -94,47 +97,62 @@ function ImagePromptPrependSection({
   setProviderSettings: (val: any) => void
 }) {
   const { t } = useTranslation()
+  const hasValues = Boolean(
+    providerSettings?.imagePromptCharacterPrepend?.trim() || providerSettings?.imagePromptPositiveTagsPrepend?.trim()
+  )
+  const [open, setOpen] = useState(hasValues)
 
   return (
-    <Stack gap="md">
-      <Stack gap="xxs">
-        <Text span fw="600">
-          {t('Image Character Prepend')}
-        </Text>
-        <Textarea
-          autosize
-          minRows={2}
-          value={providerSettings?.imagePromptCharacterPrepend || ''}
-          placeholder={String(t('Character name, traits, outfit, pose, and other reusable character tags'))}
-          onChange={(e) =>
-            setProviderSettings({
-              imagePromptCharacterPrepend: e.currentTarget.value,
-            })
-          }
-        />
-      </Stack>
-
-      <Stack gap="xxs">
-        <Text span fw="600">
-          {t('Image Positive Tags Prepend')}
-        </Text>
-        <Textarea
-          autosize
-          minRows={2}
-          value={providerSettings?.imagePromptPositiveTagsPrepend || ''}
-          placeholder={String(t('Reusable positive quality/style tags'))}
-          onChange={(e) =>
-            setProviderSettings({
-              imagePromptPositiveTagsPrepend: e.currentTarget.value,
-            })
-          }
-        />
-      </Stack>
-
-      <Text size="xs" c="chatbox-secondary">
-        {t('These values are prepended only for Image Creator requests and do not rewrite saved history prompts.')}
-      </Text>
-    </Stack>
+    <SettingsSection
+      title={t('Image Creator')}
+      description={t('Optional prepends for Image Creator only — does not rewrite saved history prompts.')}
+    >
+      <SettingsCard>
+        <button
+          type="button"
+          className="settings-collapsible-trigger"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+        >
+          <span>{open ? t('Hide advanced defaults') : t('Show advanced defaults')}</span>
+          <span className="settings-collapsible-chevron" data-open={open ? 'true' : undefined}>
+            ›
+          </span>
+        </button>
+        {open && (
+          <div className="settings-card-fields" style={{ paddingTop: 0 }}>
+            <div className="settings-field">
+              <span className="settings-field-label">{t('Image Character Prepend')}</span>
+              <Textarea
+                autosize
+                minRows={2}
+                value={providerSettings?.imagePromptCharacterPrepend || ''}
+                placeholder={String(t('Character name, traits, outfit, pose, and other reusable character tags'))}
+                onChange={(e) =>
+                  setProviderSettings({
+                    imagePromptCharacterPrepend: e.currentTarget.value,
+                  })
+                }
+              />
+            </div>
+            <div className="settings-field">
+              <span className="settings-field-label">{t('Image Positive Tags Prepend')}</span>
+              <Textarea
+                autosize
+                minRows={2}
+                value={providerSettings?.imagePromptPositiveTagsPrepend || ''}
+                placeholder={String(t('Reusable positive quality/style tags'))}
+                onChange={(e) =>
+                  setProviderSettings({
+                    imagePromptPositiveTagsPrepend: e.currentTarget.value,
+                  })
+                }
+              />
+            </div>
+          </div>
+        )}
+      </SettingsCard>
+    </SettingsSection>
   )
 }
 
@@ -468,108 +486,107 @@ function ProviderSettings({ providerId }: { providerId: string }) {
   }
 
   return (
-    <Stack key={baseInfo.id} gap="xxl">
-      <Flex gap="xs" align="center">
-        <Title order={3} c="chatbox-secondary">
-          {t(baseInfo.name)}
-        </Title>
-        {baseInfo.urls?.website && (
-          <Button
-            variant="transparent"
-            c="chatbox-tertiary"
-            px={0}
-            h={24}
-            onClick={() => platform.openLink(baseInfo.urls!.website!)}
-          >
-            <ScalableIcon icon={IconExternalLink} size={24} />
-          </Button>
-        )}
-        {baseInfo.isCustom && (
-          <PopoverConfirm
-            title={t('Confirm to delete this custom provider?')}
-            confirmButtonColor="chatbox-error"
-            onConfirm={() => {
-              setSettings({
-                customProviders: settings.customProviders?.filter((p) => p.id !== baseInfo.id),
-              })
-              navigate({ to: './..' as any, replace: true })
-            }}
-          >
-            <Button
-              variant="transparent"
-              size="compact-xs"
-              leftSection={<ScalableIcon icon={IconTrash} size={24} />}
-              color="chatbox-error"
-            ></Button>
-          </PopoverConfirm>
-        )}
-      </Flex>
-      {baseInfo.isCustom && language === 'zh-Hans' && (
-        <Flex>
-          <ScalableIcon icon={IconHelpCircle} />
-          <Text span size="xs" c="chatbox-tertiary">
+    <SettingsPage wide key={baseInfo.id} className="settings-provider-detail">
+      <SettingsPageHeader
+        title={t(baseInfo.name)}
+        description={
+          baseInfo.isCustom && language === 'zh-Hans' ? (
             <a href="https://docs.chatboxai.app/guides/providers" target="_blank" rel="noopener">
               {t('Setup guide')}
             </a>
-          </Text>
-        </Flex>
-      )}
+          ) : undefined
+        }
+        actions={
+          <Flex gap="xs" align="center">
+            {baseInfo.urls?.website && (
+              <Button
+                variant="default"
+                size="compact-sm"
+                leftSection={<ScalableIcon icon={IconExternalLink} size={16} />}
+                onClick={() => platform.openLink(baseInfo.urls!.website!)}
+              >
+                {t('Website')}
+              </Button>
+            )}
+            {baseInfo.isCustom && (
+              <PopoverConfirm
+                title={t('Confirm to delete this custom provider?')}
+                confirmButtonColor="chatbox-error"
+                onConfirm={() => {
+                  setSettings({
+                    customProviders: settings.customProviders?.filter((p) => p.id !== baseInfo.id),
+                  })
+                  navigate({ to: './..' as any, replace: true })
+                }}
+              >
+                <Button
+                  variant="default"
+                  size="compact-sm"
+                  leftSection={<ScalableIcon icon={IconTrash} size={16} />}
+                  color="chatbox-error"
+                >
+                  {t('Delete')}
+                </Button>
+              </PopoverConfirm>
+            )}
+          </Flex>
+        }
+      />
 
-      <Stack gap="xl">
+      <Stack gap="md">
         {/* custom provider base info */}
         {baseInfo.isCustom && (
-          <>
-            <Stack gap="xxs">
-              <Text span fw="600">
-                {t('Name')}
-              </Text>
-              <TextInput
-                flex={1}
-                value={baseInfo.name}
-                onChange={(e) => {
-                  setSettings({
-                    customProviders: settings.customProviders?.map((p) =>
-                      p.id === baseInfo.id ? { ...p, name: e.currentTarget.value } : p
-                    ),
-                  })
-                }}
-              />
-            </Stack>
-
-            <Stack gap="xxs">
-              <Text span fw="600">
-                {t('API Mode')}
-              </Text>
-              <AdaptiveSelect
-                value={baseInfo.type}
-                onChange={(value) => {
-                  setSettings({
-                    customProviders: settings.customProviders?.map((p) =>
-                      p.id === baseInfo.id ? { ...p, type: value as ModelProviderType } : p
-                    ),
-                  })
-                }}
-                data={[
-                  {
-                    value: ModelProviderType.OpenAI,
-                    label: t('OpenAI API Compatible'),
-                  },
-                  {
-                    value: ModelProviderType.OpenAIResponses,
-                    label: t('OpenAI Responses API Compatible'),
-                  },
-                  {
-                    value: ModelProviderType.Claude,
-                    label: t('Claude API Compatible'),
-                  },
-                  {
-                    value: ModelProviderType.Gemini,
-                    label: t('Google Gemini API Compatible'),
-                  },
-                ]}
-              />
-            </Stack>
-          </>
+          <SettingsSection title={t('Provider')}>
+            <SettingsCard>
+              <div className="settings-card-fields">
+                <div className="settings-field">
+                  <span className="settings-field-label">{t('Name')}</span>
+                  <TextInput
+                    flex={1}
+                    value={baseInfo.name}
+                    onChange={(e) => {
+                      setSettings({
+                        customProviders: settings.customProviders?.map((p) =>
+                          p.id === baseInfo.id ? { ...p, name: e.currentTarget.value } : p
+                        ),
+                      })
+                    }}
+                  />
+                </div>
+                <div className="settings-field">
+                  <span className="settings-field-label">{t('API Mode')}</span>
+                  <AdaptiveSelect
+                    value={baseInfo.type}
+                    onChange={(value) => {
+                      setSettings({
+                        customProviders: settings.customProviders?.map((p) =>
+                          p.id === baseInfo.id ? { ...p, type: value as ModelProviderType } : p
+                        ),
+                      })
+                    }}
+                    data={[
+                      {
+                        value: ModelProviderType.OpenAI,
+                        label: t('OpenAI API Compatible'),
+                      },
+                      {
+                        value: ModelProviderType.OpenAIResponses,
+                        label: t('OpenAI Responses API Compatible'),
+                      },
+                      {
+                        value: ModelProviderType.Claude,
+                        label: t('Claude API Compatible'),
+                      },
+                      {
+                        value: ModelProviderType.Gemini,
+                        label: t('Google Gemini API Compatible'),
+                      },
+                    ]}
+                  />
+                </div>
+              </div>
+            </SettingsCard>
+          </SettingsSection>
         )}
 
         {/* Provider description — dual-auth providers have their own help copy */}
@@ -584,218 +601,231 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           </Stack>
         )}
 
-        {/* xAI dual auth: SuperGrok/X Premium OAuth or developer API key */}
-        {baseInfo.id === ModelProviderEnum.XAI && (
-          <XaiAuthSection providerSettings={providerSettings} setProviderSettings={setProviderSettings} />
-        )}
+        <SettingsSection title={t('Connection')}>
+          <SettingsCard>
+            <div className="settings-card-fields">
+              {/* xAI dual auth: SuperGrok/X Premium OAuth or developer API key */}
+              {baseInfo.id === ModelProviderEnum.XAI && (
+                <XaiAuthSection providerSettings={providerSettings} setProviderSettings={setProviderSettings} />
+              )}
 
-        {/* OpenAI dual auth: ChatGPT subscription (Codex) or Platform API key */}
-        {baseInfo.id === ModelProviderEnum.OpenAI && (
-          <OpenAICodexAuthSection
-            providerSettings={providerSettings}
-            setProviderSettings={setProviderSettings}
-          />
-        )}
+              {/* OpenAI dual auth: ChatGPT subscription (Codex) or Platform API key */}
+              {baseInfo.id === ModelProviderEnum.OpenAI && (
+                <OpenAICodexAuthSection
+                  providerSettings={providerSettings}
+                  setProviderSettings={setProviderSettings}
+                />
+              )}
 
-        {/* Gemini dual auth: Antigravity Google OAuth or AI Studio API key */}
-        {baseInfo.id === ModelProviderEnum.Gemini && (
-          <GeminiAntigravityAuthSection
-            providerSettings={providerSettings}
-            setProviderSettings={setProviderSettings}
-          />
-        )}
+              {/* Gemini dual auth: Antigravity Google OAuth or AI Studio API key */}
+              {baseInfo.id === ModelProviderEnum.Gemini && (
+                <GeminiAntigravityAuthSection
+                  providerSettings={providerSettings}
+                  setProviderSettings={setProviderSettings}
+                />
+              )}
 
-        {/* QwenCloud plan presets (Token Plan, Coding Plan, Standard) */}
-        {baseInfo.id === ModelProviderEnum.Qwen && (
-          <QwenPlanSelector providerSettings={providerSettings} setProviderSettings={setProviderSettings} />
-        )}
+              {/* QwenCloud plan presets (Token Plan, Coding Plan, Standard) */}
+              {baseInfo.id === ModelProviderEnum.Qwen && (
+                <QwenPlanSelector providerSettings={providerSettings} setProviderSettings={setProviderSettings} />
+              )}
 
-        {/* API Key — hidden for subscription OAuth mode */}
-        {!isNoApiKeyProvider && !isSubscriptionOAuthMode && (
-          <Stack gap="xxs">
-            <Text span fw="600">
-              {baseInfo.id === ModelProviderEnum.Qwen
-                ? t(getQwenKeyLabel(providerSettings))
-                : t('API Key')}
-            </Text>
-            <Flex gap="xs" align="center">
-              <PasswordInput
-                flex={1}
-                value={providerSettings?.apiKey || ''}
-                onChange={handleApiKeyChange}
-                placeholder={
-                  baseInfo.id === ModelProviderEnum.Qwen ? getQwenKeyPlaceholder(providerSettings) : undefined
-                }
-              />
-              <Tooltip
-                disabled={(!!providerSettings?.apiKey || isSubscriptionOAuthSignedIn) && displayModels.length > 0}
-                label={
-                  !providerSettings?.apiKey && !isSubscriptionOAuthSignedIn
-                    ? t('API Key is required to check connection')
-                    : displayModels.length === 0
-                      ? t('Add at least one model to check connection')
-                      : null
-                }
-              >
-                <Button
-                  size="sm"
-                  disabled={(!providerSettings?.apiKey && !isSubscriptionOAuthSignedIn) || displayModels.length === 0}
-                  loading={modelTestResult?.testing || false}
-                  onClick={() => setShowTestModelSelector(true)}
-                >
-                  {t('Check')}
-                </Button>
-              </Tooltip>
-            </Flex>
-            {baseInfo.id === ModelProviderEnum.Qwen && (
-              <Text size="xs" c="chatbox-secondary">
-                {t('Token Plan and Coding Plan keys start with sk-sp- and only work with the matching endpoint.')}
-              </Text>
+              {/* API Key — hidden for subscription OAuth mode */}
+              {!isNoApiKeyProvider && !isSubscriptionOAuthMode && (
+                <div className="settings-field">
+                  <span className="settings-field-label">
+                    {baseInfo.id === ModelProviderEnum.Qwen ? t(getQwenKeyLabel(providerSettings)) : t('API Key')}
+                  </span>
+                  <Flex gap="xs" align="center">
+                    <PasswordInput
+                      flex={1}
+                      value={providerSettings?.apiKey || ''}
+                      onChange={handleApiKeyChange}
+                      placeholder={
+                        baseInfo.id === ModelProviderEnum.Qwen ? getQwenKeyPlaceholder(providerSettings) : undefined
+                      }
+                    />
+                    <Tooltip
+                      disabled={(!!providerSettings?.apiKey || isSubscriptionOAuthSignedIn) && displayModels.length > 0}
+                      label={
+                        !providerSettings?.apiKey && !isSubscriptionOAuthSignedIn
+                          ? t('API Key is required to check connection')
+                          : displayModels.length === 0
+                            ? t('Add at least one model to check connection')
+                            : null
+                      }
+                    >
+                      <Button
+                        size="sm"
+                        variant="default"
+                        disabled={
+                          (!providerSettings?.apiKey && !isSubscriptionOAuthSignedIn) || displayModels.length === 0
+                        }
+                        loading={modelTestResult?.testing || false}
+                        onClick={() => setShowTestModelSelector(true)}
+                      >
+                        {t('Check')}
+                      </Button>
+                    </Tooltip>
+                  </Flex>
+                  {baseInfo.id === ModelProviderEnum.Qwen && (
+                    <span className="settings-field-hint">
+                      {t('Token Plan and Coding Plan keys start with sk-sp- and only work with the matching endpoint.')}
+                    </span>
+                  )}
+                  {baseInfo.urls?.apiKey &&
+                    baseInfo.id !== ModelProviderEnum.Qwen &&
+                    baseInfo.id !== ModelProviderEnum.XAI &&
+                    baseInfo.id !== ModelProviderEnum.OpenAI &&
+                    baseInfo.id !== ModelProviderEnum.Gemini && (
+                      <Button
+                        variant="subtle"
+                        size="compact-xs"
+                        className="self-start"
+                        leftSection={<ScalableIcon icon={IconExternalLink} size={14} />}
+                        onClick={() => platform.openLink(baseInfo.urls!.apiKey!)}
+                      >
+                        {t('Get API Key')}
+                      </Button>
+                    )}
+                </div>
+              )}
+
+              {/* Subscription OAuth: Check connection without API key field */}
+              {isSubscriptionOAuthMode && (
+                <div className="settings-field">
+                  <span className="settings-field-label">{t('Connection')}</span>
+                  <Flex gap="xs" align="center" wrap="wrap">
+                    <Tooltip
+                      disabled={isSubscriptionOAuthSignedIn && displayModels.length > 0}
+                      label={
+                        !isSubscriptionOAuthSignedIn
+                          ? t('Sign in to check connection')
+                          : displayModels.length === 0
+                            ? t('Add at least one model to check connection')
+                            : null
+                      }
+                    >
+                      <Button
+                        size="sm"
+                        variant="default"
+                        disabled={!isSubscriptionOAuthSignedIn || displayModels.length === 0}
+                        loading={modelTestResult?.testing || false}
+                        onClick={() => setShowTestModelSelector(true)}
+                      >
+                        {t('Check')}
+                      </Button>
+                    </Tooltip>
+                    {isXaiOAuthMode && resolveXaiBearer(providerSettings) ? (
+                      <Text size="xs" c="chatbox-tertiary">
+                        {t('Uses your SuperGrok / X Premium session')}
+                      </Text>
+                    ) : null}
+                    {isOpenAICodexOAuthMode && resolveOpenAIBearer(providerSettings) ? (
+                      <Text size="xs" c="chatbox-tertiary">
+                        {t('Uses your ChatGPT subscription')}
+                      </Text>
+                    ) : null}
+                    {isGeminiAntigravityOAuthMode && resolveGeminiCredential(providerSettings) ? (
+                      <Text size="xs" c="chatbox-tertiary">
+                        {t('Uses your Google / Antigravity session')}
+                      </Text>
+                    ) : null}
+                  </Flex>
+                </div>
+              )}
+            </div>
+          </SettingsCard>
+        </SettingsSection>
+
+        {((!isNoApiKeyProvider && !isSubscriptionOAuthMode) || showBuiltinApiHostSection) && (
+          <SettingsCollapsible
+            title={t('Advanced')}
+            description={t('API host, Cloudflare Access, and other optional connection settings.')}
+            badge={t('Optional')}
+            defaultOpen={Boolean(
+              providerSettings?.cloudflareClientId ||
+                providerSettings?.cloudflareClientSecret ||
+                (showBuiltinApiHostSection &&
+                  providerSettings?.apiHost &&
+                  providerSettings.apiHost !== baseInfo.defaultSettings?.apiHost)
             )}
-            {baseInfo.urls?.apiKey &&
-              baseInfo.id !== ModelProviderEnum.Qwen &&
-              baseInfo.id !== ModelProviderEnum.XAI &&
-              baseInfo.id !== ModelProviderEnum.OpenAI &&
-              baseInfo.id !== ModelProviderEnum.Gemini && (
-              <Button
-                variant="subtle"
-                size="compact-xs"
-                className="self-start"
-                leftSection={<ScalableIcon icon={IconExternalLink} size={14} />}
-                onClick={() => platform.openLink(baseInfo.urls!.apiKey!)}
-              >
-                {t('Get API Key')}
-              </Button>
-            )}
-          </Stack>
-        )}
-
-        {/* Subscription OAuth: Check connection without API key field */}
-        {isSubscriptionOAuthMode && (
-          <Stack gap="xxs">
-            <Flex gap="xs" align="center">
-              <Tooltip
-                disabled={isSubscriptionOAuthSignedIn && displayModels.length > 0}
-                label={
-                  !isSubscriptionOAuthSignedIn
-                    ? t('Sign in to check connection')
-                    : displayModels.length === 0
-                      ? t('Add at least one model to check connection')
-                      : null
-                }
-              >
-                <Button
-                  size="sm"
-                  disabled={!isSubscriptionOAuthSignedIn || displayModels.length === 0}
-                  loading={modelTestResult?.testing || false}
-                  onClick={() => setShowTestModelSelector(true)}
-                >
-                  {t('Check')}
-                </Button>
-              </Tooltip>
-              {isXaiOAuthMode && resolveXaiBearer(providerSettings) ? (
-                <Text size="xs" c="chatbox-secondary">
-                  {t('Uses your SuperGrok / X Premium session')}
-                </Text>
-              ) : null}
-              {isOpenAICodexOAuthMode && resolveOpenAIBearer(providerSettings) ? (
-                <Text size="xs" c="chatbox-secondary">
-                  {t('Uses your ChatGPT subscription')}
-                </Text>
-              ) : null}
-              {isGeminiAntigravityOAuthMode && resolveGeminiCredential(providerSettings) ? (
-                <Text size="xs" c="chatbox-secondary">
-                  {t('Uses your Google / Antigravity session')}
-                </Text>
-              ) : null}
-            </Flex>
-          </Stack>
-        )}
-
-        {!isNoApiKeyProvider && !isSubscriptionOAuthMode && (
-          <Stack gap="xxs">
-            <Text span fw="600">
-              {t('Cloudflare Client ID')}
-            </Text>
-            <TextInput
-              flex={1}
-              value={providerSettings?.cloudflareClientId || ''}
-              placeholder="Optional"
-              onChange={handleCloudflareClientIdChange}
-            />
-          </Stack>
-        )}
-
-        {!isNoApiKeyProvider && !isSubscriptionOAuthMode && (
-          <Stack gap="xxs">
-            <Text span fw="600">
-              {t('Cloudflare Client Secret')}
-            </Text>
-            <PasswordInput
-              flex={1}
-              value={providerSettings?.cloudflareClientSecret || ''}
-              placeholder="Optional"
-              onChange={handleCloudflareClientSecretChange}
-            />
-          </Stack>
-        )}
-
-        {/* API Host */}
-        {showBuiltinApiHostSection && (
-          <Stack gap="xxs">
-            <Flex justify="space-between" align="flex-end" gap="md">
-              <Text span fw="600" className=" whitespace-nowrap">
-                {t('API Host')}
-              </Text>
-              {/* <Text span size="xs" flex="0 1 auto" c="chatbox-secondary" lineClamp={1}>
-                {t('Ending with / ignores v1, ending with # forces use of input address')}
-              </Text> */}
-            </Flex>
-            <Flex gap="xs" align="center">
-              <TextInput
-                flex={1}
-                value={providerSettings?.apiHost}
-                placeholder={baseInfo.defaultSettings?.apiHost}
-                onChange={handleApiHostChange}
-              />
-            </Flex>
-            <Text span size="xs" flex="0 1 auto" c="chatbox-secondary">
-              {isBuiltinOpenAICompatible
-                ? normalizeOpenAIApiHostAndPath({
-                    apiHost: providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost,
-                    apiPath:
-                      baseInfo.id === ModelProviderEnum.OpenClaw
-                        ? providerSettings?.apiPath || baseInfo.defaultSettings?.apiPath
-                        : undefined,
-                  }).apiHost +
-                  normalizeOpenAIApiHostAndPath({
-                    apiHost: providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost,
-                    apiPath:
-                      baseInfo.id === ModelProviderEnum.OpenClaw
-                        ? providerSettings?.apiPath || baseInfo.defaultSettings?.apiPath
-                        : undefined,
-                  }).apiPath
-                : ''}
-              {baseInfo.id === ModelProviderEnum.OpenAIResponses
-                ? normalizeOpenAIResponsesHostAndPath({
-                    apiHost: providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost,
-                    apiPath: providerSettings?.apiPath || baseInfo.defaultSettings?.apiPath,
-                  }).apiHost +
-                  normalizeOpenAIResponsesHostAndPath({
-                    apiHost: providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost,
-                    apiPath: providerSettings?.apiPath || baseInfo.defaultSettings?.apiPath,
-                  }).apiPath
-                : ''}
-              {baseInfo.id === ModelProviderEnum.Claude
-                ? normalizeClaudeHost(providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost || '').apiHost +
-                  normalizeClaudeHost(providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost || '').apiPath
-                : ''}
-              {baseInfo.id === ModelProviderEnum.Gemini
-                ? normalizeGeminiHost(providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost || '').apiHost +
-                  normalizeGeminiHost(providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost || '').apiPath
-                : ''}
-            </Text>
-          </Stack>
+          >
+            <SettingsCard>
+              <div className="settings-card-fields">
+                {showBuiltinApiHostSection && (
+                  <div className="settings-field">
+                    <span className="settings-field-label">{t('API Host')}</span>
+                    <TextInput
+                      value={providerSettings?.apiHost}
+                      placeholder={baseInfo.defaultSettings?.apiHost}
+                      onChange={handleApiHostChange}
+                    />
+                    <span className="settings-field-hint">
+                      {isBuiltinOpenAICompatible
+                        ? normalizeOpenAIApiHostAndPath({
+                            apiHost: providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost,
+                            apiPath:
+                              baseInfo.id === ModelProviderEnum.OpenClaw
+                                ? providerSettings?.apiPath || baseInfo.defaultSettings?.apiPath
+                                : undefined,
+                          }).apiHost +
+                          normalizeOpenAIApiHostAndPath({
+                            apiHost: providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost,
+                            apiPath:
+                              baseInfo.id === ModelProviderEnum.OpenClaw
+                                ? providerSettings?.apiPath || baseInfo.defaultSettings?.apiPath
+                                : undefined,
+                          }).apiPath
+                        : ''}
+                      {baseInfo.id === ModelProviderEnum.OpenAIResponses
+                        ? normalizeOpenAIResponsesHostAndPath({
+                            apiHost: providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost,
+                            apiPath: providerSettings?.apiPath || baseInfo.defaultSettings?.apiPath,
+                          }).apiHost +
+                          normalizeOpenAIResponsesHostAndPath({
+                            apiHost: providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost,
+                            apiPath: providerSettings?.apiPath || baseInfo.defaultSettings?.apiPath,
+                          }).apiPath
+                        : ''}
+                      {baseInfo.id === ModelProviderEnum.Claude
+                        ? normalizeClaudeHost(providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost || '')
+                            .apiHost +
+                          normalizeClaudeHost(providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost || '')
+                            .apiPath
+                        : ''}
+                      {baseInfo.id === ModelProviderEnum.Gemini
+                        ? normalizeGeminiHost(providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost || '')
+                            .apiHost +
+                          normalizeGeminiHost(providerSettings?.apiHost || baseInfo.defaultSettings?.apiHost || '')
+                            .apiPath
+                        : ''}
+                    </span>
+                  </div>
+                )}
+                {!isNoApiKeyProvider && !isSubscriptionOAuthMode && (
+                  <>
+                    <div className="settings-field">
+                      <span className="settings-field-label">{t('Cloudflare Client ID')}</span>
+                      <TextInput
+                        value={providerSettings?.cloudflareClientId || ''}
+                        placeholder={t('Optional')}
+                        onChange={handleCloudflareClientIdChange}
+                      />
+                    </div>
+                    <div className="settings-field">
+                      <span className="settings-field-label">{t('Cloudflare Client Secret')}</span>
+                      <PasswordInput
+                        value={providerSettings?.cloudflareClientSecret || ''}
+                        placeholder={t('Optional')}
+                        onChange={handleCloudflareClientSecretChange}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            </SettingsCard>
+          </SettingsCollapsible>
         )}
 
         {baseInfo.id === ModelProviderEnum.OpenAI && !baseInfo.isCustom && (
@@ -972,57 +1002,46 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         )}
 
         {/* Models */}
-        <Stack gap="xxs">
-          <Flex justify="space-between" align="center">
-            <Text span fw="600">
-              {t('Model')}
-            </Text>
-            <Flex gap="sm" align="center" justify="flex-end">
-              <Button
-                variant="light"
-                size="compact-xs"
-                px="sm"
-                onClick={handleAddModel}
-                leftSection={<ScalableIcon icon={IconPlus} size={12} />}
-              >
-                {t('New')}
-              </Button>
-
-              <Button
-                variant="light"
-                color="chatbox-gray"
-                c="chatbox-secondary"
-                size="compact-xs"
-                px="sm"
-                onClick={resetModels}
-                leftSection={<ScalableIcon icon={IconRestore} size={12} />}
-              >
-                {t('Reset')}
-              </Button>
-
-              <Button
-                loading={fetchingModels}
-                variant="light"
-                color="chatbox-gray"
-                c="chatbox-secondary"
-                size="compact-xs"
-                px="sm"
-                onClick={handleFetchModels}
-                leftSection={<ScalableIcon icon={IconRefresh} size={12} />}
-              >
-                {t('Fetch')}
-              </Button>
-            </Flex>
-          </Flex>
-
-          <ModelList
-            models={displayModels}
-            showActions={true}
-            showSearch={false}
-            onEditModel={editModel}
-            onDeleteModel={deleteModel}
-          />
-        </Stack>
+        <SettingsSection title={t('Models')}>
+          <SettingsCard>
+            <div className="settings-card-fields">
+              <div className="settings-actions" style={{ justifyContent: 'flex-end' }}>
+                <Button
+                  variant="default"
+                  size="compact-sm"
+                  onClick={handleAddModel}
+                  leftSection={<ScalableIcon icon={IconPlus} size={14} />}
+                >
+                  {t('New')}
+                </Button>
+                <Button
+                  variant="default"
+                  size="compact-sm"
+                  onClick={resetModels}
+                  leftSection={<ScalableIcon icon={IconRestore} size={14} />}
+                >
+                  {t('Reset')}
+                </Button>
+                <Button
+                  loading={fetchingModels}
+                  variant="default"
+                  size="compact-sm"
+                  onClick={handleFetchModels}
+                  leftSection={<ScalableIcon icon={IconRefresh} size={14} />}
+                >
+                  {t('Fetch')}
+                </Button>
+              </div>
+              <ModelList
+                models={displayModels}
+                showActions={true}
+                showSearch={false}
+                onEditModel={editModel}
+                onDeleteModel={deleteModel}
+              />
+            </div>
+          </SettingsCard>
+        </SettingsSection>
 
         <AdaptiveModal
           keepMounted={false}
@@ -1189,7 +1208,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           </AdaptiveModal.Actions>
         </AdaptiveModal>
       </Stack>
-    </Stack>
+    </SettingsPage>
   )
 }
 

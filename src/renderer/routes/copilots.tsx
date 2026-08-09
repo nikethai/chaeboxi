@@ -1,50 +1,38 @@
 import {
-  Button as MantineButton,
+  ActionIcon,
+  Button,
   Checkbox,
   Flex,
   MultiSelect,
   Radio,
   Select,
   Stack,
-  Switch as MantineSwitch,
+  Switch,
   Text,
+  Textarea,
+  TextInput,
   Tooltip,
 } from '@mantine/core'
-import EditIcon from '@mui/icons-material/Edit'
-import MoreHorizOutlinedIcon from '@mui/icons-material/MoreHorizOutlined'
-import StarIcon from '@mui/icons-material/Star'
-import StarOutlineIcon from '@mui/icons-material/StarOutline'
-import Avatar from '@mui/material/Avatar'
-import Box from '@mui/material/Box'
-import Button from '@mui/material/Button'
-import ButtonGroup from '@mui/material/ButtonGroup'
-import Divider from '@mui/material/Divider'
-import FormControlLabel from '@mui/material/FormControlLabel'
-import FormGroup from '@mui/material/FormGroup'
-import IconButton from '@mui/material/IconButton'
-import MenuItem from '@mui/material/MenuItem'
-import Switch from '@mui/material/Switch'
-import TextField from '@mui/material/TextField'
-import Typography from '@mui/material/Typography'
-import { useTheme } from '@mui/material/styles'
-import DeleteIcon from '@mui/icons-material/Delete'
-import { IconInfoCircle, IconPlus } from '@tabler/icons-react'
+import { IconInfoCircle, IconPencil, IconPlus, IconStar, IconStarFilled, IconTrash } from '@tabler/icons-react'
 import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuidv4 } from 'uuid'
-import { ConfirmDeleteMenuItem } from '@/components/common/ConfirmDeleteButton'
 import LazyNumberInput from '@/components/common/LazyNumberInput'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
 import SliderWithInput from '@/components/common/SliderWithInput'
-import StyledMenu from '@/components/StyledMenu'
+import { SettingsCard } from '@/components/settings/SettingsCard'
+import { SettingsCollapsible } from '@/components/settings/SettingsCollapsible'
+import { SettingsPageHeader } from '@/components/settings/SettingsPageHeader'
+import { SettingsPrefRow } from '@/components/settings/SettingsPrefRow'
+import { SettingsSection } from '@/components/settings/SettingsSection'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { trackingEvent } from '@/packages/event'
 import * as remote from '@/packages/remote'
-import { CopilotHookSchema } from '@/packages/copilot-hooks'
 import platform from '@/platform'
 import { useUIStore } from '@/stores/uiStore'
+import '@/static/agents-surfaces.css'
 import {
   COPILOT_MAX_STEPS_DEFAULT,
   COPILOT_MAX_STEPS_MAX,
@@ -130,7 +118,7 @@ export function CopilotsContent() {
   ]
 
   return (
-    <div className="p-4 max-w-4xl mx-auto">
+    <div className="agents-page">
       {copilotEdit ? (
         <CopilotForm
           copilotDetail={copilotEdit}
@@ -144,84 +132,83 @@ export function CopilotsContent() {
         />
       ) : (
         <>
-          <Box sx={{ mb: 3 }}>
-            <Text size="md" fw={700} mb={2} c="chatbox-primary">
-              {t('Preferences')}
-            </Text>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <MantineSwitch
-                checked={showCopilotsInNewSession}
-                onChange={(event) => setShowCopilotsInNewSession(event.currentTarget.checked)}
-                label={t('Show Agents in New Session')}
+          <SettingsPageHeader
+            title={t('Agents')}
+            description={t('Specialized copilots you can mention with @ in the composer.')}
+            actions={
+              <Button
+                variant="default"
+                leftSection={<ScalableIcon icon={IconPlus} size={18} />}
+                onClick={() => {
+                  void getEmptyCopilot().then(setCopilotEdit)
+                }}
+              >
+                {t('Create New Agent')}
+              </Button>
+            }
+          />
+
+          <SettingsSection title={t('Preferences')}>
+            <SettingsCard divided>
+              <SettingsPrefRow
+                title={t('Show Agents in New Session')}
+                description={t('Show agent shortcuts when starting a blank chat.')}
+                control={
+                  <Switch
+                    checked={showCopilotsInNewSession}
+                    onChange={(event) => setShowCopilotsInNewSession(event.currentTarget.checked)}
+                  />
+                }
               />
-            </Box>
-          </Box>
+            </SettingsCard>
+          </SettingsSection>
 
-          <Box sx={{ mb: 4 }}>
-            <Text size="md" fw={700} mb={2} c="chatbox-primary">
-              {t('My Agents')}
-            </Text>
+          <SettingsSection title={t('My Agents')}>
+            {list.length === 0 ? (
+              <SettingsCard>
+                <div className="agents-empty">
+                  {t('No agents yet. Create one or add a featured agent below.')}
+                </div>
+              </SettingsCard>
+            ) : (
+              <div className="agents-grid">
+                {list.map((item, ix) => (
+                  <MiniItem
+                    key={`${item.id}_${ix}`}
+                    mode="local"
+                    detail={item}
+                    canDelete={!item.builtIn}
+                    selectMe={() => selectCopilot(item)}
+                    switchStarred={() => {
+                      store.addOrUpdate({
+                        ...item,
+                        starred: !item.starred,
+                      })
+                    }}
+                    editMe={() => {
+                      setCopilotEdit(item)
+                    }}
+                    deleteMe={() => {
+                      store.remove(item.id)
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </SettingsSection>
 
-            <MantineButton
-              variant="light"
-              color="blue"
-              leftSection={<ScalableIcon icon={IconPlus} size={20} />}
-              mb={16}
-              onClick={() => {
-                getEmptyCopilot().then(setCopilotEdit)
-              }}
+          {!!remoteCopilots?.length && (
+            <SettingsSection
+              title={t('Featured Agents')}
+              description={t('Tap to add to My Agents and open a chat.')}
             >
-              {t('Create New Agent')}
-            </MantineButton>
-
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                gap: 1.5,
-              }}
-            >
-              {list.map((item, ix) => (
-                <MiniItem
-                  key={`${item.id}_${ix}`}
-                  mode="local"
-                  detail={item}
-                  canDelete={!item.builtIn}
-                  selectMe={() => selectCopilot(item)}
-                  switchStarred={() => {
-                    store.addOrUpdate({
-                      ...item,
-                      starred: !item.starred,
-                    })
-                  }}
-                  editMe={() => {
-                    setCopilotEdit(item)
-                  }}
-                  deleteMe={() => {
-                    store.remove(item.id)
-                  }}
-                />
-              ))}
-            </Box>
-          </Box>
-
-          <Box>
-            <Text size="md" fw={700} mb={2} c="chatbox-primary">
-              {t('Featured Agents')}
-            </Text>
-
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-                gap: 1.5,
-              }}
-            >
-              {remoteCopilots?.map((item, ix) => (
-                <MiniItem key={`${item.id}_${ix}`} mode="remote" detail={item} selectMe={() => selectCopilot(item)} />
-              ))}
-            </Box>
-          </Box>
+              <div className="agents-grid">
+                {remoteCopilots.map((item, ix) => (
+                  <MiniItem key={`${item.id}_${ix}`} mode="remote" detail={item} selectMe={() => selectCopilot(item)} />
+                ))}
+              </div>
+            </SettingsSection>
+          )}
         </>
       )}
     </div>
@@ -246,160 +233,75 @@ type MiniItemProps =
 
 function MiniItem(props: MiniItemProps) {
   const { t } = useTranslation()
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null)
-  const open = Boolean(anchorEl)
-  const selectCopilot = (event: React.MouseEvent<HTMLElement>) => {
+
+  const onSelect = (event: React.MouseEvent<HTMLElement>) => {
     event.preventDefault()
-    if (open) {
-      return
-    }
     props.selectMe()
   }
-  const openMenu = (event: React.MouseEvent<HTMLElement>) => {
+
+  const stop = (event: React.MouseEvent) => {
     event.stopPropagation()
     event.preventDefault()
-    setAnchorEl(event.currentTarget)
   }
-  const closeMenu = () => {
-    setAnchorEl(null)
-  }
+
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: '10px 16px',
-        height: '49px',
-        cursor: 'pointer',
-        borderRadius: '8px',
-        border: '1px solid',
-        borderColor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#dee2e6'),
-        backgroundColor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : '#fff'),
-        transition: 'all 0.2s',
-        '.edit-icon': {
-          opacity: 0,
-        },
-        '&:hover': {
-          borderColor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.2)' : '#adb5bd'),
-          backgroundColor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : '#f8f9fa'),
-        },
-        '&:hover .edit-icon': {
-          opacity: 1,
-        },
-      }}
-      onClick={selectCopilot}
-    >
-      <Avatar
-        sx={{
-          width: '28px',
-          height: '28px',
-          backgroundColor: (theme) => (theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#e9ecef'),
-          fontSize: '16px',
-        }}
-        src={props.detail.emojiAvatar ? undefined : props.detail.picUrl}
-      >
-        {props.detail.emojiAvatar || undefined}
-      </Avatar>
-      <Box
-        sx={{
-          marginLeft: '12px',
-          flex: 1,
-          overflow: 'hidden',
-        }}
-      >
-        <Typography
-          variant="body1"
-          noWrap
-          sx={{
-            fontSize: '14px',
-            fontWeight: 400,
-            color: (theme) => (theme.palette.mode === 'dark' ? '#fff' : '#212529'),
-          }}
-        >
-          {props.detail.name}
-        </Typography>
-      </Box>
+    <button type="button" className={`agent-tile${props.mode === 'remote' ? ' agent-tile-remote' : ''}`} onClick={onSelect}>
+      <span className="agent-tile-avatar">
+        {props.detail.emojiAvatar ? (
+          props.detail.emojiAvatar
+        ) : props.detail.picUrl ? (
+          <img src={props.detail.picUrl} alt="" />
+        ) : (
+          '✦'
+        )}
+      </span>
+      <span className="agent-tile-name">{props.detail.name}</span>
 
       {props.mode === 'local' && (
-        <>
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              marginLeft: 'auto',
+        <span className="agent-tile-actions">
+          <button
+            type="button"
+            className={`agent-tile-icon-btn${props.detail.starred ? ' is-starred' : ''}`}
+            aria-label={props.detail.starred ? t('unstar') : t('star')}
+            title={props.detail.starred ? t('unstar') : t('star')}
+            onClick={(e) => {
+              stop(e)
+              props.switchStarred()
             }}
           >
-            <IconButton
-              onClick={openMenu}
-              sx={{
-                padding: '4px',
-                color: (theme) => (theme.palette.mode === 'dark' ? '#fff' : '#495057'),
-              }}
-            >
-              {props.detail.starred ? (
-                <StarIcon fontSize="small" sx={{ color: '#228be6' }} />
-              ) : (
-                <MoreHorizOutlinedIcon className="edit-icon" fontSize="small" />
-              )}
-            </IconButton>
-          </Box>
-          <StyledMenu
-            MenuListProps={{
-              'aria-labelledby': 'long-button',
+            <ScalableIcon icon={props.detail.starred ? IconStarFilled : IconStar} size={16} />
+          </button>
+          <button
+            type="button"
+            className="agent-tile-icon-btn"
+            aria-label={t('edit')}
+            title={t('edit')}
+            onClick={(e) => {
+              stop(e)
+              props.editMe()
             }}
-            anchorEl={anchorEl}
-            open={open}
-            onClose={closeMenu}
           >
-            <MenuItem
-              key={'star'}
-              onClick={() => {
-                props.switchStarred()
-                closeMenu()
-              }}
-              disableRipple
-            >
-              {props.detail.starred ? (
-                <>
-                  <StarOutlineIcon fontSize="small" />
-                  {t('unstar')}
-                </>
-              ) : (
-                <>
-                  <StarIcon fontSize="small" />
-                  {t('star')}
-                </>
-              )}
-            </MenuItem>
-
-            <MenuItem
-              key={'edit'}
-              onClick={() => {
-                props.editMe()
-                closeMenu()
-              }}
-              disableRipple
-            >
-              <EditIcon />
-              {t('edit')}
-            </MenuItem>
-
-            <Divider sx={{ my: 0.5 }} />
-
-            {props.canDelete !== false && (
-              <ConfirmDeleteMenuItem
-                onDelete={() => {
-                  setAnchorEl(null)
-                  closeMenu()
+            <ScalableIcon icon={IconPencil} size={16} />
+          </button>
+          {props.canDelete !== false && (
+            <button
+              type="button"
+              className="agent-tile-icon-btn"
+              aria-label={t('delete')}
+              title={t('delete')}
+              onClick={(e) => {
+                stop(e)
+                if (window.confirm(t('Are you sure you want to delete this agent?'))) {
                   props.deleteMe()
-                }}
-              />
-            )}
-          </StyledMenu>
-        </>
+                }
+              }}
+            >
+              <ScalableIcon icon={IconTrash} size={16} />
+            </button>
+          )}
+        </span>
       )}
-    </Box>
+    </button>
   )
 }
 
@@ -413,46 +315,32 @@ interface CopilotFormProps {
 
 function CopilotForm(props: CopilotFormProps) {
   const { t } = useTranslation()
-  const theme = useTheme()
   const isSmallScreen = useIsSmallScreen()
   const [copilotEdit, setCopilotEdit] = useState<CopilotDetail>(props.copilotDetail)
   useEffect(() => {
     setCopilotEdit(props.copilotDetail)
   }, [props.copilotDetail])
-  const [helperTexts, setHelperTexts] = useState({
-    name: <></>,
-    prompt: <></>,
-  })
-  const inputHandler = (field: keyof CopilotDetail) => {
-    return (event: React.ChangeEvent<HTMLInputElement>) => {
-      setHelperTexts({ name: <></>, prompt: <></> })
-      setCopilotEdit({ ...copilotEdit, [field]: event.target.value })
-    }
-  }
+  const [errors, setErrors] = useState<{ name?: string; prompt?: string }>({})
+
   const save = () => {
-    copilotEdit.name = copilotEdit.name.trim()
-    copilotEdit.prompt = copilotEdit.prompt.trim()
-    if (copilotEdit.picUrl) {
-      copilotEdit.picUrl = copilotEdit.picUrl.trim()
-    }
-    if (copilotEdit.emojiAvatar) {
-      copilotEdit.emojiAvatar = copilotEdit.emojiAvatar.trim()
-    }
-    if (copilotEdit.name.length === 0) {
-      setHelperTexts({
-        ...helperTexts,
-        name: <p style={{ color: 'red' }}>{t('cannot be empty')}</p>,
-      })
+    const name = copilotEdit.name.trim()
+    const prompt = copilotEdit.prompt.trim()
+    const picUrl = copilotEdit.picUrl?.trim()
+    const emojiAvatar = copilotEdit.emojiAvatar?.trim()
+    const nextErrors: { name?: string; prompt?: string } = {}
+    if (!name) nextErrors.name = t('cannot be empty')
+    if (!prompt) nextErrors.prompt = t('cannot be empty')
+    if (nextErrors.name || nextErrors.prompt) {
+      setErrors(nextErrors)
       return
     }
-    if (copilotEdit.prompt.length === 0) {
-      setHelperTexts({
-        ...helperTexts,
-        prompt: <p style={{ color: 'red' }}>{t('cannot be empty')}</p>,
-      })
-      return
-    }
-    props.save(copilotEdit)
+    props.save({
+      ...copilotEdit,
+      name,
+      prompt,
+      picUrl,
+      emojiAvatar,
+    })
     trackingEvent('create_copilot', { event_category: 'user' })
   }
 
@@ -466,97 +354,83 @@ function CopilotForm(props: CopilotFormProps) {
     }))
   }
 
+  const isNew = !props.copilotDetail.name
+
   return (
-    <Box
-      sx={{
-        marginBottom: '20px',
-        backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[700] : theme.palette.grey[50],
-        padding: '8px',
-      }}
-    >
-      <TextField
-        autoFocus={!isSmallScreen}
-        margin="dense"
-        label={t('Agent Name')}
-        fullWidth
-        variant="outlined"
-        placeholder={t('My Assistant') || ''}
-        value={copilotEdit.name}
-        onChange={inputHandler('name')}
-        helperText={helperTexts.name}
-      />
-      <TextField
-        margin="dense"
-        label={t('Agent Prompt')}
-        placeholder={t('Copilot Prompt Demo') || ''}
-        fullWidth
-        variant="outlined"
-        multiline
-        minRows={4}
-        maxRows={10}
-        value={copilotEdit.prompt}
-        onChange={inputHandler('prompt')}
-        helperText={helperTexts.prompt}
-      />
-
-      {/* Avatar section: emoji avatar + URL */}
-      <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', mt: 1 }}>
-        <TextField
-          margin="dense"
-          label={t('Emoji Avatar')}
-          placeholder="🔬"
-          variant="outlined"
-          sx={{ width: '120px', flexShrink: 0 }}
-          value={copilotEdit.emojiAvatar ?? ''}
-          onChange={inputHandler('emojiAvatar')}
-          inputProps={{ maxLength: 4 }}
+    <div className="agents-form">
+      <div className="agents-form-toolbar">
+        <SettingsPageHeader
+          className="!mb-0 flex-1"
+          title={isNew ? t('Create New Agent') : t('Edit Agent')}
+          description={t('Name, prompt, and optional overrides for this agent.')}
         />
-        <TextField
-          margin="dense"
-          label={t('Agent Avatar URL')}
-          placeholder="http://xxxxx/xxx.png"
-          fullWidth
-          variant="outlined"
-          value={copilotEdit.picUrl ?? ''}
-          onChange={inputHandler('picUrl')}
-          helperText={copilotEdit.emojiAvatar ? t('Emoji avatar takes priority over URL') : undefined}
-        />
-      </Box>
+      </div>
 
-      {/* Model Settings section */}
-      <Box
-        sx={{
-          mt: 2,
-          mb: 1,
-          border: '1px solid',
-          borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
-          borderRadius: '8px',
-          overflow: 'hidden',
-        }}
+      <SettingsSection title={t('Basics')}>
+        <SettingsCard>
+          <div className="settings-card-fields agents-form-fields">
+            <TextInput
+              autoFocus={!isSmallScreen}
+              label={t('Agent Name')}
+              placeholder={t('My Assistant') || ''}
+              value={copilotEdit.name}
+              error={errors.name}
+              onChange={(e) => {
+                setErrors((prev) => ({ ...prev, name: undefined }))
+                setCopilotEdit({ ...copilotEdit, name: e.currentTarget.value })
+              }}
+            />
+            <Textarea
+              label={t('Agent Prompt')}
+              placeholder={t('Copilot Prompt Demo') || ''}
+              minRows={4}
+              maxRows={12}
+              autosize
+              value={copilotEdit.prompt}
+              error={errors.prompt}
+              onChange={(e) => {
+                setErrors((prev) => ({ ...prev, prompt: undefined }))
+                setCopilotEdit({ ...copilotEdit, prompt: e.currentTarget.value })
+              }}
+            />
+            <div className="agents-form-avatar-row">
+              <TextInput
+                className="agents-emoji-field"
+                label={t('Emoji Avatar')}
+                placeholder="🔬"
+                value={copilotEdit.emojiAvatar ?? ''}
+                maxLength={4}
+                onChange={(e) => setCopilotEdit({ ...copilotEdit, emojiAvatar: e.currentTarget.value })}
+              />
+              <TextInput
+                className="flex-1 min-w-0"
+                style={{ flex: 1 }}
+                label={t('Agent Avatar URL')}
+                placeholder="https://…"
+                value={copilotEdit.picUrl ?? ''}
+                description={copilotEdit.emojiAvatar ? t('Emoji avatar takes priority over URL') : undefined}
+                onChange={(e) => setCopilotEdit({ ...copilotEdit, picUrl: e.currentTarget.value })}
+              />
+            </div>
+          </div>
+        </SettingsCard>
+      </SettingsSection>
+
+      <SettingsCollapsible
+        title={t('Model Settings Override')}
+        description={t('Leave blank to use session defaults')}
+        badge={t('Optional')}
+        defaultOpen={Boolean(
+          copilotEdit.modelSettings?.temperature != null ||
+            copilotEdit.modelSettings?.topP != null ||
+            copilotEdit.modelSettings?.maxTokens != null
+        )}
       >
-        <Box
-          sx={{
-            px: 2,
-            py: 1.5,
-            borderBottom: '1px solid',
-            borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
-          }}
-        >
-          <Typography variant="body2" fontWeight={700}>
-            {t('Model Settings Override')}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {t('Leave blank to use session defaults')}
-          </Typography>
-        </Box>
-        <Box sx={{ px: 2, py: 1.5 }}>
-          <Stack gap="md">
-            {/* Temperature */}
-            <Stack gap="xs">
+        <SettingsCard>
+          <div className="settings-card-fields">
+            <div className="settings-field">
               <Flex align="center" gap="xs">
-                <Text size="sm" fw="600">
-                  {t('Temperature')}
-                </Text>
+                <span className="settings-field-label">{t('Temperature')}</span>
                 <Tooltip
                   label={t(
                     'Modify the creativity of AI responses; the higher the value, the more random and intriguing the answers become, while a lower value ensures greater stability and reliability.'
@@ -565,9 +439,8 @@ function CopilotForm(props: CopilotFormProps) {
                   maw={320}
                   className="!whitespace-normal"
                   zIndex={3000}
-                  events={{ hover: true, focus: true, touch: true }}
                 >
-                  <ScalableIcon icon={IconInfoCircle} size={18} className="text-chatbox-tint-tertiary" />
+                  <ScalableIcon icon={IconInfoCircle} size={16} className="text-chatbox-tint-tertiary" />
                 </Tooltip>
               </Flex>
               <SliderWithInput
@@ -576,14 +449,10 @@ function CopilotForm(props: CopilotFormProps) {
                 max={2}
                 step={0.1}
               />
-            </Stack>
-
-            {/* Top P */}
-            <Stack gap="xs">
+            </div>
+            <div className="settings-field">
               <Flex align="center" gap="xs">
-                <Text size="sm" fw="600">
-                  Top P
-                </Text>
+                <span className="settings-field-label">Top P</span>
                 <Tooltip
                   label={t(
                     'The topP parameter controls the diversity of AI responses: lower values make the output more focused and predictable, while higher values allow for more varied and creative replies.'
@@ -592,9 +461,8 @@ function CopilotForm(props: CopilotFormProps) {
                   maw={320}
                   className="!whitespace-normal"
                   zIndex={3000}
-                  events={{ hover: true, focus: true, touch: true }}
                 >
-                  <ScalableIcon icon={IconInfoCircle} size={18} className="text-chatbox-tint-tertiary" />
+                  <ScalableIcon icon={IconInfoCircle} size={16} className="text-chatbox-tint-tertiary" />
                 </Tooltip>
               </Flex>
               <SliderWithInput
@@ -603,156 +471,97 @@ function CopilotForm(props: CopilotFormProps) {
                 max={1}
                 step={0.05}
               />
-            </Stack>
+            </div>
+            <SettingsPrefRow
+              title={t('Max Output Tokens')}
+              description={t(
+                'Set the maximum number of tokens for model output. Please set it within the acceptable range of the model, otherwise errors may occur.'
+              )}
+              control={
+                <LazyNumberInput
+                  width={96}
+                  value={copilotEdit.modelSettings?.maxTokens}
+                  onChange={(v) => updateModelSettings({ maxTokens: typeof v === 'number' ? v : undefined })}
+                  min={0}
+                  step={1024}
+                  allowDecimal={false}
+                  placeholder={t('Not set') || ''}
+                />
+              }
+            />
+          </div>
+        </SettingsCard>
+      </SettingsCollapsible>
 
-            {/* Max Tokens */}
-            <Flex justify="space-between" align="center">
+      <SettingsCollapsible
+        title={t('Agent Settings')}
+        description={t('Configure agent mode behavior')}
+        badge={t('Optional')}
+        defaultOpen={
+          copilotEdit.maxSteps != null && copilotEdit.maxSteps !== COPILOT_MAX_STEPS_DEFAULT
+        }
+      >
+        <SettingsCard>
+          <div className="settings-card-fields">
+            <div className="settings-field">
               <Flex align="center" gap="xs">
-                <Text size="sm" fw="600">
-                  {t('Max Output Tokens')}
-                </Text>
+                <span className="settings-field-label">{t('Max Steps')}</span>
                 <Tooltip
                   label={t(
-                    'Set the maximum number of tokens for model output. Please set it within the acceptable range of the model, otherwise errors may occur.'
+                    'Maximum number of autonomous tool-use steps the agent can take per message. Higher values allow more complex tasks but use more tokens.'
                   )}
                   withArrow
                   maw={320}
                   className="!whitespace-normal"
                   zIndex={3000}
-                  events={{ hover: true, focus: true, touch: true }}
                 >
-                  <ScalableIcon icon={IconInfoCircle} size={18} className="text-chatbox-tint-tertiary" />
+                  <ScalableIcon icon={IconInfoCircle} size={16} className="text-chatbox-tint-tertiary" />
                 </Tooltip>
               </Flex>
-              <LazyNumberInput
-                width={96}
-                value={copilotEdit.modelSettings?.maxTokens}
-                onChange={(v) => updateModelSettings({ maxTokens: typeof v === 'number' ? v : undefined })}
-                min={0}
-                step={1024}
-                allowDecimal={false}
-                placeholder={t('Not set') || ''}
-              />
-            </Flex>
-          </Stack>
-        </Box>
-      </Box>
-
-      {/* Agent Settings section */}
-      <Box
-        sx={{
-          mt: 2,
-          mb: 1,
-          border: '1px solid',
-          borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
-          borderRadius: '8px',
-          overflow: 'hidden',
-        }}
-      >
-        <Box
-          sx={{
-            px: 2,
-            py: 1.5,
-            borderBottom: '1px solid',
-            borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
-          }}
-        >
-          <Typography variant="body2" fontWeight={700}>
-            {t('Agent Settings')}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {t('Configure agent mode behavior')}
-          </Typography>
-        </Box>
-        <Box sx={{ px: 2, py: 1.5 }}>
-          <Stack gap="xs">
-            <Flex align="center" gap="xs">
-              <Text size="sm" fw="600">
-                {t('Max Steps')}
-              </Text>
-              <Tooltip
-                label={t(
-                  'Maximum number of autonomous tool-use steps the agent can take per message. Higher values allow more complex tasks but use more tokens.'
-                )}
-                withArrow
-                maw={320}
-                className="!whitespace-normal"
-                zIndex={3000}
-                events={{ hover: true, focus: true, touch: true }}
-              >
-                <ScalableIcon icon={IconInfoCircle} size={18} className="text-chatbox-tint-tertiary" />
-              </Tooltip>
-            </Flex>
-            <SliderWithInput
-              value={copilotEdit.maxSteps ?? COPILOT_MAX_STEPS_DEFAULT}
-              onChange={(v) =>
-                setCopilotEdit((prev) => ({
-                  ...prev,
-                  maxSteps: v ?? COPILOT_MAX_STEPS_DEFAULT,
-                }))
-              }
-              min={COPILOT_MAX_STEPS_MIN}
-              max={COPILOT_MAX_STEPS_MAX}
-              step={1}
-            />
-          </Stack>
-        </Box>
-      </Box>
-
-      {/* Tool Access Settings section */}
-      <Box
-        sx={{
-          mt: 2,
-          mb: 1,
-          border: '1px solid',
-          borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
-          borderRadius: '8px',
-          overflow: 'hidden',
-        }}
-      >
-        <Box
-          sx={{
-            px: 2,
-            py: 1.5,
-            borderBottom: '1px solid',
-            borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
-          }}
-        >
-          <Typography variant="body2" fontWeight={700}>
-            {t('Tool Access')}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {t('Control which tools this agent can use')}
-          </Typography>
-        </Box>
-        <Box sx={{ px: 2, py: 1.5 }}>
-          <Stack gap="md">
-            {/* Mode selection */}
-            <Stack gap="xs">
-              <Text size="sm" fw="600">
-                {t('Access Mode')}
-              </Text>
-              <Radio.Group
-                value={copilotEdit.toolAccess?.mode ?? 'allowlist'}
-                onChange={(value) =>
+              <SliderWithInput
+                value={copilotEdit.maxSteps ?? COPILOT_MAX_STEPS_DEFAULT}
+                onChange={(v) =>
                   setCopilotEdit((prev) => ({
                     ...prev,
-                    toolAccess: {
-                      mode: value as 'allowlist' | 'denylist',
-                      tools: prev.toolAccess?.tools ?? [],
-                      includeMcp: prev.toolAccess?.includeMcp ?? true,
-                    },
+                    maxSteps: v ?? COPILOT_MAX_STEPS_DEFAULT,
                   }))
                 }
-              >
-                <Stack gap="xs" mt="xs">
-                  <Radio value="allowlist" label={t('Allowlist - only use selected tools')} />
-                  <Radio value="denylist" label={t('Denylist - use all except selected tools')} />
-                </Stack>
-              </Radio.Group>
-            </Stack>
+                min={COPILOT_MAX_STEPS_MIN}
+                max={COPILOT_MAX_STEPS_MAX}
+                step={1}
+              />
+            </div>
+          </div>
+        </SettingsCard>
+      </SettingsCollapsible>
 
-            {/* Include MCP tools checkbox */}
+      <SettingsCollapsible
+        title={t('Tool Access')}
+        description={t('Control which tools this agent can use')}
+        badge={t('Optional')}
+        defaultOpen={Boolean(copilotEdit.toolAccess?.tools?.length)}
+      >
+        <SettingsCard>
+          <div className="settings-card-fields">
+            <Radio.Group
+              label={t('Access Mode')}
+              value={copilotEdit.toolAccess?.mode ?? 'allowlist'}
+              onChange={(value) =>
+                setCopilotEdit((prev) => ({
+                  ...prev,
+                  toolAccess: {
+                    mode: value as 'allowlist' | 'denylist',
+                    tools: prev.toolAccess?.tools ?? [],
+                    includeMcp: prev.toolAccess?.includeMcp ?? true,
+                  },
+                }))
+              }
+            >
+              <Stack gap={6} mt={6}>
+                <Radio value="allowlist" label={t('Allowlist - only use selected tools')} />
+                <Radio value="denylist" label={t('Denylist - use all except selected tools')} />
+              </Stack>
+            </Radio.Group>
             <Checkbox
               checked={copilotEdit.toolAccess?.includeMcp ?? true}
               onChange={(event) =>
@@ -767,73 +576,46 @@ function CopilotForm(props: CopilotFormProps) {
               }
               label={t('Include MCP tools')}
             />
+            <MultiSelect
+              label={t('Select Tools')}
+              data={BUILT_IN_TOOLS}
+              value={copilotEdit.toolAccess?.tools ?? []}
+              onChange={(value) =>
+                setCopilotEdit((prev) => ({
+                  ...prev,
+                  toolAccess: {
+                    mode: prev.toolAccess?.mode ?? 'allowlist',
+                    tools: value,
+                    includeMcp: prev.toolAccess?.includeMcp ?? true,
+                  },
+                }))
+              }
+              placeholder={t('Select tools...')}
+              searchable
+              clearable
+            />
+            <Text size="xs" c="chatbox-tertiary">
+              {t('For MCP tools, enter tool names manually (e.g., mcp__server__tool_name)')}
+            </Text>
+          </div>
+        </SettingsCard>
+      </SettingsCollapsible>
 
-            {/* Tool selection */}
-            <Stack gap="xs">
-              <Text size="sm" fw="600">
-                {t('Select Tools')}
-              </Text>
-              <MultiSelect
-                data={BUILT_IN_TOOLS}
-                value={copilotEdit.toolAccess?.tools ?? []}
-                onChange={(value) =>
-                  setCopilotEdit((prev) => ({
-                    ...prev,
-                    toolAccess: {
-                      mode: prev.toolAccess?.mode ?? 'allowlist',
-                      tools: value,
-                      includeMcp: prev.toolAccess?.includeMcp ?? true,
-                    },
-                  }))
-                }
-                placeholder={t('Select tools...')}
-                searchable
-                clearable
-              />
-              <Text size="xs" c="dimmed">
-                {t('For MCP tools, enter tool names manually (e.g., mcp__server__tool_name)')}
-              </Text>
-            </Stack>
-          </Stack>
-        </Box>
-      </Box>
-
-      {/* Hooks Settings section */}
-      <Box
-        sx={{
-          mt: 2,
-          mb: 1,
-          border: '1px solid',
-          borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
-          borderRadius: '8px',
-          overflow: 'hidden',
-        }}
+      <SettingsCollapsible
+        title={t('Hooks')}
+        description={t('Configure pre-turn and post-turn hook actions')}
+        badge={t('Optional')}
+        defaultOpen={Boolean(
+          (copilotEdit.hooks?.preTurn?.length ?? 0) > 0 || (copilotEdit.hooks?.postTurn?.length ?? 0) > 0
+        )}
       >
-        <Box
-          sx={{
-            px: 2,
-            py: 1.5,
-            borderBottom: '1px solid',
-            borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
-          }}
-        >
-          <Typography variant="body2" fontWeight={700}>
-            {t('Hooks')}
-          </Typography>
-          <Typography variant="caption" color="text.secondary">
-            {t('Configure pre-turn and post-turn hook actions')}
-          </Typography>
-        </Box>
-        <Box sx={{ px: 2, py: 1.5 }}>
-          <Stack gap="md">
-            {/* Pre-turn hooks */}
-            <Stack gap="xs">
-              <Text size="sm" fw="600">
-                {t('Pre-Turn Hooks')}
-              </Text>
-              <Text size="xs" c="dimmed">
+        <SettingsCard>
+          <div className="settings-card-fields">
+            <div className="settings-field">
+              <span className="settings-field-label">{t('Pre-Turn Hooks')}</span>
+              <span className="settings-field-hint">
                 {t('Run before each generation to inject context or fetch data')}
-              </Text>
+              </span>
               <HookList
                 hooks={copilotEdit.hooks?.preTurn ?? []}
                 onChange={(hooks) =>
@@ -843,16 +625,12 @@ function CopilotForm(props: CopilotFormProps) {
                   }))
                 }
               />
-            </Stack>
-
-            {/* Post-turn hooks */}
-            <Stack gap="xs">
-              <Text size="sm" fw="600">
-                {t('Post-Turn Hooks')}
-              </Text>
-              <Text size="xs" c="dimmed">
+            </div>
+            <div className="settings-field">
+              <span className="settings-field-label">{t('Post-Turn Hooks')}</span>
+              <span className="settings-field-hint">
                 {t('Run after each generation to validate or process output')}
-              </Text>
+              </span>
               <HookList
                 hooks={copilotEdit.hooks?.postTurn ?? []}
                 onChange={(hooks) =>
@@ -862,30 +640,25 @@ function CopilotForm(props: CopilotFormProps) {
                   }))
                 }
               />
-            </Stack>
-          </Stack>
-        </Box>
-      </Box>
+            </div>
+          </div>
+        </SettingsCard>
+      </SettingsCollapsible>
 
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-        <FormGroup row>
-          <FormControlLabel
-            control={<Switch />}
-            label={t('Share with Chatbox')}
-            checked={copilotEdit.shared}
-            onChange={(_e, checked) => setCopilotEdit({ ...copilotEdit, shared: checked })}
-          />
-        </FormGroup>
-        <ButtonGroup>
-          <Button variant="outlined" onClick={() => props.close()}>
+      <div className="agents-form-footer">
+        <Switch
+          checked={copilotEdit.shared}
+          onChange={(e) => setCopilotEdit({ ...copilotEdit, shared: e.currentTarget.checked })}
+          label={t('Share with Chatbox')}
+        />
+        <div className="agents-form-actions">
+          <Button variant="default" onClick={() => props.close()}>
             {t('cancel')}
           </Button>
-          <Button variant="contained" onClick={save}>
-            {t('save')}
-          </Button>
-        </ButtonGroup>
-      </Box>
-    </Box>
+          <Button onClick={save}>{t('save')}</Button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -924,15 +697,9 @@ function HookList({ hooks, onChange }: HookListProps) {
           onRemove={() => removeHook(index)}
         />
       ))}
-      <MantineButton
-        variant="light"
-        color="blue"
-        size="xs"
-        leftSection={<ScalableIcon icon={IconPlus} size={14} />}
-        onClick={addHook}
-      >
+      <Button variant="default" size="xs" leftSection={<ScalableIcon icon={IconPlus} size={14} />} onClick={addHook}>
         {t('Add Hook')}
-      </MantineButton>
+      </Button>
     </Stack>
   )
 }
@@ -948,10 +715,8 @@ interface HookEditorProps {
 
 function HookEditor({ hook, onChange, onRemove }: HookEditorProps) {
   const { t } = useTranslation()
-  const theme = useTheme()
 
   const handleTypeChange = (type: string) => {
-    // Reset hook data when type changes
     switch (type) {
       case 'inject-context':
         onChange({ type: 'inject-context' as const, content: '' })
@@ -974,50 +739,40 @@ function HookEditor({ hook, onChange, onRemove }: HookEditorProps) {
   }
 
   return (
-    <Box
-      sx={{
-        p: 1.5,
-        border: '1px solid',
-        borderColor: theme.palette.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#dee2e6',
-        borderRadius: '6px',
-        backgroundColor: theme.palette.mode === 'dark' ? 'rgba(0,0,0,0.2)' : '#f8f9fa',
-      }}
-    >
+    <div className="agents-hook-card">
       <Flex gap="xs" align="flex-start">
         <Select
           size="xs"
-          style={{ width: 140 }}
+          style={{ flex: 1 }}
           data={HOOK_TYPES}
           value={hook.type}
           onChange={(value) => value && handleTypeChange(value)}
         />
-        <IconButton size="small" onClick={onRemove} sx={{ mt: 0.5 }}>
-          <DeleteIcon fontSize="small" />
-        </IconButton>
+        <ActionIcon variant="subtle" color="gray" onClick={onRemove} aria-label={t('delete')}>
+          <ScalableIcon icon={IconTrash} size={16} />
+        </ActionIcon>
       </Flex>
 
       {hook.type === 'inject-context' && (
-        <TextField
-          size="small"
-          fullWidth
+        <Textarea
+          mt="xs"
+          size="sm"
           placeholder={t('Context content to inject...')}
           value={(hook as { content: string }).content}
-          onChange={(e) => onChange({ content: e.target.value })}
-          multiline
+          onChange={(e) => onChange({ content: e.currentTarget.value })}
           minRows={2}
           maxRows={4}
-          sx={{ mt: 1 }}
+          autosize
         />
       )}
 
       {hook.type === 'web-fetch' && (
-        <Stack gap="xs" mt={1}>
-          <TextField
-            size="small"
-            fullWidth
+        <Stack gap="xs" mt="xs">
+          <TextInput
+            size="sm"
             placeholder={t('URL to fetch...')}
             value={(hook as { url: string }).url}
-            onChange={(e) => onChange({ url: e.target.value })}
+            onChange={(e) => onChange({ url: e.currentTarget.value })}
           />
           <Select
             size="xs"
@@ -1039,22 +794,22 @@ function HookEditor({ hook, onChange, onRemove }: HookEditorProps) {
           data={FORMAT_OPTIONS}
           value={(hook as { format: string }).format}
           onChange={(value) => value && onChange({ format: value as 'markdown' | 'json' | 'code' })}
-          mt={1}
+          mt="xs"
         />
       )}
 
       {hook.type === 'inject-datetime' && (
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+        <Text size="xs" c="chatbox-tertiary" mt={6}>
           {t('Injects current datetime (ISO 8601 format)')}
-        </Typography>
+        </Text>
       )}
 
       {hook.type === 'inject-system-info' && (
-        <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
+        <Text size="xs" c="chatbox-tertiary" mt={6}>
           {t('Injects OS and platform information')}
-        </Typography>
+        </Text>
       )}
-    </Box>
+    </div>
   )
 }
 

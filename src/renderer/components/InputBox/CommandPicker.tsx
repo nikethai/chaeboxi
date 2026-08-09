@@ -1,8 +1,10 @@
-import { Box, Paper, Stack, Text } from '@mantine/core'
+import { Box, Text } from '@mantine/core'
 import type { CommandPackage } from '@shared/types'
-import { memo, useEffect, useMemo } from 'react'
+import { memo, type RefObject, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { navigateToSettings } from '@/modals/Settings'
 import { fuzzyScoreCommand } from '@/packages/commands'
+import ComposerPickerPanel from './ComposerPickerPanel'
 
 export function filterCommands(commands: CommandPackage[], query: string) {
   const normalizedQuery = query.trim().toLowerCase()
@@ -27,6 +29,7 @@ export interface CommandPickerProps {
   onSelect(command: CommandPackage): void
   query: string
   excludeIds?: string[]
+  anchorRef: RefObject<HTMLElement | null>
 }
 
 function CommandPicker({
@@ -36,15 +39,17 @@ function CommandPicker({
   onSelect,
   query,
   excludeIds = [],
+  anchorRef,
 }: CommandPickerProps) {
   const { t } = useTranslation()
-  const filtered = useMemo(() => {
+  const available = useMemo(() => {
     const exclude = new Set(excludeIds)
-    return filterCommands(
-      commands.filter((c) => !exclude.has(c.id)),
-      query
-    ).slice(0, 8)
-  }, [commands, query, excludeIds])
+    return commands.filter((c) => c.enabled && !exclude.has(c.id))
+  }, [commands, excludeIds])
+
+  const filtered = useMemo(() => filterCommands(available, query).slice(0, 8), [available, query])
+  const catalogEmpty = available.length === 0
+  const isEmpty = filtered.length === 0
 
   useEffect(() => {
     if (filtered.length === 0) return
@@ -54,54 +59,57 @@ function CommandPicker({
   }, [filtered.length, highlightedIndex, onHighlightChange])
 
   return (
-    <Paper
-      shadow="md"
-      radius="md"
-      withBorder
-      className="absolute left-0 right-0 bottom-full mb-2 overflow-hidden z-50"
-      style={{ backgroundColor: 'var(--chatbox-background-primary)' }}
+    <ComposerPickerPanel
+      anchorRef={anchorRef}
+      open
+      aria-label={t('Commands')}
+      header={
+        <Text size="xs" c="chatbox-tertiary">
+          {t('Commands')} · /
+        </Text>
+      }
+      isEmpty={isEmpty}
+      empty={
+        catalogEmpty
+          ? {
+              title: t('No commands yet'),
+              description: t('Create commands, then run them with / in the composer.'),
+              action: {
+                label: t('Manage commands'),
+                onClick: () => navigateToSettings('/commands'),
+              },
+            }
+          : {
+              title: t('No matching commands'),
+            }
+      }
     >
-      <Stack gap={0}>
-        <Box px="sm" py="xs" style={{ borderBottom: '1px solid var(--chatbox-border-primary)' }}>
-          <Text size="xs" c="chatbox-tertiary">
-            {t('Commands')} · /
-          </Text>
-        </Box>
-
-        {filtered.length > 0 ? (
-          filtered.map((command, index) => {
-            const selected = index === highlightedIndex
-            return (
-              <Box
-                key={command.id}
-                px="sm"
-                py="xs"
-                className="cursor-pointer"
-                bg={selected ? 'var(--chatbox-background-brand-secondary)' : undefined}
-                onMouseEnter={() => onHighlightChange(index)}
-                onMouseDown={(e) => {
-                  e.preventDefault()
-                  onSelect(command)
-                }}
-              >
-                <Text size="sm" fw={500}>
-                  /{command.name}
-                </Text>
-                <Text size="xs" c="chatbox-tertiary" lineClamp={1}>
-                  {command.description}
-                </Text>
-              </Box>
-            )
-          })
-        ) : (
-          <Box px="sm" py="md">
-            <Text size="sm" c="chatbox-tertiary">
-              {t('No matching commands')}
+      {filtered.map((command, index) => {
+        const selected = index === highlightedIndex
+        return (
+          <Box
+            key={command.id}
+            px="sm"
+            py="xs"
+            className="composer-picker-row cursor-pointer"
+            data-selected={selected || undefined}
+            bg={selected ? 'var(--chatbox-background-brand-secondary)' : undefined}
+            onMouseEnter={() => onHighlightChange(index)}
+            onMouseDown={(e) => {
+              e.preventDefault()
+              onSelect(command)
+            }}
+          >
+            <Text size="sm" fw={500}>
+              /{command.name}
+            </Text>
+            <Text size="xs" c="chatbox-tertiary" lineClamp={1}>
+              {command.description}
             </Text>
           </Box>
-        )}
-      </Stack>
-    </Paper>
+        )
+      })}
+    </ComposerPickerPanel>
   )
 }
 

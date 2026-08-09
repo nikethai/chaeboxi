@@ -1,22 +1,11 @@
-import {
-  Badge,
-  Box,
-  Button,
-  FileButton,
-  Flex,
-  Modal,
-  Stack,
-  Switch,
-  Text,
-  Textarea,
-  TextInput,
-  Title,
-} from '@mantine/core'
+import { Badge, Box, Button, FileButton, Flex, Modal, Stack, Switch, Text, Textarea, TextInput } from '@mantine/core'
 import type { CommandPackage } from '@shared/types'
 import { IconDownload, IconPlus, IconRefresh, IconTrash, IconUpload } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { SettingsPage } from '@/components/settings/SettingsPage'
+import { SettingsPageHeader } from '@/components/settings/SettingsPageHeader'
 import { AGENT_COMMAND_ROOTS, isValidCommandName } from '@/packages/commands'
 import platform from '@/platform'
 import { useCommands } from '@/stores/commandsStore'
@@ -136,42 +125,40 @@ export function RouteComponent() {
   }
 
   return (
-    <Stack gap="lg" p="md">
-      <Flex justify="space-between" align="flex-start" gap="md" wrap="wrap">
-        <Stack gap={4}>
-          <Title order={5}>{t('Commands')}</Title>
-          <Text size="sm" c="chatbox-tertiary">
-            {t(
-              'User-invoked workflows you tag with /command-name in chat. Never auto-selected. Desktop loads from Claude and Cursor command folders.'
-            )}
-          </Text>
-        </Stack>
-        <Flex gap="xs" wrap="wrap">
-          {isDesktop && (
-            <Button
-              variant="default"
-              leftSection={<IconRefresh size={16} />}
-              loading={rescanning}
-              onClick={() => void handleRescan()}
-            >
-              {t('Rescan agent folders')}
-            </Button>
-          )}
-          <FileButton onChange={handleImportFile} accept=".md,text/markdown,text/plain">
-            {(props) => (
-              <Button {...props} variant="default" leftSection={<IconUpload size={16} />}>
-                {t('Import')}
+    <SettingsPage wide>
+      <SettingsPageHeader
+        title={t('Commands')}
+        description={t(
+          'User-invoked workflows you tag with /command-name in chat. Never auto-selected. Desktop loads from Claude and Cursor command folders.'
+        )}
+        actions={
+          <Flex gap="xs" wrap="wrap">
+            {isDesktop && (
+              <Button
+                variant="default"
+                leftSection={<IconRefresh size={16} />}
+                loading={rescanning}
+                onClick={() => void handleRescan()}
+              >
+                {t('Rescan agent folders')}
               </Button>
             )}
-          </FileButton>
-          <Button variant="default" onClick={() => setImportOpen(true)}>
-            {t('Paste markdown')}
-          </Button>
-          <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>
-            {t('New command')}
-          </Button>
-        </Flex>
-      </Flex>
+            <FileButton onChange={handleImportFile} accept=".md,text/markdown,text/plain">
+              {(props) => (
+                <Button {...props} variant="default" leftSection={<IconUpload size={16} />}>
+                  {t('Import')}
+                </Button>
+              )}
+            </FileButton>
+            <Button variant="default" onClick={() => setImportOpen(true)}>
+              {t('Paste markdown')}
+            </Button>
+            <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>
+              {t('New command')}
+            </Button>
+          </Flex>
+        }
+      />
 
       {isDesktop && (
         <Box
@@ -179,7 +166,7 @@ export function RouteComponent() {
           style={{
             borderRadius: 12,
             background: 'var(--chatbox-background-secondary)',
-            border: '1px solid var(--chatbox-border-primary)',
+            boxShadow: 'var(--settings-shadow)',
           }}
         >
           <Text size="sm" fw={600} mb={6}>
@@ -194,7 +181,12 @@ export function RouteComponent() {
               ? agentRoots
               : AGENT_COMMAND_ROOTS.map((r) => ({ path: r.path, origin: r.origin, exists: false }))
             ).map((root) => (
-              <Text key={root.path} size="xs" c={root.exists ? 'chatbox-secondary' : 'chatbox-tertiary'} className="font-mono">
+              <Text
+                key={root.path}
+                size="xs"
+                c={root.exists ? 'chatbox-secondary' : 'chatbox-tertiary'}
+                className="font-mono"
+              >
                 {root.exists ? '●' : '○'} {root.origin}: {root.path}
               </Text>
             ))}
@@ -339,6 +331,6 @@ export function RouteComponent() {
           </Flex>
         </Stack>
       </Modal>
-    </Stack>
+    </SettingsPage>
   )
 }

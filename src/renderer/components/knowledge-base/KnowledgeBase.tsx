@@ -1,15 +1,20 @@
-import { Alert, Button, Flex, Group, Paper, Pill, Stack, Text, Title } from '@mantine/core'
+import { Button, Flex, Group, Pill, Stack, Text } from '@mantine/core'
 import { SystemProviders } from '@shared/defaults'
 import type { KnowledgeBase, ProviderModelInfo } from '@shared/types'
 import type { DocumentParserConfig, DocumentParserType } from '@shared/types/settings'
 import { parseKnowledgeBaseModelString } from '@shared/utils/knowledge-base-model-parser'
-import { IconAlertTriangle, IconInfoCircle, IconPlus } from '@tabler/icons-react'
+import { IconAlertTriangle, IconBooks, IconPlus } from '@tabler/icons-react'
 import compact from 'lodash/compact'
 import flatten from 'lodash/flatten'
 import type React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { SettingsCallout } from '@/components/settings/SettingsCallout'
+import { SettingsCard } from '@/components/settings/SettingsCard'
+import { SettingsPage } from '@/components/settings/SettingsPage'
+import { SettingsPageHeader } from '@/components/settings/SettingsPageHeader'
+import { SettingsSection } from '@/components/settings/SettingsSection'
 import { useProviders } from '@/hooks/useProviders'
 import platform from '@/platform'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -298,32 +303,30 @@ const KnowledgeBasePage: React.FC = () => {
   }
 
   return (
-    <Stack p="md" gap="xl">
-      <Group justify="space-between" align="center">
-        <Title order={5}>{t('Knowledge Base')}</Title>
-        <Button variant="outline" onClick={() => setShowCreate(true)} disabled={isUnsupportedPlatform}>
-          <Group gap="xs">
-            <ScalableIcon icon={IconPlus} size={16} />
-            <Text size="sm" c="chatbox-brand" fw={400}>
+    <SettingsPage wide>
+      <SettingsPageHeader
+        title={t('Knowledge Base')}
+        description={t('Attach documents so the assistant can retrieve context during chats.')}
+        actions={
+          !isUnsupportedPlatform ? (
+            <Button
+              variant="default"
+              size="sm"
+              leftSection={<ScalableIcon icon={IconPlus} size={16} />}
+              onClick={() => setShowCreate(true)}
+            >
               {t('Add')}
-            </Text>
-          </Group>
-        </Button>
-      </Group>
+            </Button>
+          ) : undefined
+        }
+      />
 
       {isUnsupportedPlatform && (
-        <Alert
-          variant="light"
-          color="orange"
-          title={t('Platform Not Supported')}
-          icon={<ScalableIcon icon={IconInfoCircle} size={16} />}
-        >
-          <Text size="sm">
-            {t(
-              'Knowledge Base functionality is not available on Windows ARM64 due to library compatibility issues. This feature is supported on Windows x64, macOS, and Linux.'
-            )}
-          </Text>
-        </Alert>
+        <SettingsCallout title={t('Platform Not Supported')} tone="warning">
+          {t(
+            'Knowledge Base functionality is not available on Windows ARM64 due to library compatibility issues. This feature is supported on Windows x64, macOS, and Linux.'
+          )}
+        </SettingsCallout>
       )}
 
       <Modal opened={showCreate} onClose={() => setShowCreate(false)} title={t('Create Knowledge Base')} centered>
@@ -379,7 +382,6 @@ const KnowledgeBasePage: React.FC = () => {
           />
         </Stack>
       </Modal>
-      {/* Delete Confirmation Modal */}
       <Modal
         opened={!!deleteConfirmKb}
         onClose={() => setDeleteConfirmKb(null)}
@@ -391,7 +393,7 @@ const KnowledgeBasePage: React.FC = () => {
           <Text size="sm">
             {t('Are you sure you want to delete the knowledge base')} "{deleteConfirmKb?.name}"?
           </Text>
-          <Text size="sm" c="dimmed">
+          <Text size="sm" c="chatbox-tertiary">
             {t('This action cannot be undone. All documents and their embeddings will be permanently deleted.')}
           </Text>
           <Group justify="flex-end">
@@ -404,88 +406,94 @@ const KnowledgeBasePage: React.FC = () => {
           </Group>
         </Stack>
       </Modal>
-      {!isUnsupportedPlatform && (
-        <Stack gap="xl">
-          {kbList.length === 0 ? (
-            <Paper withBorder p="xl" style={{ textAlign: 'center' }}>
-              <Stack gap="md" align="center">
-                <ScalableIcon icon={IconInfoCircle} size={48} color="var(--chatbox-tint-tertiary)" />
-                <Stack gap="xs" align="center">
-                  <Text fw={500} size="lg">
-                    {t('No Knowledge Base Yet')}
-                  </Text>
-                  <Text size="sm" c="dimmed" style={{ maxWidth: 400 }}>
-                    {t(
-                      'Create your first knowledge base to start adding documents and enhance your AI conversations with contextual information.'
-                    )}
-                  </Text>
-                </Stack>
-                <Button variant="outline" onClick={() => setShowCreate(true)} size="sm">
-                  <Group gap="xs">
-                    <ScalableIcon icon={IconPlus} size={16} />
-                    {t('Create First Knowledge Base')}
-                  </Group>
+
+      {!isUnsupportedPlatform &&
+        (kbList.length === 0 ? (
+          <SettingsSection>
+            <SettingsCard className="settings-kb-empty">
+              <div className="settings-kb-empty-inner">
+                <div className="settings-kb-empty-icon" aria-hidden>
+                  <ScalableIcon icon={IconBooks} size={28} />
+                </div>
+                <Text fw={600} size="md" className="settings-kb-empty-title">
+                  {t('No knowledge bases yet')}
+                </Text>
+                <Text size="sm" c="chatbox-tertiary" className="settings-kb-empty-desc text-pretty">
+                  {t(
+                    'Create a knowledge base, add documents, and the assistant can pull relevant context into chats.'
+                  )}
+                </Text>
+                <Button
+                  variant="filled"
+                  size="sm"
+                  leftSection={<ScalableIcon icon={IconPlus} size={16} />}
+                  onClick={() => setShowCreate(true)}
+                >
+                  {t('Create knowledge base')}
                 </Button>
-              </Stack>
-            </Paper>
-          ) : (
-            kbList.map((kb) => (
-              <Paper key={kb.id} withBorder p="md">
-                <Stack gap="md">
-                  <Stack gap="0">
-                    <Group justify="space-between" align="center">
-                      <Text fw={600} size="lg">
-                        {kb.name}
-                      </Text>
-                      <Button size="xs" variant="subtle" onClick={() => handleEditKb(kb)}>
+              </div>
+            </SettingsCard>
+          </SettingsSection>
+        ) : (
+          <SettingsSection title={t('Your libraries')}>
+            <Stack gap="md">
+              {kbList.map((kb) => (
+                <SettingsCard key={kb.id}>
+                  <div className="settings-card-fields">
+                    <Group justify="space-between" align="flex-start" wrap="nowrap" gap="md">
+                      <Stack gap={6} className="min-w-0 flex-1">
+                        <Text fw={600} size="sm" className="settings-list-row-title">
+                          {kb.name}
+                        </Text>
+                        <Group gap={6} wrap="wrap" align="center">
+                          <Text size="xs" c="chatbox-tertiary">
+                            {t('Parser')}
+                          </Text>
+                          <Pill size="sm">{formatParserType(kb.documentParser?.type)}</Pill>
+                          <Text size="xs" c="chatbox-tertiary">
+                            {t('Embedding')}
+                          </Text>
+                          <ModelPill
+                            modelValue={kb.embeddingModel}
+                            formatModelName={formatModelName}
+                            isProviderAvailable={isProviderAvailable}
+                            type="embedding"
+                            t={t}
+                          />
+                          <Text size="xs" c="chatbox-tertiary">
+                            {t('Rerank')}
+                          </Text>
+                          <ModelPill
+                            modelValue={kb.rerankModel}
+                            formatModelName={formatModelName}
+                            isProviderAvailable={isProviderAvailable}
+                            type="rerank"
+                            t={t}
+                          />
+                          <Text size="xs" c="chatbox-tertiary">
+                            {t('Vision')}
+                          </Text>
+                          <ModelPill
+                            modelValue={kb.visionModel}
+                            formatModelName={formatModelName}
+                            isProviderAvailable={isProviderAvailable}
+                            type="vision"
+                            t={t}
+                          />
+                        </Group>
+                      </Stack>
+                      <Button size="compact-sm" variant="default" onClick={() => handleEditKb(kb)} className="shrink-0">
                         {t('Edit')}
                       </Button>
                     </Group>
-                    <Group gap="xs" wrap="wrap" align="center">
-                      <Text size="xs" c="dimmed">
-                        {t('Parser')}:
-                      </Text>
-                      <Pill>{formatParserType(kb.documentParser?.type)}</Pill>
-                      <Text size="xs" c="dimmed">
-                        {t('Embedding')}:
-                      </Text>
-                      <ModelPill
-                        modelValue={kb.embeddingModel}
-                        formatModelName={formatModelName}
-                        isProviderAvailable={isProviderAvailable}
-                        type="embedding"
-                        t={t}
-                      />
-                      <Text size="xs" c="dimmed">
-                        {t('Rerank')}:
-                      </Text>
-                      <ModelPill
-                        modelValue={kb.rerankModel}
-                        formatModelName={formatModelName}
-                        isProviderAvailable={isProviderAvailable}
-                        type="rerank"
-                        t={t}
-                      />
-                      <Text size="xs" c="dimmed">
-                        {t('Vision')}:
-                      </Text>
-                      <ModelPill
-                        modelValue={kb.visionModel}
-                        formatModelName={formatModelName}
-                        isProviderAvailable={isProviderAvailable}
-                        type="vision"
-                        t={t}
-                      />
-                    </Group>
-                  </Stack>
-                  <KnowledgeBaseDocuments knowledgeBase={kb} />
-                </Stack>
-              </Paper>
-            ))
-          )}
-        </Stack>
-      )}
-    </Stack>
+                    <KnowledgeBaseDocuments knowledgeBase={kb} />
+                  </div>
+                </SettingsCard>
+              ))}
+            </Stack>
+          </SettingsSection>
+        ))}
+    </SettingsPage>
   )
 }
 

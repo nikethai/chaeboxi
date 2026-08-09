@@ -1,9 +1,10 @@
-import { Alert, Button, Flex, Loader, SegmentedControl, Stack, Text, TextInput } from '@mantine/core'
+import { Alert, Button, Flex, Loader, SegmentedControl, Stack, Text } from '@mantine/core'
 import {
   fetchOpenAICodexModels,
   humanizeOpenAICodexOAuthNetworkError,
   mergeOpenAICodexModels,
   OPENAI_CODEX_DEFAULT_MODELS,
+  type OpenAIAuthMode,
   OpenAICodexOAuthError,
   pollOpenAICodexDeviceAuth,
   resolveOpenAIAuthMode,
@@ -11,13 +12,14 @@ import {
   settingsPatchSignOutOpenAICodexOAuth,
   startOpenAICodexDeviceAuth,
   tokensFromCodexAuthJson,
-  type OpenAIAuthMode,
 } from '@shared/providers/oauth'
 import type { ProviderSettings } from '@shared/types'
-import { IconCopy, IconExternalLink, IconInfoCircle, IconLogout, IconFileImport } from '@tabler/icons-react'
+import { IconCopy, IconExternalLink, IconFileImport, IconLogout } from '@tabler/icons-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
+import { SettingsCallout } from '@/components/settings/SettingsCallout'
+import { SettingsPrefRow } from '@/components/settings/SettingsPrefRow'
 import platform from '@/platform'
 import { add as addToast } from '@/stores/toastActions'
 
@@ -28,10 +30,7 @@ interface OpenAICodexAuthSectionProps {
 
 type SignInPhase = 'idle' | 'starting' | 'waiting' | 'error'
 
-export function OpenAICodexAuthSection({
-  providerSettings,
-  setProviderSettings,
-}: OpenAICodexAuthSectionProps) {
+export function OpenAICodexAuthSection({ providerSettings, setProviderSettings }: OpenAICodexAuthSectionProps) {
   const { t } = useTranslation()
   const authMode = resolveOpenAIAuthMode(providerSettings)
   const signedIn = Boolean(providerSettings?.oauth?.accessToken)
@@ -68,9 +67,7 @@ export function OpenAICodexAuthSection({
       )
       setProviderSettings({
         authMode: 'oauth',
-        ...(looksLikeApiCatalog || !providerSettings?.models?.length
-          ? { models: OPENAI_CODEX_DEFAULT_MODELS }
-          : {}),
+        ...(looksLikeApiCatalog || !providerSettings?.models?.length ? { models: OPENAI_CODEX_DEFAULT_MODELS } : {}),
       })
       return
     }
@@ -211,93 +208,87 @@ export function OpenAICodexAuthSection({
   }
 
   return (
-    <Stack gap="sm">
-      <Stack gap="xxs">
-        <Text span fw="600">
-          {t('How do you connect?')}
-        </Text>
-        <SegmentedControl
-          fullWidth
-          value={authMode}
-          onChange={handleModeChange}
-          data={[
-            { label: t('ChatGPT subscription'), value: 'oauth' },
-            { label: t('API Key'), value: 'api_key' },
-          ]}
-        />
-      </Stack>
+    <div className="settings-card-fields">
+      <SettingsPrefRow
+        title={t('How do you connect?')}
+        description={
+          authMode === 'oauth'
+            ? t('Uses your ChatGPT Plus, Pro, or Team quota — not Platform API billing.')
+            : t('API keys from platform.openai.com are billed separately from ChatGPT Plus/Pro.')
+        }
+        align="start"
+        control={
+          <SegmentedControl
+            className="settings-segmented"
+            value={authMode}
+            onChange={handleModeChange}
+            data={[
+              { label: t('Subscription'), value: 'oauth' },
+              { label: t('API Key'), value: 'api_key' },
+            ]}
+          />
+        }
+      />
 
       {authMode === 'oauth' && (
-        <Stack gap="sm">
-          <Alert variant="light" color="blue" icon={<IconInfoCircle />} title={t('Subscription login')}>
-            <Text size="sm">
-              {t(
-                'Sign in with your ChatGPT Plus, Pro, or Team account. Uses your subscription quota — not Platform API billing. Some models may be limited by your plan. Third-party access may change if OpenAI updates Codex login.'
-              )}
-            </Text>
-          </Alert>
+        <>
+          <SettingsPrefRow
+            title={t('Account')}
+            description={!signedIn ? t('Not signed in') : undefined}
+            align="start"
+            control={
+              <div className="settings-actions">
+                {signedIn ? (
+                  <>
+                    <span className="settings-status-pill settings-status-pill-ok">
+                      {planType ? t('Signed in ({{plan}})', { plan: planType }) : t('Signed in')}
+                    </span>
+                    <Button
+                      variant="default"
+                      size="compact-sm"
+                      leftSection={<ScalableIcon icon={IconLogout} size={14} />}
+                      onClick={handleSignOut}
+                    >
+                      {t('Sign out')}
+                    </Button>
+                    <Button variant="subtle" size="compact-sm" onClick={() => void handleSignIn()}>
+                      {t('Re-authenticate')}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      size="sm"
+                      loading={phase === 'starting' && !userCode}
+                      disabled={phase === 'waiting'}
+                      onClick={() => void handleSignIn()}
+                    >
+                      {t('Sign in with ChatGPT')}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      leftSection={<ScalableIcon icon={IconFileImport} size={14} />}
+                      loading={phase === 'starting' && !userCode}
+                      disabled={phase === 'waiting'}
+                      onClick={() => void handleImportCodexAuth()}
+                    >
+                      {t('Import Codex login')}
+                    </Button>
+                  </>
+                )}
+              </div>
+            }
+          />
 
-          <Flex gap="xs" align="center" wrap="wrap">
-            <Text size="sm" c={signedIn ? 'teal' : 'chatbox-secondary'}>
-              {signedIn
-                ? planType
-                  ? t('Signed in ({{plan}})', { plan: planType })
-                  : t('Signed in')
-                : t('Not signed in')}
-            </Text>
-            {signedIn ? (
-              <Button
-                variant="light"
-                color="gray"
-                size="compact-sm"
-                leftSection={<ScalableIcon icon={IconLogout} size={14} />}
-                onClick={handleSignOut}
-              >
-                {t('Sign out')}
-              </Button>
-            ) : (
-              <>
-                <Button
-                  size="sm"
-                  loading={phase === 'starting' && !userCode}
-                  disabled={phase === 'waiting'}
-                  onClick={() => void handleSignIn()}
-                >
-                  {t('Sign in with ChatGPT')}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="light"
-                  leftSection={<ScalableIcon icon={IconFileImport} size={14} />}
-                  loading={phase === 'starting' && !userCode}
-                  disabled={phase === 'waiting'}
-                  onClick={() => void handleImportCodexAuth()}
-                >
-                  {t('Import Codex login')}
-                </Button>
-              </>
-            )}
-            {signedIn && (
-              <Button variant="subtle" size="compact-sm" onClick={() => void handleSignIn()}>
-                {t('Re-authenticate')}
-              </Button>
-            )}
-          </Flex>
           {!signedIn && (
-            <Text size="xs" c="chatbox-secondary">
-              {t(
-                'Tip: if device sign-in fails, run `codex login` in Terminal then click Import Codex login.'
-              )}
+            <Text size="xs" c="chatbox-tertiary">
+              {t('Tip: if device sign-in fails, run `codex login` in Terminal then click Import Codex login.')}
             </Text>
           )}
 
-          {/* Keep code visible for waiting AND error so the browser page never hides it */}
           {(phase === 'waiting' || phase === 'starting' || (phase === 'error' && userCode)) && (
-            <Stack
-              gap="sm"
-              p="md"
-              className="rounded-md border-2 border-[var(--mantine-color-blue-filled)] bg-[var(--mantine-color-blue-light)]"
-            >
+            <div className="settings-device-code-panel">
               {(phase === 'waiting' || phase === 'starting') && (
                 <Flex gap="xs" align="center">
                   <Loader size="sm" />
@@ -309,24 +300,25 @@ export function OpenAICodexAuthSection({
 
               {userCode ? (
                 <Stack gap="xs" align="center">
-                  <Text size="xs" c="chatbox-secondary" ta="center">
+                  <Text size="xs" c="chatbox-tertiary" ta="center">
                     {t('Your one-time code')}
                   </Text>
                   <Text
                     ff="monospace"
-                    fw={800}
+                    fw={700}
+                    className="settings-device-code"
                     style={{
-                      fontSize: 28,
-                      letterSpacing: '0.18em',
+                      fontSize: 26,
+                      letterSpacing: '0.16em',
                       lineHeight: 1.2,
                       userSelect: 'all',
                     }}
                   >
                     {userCode}
                   </Text>
-                  <Flex gap="xs" align="center" wrap="wrap" justify="center">
+                  <div className="settings-actions" style={{ justifyContent: 'center' }}>
                     <Button
-                      variant="filled"
+                      variant="default"
                       size="sm"
                       leftSection={<ScalableIcon icon={IconCopy} size={16} />}
                       onClick={() => void handleCopyCode()}
@@ -334,7 +326,7 @@ export function OpenAICodexAuthSection({
                       {t('Copy code')}
                     </Button>
                     <Button
-                      variant="light"
+                      variant="default"
                       size="sm"
                       leftSection={<ScalableIcon icon={IconExternalLink} size={16} />}
                       onClick={handleOpenAgain}
@@ -342,12 +334,12 @@ export function OpenAICodexAuthSection({
                       {t('Open login page')}
                     </Button>
                     {(phase === 'waiting' || phase === 'starting') && (
-                      <Button variant="default" size="sm" onClick={cancelSignIn}>
+                      <Button variant="subtle" size="sm" onClick={cancelSignIn}>
                         {t('Cancel')}
                       </Button>
                     )}
-                  </Flex>
-                  <Text size="xs" c="chatbox-secondary" ta="center">
+                  </div>
+                  <Text size="xs" c="chatbox-tertiary" ta="center">
                     {t('Open https://auth.openai.com/codex/device · paste the code · return here')}
                   </Text>
                 </Stack>
@@ -357,11 +349,11 @@ export function OpenAICodexAuthSection({
                   <Text size="sm">{t('Starting sign-in…')}</Text>
                 </Flex>
               )}
-            </Stack>
+            </div>
           )}
 
           {phase === 'error' && errorMessage && (
-            <Alert color="red" title={t('Sign-in failed')}>
+            <Alert color="red" title={t('Sign-in failed')} radius="md">
               <Stack gap="xs">
                 <Text size="sm">{errorMessage}</Text>
                 <Button size="compact-sm" className="self-start" onClick={() => void handleSignIn()}>
@@ -371,7 +363,7 @@ export function OpenAICodexAuthSection({
             </Alert>
           )}
 
-          <Flex gap="sm" wrap="wrap">
+          <div className="settings-actions">
             <Button
               variant="subtle"
               size="compact-xs"
@@ -388,28 +380,28 @@ export function OpenAICodexAuthSection({
             >
               {t('Plans')}
             </Button>
-          </Flex>
-        </Stack>
+          </div>
+        </>
       )}
 
       {authMode === 'api_key' && (
-        <Alert variant="light" color="yellow" icon={<IconInfoCircle />} title={t('Developer API')}>
-          <Text size="sm">
+        <SettingsCallout title={t('Developer API')} tone="warning">
+          <Text size="sm" c="inherit" component="div">
             {t(
               'API keys from platform.openai.com are billed separately from ChatGPT Plus/Pro. Switch to ChatGPT subscription to use your plan quota.'
             )}
           </Text>
           <Button
             mt="xs"
-            variant="light"
+            variant="default"
             size="compact-sm"
             leftSection={<ScalableIcon icon={IconExternalLink} size={14} />}
             onClick={() => platform.openLink('https://platform.openai.com/api-keys')}
           >
             {t('Get API Key')}
           </Button>
-        </Alert>
+        </SettingsCallout>
       )}
-    </Stack>
+    </div>
   )
 }

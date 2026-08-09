@@ -1,8 +1,10 @@
-import { Box, Paper, Stack, Text } from '@mantine/core'
+import { Box, Text } from '@mantine/core'
 import type { AgentDetail } from '@shared/types'
-import { memo, useEffect, useMemo } from 'react'
+import { memo, type RefObject, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { navigateToSettings } from '@/modals/Settings'
 import { fuzzyScoreAgent } from '@/packages/agents'
+import ComposerPickerPanel from './ComposerPickerPanel'
 
 export function filterAgents(agents: AgentDetail[], query: string) {
   const normalizedQuery = query.trim().toLowerCase()
@@ -26,6 +28,7 @@ export interface AgentPickerProps {
   onSelect(agent: AgentDetail): void
   query: string
   excludeIds?: string[]
+  anchorRef: RefObject<HTMLElement | null>
 }
 
 function AgentPicker({
@@ -35,15 +38,17 @@ function AgentPicker({
   onSelect,
   query,
   excludeIds = [],
+  anchorRef,
 }: AgentPickerProps) {
   const { t } = useTranslation()
-  const filtered = useMemo(() => {
+  const available = useMemo(() => {
     const exclude = new Set(excludeIds)
-    return filterAgents(
-      agents.filter((a) => !exclude.has(a.id)),
-      query
-    ).slice(0, 8)
-  }, [agents, query, excludeIds])
+    return agents.filter((a) => !exclude.has(a.id))
+  }, [agents, excludeIds])
+
+  const filtered = useMemo(() => filterAgents(available, query).slice(0, 8), [available, query])
+  const catalogEmpty = available.length === 0
+  const isEmpty = filtered.length === 0
 
   useEffect(() => {
     if (filtered.length === 0) return
@@ -53,65 +58,67 @@ function AgentPicker({
   }, [filtered.length, highlightedIndex, onHighlightChange])
 
   return (
-    <Paper
-      shadow="md"
-      radius="md"
-      withBorder
-      className="absolute left-0 right-0 bottom-full mb-2 overflow-hidden z-50"
-      style={{ backgroundColor: 'var(--chatbox-background-primary)' }}
+    <ComposerPickerPanel
+      anchorRef={anchorRef}
+      open
+      aria-label={t('Agents')}
+      header={
+        <Text size="xs" c="chatbox-tertiary">
+          {t('Agents')} · @
+        </Text>
+      }
+      isEmpty={isEmpty}
+      empty={
+        catalogEmpty
+          ? {
+              title: t('No agents yet'),
+              description: t('Create an agent to mention with @ in the composer.'),
+              action: {
+                label: t('Create agent'),
+                onClick: () => navigateToSettings('/agents'),
+              },
+            }
+          : {
+              title: t('No agents found'),
+            }
+      }
     >
-      <Stack gap={0}>
-        <Box px="sm" py="xs" style={{ borderBottom: '1px solid var(--chatbox-border-primary)' }}>
-          <Text size="xs" c="chatbox-tertiary">
-            {t('Agents')} · @
-          </Text>
-        </Box>
-
-        {filtered.length > 0 ? (
-          filtered.map((agent, index) => {
-            const selected = index === highlightedIndex
-            return (
-              <Box
-                key={agent.id}
-                px="sm"
-                py="xs"
-                className="cursor-pointer"
-                bg={selected ? 'var(--chatbox-background-brand-secondary)' : undefined}
-                onMouseEnter={() => onHighlightChange(index)}
-                onClick={() => onSelect(agent)}
-              >
-                <FlexRow>
-                  <Text size="sm" className="mr-2 shrink-0">
-                    {agent.emojiAvatar || '🤖'}
+      {filtered.map((agent, index) => {
+        const selected = index === highlightedIndex
+        return (
+          <Box
+            key={agent.id}
+            px="sm"
+            py="xs"
+            className="composer-picker-row cursor-pointer"
+            data-selected={selected || undefined}
+            bg={selected ? 'var(--chatbox-background-brand-secondary)' : undefined}
+            onMouseEnter={() => onHighlightChange(index)}
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onSelect(agent)
+            }}
+          >
+            <div className="flex items-start gap-1">
+              <Text size="sm" className="mr-2 shrink-0">
+                {agent.emojiAvatar || '🤖'}
+              </Text>
+              <div className="min-w-0">
+                <Text size="sm" fw={500} className="truncate">
+                  {agent.name}
+                </Text>
+                {agent.prompt ? (
+                  <Text size="xs" c="chatbox-tertiary" className="truncate">
+                    {agent.prompt.slice(0, 80)}
                   </Text>
-                  <div className="min-w-0">
-                    <Text size="sm" fw={500} className="truncate">
-                      {agent.name}
-                    </Text>
-                    {agent.prompt ? (
-                      <Text size="xs" c="chatbox-tertiary" className="truncate">
-                        {agent.prompt.slice(0, 80)}
-                      </Text>
-                    ) : null}
-                  </div>
-                </FlexRow>
-              </Box>
-            )
-          })
-        ) : (
-          <Box px="sm" py="md">
-            <Text size="sm" c="chatbox-tertiary">
-              {t('No agents found')}
-            </Text>
+                ) : null}
+              </div>
+            </div>
           </Box>
-        )}
-      </Stack>
-    </Paper>
+        )
+      })}
+    </ComposerPickerPanel>
   )
-}
-
-function FlexRow({ children }: { children: React.ReactNode }) {
-  return <div className="flex items-start gap-1">{children}</div>
 }
 
 export default memo(AgentPicker)

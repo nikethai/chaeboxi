@@ -127,7 +127,7 @@ export function RouteComponent() {
       {(!isSmallScreen || routerState.location.pathname === '/settings/provider') && (
         <ProviderList
           providers={providers}
-          onAddProvider={() => setNewProviderModalOpened(true)}
+          onAddCustomProvider={() => setNewProviderModalOpened(true)}
           onImportProvider={handleClipboardImport}
           isImporting={isImporting}
         />

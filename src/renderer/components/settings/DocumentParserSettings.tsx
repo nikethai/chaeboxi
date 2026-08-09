@@ -1,8 +1,13 @@
-import { Button, Flex, PasswordInput, Stack, Text, Title } from '@mantine/core'
+import { Button, Flex, PasswordInput, Text } from '@mantine/core'
 import type { DocumentParserType } from '@shared/types/settings'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AdaptiveSelect } from '@/components/AdaptiveSelect'
+import { SettingsCard } from '@/components/settings/SettingsCard'
+import { SettingsPage } from '@/components/settings/SettingsPage'
+import { SettingsPageHeader } from '@/components/settings/SettingsPageHeader'
+import { SettingsPrefRow } from '@/components/settings/SettingsPrefRow'
+import { SettingsSection } from '@/components/settings/SettingsSection'
 import platform from '@/platform'
 import { getPlatformDefaultDocumentParser, useSettingsStore } from '@/stores/settingsStore'
 
@@ -12,9 +17,9 @@ const ALL_PARSER_OPTIONS: {
   desktopOnly?: boolean
   mobileWebOnly?: boolean
 }[] = [
-  { value: 'none', label: 'Text Only', mobileWebOnly: true }, // Basic text file support only (mobile/web only)
-  { value: 'local', label: 'Local', desktopOnly: true }, // Only available on desktop
-  { value: 'mineru', label: 'MinerU', desktopOnly: true }, // Only available on desktop (requires IPC)
+  { value: 'none', label: 'Text Only', mobileWebOnly: true },
+  { value: 'local', label: 'Local', desktopOnly: true },
+  { value: 'mineru', label: 'MinerU', desktopOnly: true },
 ]
 
 const PARSER_DESCRIPTIONS: Record<DocumentParserType, string> = {
@@ -106,72 +111,91 @@ export function DocumentParserSettings({ showTitle = true }: DocumentParserSetti
     }
   }, [mineruToken])
 
-  return (
-    <Stack p="md" gap="xxl">
-      {showTitle && <Title order={5}>{t('Document Parser')}</Title>}
+  const body = (
+    <>
+      {showTitle && (
+        <SettingsPageHeader
+          title={t('Document Parser')}
+          description={t('How attachments are parsed before they reach the model.')}
+        />
+      )}
 
-      <AdaptiveSelect
-        comboboxProps={{ withinPortal: true, withArrow: true }}
-        data={parserOptions.map((opt) => ({
-          value: opt.value,
-          label: t(opt.label),
-        }))}
-        value={currentParserType}
-        onChange={handleParserTypeChange}
-        label={t('Parser Type')}
-        maw={320}
-      />
-
-      <Text size="xs" c="chatbox-gray">
-        {t(PARSER_DESCRIPTIONS[currentParserType])}
-      </Text>
+      <SettingsSection title={t('Parser')}>
+        <SettingsCard divided>
+          <SettingsPrefRow
+            title={t('Parser Type')}
+            description={t(PARSER_DESCRIPTIONS[currentParserType])}
+            align="start"
+            control={
+              <AdaptiveSelect
+                comboboxProps={{ withinPortal: true, withArrow: true }}
+                data={parserOptions.map((opt) => ({
+                  value: opt.value,
+                  label: t(opt.label),
+                }))}
+                value={currentParserType}
+                onChange={handleParserTypeChange}
+                maw={200}
+              />
+            }
+          />
+        </SettingsCard>
+      </SettingsSection>
 
       {currentParserType === 'mineru' && (
-        <Stack gap="xs">
-          <Text fw="600">{t('MinerU API Token')}</Text>
-          <Flex align="center" gap="xs">
-            <PasswordInput
-              flex={1}
-              maw={320}
-              value={mineruToken}
-              onChange={(e) => handleMineruTokenChange(e.currentTarget.value)}
-              error={connectionResult === false}
-            />
-            <Button
-              color="blue"
-              variant="light"
-              onClick={handleTestConnection}
-              loading={testingConnection}
-              disabled={!mineruToken.trim()}
-            >
-              {t('Check')}
-            </Button>
-          </Flex>
-
-          {typeof connectionResult === 'boolean' ? (
-            connectionResult ? (
-              <Text size="xs" c="chatbox-success">
-                {t('Connection successful!')}
-              </Text>
-            ) : (
-              <Text size="xs" c="chatbox-error">
-                {t('API key invalid!')}
-              </Text>
-            )
-          ) : null}
-          <Button
-            variant="transparent"
-            size="compact-xs"
-            px={0}
-            className="self-start"
-            onClick={() => platform.openLink('https://mineru.net/apiManage')}
-          >
-            {t('Get API Token')}
-          </Button>
-        </Stack>
+        <SettingsSection title={t('MinerU API Token')}>
+          <SettingsCard>
+            <div className="settings-card-fields">
+              <Flex align="center" gap="xs">
+                <PasswordInput
+                  flex={1}
+                  maw={320}
+                  value={mineruToken}
+                  onChange={(e) => handleMineruTokenChange(e.currentTarget.value)}
+                  error={connectionResult === false}
+                />
+                <Button
+                  color="blue"
+                  variant="light"
+                  onClick={handleTestConnection}
+                  loading={testingConnection}
+                  disabled={!mineruToken.trim()}
+                >
+                  {t('Check')}
+                </Button>
+              </Flex>
+              {typeof connectionResult === 'boolean' ? (
+                connectionResult ? (
+                  <Text size="xs" c="chatbox-success">
+                    {t('Connection successful!')}
+                  </Text>
+                ) : (
+                  <Text size="xs" c="chatbox-error">
+                    {t('API key invalid!')}
+                  </Text>
+                )
+              ) : null}
+              <Button
+                variant="transparent"
+                size="compact-xs"
+                px={0}
+                className="self-start"
+                onClick={() => platform.openLink('https://mineru.net/apiManage')}
+              >
+                {t('Get API Token')}
+              </Button>
+            </div>
+          </SettingsCard>
+        </SettingsSection>
       )}
-    </Stack>
+    </>
   )
+
+  if (showTitle) {
+    return <SettingsPage>{body}</SettingsPage>
+  }
+
+  return <div className="settings-page-body settings-page-body-embedded">{body}</div>
 }
 
 export default DocumentParserSettings

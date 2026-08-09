@@ -640,40 +640,10 @@ export const Route = createRootRoute({
     const theme = useAppTheme()
     const _theme = useTheme()
     const fontSize = useSettingsStore((state) => state.fontSize)
-    const accentColor = useSettingsStore((state) => state.accentColor)
     const scale = fontSize / 14
     const mantineTheme = useMemo(() => creteMantineTheme(scale), [scale])
 
-    // Apply custom accent color as CSS variables on the root element
-    useEffect(() => {
-      const root = document.documentElement
-      if (accentColor) {
-        root.style.setProperty('--chatbox-tint-brand', accentColor)
-        root.style.setProperty('--chatbox-background-brand-primary', accentColor)
-        // Derive a darker hover variant by reducing opacity via color-mix
-        root.style.setProperty(
-          '--chatbox-background-brand-primary-hover',
-          `color-mix(in srgb, ${accentColor}, black 15%)`
-        )
-        root.style.setProperty(
-          '--chatbox-background-brand-secondary',
-          `color-mix(in srgb, ${accentColor}, transparent 92%)`
-        )
-        root.style.setProperty(
-          '--chatbox-background-brand-secondary-hover',
-          `color-mix(in srgb, ${accentColor}, transparent 84%)`
-        )
-        root.style.setProperty('--chatbox-border-brand', accentColor)
-      } else {
-        // Clear inline overrides so CSS file defaults take over
-        root.style.removeProperty('--chatbox-tint-brand')
-        root.style.removeProperty('--chatbox-background-brand-primary')
-        root.style.removeProperty('--chatbox-background-brand-primary-hover')
-        root.style.removeProperty('--chatbox-background-brand-secondary')
-        root.style.removeProperty('--chatbox-background-brand-secondary-hover')
-        root.style.removeProperty('--chatbox-border-brand')
-      }
-    }, [accentColor])
+    // Brand accent is locked to design tokens (indigo). Do not apply user accentColor overrides.
 
     return (
       <MantineProvider

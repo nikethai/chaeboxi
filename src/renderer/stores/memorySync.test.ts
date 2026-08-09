@@ -31,6 +31,7 @@ import {
   syncMemoryNow,
   testMemorySyncConnection,
 } from './memorySync'
+import { initMemorySyncBootstrap } from '@/setup/memory_sync'
 
 class MemoryStore {
   private values = new Map<string, unknown>()
@@ -303,5 +304,13 @@ describe('memorySync store', () => {
     const state = await getMemorySyncState({ store: store as never })
     expect(state.revision).toBe(3)
     expect(state.lastError).toBeUndefined()
+  })
+})
+
+describe('initMemorySyncBootstrap', () => {
+  it('schedules sync when memory sync is enabled', () => {
+    const spy = vi.spyOn(global, 'setTimeout')
+    initMemorySyncBootstrap()
+    expect(spy).toHaveBeenCalled()
   })
 })

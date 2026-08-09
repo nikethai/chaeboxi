@@ -194,6 +194,11 @@ initializeApp()
 
     // Auto history sync bootstrap (non-blocking)
     import('./setup/history_sync')
+
+    // Memory sync bootstrap (non-blocking)
+    void import('./setup/memory_sync').then(({ initMemorySyncBootstrap }) => {
+      initMemorySyncBootstrap()
+    })
   })
 
 // If you want to start measuring performance in your app, pass a function

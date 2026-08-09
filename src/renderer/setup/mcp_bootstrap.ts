@@ -1,9 +1,8 @@
 import { getBuiltinServerConfig } from '@/packages/mcp/builtin'
 import { mcpController } from '@/packages/mcp/controller'
+import { platformCapabilities } from '@/platform'
 import { initSettingsStore } from '@/stores/settingsStore'
-import { CHATBOX_BUILD_PLATFORM, NODE_ENV } from '@/variables'
-
-const isAndroid = CHATBOX_BUILD_PLATFORM === 'android'
+import { NODE_ENV } from '@/variables'
 
 function monitorServerStatus() {
   setInterval(() => {
@@ -33,7 +32,7 @@ initSettingsStore()
     ]
     // Android: stdio transport requires child process spawning which is
     // not available. Filter to HTTP-only to avoid persistent failed states.
-    if (isAndroid) {
+    if (platformCapabilities.isAndroidRuntime) {
       const before = servers.length
       servers = servers.filter((s) => s.transport.type !== 'stdio')
       if (before !== servers.length) {

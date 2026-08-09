@@ -1,33 +1,77 @@
 import type { ModalProps as MantineModalProps } from '@mantine/core'
-import { Button, type ButtonProps, Flex, Stack, Text } from '@mantine/core'
-import type { HTMLAttributes, ReactNode } from 'react'
+import { Button, type ButtonProps, Flex, Stack } from '@mantine/core'
+import type { HTMLAttributes, ReactElement, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Drawer } from 'vaul'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { Modal } from '../layout/Overlay'
 
-export interface AdaptiveModalProps extends Omit<MantineModalProps, 'opened' | 'onClose'> {
-  opened: boolean
-  onClose: () => void
-}
+type AdaptiveModalSemanticProps =
+  | {
+      title: string
+      ariaLabel?: never
+    }
+  | {
+      title: ReactElement
+      ariaLabel: string
+    }
+  | {
+      title?: undefined
+      ariaLabel: string
+    }
 
-export function AdaptiveModal({ opened, onClose, children, title, ...props }: AdaptiveModalProps) {
+export type AdaptiveModalProps = Omit<MantineModalProps, 'opened' | 'onClose' | 'title'> &
+  AdaptiveModalSemanticProps & {
+    opened: boolean
+    onClose: () => void
+    /**
+     * An optional screen-reader description for the mobile drawer. Dialog body
+     * content must not be inferred as a description because it can contain
+     * interactive controls and arbitrary layout.
+     */
+    description?: ReactNode
+  }
+
+export function AdaptiveModal({
+  opened,
+  onClose,
+  children,
+  title,
+  ariaLabel,
+  description,
+  ...props
+}: AdaptiveModalProps) {
   const isSmallScreen = useIsSmallScreen()
 
   if (isSmallScreen) {
+    const hasVisibleStringTitle = typeof title === 'string' && title.length > 0
+    const hasVisibleTitleNode = title !== undefined && typeof title !== 'string'
+    const hasDescription = description !== undefined && description !== null && description !== ''
+    const drawerContentProps = hasDescription ? {} : { 'aria-describedby': undefined }
+
     return (
       <Drawer.Root open={opened} onOpenChange={(open) => !open && onClose()} noBodyStyles repositionInputs={false}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-chatbox-background-mask-overlay" />
-          <Drawer.Content className="flex flex-col h-fit fixed bottom-0 left-0 right-0 outline-none bg-chatbox-background-primary rounded-t-lg">
+          <Drawer.Content
+            {...drawerContentProps}
+            className="flex flex-col h-fit fixed bottom-0 left-0 right-0 outline-none bg-chatbox-background-primary rounded-t-lg"
+          >
             <Drawer.Handle />
             <Stack gap="md" p="sm" className="max-h-[85vh] overflow-y-auto">
-              {title && typeof title === 'string' && (
-                <Text size="md" fw={600} className="text-center">
-                  {title}
-                </Text>
+              {hasVisibleStringTitle && (
+                <Drawer.Title className="text-center text-base font-semibold">{title}</Drawer.Title>
               )}
-              {title && typeof title !== 'string' && <div>{title}</div>}
+              {hasVisibleTitleNode && (
+                <>
+                  <div>{title}</div>
+                  <Drawer.Title className="sr-only">{ariaLabel}</Drawer.Title>
+                </>
+              )}
+              {!hasVisibleStringTitle && !hasVisibleTitleNode && (
+                <Drawer.Title className="sr-only">{ariaLabel}</Drawer.Title>
+              )}
+              {hasDescription && <Drawer.Description className="sr-only">{description}</Drawer.Description>}
               {children}
             </Stack>
             <div className="h-[--mobile-safe-area-inset-bottom] min-h-4" />
@@ -49,7 +93,7 @@ function AdaptiveModalActions({ children }: { children: ReactNode }) {
 
   if (isSmallScreen) {
     return (
-      <Stack gap="xs" mt="lg" pt="sm" className="flex-col-reverse border-t border-solid border-[var(--chatbox-border-primary)]">
+      <Stack gap="xs" mt="lg" pt="sm" className="flex-col-reverse">
         {children}
       </Stack>
     )

@@ -2,14 +2,23 @@
  * @vitest-environment jsdom
  */
 
-import { render, screen } from '@testing-library/react'
-import type { SearchCitation } from '@shared/types'
 import { MantineProvider } from '@mantine/core'
+import type { SearchCitation } from '@shared/types'
+import { render, screen } from '@testing-library/react'
 import Markdown from './Markdown'
 
 vi.mock('@/platform', () => ({
   default: {
     openLink: vi.fn(),
+  },
+  platformCapabilities: {
+    isMobileLayout: false,
+    isAndroidRuntime: false,
+    supportsMcpBootstrap: true,
+    supportsMcpStdio: true,
+    supportsKnowledgeBase: true,
+    supportsDesktopOnlySettings: true,
+    supportsAgentSkillScan: true,
   },
 }))
 

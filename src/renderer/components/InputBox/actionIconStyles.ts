@@ -1,9 +1,10 @@
 export const mobileActionIconProps = {
   variant: 'transparent' as const,
-  w: 20,
-  h: 20,
-  miw: 20,
-  mih: 20,
+  w: 44,
+  h: 44,
+  miw: 44,
+  mih: 44,
+  p: 12,
   bd: 'none',
 }
 

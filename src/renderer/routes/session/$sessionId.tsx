@@ -21,6 +21,7 @@ import { taskStore } from '@/stores/taskStore'
 import { useUIStore } from '@/stores/uiStore'
 import { isThreadVisuallyEmpty } from '@/utils/chat-starters'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
+import { getSessionRouteState } from '@/utils/sessionRouteState'
 
 // Agent-mode panels are not used on Android. Use compile-time conditional
 // dynamic imports so the modules (and their @mantine/openclaw deps) are
@@ -43,7 +44,8 @@ function RouteComponent() {
   const { t } = useTranslation()
   const { sessionId: currentSessionId } = Route.useParams()
   const navigate = useNavigate()
-  const { session: currentSession, isFetching } = useSession(currentSessionId)
+  const { session: currentSession, isPending, isError, refetch } = useSession(currentSessionId)
+  const sessionRouteState = getSessionRouteState({ session: currentSession, isPending, isError })
   const [showToolAudit, setShowToolAudit] = useState(false)
 
   const currentMessageList = useMemo(() => (currentSession ? getAllMessageList(currentSession) : []), [currentSession])
@@ -209,6 +211,18 @@ function RouteComponent() {
     }
   }, [currentSessionId, setWorkspacePanel])
 
+  if (sessionRouteState === 'loading') {
+    return <SessionState message={t('Loading conversation')} />
+  }
+
+  if (sessionRouteState === 'error') {
+    return <SessionState message={t('Could not load conversation')} actionLabel={t('Retry')} onAction={() => void refetch()} />
+  }
+
+  if (sessionRouteState === 'not-found') {
+    return <SessionState message={t('Conversation not found')} actionLabel={t('Back to HomePage')} onAction={goHome} />
+  }
+
   return currentSession ? (
     <div className={`session-shell ${workspaceChromeActive ? 'has-workspace' : ''}`}>
       <Header session={currentSession} />
@@ -314,14 +328,26 @@ function RouteComponent() {
 
       <ThreadHistoryDrawer session={currentSession} />
     </div>
-  ) : (
-    !isFetching && (
-      <div className="flex flex-1 flex-col items-center justify-center min-h-[60vh]">
-        <div className="text-2xl font-semibold text-gray-700 mb-4">{t('Conversation not found')}</div>
-        <Button variant="outline" onClick={goHome}>
-          {t('Back to HomePage')}
+  ) : null
+}
+
+function SessionState({
+  message,
+  actionLabel,
+  onAction,
+}: {
+  message: string
+  actionLabel?: string
+  onAction?: () => void
+}) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center min-h-[60vh] gap-4 px-6 text-center">
+      <div className="text-xl font-semibold text-gray-700">{message}</div>
+      {actionLabel && onAction && (
+        <Button variant="outline" onClick={onAction}>
+          {actionLabel}
         </Button>
-      </div>
-    )
+      )}
+    </div>
   )
 }

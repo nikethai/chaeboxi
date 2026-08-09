@@ -28,7 +28,7 @@ const AppStoreRating = NiceModal.create(() => {
   }
 
   return (
-    <AdaptiveModal opened={modal.visible} onClose={onClose} centered>
+    <AdaptiveModal opened={modal.visible} onClose={onClose} ariaLabel={t('Rate Chaeboxi')} centered>
       <Stack align="center">
         <ScalableIcon icon={IconThumbUpFilled} size={64} color="var(--chatbox-tint-success)" />
         <Text size="xl" fw={600} className="text-center">

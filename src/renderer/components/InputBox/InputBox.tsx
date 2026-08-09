@@ -34,6 +34,7 @@ import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import { navigateToSettings } from '@/modals/Settings'
+import { platformCapabilities } from '@/platform'
 import type { GatewayCommandInfo } from '@/openclaw/gateway'
 import { getActiveAgentAtQuery, stripActiveAgentAtToken } from '@/packages/agents'
 import {
@@ -70,6 +71,7 @@ import { useUIStore } from '@/stores/uiStore'
 import { delay } from '@/utils'
 import { trackEvent } from '@/utils/track'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
+import { getModelReadiness } from '@/utils/modelReadiness'
 import type {
   CommandPackage,
   KnowledgeBase,
@@ -98,6 +100,7 @@ import ModelSelector from '../ModelSelector'
 import AgentPicker, { filterAgents } from './AgentPicker'
 import { FileMiniCard, ImageMiniCard, LinkMiniCard } from './Attachments'
 import ComposerToolsMenu from './ComposerToolsMenu'
+import { ModelReadinessNotice } from './ModelReadinessNotice'
 import TeamModeSelect from './TeamModeSelect'
 import { ImageUploadInput } from './ImageUploadInput'
 import OpenClawCommandPicker, { filterOpenClawCommands, getCommandAlias } from './OpenClawCommandPicker'
@@ -187,7 +190,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const toolbarIconSize = isSmallScreen ? 22 : 18
     const toolbarButtonClass = cn(
       'flex items-center gap-1 rounded-lg hover:bg-[var(--chatbox-background-tertiary)] transition-colors',
-      isSmallScreen ? 'px-2.5 py-1.5 rounded-xl min-h-9' : 'px-2 py-1'
+      isSmallScreen ? 'mobile-touch-target px-2.5 py-1.5 rounded-xl min-h-11' : 'px-2 py-1'
     )
     const { height: viewportHeight } = useViewportSize()
     const pasteLongTextAsAFile = useSettingsStore((state) => state.pasteLongTextAsAFile)
@@ -390,6 +393,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     const showNonVisionVideoBanner = hasVideoAttachments && !modelSupportsVision && !visionBannerDismissed
 
+    const modelReadiness = useMemo(
+      () => getModelReadiness(model, providers, { requiresVision: pictureKeys.length > 0 || hasVideoAttachments }),
+      [hasVideoAttachments, model, pictureKeys.length, providers]
+    )
+
     const videoLimitsForUi = useMemo(() => getVideoLimits(platform.formFactor === 'desktop' ? 'desktop' : 'mobile'), [])
     const videoDropLimitsHint = useMemo(
       () => ({
@@ -464,6 +472,13 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       if (!currentSessionId || isNewSession) return false
       return compactionUIStateMap[currentSessionId]?.status === 'running'
     }, [compactionUIStateMap, currentSessionId, isNewSession])
+
+    const isModelReadinessBlocking = platformCapabilities.isMobileLayout && modelReadiness.status !== 'ready'
+    const sendDisabled = generating
+      ? disableSubmit
+        ? false
+        : isModelReadinessBlocking || isPreprocessing || isSubmitting || isSamplingVideoFrames || isCompactionRunning
+      : isModelReadinessBlocking || disableSubmit || isPreprocessing || isSubmitting || isSamplingVideoFrames || isCompactionRunning
 
     const autoCompactionEnabled = useMemo(() => {
       if (!currentSession) return globalSettings.autoCompaction ?? true
@@ -885,14 +900,18 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       }
 
       // 未选择模型时 显示error tip
-      if (!model) {
-        // 如果不延时执行，会导致error tip 立即消失
-        await delay(100)
-        if (closeSelectModelErrorTipCb.current) {
-          clearTimeout(closeSelectModelErrorTipCb.current)
+      if (platformCapabilities.isMobileLayout && modelReadiness.status !== 'ready') {
+        if (!model) {
+          // 如果不延时执行，会导致error tip 立即消失
+          await delay(100)
+          if (closeSelectModelErrorTipCb.current) {
+            clearTimeout(closeSelectModelErrorTipCb.current)
+          }
+          setShowSelectModelErrorTip(true)
+          closeSelectModelErrorTipCb.current = setTimeout(() => setShowSelectModelErrorTip(false), 5000)
+        } else {
+          toastActions.add(t('Choose an available model before sending.'))
         }
-        setShowSelectModelErrorTip(true)
-        closeSelectModelErrorTipCb.current = setTimeout(() => setShowSelectModelErrorTip(false), 5000)
         return
       }
 
@@ -1726,12 +1745,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       )
     }
 
-    const sendDisabled = generating
-      ? disableSubmit
-        ? false
-        : isPreprocessing || isSubmitting || isSamplingVideoFrames || isCompactionRunning
-      : disableSubmit || isPreprocessing || isSubmitting || isSamplingVideoFrames || isCompactionRunning
-
     const roomMode: 'discuss' | 'work' = isNewSession
       ? draftRoomMode === 'work'
         ? 'work'
@@ -2100,6 +2113,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               </div>
             )}
 
+            {platformCapabilities.isMobileLayout && <ModelReadinessNotice readiness={modelReadiness} />}
+
             {/* Toolbar row — mock .bar (rail bg + send on the right) */}
             <Flex align="center" gap={0} className="composer-bar shrink-0 w-full">
               {/* Hidden file inputs */}
@@ -2184,7 +2199,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     }}
                   >
                     <UnstyledButton
-                      className={cn(toolbarButtonClass, 'model-picker-trigger', isSmallScreen && 'px-2.5')}
+                      className={cn(toolbarButtonClass, 'model-picker-trigger', isSmallScreen && 'px-2.5 mobile-touch-target min-h-11')}
+                      aria-label={t('Select Model')}
                     >
                       {!!model && <ProviderImageIcon size={15} provider={model.provider} />}
                       <Text
@@ -2212,7 +2228,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     disabled={sendDisabled}
                     variant="filled"
                     color={generating && disableSubmit ? 'dark' : 'chatbox-brand'}
-                    className="composer-send shadow-none"
+                    className={cn('composer-send shadow-none', isSmallScreen && 'mobile-touch-target')}
                     aria-label={
                       isSamplingVideoFrames
                         ? t('Sampling video frames…')

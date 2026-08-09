@@ -16,7 +16,7 @@ import { SettingsPageHeader } from '@/components/settings/SettingsPageHeader'
 import { SettingsPrefRow } from '@/components/settings/SettingsPrefRow'
 import { SettingsSection } from '@/components/settings/SettingsSection'
 import { languageNameMap, languages } from '@/i18n/locales'
-import platform from '@/platform'
+import platform, { platformCapabilities } from '@/platform'
 import storage, { StorageKey } from '@/storage'
 import { recoverSessionList } from '@/stores/chatStore'
 import {
@@ -170,7 +170,7 @@ export function RouteComponent() {
         </SettingsCard>
       </SettingsSection>
 
-      {platform.type === 'desktop' && (
+      {platformCapabilities.supportsDesktopOnlySettings && platform.type === 'desktop' && (
         <SettingsSection title={t('Desktop')}>
           <SettingsCard divided>
             <SettingsPrefRow

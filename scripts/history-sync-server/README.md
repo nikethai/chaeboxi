@@ -147,10 +147,43 @@ ciphertext plus its encryption metadata.
 
 ## Chatbox app settings
 
-In **Settings -> General -> Self-hosted History Sync**:
+**History sync** — in **Settings -> General -> Self-hosted History Sync**:
 
 - Enable server sync
 - Set endpoint: `http://<your-host>:8788`
 - Set token: same `SYNC_TOKEN`
 - Optional: enable auto sync + interval
 - Use **Test Connection**, then **Sync Now**
+
+**Memory sync** — in **Settings -> Memory -> Advanced -> Memory Sync**:
+
+- Enable memory sync
+- Set endpoint: `http://<your-host>:8788`
+- Set token: same `SYNC_TOKEN`
+- Set a **sync passphrase** (never saved; used only to encrypt/decrypt snapshots)
+- Optional: enable background auto sync + interval (min 15s)
+- Save sync settings, then use **Test Connection**, **Pull from Server**, **Push to Server**, or **Sync Now**
+
+## Manual two-device verification
+
+With one server running (`SYNC_TOKEN` set), verify memory sync end-to-end on two
+devices or two app instances. Both must use the **same** server, token, and sync
+passphrase.
+
+1. **Device A — push:** Settings -> Memory -> Advanced -> Memory Sync. Enable
+   memory sync, set endpoint + token, enter the sync passphrase, save, and add a
+   test fact to the Global bank ("e.g. `prefer short answers`"). Press **Push to
+   Server**.
+2. **Device B — pull:** on the second device, configure the same endpoint, token,
+   and passphrase, then press **Pull from Server**. The fact from Device A
+   appears in its Global bank.
+3. **Device B — edit + push:** edit or add a fact on Device B, then **Push to
+   Server**.
+4. **Device A — pull + merge:** press **Pull from Server** on Device A again.
+   Device B's change is merged in; a `409` conflict on push is handled by
+   re-pulling, merging, and re-pushing automatically.
+5. **Tombstones:** delete a fact on Device A and **Push to Server**. On Device B,
+   **Pull from Server** — the fact stays deleted (the delete is synced as a
+   tombstone, not re-added by an older copy).
+6. **Passphrase check:** pulling with a **wrong** passphrase fails to decrypt
+   (remote state cannot be read); with the correct passphrase it succeeds.

@@ -1,6 +1,8 @@
 import { Box, Flex, Stack, Text } from '@mantine/core'
+import '@/components/settings/settings-surfaces.css'
 import {
   IconAdjustmentsHorizontal,
+  IconBolt,
   IconBook,
   IconBox,
   IconCategory,
@@ -12,7 +14,6 @@ import {
   IconMessages,
   IconSparkles,
   IconTerminal2,
-  IconBolt,
   IconWorldWww,
 } from '@tabler/icons-react'
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
@@ -243,7 +244,7 @@ export function SettingsRoot() {
           maw={isSmallScreen ? undefined : 240}
           className={clsx(
             'settings-nav border-solid border-0 overflow-auto bg-[var(--chatbox-background-rail)]',
-            isSmallScreen ? 'w-full border-r-0' : 'flex-none border-r border-chatbox-border-primary'
+            isSmallScreen ? 'w-full border-r-0' : 'flex-none settings-nav-edge'
           )}
         >
           {ITEMS.map((item, index) => {

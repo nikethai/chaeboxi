@@ -1,0 +1,206 @@
+/* Agents (copilots) — studio list + form (imported from copilots route). */
+
+.agents-page {
+  width: 100%;
+  max-width: 42rem;
+  margin-inline: 0 auto;
+  padding: 0.85rem 1.1rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+  gap: 0.55rem;
+}
+
+.agent-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 2.75rem;
+  padding: 0.55rem 0.65rem 0.55rem 0.7rem;
+  border: none;
+  border-radius: 11px;
+  background: var(--chatbox-background-secondary);
+  box-shadow: var(--settings-shadow, 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent));
+  color: var(--chatbox-tint-primary);
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition-property: background-color, box-shadow, transform;
+  transition-duration: 140ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.agent-tile:hover {
+  background: var(--chatbox-background-tertiary);
+  box-shadow: var(
+    --settings-shadow-hover,
+    0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 12%, transparent)
+  );
+}
+
+.agent-tile:active {
+  transform: scale(0.98);
+}
+
+.agent-tile-avatar {
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  line-height: 1;
+  background: var(--chatbox-background-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent);
+  overflow: hidden;
+}
+
+.agent-tile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.agent-tile-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.agent-tile-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.agent-tile-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--chatbox-tint-tertiary);
+  cursor: pointer;
+  transition-property: background-color, color, opacity;
+  transition-duration: 140ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.agent-tile-icon-btn:hover {
+  background: color-mix(in srgb, var(--chatbox-tint-primary) 6%, transparent);
+  color: var(--chatbox-tint-primary);
+}
+
+.agent-tile-icon-btn:active {
+  transform: scale(0.96);
+}
+
+.agent-tile-icon-btn.is-starred {
+  color: var(--chatbox-tint-brand);
+  opacity: 1;
+}
+
+.agent-tile:not(:hover) .agent-tile-icon-btn:not(.is-starred) {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (hover: none) {
+  .agent-tile:not(:hover) .agent-tile-icon-btn:not(.is-starred) {
+    opacity: 0.7;
+    pointer-events: auto;
+  }
+}
+
+.agent-tile-remote {
+  /* remote tiles have no menu */
+}
+
+/* Form */
+.agents-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.agents-form-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.agents-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.agents-form-avatar-row {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+}
+
+.agents-form-avatar-row .agents-emoji-field {
+  width: 6.5rem;
+  flex-shrink: 0;
+}
+
+.agents-form-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin-top: 0.15rem;
+  padding: 0.65rem 0 0.2rem;
+  background: linear-gradient(
+    to top,
+    var(--chatbox-background-primary) 55%,
+    color-mix(in srgb, var(--chatbox-background-primary) 88%, transparent)
+  );
+}
+
+.agents-form-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+
+.agents-empty {
+  padding: 1.5rem 1rem;
+  text-align: center;
+  color: var(--chatbox-tint-tertiary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.agents-hook-card {
+  padding: 0.75rem;
+  border-radius: 9px;
+  background: var(--chatbox-background-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent);
+}

@@ -1,7 +1,8 @@
-import { Box, Button, Paper, Stack, Text } from '@mantine/core'
+import { Box, Button, Text } from '@mantine/core'
 import type { PromptPreset } from '@shared/types'
-import { memo, useEffect, useMemo } from 'react'
+import { memo, type RefObject, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import ComposerPickerPanel from './ComposerPickerPanel'
 
 function fuzzyScore(value: string, query: string) {
   if (!query) {
@@ -51,11 +52,22 @@ export interface PresetPickerProps {
   onSelect(preset: PromptPreset): void
   presets: PromptPreset[]
   query: string
+  anchorRef: RefObject<HTMLElement | null>
 }
 
-function PresetPicker({ highlightedIndex, onHighlightChange, onManage, onSelect, presets, query }: PresetPickerProps) {
+function PresetPicker({
+  highlightedIndex,
+  onHighlightChange,
+  onManage,
+  onSelect,
+  presets,
+  query,
+  anchorRef,
+}: PresetPickerProps) {
   const { t } = useTranslation()
   const filteredPresets = useMemo(() => filterPresets(presets, query).slice(0, 8), [presets, query])
+  const catalogEmpty = presets.length === 0
+  const isEmpty = filteredPresets.length === 0
 
   useEffect(() => {
     if (filteredPresets.length === 0) {
@@ -68,69 +80,79 @@ function PresetPicker({ highlightedIndex, onHighlightChange, onManage, onSelect,
   }, [filteredPresets.length, highlightedIndex, onHighlightChange])
 
   return (
-    <Paper
-      shadow="md"
-      radius="md"
-      withBorder
-      className="absolute left-0 right-0 bottom-full mb-2 overflow-hidden z-50"
-      style={{ backgroundColor: 'var(--chatbox-background-primary)' }}
-    >
-      <Stack gap={0}>
-        <Box px="sm" py="xs" style={{ borderBottom: '1px solid var(--chatbox-border-primary)' }}>
-          <Text size="xs" c="chatbox-tertiary">
-            {t('Prompt Presets')}
-          </Text>
-        </Box>
-
-        {filteredPresets.length > 0 ? (
-          filteredPresets.map((preset, index) => {
-            const preview = preset.content.split('\n')[0]?.trim() || ''
-            const selected = index === highlightedIndex
-
-            return (
-              <Box
-                key={preset.id}
-                px="sm"
-                py="xs"
-                className="cursor-pointer"
-                bg={selected ? 'var(--chatbox-background-brand-secondary)' : undefined}
-                onMouseEnter={() => onHighlightChange(index)}
-                onMouseDown={(event) => {
-                  event.preventDefault()
-                  onSelect(preset)
-                }}
-              >
-                <Text size="sm" fw={600} c={selected ? 'chatbox-brand' : 'chatbox-primary'}>
-                  {preset.name}
-                </Text>
-                {preset.category && (
-                  <Text size="xs" c="chatbox-tertiary">
-                    {preset.category}
-                  </Text>
-                )}
-                {preview && (
-                  <Text size="xs" c="chatbox-secondary" lineClamp={1}>
-                    {preview}
-                  </Text>
-                )}
-              </Box>
-            )
-          })
-        ) : (
-          <Box px="sm" py="md">
-            <Text size="sm" c="chatbox-tertiary">
-              {t('No preset found')}
-            </Text>
-          </Box>
-        )}
-
-        <Box px="sm" py="xs" style={{ borderTop: '1px solid var(--chatbox-border-primary)' }}>
-          <Button variant="subtle" size="compact-sm" onMouseDown={(event) => event.preventDefault()} onClick={onManage}>
+    <ComposerPickerPanel
+      anchorRef={anchorRef}
+      open
+      aria-label={t('Prompt Presets')}
+      header={
+        <Text size="xs" c="chatbox-tertiary">
+          {t('Prompt Presets')}
+        </Text>
+      }
+      isEmpty={isEmpty}
+      empty={
+        catalogEmpty
+          ? {
+              title: t('No presets yet'),
+              description: t('Save prompt presets for quick insert.'),
+              action: {
+                label: t('Manage Prompt Presets'),
+                onClick: onManage,
+              },
+            }
+          : {
+              title: t('No preset found'),
+            }
+      }
+      footer={
+        !catalogEmpty ? (
+          <Button
+            variant="subtle"
+            size="compact-sm"
+            className="active:scale-[0.96] transition-transform"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={onManage}
+          >
             {t('Manage Prompt Presets')}
           </Button>
-        </Box>
-      </Stack>
-    </Paper>
+        ) : null
+      }
+    >
+      {filteredPresets.map((preset, index) => {
+        const preview = preset.content.split('\n')[0]?.trim() || ''
+        const selected = index === highlightedIndex
+
+        return (
+          <Box
+            key={preset.id}
+            px="sm"
+            py="xs"
+            className="composer-picker-row cursor-pointer"
+            data-selected={selected || undefined}
+            bg={selected ? 'var(--chatbox-background-brand-secondary)' : undefined}
+            onMouseEnter={() => onHighlightChange(index)}
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onSelect(preset)
+            }}
+          >
+            <Text size="sm" fw={600} c={selected ? 'chatbox-brand' : 'chatbox-primary'}>
+              {preset.name}
+            </Text>
+            {preset.category && (
+              <Text size="xs" c="chatbox-tertiary">
+                {preset.category}
+              </Text>
+            )}
+            {preview && (
+              <Text size="xs" c="chatbox-secondary" lineClamp={1}>
+                {preview}
+              </Text>
+            )}
+          </Box>
+        )
+      })}
+    </ComposerPickerPanel>
   )
 }
 

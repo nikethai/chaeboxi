@@ -6,5 +6,5 @@ export const Route = createFileRoute('/settings/document-parser')({
 })
 
 export function RouteComponent() {
-  return <DocumentParserSettings showTitle={false} />
+  return <DocumentParserSettings showTitle />
 }

@@ -1,5 +1,6 @@
 import { ActionIcon, Box, Flex, Title } from '@mantine/core'
 import { IconMenu2 } from '@tabler/icons-react'
+import clsx from 'clsx'
 import type { FC } from 'react'
 import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
@@ -12,9 +13,13 @@ export type PageProps = {
   title: string | React.ReactNode
   left?: React.ReactNode
   right?: React.ReactNode
+  /** Extra class on the page shell (e.g. settings chrome). */
+  className?: string
+  /** Extra class on the title bar row. */
+  headerClassName?: string
 }
 
-export const Page: FC<PageProps> = ({ children, title, left, right }) => {
+export const Page: FC<PageProps> = ({ children, title, left, right, className, headerClassName }) => {
   const showSidebar = useUIStore((s) => s.showSidebar)
   const setShowSidebar = useUIStore((s) => s.setShowSidebar)
   const isSmallScreen = useIsSmallScreen()
@@ -29,11 +34,11 @@ export const Page: FC<PageProps> = ({ children, title, left, right }) => {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-[var(--chatbox-background-primary)]">
+    <div className={clsx('flex flex-col h-full min-h-0 bg-[var(--chatbox-background-primary)]', className)}>
       <TitleBarRow
         macTrafficInset={macTrafficInset}
         px="sm"
-        className="bg-[var(--chatbox-background-primary)]"
+        className={clsx('bg-[var(--chatbox-background-primary)]', headerClassName)}
         style={{ borderBottom: 'none' }}
       >
         {left ||
@@ -60,7 +65,8 @@ export const Page: FC<PageProps> = ({ children, title, left, right }) => {
               fz={!isSmallScreen ? '0.95rem' : undefined}
               fw={600}
               lineClamp={1}
-              className="tracking-tight"
+              className="tracking-tight text-balance"
+              style={{ letterSpacing: '-0.02em' }}
             >
               {title}
             </Title>

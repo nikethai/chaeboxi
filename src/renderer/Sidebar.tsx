@@ -202,7 +202,9 @@ export default function Sidebar() {
             boxSizing: 'border-box',
             width: drawerWidth,
             maxWidth: isSmallScreen ? '75vw' : undefined,
-            borderRight: '1px solid var(--chatbox-border-primary)',
+            // Soft studio edge (no hard double border with .studio-rail)
+            borderRight: 'none',
+            boxShadow: 'var(--chatbox-rail-edge-shadow)',
             overflowX: 'hidden',
             transition: 'width 220ms cubic-bezier(0.2, 0, 0, 1)',
             '@media (prefers-reduced-motion: reduce)': {
@@ -212,7 +214,16 @@ export default function Sidebar() {
         }}
         SlideProps={language === 'ar' ? { direction: 'left' } : undefined}
         PaperProps={
-          language === 'ar' ? { sx: { direction: 'rtl', overflowY: 'initial' } } : { sx: { overflowY: 'initial' } }
+          language === 'ar'
+            ? {
+                sx: {
+                  direction: 'rtl',
+                  overflowY: 'initial',
+                  borderLeft: 'none',
+                  boxShadow: 'var(--chatbox-rail-edge-shadow-rtl)',
+                },
+              }
+            : { sx: { overflowY: 'initial' } }
         }
         disableSwipeToOpen={CHATBOX_BUILD_PLATFORM !== 'ios'} // 只在iOS设备上启用SwipeToOpen
         disableEnforceFocus={true} // 关闭 focus trap，避免在侧边栏打开时弹出的 modal 中 input 无法点击

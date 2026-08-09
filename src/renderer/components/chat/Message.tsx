@@ -33,6 +33,7 @@ import {
   IconPencil,
   IconPhoto,
   IconPhotoPlus,
+  IconBrain,
   type IconProps,
   IconQuoteFilled,
   IconReload,
@@ -292,6 +293,21 @@ const _Message: FC<Props> = (props) => {
   const onEditClick = useCallback(async () => {
     await NiceModal.show('message-edit', { sessionId, msg: msg })
   }, [msg, sessionId])
+
+  const onSaveToMemory = useCallback(async () => {
+    const { saveMessageToGlobalMemory } = await import('@/packages/memory/save-from-message')
+    const result = await saveMessageToGlobalMemory(msg, sessionId)
+    if (result.ok) {
+      toastActions.add(t('Saved to Global memory'))
+      return
+    }
+    if (result.reason === 'empty') {
+      toastActions.add(t('Nothing to save'))
+      return
+    }
+    console.error('Save to memory failed', result.error)
+    toastActions.add(t('Failed to save memory'))
+  }, [msg, sessionId, t])
 
   // for testing: manual trigger error
   const onTriggerError = useCallback(() => {
@@ -585,6 +601,16 @@ const _Message: FC<Props> = (props) => {
         icon: IconQuoteFilled,
         onClick: quoteMsg,
       },
+      // Mobile: Save to memory lives in ⋯ menu (desktop has toolbar icon)
+      ...(isSamllScreen && !msg.generating && (msg.role === 'user' || msg.role === 'assistant')
+        ? [
+            {
+              text: t('Save to memory'),
+              icon: IconBrain,
+              onClick: () => void onSaveToMemory(),
+            } satisfies ActionMenuItemProps,
+          ]
+        : []),
       { divider: true },
       ...(msg.role === 'assistant' && platform.formFactor === 'mobile'
         ? [
@@ -631,6 +657,7 @@ const _Message: FC<Props> = (props) => {
       onGenerateMore,
       onEditClick,
       onCopyMsg,
+      onSaveToMemory,
       msg.model,
       props.sessionType,
     ]
@@ -946,6 +973,18 @@ const _Message: FC<Props> = (props) => {
                     <MessageActionIcon icon={IconPencil} tooltip={t('edit')} onClick={onEditClick} />
                   )
               }
+
+              {/* Save to memory — toolbar (same row as copy / edit / more) */}
+              {!isSamllScreen &&
+                !msg.generating &&
+                (msg.role === 'user' || msg.role === 'assistant') &&
+                !(props.sessionType === 'picture' && msg.role === 'assistant') && (
+                  <MessageActionIcon
+                    icon={IconBrain}
+                    tooltip={t('Save to memory')}
+                    onClick={() => void onSaveToMemory()}
+                  />
+                )}
 
               {!isSamllScreen && msg.role === 'assistant' && isComfyUIReady && (
                 <MessageActionIcon

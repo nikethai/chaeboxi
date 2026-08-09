@@ -1,0 +1,6 @@
+export { getBuiltinHooks, runHooks, type RunHooksOptions, type RunHooksResult } from './executor'
+export { discoverAgentHooks, AGENT_HOOK_CONFIGS, type DiscoverAgentHooksOptions } from './discover-agent-hooks'
+export { parseClaudeSettingsHooks } from './parse-claude-settings'
+export { parseCursorHooksJson } from './parse-cursor-hooks'
+export { runShellHook, toRunRecord, type ShellHookInput, type ShellHookResult } from './shell-runner'
+export { wrapToolsWithLifecycleHooks, type ToolHookContext } from './wrap-tools'

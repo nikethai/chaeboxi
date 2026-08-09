@@ -13,7 +13,11 @@ import { t } from 'i18next'
 import { uniqueId } from 'lodash'
 import { createModelDependencies } from '@/adapters'
 import type { ToolApprovalModalResult } from '@/modals/ToolApproval'
+import { hostPreSearchMemories } from '@/packages/memory/host-presearch'
+import { getMemoryToolSet, MEMORY_TOOL_NAMES } from '@/packages/memory/tools'
 import platform from '@/platform'
+import { ensureMemoryStoreInit, memoryStore } from '@/stores/memoryStore'
+import { getMessageText } from '@/utils/message'
 import { settingsStore } from '@/stores/settingsStore'
 import { formatActiveTaskContext, taskStore } from '@/stores/taskStore'
 import { getToolApproval, toolApprovalStore } from '@/stores/toolApprovalStore'
@@ -27,6 +31,7 @@ import type {
   CopilotToolAccess,
   KnowledgeBase,
   Message,
+  MessageContentParts,
   MessageInfoPart,
   MessageToolCallPart,
   ProviderOptions,
@@ -346,6 +351,13 @@ export async function streamText(
     maxSteps?: number
     toolAccess?: CopilotToolAccess
     allowedTools?: string[]
+    /** Long-term memory inject context (agent scope + inject options) */
+    memory?: {
+      agentId?: string
+      agentName?: string
+      forceHybridFallback?: boolean
+      userQuery?: string
+    }
   },
   signal?: AbortSignal
 ): Promise<{ result: StreamTextResult; coreMessages: ModelMessage[] }> {
@@ -360,6 +372,7 @@ export async function streamText(
     agentImageFlowInstructions,
     agentCoding,
     tools: customTools,
+    memory: memoryContext,
   } = params
   const globalSettings = settingsStore.getState().getSettings()
   const hasDocumentFileOrLink = params.messages.some(
@@ -430,6 +443,20 @@ export async function streamText(
     (!allowedTools ||
       allowedTools.length === 0 ||
       TASK_TRACKING_TOOL_NAMES.every((name) => allowedTools.includes(name)))
+  try {
+    await ensureMemoryStoreInit()
+    if (memoryContext?.agentId) {
+      await memoryStore.getState().ensureAgentBank(memoryContext.agentId)
+    }
+  } catch {
+    // non-fatal in tests / degraded storage
+  }
+  const memorySettings = memoryStore.getState().settings
+  const memoryToolsAvailable =
+    memorySettings.enabled &&
+    model.isSupportToolUse() &&
+    !customTools &&
+    (!allowedTools || allowedTools.length === 0 || MEMORY_TOOL_NAMES.some((name) => allowedTools.includes(name)))
   const needGenerateImageTool = Boolean(agentImageFlowInstructions) && model.isSupportToolUse()
   const hasFunctionTools =
     Object.keys(mcpTools).length > 0 ||
@@ -438,6 +465,7 @@ export async function streamText(
     Boolean(needWorkspaceCodingTools) ||
     Boolean(needVideoToolSet) ||
     taskToolsAvailable ||
+    memoryToolsAvailable ||
     needGenerateImageTool
   // Native Gemini grounding only when there are no function tools at all.
   const useGeminiGrounding = nativeWebSearch === 'gemini-grounding' && webBrowsing && !hasFunctionTools
@@ -471,6 +499,51 @@ ${!workspaceRoot ? '- No session workspace folder is set. Ask the user to set a 
   if (needVideoToolSet) {
     toolSetInstructions += videoToolSet.description
   }
+  // Memory tools + priority instructions BEFORE web search so models see recall first.
+  let memoryToolSet: ReturnType<typeof getMemoryToolSet> | null = null
+  if (memoryToolsAvailable) {
+    memoryToolSet = getMemoryToolSet({
+      settings: memorySettings,
+      getGlobalBank: () => memoryStore.getState().globalBank,
+      setGlobalBank: async (bank) => {
+        await memoryStore.getState().replaceGlobalBank(bank)
+      },
+      getAgentBank: () =>
+        memoryContext?.agentId ? (memoryStore.getState().agentBanks[memoryContext.agentId] ?? null) : null,
+      setAgentBank: async (bank) => {
+        if (memoryContext?.agentId) {
+          await memoryStore.getState().replaceAgentBank(memoryContext.agentId, bank)
+        }
+      },
+      agentId: memoryContext?.agentId,
+      agentName: memoryContext?.agentName,
+      sessionId,
+      scheduleConsolidate: (scope) => {
+        if (!memorySettings.autoConsolidate) return
+        void memoryStore
+          .getState()
+          .rebuildProfile(scope, scope === 'agent' ? memoryContext?.agentId : undefined, true)
+          .catch(() => {})
+      },
+    })
+    toolSetInstructions += memoryToolSet.description
+    if (
+      memorySettings.retrievalMode === 'hybrid' ||
+      memorySettings.retrievalMode === 'on_demand' ||
+      !memorySettings.retrievalMode
+    ) {
+      toolSetInstructions += `
+# Tool priority (memory-first)
+
+A host Memory lookup already ran for the latest user message (system Memory section).
+1. Use any Memory lookup hits before calling other tools.
+2. If the question may involve the user's projects, stack, or prefs and lookup is empty, call memory_recall once with keywords from the user message.
+3. Only then use web search for public/external documentation (SDKs, APIs, blogs).
+Do not open with repeated web searches when personal memory may apply.
+`
+    }
+  }
+
   if (webBrowsing && !webNotSupported && !useGeminiGrounding) {
     toolSetInstructions += websearchToolSet.description
   }
@@ -486,12 +559,19 @@ ${!workspaceRoot ? '- No session workspace folder is set. Ask the user to set a 
     toolSetInstructions += `\n\n${agentImageFlowInstructions}`
   }
 
+  const memoryForceHybridFallback =
+    memorySettings.enabled && memorySettings.retrievalMode === 'on_demand' && !model.isSupportToolUse()
+
   params.messages = injectModelSystemPrompt(
     model.modelId,
     params.messages,
     // 在系统提示中添加知识库名称，方便模型理解
     toolSetInstructions,
-    model.isSupportSystemMessage() ? 'system' : 'user'
+    model.isSupportSystemMessage() ? 'system' : 'user',
+    {
+      ...memoryContext,
+      forceHybridFallback: memoryForceHybridFallback || memoryContext?.forceHybridFallback,
+    }
   )
 
   if (!model.isSupportSystemMessage()) {
@@ -500,23 +580,85 @@ ${!workspaceRoot ? '- No session workspace folder is set. Ask the user to set a 
 
   // 2. sequence messages to fix the order, prevent model API 400 errors
   const messages = sequenceMessages(params.messages)
-  const infoParts: MessageInfoPart[] = []
+  /** Prefix parts shown before model stream (info + host memory_lookup tool card) */
+  const prefixParts: MessageContentParts = []
   try {
     params.onResultChangeWithCancel({ cancel }) // 这里先传递 cancel 方法
     const onResultChange: OnResultChange = (data) => {
       if (data.contentParts) {
-        result = { ...result, ...data, contentParts: [...infoParts, ...data.contentParts] }
+        result = { ...result, ...data, contentParts: [...prefixParts, ...data.contentParts] }
       } else {
         result = { ...result, ...data }
       }
       params.onResultChangeWithCancel({ ...result, cancel })
     }
+
+    // Host memory lookup first — visible tool step + already injected into system prompt
+    {
+      const mode = memorySettings.retrievalMode ?? 'hybrid'
+      const hostLookupOn =
+        memorySettings.enabled &&
+        memorySettings.hostPreSearchEnabled !== false &&
+        (mode === 'hybrid' || mode === 'on_demand')
+      if (hostLookupOn) {
+        let userQuery = memoryContext?.userQuery?.trim() || ''
+        if (!userQuery) {
+          for (let i = params.messages.length - 1; i >= 0; i--) {
+            const m = params.messages[i]
+            if (m.role === 'user') {
+              userQuery = getMessageText(m, false, false).trim()
+              if (userQuery) break
+            }
+          }
+        }
+        if (userQuery) {
+          const agentBank = memoryContext?.agentId
+            ? (memoryStore.getState().agentBanks[memoryContext.agentId] ?? null)
+            : null
+          const { getMemoryRepository } = await import('@/packages/memory/repository')
+          const repo = getMemoryRepository()
+          const hits = hostPreSearchMemories({
+            query: userQuery,
+            globalBank: memoryStore.getState().globalBank,
+            agentBank,
+            globalIndex: repo.getGlobalIndex(),
+            agentIndex: memoryContext?.agentId ? repo.getAgentIndex(memoryContext.agentId) : null,
+            settings: memorySettings,
+            limit: memorySettings.hostPreSearchLimit ?? 5,
+          })
+          const memoryLookupPart: MessageToolCallPart = {
+            type: 'tool-call',
+            state: 'result',
+            toolCallId: `memory_lookup_${uniqueId()}`,
+            toolName: 'memory_lookup',
+            args: { query: userQuery },
+            result: {
+              matchCount: hits.length,
+              matches: hits.map((h) => ({
+                id: h.id,
+                scope: h.scope,
+                content: h.content,
+                score: h.score,
+              })),
+              note:
+                hits.length > 0
+                  ? 'Host keyword lookup ran before model tools; matches are also in the system Memory section.'
+                  : 'Host keyword lookup ran before model tools; no matches. Model may call memory_recall for a deeper search.',
+            },
+          }
+          prefixParts.push(memoryLookupPart)
+          // Surface immediately so UI shows Memory lookup before web search starts
+          onResultChange({ contentParts: [] })
+        }
+      }
+    }
+
     if (
       !model.isSupportVision() &&
       messages.some((m) => m.contentParts.some((c) => c.type === 'image' && !c.ocrResult))
     ) {
       await ocrMessages(messages, dependencies)
-      infoParts.push({
+      prefixParts.push({
         type: 'info',
         text: t('Current model {{modelName}} does not support image input, using OCR to process images', {
           modelName: model.modelId,
@@ -680,6 +822,13 @@ ${!workspaceRoot ? '- No session workspace folder is set. Ask the user to set a 
           ...taskTrackingToolSet.tools,
         }
       }
+
+      if (memoryToolSet) {
+        tools = {
+          ...tools,
+          ...memoryToolSet.tools,
+        }
+      }
     }
 
     // Apply copilot tool access filtering
@@ -690,6 +839,20 @@ ${!workspaceRoot ? '- No session workspace folder is set. Ask the user to set a 
       const allowedSet = new Set(allowedTools)
       tools = Object.fromEntries(Object.entries(tools).filter(([name]) => allowedSet.has(name)))
     }
+
+    // Global PreToolUse / PostToolUse around every tool execute (after approval + access filters)
+    const toolHookWorkspace = workspaceRoot || agentCoding?.workspaceRoot || null
+    try {
+      const { refreshAgentHooks } = await import('@/stores/hooksStore')
+      await refreshAgentHooks({ workspaceRoot: toolHookWorkspace })
+    } catch {
+      // non-fatal — hooks cache may already be warm from PreTurn
+    }
+    const { wrapToolsWithLifecycleHooks } = await import('@/packages/hooks')
+    tools = wrapToolsWithLifecycleHooks(tools, {
+      sessionId,
+      workspaceRoot: toolHookWorkspace,
+    })
 
     console.debug('tools', tools)
 

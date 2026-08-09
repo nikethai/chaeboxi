@@ -20,6 +20,13 @@ export function getToolName(toolName: string): string {
     create_task: t('Create Task'),
     update_task: t('Update Task'),
     list_tasks: t('List Tasks'),
+    memory_lookup: t('Memory lookup'),
+    memory_recall: t('Memory recall'),
+    memory_retain: t('Memory retain'),
+    memory_list: t('Memory list'),
+    memory_forget: t('Memory forget'),
+    memory_update: t('Memory update'),
+    memory_reflect: t('Memory reflect'),
   }
 
   return toolNames[toolName] || toolName

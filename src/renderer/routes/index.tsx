@@ -19,6 +19,9 @@ import { initEmptyChatSession } from '@/stores/sessionHelpers'
 import { useUIStore } from '@/stores/uiStore'
 import BlankStateStarters from './-components/BlankStateStarters'
 
+/** Dock center → bottom transition duration (must match CSS). */
+const BLANK_DOCK_MOVE_MS = 420
+
 export const Route = createFileRoute('/')({
   component: Index,
   validateSearch: zodValidator(
@@ -27,6 +30,11 @@ export const Route = createFileRoute('/')({
     })
   ),
 })
+
+function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined' || !window.matchMedia) return false
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
 
 function Index() {
   const { t } = useTranslation()
@@ -44,10 +52,12 @@ function Index() {
   })
   const [composerDraft, setComposerDraft] = useState('')
   const [composerKey, setComposerKey] = useState(0)
+  /** Center → bottom dock animation in progress (blocks double-submit). */
+  const [isSending, setIsSending] = useState(false)
 
   const fillComposer = useCallback((text: string) => {
     setComposerDraft(text)
-    setComposerKey((k) => k + 1)
+    setComposerKey((key) => key + 1)
     localStorage.setItem('new-chat', text)
     requestAnimationFrame(() => {
       document.getElementById('message-input')?.focus()
@@ -70,9 +80,9 @@ function Index() {
 
   const allAgents = useMemo(() => {
     const map = new Map<string, (typeof myCopilots)[0]>()
-    for (const a of myCopilots) map.set(a.id, a)
-    for (const a of remoteCopilots || []) {
-      if (!map.has(a.id)) map.set(a.id, a)
+    for (const agent of myCopilots) map.set(agent.id, agent)
+    for (const agent of remoteCopilots || []) {
+      if (!map.has(agent.id)) map.set(agent.id, agent)
     }
     return Array.from(map.values())
   }, [myCopilots, remoteCopilots])
@@ -83,7 +93,7 @@ function Index() {
   )
 
   const selectedAgents = useMemo(
-    () => selectedAgentIds.map((id) => allAgents.find((a) => a.id === id)).filter(Boolean) as typeof allAgents,
+    () => selectedAgentIds.map((id) => allAgents.find((agent) => agent.id === id)).filter(Boolean) as typeof allAgents,
     [selectedAgentIds, allAgents]
   )
 
@@ -148,53 +158,74 @@ function Index() {
 
   const handleSubmit = useCallback(
     async ({ constructedMessage, needGenerating = true, onUserMessageReady }: InputBoxPayload) => {
-      const agentIds = session.agentIds?.length
-        ? session.agentIds
-        : session.copilotId
-          ? [session.copilotId]
-          : constructedMessage.mentionedAgentIds
+      if (isSending) return
+      setIsSending(true)
 
-      // Ensure first message can resolve room speakers even without re-@ chips
-      const userMsg =
-        agentIds && agentIds.length >= 2 && !constructedMessage.mentionedAgentIds?.length
-          ? { ...constructedMessage, mentionedAgentIds: agentIds }
-          : constructedMessage
+      // Center → bottom motion runs in parallel with session create + first message.
+      // Never delay create/send behind the animation (that was dropping sends).
+      const animDone =
+        prefersReducedMotion()
+          ? Promise.resolve()
+          : new Promise<void>((resolve) => {
+              window.setTimeout(resolve, BLANK_DOCK_MOVE_MS)
+            })
 
-      const newSession = await createSessionStore({
-        name: session.name,
-        type: 'chat',
-        assistantAvatarKey: session.assistantAvatarKey,
-        picUrl: session.picUrl,
-        messages: session.messages,
-        copilotId: agentIds?.[0] ?? session.copilotId,
-        agentIds,
-        roomMode: session.roomMode,
-        roomLeadId: agentIds?.[0],
-        agentMode: session.agentMode,
-        workspaceRoot: session.workspaceRoot,
-        settings: session.settings,
-      })
+      try {
+        const agentIds = session.agentIds?.length
+          ? session.agentIds
+          : session.copilotId
+            ? [session.copilotId]
+            : constructedMessage.mentionedAgentIds
 
-      if (newSessionState.knowledgeBase) {
-        addSessionKnowledgeBase(newSession.id, newSessionState.knowledgeBase)
-        setNewSessionState({})
+        // Ensure first message can resolve room speakers even without re-@ chips
+        const userMsg =
+          agentIds && agentIds.length >= 2 && !constructedMessage.mentionedAgentIds?.length
+            ? { ...constructedMessage, mentionedAgentIds: agentIds }
+            : constructedMessage
+
+        const newSession = await createSessionStore({
+          name: session.name,
+          type: 'chat',
+          assistantAvatarKey: session.assistantAvatarKey,
+          picUrl: session.picUrl,
+          messages: session.messages,
+          copilotId: agentIds?.[0] ?? session.copilotId,
+          agentIds,
+          roomMode: session.roomMode,
+          roomLeadId: agentIds?.[0],
+          agentMode: session.agentMode,
+          workspaceRoot: session.workspaceRoot,
+          settings: session.settings,
+        })
+
+        if (newSessionState.knowledgeBase) {
+          addSessionKnowledgeBase(newSession.id, newSessionState.knowledgeBase)
+          setNewSessionState({})
+        }
+
+        const newSessionWebBrowsing = sessionWebBrowsingMap.new
+        if (newSessionWebBrowsing !== undefined) {
+          setSessionWebBrowsing(newSession.id, newSessionWebBrowsing)
+          clearSessionWebBrowsing('new')
+        }
+
+        // Start insert + generation immediately so the session is not empty on navigate.
+        void submitNewUserMessage(newSession.id, {
+          newUserMsg: userMsg,
+          needGenerating,
+          onUserMessageReady,
+        })
+
+        // Let the dock settle at the bottom, then enter the thread.
+        await animDone
+        switchCurrentSession(newSession.id)
+      } catch (err) {
+        console.error('Failed to start new chat', err)
+        setIsSending(false)
       }
-
-      const newSessionWebBrowsing = sessionWebBrowsingMap.new
-      if (newSessionWebBrowsing !== undefined) {
-        setSessionWebBrowsing(newSession.id, newSessionWebBrowsing)
-        clearSessionWebBrowsing('new')
-      }
-
-      switchCurrentSession(newSession.id)
-
-      void submitNewUserMessage(newSession.id, {
-        newUserMsg: userMsg,
-        needGenerating,
-        onUserMessageReady,
-      })
     },
     [
+      isSending,
       session,
       addSessionKnowledgeBase,
       newSessionState.knowledgeBase,
@@ -205,15 +236,17 @@ function Index() {
     ]
   )
 
-  const onSelectModel = useCallback((p: string, m: string) => {
+  const onSelectModel = useCallback((provider: string, modelId: string) => {
     setSession((old) => ({
       ...old,
       messages:
-        p === ModelProviderEnum.OpenClaw ? old.messages.filter((message) => message.role !== 'system') : old.messages,
+        provider === ModelProviderEnum.OpenClaw
+          ? old.messages.filter((message) => message.role !== 'system')
+          : old.messages,
       settings: {
         ...(old.settings || {}),
-        provider: p,
-        modelId: m,
+        provider,
+        modelId,
       },
     }))
   }, [])
@@ -234,17 +267,19 @@ function Index() {
 
   return (
     <Page title="">
-      <div className="p-0 flex flex-col h-full session-shell">
-        <div className="blank-workbench flex-1 min-h-0 overflow-auto">
-          <div className="blank-copy">
-            <h1 className="blank-title">{t('Pick a thread. Or start one.')}</h1>
-            <p className="blank-sub">{t('Start with a prompt or write your own below.')}</p>
+      <div className={`session-shell blank-home${isSending ? ' blank-home--sending' : ''}`}>
+        <div className="blank-home-grow blank-home-grow-top" aria-hidden />
+
+        <div className="blank-home-cluster">
+          <div className="blank-home-greeting">
+            <h1 className="blank-title blank-enter">{t('What can I help with?')}</h1>
             {!providers.length && (
               <Button
-                mt="md"
                 size="sm"
                 variant="light"
                 color="chatbox-brand"
+                className="blank-enter blank-setup-cta"
+                style={{ animationDelay: '80ms' }}
                 onClick={() => {
                   void import('@/router').then(({ router }) => router.navigate({ to: '/settings/provider' }))
                 }}
@@ -254,33 +289,35 @@ function Index() {
             )}
           </div>
           {providers.length > 0 && <BlankStateStarters onSelect={fillComposer} />}
-        </div>
 
-        <div className="session-dock">
-          <div className="session-dock-pad flex flex-col gap-3">
-            {showCopilotsInNewSession ? (
-              <NewChatAgentBar agents={allAgents} selectedIds={selectedAgentIds} onChange={handleAgentIdsChange} />
-            ) : null}
+          <div className="session-dock blank-home-dock">
+            <div className="session-dock-pad flex flex-col gap-3">
+              {showCopilotsInNewSession ? (
+                <NewChatAgentBar agents={allAgents} selectedIds={selectedAgentIds} onChange={handleAgentIdsChange} />
+              ) : null}
 
-            <InputBox
-              key={`new-composer-${composerKey}`}
-              sessionType="chat"
-              sessionId="new"
-              model={selectedModel}
-              agentMode={session.agentMode ?? false}
-              workspaceRoot={session.workspaceRoot}
-              initialMessage={composerDraft}
-              draftAgentIds={selectedAgentIds}
-              draftRoomMode={session.roomMode === 'work' ? 'work' : 'discuss'}
-              onDraftRoomModeChange={(mode) => setSession((old) => ({ ...old, roomMode: mode }))}
-              onSelectModel={onSelectModel}
-              onToggleAgentMode={(agentMode) => setSession((old) => ({ ...old, agentMode }))}
-              onWorkspaceRootChange={(workspaceRoot) => setSession((old) => ({ ...old, workspaceRoot }))}
-              onClickSessionSettings={onClickSessionSettings}
-              onSubmit={handleSubmit}
-            />
+              <InputBox
+                key={`new-composer-${composerKey}`}
+                sessionType="chat"
+                sessionId="new"
+                model={selectedModel}
+                agentMode={session.agentMode ?? false}
+                workspaceRoot={session.workspaceRoot}
+                initialMessage={composerDraft}
+                draftAgentIds={selectedAgentIds}
+                draftRoomMode={session.roomMode === 'work' ? 'work' : 'discuss'}
+                onDraftRoomModeChange={(mode) => setSession((old) => ({ ...old, roomMode: mode }))}
+                onSelectModel={onSelectModel}
+                onToggleAgentMode={(agentMode) => setSession((old) => ({ ...old, agentMode }))}
+                onWorkspaceRootChange={(workspaceRoot) => setSession((old) => ({ ...old, workspaceRoot }))}
+                onClickSessionSettings={onClickSessionSettings}
+                onSubmit={handleSubmit}
+              />
+            </div>
           </div>
         </div>
+
+        <div className="blank-home-grow blank-home-grow-bottom" aria-hidden />
       </div>
     </Page>
   )

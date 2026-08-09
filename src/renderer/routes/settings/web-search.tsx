@@ -1,9 +1,14 @@
-import { Button, Flex, PasswordInput, Select, Stack, Switch, Text, TextInput, Title, Tooltip } from '@mantine/core'
+import { Button, Flex, PasswordInput, Select, Switch, Text, TextInput } from '@mantine/core'
 import { createFileRoute } from '@tanstack/react-router'
 import { ofetch } from 'ofetch'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AdaptiveSelect } from '@/components/AdaptiveSelect'
+import { SettingsCard } from '@/components/settings/SettingsCard'
+import { SettingsPage } from '@/components/settings/SettingsPage'
+import { SettingsPageHeader } from '@/components/settings/SettingsPageHeader'
+import { SettingsPrefRow } from '@/components/settings/SettingsPrefRow'
+import { SettingsSection } from '@/components/settings/SettingsSection'
 import platform from '@/platform'
 import { useSettingsStore } from '@/stores/settingsStore'
 
@@ -133,498 +138,476 @@ export function RouteComponent() {
   }
 
   return (
-    <Stack p="md" gap="xxl">
-      <Title order={5}>{t('Web Search')}</Title>
+    <SettingsPage>
+      <SettingsPageHeader
+        title={t('Web Search')}
+        description={t('Choose how the assistant looks up live information on the web.')}
+      />
 
-      <AdaptiveSelect
-        comboboxProps={{ withinPortal: true, withArrow: true }}
-        data={[
-          { value: 'bing', label: 'Bing Search (Free)' },
-          { value: 'duckduckgo', label: 'DuckDuckGo Search (Free)' },
-          { value: 'serper', label: 'Serper (Google Search API)' },
-          { value: 'google', label: 'Google Custom Search API' },
-          { value: 'tavily', label: 'Tavily' },
-          { value: 'exa', label: 'Exa' },
-        ]}
-        value={extension.webSearch.provider === 'build-in' ? 'bing' : extension.webSearch.provider}
-        onChange={(e) =>
-          e &&
-          setSettings({
-            extension: {
-              ...extension,
-              webSearch: {
-                ...extension.webSearch,
-                provider: e as 'build-in' | 'bing' | 'duckduckgo' | 'serper' | 'google' | 'tavily' | 'exa',
-              },
-            },
-          })
-        }
-        label={t('Search Provider')}
-        maw={320}
-      />
-      <Switch
-        label={t('Use Google Grounding when Gemini models are selected')}
-        checked={extension.webSearch.useGoogleGroundingForGemini !== false}
-        onChange={(event) =>
-          setSettings({
-            extension: {
-              ...extension,
-              webSearch: {
-                ...extension.webSearch,
-                useGoogleGroundingForGemini: event.currentTarget.checked,
-              },
-            },
-          })
-        }
-      />
-      <Switch
-        label={t('Scrape top results for deeper context')}
-        checked={extension.webSearch.scrapeTopResults || false}
-        onChange={(event) =>
-          setSettings({
-            extension: {
-              ...extension,
-              webSearch: {
-                ...extension.webSearch,
-                scrapeTopResults: event.currentTarget.checked,
-              },
-            },
-          })
-        }
-      />
-      {extension.webSearch.provider === 'bing' && (
-        <Text size="xs" c="chatbox-gray">
-          {t(
-            'Bing Search is provided for free use, but it may have limitations and is subject to change by Microsoft.'
-          )}
-        </Text>
-      )}
-      {extension.webSearch.provider === 'duckduckgo' && (
-        <Text size="xs" c="chatbox-gray">
-          {t('DuckDuckGo Search is provided for free use and may be rate-limited in some regions.')}
-        </Text>
-      )}
+      <SettingsSection title={t('Provider')}>
+        <SettingsCard divided>
+          <SettingsPrefRow
+            title={t('Search Provider')}
+            description={
+              extension.webSearch.provider === 'bing'
+                ? t(
+                    'Bing Search is provided for free use, but it may have limitations and is subject to change by Microsoft.'
+                  )
+                : extension.webSearch.provider === 'duckduckgo'
+                  ? t('DuckDuckGo Search is provided for free use and may be rate-limited in some regions.')
+                  : undefined
+            }
+            align="start"
+            control={
+              <AdaptiveSelect
+                comboboxProps={{ withinPortal: true, withArrow: true }}
+                data={[
+                  { value: 'bing', label: 'Bing Search (Free)' },
+                  { value: 'duckduckgo', label: 'DuckDuckGo Search (Free)' },
+                  { value: 'serper', label: 'Serper (Google Search API)' },
+                  { value: 'google', label: 'Google Custom Search API' },
+                  { value: 'tavily', label: 'Tavily' },
+                  { value: 'exa', label: 'Exa' },
+                ]}
+                value={extension.webSearch.provider === 'build-in' ? 'bing' : extension.webSearch.provider}
+                onChange={(e) =>
+                  e &&
+                  setSettings({
+                    extension: {
+                      ...extension,
+                      webSearch: {
+                        ...extension.webSearch,
+                        provider: e as 'build-in' | 'bing' | 'duckduckgo' | 'serper' | 'google' | 'tavily' | 'exa',
+                      },
+                    },
+                  })
+                }
+                maw={220}
+              />
+            }
+          />
+          <SettingsPrefRow
+            title={t('Use Google Grounding when Gemini models are selected')}
+            control={
+              <Switch
+                checked={extension.webSearch.useGoogleGroundingForGemini !== false}
+                onChange={(event) =>
+                  setSettings({
+                    extension: {
+                      ...extension,
+                      webSearch: {
+                        ...extension.webSearch,
+                        useGoogleGroundingForGemini: event.currentTarget.checked,
+                      },
+                    },
+                  })
+                }
+              />
+            }
+          />
+          <SettingsPrefRow
+            title={t('Scrape top results for deeper context')}
+            control={
+              <Switch
+                checked={extension.webSearch.scrapeTopResults || false}
+                onChange={(event) =>
+                  setSettings({
+                    extension: {
+                      ...extension,
+                      webSearch: {
+                        ...extension.webSearch,
+                        scrapeTopResults: event.currentTarget.checked,
+                      },
+                    },
+                  })
+                }
+              />
+            }
+          />
+        </SettingsCard>
+      </SettingsSection>
+
       {extension.webSearch.provider === 'exa' && (
-        <Stack gap="xs">
-          <Text fw="600">{t('Exa API Key')}</Text>
-          <Flex align="center" gap="xs">
-            <PasswordInput
-              flex={1}
-              maw={320}
-              value={extension.webSearch.exaApiKey}
-              onChange={(e) => {
-                setExaAvailable(undefined)
-                setSettings({
-                  extension: {
-                    ...extension,
-                    webSearch: {
-                      ...extension.webSearch,
-                      exaApiKey: e.currentTarget.value,
-                    },
-                  },
-                })
-              }}
-              error={exaAvailable === false}
-            />
-            <Button
-              color="blue"
-              variant="light"
-              onClick={checkExa}
-              loading={checkingExa}
-              disabled={!extension.webSearch.exaApiKey?.trim()}
-            >
-              {t('Check')}
-            </Button>
-          </Flex>
-
-          {typeof exaAvailable === 'boolean' ? (
-            exaAvailable ? (
-              <Text size="xs" c="chatbox-success">
-                {t('Connection successful!')}
-              </Text>
-            ) : (
-              <Text size="xs" c="chatbox-error">
-                {t('API key invalid!')}
-              </Text>
-            )
-          ) : null}
-
-          <Text size="xs" c="chatbox-gray">
-            {t('Exa uses neural search with autoprompting for semantically relevant results.')}
-          </Text>
-
-          <Button
-            variant="transparent"
-            size="compact-xs"
-            px={0}
-            className="self-start"
-            onClick={() => platform.openLink('https://dashboard.exa.ai/api-keys')}
-          >
-            {t('Get API Key')}
-          </Button>
-        </Stack>
-      )}
-      {extension.webSearch.provider === 'serper' && (
-        <Stack gap="xs">
-          <Text fw="600">{t('Serper API Key')}</Text>
-          <Flex align="center" gap="xs">
-            <PasswordInput
-              flex={1}
-              maw={320}
-              value={extension.webSearch.serperApiKey}
-              onChange={(e) => {
-                setSerperAvaliable(undefined)
-                setSettings({
-                  extension: {
-                    ...extension,
-                    webSearch: {
-                      ...extension.webSearch,
-                      serperApiKey: e.currentTarget.value,
-                    },
-                  },
-                })
-              }}
-              error={serperAvaliable === false}
-            />
-            <Button
-              color="blue"
-              variant="light"
-              onClick={checkSerper}
-              loading={checkingSerper}
-              disabled={!extension.webSearch.serperApiKey?.trim()}
-            >
-              {t('Check')}
-            </Button>
-          </Flex>
-
-          {typeof serperAvaliable === 'boolean' ? (
-            serperAvaliable ? (
-              <Text size="xs" c="chatbox-success">
-                {t('Connection successful!')}
-              </Text>
-            ) : (
-              <Text size="xs" c="chatbox-error">
-                {t('API key invalid!')}
-              </Text>
-            )
-          ) : null}
-
-          <Button
-            variant="transparent"
-            size="compact-xs"
-            px={0}
-            className="self-start"
-            onClick={() => platform.openLink('https://serper.dev')}
-          >
-            {t('Get API Key')}
-          </Button>
-        </Stack>
-      )}
-      {extension.webSearch.provider === 'google' && (
-        <Stack gap="xs">
-          <Text fw="600">{t('Google Custom Search')}</Text>
-          <Text size="xs" c="chatbox-gray">
-            {t('Google API Key')}
-          </Text>
-          <Flex align="center" gap="xs">
-            <PasswordInput
-              flex={1}
-              maw={320}
-              value={extension.webSearch.googleApiKey}
-              onChange={(e) => {
-                setGoogleAvaliable(undefined)
-                setSettings({
-                  extension: {
-                    ...extension,
-                    webSearch: {
-                      ...extension.webSearch,
-                      googleApiKey: e.currentTarget.value,
-                    },
-                  },
-                })
-              }}
-              error={googleAvaliable === false}
-            />
-          </Flex>
-          <Text size="xs" c="chatbox-gray">
-            {t('Search Engine ID (cx)')}
-          </Text>
-          <Flex align="center" gap="xs">
-            <TextInput
-              flex={1}
-              maw={320}
-              value={extension.webSearch.googleCseId}
-              onChange={(e) => {
-                setGoogleAvaliable(undefined)
-                setSettings({
-                  extension: {
-                    ...extension,
-                    webSearch: {
-                      ...extension.webSearch,
-                      googleCseId: e.currentTarget.value,
-                    },
-                  },
-                })
-              }}
-              error={googleAvaliable === false}
-            />
-            <Button
-              color="blue"
-              variant="light"
-              onClick={checkGoogle}
-              loading={checkingGoogle}
-              disabled={!extension.webSearch.googleApiKey?.trim() || !extension.webSearch.googleCseId?.trim()}
-            >
-              {t('Check')}
-            </Button>
-          </Flex>
-
-          {typeof googleAvaliable === 'boolean' ? (
-            googleAvaliable ? (
-              <Text size="xs" c="chatbox-success">
-                {t('Connection successful!')}
-              </Text>
-            ) : (
-              <Text size="xs" c="chatbox-error">
-                {t('Credentials invalid!')}
-              </Text>
-            )
-          ) : null}
-
-          <Flex gap="sm" align="center">
-            <Button
-              variant="transparent"
-              size="compact-xs"
-              px={0}
-              className="self-start"
-              onClick={() =>
-                platform.openLink('https://console.cloud.google.com/apis/library/customsearch.googleapis.com')
-              }
-            >
-              {t('Enable API')}
-            </Button>
-            <Button
-              variant="transparent"
-              size="compact-xs"
-              px={0}
-              className="self-start"
-              onClick={() => platform.openLink('https://programmablesearchengine.google.com/about/')}
-            >
-              {t('Create Search Engine')}
-            </Button>
-          </Flex>
-        </Stack>
-      )}
-      {/* Tavily API Key */}
-      {extension.webSearch.provider === 'tavily' && (
-        <Stack gap="xs">
-          <Text fw="600">{t('Tavily API Key')}</Text>
-          <Flex align="center" gap="xs">
-            <PasswordInput
-              flex={1}
-              maw={320}
-              value={extension.webSearch.tavilyApiKey}
-              onChange={(e) => {
-                setTavilyAvaliable(undefined)
-                setSettings({
-                  extension: {
-                    ...extension,
-                    webSearch: {
-                      ...extension.webSearch,
-                      tavilyApiKey: e.currentTarget.value,
-                    },
-                  },
-                })
-              }}
-              error={tavilyAvaliable === false}
-            />
-            <Button
-              color="blue"
-              variant="light"
-              onClick={checkTavily}
-              loading={checkingTavily}
-              disabled={!extension.webSearch.tavilyApiKey?.trim()}
-            >
-              {t('Check')}
-            </Button>
-          </Flex>
-
-          {typeof tavilyAvaliable === 'boolean' ? (
-            tavilyAvaliable ? (
-              <Text size="xs" c="chatbox-success">
-                {t('Connection successful!')}
-              </Text>
-            ) : (
-              <Text size="xs" c="chatbox-error">
-                {t('API key invalid!')}
-              </Text>
-            )
-          ) : null}
-
-          <Button
-            variant="transparent"
-            size="compact-xs"
-            px={0}
-            className="self-start"
-            onClick={() => platform.openLink('https://app.tavily.com?utm_source=chatbox')}
-          >
-            {t('Get API Key')}
-          </Button>
-
-          {/* Tavily Configuration Options */}
-          <Stack mt="md" gap="sm">
-            <Title order={6}>{t('Tavily Search Options')}</Title>
-
-            {/* Search Depth */}
-            <Stack gap="xs">
+        <SettingsSection
+          title={t('Exa API Key')}
+          description={t('Exa uses neural search with autoprompting for semantically relevant results.')}
+        >
+          <SettingsCard>
+            <div className="settings-card-fields">
               <Flex align="center" gap="xs">
-                <Text size="sm">{t('Search Depth')}</Text>
-                <Tooltip
-                  label={t(
-                    'The depth of the search. advanced search is tailored to retrieve the most relevant sources and content snippets for your query, while basic search provides generic content snippets from each source. Using "advanced" costs 2 credits per query.'
-                  )}
+                <PasswordInput
+                  flex={1}
+                  maw={320}
+                  value={extension.webSearch.exaApiKey}
+                  onChange={(e) => {
+                    setExaAvailable(undefined)
+                    setSettings({
+                      extension: {
+                        ...extension,
+                        webSearch: {
+                          ...extension.webSearch,
+                          exaApiKey: e.currentTarget.value,
+                        },
+                      },
+                    })
+                  }}
+                  error={exaAvailable === false}
+                />
+                <Button
+                  color="blue"
+                  variant="light"
+                  onClick={checkExa}
+                  loading={checkingExa}
+                  disabled={!extension.webSearch.exaApiKey?.trim()}
                 >
-                  <Text size="sm" c="gray">
-                    ⓘ
-                  </Text>
-                </Tooltip>
+                  {t('Check')}
+                </Button>
               </Flex>
-              <Select
-                comboboxProps={{ withinPortal: true, withArrow: true }}
-                data={[
-                  { value: 'basic', label: 'Basic' },
-                  { value: 'advanced', label: 'Advanced' },
-                ]}
-                value={extension.webSearch.tavilySearchDepth || 'basic'}
-                onChange={(e) =>
-                  e &&
-                  setSettings({
-                    extension: {
-                      ...extension,
-                      webSearch: {
-                        ...extension.webSearch,
-                        tavilySearchDepth: e,
-                      },
-                    },
-                  })
-                }
-                maw={320}
-              />
-            </Stack>
-
-            {/* Max Results */}
-            <Stack gap="xs">
-              <Flex align="center" gap="xs">
-                <Text size="sm">{t('Max Results')}</Text>
-                <Tooltip label={t('Maximum number of results to return.')}>
-                  <Text size="sm" c="gray">
-                    ⓘ
+              {typeof exaAvailable === 'boolean' ? (
+                exaAvailable ? (
+                  <Text size="xs" c="chatbox-success">
+                    {t('Connection successful!')}
                   </Text>
-                </Tooltip>
-              </Flex>
-              <Select
-                comboboxProps={{ withinPortal: true, withArrow: true }}
-                data={[
-                  { value: '1', label: '1' },
-                  { value: '2', label: '2' },
-                  { value: '3', label: '3' },
-                  { value: '4', label: '4' },
-                  { value: '5', label: '5' },
-                  { value: '6', label: '6' },
-                  { value: '7', label: '7' },
-                  { value: '8', label: '8' },
-                  { value: '9', label: '9' },
-                  { value: '10', label: '10' },
-                ]}
-                value={String(extension.webSearch.tavilyMaxResults || 5)}
-                onChange={(e) =>
-                  e &&
-                  setSettings({
-                    extension: {
-                      ...extension,
-                      webSearch: {
-                        ...extension.webSearch,
-                        tavilyMaxResults: parseInt(e),
-                      },
-                    },
-                  })
-                }
-                maw={320}
-              />
-            </Stack>
-
-            {/* Time Range */}
-            <Stack gap="xs">
-              <Flex align="center" gap="xs">
-                <Text size="sm">{t('Time Range')}</Text>
-                <Tooltip label={t('Time range of the search. For example, the last month.')}>
-                  <Text size="sm" c="gray">
-                    ⓘ
+                ) : (
+                  <Text size="xs" c="chatbox-error">
+                    {t('API key invalid!')}
                   </Text>
-                </Tooltip>
-              </Flex>
-              <Select
-                comboboxProps={{ withinPortal: true, withArrow: true }}
-                data={[
-                  { value: 'none', label: 'None' },
-                  { value: 'day', label: 'Day' },
-                  { value: 'week', label: 'Week' },
-                  { value: 'month', label: 'Month' },
-                  { value: 'year', label: 'Year' },
-                ]}
-                value={extension.webSearch.tavilyTimeRange || 'none'}
-                onChange={(e) =>
-                  e &&
-                  setSettings({
-                    extension: {
-                      ...extension,
-                      webSearch: {
-                        ...extension.webSearch,
-                        tavilyTimeRange: e,
-                      },
-                    },
-                  })
-                }
-                maw={320}
-              />
-            </Stack>
-
-            {/* Include Raw Content */}
-            <Stack gap="xs">
-              <Flex align="center" gap="xs">
-                <Text size="sm">{t('Include Raw Content')}</Text>
-                <Tooltip label={t('Include the raw content of each search result.')}>
-                  <Text size="sm" c="gray">
-                    ⓘ
-                  </Text>
-                </Tooltip>
-              </Flex>
-              <Select
-                comboboxProps={{ withinPortal: true, withArrow: true }}
-                data={[
-                  { value: 'none', label: 'None' },
-                  { value: 'text', label: 'Text' },
-                  { value: 'markdown', label: 'Markdown' },
-                ]}
-                value={extension.webSearch.tavilyIncludeRawContent || 'none'}
-                onChange={(e) =>
-                  e &&
-                  setSettings({
-                    extension: {
-                      ...extension,
-                      webSearch: {
-                        ...extension.webSearch,
-                        tavilyIncludeRawContent: e,
-                      },
-                    },
-                  })
-                }
-                maw={320}
-              />
-            </Stack>
-          </Stack>
-        </Stack>
+                )
+              ) : null}
+              <Button
+                variant="transparent"
+                size="compact-xs"
+                px={0}
+                className="self-start"
+                onClick={() => platform.openLink('https://dashboard.exa.ai/api-keys')}
+              >
+                {t('Get API Key')}
+              </Button>
+            </div>
+          </SettingsCard>
+        </SettingsSection>
       )}
-    </Stack>
+
+      {extension.webSearch.provider === 'serper' && (
+        <SettingsSection title={t('Serper API Key')}>
+          <SettingsCard>
+            <div className="settings-card-fields">
+              <Flex align="center" gap="xs">
+                <PasswordInput
+                  flex={1}
+                  maw={320}
+                  value={extension.webSearch.serperApiKey}
+                  onChange={(e) => {
+                    setSerperAvaliable(undefined)
+                    setSettings({
+                      extension: {
+                        ...extension,
+                        webSearch: {
+                          ...extension.webSearch,
+                          serperApiKey: e.currentTarget.value,
+                        },
+                      },
+                    })
+                  }}
+                  error={serperAvaliable === false}
+                />
+                <Button
+                  color="blue"
+                  variant="light"
+                  onClick={checkSerper}
+                  loading={checkingSerper}
+                  disabled={!extension.webSearch.serperApiKey?.trim()}
+                >
+                  {t('Check')}
+                </Button>
+              </Flex>
+              {typeof serperAvaliable === 'boolean' ? (
+                serperAvaliable ? (
+                  <Text size="xs" c="chatbox-success">
+                    {t('Connection successful!')}
+                  </Text>
+                ) : (
+                  <Text size="xs" c="chatbox-error">
+                    {t('API key invalid!')}
+                  </Text>
+                )
+              ) : null}
+              <Button
+                variant="transparent"
+                size="compact-xs"
+                px={0}
+                className="self-start"
+                onClick={() => platform.openLink('https://serper.dev')}
+              >
+                {t('Get API Key')}
+              </Button>
+            </div>
+          </SettingsCard>
+        </SettingsSection>
+      )}
+
+      {extension.webSearch.provider === 'google' && (
+        <SettingsSection title={t('Google Custom Search')}>
+          <SettingsCard>
+            <div className="settings-card-fields">
+              <div className="settings-field">
+                <span className="settings-field-label">{t('Google API Key')}</span>
+                <PasswordInput
+                  maw={320}
+                  value={extension.webSearch.googleApiKey}
+                  onChange={(e) => {
+                    setGoogleAvaliable(undefined)
+                    setSettings({
+                      extension: {
+                        ...extension,
+                        webSearch: {
+                          ...extension.webSearch,
+                          googleApiKey: e.currentTarget.value,
+                        },
+                      },
+                    })
+                  }}
+                  error={googleAvaliable === false}
+                />
+              </div>
+              <div className="settings-field">
+                <span className="settings-field-label">{t('Search Engine ID (cx)')}</span>
+                <Flex align="center" gap="xs">
+                  <TextInput
+                    flex={1}
+                    maw={320}
+                    value={extension.webSearch.googleCseId}
+                    onChange={(e) => {
+                      setGoogleAvaliable(undefined)
+                      setSettings({
+                        extension: {
+                          ...extension,
+                          webSearch: {
+                            ...extension.webSearch,
+                            googleCseId: e.currentTarget.value,
+                          },
+                        },
+                      })
+                    }}
+                    error={googleAvaliable === false}
+                  />
+                  <Button
+                    color="blue"
+                    variant="light"
+                    onClick={checkGoogle}
+                    loading={checkingGoogle}
+                    disabled={!extension.webSearch.googleApiKey?.trim() || !extension.webSearch.googleCseId?.trim()}
+                  >
+                    {t('Check')}
+                  </Button>
+                </Flex>
+              </div>
+              {typeof googleAvaliable === 'boolean' ? (
+                googleAvaliable ? (
+                  <Text size="xs" c="chatbox-success">
+                    {t('Connection successful!')}
+                  </Text>
+                ) : (
+                  <Text size="xs" c="chatbox-error">
+                    {t('Credentials invalid!')}
+                  </Text>
+                )
+              ) : null}
+              <div className="settings-actions">
+                <Button
+                  variant="transparent"
+                  size="compact-xs"
+                  px={0}
+                  onClick={() =>
+                    platform.openLink('https://console.cloud.google.com/apis/library/customsearch.googleapis.com')
+                  }
+                >
+                  {t('Enable API')}
+                </Button>
+                <Button
+                  variant="transparent"
+                  size="compact-xs"
+                  px={0}
+                  onClick={() => platform.openLink('https://programmablesearchengine.google.com/about/')}
+                >
+                  {t('Create Search Engine')}
+                </Button>
+              </div>
+            </div>
+          </SettingsCard>
+        </SettingsSection>
+      )}
+
+      {extension.webSearch.provider === 'tavily' && (
+        <SettingsSection title={t('Tavily')}>
+          <SettingsCard>
+            <div className="settings-card-fields">
+              <div className="settings-field">
+                <span className="settings-field-label">{t('Tavily API Key')}</span>
+                <Flex align="center" gap="xs">
+                  <PasswordInput
+                    flex={1}
+                    maw={320}
+                    value={extension.webSearch.tavilyApiKey}
+                    onChange={(e) => {
+                      setTavilyAvaliable(undefined)
+                      setSettings({
+                        extension: {
+                          ...extension,
+                          webSearch: {
+                            ...extension.webSearch,
+                            tavilyApiKey: e.currentTarget.value,
+                          },
+                        },
+                      })
+                    }}
+                    error={tavilyAvaliable === false}
+                  />
+                  <Button
+                    color="blue"
+                    variant="light"
+                    onClick={checkTavily}
+                    loading={checkingTavily}
+                    disabled={!extension.webSearch.tavilyApiKey?.trim()}
+                  >
+                    {t('Check')}
+                  </Button>
+                </Flex>
+                {typeof tavilyAvaliable === 'boolean' ? (
+                  tavilyAvaliable ? (
+                    <Text size="xs" c="chatbox-success">
+                      {t('Connection successful!')}
+                    </Text>
+                  ) : (
+                    <Text size="xs" c="chatbox-error">
+                      {t('API key invalid!')}
+                    </Text>
+                  )
+                ) : null}
+                <Button
+                  variant="transparent"
+                  size="compact-xs"
+                  px={0}
+                  className="self-start"
+                  onClick={() => platform.openLink('https://app.tavily.com?utm_source=chatbox')}
+                >
+                  {t('Get API Key')}
+                </Button>
+              </div>
+
+              <SettingsPrefRow
+                title={t('Search Depth')}
+                description={t(
+                  'The depth of the search. advanced search is tailored to retrieve the most relevant sources and content snippets for your query, while basic search provides generic content snippets from each source. Using "advanced" costs 2 credits per query.'
+                )}
+                align="start"
+                control={
+                  <Select
+                    comboboxProps={{ withinPortal: true, withArrow: true }}
+                    data={[
+                      { value: 'basic', label: 'Basic' },
+                      { value: 'advanced', label: 'Advanced' },
+                    ]}
+                    value={extension.webSearch.tavilySearchDepth || 'basic'}
+                    onChange={(e) =>
+                      e &&
+                      setSettings({
+                        extension: {
+                          ...extension,
+                          webSearch: {
+                            ...extension.webSearch,
+                            tavilySearchDepth: e,
+                          },
+                        },
+                      })
+                    }
+                    maw={160}
+                  />
+                }
+              />
+              <SettingsPrefRow
+                title={t('Max Results')}
+                control={
+                  <Select
+                    comboboxProps={{ withinPortal: true, withArrow: true }}
+                    data={['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'].map((v) => ({ value: v, label: v }))}
+                    value={String(extension.webSearch.tavilyMaxResults || 5)}
+                    onChange={(e) =>
+                      e &&
+                      setSettings({
+                        extension: {
+                          ...extension,
+                          webSearch: {
+                            ...extension.webSearch,
+                            tavilyMaxResults: parseInt(e),
+                          },
+                        },
+                      })
+                    }
+                    maw={100}
+                  />
+                }
+              />
+              <SettingsPrefRow
+                title={t('Time Range')}
+                control={
+                  <Select
+                    comboboxProps={{ withinPortal: true, withArrow: true }}
+                    data={[
+                      { value: 'none', label: 'None' },
+                      { value: 'day', label: 'Day' },
+                      { value: 'week', label: 'Week' },
+                      { value: 'month', label: 'Month' },
+                      { value: 'year', label: 'Year' },
+                    ]}
+                    value={extension.webSearch.tavilyTimeRange || 'none'}
+                    onChange={(e) =>
+                      e &&
+                      setSettings({
+                        extension: {
+                          ...extension,
+                          webSearch: {
+                            ...extension.webSearch,
+                            tavilyTimeRange: e,
+                          },
+                        },
+                      })
+                    }
+                    maw={140}
+                  />
+                }
+              />
+              <SettingsPrefRow
+                title={t('Include Raw Content')}
+                control={
+                  <Select
+                    comboboxProps={{ withinPortal: true, withArrow: true }}
+                    data={[
+                      { value: 'none', label: 'None' },
+                      { value: 'text', label: 'Text' },
+                      { value: 'markdown', label: 'Markdown' },
+                    ]}
+                    value={extension.webSearch.tavilyIncludeRawContent || 'none'}
+                    onChange={(e) =>
+                      e &&
+                      setSettings({
+                        extension: {
+                          ...extension,
+                          webSearch: {
+                            ...extension.webSearch,
+                            tavilyIncludeRawContent: e,
+                          },
+                        },
+                      })
+                    }
+                    maw={140}
+                  />
+                }
+              />
+            </div>
+          </SettingsCard>
+        </SettingsSection>
+      )}
+    </SettingsPage>
   )
 }

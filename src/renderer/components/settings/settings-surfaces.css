@@ -1,0 +1,797 @@
+/* Settings content surfaces — shared by primitives (imported once from route). */
+
+/* ── Page measure ── */
+.settings-page-body {
+  width: 100%;
+  max-width: 40rem;
+  margin-inline: 0;
+  padding: 0.85rem 1.1rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+.settings-page-body-wide {
+  max-width: min(56rem, 100%);
+}
+
+/* Less scroll: sticky actions at bottom of long forms */
+.settings-sticky-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+  padding: 0.65rem 0 0.15rem;
+  background: linear-gradient(
+    to top,
+    var(--chatbox-background-primary) 55%,
+    color-mix(in srgb, var(--chatbox-background-primary) 88%, transparent)
+  );
+}
+
+/* Collapsible advanced blocks */
+.settings-collapsible {
+  margin: 0;
+}
+
+.settings-collapsible-head {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  margin: 0;
+  border: none;
+  border-radius: 11px;
+  background: var(--chatbox-background-secondary);
+  box-shadow: var(--settings-shadow);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition-property: background-color, box-shadow;
+  transition-duration: 140ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.settings-collapsible-head:hover {
+  background: var(--chatbox-background-tertiary);
+  box-shadow: var(--settings-shadow-hover);
+}
+
+.settings-collapsible.is-open .settings-collapsible-head {
+  border-radius: 11px 11px 0 0;
+  box-shadow:
+    var(--settings-shadow),
+    0 1px 0 color-mix(in srgb, var(--chatbox-tint-primary) 7%, transparent);
+}
+
+.settings-collapsible-head-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.settings-collapsible-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--chatbox-tint-primary);
+}
+
+.settings-collapsible-desc {
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--chatbox-tint-tertiary);
+}
+
+.settings-collapsible-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 0 0 auto;
+}
+
+.settings-collapsible-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--chatbox-tint-tertiary);
+  padding: 0.15rem 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--chatbox-tint-primary) 6%, transparent);
+}
+
+.settings-collapsible-chevron {
+  display: inline-flex;
+  width: 1.25rem;
+  height: 1.25rem;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: var(--chatbox-tint-tertiary);
+  transform: rotate(90deg);
+  transition: transform 140ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.settings-collapsible.is-open .settings-collapsible-chevron {
+  transform: rotate(-90deg);
+}
+
+.settings-collapsible-body {
+  border-radius: 0 0 11px 11px;
+  background: var(--chatbox-background-secondary);
+  box-shadow: var(--settings-shadow);
+  padding: 0.15rem 0.15rem 0.15rem;
+}
+
+.settings-collapsible-body > .settings-card {
+  box-shadow: none;
+  border-radius: 0 0 10px 10px;
+}
+
+.settings-collapsible-body > .settings-card.settings-card-padded:not(.settings-card-divided) {
+  padding: 0.75rem 0.9rem;
+}
+
+.settings-collapsible-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem 0.85rem;
+}
+
+.settings-collapsible-stack .settings-section-label {
+  /* nested sections inside collapsible keep hierarchy without huge gaps */
+  margin-top: 0.15rem;
+}
+
+/* ── Page header ── */
+.settings-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0;
+}
+
+/* Nav list slightly denser — less scroll to reach lower items */
+.settings-nav .settings-nav-item {
+  padding-block: 0.45rem !important;
+}
+
+.settings-page-title {
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.025em;
+  line-height: 1.3 !important;
+  color: var(--chatbox-tint-primary);
+}
+
+.settings-page-desc {
+  line-height: 1.5;
+  color: var(--chatbox-tint-secondary);
+}
+
+.settings-page-header-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* ── Section ── */
+.settings-section {
+  margin: 0;
+}
+
+.settings-section-dense {
+  /* reserved for tight groups */
+}
+
+.settings-section-head {
+  margin-bottom: 0.55rem;
+  padding-inline: 0.1rem;
+}
+
+.settings-section-label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.35;
+  color: var(--chatbox-tint-tertiary);
+}
+
+.settings-section-desc {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--chatbox-tint-tertiary);
+  max-width: 36rem;
+}
+
+.settings-section-title {
+  /* legacy class — map to micro label if still referenced */
+  font-size: 0.72rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--chatbox-tint-tertiary);
+}
+
+/* ── Card surface ── */
+.settings-card {
+  border-radius: 11px;
+  background: var(--chatbox-background-secondary);
+  box-shadow: var(--settings-shadow);
+}
+
+.settings-card-padded {
+  padding: 0.15rem 0.15rem;
+}
+
+/* When not divided, keep comfortable pad for free-form fields */
+.settings-card-padded:not(.settings-card-divided) {
+  padding: 0.85rem 1rem;
+}
+
+.settings-card-divided > * {
+  padding: 0.75rem 0.9rem;
+}
+
+.settings-card-divided > * + * {
+  box-shadow: 0 -1px 0 color-mix(in srgb, var(--chatbox-tint-primary) 7%, transparent);
+}
+
+/* Nested field stacks inside a non-divided card */
+.settings-card-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+/* ── Preference row ── */
+.settings-pref-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 2.75rem;
+}
+
+.settings-pref-row-start {
+  align-items: flex-start;
+}
+
+.settings-pref-row-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.settings-pref-row-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  color: var(--chatbox-tint-primary);
+}
+
+.settings-pref-row-desc {
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--chatbox-tint-tertiary);
+}
+
+.settings-pref-row-control {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  max-width: min(16rem, 48%);
+}
+
+.settings-pref-row-control .mantine-Select-root,
+.settings-pref-row-control .mantine-Input-wrapper,
+.settings-pref-row-control .mantine-InputBase-root {
+  min-width: 9.5rem;
+}
+
+.settings-pref-row-control .mantine-Switch-root {
+  --switch-width: 2.4rem;
+}
+
+@media (max-width: 520px) {
+  .settings-pref-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.55rem;
+  }
+
+  .settings-pref-row-control {
+    max-width: none;
+    justify-content: flex-start;
+  }
+
+  .settings-pref-row-control .mantine-Select-root,
+  .settings-pref-row-control .mantine-Input-wrapper {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+/* ── List rows (catalog pages) ── */
+.settings-list-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 9px;
+  transition-property: background-color, box-shadow;
+  transition-duration: 140ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.settings-list-row:hover {
+  background: color-mix(in srgb, var(--chatbox-tint-primary) 4%, transparent);
+}
+
+.settings-list-row-title {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--chatbox-tint-primary);
+}
+
+.settings-list-row-meta {
+  font-size: 0.75rem;
+  color: var(--chatbox-tint-tertiary);
+  line-height: 1.4;
+}
+
+/* ── Callout ── */
+.settings-callout {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  padding: 0.75rem 0.85rem;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--chatbox-tint-brand) 8%, var(--chatbox-background-secondary));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 14%, transparent);
+}
+
+.settings-callout-icon {
+  flex: 0 0 auto;
+  margin-top: 0.1rem;
+  color: var(--chatbox-tint-brand);
+  opacity: 0.9;
+}
+
+.settings-callout-title {
+  color: var(--chatbox-tint-primary);
+  font-weight: 600;
+  font-size: 0.8125rem;
+}
+
+.settings-callout-content {
+  color: var(--chatbox-tint-secondary);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.settings-callout-success {
+  background: color-mix(in srgb, #22c55e 8%, var(--chatbox-background-secondary));
+  box-shadow: 0 0 0 1px color-mix(in srgb, #22c55e 18%, transparent);
+}
+
+.settings-callout-success .settings-callout-icon {
+  color: #16a34a;
+}
+
+.settings-callout-warning {
+  background: color-mix(in srgb, #f59e0b 10%, var(--chatbox-background-secondary));
+  box-shadow: 0 0 0 1px color-mix(in srgb, #f59e0b 20%, transparent);
+}
+
+.settings-callout-warning .settings-callout-icon {
+  color: #d97706;
+}
+
+.settings-callout-neutral {
+  background: var(--chatbox-background-secondary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent);
+}
+
+.settings-callout-neutral .settings-callout-icon {
+  color: var(--chatbox-tint-tertiary);
+}
+
+/* Soft nav edge (matches rail language) */
+.settings-nav.settings-nav-edge {
+  border-right: none !important;
+  box-shadow: var(--chatbox-rail-edge-shadow);
+}
+
+/* Provider list pane */
+.settings-provider-list {
+  border-right: none !important;
+  box-shadow: 1px 0 0 color-mix(in srgb, var(--chatbox-tint-primary) 7%, transparent);
+  background: var(--chatbox-background-rail);
+}
+
+.settings-provider-row {
+  transition-property: background-color, color, transform;
+  transition-duration: 140ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  border-radius: 9px !important;
+}
+
+.settings-provider-row:active {
+  transform: scale(0.99);
+}
+
+.settings-provider-row-on {
+  background: var(--chatbox-background-brand-secondary) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 16%, transparent);
+}
+
+/* Form control rhythm inside settings */
+.settings-content .mantine-Input-input,
+.settings-content .mantine-Textarea-input,
+.settings-content .mantine-PasswordInput-input,
+.settings-content .mantine-Select-input,
+.settings-content .mantine-InputBase-input {
+  border-radius: 9px;
+  border-color: color-mix(in srgb, var(--chatbox-tint-primary) 12%, transparent);
+  background: var(--chatbox-background-primary);
+  min-height: 40px;
+}
+
+.settings-content .mantine-Input-input:focus,
+.settings-content .mantine-Textarea-input:focus,
+.settings-content .mantine-PasswordInput-input:focus,
+.settings-content .mantine-Select-input:focus,
+.settings-content .mantine-InputBase-input:focus {
+  border-color: color-mix(in srgb, var(--chatbox-tint-brand) 45%, transparent);
+}
+
+.settings-content .mantine-Input-label,
+.settings-content .mantine-Select-label,
+.settings-content .mantine-TextInput-label,
+.settings-content .mantine-PasswordInput-label,
+.settings-content .mantine-Textarea-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--chatbox-tint-secondary);
+  margin-bottom: 0.35rem;
+}
+
+.settings-content .mantine-Button-root {
+  border-radius: 9px;
+  transition-property: transform, background-color, box-shadow, color;
+  transition-duration: 140ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.settings-content .mantine-Button-root:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.settings-content .mantine-Switch-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--chatbox-tint-primary);
+}
+
+.settings-content .mantine-Switch-description {
+  font-size: 0.75rem;
+  color: var(--chatbox-tint-tertiary);
+  margin-top: 0.15rem;
+}
+
+/* Soften legacy Mantine Alerts inside settings to studio callout weight */
+.settings-content .mantine-Alert-root {
+  border-radius: 9px;
+  border: none;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 14%, transparent);
+  background: color-mix(in srgb, var(--chatbox-tint-brand) 8%, var(--chatbox-background-secondary));
+}
+
+.settings-content .mantine-Alert-root[data-variant='light'] {
+  background: color-mix(in srgb, var(--chatbox-tint-brand) 8%, var(--chatbox-background-secondary));
+}
+
+.settings-content .mantine-Divider-root {
+  border-color: color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent);
+}
+
+/* Model selector trigger inside settings cards */
+.settings-content .settings-model-trigger {
+  border-radius: 9px !important;
+  border-color: color-mix(in srgb, var(--chatbox-tint-primary) 12%, transparent) !important;
+  background: var(--chatbox-background-primary) !important;
+  min-height: 40px;
+  transition-property: border-color, box-shadow, background-color;
+  transition-duration: 140ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.settings-content .settings-model-trigger:hover {
+  border-color: color-mix(in srgb, var(--chatbox-tint-primary) 18%, transparent) !important;
+  background: var(--chatbox-background-tertiary) !important;
+}
+
+/* Field block inside card (stacked inputs) */
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.settings-field-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--chatbox-tint-secondary);
+}
+
+.settings-field-hint {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--chatbox-tint-tertiary);
+}
+
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+/* Pref rows with action clusters need full width */
+.settings-pref-row-control:has(.settings-actions),
+.settings-pref-row-control:has(.settings-segmented) {
+  max-width: min(22rem, 100%);
+}
+
+/* Quiet segmented control (auth mode) */
+.settings-content .settings-segmented.mantine-SegmentedControl-root,
+.settings-segmented.mantine-SegmentedControl-root {
+  background: var(--chatbox-background-primary);
+  border-radius: 9px;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 10%, transparent);
+  padding: 3px;
+}
+
+.settings-content .settings-segmented .mantine-SegmentedControl-indicator,
+.settings-segmented .mantine-SegmentedControl-indicator {
+  border-radius: 7px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.settings-content .settings-segmented .mantine-SegmentedControl-label,
+.settings-segmented .mantine-SegmentedControl-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  padding: 0.35rem 0.65rem;
+}
+
+/* Status pill */
+.settings-status-pill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: var(--chatbox-background-tertiary);
+  color: var(--chatbox-tint-secondary);
+}
+
+.settings-status-pill-ok {
+  background: color-mix(in srgb, #22c55e 12%, var(--chatbox-background-secondary));
+  color: color-mix(in srgb, #16a34a 80%, var(--chatbox-tint-primary));
+  box-shadow: 0 0 0 1px color-mix(in srgb, #22c55e 18%, transparent);
+}
+
+/* Device code panel — soft studio surface, not blue Alert brick */
+.settings-device-code-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-radius: 9px;
+  background: var(--chatbox-background-primary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 18%, transparent);
+}
+
+.settings-device-code {
+  color: var(--chatbox-tint-primary);
+}
+
+/* Collapsible advanced trigger */
+.settings-collapsible-trigger {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  margin: 0;
+  border: none;
+  background: transparent;
+  color: var(--chatbox-tint-secondary);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  border-radius: 9px;
+  transition-property: background-color, color;
+  transition-duration: 140ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.settings-collapsible-trigger:hover {
+  background: color-mix(in srgb, var(--chatbox-tint-primary) 4%, transparent);
+  color: var(--chatbox-tint-primary);
+}
+
+.settings-collapsible-chevron {
+  display: inline-block;
+  transform: rotate(90deg);
+  transition: transform 140ms cubic-bezier(0.2, 0, 0, 1);
+  opacity: 0.7;
+}
+
+.settings-collapsible-chevron[data-open='true'] {
+  transform: rotate(-90deg);
+}
+
+/* Provider detail measure inside split pane */
+.settings-provider-detail.settings-page-body,
+.settings-provider-detail.settings-page-body-wide {
+  max-width: min(42rem, 100%);
+  padding: 1rem 1.15rem 2.25rem;
+}
+
+/* Provider list rows denser / quieter */
+.settings-provider-list .settings-provider-row {
+  border-radius: 9px !important;
+  padding-block: 0.55rem !important;
+}
+
+.settings-provider-list .settings-provider-row-on {
+  background: var(--chatbox-background-brand-secondary) !important;
+}
+
+/* Provider list footer stays above scroll; not clipped */
+.settings-provider-list-footer {
+  padding: 0.65rem 0.85rem 0.85rem;
+  box-shadow: 0 -1px 0 color-mix(in srgb, var(--chatbox-tint-primary) 7%, transparent);
+  background: var(--chatbox-background-rail);
+}
+
+/* Add provider picker — scrollable panel, opens beside list */
+.settings-provider-add-popover.mantine-Popover-dropdown,
+.settings-provider-add-popover {
+  padding: 0 !important;
+  border: none !important;
+  background: var(--chatbox-background-secondary) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 10%, transparent),
+    0 12px 40px -8px rgba(0, 0, 0, 0.28) !important;
+  border-radius: 11px !important;
+  overflow: hidden;
+  max-height: min(70vh, 480px);
+}
+
+.settings-provider-add-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: min(70vh, 480px);
+  min-width: 0;
+}
+
+.settings-provider-add-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0.75rem 0.55rem;
+  flex: 0 0 auto;
+}
+
+.settings-provider-add-search .mantine-Input-input {
+  min-height: 36px;
+  border-radius: 9px;
+}
+
+.settings-provider-add-list {
+  padding: 0.15rem 0.4rem 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.settings-provider-add-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.5rem 0.55rem;
+  border-radius: 8px;
+  color: var(--chatbox-tint-primary);
+  text-align: left;
+  transition-property: background-color;
+  transition-duration: 120ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+
+.settings-provider-add-item:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--chatbox-tint-primary) 6%, transparent);
+}
+
+.settings-provider-add-item:active:not(:disabled) {
+  transform: scale(0.99);
+}
+
+.settings-provider-add-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.settings-provider-add-footer {
+  flex: 0 0 auto;
+  padding: 0.35rem 0.4rem 0.5rem;
+  border-top: 1px solid color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* Knowledge Base empty state */
+.settings-kb-empty.settings-card-padded {
+  padding: 2rem 1.25rem;
+}
+
+.settings-kb-empty-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.65rem;
+  max-width: 26rem;
+  margin-inline: auto;
+}
+
+.settings-kb-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 11px;
+  color: var(--chatbox-tint-brand);
+  background: color-mix(in srgb, var(--chatbox-tint-brand) 10%, var(--chatbox-background-primary));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 14%, transparent);
+  margin-bottom: 0.25rem;
+}
+
+.settings-kb-empty-title {
+  color: var(--chatbox-tint-primary);
+  letter-spacing: -0.02em;
+}
+
+.settings-kb-empty-desc {
+  max-width: 22rem;
+  line-height: 1.5;
+  margin-bottom: 0.35rem;
+}

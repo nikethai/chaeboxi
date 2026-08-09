@@ -1,5 +1,6 @@
+import { ModelProviderEnum } from '../types'
 import { describe, expect, it } from 'vitest'
-import { hasProviderCredentials } from './provider-credentials'
+import { hasProviderCredentials, isProviderListedInSettings } from './provider-credentials'
 
 describe('hasProviderCredentials', () => {
   it('accepts api key', () => {
@@ -15,5 +16,16 @@ describe('hasProviderCredentials', () => {
     expect(hasProviderCredentials({})).toBe(false)
     expect(hasProviderCredentials({ apiKey: '   ' })).toBe(false)
     expect(hasProviderCredentials({ oauth: {} })).toBe(false)
+  })
+})
+
+describe('isProviderListedInSettings', () => {
+  it('lists custom providers always', () => {
+    expect(isProviderListedInSettings({ id: 'custom-1', isCustom: true }, {})).toBe(true)
+  })
+
+  it('lists cloud builtins only with credentials', () => {
+    expect(isProviderListedInSettings({ id: ModelProviderEnum.OpenAI }, {})).toBe(false)
+    expect(isProviderListedInSettings({ id: ModelProviderEnum.OpenAI }, { apiKey: 'sk' })).toBe(true)
   })
 })

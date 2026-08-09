@@ -17,10 +17,12 @@ import {
   type GeminiAuthMode,
 } from '@shared/providers/oauth'
 import type { ProviderModelInfo, ProviderSettings } from '@shared/types'
-import { IconExternalLink, IconInfoCircle, IconLogout, IconAlertTriangle } from '@tabler/icons-react'
+import { IconExternalLink, IconLogout } from '@tabler/icons-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
+import { SettingsCallout } from '@/components/settings/SettingsCallout'
+import { SettingsPrefRow } from '@/components/settings/SettingsPrefRow'
 import platform from '@/platform'
 import { add as addToast } from '@/stores/toastActions'
 import {
@@ -289,32 +291,51 @@ export function GeminiAntigravityAuthSection({
     phase === 'starting' ||
     (phase === 'error' && forcePasteMode)
 
+  const signedInLabel = signedIn
+    ? email
+      ? planType
+        ? t('Signed in as {{email}} ({{plan}})', { email, plan: planType })
+        : t('Signed in as {{email}}', { email })
+      : planType
+        ? t('Signed in ({{plan}})', { plan: planType })
+        : t('Signed in')
+    : t('Not signed in')
+
   return (
-    <Stack gap="sm">
-      <Stack gap="xxs">
-        <Text span fw="600">
-          {t('How do you connect?')}
-        </Text>
-        <SegmentedControl
-          fullWidth
-          value={authMode}
-          onChange={handleModeChange}
-          data={[
-            { label: t('Google sign-in (experimental)'), value: 'oauth' },
-            { label: t('API Key'), value: 'api_key' },
-          ]}
-        />
-      </Stack>
+    <div className="settings-card-fields">
+      <SettingsPrefRow
+        title={t('How do you connect?')}
+        description={
+          authMode === 'oauth'
+            ? desktopCallback
+              ? t(
+                  'Google OAuth (PKCE). Approve in the browser — Chaeboxi finishes via localhost. Quota is separate from AI Studio API keys.'
+                )
+              : t(
+                  'Google OAuth (PKCE). After the browser opens, paste the full redirect URL from the address bar. Quota is separate from AI Studio API keys.'
+                )
+            : t(
+                'API keys from Google AI Studio are billed separately from Google AI / Antigravity quotas.'
+              )
+        }
+        align="start"
+        control={
+          <SegmentedControl
+            className="settings-segmented"
+            value={authMode}
+            onChange={handleModeChange}
+            data={[
+              { label: t('Google'), value: 'oauth' },
+              { label: t('API Key'), value: 'api_key' },
+            ]}
+          />
+        }
+      />
 
       {authMode === 'oauth' && (
-        <Stack gap="sm">
-          <Alert
-            variant="light"
-            color="orange"
-            icon={<IconAlertTriangle />}
-            title={t('Experimental · account risk')}
-          >
-            <Text size="sm">
+        <>
+          <SettingsCallout title={t('Experimental · account risk')} tone="warning">
+            <Text size="sm" c="inherit" component="div">
               {t(
                 'Sign in with Google uses the unofficial Antigravity / Cloud Code Assist path (similar to some TUIs). It is not an official Google product integration. Your Google account may be restricted or banned. Prefer an AI Studio API key for production use.'
               )}
@@ -327,65 +348,53 @@ export function GeminiAntigravityAuthSection({
                 label={t('I understand the risk and want to continue')}
               />
             )}
-          </Alert>
+          </SettingsCallout>
 
-          <Alert variant="light" color="blue" icon={<IconInfoCircle />} title={t('Subscription-style login')}>
-            <Text size="sm">
-              {desktopCallback
-                ? t(
-                    'Uses Google OAuth (PKCE). After you click sign-in, approve Google in the browser — Chaeboxi listens on localhost and finishes automatically. Quota is separate from AI Studio API keys.'
-                  )
-                : t(
-                    'Uses Google OAuth (PKCE). After the browser opens, sign in, then paste the full redirect URL from the address bar (the page may fail to load on localhost — that is OK). Quota is separate from AI Studio API keys.'
-                  )}
-            </Text>
-          </Alert>
-
-          <Flex gap="xs" align="center" wrap="wrap">
-            <Text size="sm" c={signedIn ? 'teal' : 'chatbox-secondary'}>
-              {signedIn
-                ? email
-                  ? planType
-                    ? t('Signed in as {{email}} ({{plan}})', { email, plan: planType })
-                    : t('Signed in as {{email}}', { email })
-                  : planType
-                    ? t('Signed in ({{plan}})', { plan: planType })
-                    : t('Signed in')
-                : t('Not signed in')}
-            </Text>
-            {signedIn ? (
-              <Button
-                variant="light"
-                color="gray"
-                size="compact-sm"
-                leftSection={<ScalableIcon icon={IconLogout} size={14} />}
-                onClick={handleSignOut}
-              >
-                {t('Sign out')}
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                loading={phase === 'starting' || phase === 'exchanging'}
-                disabled={phase === 'waiting'}
-                onClick={() => void handleStartSignIn()}
-              >
-                {t('Sign in with Google')}
-              </Button>
-            )}
-            {signedIn && (
-              <Button variant="subtle" size="compact-sm" onClick={() => void handleStartSignIn()}>
-                {t('Re-authenticate')}
-              </Button>
-            )}
-          </Flex>
+          <SettingsPrefRow
+            title={t('Account')}
+            description={!signedIn ? t('Not signed in') : undefined}
+            align="start"
+            control={
+              <div className="settings-actions">
+                {signedIn ? (
+                  <>
+                    <span className="settings-status-pill settings-status-pill-ok" title={signedInLabel}>
+                      {email
+                        ? planType
+                          ? `${email} · ${planType}`
+                          : email
+                        : planType
+                          ? t('Signed in ({{plan}})', { plan: planType })
+                          : t('Signed in')}
+                    </span>
+                    <Button
+                      variant="default"
+                      size="compact-sm"
+                      leftSection={<ScalableIcon icon={IconLogout} size={14} />}
+                      onClick={handleSignOut}
+                    >
+                      {t('Sign out')}
+                    </Button>
+                    <Button variant="subtle" size="compact-sm" onClick={() => void handleStartSignIn()}>
+                      {t('Re-authenticate')}
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    size="sm"
+                    loading={phase === 'starting' || phase === 'exchanging'}
+                    disabled={phase === 'waiting'}
+                    onClick={() => void handleStartSignIn()}
+                  >
+                    {t('Sign in with Google')}
+                  </Button>
+                )}
+              </div>
+            }
+          />
 
           {showPasteUi && (
-            <Stack
-              gap="sm"
-              p="md"
-              className="rounded-md border-2 border-[var(--mantine-color-blue-filled)] bg-[var(--mantine-color-blue-light)]"
-            >
+            <div className="settings-device-code-panel">
               <Flex gap="xs" align="center">
                 <Loader size="sm" />
                 <Text size="sm" fw={600}>
@@ -398,7 +407,7 @@ export function GeminiAntigravityAuthSection({
               </Flex>
 
               {desktopCallback && !forcePasteMode && phase === 'waiting' && (
-                <Text size="sm" c="chatbox-secondary">
+                <Text size="sm" c="chatbox-tertiary">
                   {t(
                     'Approve access in the browser. This window will finish automatically when Google redirects to {{uri}}.',
                     { uri: GEMINI_ANTIGRAVITY_REDIRECT_URI }
@@ -416,7 +425,7 @@ export function GeminiAntigravityAuthSection({
                     minRows={2}
                     autosize
                   />
-                  <Flex gap="xs" wrap="wrap">
+                  <div className="settings-actions">
                     <Button
                       size="sm"
                       disabled={!redirectPaste.trim() || phase === 'exchanging'}
@@ -426,18 +435,18 @@ export function GeminiAntigravityAuthSection({
                       {t('Complete sign-in')}
                     </Button>
                     <Button
-                      variant="light"
+                      variant="default"
                       size="sm"
                       leftSection={<ScalableIcon icon={IconExternalLink} size={16} />}
                       onClick={handleOpenAgain}
                     >
                       {t('Open login page')}
                     </Button>
-                    <Button variant="default" size="sm" onClick={cancelSignIn}>
+                    <Button variant="subtle" size="sm" onClick={cancelSignIn}>
                       {t('Cancel')}
                     </Button>
-                  </Flex>
-                  <Text size="xs" c="chatbox-secondary">
+                  </div>
+                  <Text size="xs" c="chatbox-tertiary">
                     {t(
                       'If the browser shows a connection error on localhost, copy the full URL from the address bar anyway — it still contains the code.'
                     )}
@@ -446,16 +455,16 @@ export function GeminiAntigravityAuthSection({
               )}
 
               {desktopCallback && !forcePasteMode && (
-                <Flex gap="xs" wrap="wrap">
+                <div className="settings-actions">
                   <Button
-                    variant="light"
+                    variant="default"
                     size="sm"
                     leftSection={<ScalableIcon icon={IconExternalLink} size={16} />}
                     onClick={handleOpenAgain}
                   >
                     {t('Open login page')}
                   </Button>
-                  <Button variant="default" size="sm" onClick={cancelSignIn}>
+                  <Button variant="subtle" size="sm" onClick={cancelSignIn}>
                     {t('Cancel')}
                   </Button>
                   <Button
@@ -468,13 +477,13 @@ export function GeminiAntigravityAuthSection({
                   >
                     {t('Paste URL instead')}
                   </Button>
-                </Flex>
+                </div>
               )}
-            </Stack>
+            </div>
           )}
 
           {phase === 'error' && errorMessage && (
-            <Alert color="red" title={t('Sign-in failed')}>
+            <Alert color="red" title={t('Sign-in failed')} radius="md">
               <Stack gap="xs">
                 <Text size="sm">{errorMessage}</Text>
                 <Button size="compact-sm" className="self-start" onClick={() => void handleStartSignIn()}>
@@ -484,7 +493,7 @@ export function GeminiAntigravityAuthSection({
             </Alert>
           )}
 
-          <Flex gap="sm" wrap="wrap">
+          <div className="settings-actions">
             <Button
               variant="subtle"
               size="compact-xs"
@@ -501,28 +510,28 @@ export function GeminiAntigravityAuthSection({
             >
               {t('AI Studio API keys')}
             </Button>
-          </Flex>
-        </Stack>
+          </div>
+        </>
       )}
 
       {authMode === 'api_key' && (
-        <Alert variant="light" color="yellow" icon={<IconInfoCircle />} title={t('Developer API')}>
-          <Text size="sm">
+        <SettingsCallout title={t('Developer API')} tone="warning">
+          <Text size="sm" c="inherit" component="div">
             {t(
               'API keys from Google AI Studio are billed separately from Google AI / Antigravity quotas. Switch to Google sign-in (experimental) to try subscription-style access.'
             )}
           </Text>
           <Button
             mt="xs"
-            variant="light"
+            variant="default"
             size="compact-sm"
             leftSection={<ScalableIcon icon={IconExternalLink} size={14} />}
             onClick={() => platform.openLink('https://aistudio.google.com/apikey')}
           >
             {t('Get API Key')}
           </Button>
-        </Alert>
+        </SettingsCallout>
       )}
-    </Stack>
+    </div>
   )
 }

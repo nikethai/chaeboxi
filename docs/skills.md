@@ -34,9 +34,11 @@ When session auto-skills is on (default), the app may activate up to **2** relev
 
 Chaeboxi loads the same skill trees other coding agents use. Project roots win over user-global when names collide.
 
+**Hybrid scan:** project-local folders resolve under the session **workspace root** when set; otherwise process CWD. User-global trees (`~/…`) always load.
+
 | Origin | Paths |
 |--------|--------|
-| Project | `./.claude/skills`, `./.codex/skills`, `./.agents/skills`, `./.cursor/skills`, `./.grok/skills`, `./skills` |
+| Project | `{workspace}/.claude/skills`, `{workspace}/.codex/skills`, `{workspace}/.agents/skills`, `{workspace}/.cursor/skills`, `{workspace}/.grok/skills`, `{workspace}/skills` |
 | Claude | `~/.claude/skills` |
 | Codex | `~/.codex/skills` |
 | Agents | `~/.agents/skills` |
@@ -48,6 +50,16 @@ Chaeboxi loads the same skill trees other coding agents use. Project roots win o
 Each skill is a folder containing `SKILL.md`. Ecosystem names like `ckm:write` are normalized to `$ckm-write` for tagging.
 
 **Context safety:** only a capped catalog (≈24) is injected every turn; full bodies load only for activated skills.
+
+### Skills vs Commands vs Hooks
+
+| | Skills | Commands | Hooks |
+|--|--------|----------|-------|
+| Trigger | `$` | `/` | Lifecycle events |
+| Taggable | Yes | Yes | **No** |
+| Auto | Yes | No | Always-on when enabled |
+
+See [hooks-and-commands.md](./hooks-and-commands.md).
 
 ### vs Copilots
 

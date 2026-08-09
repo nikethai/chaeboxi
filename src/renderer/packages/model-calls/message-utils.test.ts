@@ -1,10 +1,30 @@
 import type { ModelDependencies } from '@shared/types/adapters'
 import { describe, expect, it, vi } from 'vitest'
-import { convertToModelMessages } from './message-utils'
 
 vi.mock('@/adapters', () => ({
   createModelDependencies: vi.fn(),
 }))
+
+vi.mock('@/stores/memoryStore', () => ({
+  memoryStore: {
+    getState: () => ({
+      ready: true,
+      settings: { enabled: false },
+      globalBank: { scope: 'global', entries: [], profileSummary: '', version: 1 },
+      agentBanks: {},
+    }),
+  },
+}))
+
+vi.mock('@/stores/settingsStore', () => ({
+  settingsStore: {
+    getState: () => ({
+      userPersonalInfo: { enableInjection: false, entries: [] },
+    }),
+  },
+}))
+
+import { convertToModelMessages } from './message-utils'
 
 const dependencies: ModelDependencies = {
   request: {

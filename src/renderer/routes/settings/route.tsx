@@ -90,6 +90,11 @@ const ITEMS = [
     label: 'Hooks',
     icon: <IconBolt className="w-full h-full" />,
   },
+  {
+    key: 'memory',
+    label: 'Memory',
+    icon: <IconBook className="w-full h-full" />,
+  },
   ...(CHATBOX_BUILD_PLATFORM !== 'android'
     ? [
         {

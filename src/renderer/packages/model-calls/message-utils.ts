@@ -4,6 +4,8 @@ import type { FilePart, ImagePart, ModelMessage, ReasoningUIPart, TextPart } fro
 import dayjs from 'dayjs'
 import { compact } from 'lodash'
 import { createModelDependencies } from '@/adapters'
+import { buildMemoryInjectBlock } from '@/packages/memory/inject'
+import { memoryStore } from '@/stores/memoryStore'
 import { settingsStore } from '@/stores/settingsStore'
 import { cloneMessage, getMessageText } from '@/utils/message'
 
@@ -171,8 +173,7 @@ export async function convertToModelMessages(
 }
 
 /**
- * Build personal info section for system prompt injection.
- * Returns empty string if injection is disabled or no entries exist.
+ * Legacy personal info inject (kept only if user re-enables after migration).
  */
 function buildPersonalInfoSection(): string {
   const userPersonalInfo = settingsStore.getState().userPersonalInfo
@@ -188,22 +189,61 @@ function buildPersonalInfoSection(): string {
   return infoLines ? `\n## Personal Info About You (the user):\n${infoLines}\n` : ''
 }
 
+export type MemoryInjectContext = {
+  agentId?: string
+  agentName?: string
+  /**
+   * When the active model cannot use tools, force on_demand → hybrid inject
+   * so identity/pinned facts still arrive without memory_recall.
+   */
+  forceHybridFallback?: boolean
+  /** Override host pre-search query; default = last user message text */
+  userQuery?: string
+}
+
+function lastUserMessageText(messages: Message[]): string {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i]
+    if (m.role === 'user') {
+      const text = getMessageText(m, false, false).trim()
+      if (text) return text
+    }
+  }
+  return ''
+}
+
+function buildMemorySection(memory: MemoryInjectContext | undefined, messages: Message[]): string {
+  const state = memoryStore.getState()
+  if (!state.settings.enabled) return ''
+
+  const agentBank = memory?.agentId ? (state.agentBanks[memory.agentId] ?? null) : null
+  const userQuery = memory?.userQuery ?? lastUserMessageText(messages)
+  const block = buildMemoryInjectBlock({
+    settings: state.settings,
+    globalBank: state.globalBank,
+    agentBank,
+    agentName: memory?.agentName,
+    userQuery: userQuery || undefined,
+    forceHybridFallback: memory?.forceHybridFallback,
+  })
+  return block ? `\n${block}\n` : ''
+}
+
 /**
- * 在 system prompt 中注入模型信息
- * @param model
- * @param messages
- * @returns
+ * 在 system prompt 中注入模型信息 + long-term memory
  */
 export function injectModelSystemPrompt(
   model: string,
   messages: Message[],
   additionalInfo: string,
-  role: 'system' | 'user' = 'system'
+  role: 'system' | 'user' = 'system',
+  memory?: MemoryInjectContext
 ) {
   const personalInfo = buildPersonalInfoSection()
+  const memorySection = buildMemorySection(memory, messages)
   const metadataPrompt = `Current model: ${model}\nCurrent date: ${dayjs().format(
     'YYYY-MM-DD'
-  )}${personalInfo}\n Additional info for this conversation: ${additionalInfo}\n\n`
+  )}${personalInfo}${memorySection}\n Additional info for this conversation: ${additionalInfo}\n\n`
   let hasInjected = false
   return messages.map((m) => {
     if (m.role === role && !hasInjected) {

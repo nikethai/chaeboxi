@@ -83,6 +83,14 @@ const toolIconFor = (toolName: string) => {
     case 'code_search':
     case 'query_knowledge_base':
       return IconSearch
+    case 'memory_lookup':
+    case 'memory_recall':
+    case 'memory_list':
+    case 'memory_retain':
+    case 'memory_reflect':
+    case 'memory_update':
+    case 'memory_forget':
+      return IconSearch
     default:
       return IconTool
   }

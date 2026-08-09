@@ -154,6 +154,28 @@ async function initDatabase() {
     `,
     args: [new Date(0).toISOString(), JSON.stringify(DEFAULT_PAYLOAD)],
   })
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS memory_snapshot (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      revision INTEGER NOT NULL,
+      payload TEXT NOT NULL,
+      alg TEXT NOT NULL,
+      kdf TEXT NOT NULL,
+      salt TEXT NOT NULL,
+      iv TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    )
+  `)
+
+  await db.execute({
+    sql: `
+      INSERT INTO memory_snapshot (id, revision, updated_at, payload, alg, kdf, salt, iv)
+      VALUES (1, 0, ?, '', '', '', '', '')
+      ON CONFLICT(id) DO NOTHING
+    `,
+    args: [new Date(0).toISOString()],
+  })
 }
 
 function normalizeSnapshotRow(row) {
@@ -243,6 +265,105 @@ async function handleHistorySync(req, res) {
   sendJson(res, 200, snapshot)
 }
 
+function normalizeMemoryRow(row) {
+  const revision = typeof row.revision === 'number' ? row.revision : Number(row.revision || 0)
+  const updatedAt = typeof row.updated_at === 'string' ? row.updated_at : String(row.updated_at || '')
+
+  return {
+    revision,
+    updatedAt,
+    payload: typeof row.payload === 'string' && row.payload ? row.payload : null,
+    alg: typeof row.alg === 'string' && row.alg ? row.alg : undefined,
+    kdf: typeof row.kdf === 'string' && row.kdf ? row.kdf : undefined,
+    salt: typeof row.salt === 'string' && row.salt ? row.salt : undefined,
+    iv: typeof row.iv === 'string' && row.iv ? row.iv : undefined,
+  }
+}
+
+async function readMemorySnapshot() {
+  const result = await db.execute(
+    'SELECT revision, updated_at, payload, alg, kdf, salt, iv FROM memory_snapshot WHERE id = 1'
+  )
+  const row = result.rows?.[0]
+  if (!row) {
+    throw new Error('Memory snapshot row not found')
+  }
+  return normalizeMemoryRow(row)
+}
+
+async function putMemorySnapshot(baseRevision, memory) {
+  const now = new Date().toISOString()
+  const updateResult = await db.execute({
+    sql: `
+      UPDATE memory_snapshot
+      SET revision = revision + 1, updated_at = ?, payload = ?, alg = ?, kdf = ?, salt = ?, iv = ?
+      WHERE id = 1 AND revision = ?
+    `,
+    args: [now, memory.payload, memory.alg, memory.kdf, memory.salt, memory.iv, baseRevision],
+  })
+
+  return updateResult.rowsAffected > 0
+}
+
+function validateMemoryPutBody(body) {
+  if (!isObject(body)) {
+    const err = new Error('Request body must be an object')
+    err.statusCode = 400
+    throw err
+  }
+
+  const baseRevision = body.baseRevision
+  if (typeof baseRevision !== 'number' || !Number.isInteger(baseRevision) || baseRevision < 0) {
+    const err = new Error('baseRevision must be a non-negative integer')
+    err.statusCode = 400
+    throw err
+  }
+
+  const { payload, alg, kdf, salt, iv } = body
+  for (const [name, value] of Object.entries({ payload, alg, kdf, salt, iv })) {
+    if (typeof value !== 'string' || value.length === 0) {
+      const err = new Error(`${name} must be a non-empty string`)
+      err.statusCode = 400
+      throw err
+    }
+  }
+
+  return { baseRevision, payload, alg, kdf, salt, iv }
+}
+
+async function handleMemorySync(req, res) {
+  if (!requireAuth(req, res)) {
+    return
+  }
+
+  if (req.method === 'GET') {
+    const snapshot = await readMemorySnapshot()
+    sendJson(res, 200, snapshot)
+    return
+  }
+
+  if (req.method !== 'PUT') {
+    sendJson(res, 405, { message: 'Method not allowed' })
+    return
+  }
+
+  const body = await readBodyJson(req)
+  const { baseRevision, payload, alg, kdf, salt, iv } = validateMemoryPutBody(body)
+
+  const updated = await putMemorySnapshot(baseRevision, { payload, alg, kdf, salt, iv })
+  if (!updated) {
+    const snapshot = await readMemorySnapshot()
+    sendJson(res, 409, {
+      message: 'Revision conflict',
+      snapshot,
+    })
+    return
+  }
+
+  const snapshot = await readMemorySnapshot()
+  sendJson(res, 200, snapshot)
+}
+
 async function requestHandler(req, res) {
   try {
     if (req.method === 'OPTIONS') {
@@ -259,6 +380,10 @@ async function requestHandler(req, res) {
     }
     if (url.pathname === '/api/history-sync') {
       await handleHistorySync(req, res)
+      return
+    }
+    if (url.pathname === '/api/sync/memory') {
+      await handleMemorySync(req, res)
       return
     }
 

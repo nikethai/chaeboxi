@@ -440,3 +440,7 @@ Manual QA:
 4. Knowledge-base central storage and search.
 5. More granular settings field merge.
 6. Encrypted conflict history for auditability.
+
+## 14. Implementation Plan
+
+Authoritative implementation plan: [`docs/superpowers/plans/2026-08-09-memory-sync.md`](../plans/2026-08-09-memory-sync.md)

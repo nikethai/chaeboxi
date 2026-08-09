@@ -1,297 +1,396 @@
-# Personal Memory Storage, Sync, and Retrieval Design
+# Personal Memory Sync Design
 
 Date: 2026-08-08
-Status: Draft
-Scope: Personal memory v1; document knowledge-base sync/search is deferred
+Status: Draft, updated after upstream memory commit review
+Scope: Sync for the upstream long-term memory bank; document knowledge-base sync/search is deferred
 
 ## 1. Goal
 
-Add a personal memory system to Chaeboxi that stores durable, user-reviewable facts such as preferences, identity details, projects, instructions, decisions, and environment details. The feature should improve future chat quality without large context overhead and should synchronize across machines through the existing self-hosted sync server direction.
+Add multi-machine synchronization for the long-term memory system introduced in upstream commit `aa27f813` (`feat(memory): add long-term memory with scale-ready recall`, merged into `origin/main` via PR #28).
 
-This version intentionally focuses on personal memory only. Knowledge-base central serving, encrypted KB blob sync, central KB search, and queryable embedding indexes are out of scope for v1.
+That system already provides:
+
+- global memory bank and per-agent memory banks
+- user/auto/tool memory entries
+- pinned entries
+- soft-archive entries
+- profile summary and optional profile slots
+- memory settings: retrieval mode, budgets, auto-save, host pre-search, semantic fusion
+- memory injection into model system prompts
+- Settings → Memory UI and message-level Save to memory
+
+This design does **not** replace that memory system. It adds:
+
+1. Encrypted sync of memory settings and banks across devices using the existing self-hosted sync-server direction.
+2. A small upgrade to entry metadata so merge and tombstone behavior can work safely.
+3. A conflict/merge policy that keeps local memory usable offline.
+
+Knowledge-base central storage/search remains deferred.
 
 ## 2. Non-Goals
 
-The following are explicitly deferred:
-
-- Automatic memory extraction from conversations in v1.
-- Mnemopi-like suggestion extraction, deduplication, decay, or consolidation in v1.
-- Semantic memory retrieval in v1.
-- Centralized knowledge-base storage, document blob sync, or server-side KB search.
+- Replacing or redesigning the upstream memory bank.
+- Adding new retrieval modes, recall algorithms, or prompt injection logic beyond what upstream already has.
+- Automatic memory extraction improvements.
+- Mnemopi-style graph memory.
+- Semantic memory retrieval improvements.
+- Centralized knowledge-base storage or server-side KB search.
 - Chaeboxi-hosted SaaS account sync.
-- Mobile-specific background sync beyond what the app already schedules; memory bootstrap behavior follows existing history-sync platform constraints.
 
-## 3. User-Facing Behavior
+## 3. Relationship To Upstream Memory Commit
 
-### 3.1 Memory Management UI
+The upstream memory system uses these storage keys:
 
-A Personal Memory settings page provides CRUD operations for memories:
+- `memory-settings`
+- `memory-bank-global`
+- `memory:agent:{agentId}`
 
-- Create a memory manually.
-- Edit memory text.
-- Assign or change category.
-- Add or remove tags.
-- Pin or unpin memory.
-- Enable or disable memory.
-- Delete memory.
-- Search/filter local memory list.
-
-Deleting a memory creates a tombstone record for sync rather than immediately removing the synced record from all clients.
-
-### 3.2 Save From Chat
-
-A message-level action allows the user to save a selected chat message as a memory draft. The action opens the memory editor prefilled with the message text so the user can shorten it into an atomic fact before saving. This is an explicit save flow, not automatic extraction.
-
-### 3.3 Memory Injection
-
-Enabled memories are injected into outgoing chat requests before model invocation. The injection is deterministic and local. No additional model call is required in v1.
-
-Injection order:
-
-1. Pinned memories.
-2. Recently updated enabled memories.
-3. Older enabled memories.
-
-The system stops adding memories once the configured token budget is reached.
-
-Default token budget: 750 tokens. This should be configurable in developer or advanced settings, with sane min/max bounds such as 0 to 4000 tokens.
-
-### 3.4 Privacy Controls
-
-- Memory sync is disabled by default.
-- Memory injection can be disabled globally.
-- Per-session override can disable memory injection for sensitive sessions.
-- Memory entries are visible and editable by the user in settings.
-- Source metadata may reference session or message IDs, but the synced memory text should be intentionally saved by the user.
-
-## 4. Data Model
-
-Canonical memory record:
+And these types:
 
 ```ts
-type MemoryCategory =
-  | 'preference'
-  | 'identity'
-  | 'project'
-  | 'instruction'
-  | 'decision'
-  | 'environment'
-  | 'other'
+MemorySettings
+MemoryBank
+MemoryEntry
+```
 
-type MemoryRecord = {
+Sync v1 treats those local keys as the source of truth on each device and adds a separate encrypted remote memory sync domain. The remote domain stores a normalized snapshot of:
+
+```ts
+type MemorySyncSnapshot = {
+  schemaVersion: number
+  settings: MemorySettings
+  globalBank: MemoryBank
+  agentBanks: AgentBankRecord[]
+}
+
+type AgentBankRecord = {
+  agentId: string
+  bank: MemoryBank
+}
+```
+
+The server stores only an opaque encrypted payload plus revision metadata.
+
+## 4. Required Memory Model Upgrade
+
+The upstream `MemoryEntry` needs small additive fields for sync:
+
+```ts
+type MemoryEntry = {
   id: string
-  text: string
-  category: MemoryCategory
+  content: string
   tags: string[]
-  source: 'manual' | 'chat' | 'import'
+  scope: 'global' | 'agent'
+  agentId?: string
+  source: 'user' | 'auto' | 'tool' | 'migrated'
   sourceSessionId?: string
   sourceMessageId?: string
-  pinned: boolean
   enabled: boolean
-  createdAt: string
-  updatedAt: string
-  revision: number
+  pinned: boolean
+  createdAt: number
+  updatedAt: number
+  lastAccessedAt?: number
+  archived?: boolean
+
+  // sync additions
+  revision?: number
   deleted?: boolean
+}
+```
+
+`MemoryBank` also gains a bank-level revision:
+
+```ts
+type MemoryBank = {
+  scope: 'global' | 'agent'
+  agentId?: string
+  entries: MemoryEntry[]
+  profileSummary: string
+  profileUpdatedAt?: number
+  profileSlots?: MemoryProfileSlots
+  version: number
+
+  // sync addition
+  revision?: number
 }
 ```
 
 Rules:
 
-- `id` is a stable UUID.
-- `text` is the memory content shown to the model and user.
-- `category` and `tags` support future filtering/retrieval but v1 injection uses deterministic order.
-- `revision` increments on every local write and is used for sync conflict resolution.
-- `deleted` marks a tombstone. Tombstones are retained for 30 days after `updatedAt`; after that, implementations may purge them locally and from encrypted sync payloads during merge/re-encrypt.
+- Existing local entries without `revision` are treated as `revision = 0`.
+- Any local retain/update/delete increments both entry `revision` and bank `revision`.
+- `deleted: true` marks a tombstone.
+- Tombstones remain in banks for 30 days after `updatedAt`, then may be purged during local or sync normalization.
+- `archived` remains an upstream local/quality feature and is synced as part of the entry.
 
-## 5. Storage Architecture
+## 5. User-Facing Behavior
 
-### 5.1 Local Storage
+### 5.1 Sync Settings
 
-The renderer stores memory records through the existing storage abstraction. The memory store should expose pure logic separated from storage backend details:
+Add a Memory Sync section under Settings → Memory → Advanced, or a separate Memory Sync subsection:
 
-- list memories
-- create memory
-- update memory
-- delete memory as tombstone
-- resolve merged remote records
-- select injectable memories within token budget
+- Enable memory sync.
+- Sync server endpoint (default: reuse history sync endpoint).
+- Sync token (default: reuse history sync token if the user wants one combined credential; allow override).
+- Sync passphrase input/generation.
+- Test connection.
+- Sync now.
+- Pull from server.
+- Push to server.
+- Show last sync time and last error.
 
-Local data remains usable even when sync is disabled.
+Default: memory sync disabled.
 
-### 5.2 Sync Storage
+### 5.2 Warning UX
 
-The self-hosted sync server is extended with a dedicated memory domain separate from the chat-history snapshot.
+When enabling memory sync, show:
 
-Server responsibilities remain deliberately simple:
+- Memory data is encrypted before leaving the device.
+- The sync server cannot read memory content.
+- The passphrase cannot be recovered.
+- Losing the passphrase makes remote synced memories unrecoverable on other devices.
+- Local memories remain usable on the current device.
 
-- authenticate with existing bearer token
-- store opaque encrypted memory domain payload or record batch
-- return latest revision
-- compare-and-swap updates
-- reject conflicting updates with current server state
+### 5.3 No Change To Core Memory UX
 
-The server does not decrypt memory content.
+The upstream Memory UI remains the management surface:
 
-## 6. Synchronization Design
+- Global bank
+- Agent banks
+- Advanced settings
+- Entry add/edit/pin/disable/archive/delete
+- Export/import bank JSON
 
-### 6.1 Transport
+Sync only adds remote state reconciliation.
 
-Extend the existing history sync server with a new endpoint pattern, conceptually:
+## 6. Sync Architecture
+
+### 6.1 Server Endpoint
+
+Extend `scripts/history-sync-server` with memory endpoints:
 
 - `GET /api/sync/memory`
 - `PUT /api/sync/memory`
 
-The implementation may keep one opaque encrypted JSON document with embedded record list and revision, or evolve to per-record server storage. For v1, an opaque encrypted payload with per-record merge metadata is acceptable and simpler.
+Behavior mirrors the existing history endpoint:
+
+- bearer token required
+- JSON body only
+- revision compare-and-swap
+- 409 with current remote snapshot on revision mismatch
+- max body size enforced
+
+The server stores:
+
+```ts
+type RemoteMemoryState = {
+  revision: number
+  payload: string       // encrypted base64 payload
+  alg: string           // encryption algorithm identifier
+  kdf: string           // KDF identifier
+  salt: string          // base64 KDF salt
+  updatedAt: string
+}
+```
+
+The server never receives decrypted memory content.
 
 ### 6.2 Encryption
 
-Memory sync payloads are encrypted on the client before leaving the device.
+Client-side encryption before upload:
 
-Recommended v1 key story:
+1. User enables memory sync and provides a passphrase.
+2. Client generates a random salt.
+3. Client derives a key with PBKDF2-HMAC-SHA-256 via WebCrypto, minimum 310,000 iterations.
+4. Client serializes `MemorySyncSnapshot` to canonical JSON.
+5. Client encrypts with AES-GCM using a fresh random IV.
+6. Client uploads base64 payload, algorithm metadata, salt, and expected server revision.
+7. Client never stores the passphrase permanently.
+8. Derived key is kept only in memory during active sync operations.
 
-1. User enables memory sync.
-2. User enters or generates a sync passphrase.
-3. Client derives an encryption key from the passphrase using PBKDF2-HMAC-SHA-256 via WebCrypto with at least 310,000 iterations. Argon2id may be considered later but is not required for v1.
-4. Client generates a random salt and stores salt/KDF parameters as unencrypted sync metadata. This metadata is not secret; the passphrase is the secret.
-5. Payloads are encrypted with authenticated encryption, for example AES-GCM or ChaCha20-Poly1305 via WebCrypto or platform crypto.
-6. The derived key is never stored permanently; it is derived when needed and held only in memory for active sync operations.
-
-The existing bearer token remains transport authorization. It is not the encryption key.
+The existing bearer token remains transport authorization only.
 
 ### 6.3 Passphrase Loss
 
-If the user forgets the sync passphrase:
+Default v1 policy: no recovery.
 
-- Local memories on the current device remain readable because local storage is separate from sync encryption.
-- Encrypted payloads on the sync server become unrecoverable.
-- Other devices that only have synced encrypted data cannot recover those memories without the passphrase.
-- v1 provides no passphrase recovery mechanism.
-- The setup UI must display a clear warning: losing the passphrase makes synced memories unrecoverable on other devices.
+If the passphrase is lost:
 
-Default policy: no recovery. Clear warning at setup. Local copies stay usable.
+- Remote encrypted payload is unrecoverable.
+- Other devices that only have the remote payload cannot restore memories.
+- Local memory on the current device remains usable.
+- User can reset remote memory data with an explicit destructive action: **Reset remote memory**.
 
-### 6.4 Merge Algorithm
+The setup UI must warn clearly before first enabling sync.
 
-Each sync cycle performs:
+## 7. Merge Policy
 
-1. Read local records and local sync cursor.
-2. Fetch remote encrypted payload.
-3. Decrypt remote payload.
-4. Merge remote records into local records by record `id`.
-5. For each conflicting record:
-   - if only one side changed since common ancestor, accept changed side;
-   - if both sides changed, choose the record with later `updatedAt`;
-   - if timestamps are equal or ambiguous, choose higher `revision`;
-   - v1 does not expose manual conflict UI; latest-write wins and the merge result is shown in the memory list.
-6. Re-encrypt merged result.
-7. Push with compare-and-swap using server revision.
-8. If push conflicts, re-pull and merge again.
+Sync is snapshot-based, but merge is entry-aware.
 
-Tombstones win over edits to the same record when the tombstone has the latest revision/timestamp.
+### 7.1 Snapshot Merge
 
-## 7. Context Injection Design
+Given local snapshot L and remote snapshot R:
 
-### 7.1 Injection Location
+1. Merge `settings` by field, preferring local changes when remote field equals the previous synced field; otherwise choose remote if only remote changed. If both changed, local wins for device-specific fields and remote wins for shared memory-policy fields. v1 simplification: local wins for settings conflicts, with a manual “Pull server settings” action.
+2. Merge `globalBank` entry by entry.
+3. Merge each agent bank entry by entry by `agentId`.
+4. Merge `profileSummary`, `profileSlots`, and `profileUpdatedAt` after entry merge using bank-level merge rules.
 
-Memories are injected into the assembled model context before request dispatch. The exact integration point is the existing context assembly layer, not individual provider model wrappers.
+### 7.2 Entry Merge
 
-The injected block should be short and structured, for example:
+For each entry ID present in local and/or remote:
 
-```text
-# Personal Memory
-- Preference: User prefers concise technical answers.
-- Project: User is improving Chaeboxi memory sync.
-- Instruction: Always mention security tradeoffs.
-```
+| State | Result |
+|---|---|
+| only local | keep local |
+| only remote | add remote |
+| unchanged both | keep current |
+| only local changed | keep local |
+| only remote changed | take remote |
+| both changed | latest `updatedAt` wins; tie uses higher `revision`; tie uses remote |
+| local tombstone newer | deleted wins |
+| remote tombstone newer | deleted wins |
 
-### 7.2 Selection Rules
+An entry is considered changed if any synced field changed:
 
-For v1, select memories deterministically:
+- `content`
+- `tags`
+- `enabled`
+- `pinned`
+- `archived`
+- `updatedAt`
+- `revision`
 
-1. Filter to `enabled === true` and `deleted !== true`.
-2. Sort:
-   - pinned first, then by `updatedAt` descending;
-   - within pinned, by `updatedAt` descending;
-   - within unpinned, by `updatedAt` descending.
-3. Render memories as bullet lines.
-4. Stop when token budget is exceeded.
+`lastAccessedAt` is not used for merge decisions except as tie-breaker metadata; it is device-local usage data and may be preserved locally.
 
-### 7.3 Token Efficiency
+### 7.3 Profile Merge
 
-- Memory text should be atomic, ideally under 40 words each.
-- UI should discourage saving full messages verbatim.
-- Injection renders compact bullet list, not JSON.
-- Category labels may be omitted for tokens if budget is tight; v1 can include short category prefixes because they help model understanding.
-- No reranking, no embedding, no extra LLM call in v1.
+Because profile summaries are generated from entries:
 
-## 8. Security Model
+1. Merge entries first.
+2. Rebuild local profile locally using upstream `rebuildProfileLocal`.
+3. If LLM auto-consolidation is enabled, existing upstream lazy consolidation may later update profile.
+4. Do not blindly take remote `profileSummary` if local entries changed.
 
-Threats addressed in v1:
+This avoids profile text drifting away from merged entries.
 
-- Sync server operator reading memory content: prevented by client-side E2E encryption.
-- Network observer reading sync payloads: prevented by HTTPS where configured and by payload encryption.
-- Accidental token leakage: bearer token should not be logged; settings UI should mask it.
-- Passphrase brute force: use strong KDF parameters and recommend long passphrases.
-- Client compromise: out of scope; local app storage is already trusted.
+### 7.4 Agent Bank Handling
 
-Known tradeoffs:
+Agent banks sync by `agentId`.
 
-- Server stores opaque encrypted payload; if user loses passphrase, remote data is unrecoverable.
-- If the same passphrase is used across devices, compromise of one device/passphrase compromises synced memory domain.
-- Memory injection may reveal user facts to the selected model/provider. The UI should make this explicit in privacy settings.
+If an agent exists only on one device:
+
+- The bank still syncs as long as the agent ID is known to local app data or imported remote data.
+- If local agent no longer exists, the bank remains stored but inactive.
+- Users can clear unwanted agent banks from Settings.
+
+## 8. Client Sync Flow
+
+### 8.1 Push
+
+1. Flush pending memory writes using upstream `flushPersistence()`.
+2. Load local settings and banks.
+3. Build `MemorySyncSnapshot`.
+4. Encrypt snapshot.
+5. PUT with local known remote revision.
+6. On 200, store new remote revision.
+7. On 409, pull, merge, re-encrypt, retry push with bounded retries, default 3.
+
+### 8.2 Pull
+
+1. GET remote state.
+2. Decrypt payload.
+3. Merge into local memory store using merge policy.
+4. Rebuild indexes via upstream repository.
+5. Flush persistence.
+6. Store remote revision.
+
+### 8.3 Auto Sync
+
+When enabled:
+
+- Pull+push on app startup, after history-sync bootstrap where applicable.
+- Pull+push after memory settings or bank writes, debounced.
+- Optional interval sync reuses history-sync interval concept.
+
+Default recommended cadence:
+
+- startup sync
+- debounced post-write sync after 5 seconds of quiet
+- manual Sync Now button
 
 ## 9. Error Handling
 
-- Missing endpoint/token: sync disabled with explanatory error.
+- Missing endpoint/token: sync disabled with explanatory message.
 - Invalid passphrase: decryption fails; show clear error and do not overwrite remote data.
-- Server 409 conflict: re-pull, merge, retry push with bounded retry count, for example 3 attempts.
-- Corrupt remote payload: show error and offer manual pull/push/export/reset actions.
-- Oversized payload: enforce a maximum serialized encrypted payload size, for example 1 MB, and surface memory-count guidance.
-- Sync lock: reuse existing sync lock concept so concurrent pushes do not corrupt state.
+- Corrupt payload: show error and offer Pull/Push/Reset actions.
+- 409 conflict: automatic re-pull, merge, retry push up to 3 times.
+- Oversized payload: enforce max body limit from server; show guidance to prune/archived memories.
+- Offline: queue local changes only; sync when connection returns.
 
-## 10. Observability
+## 10. Security Model
 
-Add non-sensitive debug logging and state:
+Addressed:
 
-- last memory sync time
-- last sync error
-- local memory count
-- enabled memory count
-- estimated injected memory tokens
+- Server operator reading memory: prevented by client-side encryption.
+- Network observer: payload encryption plus HTTPS if configured.
+- Token leakage: token masked in UI, not logged.
+- Passphrase brute force: PBKDF2 high iterations and passphrase warning.
+- Cross-device compromise: same passphrase across devices means one compromised passphrase exposes remote memory domain.
 
-Do not log memory text, passphrase, or derived keys.
+Known limitations:
 
-## 11. Testing Strategy
+- No recovery for lost passphrase.
+- Sync metadata such as salt and KDF params are visible to server but not secret.
+- Memory injection may reveal facts to selected model/provider; existing upstream privacy model applies.
+
+## 11. Migration Plan
+
+Because local `main` is behind `origin/main`:
+
+1. Bring local branch up to date with `origin/main`, which contains PR #28 memory commit `aa27f813`.
+2. Do not implement the older spec’s standalone memory CRUD/injection layer; upstream already ships it.
+3. Add sync as an extension to upstream memory system:
+   - extend `MemoryEntry`/`MemoryBank` with optional sync fields
+   - add encrypted snapshot serializer
+   - add sync client module
+   - extend history-sync server with `/api/sync/memory`
+   - add Settings UI controls
+4. Keep existing migration from user personal info to memory intact.
+5. Add tests around merge/tombstone/encryption, not duplicate upstream recall tests.
+
+## 12. Testing Strategy
 
 Unit tests:
 
-- memory CRUD and tombstone creation
-- injection ordering and budget truncation
-- merge algorithm for local-only, remote-only, both-changed, deletion, and timestamp conflicts
-- passphrase encryption/decryption roundtrip using test keys
-- payload validation and corrupt payload handling
+- snapshot serialization roundtrip
+- entry merge cases: local-only, remote-only, both-changed, tombstones, tie-breakers
+- settings conflict default behavior
+- profile rebuild after entry merge
+- encryption/decryption roundtrip using test passphrase
+- corrupt payload handling
 
 Integration tests:
 
-- sync against a mock memory server endpoint
-- compare-and-swap conflict/retry cycle
+- mock memory sync server
+- push/pull cycle
+- 409 conflict retry cycle
 - disabled sync does not contact server
-- local memories remain usable when sync is disabled or passphrase is unavailable
+- local banks remain usable when sync disabled
 
 Manual QA:
 
-- create/edit/delete memory on two devices
-- verify pinned memories appear first in model requests
-- verify token budget truncation
-- verify invalid passphrase does not corrupt local or remote data
+- two devices sharing same server/passphrase
+- edit same memory on both devices
+- delete memory on one device, verify tombstone propagation
+- invalid passphrase does not corrupt local data
+- agent bank sync with per-agent edits
 
-## 12. Future Work
+## 13. Future Work
 
-After v1:
-
-1. Reviewable AI-extracted memory suggestions.
-2. Semantic memory retrieval using local embeddings.
-3. Mnemopi-style deduplication, importance scoring, decay, and consolidation.
-4. Encrypted memory export/import.
-5. Knowledge-base central storage and search.
-6. Per-memory usage analytics, for example how often memory contributed to responses, only with local private metrics.
+1. Per-device sync cursors and incremental record upload instead of full encrypted snapshot.
+2. Memory export/import tied to sync identity.
+3. Optional account-based or cloud-storage sync adapters.
+4. Knowledge-base central storage and search.
+5. More granular settings field merge.
+6. Encrypted conflict history for auditability.

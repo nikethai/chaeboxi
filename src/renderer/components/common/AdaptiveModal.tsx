@@ -1,5 +1,5 @@
 import type { ModalProps as MantineModalProps } from '@mantine/core'
-import { Button, type ButtonProps, Flex, Stack, Text } from '@mantine/core'
+import { Button, type ButtonProps, Flex, Stack } from '@mantine/core'
 import type { HTMLAttributes, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Drawer } from 'vaul'
@@ -9,25 +9,36 @@ import { Modal } from '../layout/Overlay'
 export interface AdaptiveModalProps extends Omit<MantineModalProps, 'opened' | 'onClose'> {
   opened: boolean
   onClose: () => void
+  /**
+   * An optional screen-reader description for the mobile drawer. Dialog body
+   * content must not be inferred as a description because it can contain
+   * interactive controls and arbitrary layout.
+   */
+  description?: ReactNode
 }
 
-export function AdaptiveModal({ opened, onClose, children, title, ...props }: AdaptiveModalProps) {
+export function AdaptiveModal({ opened, onClose, children, title, description, ...props }: AdaptiveModalProps) {
   const isSmallScreen = useIsSmallScreen()
 
   if (isSmallScreen) {
+    const hasTitle = title !== undefined && title !== null && title !== ''
+    const hasDescription = description !== undefined && description !== null && description !== ''
+    const drawerContentProps = hasDescription ? {} : { 'aria-describedby': undefined }
+
     return (
       <Drawer.Root open={opened} onOpenChange={(open) => !open && onClose()} noBodyStyles repositionInputs={false}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 bg-chatbox-background-mask-overlay" />
-          <Drawer.Content className="flex flex-col h-fit fixed bottom-0 left-0 right-0 outline-none bg-chatbox-background-primary rounded-t-lg">
+          <Drawer.Content
+            {...drawerContentProps}
+            className="flex flex-col h-fit fixed bottom-0 left-0 right-0 outline-none bg-chatbox-background-primary rounded-t-lg"
+          >
             <Drawer.Handle />
             <Stack gap="md" p="sm" className="max-h-[85vh] overflow-y-auto">
-              {title && typeof title === 'string' && (
-                <Text size="md" fw={600} className="text-center">
-                  {title}
-                </Text>
-              )}
-              {title && typeof title !== 'string' && <div>{title}</div>}
+              <Drawer.Title className={hasTitle ? 'text-center text-base font-semibold' : 'sr-only'}>
+                {hasTitle ? title : 'Dialog'}
+              </Drawer.Title>
+              {hasDescription && <Drawer.Description className="sr-only">{description}</Drawer.Description>}
               {children}
             </Stack>
             <div className="h-[--mobile-safe-area-inset-bottom] min-h-4" />

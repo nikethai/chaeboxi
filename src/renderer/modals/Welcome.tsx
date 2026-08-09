@@ -35,7 +35,12 @@ const Welcome = NiceModal.create(() => {
             </Stack>
           </Stack>
 
-          <List size="sm" c="chatbox-secondary" className="flex flex-col items-stretch">
+          <List
+            size="sm"
+            c="chatbox-secondary"
+            className="flex flex-col items-stretch"
+            classNames={{ item: 'whitespace-normal' }}
+          >
             <List.Item>{t('Supports a variety of advanced AI models')}</List.Item>
             <List.Item>{t('All data is stored locally, ensuring privacy and rapid access')}</List.Item>
             <List.Item>{t('Ideal for both work and educational scenarios')}</List.Item>

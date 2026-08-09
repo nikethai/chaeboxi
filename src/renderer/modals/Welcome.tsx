@@ -18,6 +18,7 @@ const Welcome = NiceModal.create(() => {
     <AdaptiveModal
       opened={modal.visible}
       onClose={onClose}
+      ariaLabel={t('Welcome to Chaeboxi')}
       withCloseButton={false}
       centered={true}
       radius="lg"

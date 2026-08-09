@@ -239,6 +239,7 @@ const MessageEditModal = ({
         centered
         size="lg"
         onClose={handleClose}
+        ariaLabel={t('Edit Message')}
         keepMounted={false}
         lockScroll={false}
         trapFocus={false}

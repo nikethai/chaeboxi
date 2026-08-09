@@ -20,6 +20,8 @@ export function normalizeBank(bank: unknown, scope: 'global' | 'agent', agentId?
           ? (raw as MemoryBank).profileSlots
           : { identity: '', prefs: '', projects: '' },
       version: typeof (raw as MemoryBank).version === 'number' ? (raw as MemoryBank).version : 1,
+      // Sync metadata must survive normalization/clone round-trips.
+      revision: typeof (raw as MemoryBank).revision === 'number' ? (raw as MemoryBank).revision : undefined,
     })
     return parsed
   } catch {

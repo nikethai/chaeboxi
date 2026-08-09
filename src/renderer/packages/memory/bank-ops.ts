@@ -242,6 +242,51 @@ export function forgetEntry(bank: MemoryBank, id: string, hard = false): MemoryB
   return updateEntry(bank, id, { enabled: false, archived: true })
 }
 
+/** Default retention window for sync tombstones before they are hard-purged. */
+export const DEFAULT_TOMBSTONE_TTL_MS = 30 * 24 * 60 * 60 * 1000
+
+/**
+ * Mark an entry as deleted via a sync tombstone instead of removing it.
+ * The entry stays on disk (hidden from recall) so other devices can converge
+ * on the delete, and its revision is bumped to win sync merges.
+ */
+export function markEntryDeleted(bank: MemoryBank, id: string, now = Date.now()): MemoryBank {
+  let changed = false
+  const entries = bank.entries.map((entry) => {
+    if (entry.id !== id) return entry
+    changed = true
+    return {
+      ...entry,
+      deleted: true,
+      enabled: false,
+      updatedAt: now,
+      revision: (entry.revision ?? 0) + 1,
+    }
+  })
+
+  if (!changed) return bank
+  return {
+    ...bank,
+    entries,
+    revision: (bank.revision ?? 0) + 1,
+  }
+}
+
+/**
+ * Hard-remove tombstones older than ttlMs. Tombstones must outlive the sync
+ * pull window so deletes propagate to other devices before being purged.
+ */
+export function purgeExpiredTombstones(
+  bank: MemoryBank,
+  now = Date.now(),
+  ttlMs = DEFAULT_TOMBSTONE_TTL_MS
+): MemoryBank {
+  const cutoff = now - ttlMs
+  const entries = bank.entries.filter((e) => !(e.deleted && (e.updatedAt ?? 0) <= cutoff))
+  if (entries.length === bank.entries.length) return bank
+  return { ...bank, entries }
+}
+
 /**
  * Keyword search — delegates to unified scored recall (S1).
  * Returns MemoryEntry[] for backward compatibility with tools/UI.

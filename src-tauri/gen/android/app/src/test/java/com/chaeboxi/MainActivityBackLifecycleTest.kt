@@ -2,11 +2,30 @@ package com.chaeboxi
 
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.OnBackPressedDispatcher
+import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class MainActivityBackLifecycleTest {
+  @Test
+  fun `manifest delivers font scale changes to the existing Tauri activity`() {
+    val manifest = File("src/main/AndroidManifest.xml").readText()
+    val configChanges = Regex("""<activity\s+[\s\S]*?android:configChanges="([^"]+)"""")
+      .find(manifest)
+      ?.groupValues
+      ?.get(1)
+
+    assertTrue("MainActivity configChanges must include fontScale", configChanges?.split('|')?.contains("fontScale") == true)
+  }
+
+  @Test
+  fun `root Back backgrounds the activity instead of calling unsafe native teardown`() {
+    val activity = File("src/main/java/com/chaeboxi/MainActivity.kt").readText()
+
+    assertTrue("MainActivity must move the root task to background", activity.contains("moveTaskToBack(true)"))
+  }
+
   @Test
   fun `later IME callback consumes visible IME Back before downstream Tauri callback`() {
     val dispatcher = OnBackPressedDispatcher()

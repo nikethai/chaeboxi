@@ -86,7 +86,7 @@ export function AddProviderModal({ opened, onClose }: AddProviderModalProps) {
             },
           ]}
         />
-        <AdaptiveModal.Actions withoutDivider>
+        <AdaptiveModal.Actions>
           <AdaptiveModal.CloseButton onClick={onClose} />
           <Button onClick={handleAddProvider} disabled={!newProviderName.trim()}>
             {t('Add')}

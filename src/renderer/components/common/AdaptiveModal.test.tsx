@@ -4,7 +4,12 @@
 
 import { MantineProvider } from '@mantine/core'
 import { render, screen } from '@testing-library/react'
+import { vi } from 'vitest'
 import { AdaptiveModal } from './AdaptiveModal'
+
+const { useIsSmallScreen } = vi.hoisted(() => ({
+  useIsSmallScreen: vi.fn(),
+}))
 
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -16,33 +21,42 @@ Object.defineProperty(window, 'matchMedia', {
 })
 
 vi.mock('@/hooks/useScreenChange', () => ({
-  useIsSmallScreen: () => true,
+  useIsSmallScreen,
 }))
 
-describe('AdaptiveModal.Actions', () => {
-  it('keeps the mobile divider by default', () => {
-    render(
-      <MantineProvider>
-        <AdaptiveModal.Actions>
-          <button type="button">Default action</button>
-        </AdaptiveModal.Actions>
-      </MantineProvider>
-    )
+function renderActions() {
+  render(
+    <MantineProvider>
+      <AdaptiveModal.Actions>
+        <button type="button">Cancel</button>
+        <button type="button">Save</button>
+      </AdaptiveModal.Actions>
+    </MantineProvider>
+  )
 
-    expect(screen.getByRole('button', { name: 'Default action' }).parentElement?.classList.contains('border-t')).toBe(
-      true
-    )
+  return screen.getByRole('button', { name: 'Save' }).parentElement
+}
+
+describe('AdaptiveModal.Actions', () => {
+  it('uses the unframed reversed stack for multiple mobile actions', () => {
+    useIsSmallScreen.mockReturnValue(true)
+
+    const actions = renderActions()
+
+    expect(actions).not.toBeNull()
+    expect(actions?.classList.contains('flex-col-reverse')).toBe(true)
+    expect(actions?.classList.contains('mantine-Stack-root')).toBe(true)
+    expect(actions?.classList.contains('border-t')).toBe(false)
   })
 
-  it('can omit the mobile divider for a single CTA action slot', () => {
-    render(
-      <MantineProvider>
-        <AdaptiveModal.Actions withoutDivider>
-          <button type="button">Add</button>
-        </AdaptiveModal.Actions>
-      </MantineProvider>
-    )
+  it('keeps the desktop Flex action layout', () => {
+    useIsSmallScreen.mockReturnValue(false)
 
-    expect(screen.getByRole('button', { name: 'Add' }).parentElement?.classList.contains('border-t')).toBe(false)
+    const actions = renderActions()
+
+    expect(actions).not.toBeNull()
+    expect(actions?.classList.contains('mantine-Flex-root')).toBe(true)
+    expect(actions?.classList.contains('flex-col-reverse')).toBe(false)
+    expect(actions?.classList.contains('border-t')).toBe(false)
   })
 })

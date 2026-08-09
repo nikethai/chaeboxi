@@ -44,26 +44,12 @@ export function AdaptiveModal({ opened, onClose, children, title, ...props }: Ad
   )
 }
 
-interface AdaptiveModalActionsProps {
-  children: ReactNode
-  withoutDivider?: boolean
-}
-
-function AdaptiveModalActions({ children, withoutDivider = false }: AdaptiveModalActionsProps) {
+function AdaptiveModalActions({ children }: { children: ReactNode }) {
   const isSmallScreen = useIsSmallScreen()
 
   if (isSmallScreen) {
     return (
-      <Stack
-        gap="xs"
-        mt="lg"
-        pt="sm"
-        className={
-          withoutDivider
-            ? 'flex-col-reverse'
-            : 'flex-col-reverse border-t border-solid border-[var(--chatbox-border-primary)]'
-        }
-      >
+      <Stack gap="xs" mt="lg" pt="sm" className="flex-col-reverse">
         {children}
       </Stack>
     )

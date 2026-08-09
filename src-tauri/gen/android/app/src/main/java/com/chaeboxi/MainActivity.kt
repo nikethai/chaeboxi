@@ -68,12 +68,16 @@ class MainActivity : TauriActivity() {
     }
   }
 
-  @Suppress("DEPRECATION")
+  @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
   override fun onBackPressed() {
     if (isImeVisible()) {
       dismissIme()
     } else {
-      super.onBackPressed()
+      // Wry 0.54.4's native Activity destruction path races WebView work and
+      // aborts on a destroyed mutex. Root Back conventionally backgrounds an
+      // Android task, which preserves Tauri's WebView navigation callback
+      // while avoiding that teardown.
+      moveTaskToBack(true)
     }
   }
 

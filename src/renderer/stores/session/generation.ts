@@ -904,7 +904,27 @@ export async function generate(
           maxSteps: roomMulti && !roomToolsAllowed ? 1 : maxSteps,
           tools: toolsToUse,
           toolAccess: copilotOverrides?.toolAccess,
+          memory: speakerAgentId
+            ? {
+                agentId: speakerAgentId,
+                agentName:
+                  getAgentDetailById(speakerAgentId)?.name || targetMsg.name || speakerAgentId,
+              }
+            : undefined,
         })
+
+        // Auto-save memory (non-blocking)
+        try {
+          const { maybeAutoSaveMemory } = await import('@/packages/memory/auto-save')
+          void maybeAutoSaveMemory({
+            sessionId,
+            messages: [...messages.slice(0, targetMsgIx + 1), targetMsg],
+            agentId: speakerAgentId,
+            sessionSettings: effectiveSettings,
+          })
+        } catch {
+          // non-fatal
+        }
 
         // Extract plan text from result if in planning phase
         const planTextFromResult = result.text ?? ''

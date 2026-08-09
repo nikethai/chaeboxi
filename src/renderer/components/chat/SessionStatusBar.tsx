@@ -4,15 +4,18 @@
  * Token segment opens context/compress menu (composer chip removed).
  */
 
-import { Flex, Text, Tooltip } from '@mantine/core'
+import { Flex, Text, Tooltip, UnstyledButton } from '@mantine/core'
 import type { Message } from '@shared/types'
 import { formatNumber } from '@shared/utils'
 import { useAtomValue } from 'jotai'
-import { type FC, useMemo } from 'react'
+import { type FC, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import TokenCountMenu from '@/components/InputBox/TokenCountMenu'
+import { getMemoryInjectStats } from '@/packages/memory/inject'
 import { aggregateSessionCosts, formatCost } from '@/packages/cost-tracking'
 import { composerTokenMenuAtom } from '@/stores/atoms/uiAtoms'
+import { navigateToSettings } from '@/modals/Settings'
+import { ensureMemoryStoreInit, useMemoryStore } from '@/stores/memoryStore'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
 export type SessionStatusBarProps = {
@@ -45,6 +48,38 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
 }) => {
   const { t } = useTranslation()
   const tokenMenu = useAtomValue(composerTokenMenuAtom)
+  const memoryReady = useMemoryStore((s) => s.ready)
+  const memoryEnabled = useMemoryStore((s) => s.settings.enabled)
+  const globalBank = useMemoryStore((s) => s.globalBank)
+  const memorySettings = useMemoryStore((s) => s.settings)
+
+  useEffect(() => {
+    void ensureMemoryStoreInit()
+  }, [])
+
+  const memoryChip = useMemo(() => {
+    if (!memoryReady) return null
+    const stats = getMemoryInjectStats({
+      settings: memorySettings,
+      globalBank,
+      agentBank: null,
+    })
+    if (!stats.enabled) {
+      return { label: t('Memory off'), title: t('Open Memory settings'), factCount: 0, on: false }
+    }
+    return {
+      label: t('Memory on · {{count}} facts', { count: stats.factCount }),
+      title:
+        stats.factCount > 0
+          ? t('{{count}} enabled facts will inject into model prompts (~{{tokens}} tokens)', {
+              count: stats.factCount,
+              tokens: stats.injectTokens,
+            })
+          : t('Memory enabled but empty — add facts in Settings'),
+      factCount: stats.factCount,
+      on: true,
+    }
+  }, [memoryReady, memoryEnabled, globalBank, memorySettings, t])
 
   const metrics = useMemo(() => aggregateSessionCosts(messages), [messages])
   const model = modelLabel || lastAssistantModel(messages) || '—'
@@ -142,7 +177,49 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
                 </Text>
               </Tooltip>
             )}
+
+            {memoryChip && (
+              <Tooltip label={memoryChip.title} withArrow openDelay={300}>
+                <UnstyledButton
+                  type="button"
+                  className="session-statusline-seg"
+                  onClick={() => navigateToSettings('memory')}
+                  aria-label={memoryChip.label}
+                >
+                  <span className="session-statusline-key">mem</span>
+                  <span
+                    className="session-statusline-val"
+                    style={{ opacity: memoryChip.on ? 1 : 0.55 }}
+                  >
+                    {memoryChip.on
+                      ? memoryChip.factCount > 0
+                        ? t('on · {{count}}', { count: memoryChip.factCount })
+                        : t('on · 0')
+                      : t('off')}
+                  </span>
+                </UnstyledButton>
+              </Tooltip>
+            )}
           </Flex>
+        )}
+
+        {/* Show memory chip even on empty threads */}
+        {empty && memoryChip && (
+          <Tooltip label={memoryChip.title} withArrow openDelay={300}>
+            <UnstyledButton
+              type="button"
+              className="session-statusline-seg shrink-0"
+              onClick={() => navigateToSettings('memory')}
+              aria-label={memoryChip.label}
+            >
+              <span className="session-statusline-key">mem</span>
+              <span className="session-statusline-val" style={{ opacity: memoryChip.on ? 1 : 0.55 }}>
+                {memoryChip.on
+                  ? t('Memory on · {{count}} facts', { count: memoryChip.factCount })
+                  : t('Memory off')}
+              </span>
+            </UnstyledButton>
+          </Tooltip>
         )}
       </Flex>
     </div>

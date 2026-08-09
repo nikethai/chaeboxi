@@ -53,7 +53,7 @@ type MigrateStore = {
   removeData?: (key: StorageKey | string) => Promise<void>
 }
 
-export const CurrentVersion = 15
+export const CurrentVersion = 16
 
 async function doMigrateStorage(oldStorage: Storage) {
   // 找到老版本的数据，说明是升级，执行数据迁移操作
@@ -211,6 +211,7 @@ export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true)
     migrate_12_to_13,
     migrate_13_to_14,
     migrate_14_to_15,
+    migrate_15_to_16,
   ]
 
   for (; configVersion < CurrentVersion; configVersion++) {
@@ -823,5 +824,40 @@ async function migrate_14_to_15(dataStore: MigrateStore) {
     log.info(`migrate_14_to_15, removed ${removedSessionCount} demo sessions`)
   }
 
+  return false
+}
+
+/** Migrate userPersonalInfo → global memory bank; disable old personal-info inject. */
+async function migrate_15_to_16(dataStore: MigrateStore) {
+  const settings = await dataStore.getData(StorageKey.Settings, defaults.settings())
+  const personalInfo = settings.userPersonalInfo
+
+  const existingBank = await dataStore.getData(StorageKey.MemoryBankGlobal, null)
+  const { migratePersonalInfoToBank } = await import('@/packages/memory/migrate-personal-info')
+  const { bank, migratedCount } = migratePersonalInfoToBank(personalInfo, existingBank as never)
+
+  if (migratedCount > 0 || !existingBank) {
+    await dataStore.setData(StorageKey.MemoryBankGlobal, bank)
+  }
+
+  // Default memory settings
+  const existingMemorySettings = await dataStore.getData(StorageKey.MemorySettings, null)
+  if (!existingMemorySettings) {
+    const { defaultMemorySettings } = await import('@shared/types/memory')
+    await dataStore.setData(StorageKey.MemorySettings, defaultMemorySettings())
+  }
+
+  // Stop dual inject: personal info injection off after migrate
+  if (personalInfo?.enableInjection) {
+    await dataStore.setData(StorageKey.Settings, {
+      ...settings,
+      userPersonalInfo: {
+        ...personalInfo,
+        enableInjection: false,
+      },
+    })
+  }
+
+  log.info(`migrate_15_to_16, migrated ${migratedCount} personal info entries to memory bank`)
   return false
 }

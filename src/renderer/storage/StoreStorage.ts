@@ -20,6 +20,10 @@ export enum StorageKey {
   ChatSessionSettings = 'chat-session-settings',
   PictureSessionSettings = 'picture-session-settings',
   AuthInfo = 'authInfo',
+  /** Cross-session AI memory settings */
+  MemorySettings = 'memory-settings',
+  /** Global memory bank (shared across models/agents) */
+  MemoryBankGlobal = 'memory-bank-global',
 }
 
 export const StorageKeyGenerator = {
@@ -29,6 +33,10 @@ export const StorageKeyGenerator = {
   /** Agent task checklist for a chat session (reload-safe). */
   sessionTasks(sessionId: string) {
     return `session:${sessionId}:tasks`
+  },
+  /** Per-agent memory bank */
+  memoryAgent(agentId: string) {
+    return `memory:agent:${agentId}`
   },
   picture(category: string) {
     return `picture:${category}:${uuidv4()}`
@@ -49,7 +57,13 @@ export const StorageKeyGenerator = {
 }
 
 export default class StoreStorage extends BaseStorage {
-  private immediateKeys = new Set<string>([StorageKey.Settings, StorageKey.Configs, StorageKey.ConfigVersion])
+  private immediateKeys = new Set<string>([
+    StorageKey.Settings,
+    StorageKey.Configs,
+    StorageKey.ConfigVersion,
+    StorageKey.MemorySettings,
+    StorageKey.MemoryBankGlobal,
+  ])
 
   public async getItem<T>(key: string, initialValue: T): Promise<T> {
     const value: T = await super.getItem(key, initialValue)
@@ -63,9 +77,13 @@ export default class StoreStorage extends BaseStorage {
 
   private debounceQueue = new Map<string, DebouncedFunc<(key: string, value: unknown) => void>>()
 
+  public async setItemNow<T>(key: string, value: T): Promise<void> {
+    return super.setItemNow(key, value)
+  }
+
   public async setItem<T>(key: string, value: T): Promise<void> {
     // These keys are startup-critical and should not be dropped on fast restarts.
-    if (this.immediateKeys.has(key)) {
+    if (this.immediateKeys.has(key) || key.startsWith('memory:agent:')) {
       await this.setItemNow(key, value)
       return
     }

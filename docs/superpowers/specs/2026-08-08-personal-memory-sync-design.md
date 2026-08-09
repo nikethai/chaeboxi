@@ -1,12 +1,12 @@
 # Personal Memory Sync Design
 
-Date: 2026-08-08
-Status: Draft, updated after upstream memory commit review
-Scope: Sync for the upstream long-term memory bank; document knowledge-base sync/search is deferred
+Date: 2026-08-09
+Status: Draft, updated after latest codebase audit on rebased `main` including `origin/main`
+Scope: Sync for the upstream long-term memory bank; knowledge-base sync/search is deferred
 
 ## 1. Goal
 
-Add multi-machine synchronization for the long-term memory system introduced in upstream commit `aa27f813` (`feat(memory): add long-term memory with scale-ready recall`, merged into `origin/main` via PR #28).
+Add multi-machine synchronization for the long-term memory system introduced in upstream commit `aa27f813` (`feat(memory): add long-term memory with scale-ready recall`, merged into `origin/main` via PR #28). The codebase audit confirmed the memory system is complete and local-only, and no memory sync code exists yet.
 
 That system already provides:
 
@@ -71,6 +71,8 @@ type AgentBankRecord = {
 
 The server stores only an opaque encrypted payload plus revision metadata.
 
+Important audit finding: the current app has no API for listing agent banks. Sync snapshot creation must introduce a helper that enumerates `memory:agent:*` storage keys so inactive-agent banks are not lost.
+
 ## 4. Required Memory Model Upgrade
 
 The upstream `MemoryEntry` needs small additive fields for sync:
@@ -122,6 +124,28 @@ Rules:
 - `deleted: true` marks a tombstone.
 - Tombstones remain in banks for 30 days after `updatedAt`, then may be purged during local or sync normalization.
 - `archived` remains an upstream local/quality feature and is synced as part of the entry.
+
+### 4.1 Zod Persistence Constraint
+
+The audit found that upstream persistence normalizes banks through Zod schemas in `normalizeBank` / `normalizeSettings`. Because the current schemas are bare `z.object()` types, unknown fields are stripped on every read/write cycle.
+
+Therefore, sync fields must be added to the Zod schemas themselves:
+
+- `MemoryEntrySchema` must include optional `revision` and `deleted`.
+- `MemoryBankSchema` must include optional `revision`.
+- Sync credentials must **not** be added to `MemorySettingsSchema`. They belong in a separate local sync config, similar to `extension.historySync`.
+
+### 4.2 Write-Path Constraint
+
+The audit found that most bank writes are coalesced through a 200 ms pending-write queue. Sync must call the existing memory flush path before building a snapshot. Push operations must use the store/repository save paths so in-memory recall indexes are rebuilt; they must not bypass them by writing storage directly.
+
+### 4.3 Agent Bank Enumeration
+
+Upstream code has no `listAgentBankIds()` API. Sync snapshot creation must add an enumeration helper over `memory:agent:*` storage keys, including inactive agents.
+
+### 4.4 Delete Semantics
+
+Upstream `remove()` currently hard-deletes entries. For sync, delete must become a tombstone write through the same entry update path. Hard purge happens only after tombstone TTL or explicit local clear/reset.
 
 ## 5. User-Facing Behavior
 
@@ -231,10 +255,12 @@ Sync is snapshot-based, but merge is entry-aware.
 
 Given local snapshot L and remote snapshot R:
 
-1. Merge `settings` by field, preferring local changes when remote field equals the previous synced field; otherwise choose remote if only remote changed. If both changed, local wins for device-specific fields and remote wins for shared memory-policy fields. v1 simplification: local wins for settings conflicts, with a manual “Pull server settings” action.
-2. Merge `globalBank` entry by entry.
-3. Merge each agent bank entry by entry by `agentId`.
-4. Merge `profileSummary`, `profileSlots`, and `profileUpdatedAt` after entry merge using bank-level merge rules.
+1. Merge `settings` by field, preferring local changes when remote field equals the previous synced field; otherwise choose remote if only remote changed.
+2. If both settings changed, local wins for settings conflicts in v1, with a manual “Pull server settings” action.
+3. Merge `globalBank` entry by entry.
+4. Merge each agent bank entry by entry by `agentId`.
+5. Rebuild local indexes through repository save paths after merge; do not write merged storage blobs directly.
+6. Rebuild `profileSummary`, `profileSlots`, and `profileUpdatedAt` after entry merge using bank-level merge rules.
 
 ### 7.2 Entry Merge
 
@@ -260,8 +286,9 @@ An entry is considered changed if any synced field changed:
 - `archived`
 - `updatedAt`
 - `revision`
+- `deleted`
 
-`lastAccessedAt` is not used for merge decisions except as tie-breaker metadata; it is device-local usage data and may be preserved locally.
+`lastAccessedAt` is device-local usage metadata. It may be preserved locally, but it is not a synced conflict driver and should not cause remote churn.
 
 ### 7.3 Profile Merge
 
@@ -280,7 +307,7 @@ Agent banks sync by `agentId`.
 
 If an agent exists only on one device:
 
-- The bank still syncs as long as the agent ID is known to local app data or imported remote data.
+- The bank still syncs as long as its `memory:agent:*` storage key exists locally or remotely.
 - If local agent no longer exists, the bank remains stored but inactive.
 - Users can clear unwanted agent banks from Settings.
 
@@ -301,7 +328,7 @@ If an agent exists only on one device:
 1. GET remote state.
 2. Decrypt payload.
 3. Merge into local memory store using merge policy.
-4. Rebuild indexes via upstream repository.
+4. Rebuild indexes via upstream repository save paths.
 5. Flush persistence.
 6. Store remote revision.
 
@@ -319,6 +346,7 @@ Default recommended cadence:
 - debounced post-write sync after 5 seconds of quiet
 - manual Sync Now button
 
+Because upstream bank writes are coalesced by 200 ms, any push must first call `flushPersistence()` to avoid snapshotting stale local state.
 ## 9. Error Handling
 
 - Missing endpoint/token: sync disabled with explanatory message.
@@ -346,18 +374,20 @@ Known limitations:
 
 ## 11. Migration Plan
 
-Because local `main` is behind `origin/main`:
+Local `main` has been rebased onto the latest `origin/main`, so PR #28 memory commit `aa27f813`, PR #29, and PR #30 are present locally.
 
-1. Bring local branch up to date with `origin/main`, which contains PR #28 memory commit `aa27f813`.
-2. Do not implement the older spec’s standalone memory CRUD/injection layer; upstream already ships it.
-3. Add sync as an extension to upstream memory system:
-   - extend `MemoryEntry`/`MemoryBank` with optional sync fields
-   - add encrypted snapshot serializer
-   - add sync client module
-   - extend history-sync server with `/api/sync/memory`
-   - add Settings UI controls
-4. Keep existing migration from user personal info to memory intact.
-5. Add tests around merge/tombstone/encryption, not duplicate upstream recall tests.
+Implementation order:
+
+1. Extend memory schemas with sync fields and ensure `normalizeBank` preserves them.
+2. Change memory delete paths to tombstones where sync is enabled or preserve hard delete when sync is disabled; choose one behavior consistently in implementation. Recommended v1: always tombstone, purge later.
+3. Add agent-bank enumeration helper.
+4. Add encrypted snapshot serializer/deserializer.
+5. Add `memorySync` client modeled on `historySync.ts`, including sync lock, state key, 409 retry, and flush-before-snapshot.
+6. Add `/api/sync/memory` endpoint to `scripts/history-sync-server/server.mjs` with a separate `memory_snapshot` table.
+7. Add settings config under `extension.memorySync`, not inside `MemorySettings`.
+8. Add Settings → Memory sync UI based on the general history-sync section pattern.
+9. Keep existing personal-info-to-memory migration intact.
+10. Add tests around merge/tombstone/encryption, not duplicate upstream recall tests.
 
 ## 12. Testing Strategy
 

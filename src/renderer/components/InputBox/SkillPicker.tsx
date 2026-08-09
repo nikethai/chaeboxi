@@ -1,8 +1,10 @@
-import { Box, Paper, Stack, Text } from '@mantine/core'
+import { Box, Text } from '@mantine/core'
 import type { SkillPackage } from '@shared/types'
-import { memo, useEffect, useMemo } from 'react'
+import { memo, type RefObject, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { navigateToSettings } from '@/modals/Settings'
 import { fuzzyScoreSkill } from '@/packages/skills'
+import ComposerPickerPanel from './ComposerPickerPanel'
 
 export function filterSkills(skills: SkillPackage[], query: string) {
   const normalizedQuery = query.trim().toLowerCase()
@@ -27,6 +29,7 @@ export interface SkillPickerProps {
   onSelect(skill: SkillPackage): void
   query: string
   excludeIds?: string[]
+  anchorRef: RefObject<HTMLElement | null>
 }
 
 function SkillPicker({
@@ -36,15 +39,17 @@ function SkillPicker({
   onSelect,
   query,
   excludeIds = [],
+  anchorRef,
 }: SkillPickerProps) {
   const { t } = useTranslation()
-  const filtered = useMemo(() => {
+  const available = useMemo(() => {
     const exclude = new Set(excludeIds)
-    return filterSkills(
-      skills.filter((s) => !exclude.has(s.id)),
-      query
-    ).slice(0, 8)
-  }, [skills, query, excludeIds])
+    return skills.filter((s) => s.enabled && !exclude.has(s.id))
+  }, [skills, excludeIds])
+
+  const filtered = useMemo(() => filterSkills(available, query).slice(0, 8), [available, query])
+  const catalogEmpty = available.length === 0
+  const isEmpty = filtered.length === 0
 
   useEffect(() => {
     if (filtered.length === 0) return
@@ -54,54 +59,57 @@ function SkillPicker({
   }, [filtered.length, highlightedIndex, onHighlightChange])
 
   return (
-    <Paper
-      shadow="md"
-      radius="md"
-      withBorder
-      className="absolute left-0 right-0 bottom-full mb-2 overflow-hidden z-50"
-      style={{ backgroundColor: 'var(--chatbox-background-primary)' }}
+    <ComposerPickerPanel
+      anchorRef={anchorRef}
+      open
+      aria-label={t('Skills')}
+      header={
+        <Text size="xs" c="chatbox-tertiary">
+          {t('Skills')} · $
+        </Text>
+      }
+      isEmpty={isEmpty}
+      empty={
+        catalogEmpty
+          ? {
+              title: t('No skills yet'),
+              description: t('Add or enable skills, then insert them with $ in the composer.'),
+              action: {
+                label: t('Manage skills'),
+                onClick: () => navigateToSettings('/skills'),
+              },
+            }
+          : {
+              title: t('No skill found'),
+            }
+      }
     >
-      <Stack gap={0}>
-        <Box px="sm" py="xs" style={{ borderBottom: '1px solid var(--chatbox-border-primary)' }}>
-          <Text size="xs" c="chatbox-tertiary">
-            {t('Skills')} · $
-          </Text>
-        </Box>
-
-        {filtered.length > 0 ? (
-          filtered.map((skill, index) => {
-            const selected = index === highlightedIndex
-            return (
-              <Box
-                key={skill.id}
-                px="sm"
-                py="xs"
-                className="cursor-pointer"
-                bg={selected ? 'var(--chatbox-background-brand-secondary)' : undefined}
-                onMouseEnter={() => onHighlightChange(index)}
-                onMouseDown={(event) => {
-                  event.preventDefault()
-                  onSelect(skill)
-                }}
-              >
-                <Text size="sm" fw={600} c={selected ? 'chatbox-brand' : 'chatbox-primary'}>
-                  ${skill.name}
-                </Text>
-                <Text size="xs" c="chatbox-secondary" lineClamp={1}>
-                  {skill.description}
-                </Text>
-              </Box>
-            )
-          })
-        ) : (
-          <Box px="sm" py="md">
-            <Text size="sm" c="chatbox-tertiary">
-              {t('No skill found')}
+      {filtered.map((skill, index) => {
+        const selected = index === highlightedIndex
+        return (
+          <Box
+            key={skill.id}
+            px="sm"
+            py="xs"
+            className="composer-picker-row cursor-pointer"
+            data-selected={selected || undefined}
+            bg={selected ? 'var(--chatbox-background-brand-secondary)' : undefined}
+            onMouseEnter={() => onHighlightChange(index)}
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onSelect(skill)
+            }}
+          >
+            <Text size="sm" fw={600} c={selected ? 'chatbox-brand' : 'chatbox-primary'}>
+              ${skill.name}
+            </Text>
+            <Text size="xs" c="chatbox-secondary" lineClamp={1}>
+              {skill.description}
             </Text>
           </Box>
-        )}
-      </Stack>
-    </Paper>
+        )
+      })}
+    </ComposerPickerPanel>
   )
 }
 

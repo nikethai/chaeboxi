@@ -330,6 +330,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     const pictureInputRef = useRef<HTMLInputElement | null>(null)
     const fileInputRef = useRef<HTMLInputElement | null>(null)
+    /** Anchor for portaled @ / $ / / pickers (avoids blank-home overflow clip). */
+    const composerCardRef = useRef<HTMLDivElement | null>(null)
 
     // Check if any preprocessing is in progress
     const isPreprocessing = useMemo(() => {
@@ -1746,6 +1748,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           {currentSessionId && <QueuedMessageList sessionId={currentSessionId} />}
           {currentSessionId ? <TeamRoomActions sessionId={currentSessionId} /> : null}
           <Stack
+            ref={composerCardRef}
             className={cn(
               'composer-card relative justify-between',
               isFileDragActive && 'composer-card-drag-active',
@@ -1773,6 +1776,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             </div>
             {showPresetPicker && (
               <PresetPicker
+                anchorRef={composerCardRef}
                 highlightedIndex={presetHighlightIndex}
                 onHighlightChange={setPresetHighlightIndex}
                 onManage={() => navigateToSettings('/chat')}
@@ -1785,6 +1789,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             )}
             {showOpenClawCommandPicker && (
               <OpenClawCommandPicker
+                anchorRef={composerCardRef}
                 commands={openClawCommands}
                 highlightedIndex={presetHighlightIndex}
                 onHighlightChange={setPresetHighlightIndex}
@@ -1794,6 +1799,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             )}
             {showAgentPicker && (
               <AgentPicker
+                anchorRef={composerCardRef}
                 agents={allAgents}
                 highlightedIndex={agentHighlightIndex}
                 onHighlightChange={setAgentHighlightIndex}
@@ -1804,6 +1810,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             )}
             {showCommandPicker && (
               <CommandPicker
+                anchorRef={composerCardRef}
                 commands={enabledCommands}
                 highlightedIndex={commandHighlightIndex}
                 onHighlightChange={setCommandHighlightIndex}
@@ -1814,6 +1821,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             )}
             {showSkillPicker && (
               <SkillPicker
+                anchorRef={composerCardRef}
                 skills={enabledSkills}
                 highlightedIndex={skillHighlightIndex}
                 onHighlightChange={setSkillHighlightIndex}

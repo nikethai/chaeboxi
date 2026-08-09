@@ -407,7 +407,27 @@
 
   .studio-rail {
     background: var(--chatbox-background-rail) !important;
-    border-right: 1px solid var(--chatbox-border-primary);
+    /* Edge separation lives on the drawer paper as soft shadow — avoid double hard line */
+    border-right: none;
+  }
+
+  /* Soft rail → main separation (shadows over hard borders) */
+  :root {
+    --chatbox-rail-edge-shadow:
+      1px 0 0 color-mix(in srgb, var(--chatbox-tint-primary) 7%, transparent),
+      4px 0 16px -8px rgba(0, 0, 0, 0.06);
+    --chatbox-rail-edge-shadow-rtl:
+      -1px 0 0 color-mix(in srgb, var(--chatbox-tint-primary) 7%, transparent),
+      -4px 0 16px -8px rgba(0, 0, 0, 0.06);
+  }
+
+  :root[data-mantine-color-scheme='dark'] {
+    --chatbox-rail-edge-shadow:
+      1px 0 0 rgba(255, 255, 255, 0.06),
+      6px 0 20px -10px rgba(0, 0, 0, 0.35);
+    --chatbox-rail-edge-shadow-rtl:
+      -1px 0 0 rgba(255, 255, 255, 0.06),
+      -6px 0 20px -10px rgba(0, 0, 0, 0.35);
   }
 
   /* Grok-style quiet nav stack */
@@ -1611,16 +1631,91 @@
     transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   }
 
-  /* $ /skill pickers sit above the card (bottom-full); must not clip them */
+  /* Pickers are portaled; keep class for focus elevation while open */
   .composer-card.composer-card-picker-open {
-    overflow: visible;
     z-index: 30;
   }
 
-  .session-dock:has(.composer-card-picker-open),
-  .session-dock-pad:has(.composer-card-picker-open),
-  .quick-chat-shell .session-dock:has(.composer-card-picker-open) {
-    overflow: visible;
+  /* Portaled @ / $ / / pickers — never clipped by blank-home / page overflow */
+  .composer-picker-panel {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 11px;
+    background: var(--chatbox-background-primary);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 10%, transparent),
+      0 4px 12px -2px rgba(0, 0, 0, 0.12),
+      0 12px 32px -8px rgba(0, 0, 0, 0.14);
+    animation: composer-picker-in 160ms cubic-bezier(0.2, 0, 0, 1) both;
+  }
+
+  :root[data-mantine-color-scheme='dark'] .composer-picker-panel {
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 4px 16px -2px rgba(0, 0, 0, 0.45),
+      0 16px 40px -12px rgba(0, 0, 0, 0.5);
+  }
+
+  .composer-picker-panel-header {
+    flex: 0 0 auto;
+    padding: 0.4rem 0.75rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent);
+  }
+
+  .composer-picker-panel-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .composer-picker-panel-footer {
+    flex: 0 0 auto;
+    padding: 0.35rem 0.5rem;
+    border-top: 1px solid color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent);
+  }
+
+  .composer-picker-empty {
+    padding: 0.85rem 0.75rem 1rem;
+  }
+
+  .composer-picker-row {
+    transition-property: background-color;
+    transition-duration: 120ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  @keyframes composer-picker-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .composer-picker-panel[data-placement='below'] {
+    animation-name: composer-picker-in-below;
+  }
+
+  @keyframes composer-picker-in-below {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .composer-picker-panel {
+      animation: none;
+    }
   }
 
   /* Pointer hover: soft ambient lift (no neon brand wash) */
@@ -4424,21 +4519,51 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   outline-color: rgba(255, 255, 255, 0.1);
 }
 
-/* Wider invisible hit area for sidebar edge resize / collapse */
+/* Invisible hit strip; 1–2px brand hairline only on hover/drag (no thick grey bar) */
 .sidebar-resizer {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 6px;
+  width: 8px;
   z-index: 2;
   cursor: col-resize;
   background: transparent;
-  transition: background-color 140ms var(--chatbox-ease);
 }
 
-.sidebar-resizer:hover,
-.sidebar-resizer.is-resizing {
-  background: color-mix(in srgb, var(--chatbox-tint-brand) 35%, transparent);
+.sidebar-resizer::after {
+  content: '';
+  position: absolute;
+  top: 12%;
+  bottom: 12%;
+  width: 2px;
+  border-radius: 999px;
+  background: transparent;
+  transition-property: background-color, opacity, transform;
+  transition-duration: 140ms;
+  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sidebar-resizer.right-0::after {
+  right: 0;
+  transform: translateX(50%);
+}
+
+.sidebar-resizer.left-0::after {
+  left: 0;
+  transform: translateX(-50%);
+}
+
+.sidebar-resizer:hover::after,
+.sidebar-resizer.is-resizing::after {
+  background: color-mix(in srgb, var(--chatbox-tint-brand) 55%, transparent);
+  opacity: 1;
+}
+
+.sidebar-resizer.is-resizing::after {
+  background: var(--chatbox-tint-brand);
+  opacity: 0.85;
 }
 
 /* ── Search dialog (command palette) ─────────────────────────────── */

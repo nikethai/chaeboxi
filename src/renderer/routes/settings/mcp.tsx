@@ -1,4 +1,3 @@
-import { Box, Title } from '@mantine/core'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { useEffect, useState } from 'react'
@@ -7,6 +6,9 @@ import { z } from 'zod'
 import { BuiltinServersSection } from '@/components/settings/mcp/BuiltinServersSection'
 import CustomServersSection from '@/components/settings/mcp/CustomServersSection'
 import { parseServerFromJson } from '@/components/settings/mcp/utils'
+import { SettingsPage } from '@/components/settings/SettingsPage'
+import { SettingsPageHeader } from '@/components/settings/SettingsPageHeader'
+import { SettingsSection } from '@/components/settings/SettingsSection'
 import type { MCPServerConfig } from '@/packages/mcp/types'
 import { decodeBase64 } from '@/utils/base64'
 
@@ -44,14 +46,17 @@ export function RouteComponent() {
   }, [searchParams.install, navigate])
 
   return (
-    <Box p="md">
-      <Title order={5}>{t('MCP Settings')}</Title>
-      <Box className="mt-8">
+    <SettingsPage wide>
+      <SettingsPageHeader
+        title={t('MCP Settings')}
+        description={t('Model Context Protocol servers extend what tools the assistant can use.')}
+      />
+      <SettingsSection title={t('Built-in')}>
         <BuiltinServersSection />
-      </Box>
-      <Box className="mt-8">
+      </SettingsSection>
+      <SettingsSection title={t('Custom servers')}>
         <CustomServersSection installConfig={installConfig} />
-      </Box>
-    </Box>
+      </SettingsSection>
+    </SettingsPage>
   )
 }

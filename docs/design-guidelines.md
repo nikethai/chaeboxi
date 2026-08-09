@@ -2,7 +2,7 @@
 
 **Status:** Active design contract for the UI redesign  
 **Visual source of truth:** `plans/2026-08-05-ui-ux-redesign/mock-dark-shell.html`  
-**Last updated:** 2026-08-06
+**Last updated:** 2026-08-09
 
 ## Product intent
 
@@ -71,6 +71,36 @@ dock: flex-none; no border-top
 ```
 
 Blank home, thread content, and composer left edges **must** align.
+
+## Composer pickers (@ / $ / /)
+
+- **Portal** pickers to `document.body` via `ComposerPickerPanel` — never absolute children clipped by `.blank-home` / page `overflow: hidden`.
+- Anchor to `.composer-card` rect; prefer **above** the composer; flip **below** when headroom &lt; ~120px.
+- Cap height (~320px) with internal scroll; short lists pin to the composer edge.
+- Empty catalog (zero agents/skills/commands) → quiet empty + primary CTA into Settings (`/agents`, `/skills`, `/commands`).
+- Filter miss only → “No … found” without CTA.
+- Surface: layered shadow + soft hairline (not hard double borders). Light + dark both.
+
+## Rail edge
+
+- Soft separation: hairline mix ≤~7–8% ink + ambient shadow (`--chatbox-rail-edge-shadow`) — **not** a hard full-height double border.
+- Resizer: invisible 8px hit strip; 1–2px brand hairline only on hover/drag.
+
+## Settings surfaces
+
+- Same studio tokens as chat (void/rail/panel, 7–9–11 radius, indigo accent, no gradients).
+- **Layout language:** studio preference panels (Linear/Cursor DNA), not admin form stacks.
+- Content measure: `SettingsPage` default max-width **40rem**; catalogs/MCP use `wide` (~56rem).
+- Section micro-label (uppercase, tertiary) **above** a single soft `SettingsCard`.
+- Toggles / single selects → `SettingsPrefRow` (title + helper left, control right) inside `SettingsCard divided`.
+- Multi-field groups → stacked fields inside a padded card (`settings-card-fields`).
+- **Progressive disclosure:** advanced / optional blocks use `SettingsCollapsible` (collapsed by default; open when already configured). Keep primary setup (connection, name, essentials) always visible.
+- Sticky save/cancel footers on long forms when needed.
+- Primitives: `SettingsPage`, `SettingsPageHeader`, `SettingsSection`, `SettingsCard`, `SettingsPrefRow`, `SettingsCallout`, `SettingsCollapsible`.
+- Callouts: quiet brand-tinted; avoid solid light-blue Alert slabs as primary hierarchy.
+- Nav edge matches rail language (soft shadow, not hard rule).
+- Forms: min control height ~40px; press scale on primary buttons where appropriate.
+- QA both **light and dark**.
 
 ## Anti-patterns
 

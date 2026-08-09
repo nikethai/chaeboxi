@@ -37,6 +37,22 @@ Knowledge-base central storage/search remains deferred.
 - Centralized knowledge-base storage or server-side KB search.
 - Chaeboxi-hosted SaaS account sync.
 
+## 2.1 Graph Memory Decision
+
+Graph-based memory is explicitly out of scope for this sync v1.
+
+Rationale:
+
+- The current codebase already has a strong flat-memory system: banks, entries, profile summary, hybrid inject, host pre-search, recall tools, and local indexing.
+- Sync v1 is already substantial because it requires schema upgrades, tombstones, encrypted snapshot transport, merge policy, and server support.
+- A graph model would add a second axis of complexity: entity extraction, relation extraction, canonicalization, contradiction handling, graph query semantics, and graph-specific UI.
+
+Decision:
+
+- v1 keeps the current flat-memory bank model and adds encrypted multi-device sync on top.
+- Future versions may add lightweight relation metadata such as `relatedMemoryIds`, `supersedes`, `entityKey`, or `confidence` before considering a full graph backend.
+- If a true graph is pursued later, it should be a hybrid design layered on top of text/search memory, not a replacement for it.
+
 ## 3. Relationship To Upstream Memory Commit
 
 The upstream memory system uses these storage keys:

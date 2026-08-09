@@ -74,6 +74,22 @@ vi.mock('@/stores/toolApprovalStore', () => ({
   },
 }))
 
+vi.mock('@/stores/memoryStore', () => ({
+  ensureMemoryStoreInit: vi.fn(async () => {}),
+  memoryStore: {
+    getState: () => ({
+      ready: true,
+      settings: { enabled: false, autoSave: false },
+      globalBank: { scope: 'global', entries: [], profileSummary: '', version: 1 },
+      agentBanks: {},
+      ensureAgentBank: vi.fn(async () => ({ scope: 'agent', entries: [], profileSummary: '', version: 1 })),
+      replaceGlobalBank: vi.fn(),
+      replaceAgentBank: vi.fn(),
+      rebuildProfile: vi.fn(),
+    }),
+  },
+}))
+
 vi.mock('@/stores/taskStore', () => ({
   formatActiveTaskContext: () => '',
   taskStore: {

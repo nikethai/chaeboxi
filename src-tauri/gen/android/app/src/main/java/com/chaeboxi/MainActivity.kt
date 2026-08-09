@@ -2,6 +2,7 @@ package com.chaeboxi
 
 import android.os.Bundle
 import android.view.View
+import android.webkit.WebView
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.enableEdgeToEdge
@@ -11,6 +12,18 @@ import androidx.core.view.WindowInsetsControllerCompat
 
 internal fun resolveImeVisibility(rootImeVisible: Boolean?, wasImeVisible: Boolean): Boolean =
   rootImeVisible ?: wasImeVisible
+
+internal fun dispatchRootSafeBack(
+  canGoBack: Boolean,
+  goBack: () -> Unit,
+  backgroundTask: () -> Unit,
+) {
+  if (canGoBack) {
+    goBack()
+  } else {
+    backgroundTask()
+  }
+}
 
 internal fun createImeBackCallback(
   dispatcher: OnBackPressedDispatcher,
@@ -34,6 +47,7 @@ internal fun createImeBackCallback(
 class MainActivity : TauriActivity() {
   private var wasImeVisible: Boolean = false
   private var imeBackCallbackRegistered: Boolean = false
+  private var webView: WebView? = null
 
   private val imeBackCallback by lazy {
     createImeBackCallback(onBackPressedDispatcher, ::isImeVisible, ::dismissIme)
@@ -57,6 +71,11 @@ class MainActivity : TauriActivity() {
     ViewCompat.requestApplyInsets(root)
   }
 
+  override fun onWebViewCreate(webView: WebView) {
+    super.onWebViewCreate(webView)
+    this.webView = webView
+  }
+
   override fun onPostResume() {
     super.onPostResume()
     if (!imeBackCallbackRegistered) {
@@ -72,13 +91,21 @@ class MainActivity : TauriActivity() {
   override fun onBackPressed() {
     if (isImeVisible()) {
       dismissIme()
-    } else {
-      // Wry 0.54.4's native Activity destruction path races WebView work and
-      // aborts on a destroyed mutex. Root Back conventionally backgrounds an
-      // Android task, which preserves Tauri's WebView navigation callback
-      // while avoiding that teardown.
-      moveTaskToBack(true)
+      return
     }
+
+    // AppPlugin normally consumes this through its callback first. Its root
+    // fallback calls Activity.onBackPressed() directly, however, so preserve
+    // WebView/hash-router history here as well before applying the Wry-safe
+    // root containment path.
+    dispatchRootSafeBack(
+      canGoBack = webView?.canGoBack() == true,
+      goBack = { webView?.goBack() },
+      // Wry 0.54.4's native Activity destruction path races WebView work and
+      // aborts on a destroyed mutex. Only a true history root backgrounds the
+      // task instead of entering that unsafe teardown path.
+      backgroundTask = { moveTaskToBack(true) },
+    )
   }
 
   private fun isImeVisible(): Boolean = resolveImeVisibility(

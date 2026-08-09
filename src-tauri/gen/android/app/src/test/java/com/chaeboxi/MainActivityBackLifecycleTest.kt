@@ -27,6 +27,36 @@ class MainActivityBackLifecycleTest {
   }
 
   @Test
+  fun `root-safe Back consumes WebView history before task containment`() {
+    var goBackCount = 0
+    var backgroundCount = 0
+
+    dispatchRootSafeBack(
+      canGoBack = true,
+      goBack = { goBackCount += 1 },
+      backgroundTask = { backgroundCount += 1 },
+    )
+
+    assertEquals(1, goBackCount)
+    assertEquals(0, backgroundCount)
+  }
+
+  @Test
+  fun `root-safe Back backgrounds only when WebView has no history`() {
+    var goBackCount = 0
+    var backgroundCount = 0
+
+    dispatchRootSafeBack(
+      canGoBack = false,
+      goBack = { goBackCount += 1 },
+      backgroundTask = { backgroundCount += 1 },
+    )
+
+    assertEquals(0, goBackCount)
+    assertEquals(1, backgroundCount)
+  }
+
+  @Test
   fun `later IME callback consumes visible IME Back before downstream Tauri callback`() {
     val dispatcher = OnBackPressedDispatcher()
     var dismissCount = 0

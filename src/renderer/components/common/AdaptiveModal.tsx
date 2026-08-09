@@ -1,27 +1,51 @@
 import type { ModalProps as MantineModalProps } from '@mantine/core'
 import { Button, type ButtonProps, Flex, Stack } from '@mantine/core'
-import type { HTMLAttributes, ReactNode } from 'react'
+import type { HTMLAttributes, ReactElement, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Drawer } from 'vaul'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { Modal } from '../layout/Overlay'
 
-export interface AdaptiveModalProps extends Omit<MantineModalProps, 'opened' | 'onClose'> {
-  opened: boolean
-  onClose: () => void
-  /**
-   * An optional screen-reader description for the mobile drawer. Dialog body
-   * content must not be inferred as a description because it can contain
-   * interactive controls and arbitrary layout.
-   */
-  description?: ReactNode
-}
+type AdaptiveModalSemanticProps =
+  | {
+      title: string
+      ariaLabel?: never
+    }
+  | {
+      title: ReactElement
+      ariaLabel: string
+    }
+  | {
+      title?: undefined
+      ariaLabel: string
+    }
 
-export function AdaptiveModal({ opened, onClose, children, title, description, ...props }: AdaptiveModalProps) {
+export type AdaptiveModalProps = Omit<MantineModalProps, 'opened' | 'onClose' | 'title'> &
+  AdaptiveModalSemanticProps & {
+    opened: boolean
+    onClose: () => void
+    /**
+     * An optional screen-reader description for the mobile drawer. Dialog body
+     * content must not be inferred as a description because it can contain
+     * interactive controls and arbitrary layout.
+     */
+    description?: ReactNode
+  }
+
+export function AdaptiveModal({
+  opened,
+  onClose,
+  children,
+  title,
+  ariaLabel,
+  description,
+  ...props
+}: AdaptiveModalProps) {
   const isSmallScreen = useIsSmallScreen()
 
   if (isSmallScreen) {
-    const hasTitle = title !== undefined && title !== null && title !== ''
+    const hasVisibleStringTitle = typeof title === 'string' && title.length > 0
+    const hasVisibleTitleNode = title !== undefined && typeof title !== 'string'
     const hasDescription = description !== undefined && description !== null && description !== ''
     const drawerContentProps = hasDescription ? {} : { 'aria-describedby': undefined }
 
@@ -35,9 +59,18 @@ export function AdaptiveModal({ opened, onClose, children, title, description, .
           >
             <Drawer.Handle />
             <Stack gap="md" p="sm" className="max-h-[85vh] overflow-y-auto">
-              <Drawer.Title className={hasTitle ? 'text-center text-base font-semibold' : 'sr-only'}>
-                {hasTitle ? title : 'Dialog'}
-              </Drawer.Title>
+              {hasVisibleStringTitle && (
+                <Drawer.Title className="text-center text-base font-semibold">{title}</Drawer.Title>
+              )}
+              {hasVisibleTitleNode && (
+                <>
+                  <div>{title}</div>
+                  <Drawer.Title className="sr-only">{ariaLabel}</Drawer.Title>
+                </>
+              )}
+              {!hasVisibleStringTitle && !hasVisibleTitleNode && (
+                <Drawer.Title className="sr-only">{ariaLabel}</Drawer.Title>
+              )}
               {hasDescription && <Drawer.Description className="sr-only">{description}</Drawer.Description>}
               {children}
             </Stack>

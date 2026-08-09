@@ -37,16 +37,48 @@ function renderActions() {
   return screen.getByRole('button', { name: 'Save' }).parentElement
 }
 
-function renderMobileModal({
-  description,
-  title,
-}: Pick<React.ComponentProps<typeof AdaptiveModal>, 'description' | 'title'>) {
+type MobileModalProps =
+  | { title: string; ariaLabel?: never; description?: React.ReactNode }
+  | { title: React.ReactElement; ariaLabel: string; description?: React.ReactNode }
+  | { title?: undefined; ariaLabel: string; description?: React.ReactNode }
+
+function renderMobileModal(props: MobileModalProps) {
   useIsSmallScreen.mockReturnValue(true)
+
+  const body = <button type="button">Save</button>
+
+  if (typeof props.title === 'string') {
+    render(
+      <MantineProvider>
+        <AdaptiveModal opened onClose={vi.fn()} title={props.title} description={props.description}>
+          {body}
+        </AdaptiveModal>
+      </MantineProvider>
+    )
+    return
+  }
+
+  if (props.title !== undefined) {
+    render(
+      <MantineProvider>
+        <AdaptiveModal
+          opened
+          onClose={vi.fn()}
+          title={props.title}
+          ariaLabel={props.ariaLabel}
+          description={props.description}
+        >
+          {body}
+        </AdaptiveModal>
+      </MantineProvider>
+    )
+    return
+  }
 
   render(
     <MantineProvider>
-      <AdaptiveModal opened onClose={vi.fn()} title={title} description={description}>
-        <button type="button">Save</button>
+      <AdaptiveModal opened onClose={vi.fn()} ariaLabel={props.ariaLabel} description={props.description}>
+        {body}
       </AdaptiveModal>
     </MantineProvider>
   )
@@ -98,22 +130,22 @@ describe('AdaptiveModal mobile dialog semantics', () => {
     expect(description.classList.contains('sr-only')).toBe(true)
   })
 
-  it('uses a React title node as the Vaul dialog name while preserving it visually', () => {
-    renderMobileModal({ title: <span className="custom-title">Edit Model</span> })
+  it('keeps a React title node visual-only and uses its explicit accessible label', () => {
+    renderMobileModal({ ariaLabel: 'Edit Model', title: <span className="custom-title">Edit Model</span> })
 
     const dialog = screen.getByRole('dialog', { name: 'Edit Model' })
-    const title = screen.getByText('Edit Model')
+    const title = screen.getByText('Edit Model', { selector: '.custom-title' })
 
-    expect(dialog.getAttribute('aria-labelledby')).toBe(title.parentElement?.id)
+    expect(dialog.getAttribute('aria-labelledby')).not.toBeNull()
     expect(title.classList.contains('custom-title')).toBe(true)
     expect(dialog.getAttribute('aria-describedby')).toBeNull()
   })
 
-  it('provides an invisible fallback dialog name when no title is supplied', () => {
-    renderMobileModal({})
+  it('uses an explicit accessible label when no visible title is supplied', () => {
+    renderMobileModal({ ariaLabel: 'Welcome to Chaeboxi' })
 
-    const dialog = screen.getByRole('dialog', { name: 'Dialog' })
-    const title = screen.getByText('Dialog')
+    const dialog = screen.getByRole('dialog', { name: 'Welcome to Chaeboxi' })
+    const title = screen.getByText('Welcome to Chaeboxi')
 
     expect(title.classList.contains('sr-only')).toBe(true)
     expect(dialog.getAttribute('aria-labelledby')).toBe(title.id)

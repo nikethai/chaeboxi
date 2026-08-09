@@ -1,4 +1,4 @@
-import { Button, Flex, Stack, Text } from '@mantine/core'
+import { Button, Text } from '@mantine/core'
 import {
   findQwenPresetByApiHost,
   getQwenPreset,
@@ -12,6 +12,7 @@ import { IconExternalLink } from '@tabler/icons-react'
 import { useTranslation } from 'react-i18next'
 import { AdaptiveSelect } from '@/components/AdaptiveSelect'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
+import { SettingsPrefRow } from '@/components/settings/SettingsPrefRow'
 import platform from '@/platform'
 
 interface QwenPlanSelectorProps {
@@ -86,50 +87,48 @@ export function QwenPlanSelector({
   }
 
   return (
-    <Stack gap="md">
-      <Stack gap="xxs">
-        <Text span fw="600">
-          {t('Region')}
-        </Text>
-        <AdaptiveSelect
-          value={region}
-          onChange={handleRegionChange}
-          data={[
-            { value: 'international', label: t('International (QwenCloud / Singapore)') },
-            { value: 'china', label: t('China (DashScope)') },
-          ]}
-        />
-      </Stack>
-
-      <Stack gap="xxs">
-        <Text span fw="600">
-          {t('How do you connect?')}
-        </Text>
-        <AdaptiveSelect
-          value={planId}
-          onChange={handlePlanChange}
-          data={plans.map((p) => ({
-            value: p.planId,
-            label: t(p.name),
-          }))}
-        />
-        {preset?.description && (
-          <Text size="xs" c="chatbox-secondary">
-            {t(preset.description)}
-          </Text>
-        )}
-      </Stack>
-
+    <div className="settings-card-fields">
+      <SettingsPrefRow
+        title={t('Region')}
+        align="start"
+        control={
+          <AdaptiveSelect
+            maw={220}
+            value={region}
+            onChange={handleRegionChange}
+            data={[
+              { value: 'international', label: t('International (QwenCloud / Singapore)') },
+              { value: 'china', label: t('China (DashScope)') },
+            ]}
+          />
+        }
+      />
+      <SettingsPrefRow
+        title={t('How do you connect?')}
+        description={preset?.description ? t(preset.description) : undefined}
+        align="start"
+        control={
+          <AdaptiveSelect
+            maw={220}
+            value={planId}
+            onChange={handlePlanChange}
+            data={plans.map((p) => ({
+              value: p.planId,
+              label: t(p.name),
+            }))}
+          />
+        }
+      />
       {preset && (
-        <Stack gap="xxs">
-          <Text size="xs" c="chatbox-secondary">
+        <>
+          <Text size="xs" c="chatbox-tertiary">
             {t('Endpoint set for {{plan}}', { plan: t(preset.name) })}
             {': '}
             <Text span ff="monospace" size="xs">
               {preset.apiHost}
             </Text>
           </Text>
-          <Flex gap="sm" wrap="wrap">
+          <div className="settings-actions">
             <Button
               variant="subtle"
               size="compact-xs"
@@ -146,10 +145,10 @@ export function QwenPlanSelector({
             >
               {t('Setup guide')}
             </Button>
-          </Flex>
-        </Stack>
+          </div>
+        </>
       )}
-    </Stack>
+    </div>
   )
 }
 

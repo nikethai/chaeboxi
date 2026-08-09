@@ -1,29 +1,20 @@
-import {
-  Alert,
-  Button,
-  Checkbox,
-  Divider,
-  FileButton,
-  Flex,
-  Radio,
-  Select,
-  Stack,
-  Switch,
-  Text,
-  TextInput,
-  Title,
-} from '@mantine/core'
+import { Alert, Button, Checkbox, FileButton, Flex, Radio, Stack, Switch, Text, TextInput } from '@mantine/core'
 import { type Language, type ProviderInfo, type Settings, Theme } from '@shared/types'
 import { formatFileSize } from '@shared/utils'
 import { IconInfoCircle } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
 import dayjs from 'dayjs'
 import { mapValues, uniqBy } from 'lodash'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { HexColorPicker } from 'react-colorful'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AdaptiveSelect } from '@/components/AdaptiveSelect'
 import LazySlider from '@/components/common/LazySlider'
+import { SettingsCard } from '@/components/settings/SettingsCard'
+import { SettingsCollapsible } from '@/components/settings/SettingsCollapsible'
+import { SettingsPage } from '@/components/settings/SettingsPage'
+import { SettingsPageHeader } from '@/components/settings/SettingsPageHeader'
+import { SettingsPrefRow } from '@/components/settings/SettingsPrefRow'
+import { SettingsSection } from '@/components/settings/SettingsSection'
 import { languageNameMap, languages } from '@/i18n/locales'
 import platform, { platformCapabilities } from '@/platform'
 import storage, { StorageKey } from '@/storage'
@@ -48,335 +39,193 @@ export function RouteComponent() {
   const { setSettings, ...settings } = useSettingsStore((state) => state)
 
   return (
-    <Stack p="md" gap="xl">
-      <Title order={5}>{t('General Settings')}</Title>
+    <SettingsPage>
+      <SettingsPageHeader
+        title={t('General Settings')}
+        description={t('Language, theme, data, and system preferences for Chaeboxi.')}
+      />
 
-      {/* Display Settings */}
-      <Stack gap="md">
-        <Title order={5}>{t('Display Settings')}</Title>
-
-        {/* language */}
-        <AdaptiveSelect
-          maw={320}
-          comboboxProps={{ withinPortal: true }}
-          value={settings.language}
-          data={languages.map((language) => ({
-            value: language,
-            label: languageNameMap[language],
-            // style: language === 'ar' ? { fontFamily: 'Cairo, Arial, sans-serif' } : {},
-          }))}
-          label={t('Language')}
-          styles={{
-            label: {
-              fontWeight: 400,
-            },
-          }}
-          onChange={(val) => {
-            if (val) {
-              setSettings({
-                language: val as Language,
-              })
-            }
-          }}
-        />
-
-        {/* theme */}
-        <AdaptiveSelect
-          maw={320}
-          comboboxProps={{ withinPortal: true, withArrow: true }}
-          label={t('Theme')}
-          styles={{
-            label: {
-              fontWeight: 400,
-            },
-          }}
-          data={[
-            { value: `${Theme.System}`, label: t('Follow System') },
-            { value: `${Theme.Light}`, label: t('Light Mode') },
-            { value: `${Theme.Dark}`, label: t('Dark Mode') },
-          ]}
-          value={`${settings.theme}`}
-          onChange={(val) => {
-            if (val) {
-              setSettings({
-                theme: parseInt(val),
-              })
-            }
-          }}
-        />
-
-        {/* Font Size */}
-        <Stack>
-          <Text>{t('Font Size')}</Text>
-          <LazySlider
-            step={1}
-            min={10}
-            max={22}
-            maw={320}
-            marks={[
-              {
-                value: 14,
-              },
-            ]}
-            value={settings.fontSize}
-            onChange={(val) =>
-              setSettings({
-                fontSize: val,
-              })
+      <SettingsSection title={t('Display')}>
+        <SettingsCard divided>
+          <SettingsPrefRow
+            title={t('Language')}
+            control={
+              <AdaptiveSelect
+                maw={200}
+                comboboxProps={{ withinPortal: true }}
+                value={settings.language}
+                data={languages.map((language) => ({
+                  value: language,
+                  label: languageNameMap[language],
+                }))}
+                onChange={(val) => {
+                  if (val) {
+                    setSettings({ language: val as Language })
+                  }
+                }}
+              />
             }
           />
-        </Stack>
+          <SettingsPrefRow
+            title={t('Theme')}
+            control={
+              <AdaptiveSelect
+                maw={200}
+                comboboxProps={{ withinPortal: true, withArrow: true }}
+                data={[
+                  { value: `${Theme.System}`, label: t('Follow System') },
+                  { value: `${Theme.Light}`, label: t('Light Mode') },
+                  { value: `${Theme.Dark}`, label: t('Dark Mode') },
+                ]}
+                value={`${settings.theme}`}
+                onChange={(val) => {
+                  if (val) {
+                    setSettings({ theme: parseInt(val) })
+                  }
+                }}
+              />
+            }
+          />
+          <SettingsPrefRow
+            title={t('Font Size')}
+            description={`${settings.fontSize}px`}
+            align="start"
+            control={
+              <LazySlider
+                step={1}
+                min={10}
+                max={22}
+                w={160}
+                marks={[{ value: 14 }]}
+                value={settings.fontSize}
+                onChange={(val) => setSettings({ fontSize: val })}
+              />
+            }
+          />
+          <SettingsPrefRow
+            title={t('Startup Page')}
+            align="start"
+            control={
+              <Radio.Group
+                value={settings.startupPage}
+                defaultValue="home"
+                onChange={(val) => setSettings({ startupPage: val as 'home' | 'session' })}
+              >
+                <Flex gap="sm" direction="column">
+                  <Radio label={t('Home Page')} value="home" />
+                  <Radio label={t('Last Session')} value="session" />
+                </Flex>
+              </Radio.Group>
+            }
+          />
+        </SettingsCard>
+      </SettingsSection>
 
-        {/* Accent Color */}
-        <AccentColorPicker />
+      <SettingsCollapsible
+        title={t('Network Proxy')}
+        description={t('Optional proxy for outbound network requests.')}
+        badge={t('Optional')}
+        defaultOpen={Boolean(settings.proxy?.trim())}
+      >
+        <SettingsCard>
+          <div className="settings-field">
+            <TextInput
+              placeholder="socks5://127.0.0.1:6153"
+              value={settings.proxy}
+              onChange={(e) => setSettings({ proxy: e.currentTarget.value })}
+            />
+          </div>
+        </SettingsCard>
+      </SettingsCollapsible>
 
-        {/* Startup Page */}
-        <Stack>
-          <Text>{t('Startup Page')}</Text>
-          <Radio.Group
-            value={settings.startupPage}
-            defaultValue="home"
-            onChange={(val) => setSettings({ startupPage: val as any })}
-          >
-            <Flex gap="md">
-              <Radio label={t('Home Page')} value="home" />
-              <Radio label={t('Last Session')} value="session" />
-            </Flex>
-          </Radio.Group>
-        </Stack>
-      </Stack>
+      <SettingsCollapsible
+        title={t('Data & backup')}
+        description={t('Recovery, sync, export/import, and diagnostic logs.')}
+        badge={t('Optional')}
+      >
+        <div className="settings-collapsible-stack">
+          <DataRecoverySection />
+          <ImportExportDataSection />
+          <ExportLogsSection />
+        </div>
+      </SettingsCollapsible>
 
-      <Divider />
+      <SettingsSection
+        title={t('Error Reporting')}
+        description={t(
+          'Chatbox respects your privacy and only uploads anonymous error data and events when necessary. You can change your preferences at any time in the settings.'
+        )}
+      >
+        <SettingsCard divided>
+          <SettingsPrefRow
+            title={t('Anonymous crash & event reporting')}
+            description={t('Enable optional anonymous reporting of crash and event data')}
+            control={
+              <Switch
+                checked={settings.allowReportingAndTracking}
+                onChange={(e) => setSettings({ allowReportingAndTracking: e.target.checked })}
+              />
+            }
+          />
+        </SettingsCard>
+      </SettingsSection>
 
-      {/* Network Proxy */}
-      <Stack gap="xs">
-        <Title order={5}>{t('Network Proxy')}</Title>
-        <TextInput
-          maw={320}
-          placeholder="socks5://127.0.0.1:6153"
-          value={settings.proxy}
-          onChange={(e) =>
-            setSettings({
-              proxy: e.currentTarget.value,
-            })
-          }
-        />
-      </Stack>
-
-      <Divider />
-
-      {/* Data Recovery */}
-      <DataRecoverySection />
-
-      <Divider />
-
-      {/* import and export data */}
-      <ImportExportDataSection />
-
-      <Divider />
-
-      {/* Export Logs */}
-      <ExportLogsSection />
-
-      <Divider />
-
-      {/* Error Reporting */}
-      <Stack gap="md">
-        <Stack gap="xxs">
-          <Title order={5}>{t('Error Reporting')}</Title>
-          <Text c="chatbox-tertiary">
-            {t(
-              'Chatbox respects your privacy and only uploads anonymous error data and events when necessary. You can change your preferences at any time in the settings.'
-            )}
-          </Text>
-        </Stack>
-
-        <Checkbox
-          label={t('Enable optional anonymous reporting of crash and event data')}
-          checked={settings.allowReportingAndTracking}
-          onChange={(e) => setSettings({ allowReportingAndTracking: e.target.checked })}
-        />
-      </Stack>
-
-      {/* others */}
-      {platformCapabilities.supportsDesktopOnlySettings && (
-        <>
-          <Divider />
-
-          <Stack gap="xl">
-            <Switch
-              label={t('Keep running in menu bar / system tray')}
+      {platformCapabilities.supportsDesktopOnlySettings && platform.type === 'desktop' && (
+        <SettingsSection title={t('Desktop')}>
+          <SettingsCard divided>
+            <SettingsPrefRow
+              title={t('Keep running in menu bar / system tray')}
               description={t(
                 'When enabled, closing the window hides Chaeboxi instead of quitting. Use the menu bar icon or hotkey to reopen.'
               )}
-              checked={settings.keepInTray !== false}
-              onChange={(e) =>
-                setSettings({
-                  keepInTray: e.currentTarget.checked,
-                })
+              control={
+                <Switch
+                  checked={settings.keepInTray !== false}
+                  onChange={(e) => setSettings({ keepInTray: e.currentTarget.checked })}
+                />
               }
             />
-            <Switch
-              label={t('Quick chat always on top')}
+            <SettingsPrefRow
+              title={t('Quick chat always on top')}
               description={t('Keep the floating quick chat window above other apps.')}
-              checked={settings.quickWindowAlwaysOnTop !== false}
-              onChange={(e) =>
-                setSettings({
-                  quickWindowAlwaysOnTop: e.currentTarget.checked,
-                })
+              control={
+                <Switch
+                  checked={settings.quickWindowAlwaysOnTop !== false}
+                  onChange={(e) => setSettings({ quickWindowAlwaysOnTop: e.currentTarget.checked })}
+                />
               }
             />
-            <Switch
-              label={t('Launch at system startup')}
-              checked={settings.autoLaunch}
-              onChange={(e) =>
-                setSettings({
-                  autoLaunch: e.currentTarget.checked,
-                })
+            <SettingsPrefRow
+              title={t('Launch at system startup')}
+              control={
+                <Switch
+                  checked={settings.autoLaunch}
+                  onChange={(e) => setSettings({ autoLaunch: e.currentTarget.checked })}
+                />
               }
             />
-            <Switch
-              label={t('Automatic updates')}
-              checked={settings.autoUpdate}
-              onChange={(e) =>
-                setSettings({
-                  autoUpdate: e.currentTarget.checked,
-                })
+            <SettingsPrefRow
+              title={t('Automatic updates')}
+              control={
+                <Switch
+                  checked={settings.autoUpdate}
+                  onChange={(e) => setSettings({ autoUpdate: e.currentTarget.checked })}
+                />
               }
             />
-            <Switch
-              label={t('Beta updates')}
-              checked={settings.betaUpdate}
-              onChange={(e) =>
-                setSettings({
-                  betaUpdate: e.currentTarget.checked,
-                })
+            <SettingsPrefRow
+              title={t('Beta updates')}
+              control={
+                <Switch
+                  checked={settings.betaUpdate}
+                  onChange={(e) => setSettings({ betaUpdate: e.currentTarget.checked })}
+                />
               }
             />
-          </Stack>
-        </>
+          </SettingsCard>
+        </SettingsSection>
       )}
-    </Stack>
-  )
-}
-
-const DEFAULT_ACCENT_COLOR = '#228be6'
-
-const AccentColorPicker = () => {
-  const { t } = useTranslation()
-  const { setSettings, accentColor } = useSettingsStore((state) => state)
-
-  // Local draft state so the picker preview is snappy while typing in the hex input
-  const [draft, setDraft] = useState<string>(accentColor ?? DEFAULT_ACCENT_COLOR)
-  const [pickerOpen, setPickerOpen] = useState(false)
-  // containerRef wraps the entire accent-color section (swatch + hex input + picker
-  // popover) so that clicks on any of these elements are treated as "inside" and
-  // don't trigger the outside-click handler.
-  const containerRef = useRef<HTMLDivElement>(null)
-
-  // Keep draft in sync when settings change externally (e.g. on import)
-  useEffect(() => {
-    setDraft(accentColor ?? DEFAULT_ACCENT_COLOR)
-  }, [accentColor])
-
-  // Close picker when clicking outside the entire accent-color widget
-  useEffect(() => {
-    if (!pickerOpen) return
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setPickerOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [pickerOpen])
-
-  const isValidHex = (value: string) => /^#[0-9a-fA-F]{6}$/.test(value)
-
-  const commit = (value: string) => {
-    if (isValidHex(value)) {
-      setSettings({ accentColor: value })
-    }
-  }
-
-  const handlePickerChange = (value: string) => {
-    setDraft(value)
-    commit(value)
-  }
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.currentTarget.value
-    setDraft(value)
-    if (isValidHex(value)) {
-      commit(value)
-    }
-  }
-
-  const handleReset = () => {
-    setDraft(DEFAULT_ACCENT_COLOR)
-    setSettings({ accentColor: undefined })
-  }
-
-  const currentColor = accentColor ?? DEFAULT_ACCENT_COLOR
-
-  return (
-    <Stack gap="xs" ref={containerRef}>
-      <Text>{t('Accent Color')}</Text>
-      <Flex gap="xs" align="center">
-        {/* Color swatch — clicking opens/closes the picker */}
-        <div
-          onClick={() => setPickerOpen((v) => !v)}
-          style={{
-            width: 32,
-            height: 32,
-            borderRadius: 6,
-            backgroundColor: currentColor,
-            border: '1px solid var(--chatbox-border-primary)',
-            cursor: 'pointer',
-            flexShrink: 0,
-          }}
-          aria-label={t('Accent Color')}
-        />
-
-        {/* Hex value text input */}
-        <TextInput
-          maw={120}
-          size="sm"
-          value={draft}
-          onChange={handleInputChange}
-          onBlur={() => {
-            // Revert draft to committed value if input is invalid on blur
-            if (!isValidHex(draft)) {
-              setDraft(currentColor)
-            }
-          }}
-          styles={{ input: { fontFamily: 'monospace' } }}
-        />
-
-        {/* Reset button — only shown when a custom color is set */}
-        {accentColor && (
-          <Button variant="subtle" size="xs" color="chatbox-gray" onClick={handleReset}>
-            {t('Reset to Default')}
-          </Button>
-        )}
-      </Flex>
-
-      {/* Floating color picker popover */}
-      {pickerOpen && (
-        <div
-          style={{
-            position: 'absolute',
-            zIndex: 3500,
-            marginTop: 4,
-            boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
-            borderRadius: 8,
-            overflow: 'hidden',
-          }}
-        >
-          <HexColorPicker color={draft} onChange={handlePickerChange} />
-        </div>
-      )}
-    </Stack>
+    </SettingsPage>
   )
 }
 
@@ -454,45 +303,50 @@ const DataRecoverySection = () => {
   const hasPartialFailure = recoveryResult?.success && recoveryResult.failed && recoveryResult.failed > 0
 
   return (
-    <Stack gap="md">
-      <Stack gap="xxs">
-        <Title order={5}>{t('Data Recovery')}</Title>
-        <Text c="chatbox-tertiary">
-          {t('If conversations are missing from the list, use this feature to scan and recover them from storage')}
-        </Text>
-      </Stack>
-      <Button className="self-start" onClick={handleRecover} disabled={isRecovering} loading={isRecovering}>
-        {isRecovering ? t('Recovering...') : t('Recover Conversation List')}
-      </Button>
-      {recoveryResult && (
-        <Alert
-          className="self-start"
-          variant="light"
-          color={recoveryResult.success ? (hasPartialFailure ? 'yellow' : 'green') : 'red'}
-          title={
-            recoveryResult.success
-              ? t('Recovered {{count}} conversations', { count: recoveryResult.recovered })
-              : t('Recovery failed')
-          }
-          icon={<IconInfoCircle />}
-        >
-          {recoveryResult.success ? (
-            <Stack gap="xs">
-              <Text size="sm">{t('The conversation list has been successfully recovered')}</Text>
-              {hasPartialFailure && (
-                <Text size="sm" c="orange">
-                  {t('{{count}} conversations could not be recovered due to data read errors', {
-                    count: recoveryResult.failed,
-                  })}
-                </Text>
-              )}
-            </Stack>
-          ) : (
-            <Text size="sm">{recoveryResult.error || t('Unknown error')}</Text>
-          )}
-        </Alert>
+    <SettingsSection
+      title={t('Data Recovery')}
+      description={t(
+        'If conversations are missing from the list, use this feature to scan and recover them from storage'
       )}
-    </Stack>
+    >
+      <SettingsCard>
+        <div className="settings-card-fields">
+          <div className="settings-actions">
+            <Button onClick={handleRecover} disabled={isRecovering} loading={isRecovering}>
+              {isRecovering ? t('Recovering...') : t('Recover Conversation List')}
+            </Button>
+          </div>
+          {recoveryResult && (
+            <Alert
+              className="self-start"
+              variant="light"
+              color={recoveryResult.success ? (hasPartialFailure ? 'yellow' : 'green') : 'red'}
+              title={
+                recoveryResult.success
+                  ? t('Recovered {{count}} conversations', { count: recoveryResult.recovered })
+                  : t('Recovery failed')
+              }
+              icon={<IconInfoCircle />}
+            >
+              {recoveryResult.success ? (
+                <Stack gap="xs">
+                  <Text size="sm">{t('The conversation list has been successfully recovered')}</Text>
+                  {hasPartialFailure && (
+                    <Text size="sm" c="orange">
+                      {t('{{count}} conversations could not be recovered due to data read errors', {
+                        count: recoveryResult.failed,
+                      })}
+                    </Text>
+                  )}
+                </Stack>
+              ) : (
+                <Text size="sm">{recoveryResult.error || t('Unknown error')}</Text>
+              )}
+            </Alert>
+          )}
+        </div>
+      </SettingsCard>
+    </SettingsSection>
   )
 }
 
@@ -745,8 +599,8 @@ const ImportExportDataSection = () => {
       delete data[StorageKey.MyCopilots]
     }
     const date = new Date()
-    data['__exported_items'] = exportItems
-    data['__exported_at'] = date.toISOString()
+    data.__exported_items = exportItems
+    data.__exported_at = date.toISOString()
     const dateStr = dayjs(date).format('YYYY-M-D')
     platform.exporter.exportTextFile(`chatbox-exported-data-${dateStr}.json`, JSON.stringify(data))
   }
@@ -856,235 +710,224 @@ const ImportExportDataSection = () => {
 
   return (
     <>
-      <Stack gap="lg">
-        <Stack gap="xxs">
-          <Title order={5}>{t('Cross-device Chat History')}</Title>
-          <Text c="chatbox-tertiary">
-            {t(
-              'Export conversations from this machine and import them on another machine. Existing conversations will be merged by session id.'
-            )}
-          </Text>
-        </Stack>
-        {historyTransferTips && (
-          <Alert
-            className="self-start"
-            variant="light"
-            color={historyTransferError ? 'yellow' : 'green'}
-            title={historyTransferError ? t('History transfer failed') : t('History transfer completed')}
-            icon={<IconInfoCircle />}
-          >
-            <Text size="sm">{historyTransferTips}</Text>
-          </Alert>
+      <SettingsSection
+        title={t('Cross-device Chat History')}
+        description={t(
+          'Export conversations from this machine and import them on another machine. Existing conversations will be merged by session id.'
         )}
-        <Flex gap="md">
-          <Button className="self-start" onClick={onExportHistoryTransfer} loading={isHistoryTransferPending}>
-            {t('Export Chat History for Transfer')}
-          </Button>
-          <FileButton accept="application/json" onChange={onImportHistoryTransfer}>
-            {(props) => (
-              <Button {...props} className="self-start" loading={isHistoryTransferPending}>
-                {t('Import and Merge Chat History')}
+      >
+        <SettingsCard>
+          <div className="settings-card-fields">
+            {historyTransferTips && (
+              <Alert
+                className="self-start"
+                variant="light"
+                color={historyTransferError ? 'yellow' : 'green'}
+                title={historyTransferError ? t('History transfer failed') : t('History transfer completed')}
+                icon={<IconInfoCircle />}
+              >
+                <Text size="sm">{historyTransferTips}</Text>
+              </Alert>
+            )}
+            <div className="settings-actions">
+              <Button onClick={onExportHistoryTransfer} loading={isHistoryTransferPending}>
+                {t('Export Chat History for Transfer')}
               </Button>
-            )}
-          </FileButton>
-        </Flex>
-      </Stack>
+              <FileButton accept="application/json" onChange={onImportHistoryTransfer}>
+                {(props) => (
+                  <Button {...props} loading={isHistoryTransferPending}>
+                    {t('Import and Merge Chat History')}
+                  </Button>
+                )}
+              </FileButton>
+            </div>
+          </div>
+        </SettingsCard>
+      </SettingsSection>
 
-      <Divider />
-
-      <Stack gap="lg">
-        <Stack gap="xxs">
-          <Title order={5}>{t('Self-hosted History Sync')}</Title>
-          <Text c="chatbox-tertiary">
-            {t(
-              'Connect to your own sync service (for example on Proxmox). The client syncs snapshots with revision conflict handling.'
-            )}
-          </Text>
-        </Stack>
-
-        <Switch
-          label={t('Enable server sync')}
-          checked={historySyncForm.enabled}
-          onChange={(e) => updateHistorySyncForm({ enabled: e.currentTarget.checked })}
-        />
-
-        <TextInput
-          maw={520}
-          label={t('Sync endpoint')}
-          placeholder="https://your-sync-host.example.com"
-          value={historySyncForm.endpoint}
-          onChange={(e) => updateHistorySyncForm({ endpoint: e.currentTarget.value })}
-        />
-
-        <TextInput
-          maw={520}
-          label={t('Sync token')}
-          type="password"
-          value={historySyncForm.token}
-          onChange={(e) => updateHistorySyncForm({ token: e.currentTarget.value })}
-        />
-
-        <Flex gap="md" wrap="wrap" align="flex-end">
-          <Switch
-            label={t('Auto sync in background')}
-            checked={historySyncForm.autoSync}
-            onChange={(e) => updateHistorySyncForm({ autoSync: e.currentTarget.checked })}
-          />
-          <TextInput
-            maw={220}
-            label={t('Auto sync interval (seconds)')}
-            type="number"
-            value={`${historySyncForm.intervalSeconds}`}
-            onChange={(e) => {
-              const parsed = Number(e.currentTarget.value)
-              if (Number.isFinite(parsed)) {
-                updateHistorySyncForm({ intervalSeconds: clampHistorySyncIntervalSeconds(parsed) })
+      <SettingsSection
+        title={t('Self-hosted History Sync')}
+        description={t(
+          'Connect to your own sync service (for example on Proxmox). The client syncs snapshots with revision conflict handling.'
+        )}
+      >
+        <SettingsCard>
+          <div className="settings-card-fields">
+            <SettingsPrefRow
+              title={t('Enable server sync')}
+              control={
+                <Switch
+                  checked={historySyncForm.enabled}
+                  onChange={(e) => updateHistorySyncForm({ enabled: e.currentTarget.checked })}
+                />
               }
-            }}
-          />
-          <Button variant="light" onClick={persistHistorySyncConfig} disabled={!hasUnsavedHistorySyncChanges}>
-            {t('Save Sync Settings')}
-          </Button>
-        </Flex>
-        {hasUnsavedHistorySyncChanges && (
-          <Text size="sm" c="chatbox-tertiary">
-            {t('You have unsaved sync settings. Save to apply background auto sync.')}
-          </Text>
-        )}
-
-        <Stack gap={2}>
-          <Text size="sm" c="chatbox-tertiary">
-            {t('Local sync state: revision {{revision}}, last synced {{lastSyncedAt}}', {
-              revision: historySyncStatus?.revision || 0,
-              lastSyncedAt,
-            })}
-          </Text>
-          {historySyncStatus?.lastError && (
-            <Text size="sm" c="red">
-              {historySyncStatus.lastError}
-            </Text>
-          )}
-        </Stack>
-
-        {historySyncTips && (
-          <Alert
-            className="self-start"
-            variant="light"
-            color={historySyncError ? 'yellow' : 'green'}
-            title={historySyncError ? t('History sync failed') : t('History sync completed')}
-            icon={<IconInfoCircle />}
-          >
-            <Text size="sm">{historySyncTips}</Text>
-          </Alert>
-        )}
-
-        {!hasHistorySyncCredentials && (
-          <Text size="sm" c="chatbox-tertiary">
-            {t('Set endpoint and token first, then test/pull/push/sync')}
-          </Text>
-        )}
-
-        <Flex gap="md" wrap="wrap">
-          <Button
-            className="self-start"
-            variant="light"
-            onClick={onTestHistorySync}
-            loading={historySyncAction === 'test'}
-            disabled={!hasHistorySyncCredentials || isHistorySyncPending}
-          >
-            {t('Test Connection')}
-          </Button>
-          <Button
-            className="self-start"
-            variant="light"
-            onClick={onPullHistorySync}
-            loading={historySyncAction === 'pull'}
-            disabled={!canRunSyncAction}
-          >
-            {t('Pull from Server')}
-          </Button>
-          <Button
-            className="self-start"
-            variant="light"
-            onClick={onPushHistorySync}
-            loading={historySyncAction === 'push'}
-            disabled={!canRunSyncAction}
-          >
-            {t('Push to Server')}
-          </Button>
-          <Button
-            className="self-start"
-            onClick={onSyncHistoryNow}
-            loading={historySyncAction === 'sync'}
-            disabled={!canRunSyncAction}
-          >
-            {t('Sync Now')}
-          </Button>
-        </Flex>
-      </Stack>
-
-      <Divider />
-
-      <Stack gap="md">
-        <Title order={5} onDoubleClick={() => setShowStorageInfo(true)}>
-          {t('Data Backup')}
-        </Title>
-        {showStorageInfo && (
-          <Text size="xs" c="chatbox-tertiary">
-            {storageInfo}
-          </Text>
-        )}
-        {[
-          { label: t('Settings'), value: ExportDataItem.Setting },
-          { label: t('API Keys'), value: ExportDataItem.Key },
-          { label: t('Chat History'), value: ExportDataItem.Conversations },
-          { label: t('My Agents'), value: ExportDataItem.Copilot },
-        ].map(({ label, value }) => (
-          <Checkbox
-            key={value}
-            checked={exportItems.includes(value)}
-            label={label}
-            onChange={(e) => {
-              const checked = e.currentTarget.checked
-              if (checked && !exportItems.includes(value)) {
-                setExportItems([...exportItems, value])
-              } else if (!checked) {
-                setExportItems(exportItems.filter((v) => v !== value))
+            />
+            <TextInput
+              label={t('Sync endpoint')}
+              placeholder="https://your-sync-host.example.com"
+              value={historySyncForm.endpoint}
+              onChange={(e) => updateHistorySyncForm({ endpoint: e.currentTarget.value })}
+            />
+            <TextInput
+              label={t('Sync token')}
+              type="password"
+              value={historySyncForm.token}
+              onChange={(e) => updateHistorySyncForm({ token: e.currentTarget.value })}
+            />
+            <SettingsPrefRow
+              title={t('Auto sync in background')}
+              control={
+                <Switch
+                  checked={historySyncForm.autoSync}
+                  onChange={(e) => updateHistorySyncForm({ autoSync: e.currentTarget.checked })}
+                />
               }
-            }}
-          />
-        ))}
-        <Button className="self-start" onClick={onExport}>
-          {t('Export Selected Data')}
-        </Button>
-      </Stack>
+            />
+            <TextInput
+              maw={220}
+              label={t('Auto sync interval (seconds)')}
+              type="number"
+              value={`${historySyncForm.intervalSeconds}`}
+              onChange={(e) => {
+                const parsed = Number(e.currentTarget.value)
+                if (Number.isFinite(parsed)) {
+                  updateHistorySyncForm({ intervalSeconds: clampHistorySyncIntervalSeconds(parsed) })
+                }
+              }}
+            />
+            <div className="settings-actions">
+              <Button variant="light" onClick={persistHistorySyncConfig} disabled={!hasUnsavedHistorySyncChanges}>
+                {t('Save Sync Settings')}
+              </Button>
+            </div>
+            {hasUnsavedHistorySyncChanges && (
+              <Text size="sm" c="chatbox-tertiary">
+                {t('You have unsaved sync settings. Save to apply background auto sync.')}
+              </Text>
+            )}
+            <Stack gap={2}>
+              <Text size="sm" c="chatbox-tertiary">
+                {t('Local sync state: revision {{revision}}, last synced {{lastSyncedAt}}', {
+                  revision: historySyncStatus?.revision || 0,
+                  lastSyncedAt,
+                })}
+              </Text>
+              {historySyncStatus?.lastError && (
+                <Text size="sm" c="red">
+                  {historySyncStatus.lastError}
+                </Text>
+              )}
+            </Stack>
+            {historySyncTips && (
+              <Alert
+                className="self-start"
+                variant="light"
+                color={historySyncError ? 'yellow' : 'green'}
+                title={historySyncError ? t('History sync failed') : t('History sync completed')}
+                icon={<IconInfoCircle />}
+              >
+                <Text size="sm">{historySyncTips}</Text>
+              </Alert>
+            )}
+            {!hasHistorySyncCredentials && (
+              <Text size="sm" c="chatbox-tertiary">
+                {t('Set endpoint and token first, then test/pull/push/sync')}
+              </Text>
+            )}
+            <div className="settings-actions">
+              <Button
+                variant="light"
+                onClick={onTestHistorySync}
+                loading={historySyncAction === 'test'}
+                disabled={!hasHistorySyncCredentials || isHistorySyncPending}
+              >
+                {t('Test Connection')}
+              </Button>
+              <Button
+                variant="light"
+                onClick={onPullHistorySync}
+                loading={historySyncAction === 'pull'}
+                disabled={!canRunSyncAction}
+              >
+                {t('Pull from Server')}
+              </Button>
+              <Button
+                variant="light"
+                onClick={onPushHistorySync}
+                loading={historySyncAction === 'push'}
+                disabled={!canRunSyncAction}
+              >
+                {t('Push to Server')}
+              </Button>
+              <Button onClick={onSyncHistoryNow} loading={historySyncAction === 'sync'} disabled={!canRunSyncAction}>
+                {t('Sync Now')}
+              </Button>
+            </div>
+          </div>
+        </SettingsCard>
+      </SettingsSection>
 
-      <Divider />
+      <SettingsSection title={t('Data Backup')}>
+        <SettingsCard>
+          <div className="settings-card-fields">
+            <span className="settings-field-label select-none" onDoubleClick={() => setShowStorageInfo(true)}>
+              {t('Include in export')}
+            </span>
+            {showStorageInfo && (
+              <Text size="xs" c="chatbox-tertiary">
+                {storageInfo}
+              </Text>
+            )}
+            {[
+              { label: t('Settings'), value: ExportDataItem.Setting },
+              { label: t('API Keys'), value: ExportDataItem.Key },
+              { label: t('Chat History'), value: ExportDataItem.Conversations },
+              { label: t('My Agents'), value: ExportDataItem.Copilot },
+            ].map(({ label, value }) => (
+              <Checkbox
+                key={value}
+                checked={exportItems.includes(value)}
+                label={label}
+                onChange={(e) => {
+                  const checked = e.currentTarget.checked
+                  if (checked && !exportItems.includes(value)) {
+                    setExportItems([...exportItems, value])
+                  } else if (!checked) {
+                    setExportItems(exportItems.filter((v) => v !== value))
+                  }
+                }}
+              />
+            ))}
+            <div className="settings-actions">
+              <Button onClick={onExport}>{t('Export Selected Data')}</Button>
+            </div>
+          </div>
+        </SettingsCard>
+      </SettingsSection>
 
-      <Stack gap="lg">
-        <Stack gap="xxs">
-          <Title order={5}>{t('Data Restore')}</Title>
-          <Text c="chatbox-tertiary">
-            {t('Upon import, changes will take effect immediately and existing data will be overwritten')}
-          </Text>
-        </Stack>
-        {importTips && (
-          <Alert
-            className=" self-start"
-            variant="light"
-            color="yellow"
-            title={importTips}
-            icon={<IconInfoCircle />}
-          ></Alert>
-        )}
-        <FileButton accept="application/json" onChange={onImport}>
-          {(props) => (
-            <Button {...props} className="self-start">
-              {t('Import and Restore')}
-            </Button>
-          )}
-        </FileButton>
-      </Stack>
+      <SettingsSection
+        title={t('Data Restore')}
+        description={t('Upon import, changes will take effect immediately and existing data will be overwritten')}
+      >
+        <SettingsCard>
+          <div className="settings-card-fields">
+            {importTips && (
+              <Alert
+                className="self-start"
+                variant="light"
+                color="yellow"
+                title={importTips}
+                icon={<IconInfoCircle />}
+              />
+            )}
+            <div className="settings-actions">
+              <FileButton accept="application/json" onChange={onImport}>
+                {(props) => <Button {...props}>{t('Import and Restore')}</Button>}
+              </FileButton>
+            </div>
+          </div>
+        </SettingsCard>
+      </SettingsSection>
     </>
   )
 }
@@ -1126,7 +969,7 @@ const ExportLogsSection = () => {
     }
   }
 
-  const handleClearLogs = async () => {
+  const _handleClearLogs = async () => {
     try {
       await platform.clearLogs()
       setExportResult({ success: true })
@@ -1136,28 +979,32 @@ const ExportLogsSection = () => {
   }
 
   return (
-    <Stack gap="md">
-      <Stack gap="xxs">
-        <Title order={5}>{t('Diagnostic Logs')}</Title>
-        <Text c="chatbox-tertiary">
-          {t(
-            'Export application logs for troubleshooting. These logs may be requested by support to help diagnose issues.'
-          )}
-        </Text>
-      </Stack>
-      <Flex gap="md">
-        <Button variant="primary" onClick={handleExportLogs} disabled={isExporting} loading={isExporting}>
-          {isExporting ? t('Exporting...') : t('Export Logs')}
-        </Button>
-        {/* <Button variant="subtle" color="red" onClick={handleClearLogs} disabled={isExporting}>
-          {t('Clear Logs')}
-        </Button> */}
-      </Flex>
-      {exportResult && !exportResult.success && (
-        <Alert className="self-start" variant="light" color="red" title={t('Export failed')} icon={<IconInfoCircle />}>
-          <Text size="sm">{exportResult.error || t('Unknown error')}</Text>
-        </Alert>
+    <SettingsSection
+      title={t('Diagnostic Logs')}
+      description={t(
+        'Export application logs for troubleshooting. These logs may be requested by support to help diagnose issues.'
       )}
-    </Stack>
+    >
+      <SettingsCard>
+        <div className="settings-card-fields">
+          <div className="settings-actions">
+            <Button variant="primary" onClick={handleExportLogs} disabled={isExporting} loading={isExporting}>
+              {isExporting ? t('Exporting...') : t('Export Logs')}
+            </Button>
+          </div>
+          {exportResult && !exportResult.success && (
+            <Alert
+              className="self-start"
+              variant="light"
+              color="red"
+              title={t('Export failed')}
+              icon={<IconInfoCircle />}
+            >
+              <Text size="sm">{exportResult.error || t('Unknown error')}</Text>
+            </Alert>
+          )}
+        </div>
+      </SettingsCard>
+    </SettingsSection>
   )
 }

@@ -34,12 +34,14 @@ import {
 } from '@/packages/context-management/attachment-payload'
 import { generateImage, streamText } from '@/packages/model-calls'
 import { getModelDisplayName } from '@/packages/model-setting-utils'
+import { buildCommandContextBlocks, resolveCommandActivations } from '@/packages/commands'
 import { buildSkillContextBlocks, resolveSkillActivations, selectCatalogForInject } from '@/packages/skills'
 import { estimateTokensFromMessages } from '@/packages/token'
 import { getVideoLimits } from '@/packages/video'
 import platform from '@/platform'
 import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
+import { mergeCommandsList, refreshAgentCommands, userCommandsAtom } from '@/stores/commandsStore'
 import { mergeSkillsList, refreshAgentSkills, userSkillsAtom } from '@/stores/skillsStore'
 import { flushSessionTasks } from '@/stores/taskStore'
 import { trackEvent } from '@/utils/track'
@@ -669,7 +671,52 @@ export async function generate(
           }
         }
 
-        // Execute pre-turn hooks and prepend context to messages (skip in multi-agent room for cost/noise)
+        // Global always-on SessionStart (once) + PreTurn, then agent/copilot pre hooks
+        // (skip multi-agent room for cost/noise)
+        if (!roomMulti) {
+          try {
+            const { runHooks } = await import('@/packages/hooks')
+            const {
+              mergeHooksList,
+              refreshAgentHooks,
+              pushHookAudit,
+              loadHookOverrides,
+              claimSessionStart,
+            } = await import('@/stores/hooksStore')
+            await refreshAgentHooks({ workspaceRoot: session.workspaceRoot })
+            const overrides = await loadHookOverrides()
+            const globalHooks = mergeHooksList(overrides)
+            const shellEnabled = Boolean(overrides.shellHooksEnabled)
+
+            if (claimSessionStart(sessionId, session.workspaceRoot)) {
+              const sessionStart = await runHooks({
+                event: 'SessionStart',
+                hooks: globalHooks,
+                shellEnabled,
+                sessionId,
+                workspaceRoot: session.workspaceRoot,
+                onRun: pushHookAudit,
+              })
+              if (sessionStart.injectText) {
+                promptMsgs.unshift(createMessage('system', sessionStart.injectText))
+              }
+            }
+
+            const globalPre = await runHooks({
+              event: 'PreTurn',
+              hooks: globalHooks,
+              shellEnabled,
+              sessionId,
+              workspaceRoot: session.workspaceRoot,
+              onRun: pushHookAudit,
+            })
+            if (globalPre.injectText) {
+              promptMsgs.unshift(createMessage('system', globalPre.injectText))
+            }
+          } catch {
+            // non-fatal
+          }
+        }
         const preHookContext =
           !roomMulti && isAgentEnabled && copilotOverrides?.hooks?.preTurn
             ? await (await import('@/packages/copilot-hooks')).executePreHooks(copilotOverrides.hooks.preTurn)
@@ -763,9 +810,14 @@ export async function generate(
         // Skills: progressive catalog + activated bodies (explicit $ / pin / auto)
         // Ensure agent folders have been scanned at least once this session.
         try {
-          await refreshAgentSkills()
+          await refreshAgentSkills({ workspaceRoot: session.workspaceRoot })
         } catch {
           // non-fatal — builtins + user skills still work
+        }
+        try {
+          await refreshAgentCommands({ workspaceRoot: session.workspaceRoot })
+        } catch {
+          // non-fatal
         }
         const priorUserMsg = [...messages.slice(0, targetMsgIx)].reverse().find((m) => m.role === 'user')
         const storedUserSkills = getDefaultStore().get(userSkillsAtom)
@@ -783,7 +835,21 @@ export async function generate(
         if (skillContext) {
           promptMsgs.unshift(createMessage('system', skillContext))
         }
-        // Show skill chips on normal replies, team answer, or work deliverable
+
+        // Commands: explicit / tags only (never auto)
+        const storedUserCommands = getDefaultStore().get(userCommandsAtom)
+        const commandPackages = mergeCommandsList(Array.isArray(storedUserCommands) ? storedUserCommands : [])
+        const commandActivations = resolveCommandActivations({
+          commands: commandPackages,
+          explicitCommandIds: priorUserMsg?.commandIds,
+        })
+        const commandById = new Map(commandPackages.map((c) => [c.id, c]))
+        const commandContext = buildCommandContextBlocks(commandActivations, commandById)
+        if (commandContext) {
+          promptMsgs.unshift(createMessage('system', commandContext))
+        }
+
+        // Show skill/command chips on normal replies, team answer, or work deliverable
         const showSkillChips =
           skillActivations.length > 0 &&
           (!roomMulti ||
@@ -791,8 +857,19 @@ export async function generate(
             options?.roomRole === 'do' ||
             options?.roomRole === 'deliver' ||
             !options?.roomRole)
-        if (showSkillChips) {
-          targetMsg = { ...targetMsg, skillActivations }
+        const showCommandChips =
+          commandActivations.length > 0 &&
+          (!roomMulti ||
+            options?.roomRole === 'synthesis' ||
+            options?.roomRole === 'do' ||
+            options?.roomRole === 'deliver' ||
+            !options?.roomRole)
+        if (showSkillChips || showCommandChips) {
+          targetMsg = {
+            ...targetMsg,
+            ...(showSkillChips ? { skillActivations } : {}),
+            ...(showCommandChips ? { commandActivations } : {}),
+          }
           await modifyMessage(sessionId, targetMsg, false, true)
         }
 
@@ -827,7 +904,27 @@ export async function generate(
           maxSteps: roomMulti && !roomToolsAllowed ? 1 : maxSteps,
           tools: toolsToUse,
           toolAccess: copilotOverrides?.toolAccess,
+          memory: speakerAgentId
+            ? {
+                agentId: speakerAgentId,
+                agentName:
+                  getAgentDetailById(speakerAgentId)?.name || targetMsg.name || speakerAgentId,
+              }
+            : undefined,
         })
+
+        // Auto-save memory (non-blocking)
+        try {
+          const { maybeAutoSaveMemory } = await import('@/packages/memory/auto-save')
+          void maybeAutoSaveMemory({
+            sessionId,
+            messages: [...messages.slice(0, targetMsgIx + 1), targetMsg],
+            agentId: speakerAgentId,
+            sessionSettings: effectiveSettings,
+          })
+        } catch {
+          // non-fatal
+        }
 
         // Extract plan text from result if in planning phase
         const planTextFromResult = result.text ?? ''
@@ -907,11 +1004,30 @@ export async function generate(
           await chatStore.updateSession(sessionId, { planPhase: undefined })
         }
 
-        // Execute post-turn hooks after generation (only in execution phase or non-plan mode)
-        if (!roomMulti && isAgentEnabled && copilotOverrides?.hooks?.postTurn) {
+        // Global PostTurn hooks, then agent/copilot post hooks
+        if (!roomMulti) {
           const outputText = result.text ?? ''
-          const { executePostHooks } = await import('@/packages/copilot-hooks')
-          await executePostHooks(copilotOverrides.hooks.postTurn, outputText)
+          try {
+            const { runHooks } = await import('@/packages/hooks')
+            const { mergeHooksList, pushHookAudit, loadHookOverrides } = await import('@/stores/hooksStore')
+            const overrides = await loadHookOverrides()
+            const globalHooks = mergeHooksList(overrides)
+            await runHooks({
+              event: 'PostTurn',
+              hooks: globalHooks,
+              shellEnabled: Boolean(overrides.shellHooksEnabled),
+              sessionId,
+              workspaceRoot: session.workspaceRoot,
+              output: outputText,
+              onRun: pushHookAudit,
+            })
+          } catch {
+            // non-fatal
+          }
+          if (isAgentEnabled && copilotOverrides?.hooks?.postTurn) {
+            const { executePostHooks } = await import('@/packages/copilot-hooks')
+            await executePostHooks(copilotOverrides.hooks.postTurn, outputText)
+          }
         }
 
         // In plan mode with pending plan, don't process queued messages yet - wait for approval

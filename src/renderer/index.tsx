@@ -39,6 +39,7 @@ import { isTauriRuntime } from './platform/tauri_ipc_adapter'
 import { isCapacitorMobile } from './platform'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { initLastUsedModelStore } from './stores/lastUsedModelStore'
+import { ensureMemoryStoreInit } from './stores/memoryStore'
 import { initSettingsStore } from './stores/settingsStore'
 
 // 开发环境下引入错误测试工具
@@ -75,6 +76,13 @@ async function initializeApp() {
   } catch (e) {
     log.error('migrate error', e)
     Sentry.captureException(e as Error)
+  }
+
+  try {
+    await ensureMemoryStoreInit()
+    log.info('memory store ready')
+  } catch (e) {
+    log.error('memory store init error', e)
   }
 
   // 最后执行 storage 清理，清理不 block 进入UI

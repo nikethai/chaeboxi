@@ -19,6 +19,7 @@ import { modifyMessage, removeCurrentThread, startNewThread, submitNewUserMessag
 import { getAllMessageList } from '@/stores/sessionHelpers'
 import { taskStore } from '@/stores/taskStore'
 import { useUIStore } from '@/stores/uiStore'
+import { isThreadVisuallyEmpty } from '@/utils/chat-starters'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 import { getSessionRouteState } from '@/utils/sessionRouteState'
 
@@ -48,6 +49,7 @@ function RouteComponent() {
   const [showToolAudit, setShowToolAudit] = useState(false)
 
   const currentMessageList = useMemo(() => (currentSession ? getAllMessageList(currentSession) : []), [currentSession])
+  const threadEmpty = useMemo(() => isThreadVisuallyEmpty(currentMessageList), [currentMessageList])
   const lastGeneratingMessage = useMemo(
     () => currentMessageList.find((m: Message) => m.generating),
     [currentMessageList]
@@ -229,11 +231,7 @@ function RouteComponent() {
         <div className="session-main-col">
           {/* MessageList 设置 key，确保每个 session 对应新的 MessageList 实例 */}
           <div className="session-thread">
-            <MessageList
-              ref={messageListRef}
-              key={`message-list${currentSessionId}`}
-              currentSession={currentSession}
-            />
+            <MessageList ref={messageListRef} key={`message-list${currentSessionId}`} currentSession={currentSession} />
           </div>
 
           {/* Agent chrome — compact strip above composer (OpenClaw + tool audit) */}
@@ -320,6 +318,7 @@ function RouteComponent() {
               providerId={model?.provider}
               generating={!!lastGeneratingMessage}
               sessionId={currentSession.id}
+              empty={threadEmpty}
             />
           </div>
         </div>

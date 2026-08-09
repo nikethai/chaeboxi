@@ -46,6 +46,11 @@ import {
 import { trackingEvent } from '@/packages/event'
 import { replacePromptTemplateVars } from '@/packages/model-calls/message-utils'
 import { getModelContextWindowSync } from '@/packages/model-context'
+import {
+  extractCommandNamesFromText,
+  getActiveCommandSlashQuery,
+  stripCommandSlashTokens,
+} from '@/packages/commands'
 import { extractSkillNamesFromText, getActiveSkillDollarQuery, stripSkillDollarTokens } from '@/packages/skills'
 import * as picUtils from '@/packages/pic_utils'
 import { formatBytesForDisplay, formatDurationForDisplay, getVideoLimits } from '@/packages/video'
@@ -60,14 +65,28 @@ import * as chatStore from '@/stores/chatStore'
 import { useSession, useSessionSettings } from '@/stores/chatStore'
 import { usePromptPresets } from '@/stores/promptPresetsStore'
 import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
+import { useCommands } from '@/stores/commandsStore'
 import { useSkills } from '@/stores/skillsStore'
 import { useUIStore } from '@/stores/uiStore'
 import { delay } from '@/utils'
 import { trackEvent } from '@/utils/track'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 import { getModelReadiness } from '@/utils/modelReadiness'
-import type { KnowledgeBase, Message, SessionType, ShortcutSendValue, SkillPackage } from '../../../shared/types'
-import { type AgentDetail, MAX_ROOM_AGENTS, ModelProviderEnum, SKILL_EXPLICIT_MAX } from '../../../shared/types'
+import type {
+  CommandPackage,
+  KnowledgeBase,
+  Message,
+  SessionType,
+  ShortcutSendValue,
+  SkillPackage,
+} from '../../../shared/types'
+import {
+  type AgentDetail,
+  COMMAND_EXPLICIT_MAX,
+  MAX_ROOM_AGENTS,
+  ModelProviderEnum,
+  SKILL_EXPLICIT_MAX,
+} from '../../../shared/types'
 import * as dom from '../../hooks/dom'
 import * as sessionHelpers from '../../stores/sessionHelpers'
 import * as toastActions from '../../stores/toastActions'
@@ -97,6 +116,7 @@ import {
   storeLinkPromise,
 } from './preprocessState'
 import QueuedMessageList from './QueuedMessageList'
+import CommandPicker, { filterCommands } from './CommandPicker'
 import SkillPicker, { filterSkills } from './SkillPicker'
 
 export type InputBoxPayload = {
@@ -210,10 +230,15 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     const { promptPresets } = usePromptPresets()
     const { enabledSkills, skills: allSkills } = useSkills()
+    const { enabledCommands, commands: allCommands } = useCommands()
     /** Session-sticky skill chips selected via $ */
     const [selectedSkills, setSelectedSkills] = useState<SkillPackage[]>([])
     const [skillPickerDismissed, setSkillPickerDismissed] = useState(false)
     const [skillHighlightIndex, setSkillHighlightIndex] = useState(0)
+    /** Turn-sticky command chips selected via / */
+    const [selectedCommands, setSelectedCommands] = useState<CommandPackage[]>([])
+    const [commandPickerDismissed, setCommandPickerDismissed] = useState(false)
+    const [commandHighlightIndex, setCommandHighlightIndex] = useState(0)
     /** Turn-sticky agent chips selected via @ */
     const [selectedAgents, setSelectedAgents] = useState<AgentDetail[]>([])
     const [agentPickerDismissed, setAgentPickerDismissed] = useState(false)
@@ -308,6 +333,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     const pictureInputRef = useRef<HTMLInputElement | null>(null)
     const fileInputRef = useRef<HTMLInputElement | null>(null)
+    /** Anchor for portaled @ / $ / / pickers (avoids blank-home overflow clip). */
+    const composerCardRef = useRef<HTMLDivElement | null>(null)
 
     // Check if any preprocessing is in progress
     const isPreprocessing = useMemo(() => {
@@ -591,10 +618,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     const { addInputBoxHistory, getPreviousHistoryInput, getNextHistoryInput, resetHistoryIndex } = useInputBoxHistory()
     const [presetHighlightIndex, setPresetHighlightIndex] = useState(0)
-    const showPresetPicker = useMemo(
-      () => sessionType === 'chat' && !isOpenClawModel && messageInput.startsWith('/') && !messageInput.includes('\n'),
-      [isOpenClawModel, messageInput, sessionType]
-    )
+    // Presets no longer own bare `/` — Commands do. Preset picker stays available via Settings.
+    const showPresetPicker = false
     const [openClawPickerDismissed, setOpenClawPickerDismissed] = useState(false)
 
     const showOpenClawCommandPicker = useMemo(
@@ -607,6 +632,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         !openClawPickerDismissed,
       [isOpenClawModel, messageInput, sessionType, openClawPickerDismissed]
     )
+    const commandSlashQuery = useMemo(
+      () =>
+        sessionType === 'chat' && !isOpenClawModel ? getActiveCommandSlashQuery(messageInput) : null,
+      [isOpenClawModel, messageInput, sessionType]
+    )
     const skillDollarQuery = useMemo(
       () => (sessionType === 'chat' ? getActiveSkillDollarQuery(messageInput) : null),
       [messageInput, sessionType]
@@ -615,18 +645,33 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       () => (sessionType === 'chat' ? getActiveAgentAtQuery(messageInput) : null),
       [messageInput, sessionType]
     )
+    const showCommandPicker = useMemo(
+      () =>
+        sessionType === 'chat' &&
+        commandSlashQuery !== null &&
+        !showOpenClawCommandPicker &&
+        !commandPickerDismissed &&
+        selectedCommands.length < COMMAND_EXPLICIT_MAX,
+      [
+        sessionType,
+        commandSlashQuery,
+        showOpenClawCommandPicker,
+        commandPickerDismissed,
+        selectedCommands.length,
+      ]
+    )
     const showSkillPicker = useMemo(
       () =>
         sessionType === 'chat' &&
         skillDollarQuery !== null &&
-        !showPresetPicker &&
+        !showCommandPicker &&
         !showOpenClawCommandPicker &&
         !skillPickerDismissed &&
         selectedSkills.length < SKILL_EXPLICIT_MAX,
       [
         sessionType,
         skillDollarQuery,
-        showPresetPicker,
+        showCommandPicker,
         showOpenClawCommandPicker,
         skillPickerDismissed,
         selectedSkills.length,
@@ -636,7 +681,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       () =>
         sessionType === 'chat' &&
         agentAtQuery !== null &&
-        !showPresetPicker &&
+        !showCommandPicker &&
         !showOpenClawCommandPicker &&
         !showSkillPicker &&
         !agentPickerDismissed &&
@@ -644,12 +689,20 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       [
         sessionType,
         agentAtQuery,
-        showPresetPicker,
+        showCommandPicker,
         showOpenClawCommandPicker,
         showSkillPicker,
         agentPickerDismissed,
         selectedAgents.length,
       ]
+    )
+    const filteredCommands = useMemo(
+      () =>
+        filterCommands(
+          enabledCommands.filter((c) => !selectedCommands.some((sel) => sel.id === c.id)),
+          commandSlashQuery || ''
+        ).slice(0, 8),
+      [enabledCommands, selectedCommands, commandSlashQuery]
     )
     const filteredSkills = useMemo(
       () =>
@@ -784,6 +837,24 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       [resetHistoryIndex, setMessageInput]
     )
 
+    const handleCommandSelect = useCallback(
+      (command: CommandPackage) => {
+        setSelectedCommands((prev) => {
+          if (prev.some((c) => c.id === command.id) || prev.length >= COMMAND_EXPLICIT_MAX) return prev
+          return [...prev, command]
+        })
+        // Clear slash draft (entire single-line /partial)
+        setMessageInput((prev) => (getActiveCommandSlashQuery(prev) !== null ? '' : prev))
+        setCommandPickerDismissed(false)
+        resetHistoryIndex()
+        dom.focusMessageInput()
+        setTimeout(() => {
+          dom.setMessageInputCursorToEnd()
+        }, 0)
+      },
+      [resetHistoryIndex, setMessageInput]
+    )
+
     const handlePresetSelect = useCallback(
       async (presetId: string) => {
         const preset = filteredPresets.find((item) => item.id === presetId)
@@ -855,7 +926,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         // Sample video frames for vision models right before send
         let constructedMessage = preConstructedMessage.message
 
-        // Attach skills from $ chips + inline $tokens; strip $tokens from text to model
+        // Attach skills from $ chips + inline $tokens; commands from / chips + tokens
         // Attach agents from @ chips
         {
           const rawText = constructedMessage.contentParts.find((p) => p.type === 'text')?.text || ''
@@ -876,13 +947,34 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               skillIds.push(s.id)
             }
           }
+
+          const commandNamesFromText = extractCommandNamesFromText(rawText)
+          const nameToCommand = new Map(allCommands.map((c) => [c.name, c]))
+          const commandIds: string[] = []
+          const seenCmd = new Set<string>()
+          for (const c of selectedCommands) {
+            if (!seenCmd.has(c.id)) {
+              seenCmd.add(c.id)
+              commandIds.push(c.id)
+            }
+          }
+          for (const name of commandNamesFromText) {
+            const c = nameToCommand.get(name)
+            if (c && !seenCmd.has(c.id) && commandIds.length < COMMAND_EXPLICIT_MAX) {
+              seenCmd.add(c.id)
+              commandIds.push(c.id)
+            }
+          }
+
           let cleanedText = stripSkillDollarTokens(rawText)
+          cleanedText = stripCommandSlashTokens(cleanedText)
           cleanedText = stripActiveAgentAtToken(cleanedText)
 
           const mentionedAgentIds = selectedAgents.map((a) => a.id).slice(0, MAX_ROOM_AGENTS)
           constructedMessage = {
             ...constructedMessage,
             skillIds: skillIds.length ? skillIds : undefined,
+            commandIds: commandIds.length ? commandIds : undefined,
             mentionedAgentIds: mentionedAgentIds.length ? mentionedAgentIds : undefined,
             contentParts: constructedMessage.contentParts.map((p) =>
               p.type === 'text' ? { ...p, text: cleanedText } : p
@@ -977,12 +1069,54 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       (event: React.ChangeEvent<HTMLTextAreaElement>) => {
         const input = event.target.value
         setMessageInput(input)
+        setCommandPickerDismissed(false)
+        setSkillPickerDismissed(false)
+        setAgentPickerDismissed(false)
         resetHistoryIndex()
       },
       [setMessageInput, resetHistoryIndex]
     )
 
     const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (showCommandPicker) {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault()
+          if (filteredCommands.length > 0) {
+            setCommandHighlightIndex((index) => (index + 1) % filteredCommands.length)
+          }
+          return
+        }
+        if (event.key === 'ArrowUp') {
+          event.preventDefault()
+          if (filteredCommands.length > 0) {
+            setCommandHighlightIndex((index) => (index - 1 + filteredCommands.length) % filteredCommands.length)
+          }
+          return
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          setCommandPickerDismissed(true)
+          return
+        }
+        if (
+          event.key === 'Enter' &&
+          !event.shiftKey &&
+          !event.ctrlKey &&
+          !event.altKey &&
+          !event.metaKey &&
+          filteredCommands[commandHighlightIndex]
+        ) {
+          event.preventDefault()
+          handleCommandSelect(filteredCommands[commandHighlightIndex])
+          return
+        }
+        if (event.key === 'Tab' && filteredCommands[commandHighlightIndex]) {
+          event.preventDefault()
+          handleCommandSelect(filteredCommands[commandHighlightIndex])
+          return
+        }
+      }
+
       if (showAgentPicker) {
         if (event.key === 'ArrowDown') {
           event.preventDefault()
@@ -1627,10 +1761,15 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           {currentSessionId && <QueuedMessageList sessionId={currentSessionId} />}
           {currentSessionId ? <TeamRoomActions sessionId={currentSessionId} /> : null}
           <Stack
+            ref={composerCardRef}
             className={cn(
               'composer-card relative justify-between',
               isFileDragActive && 'composer-card-drag-active',
-              (showSkillPicker || showAgentPicker || showPresetPicker || showOpenClawCommandPicker) &&
+              (showCommandPicker ||
+                showSkillPicker ||
+                showAgentPicker ||
+                showPresetPicker ||
+                showOpenClawCommandPicker) &&
                 'composer-card-picker-open'
             )}
             gap={0}
@@ -1650,6 +1789,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             </div>
             {showPresetPicker && (
               <PresetPicker
+                anchorRef={composerCardRef}
                 highlightedIndex={presetHighlightIndex}
                 onHighlightChange={setPresetHighlightIndex}
                 onManage={() => navigateToSettings('/chat')}
@@ -1662,6 +1802,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             )}
             {showOpenClawCommandPicker && (
               <OpenClawCommandPicker
+                anchorRef={composerCardRef}
                 commands={openClawCommands}
                 highlightedIndex={presetHighlightIndex}
                 onHighlightChange={setPresetHighlightIndex}
@@ -1671,6 +1812,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             )}
             {showAgentPicker && (
               <AgentPicker
+                anchorRef={composerCardRef}
                 agents={allAgents}
                 highlightedIndex={agentHighlightIndex}
                 onHighlightChange={setAgentHighlightIndex}
@@ -1679,8 +1821,20 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 excludeIds={selectedAgents.map((a) => a.id)}
               />
             )}
+            {showCommandPicker && (
+              <CommandPicker
+                anchorRef={composerCardRef}
+                commands={enabledCommands}
+                highlightedIndex={commandHighlightIndex}
+                onHighlightChange={setCommandHighlightIndex}
+                onSelect={handleCommandSelect}
+                query={commandSlashQuery || ''}
+                excludeIds={selectedCommands.map((c) => c.id)}
+              />
+            )}
             {showSkillPicker && (
               <SkillPicker
+                anchorRef={composerCardRef}
                 skills={enabledSkills}
                 highlightedIndex={skillHighlightIndex}
                 onHighlightChange={setSkillHighlightIndex}
@@ -1690,8 +1844,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               />
             )}
 
-            {/* Agent room + skills — shared horizontal inset (team mode lives next to model picker) */}
-            {(selectedAgents.length > 0 || roomAgentIds.length > 0 || selectedSkills.length > 0) && (
+            {/* Agent room + skills + commands — shared horizontal inset */}
+            {(selectedAgents.length > 0 ||
+              roomAgentIds.length > 0 ||
+              selectedSkills.length > 0 ||
+              selectedCommands.length > 0) && (
               <div className="composer-meta-stack">
                 {selectedAgents.length > 0 ? (
                   <div className="composer-meta-row">
@@ -1724,6 +1881,27 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     embedded
                     onRemove={sessionId ? handleRemoveRoomAgent : undefined}
                   />
+                ) : null}
+
+                {selectedCommands.length > 0 ? (
+                  <div className="composer-meta-row">
+                    {selectedCommands.map((command) => (
+                      <span key={command.id} className="composer-skill-chip">
+                        <span className="composer-skill-chip-sigil" aria-hidden>
+                          /
+                        </span>
+                        <span>{command.name}</span>
+                        <button
+                          type="button"
+                          className="composer-skill-chip-remove"
+                          aria-label={t('Remove command')}
+                          onClick={() => setSelectedCommands((prev) => prev.filter((c) => c.id !== command.id))}
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
                 ) : null}
 
                 {selectedSkills.length > 0 ? (

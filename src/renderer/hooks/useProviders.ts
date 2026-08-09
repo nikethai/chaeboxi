@@ -4,6 +4,7 @@ import { ModelProviderEnum, type ProviderInfo } from '@shared/types'
 import { useCallback, useMemo } from 'react'
 import { useSettingsStore } from '@/stores/settingsStore'
 
+/** Providers ready for chat model selection (credentials / local models). */
 export const useProviders = () => {
   const setSettings = useSettingsStore((state) => state.setSettings)
   const providerSettingsMap = useSettingsStore((state) => state.providers)
@@ -16,8 +17,7 @@ export const useProviders = () => {
       allProviderBaseInfos
         .map((p) => {
           const providerSettings = providerSettingsMap?.[p.id]
-          // Builtin providers: API key OR OAuth (e.g. SuperGrok on xAI)
-          // Local/custom: models list is enough
+          // Builtin: API key OR OAuth. Local/custom: models list (OpenClaw/ComfyUI may use defaults).
           if (
             (!p.isCustom && hasProviderCredentials(providerSettings)) ||
             ((p.isCustom ||
@@ -30,14 +30,12 @@ export const useProviders = () => {
                   p.defaultSettings?.models?.length)))
           ) {
             return {
-              // 如果没有自定义 models 列表，使用 defaultSettings，否则被自定义的列表（可能有添加或删除部分 model）覆盖, 不能包含用户排除过的 models
               models: p.defaultSettings?.models,
               ...p,
               ...providerSettings,
             } as ProviderInfo
-          } else {
-            return null
           }
+          return null
         })
         .filter((p) => !!p),
     [providerSettingsMap, allProviderBaseInfos]

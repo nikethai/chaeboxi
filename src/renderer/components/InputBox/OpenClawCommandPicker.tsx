@@ -1,7 +1,8 @@
-import { Box, Paper, Stack, Text } from '@mantine/core'
-import type { GatewayCommandInfo } from '@/openclaw/gateway'
-import { memo, useEffect, useMemo } from 'react'
+import { Box, Text } from '@mantine/core'
+import { memo, type RefObject, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { GatewayCommandInfo } from '@/openclaw/gateway'
+import ComposerPickerPanel from './ComposerPickerPanel'
 
 function fuzzyScore(value: string, query: string) {
   if (!query) {
@@ -59,6 +60,7 @@ export interface OpenClawCommandPickerProps {
   onHighlightChange(index: number): void
   onSelect(command: GatewayCommandInfo): void
   query: string
+  anchorRef: RefObject<HTMLElement | null>
 }
 
 function getCommandAlias(command: GatewayCommandInfo): string {
@@ -77,9 +79,12 @@ function OpenClawCommandPicker({
   onHighlightChange,
   onSelect,
   query,
+  anchorRef,
 }: OpenClawCommandPickerProps) {
   const { t } = useTranslation()
   const filteredCommands = useMemo(() => filterOpenClawCommands(commands, query).slice(0, 8), [commands, query])
+  const catalogEmpty = commands.length === 0
+  const isEmpty = filteredCommands.length === 0
 
   useEffect(() => {
     if (filteredCommands.length === 0) {
@@ -92,58 +97,57 @@ function OpenClawCommandPicker({
   }, [filteredCommands.length, highlightedIndex, onHighlightChange])
 
   return (
-    <Paper
-      shadow="md"
-      radius="md"
-      withBorder
-      className="absolute left-0 right-0 bottom-full mb-2 overflow-hidden z-50"
-      style={{ backgroundColor: 'var(--chatbox-background-primary)' }}
+    <ComposerPickerPanel
+      anchorRef={anchorRef}
+      open
+      aria-label={t('OpenClaw Commands')}
+      header={
+        <Text size="xs" c="chatbox-tertiary">
+          {t('OpenClaw Commands')}
+        </Text>
+      }
+      isEmpty={isEmpty}
+      empty={
+        catalogEmpty
+          ? {
+              title: t('No command found'),
+              description: t('Connect OpenClaw to load gateway commands.'),
+            }
+          : {
+              title: t('No command found'),
+            }
+      }
     >
-      <Stack gap={0}>
-        <Box px="sm" py="xs" style={{ borderBottom: '1px solid var(--chatbox-border-primary)' }}>
-          <Text size="xs" c="chatbox-tertiary">
-            {t('OpenClaw Commands')}
-          </Text>
-        </Box>
+      {filteredCommands.map((command, index) => {
+        const selected = index === highlightedIndex
+        const alias = getCommandAlias(command)
 
-        {filteredCommands.length > 0 ? (
-          filteredCommands.map((command, index) => {
-            const selected = index === highlightedIndex
-            const alias = getCommandAlias(command)
-
-            return (
-              <Box
-                key={`${command.nativeName || command.name}:${alias}`}
-                px="sm"
-                py="xs"
-                className="cursor-pointer"
-                bg={selected ? 'var(--chatbox-background-brand-secondary)' : undefined}
-                onMouseEnter={() => onHighlightChange(index)}
-                onMouseDown={(event) => {
-                  event.preventDefault()
-                  onSelect(command)
-                }}
-              >
-                <Text size="sm" fw={600} c={selected ? 'chatbox-brand' : 'chatbox-primary'}>
-                  {alias}
-                </Text>
-                {(command.description || command.usage) && (
-                  <Text size="xs" c="chatbox-secondary" lineClamp={1}>
-                    {command.description || command.usage}
-                  </Text>
-                )}
-              </Box>
-            )
-          })
-        ) : (
-          <Box px="sm" py="md">
-            <Text size="sm" c="chatbox-tertiary">
-              {t('No command found')}
+        return (
+          <Box
+            key={`${command.nativeName || command.name}:${alias}`}
+            px="sm"
+            py="xs"
+            className="composer-picker-row cursor-pointer"
+            data-selected={selected || undefined}
+            bg={selected ? 'var(--chatbox-background-brand-secondary)' : undefined}
+            onMouseEnter={() => onHighlightChange(index)}
+            onMouseDown={(event) => {
+              event.preventDefault()
+              onSelect(command)
+            }}
+          >
+            <Text size="sm" fw={600} c={selected ? 'chatbox-brand' : 'chatbox-primary'}>
+              {alias}
             </Text>
+            {(command.description || command.usage) && (
+              <Text size="xs" c="chatbox-secondary" lineClamp={1}>
+                {command.description || command.usage}
+              </Text>
+            )}
           </Box>
-        )}
-      </Stack>
-    </Paper>
+        )
+      })}
+    </ComposerPickerPanel>
   )
 }
 

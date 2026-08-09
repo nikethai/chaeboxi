@@ -377,6 +377,19 @@ export const MessageSchema = z.object({
     )
     .optional()
     .catch(undefined),
+  /** Explicit command package ids selected via / tags / chips on this user message */
+  commandIds: z.array(z.string()).optional().catch(undefined),
+  /** Commands activated for this turn (assistant message) */
+  commandActivations: z
+    .array(
+      z.object({
+        commandId: z.string(),
+        name: z.string(),
+        mode: z.literal('explicit'),
+      })
+    )
+    .optional()
+    .catch(undefined),
   /** Agent persona id that produced this assistant message (multi-agent room speaker) */
   agentId: z.string().optional().catch(undefined),
   /** Agent persona ids @-mentioned on this user message */

@@ -1,4 +1,4 @@
-import { Alert, Button, Flex, Loader, SegmentedControl, Stack, Text, TextInput } from '@mantine/core'
+import { Alert, Button, Flex, Loader, SegmentedControl, Stack, Text } from '@mantine/core'
 import {
   fetchXaiModels,
   humanizeOAuthNetworkError,
@@ -12,10 +12,12 @@ import {
   type XaiAuthMode,
 } from '@shared/providers/oauth'
 import type { ProviderSettings } from '@shared/types'
-import { IconCopy, IconExternalLink, IconInfoCircle, IconLogout } from '@tabler/icons-react'
+import { IconCopy, IconExternalLink, IconLogout } from '@tabler/icons-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
+import { SettingsCallout } from '@/components/settings/SettingsCallout'
+import { SettingsPrefRow } from '@/components/settings/SettingsPrefRow'
 import platform from '@/platform'
 import { add as addToast } from '@/stores/toastActions'
 
@@ -149,101 +151,126 @@ export function XaiAuthSection({ providerSettings, setProviderSettings }: XaiAut
   }
 
   return (
-    <Stack gap="sm">
-      <Stack gap="xxs">
-        <Text span fw="600">
-          {t('How do you connect?')}
-        </Text>
-        <SegmentedControl
-          fullWidth
-          value={authMode}
-          onChange={handleModeChange}
-          data={[
-            { label: t('SuperGrok / X Premium'), value: 'oauth' },
-            { label: t('API Key'), value: 'api_key' },
-          ]}
-        />
-      </Stack>
+    <div className="settings-card-fields">
+      <SettingsPrefRow
+        title={t('How do you connect?')}
+        description={
+          authMode === 'oauth'
+            ? t(
+                'Sign in with SuperGrok or X Premium — subscription quota, no console.x.ai key. If you get 403, use an API key instead.'
+              )
+            : t('API keys from console.x.ai are billed separately from SuperGrok / X Premium.')
+        }
+        align="start"
+        control={
+          <SegmentedControl
+            className="settings-segmented"
+            value={authMode}
+            onChange={handleModeChange}
+            data={[
+              { label: t('Subscription'), value: 'oauth' },
+              { label: t('API Key'), value: 'api_key' },
+            ]}
+          />
+        }
+      />
 
       {authMode === 'oauth' && (
-        <Stack gap="sm">
-          <Alert variant="light" color="blue" icon={<IconInfoCircle />} title={t('Subscription login')}>
-            <Text size="sm">
-              {t(
-                'Sign in with your SuperGrok or X Premium account. Uses your subscription quota — no console.x.ai API key required. Some tiers may be restricted by xAI; if you get 403, use an API key instead.'
-              )}
-            </Text>
-          </Alert>
-
-          <Flex gap="xs" align="center" wrap="wrap">
-            <Text size="sm" c={signedIn ? 'teal' : 'chatbox-secondary'}>
-              {signedIn ? t('Signed in') : t('Not signed in')}
-            </Text>
-            {signedIn ? (
-              <Button
-                variant="light"
-                color="gray"
-                size="compact-sm"
-                leftSection={<ScalableIcon icon={IconLogout} size={14} />}
-                onClick={handleSignOut}
-              >
-                {t('Sign out')}
-              </Button>
-            ) : (
-              <Button
-                size="sm"
-                loading={phase === 'starting'}
-                disabled={phase === 'waiting'}
-                onClick={() => void handleSignIn()}
-              >
-                {t('Sign in with SuperGrok / X Premium')}
-              </Button>
-            )}
-            {signedIn && (
-              <Button variant="subtle" size="compact-sm" onClick={() => void handleSignIn()}>
-                {t('Re-authenticate')}
-              </Button>
-            )}
-          </Flex>
+        <>
+          <SettingsPrefRow
+            title={t('Account')}
+            description={!signedIn ? t('Not signed in') : undefined}
+            align="start"
+            control={
+              <div className="settings-actions">
+                {signedIn ? (
+                  <>
+                    <span className="settings-status-pill settings-status-pill-ok">{t('Signed in')}</span>
+                    <Button
+                      variant="default"
+                      size="compact-sm"
+                      leftSection={<ScalableIcon icon={IconLogout} size={14} />}
+                      onClick={handleSignOut}
+                    >
+                      {t('Sign out')}
+                    </Button>
+                    <Button variant="subtle" size="compact-sm" onClick={() => void handleSignIn()}>
+                      {t('Re-authenticate')}
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    size="sm"
+                    loading={phase === 'starting'}
+                    disabled={phase === 'waiting'}
+                    onClick={() => void handleSignIn()}
+                  >
+                    {t('Sign in with SuperGrok / X Premium')}
+                  </Button>
+                )}
+              </div>
+            }
+          />
 
           {(phase === 'waiting' || phase === 'starting') && (
-            <Stack gap="xs" p="sm" className="rounded-md border border-[var(--mantine-color-default-border)]">
+            <div className="settings-device-code-panel">
               <Flex gap="xs" align="center">
                 <Loader size="sm" />
-                <Text size="sm">{t('Waiting for browser approval…')}</Text>
+                <Text size="sm" fw={600}>
+                  {t('Waiting for browser approval…')}
+                </Text>
               </Flex>
               {userCode && (
-                <Flex gap="xs" align="center" wrap="wrap">
-                  <Text size="sm" fw={600}>
-                    {t('Code')}:
+                <Stack gap="xs" align="center">
+                  <Text size="xs" c="chatbox-tertiary" ta="center">
+                    {t('Your one-time code')}
                   </Text>
-                  <TextInput value={userCode} readOnly w={140} size="sm" />
-                  <Button
-                    variant="light"
-                    size="compact-sm"
-                    leftSection={<ScalableIcon icon={IconCopy} size={14} />}
-                    onClick={() => void handleCopyCode()}
+                  <Text
+                    ff="monospace"
+                    fw={700}
+                    className="settings-device-code"
+                    style={{
+                      fontSize: 26,
+                      letterSpacing: '0.16em',
+                      lineHeight: 1.2,
+                      userSelect: 'all',
+                    }}
                   >
-                    {t('Copy')}
-                  </Button>
-                  <Button
-                    variant="subtle"
-                    size="compact-sm"
-                    leftSection={<ScalableIcon icon={IconExternalLink} size={14} />}
-                    onClick={handleOpenAgain}
-                  >
-                    {t('Open again')}
-                  </Button>
-                </Flex>
+                    {userCode}
+                  </Text>
+                  <div className="settings-actions" style={{ justifyContent: 'center' }}>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      leftSection={<ScalableIcon icon={IconCopy} size={16} />}
+                      onClick={() => void handleCopyCode()}
+                    >
+                      {t('Copy code')}
+                    </Button>
+                    <Button
+                      variant="default"
+                      size="sm"
+                      leftSection={<ScalableIcon icon={IconExternalLink} size={16} />}
+                      onClick={handleOpenAgain}
+                    >
+                      {t('Open login page')}
+                    </Button>
+                    <Button variant="subtle" size="sm" onClick={cancelSignIn}>
+                      {t('Cancel')}
+                    </Button>
+                  </div>
+                </Stack>
               )}
-              <Button variant="default" size="compact-sm" className="self-start" onClick={cancelSignIn}>
-                {t('Cancel')}
-              </Button>
-            </Stack>
+              {!userCode && (
+                <Button variant="default" size="compact-sm" className="self-start" onClick={cancelSignIn}>
+                  {t('Cancel')}
+                </Button>
+              )}
+            </div>
           )}
 
           {phase === 'error' && errorMessage && (
-            <Alert color="red" title={t('Sign-in failed')}>
+            <Alert color="red" title={t('Sign-in failed')} radius="md">
               <Stack gap="xs">
                 <Text size="sm">{errorMessage}</Text>
                 <Button size="compact-sm" className="self-start" onClick={() => void handleSignIn()}>
@@ -253,7 +280,7 @@ export function XaiAuthSection({ providerSettings, setProviderSettings }: XaiAut
             </Alert>
           )}
 
-          <Flex gap="sm" wrap="wrap">
+          <div className="settings-actions">
             <Button
               variant="subtle"
               size="compact-xs"
@@ -270,28 +297,28 @@ export function XaiAuthSection({ providerSettings, setProviderSettings }: XaiAut
             >
               {t('X Premium')}
             </Button>
-          </Flex>
-        </Stack>
+          </div>
+        </>
       )}
 
       {authMode === 'api_key' && (
-        <Alert variant="light" color="yellow" icon={<IconInfoCircle />} title={t('Developer API')}>
-          <Text size="sm">
+        <SettingsCallout title={t('Developer API')} tone="warning">
+          <Text size="sm" c="inherit" component="div">
             {t(
               'API keys from console.x.ai are billed separately from SuperGrok / X Premium. Switch to SuperGrok / X Premium to use your subscription.'
             )}
           </Text>
           <Button
             mt="xs"
-            variant="light"
+            variant="default"
             size="compact-sm"
             leftSection={<ScalableIcon icon={IconExternalLink} size={14} />}
             onClick={() => platform.openLink('https://console.x.ai/')}
           >
             {t('Get API Key')}
           </Button>
-        </Alert>
+        </SettingsCallout>
       )}
-    </Stack>
+    </div>
   )
 }

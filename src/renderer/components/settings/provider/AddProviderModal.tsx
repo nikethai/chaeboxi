@@ -1,12 +1,14 @@
-import { Button, Flex, Select, Stack, Text, TextInput } from '@mantine/core'
+import { Button, Stack, Text, TextInput } from '@mantine/core'
 import { ModelProviderType } from '@shared/types'
 import { useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuidv4 } from 'uuid'
 import { AdaptiveSelect } from '@/components/AdaptiveSelect'
 import { AdaptiveModal } from '@/components/common/AdaptiveModal'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { blurActiveElement } from './addProviderModalUtils'
 
 interface AddProviderModalProps {
   opened: boolean
@@ -16,10 +18,17 @@ interface AddProviderModalProps {
 export function AddProviderModal({ opened, onClose }: AddProviderModalProps) {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const isSmallScreen = useIsSmallScreen()
   const setSettings = useSettingsStore((s) => s.setSettings)
   const customProviders = useSettingsStore((s) => s.customProviders)
   const [newProviderName, setNewProviderName] = useState('')
   const [newProviderMode, setNewProviderMode] = useState<ModelProviderType>(ModelProviderType.OpenAI)
+
+  useEffect(() => {
+    if (opened && isSmallScreen) {
+      blurActiveElement()
+    }
+  }, [opened, isSmallScreen])
 
   const handleAddProvider = () => {
     const pid = `custom-provider-${uuidv4()}`

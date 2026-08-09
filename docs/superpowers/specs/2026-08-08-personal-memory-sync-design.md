@@ -101,7 +101,7 @@ Rules:
 - `text` is the memory content shown to the model and user.
 - `category` and `tags` support future filtering/retrieval but v1 injection uses deterministic order.
 - `revision` increments on every local write and is used for sync conflict resolution.
-- `deleted` marks a tombstone; tombstones are retained for sync until all known devices have acknowledged deletion, or until a reasonable TTL chosen by implementation, for example 30 days.
+- `deleted` marks a tombstone. Tombstones are retained for 30 days after `updatedAt`; after that, implementations may purge them locally and from encrypted sync payloads during merge/re-encrypt.
 
 ## 5. Storage Architecture
 
@@ -151,8 +151,8 @@ Recommended v1 key story:
 
 1. User enables memory sync.
 2. User enters or generates a sync passphrase.
-3. Client derives an encryption key from the passphrase using a memory-hard or approved KDF, for example Argon2id if available, otherwise PBKDF2 with high iterations.
-4. Client generates a random salt and stores salt/KDF parameters in the unencrypted sync configuration or inside the encrypted container header as required by the chosen KDF implementation.
+3. Client derives an encryption key from the passphrase using PBKDF2-HMAC-SHA-256 via WebCrypto with at least 310,000 iterations. Argon2id may be considered later but is not required for v1.
+4. Client generates a random salt and stores salt/KDF parameters as unencrypted sync metadata. This metadata is not secret; the passphrase is the secret.
 5. Payloads are encrypted with authenticated encryption, for example AES-GCM or ChaCha20-Poly1305 via WebCrypto or platform crypto.
 6. The derived key is never stored permanently; it is derived when needed and held only in memory for active sync operations.
 
@@ -182,7 +182,7 @@ Each sync cycle performs:
    - if only one side changed since common ancestor, accept changed side;
    - if both sides changed, choose the record with later `updatedAt`;
    - if timestamps are equal or ambiguous, choose higher `revision`;
-   - expose unresolved manual conflicts in UI only if needed; v1 may hide conflicts by choosing latest write.
+   - v1 does not expose manual conflict UI; latest-write wins and the merge result is shown in the memory list.
 6. Re-encrypt merged result.
 7. Push with compare-and-swap using server revision.
 8. If push conflicts, re-pull and merge again.

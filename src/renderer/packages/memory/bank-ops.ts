@@ -78,12 +78,22 @@ export function createEntry(input: RetainInput): MemoryEntry | null {
 
 function findDedupeIndex(entries: MemoryEntry[], content: string): number {
   const fp = contentFingerprint(content)
-  const exact = entries.findIndex((e) => contentFingerprint(e.content) === fp)
+  let exact = -1
+  for (let i = 0; i < entries.length; i++) {
+    // A sync tombstone must never absorb a new retain and be resurrected into
+    // active memory; treat it as absent (pre-tombstone hard-delete behavior).
+    if (entries[i].deleted) continue
+    if (contentFingerprint(entries[i].content) === fp) {
+      exact = i
+      break
+    }
+  }
   if (exact >= 0) return exact
 
   let bestIdx = -1
   let bestScore = 0
   for (let i = 0; i < entries.length; i++) {
+    if (entries[i].deleted) continue
     const j = contentTokenJaccard(entries[i].content, content)
     if (j >= NEAR_DUP_THRESHOLD && j > bestScore) {
       bestScore = j

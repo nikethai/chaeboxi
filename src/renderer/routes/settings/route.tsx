@@ -27,7 +27,7 @@ import Page from '@/components/layout/Page'
 import { SettingsBackButton, SettingsCloseButton } from '@/components/settings/SettingsChromeControls'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { closeSettings } from '@/modals/Settings'
-import platform from '@/platform'
+import platform, { platformCapabilities } from '@/platform'
 import { featureFlags } from '@/utils/feature-flags'
 import { getSettingsParentPath } from '@/utils/settings-navigation'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
@@ -96,7 +96,7 @@ const ITEMS = [
     label: 'Memory',
     icon: <IconBook className="w-full h-full" />,
   },
-  ...(CHATBOX_BUILD_PLATFORM !== 'android'
+  ...(platformCapabilities.supportsDesktopOnlySettings && platform.type === 'desktop' && CHATBOX_BUILD_PLATFORM !== 'android'
     ? [
         {
           key: 'agents',
@@ -105,7 +105,7 @@ const ITEMS = [
         },
       ]
     : []),
-  ...(platform.formFactor === 'mobile'
+  ...(platformCapabilities.isMobileLayout
     ? []
     : [
         {

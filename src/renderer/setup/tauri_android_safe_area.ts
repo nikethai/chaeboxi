@@ -1,22 +1,23 @@
-// Tauri Android safe area setup.
-// On Android with enableEdgeToEdge(), the WebView draws behind system bars.
-// env(safe-area-inset-*) may return 0px on older WebViews (Chrome < 94),
-// so we also detect the status bar height via a visual check and inject
-// fallback pixel values when the env() values are zero.
-
-import { invoke } from '@tauri-apps/api/core'
+// Tauri Android safe-area setup.
+//
+// With enableEdgeToEdge(), the WebView draws behind Android system bars.
+// Modern WebViews expose the bar sizes through CSS env(safe-area-inset-*), but
+// older WebViews can resolve those values to 0px. This module makes the
+// CSS/JS fallback explicit: when the top inset resolves to 0px, use standard
+// Android 24px status-bar and 48px navigation-bar fallbacks. There is no
+// native command because no corresponding Tauri/Rust implementation exists.
 
 function applySafeAreaInsets() {
   const root = document.documentElement
 
-  // First, try the standard env() approach
   root.style.setProperty('--mobile-safe-area-inset-top', 'env(safe-area-inset-top, 0px)')
   root.style.setProperty('--mobile-safe-area-inset-bottom', 'env(safe-area-inset-bottom, 0px)')
   root.style.setProperty('--mobile-safe-area-inset-left', 'env(safe-area-inset-left, 0px)')
   root.style.setProperty('--mobile-safe-area-inset-right', 'env(safe-area-inset-right, 0px)')
 
-  // After a tick, check whether env() actually resolved to a nonzero value.
-  // If not, apply a fallback for the status bar.
+  // Evaluate the env() value after styles are applied. If the WebView does not
+  // expose safe-area insets, retain the explicit CSS/JS fallback above rather
+  // than invoking an unimplemented native command.
   requestAnimationFrame(() => {
     const probe = document.createElement('div')
     probe.style.cssText =
@@ -27,31 +28,14 @@ function applySafeAreaInsets() {
     document.body.removeChild(probe)
 
     if (envTop === 0) {
-      // env() returned 0 — the WebView doesn't expose safe area insets.
-      // Use Android status bar height from Tauri, or a sensible default (24dp).
-      const dpr = window.devicePixelRatio || 1
-      // 24dp is the standard Android status bar height; 48dp for bottom nav bar
-      const fallbackTop = Math.round(24 * dpr) / dpr
-      const fallbackBottom = Math.round(48 * dpr) / dpr
-
-      root.style.setProperty('--mobile-safe-area-inset-top', `${fallbackTop}px`)
-      root.style.setProperty('--mobile-safe-area-inset-bottom', `${fallbackBottom}px`)
-
-      // Also try to query the actual status bar height from the Rust side
-      invoke<{ top: number; bottom: number }>('get_system_bar_insets')
-        .then((insets) => {
-          if (insets && insets.top > 0) {
-            root.style.setProperty('--mobile-safe-area-inset-top', `${insets.top}px`)
-          }
-          if (insets && insets.bottom > 0) {
-            root.style.setProperty('--mobile-safe-area-inset-bottom', `${insets.bottom}px`)
-          }
-        })
-        .catch(() => {
-          // Tauri command not available — keep the dp-based fallback
-        })
+      // Standard Android system-bar dimensions in CSS pixels. These are only
+      // used where the WebView cannot provide env(safe-area-inset-*) values.
+      root.style.setProperty('--mobile-safe-area-inset-top', '24px')
+      root.style.setProperty('--mobile-safe-area-inset-bottom', '48px')
     }
   })
 }
 
 applySafeAreaInsets()
+
+export {}

@@ -1,8 +1,7 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { Button } from '@mantine/core'
 import { toSessionAgentFieldsFromSelection } from '@shared/new-chat-agents'
-import type { Session } from '@shared/types'
-import { ModelProviderEnum } from '@shared/types'
+import { ModelProviderEnum, type Session } from '@shared/types'
 import { createFileRoute, useRouterState } from '@tanstack/react-router'
 import { zodValidator } from '@tanstack/zod-adapter'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -11,12 +10,14 @@ import { v4 as uuidv4 } from 'uuid'
 import { z } from 'zod'
 import InputBox, { type InputBoxPayload } from '@/components/InputBox/InputBox'
 import Page from '@/components/layout/Page'
+import NewChatAgentBar from '@/components/new-chat/NewChatAgentBar'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useProviders } from '@/hooks/useProviders'
 import { createSession as createSessionStore } from '@/stores/chatStore'
 import { submitNewUserMessage, switchCurrentSession } from '@/stores/sessionActions'
 import { initEmptyChatSession } from '@/stores/sessionHelpers'
 import { useUIStore } from '@/stores/uiStore'
+import BlankStateStarters from './-components/BlankStateStarters'
 
 /** Dock center → bottom transition duration (must match CSS). */
 const BLANK_DOCK_MOVE_MS = 420
@@ -41,6 +42,7 @@ function Index() {
   const newSessionState = useUIStore((s) => s.newSessionState)
   const setNewSessionState = useUIStore((s) => s.setNewSessionState)
   const addSessionKnowledgeBase = useUIStore((s) => s.addSessionKnowledgeBase)
+  const showCopilotsInNewSession = useUIStore((s) => s.showCopilotsInNewSession)
   const sessionWebBrowsingMap = useUIStore((s) => s.sessionWebBrowsingMap)
   const setSessionWebBrowsing = useUIStore((s) => s.setSessionWebBrowsing)
   const clearSessionWebBrowsing = useUIStore((s) => s.clearSessionWebBrowsing)
@@ -48,8 +50,19 @@ function Index() {
     id: 'new',
     ...initEmptyChatSession(),
   })
+  const [composerDraft, setComposerDraft] = useState('')
+  const [composerKey, setComposerKey] = useState(0)
   /** Center → bottom dock animation in progress (blocks double-submit). */
   const [isSending, setIsSending] = useState(false)
+
+  const fillComposer = useCallback((text: string) => {
+    setComposerDraft(text)
+    setComposerKey((key) => key + 1)
+    localStorage.setItem('new-chat', text)
+    requestAnimationFrame(() => {
+      document.getElementById('message-input')?.focus()
+    })
+  }, [])
 
   const { providers } = useProviders()
 
@@ -67,9 +80,9 @@ function Index() {
 
   const allAgents = useMemo(() => {
     const map = new Map<string, (typeof myCopilots)[0]>()
-    for (const a of myCopilots) map.set(a.id, a)
-    for (const a of remoteCopilots || []) {
-      if (!map.has(a.id)) map.set(a.id, a)
+    for (const agent of myCopilots) map.set(agent.id, agent)
+    for (const agent of remoteCopilots || []) {
+      if (!map.has(agent.id)) map.set(agent.id, agent)
     }
     return Array.from(map.values())
   }, [myCopilots, remoteCopilots])
@@ -80,7 +93,7 @@ function Index() {
   )
 
   const selectedAgents = useMemo(
-    () => selectedAgentIds.map((id) => allAgents.find((a) => a.id === id)).filter(Boolean) as typeof allAgents,
+    () => selectedAgentIds.map((id) => allAgents.find((agent) => agent.id === id)).filter(Boolean) as typeof allAgents,
     [selectedAgentIds, allAgents]
   )
 
@@ -137,6 +150,11 @@ function Index() {
       setSession((old) => ({ ...old, ...fields }))
     }
   }, [routerState.location.search])
+
+  const handleAgentIdsChange = useCallback((ids: string[]) => {
+    const fields = toSessionAgentFieldsFromSelection(ids)
+    setSession((old) => ({ ...old, ...fields }))
+  }, [])
 
   const handleSubmit = useCallback(
     async ({ constructedMessage, needGenerating = true, onUserMessageReady }: InputBoxPayload) => {
@@ -218,15 +236,17 @@ function Index() {
     ]
   )
 
-  const onSelectModel = useCallback((p: string, m: string) => {
+  const onSelectModel = useCallback((provider: string, modelId: string) => {
     setSession((old) => ({
       ...old,
       messages:
-        p === ModelProviderEnum.OpenClaw ? old.messages.filter((message) => message.role !== 'system') : old.messages,
+        provider === ModelProviderEnum.OpenClaw
+          ? old.messages.filter((message) => message.role !== 'system')
+          : old.messages,
       settings: {
         ...(old.settings || {}),
-        provider: p,
-        modelId: m,
+        provider,
+        modelId,
       },
     }))
   }, [])
@@ -268,15 +288,22 @@ function Index() {
               </Button>
             )}
           </div>
+          {providers.length > 0 && <BlankStateStarters onSelect={fillComposer} />}
 
           <div className="session-dock blank-home-dock">
-            <div className="session-dock-pad">
+            <div className="session-dock-pad flex flex-col gap-3">
+              {showCopilotsInNewSession ? (
+                <NewChatAgentBar agents={allAgents} selectedIds={selectedAgentIds} onChange={handleAgentIdsChange} />
+              ) : null}
+
               <InputBox
+                key={`new-composer-${composerKey}`}
                 sessionType="chat"
                 sessionId="new"
                 model={selectedModel}
                 agentMode={session.agentMode ?? false}
                 workspaceRoot={session.workspaceRoot}
+                initialMessage={composerDraft}
                 draftAgentIds={selectedAgentIds}
                 draftRoomMode={session.roomMode === 'work' ? 'work' : 'discuss'}
                 onDraftRoomModeChange={(mode) => setSession((old) => ({ ...old, roomMode: mode }))}

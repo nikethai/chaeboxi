@@ -18,6 +18,7 @@ const Welcome = NiceModal.create(() => {
     <AdaptiveModal
       opened={modal.visible}
       onClose={onClose}
+      ariaLabel={t('Welcome to Chaeboxi')}
       withCloseButton={false}
       centered={true}
       radius="lg"
@@ -25,7 +26,7 @@ const Welcome = NiceModal.create(() => {
         body: 'pt-xxl px-xl pb-md',
       }}
     >
-      <Stack gap="xl">
+      <Stack gap="xl" className="w-full min-w-0">
         <Stack gap="md" align="center">
           <Stack gap="sm" align="center">
             <Image src={icon} w={86} h={86} />
@@ -35,7 +36,12 @@ const Welcome = NiceModal.create(() => {
             </Stack>
           </Stack>
 
-          <List size="sm" c="chatbox-secondary" className="flex flex-col items-center">
+          <List
+            size="sm"
+            c="chatbox-secondary"
+            className="flex flex-col items-stretch"
+            classNames={{ item: 'whitespace-normal' }}
+          >
             <List.Item>{t('Supports a variety of advanced AI models')}</List.Item>
             <List.Item>{t('All data is stored locally, ensuring privacy and rapid access')}</List.Item>
             <List.Item>{t('Ideal for both work and educational scenarios')}</List.Item>

@@ -32,7 +32,7 @@ import { navigateToSettings } from '@/modals/Settings'
 import { BUILTIN_MCP_SERVERS } from '@/packages/mcp/builtin'
 import { useMcpSettings } from '@/stores/settingsStore'
 import { featureFlags } from '@/utils/feature-flags'
-import { CHATBOX_BUILD_PLATFORM } from '@/variables'
+import { platformCapabilities } from '@/platform'
 import { ScalableIcon } from '../common/ScalableIcon'
 import MCPStatus from '../mcp/MCPStatus'
 
@@ -91,18 +91,16 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
   const onMcpEnabledChange = useToggleMCPServer()
   const { data: knowledgeBases } = useKnowledgeBases()
 
-  const mcpEnabledCount = mcp.servers.filter((s) => s.enabled).length + mcp.enabledBuiltinServers.length
+  const mcpServers = mcp.servers.filter((server) => platformCapabilities.supportsMcpStdio || server.transport.type !== 'stdio')
+  const mcpEnabledCount = mcpServers.filter((server) => server.enabled).length + mcp.enabledBuiltinServers.length
   const showMcp = featureFlags.mcp && !isOpenClawModel
   const showKb = featureFlags.knowledgeBase && !isOpenClawModel
   const showWeb = !isOpenClawModel
   const showAgent =
-    sessionType === 'chat' && !isOpenClawModel && CHATBOX_BUILD_PLATFORM !== 'android' && Boolean(onToggleAgentMode)
+    sessionType === 'chat' && !isOpenClawModel && platformCapabilities.supportsDesktopOnlySettings && Boolean(onToggleAgentMode)
   // Desktop Tauri builds use CHATBOX_BUILD_PLATFORM=unknown; web/android cannot write FS.
   const showWorkspace =
-    showAgent &&
-    CHATBOX_BUILD_PLATFORM !== 'web' &&
-    CHATBOX_BUILD_PLATFORM !== 'android' &&
-    Boolean(onWorkspaceRootChange)
+    showAgent && Boolean(onWorkspaceRootChange)
 
   useEffect(() => {
     if (workspaceModalOpen) {
@@ -147,7 +145,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
       >
         <Menu.Target>
           <UnstyledButton
-            className={cn(toolbarButtonClass, 'relative min-w-9 min-h-9 active:scale-[0.96] transition-transform')}
+            className={cn(toolbarButtonClass, 'relative min-w-9 min-h-9 active:scale-[0.96] transition-transform', isSmallScreen && 'mobile-touch-target')}
             aria-label={t('Tools and attachments')}
             aria-expanded={opened}
           >
@@ -260,7 +258,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
                   onEnabledChange={onMcpEnabledChange}
                 />
               ))}
-              {mcp.servers.map((server) => (
+              {mcpServers.map((server) => (
                 <McpServerRow
                   key={server.id}
                   id={server.id}
@@ -269,7 +267,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
                   onEnabledChange={onMcpEnabledChange}
                 />
               ))}
-              {!mcp.servers.length && !mcp.enabledBuiltinServers.length && (
+              {!mcpServers.length && !mcp.enabledBuiltinServers.length && (
                 <Menu.Item component={Link} to="/settings/mcp" onClick={() => setOpened(false)}>
                   {t('Add your first MCP server')}
                 </Menu.Item>

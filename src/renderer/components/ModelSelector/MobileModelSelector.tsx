@@ -1,4 +1,4 @@
-import { Collapse, Flex, Stack, Tabs, Text, TextInput } from '@mantine/core'
+import { Button, Collapse, Flex, Stack, Tabs, Text, TextInput } from '@mantine/core'
 import type { ProviderModelInfo } from '@shared/types'
 import { IconSearch } from '@tabler/icons-react'
 import clsx from 'clsx'
@@ -8,9 +8,11 @@ import { useTranslation } from 'react-i18next'
 import SwipeableViews from 'react-swipeable-views'
 import { Drawer } from 'vaul'
 import { useProviders } from '@/hooks/useProviders'
+import { navigateToSettings } from '@/modals/Settings'
 import { collapsedProvidersAtom } from '@/stores/atoms/uiAtoms'
 import { ScalableIcon } from '../common/ScalableIcon'
 import { ProviderHeader } from './ProviderHeader'
+import { shouldShowProviderSetup } from './mobileModelSelectorUtils'
 import { groupFavoriteModels, ModelItemInDrawer, SELECTED_BG_CLASS } from './shared'
 
 type FilteredProvider = {
@@ -137,7 +139,7 @@ export const MobileModelSelector = forwardRef<HTMLDivElement, MobileModelSelecto
           <Drawer.Content className="flex flex-col rounded-t-[10px] h-fit fixed bottom-0 left-0 right-0 outline-none">
             <Stack gap={0} className="bg-chatbox-background-primary rounded-t-lg h-[85vh]">
               <div aria-hidden className="mx-auto w-16 h-1 flex-shrink-0 rounded-full bg-chatbox-tint-tertiary my-3" />
-              <Drawer.Title className="hidden">{t('Select Model')}</Drawer.Title>
+              <Drawer.Title className="sr-only">{t('Select Model')}</Drawer.Title>
               <Tabs value={activeTab} onChange={onTabChange}>
                 <Tabs.List grow>
                   <Tabs.Tab value="all">{t('All')}</Tabs.Tab>
@@ -166,8 +168,20 @@ export const MobileModelSelector = forwardRef<HTMLDivElement, MobileModelSelecto
                       onChange={(event) => onSearchChange(event.currentTarget.value)}
                       placeholder={t('Search models') as string}
                       leftSection={<ScalableIcon icon={IconSearch} />}
+                      aria-label={t('Search models') as string}
                       className="mt-2"
                     />
+
+                    {shouldShowProviderSetup({ search, providerCount: filteredProviders.length, showAuto }) && (
+                      <Stack align="center" gap="xs" px="md" py="xl">
+                        <Text c="chatbox-tertiary" size="sm" ta="center">
+                          {t('Add a provider and model in settings to start chatting.')}
+                        </Text>
+                        <Button size="compact-sm" variant="light" onClick={() => navigateToSettings('/provider')}>
+                          {t('Open settings')}
+                        </Button>
+                      </Stack>
+                    )}
 
                     {showAuto && (
                       <Flex

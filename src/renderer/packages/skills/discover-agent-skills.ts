@@ -1,4 +1,5 @@
 import type { SkillOrigin, SkillPackage } from '@shared/types'
+import { platformCapabilities } from '@/platform'
 import { resolveAgentRootPathList } from '@/packages/agent-scan'
 import platform from '@/platform'
 import { parseSkillMd } from './parse-skill-md'
@@ -47,7 +48,7 @@ export const AGENT_SKILL_ROOTS: Array<{ origin: SkillOrigin; path: string }> = [
 ]
 
 function isDesktopSkillsScanAvailable(): boolean {
-  return platform.type === 'desktop' && typeof window !== 'undefined' && typeof window.desktopAPI?.invoke === 'function'
+  return platformCapabilities.supportsAgentSkillScan && typeof window !== 'undefined' && typeof window.desktopAPI?.invoke === 'function'
 }
 
 /**

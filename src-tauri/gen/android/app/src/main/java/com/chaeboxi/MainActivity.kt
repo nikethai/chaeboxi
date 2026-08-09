@@ -2,12 +2,56 @@ package com.chaeboxi
 
 import android.os.Bundle
 import android.view.View
+import android.webkit.WebView
+import androidx.activity.OnBackPressedCallback
+import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.enableEdgeToEdge
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
+
+internal fun resolveImeVisibility(rootImeVisible: Boolean?, wasImeVisible: Boolean): Boolean =
+  rootImeVisible ?: wasImeVisible
+
+internal fun dispatchRootSafeBack(
+  canGoBack: Boolean,
+  goBack: () -> Unit,
+  backgroundTask: () -> Unit,
+) {
+  if (canGoBack) {
+    goBack()
+  } else {
+    backgroundTask()
+  }
+}
+
+internal fun createImeBackCallback(
+  dispatcher: OnBackPressedDispatcher,
+  isImeVisible: () -> Boolean,
+  dismissIme: () -> Unit,
+): OnBackPressedCallback = object : OnBackPressedCallback(true) {
+  override fun handleOnBackPressed() {
+    if (isImeVisible()) {
+      dismissIme()
+      return
+    }
+
+    // Step aside only for this dispatch so the callback immediately beneath
+    // us—Tauri's AppPlugin callback—retains the normal Back behavior.
+    isEnabled = false
+    dispatcher.onBackPressed()
+    isEnabled = true
+  }
+}
 
 class MainActivity : TauriActivity() {
   private var wasImeVisible: Boolean = false
+  private var imeBackCallbackRegistered: Boolean = false
+  private var webView: WebView? = null
+
+  private val imeBackCallback by lazy {
+    createImeBackCallback(onBackPressedDispatcher, ::isImeVisible, ::dismissIme)
+  }
 
   override fun onCreate(savedInstanceState: Bundle?) {
     enableEdgeToEdge()
@@ -25,5 +69,52 @@ class MainActivity : TauriActivity() {
       insets
     }
     ViewCompat.requestApplyInsets(root)
+  }
+
+  override fun onWebViewCreate(webView: WebView) {
+    super.onWebViewCreate(webView)
+    this.webView = webView
+  }
+
+  override fun onPostResume() {
+    super.onPostResume()
+    if (!imeBackCallbackRegistered) {
+      // AndroidX dispatches the most recently added enabled callback first.
+      // Tauri registers AppPlugin's callback while creating its WebView, so
+      // this gets the visible-IME Back event before Tauri can finish us.
+      onBackPressedDispatcher.addCallback(this, imeBackCallback)
+      imeBackCallbackRegistered = true
+    }
+  }
+
+  @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION")
+  override fun onBackPressed() {
+    if (isImeVisible()) {
+      dismissIme()
+      return
+    }
+
+    // AppPlugin normally consumes this through its callback first. Its root
+    // fallback calls Activity.onBackPressed() directly, however, so preserve
+    // WebView/hash-router history here as well before applying the Wry-safe
+    // root containment path.
+    dispatchRootSafeBack(
+      canGoBack = webView?.canGoBack() == true,
+      goBack = { webView?.goBack() },
+      // Wry 0.54.4's native Activity destruction path races WebView work and
+      // aborts on a destroyed mutex. Only a true history root backgrounds the
+      // task instead of entering that unsafe teardown path.
+      backgroundTask = { moveTaskToBack(true) },
+    )
+  }
+
+  private fun isImeVisible(): Boolean = resolveImeVisibility(
+    rootImeVisible = ViewCompat.getRootWindowInsets(window.decorView)
+      ?.isVisible(WindowInsetsCompat.Type.ime()),
+    wasImeVisible = wasImeVisible,
+  )
+
+  private fun dismissIme() {
+    WindowInsetsControllerCompat(window, window.decorView).hide(WindowInsetsCompat.Type.ime())
   }
 }

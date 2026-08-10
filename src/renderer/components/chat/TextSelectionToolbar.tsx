@@ -1,5 +1,5 @@
 import { ActionIcon, Group, Paper, Portal, Tooltip } from '@mantine/core'
-import { IconBulb, IconCopy, IconLanguage } from '@tabler/icons-react'
+import { IconBulb, IconCopy, IconLanguage, IconQuote } from '@tabler/icons-react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -8,6 +8,7 @@ type TextSelectionToolbarProps = {
   position: { x: number; y: number } | null
   onExplain: () => void
   onTranslate: () => void
+  onQuote: () => void
   onCopy: () => void
   onClose: () => void
 }
@@ -17,6 +18,7 @@ const TextSelectionToolbar = ({
   position,
   onExplain,
   onTranslate,
+  onQuote,
   onCopy,
   onClose,
 }: TextSelectionToolbarProps) => {
@@ -79,6 +81,11 @@ const TextSelectionToolbar = ({
           <Tooltip label={t('Translate')}>
             <ActionIcon variant="light" radius="xl" onClick={onTranslate} aria-label={t('Translate')}>
               <IconLanguage size={16} />
+            </ActionIcon>
+          </Tooltip>
+          <Tooltip label={t('Quote')}>
+            <ActionIcon variant="light" radius="xl" onClick={onQuote} aria-label={t('Quote')}>
+              <IconQuote size={16} />
             </ActionIcon>
           </Tooltip>
           <Tooltip label={t('Copy')}>

@@ -1,5 +1,6 @@
 import uniq from 'lodash/uniq'
 import { ofetch } from 'ofetch'
+import { CHATBOX_CLOUD_ENABLED } from '../product'
 import { cache } from '../utils/cache'
 
 let API_ORIGIN = 'https://api.chatboxai.app'
@@ -11,6 +12,11 @@ let POOL = [
   'https://api.chatboxapp.xyz',
 ]
 
+/** True when Chaeboxi may call Chaeboxi hosted APIs (local dev override or explicit enable). */
+export function isChatboxCloudAllowed(): boolean {
+  return CHATBOX_CLOUD_ENABLED || Boolean(process.env.USE_LOCAL_API)
+}
+
 export function isChatboxAPI(input: RequestInfo | URL) {
   const url = typeof input === 'string' ? input : (input as Request).url ?? input.toString()
   return POOL.some((o) => url.startsWith(o)) || url.startsWith(API_ORIGIN)
@@ -20,15 +26,22 @@ export function getChatboxAPIOrigin() {
   if (process.env.USE_LOCAL_API) {
     return 'http://localhost:8002'
   }
+  // When cloud is disabled, callers must short-circuit before using this origin.
   return API_ORIGIN
 }
 
 /**
- * 按顺序测试 API 的可用性，只要有一个 API 域名可用，就终止测试并切换所有流量到该域名。
- * 在测试过程中，会根据服务器返回添加新的 API 域名，并缓存到本地
+ * Probe API origins in order; switch traffic to the first healthy origin.
+ * During probing, new origins returned by the server are merged and cached locally.
+ *
+ * Chaeboxi: no-op when Chaeboxi cloud is disabled (stability + no upstream traffic).
  */
 export async function testApiOrigins() {
-  // 按顺序测试 API 的可用性
+  if (!isChatboxCloudAllowed()) {
+    return []
+  }
+
+  // Probe API origin availability in order
   const result = await cache(
     'api_origins',
     async () => {
@@ -38,27 +51,27 @@ export async function testApiOrigins() {
         try {
           const origin: string = pool[i]
           const controller = new AbortController()
-          setTimeout(() => controller.abort(), 2000) // 2秒超时
+          setTimeout(() => controller.abort(), 2000) // 2s timeout
           const res = await ofetch<{ data: { api_origins: string[] } }>(`${origin}/api/api_origins`, {
             signal: controller.signal,
             retry: 1,
           })
-          // 如果服务器返回了新的 API 域名，则更新缓存
+          // If the server returns new API origins, update the cache
           if (res.data.api_origins.length > 0) {
             pool = uniq([...pool, ...res.data.api_origins])
           }
-          // 如果当前 API 可用，则切换所有流量到该域名
+          // If the current origin is healthy, route traffic there
           API_ORIGIN = origin
-          pool = uniq([origin, ...pool]) // 将当前 API 域名添加到列表顶部
+          pool = uniq([origin, ...pool]) // Move the current origin to the front of the list
           POOL = pool
           return pool
-        } catch (e) {
+        } catch {
           i++
         }
       }
       return POOL
     },
-    { ttl: 1000 * 60 * 60, refreshFallbackToCache: true } // 1小时缓存，失败时使用旧缓存
+    { ttl: 1000 * 60 * 60, refreshFallbackToCache: true } // 1h cache; on failure fall back to previous cache
   )
 
   return result

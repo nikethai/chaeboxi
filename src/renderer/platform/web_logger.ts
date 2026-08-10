@@ -2,8 +2,8 @@ import dayjs from 'dayjs'
 import localforage from 'localforage'
 
 const LOG_STORAGE_KEY = 'chatbox-app-logs'
-const MAX_LOG_ENTRIES = 1000 // 最大日志条数
-const MAX_LOG_AGE_DAYS = 30 // 日志保留天数
+const MAX_LOG_ENTRIES = 1000 // (legacy)
+const MAX_LOG_AGE_DAYS = 30 // (legacy)
 
 interface LogEntry {
   timestamp: string
@@ -12,8 +12,8 @@ interface LogEntry {
 }
 
 /**
- * Web 平台日志管理器
- * 使用 localforage (IndexedDB) 存储日志
+ * (legacy comment)
+ *  localforage (IndexedDB)
  */
 export class WebLogger {
   private static instance: WebLogger
@@ -31,13 +31,13 @@ export class WebLogger {
   }
 
   /**
-   * 初始化日志系统
+   * (legacy comment removed)
    */
   public async init(): Promise<void> {
     if (this.isInitialized) return
 
     try {
-      // 清理过期日志
+      // (legacy comment removed)
       await this.cleanupOldLogs()
       this.isInitialized = true
     } catch (error) {
@@ -46,7 +46,7 @@ export class WebLogger {
   }
 
   /**
-   * 清理过期日志
+   * (legacy comment removed)
    */
   private async cleanupOldLogs(): Promise<void> {
     try {
@@ -59,7 +59,7 @@ export class WebLogger {
         return logDate.isAfter(cutoffDate)
       })
 
-      // 只保留最新的 MAX_LOG_ENTRIES 条
+      // MAX_LOG_ENTRIES
       const trimmedLogs = filteredLogs.slice(-MAX_LOG_ENTRIES)
 
       if (trimmedLogs.length !== logs.length) {
@@ -71,7 +71,7 @@ export class WebLogger {
   }
 
   /**
-   * 获取存储的日志
+   * (legacy comment removed)
    */
   private async getStoredLogs(): Promise<LogEntry[]> {
     try {
@@ -83,35 +83,35 @@ export class WebLogger {
   }
 
   /**
-   * 记录日志
+   * (legacy comment removed)
    */
   public log(level: string, message: string): void {
     const timestamp = dayjs().format('YYYY-MM-DD HH:mm:ss.SSS')
 
-    // 同时输出到控制台
+    // (legacy comment removed)
     console.log(`APP_LOG: [${level}] ${message}`)
 
-    // 添加到缓冲区
+    // (legacy comment removed)
     this.logBuffer.push({ timestamp, level: level.toUpperCase(), message })
 
-    // 使用延迟批量写入以提高性能
+    // (legacy comment removed)
     this.scheduleFlush()
   }
 
   /**
-   * 调度批量写入
+   * (legacy comment removed)
    */
   private scheduleFlush(): void {
     if (this.flushTimer) return
 
-    // 延迟 1000ms 批量写入
+    // (legacy comment removed)
     this.flushTimer = setTimeout(() => {
       this.flush()
     }, 1000)
   }
 
   /**
-   * 将缓冲区内容写入存储
+   * (legacy comment removed)
    */
   private async flush(): Promise<void> {
     this.flushTimer = null
@@ -125,7 +125,7 @@ export class WebLogger {
       const existingLogs = await this.getStoredLogs()
       const allLogs = [...existingLogs, ...newLogs]
 
-      // 限制日志数量
+      // (legacy comment removed)
       const trimmedLogs = allLogs.slice(-MAX_LOG_ENTRIES)
 
       await localforage.setItem(LOG_STORAGE_KEY, trimmedLogs)
@@ -135,7 +135,7 @@ export class WebLogger {
   }
 
   /**
-   * 立即刷新缓冲区
+   * (legacy comment removed)
    */
   public async flushNow(): Promise<void> {
     if (this.flushTimer) {
@@ -146,11 +146,11 @@ export class WebLogger {
   }
 
   /**
-   * 导出日志内容
-   * @returns 格式化的日志内容
+   * (legacy comment removed)
+   * (legacy comment)
    */
   public async exportLogs(): Promise<string> {
-    // 确保所有缓冲内容已写入
+    // (legacy comment removed)
     await this.flushNow()
 
     try {
@@ -163,7 +163,7 @@ export class WebLogger {
   }
 
   /**
-   * 清空日志
+   * (legacy comment removed)
    */
   public async clearLogs(): Promise<void> {
     this.logBuffer = []

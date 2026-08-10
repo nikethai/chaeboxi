@@ -6,6 +6,7 @@ import {
   IconBook,
   IconBox,
   IconCategory,
+  IconChartBar,
   IconChevronRight,
   IconCircleDottedLetterM,
   IconFileText,
@@ -42,6 +43,11 @@ const ITEMS = [
     key: 'default-models',
     label: 'Default Models',
     icon: <IconBox className="w-full h-full" />,
+  },
+  {
+    key: 'usage',
+    label: 'Usage',
+    icon: <IconChartBar className="w-full h-full" />,
   },
   {
     key: 'web-search',

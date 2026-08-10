@@ -81,9 +81,9 @@ async function cacheWithStorage<T>(
   key: string,
   getter: () => Promise<T>,
   options: {
-    ttl: number // 缓存过期时间，单位为毫秒
-    refreshFallbackToCache?: boolean // 如果刷新时获取新值失败，是否从缓存中继续使用过期的旧值
-    memoryOnly?: boolean // 是否仅使用内存缓存
+    ttl: number // ，
+    refreshFallbackToCache?: boolean // ，
+    memoryOnly?: boolean // (legacy)
   }
 ): Promise<T> {
   let cache: CacheItem<T> | null = null
@@ -146,9 +146,9 @@ export async function cache<T>(
   key: string,
   getter: () => Promise<T>,
   options: {
-    ttl: number // 缓存过期时间，单位为毫秒
-    refreshFallbackToCache?: boolean // 如果刷新时获取新值失败，是否从缓存中继续使用过期的旧值
-    memoryOnly?: boolean // 是否仅使用内存缓存
+    ttl: number // ，
+    refreshFallbackToCache?: boolean // ，
+    memoryOnly?: boolean // (legacy)
   }
 ): Promise<T> {
   return cacheWithStorage(key, getter, options)

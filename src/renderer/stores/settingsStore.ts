@@ -25,19 +25,19 @@ export function getPlatformDefaultDocumentParser(): DocumentParserConfig {
 }
 
 function stripChatboxPaidFeatures(settings: any) {
-  // Remove Chatbox AI paid auth/license state from persisted settings.
+  // Remove legacy cloud service paid auth/license state from persisted settings.
   delete settings.licenseKey
   delete settings.licenseInstances
   delete settings.licenseDetail
   delete settings.licenseActivationMethod
   delete settings.memorizedManualLicenseKey
 
-  // Remove Chatbox AI provider-specific settings.
+  // Remove legacy cloud service provider-specific settings.
   if (settings.providers && typeof settings.providers === 'object') {
     delete settings.providers['chatbox-ai']
   }
 
-  // Reset model selections that still point to Chatbox AI.
+  // Reset model selections that still point to legacy cloud service.
   const modelSettingKeys = ['defaultChatModel', 'threadNamingModel', 'searchTermConstructionModel', 'ocrModel']
   for (const key of modelSettingKeys) {
     if (settings[key]?.provider === 'chatbox-ai') {
@@ -161,15 +161,15 @@ export const initSettingsStore = async () => {
 }
 
 settingsStore.subscribe((state, prevState) => {
-  // 如果快捷键配置发生变化，需要重新注册快捷键
+  // (legacy comment removed)
   if (state.shortcuts !== prevState.shortcuts) {
     platform.ensureShortcutConfig(state.shortcuts)
   }
-  // 如果代理配置发生变化，需要重新注册代理
+  // (legacy comment removed)
   if (state.proxy !== prevState.proxy) {
     platform.ensureProxyConfig({ proxy: state.proxy })
   }
-  // 如果开机自启动配置发生变化，需要重新设置开机自启动
+  // (legacy comment removed)
   if (Boolean(state.autoLaunch) !== Boolean(prevState.autoLaunch)) {
     platform.ensureAutoLaunch(state.autoLaunch)
   }

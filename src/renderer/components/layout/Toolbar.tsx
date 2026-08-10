@@ -15,7 +15,7 @@ import Broom from '../icons/Broom'
 import UpdateAvailableButton from '../UpdateAvailableButton'
 
 /**
- * 顶部标题工具栏（右侧）
+ * (legacy comment removed)
  * @returns
  */
 export default function Toolbar({ sessionId }: { sessionId: string }) {

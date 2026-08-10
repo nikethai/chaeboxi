@@ -3,6 +3,7 @@ import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
 import AbstractAISDKModel from '../../../models/abstract-ai-sdk'
 import { fetchRemoteModels } from '../../../models/openai-compatible'
 import { buildCloudflareAccessHeaders } from '../../../models/utils/openai-headers'
+import { PRODUCT } from '../../../product'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 
@@ -39,8 +40,8 @@ export default class OpenRouter extends AbstractAISDKModel {
     return createOpenRouter({
       apiKey: this.options.apiKey,
       headers: {
-        'HTTP-Referer': 'https://chatboxai.app',
-        'X-Title': 'Chatbox AI',
+        'HTTP-Referer': PRODUCT.openRouterReferer,
+        'X-Title': PRODUCT.openRouterTitle,
         ...buildCloudflareAccessHeaders(this.options),
       },
     })

@@ -12,6 +12,7 @@ import {
   type MessageImagePart,
   type MessagePicture,
   ModelProviderEnum,
+  MAX_SWARM_TASKS,
   type PlanPhase,
   type Session,
   type SessionSettings,
@@ -43,7 +44,7 @@ import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import { mergeCommandsList, refreshAgentCommands, userCommandsAtom } from '@/stores/commandsStore'
 import { mergeSkillsList, refreshAgentSkills, userSkillsAtom } from '@/stores/skillsStore'
-import { flushSessionTasks } from '@/stores/taskStore'
+import { flushSessionTasks, formatActiveTaskContext, taskStore } from '@/stores/taskStore'
 import { trackEvent } from '@/utils/track'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 import * as chatStore from '../chatStore'
@@ -478,6 +479,8 @@ export async function generate(
     roomMulti?: boolean
     /** Multi-agent turn kind: discuss / team answer / work phases */
     roomRole?: 'turn' | 'synthesis' | 'plan' | 'do' | 'review' | 'deliver'
+    /** Team room mode (discuss / work / swarm) for protocol + tool policy */
+    roomMode?: 'discuss' | 'work' | 'swarm'
     /** Display names of all room participants for protocol text */
     participantNames?: string[]
     /** 1-based discuss round (for protocol) */
@@ -486,6 +489,11 @@ export async function generate(
     stanceLabel?: string
     /** Lead name for work/team-answer protocols */
     leadName?: string
+    /** Swarm execute: assigned task id / title for protocol */
+    taskId?: string
+    taskTitle?: string
+    /** Swarm plan: "Name (id: …)" directory for assigneeAgentId */
+    participantDirectory?: string
     /** Skip processing message queue after this turn (intermediate multi-agent turns) */
     skipQueuedMessages?: boolean
   }
@@ -516,6 +524,36 @@ export async function generate(
 
   // Track generation event
   trackGenerateEvent(sessionId, effectiveSettings, globalSettings, session.type, options)
+
+  // Soft budget hard-pause (user opt-in only)
+  try {
+    const budgetCfg = globalSettings.usageBudget
+    if (budgetCfg?.enabled && budgetCfg.pauseWhenExceeded) {
+      const { providerUsageService, evaluateBudget } = await import('@/packages/usage-tracking')
+      await providerUsageService.init()
+      const period = budgetCfg.period
+      const pid = String(effectiveSettings.provider ?? '')
+      const evalResult = evaluateBudget({
+        config: budgetCfg,
+        globalLocal: providerUsageService.getLocalSnapshot(period),
+        providerLocal: pid ? providerUsageService.getLocalSnapshot(period, pid) : undefined,
+        providerId: pid || undefined,
+      })
+      if (evalResult.level === 'critical') {
+        targetMsg = {
+          ...targetMsg,
+          generating: false,
+          cancel: undefined,
+          error: `Generation paused: ${evalResult.message}. Disable “Pause generation when budget exceeded” in Settings → Usage, or raise your soft budget.`,
+          status: [],
+        }
+        await modifyMessage(sessionId, targetMsg, true)
+        return
+      }
+    }
+  } catch {
+    // non-fatal — never block chat on budget evaluation failure
+  }
 
   // Reset message state to initial state
   targetMsg = {
@@ -634,6 +672,10 @@ export async function generate(
                 roomRound: options?.roomRound ?? targetMsg.roomRound,
                 stanceLabel: options?.stanceLabel,
                 leadName: options?.leadName,
+                roomMode: options?.roomMode,
+                taskId: options?.taskId,
+                taskTitle: options?.taskTitle,
+                participantDirectory: options?.participantDirectory,
               })
             }
             const persona = agentDetail?.prompt?.trim() || `You are "${speakerName}", a helpful AI participant.`
@@ -665,7 +707,16 @@ export async function generate(
               const lastPrompt = promptMsgs[promptMsgs.length - 1]
               if (lastPrompt?.role === 'assistant') {
                 const role = roomRole ?? 'turn'
-                promptMsgs = [...promptMsgs, createMessage('user', buildRoomContinuePrompt(speakerName, role))]
+                promptMsgs = [
+                  ...promptMsgs,
+                  createMessage(
+                    'user',
+                    buildRoomContinuePrompt(speakerName, role, {
+                      roomMode: options?.roomMode,
+                      taskTitle: options?.taskTitle,
+                    })
+                  ),
+                ]
               }
             }
           }
@@ -772,10 +823,14 @@ export async function generate(
         }
 
         // 2-phase execution: if planMode and not yet approved, generate plan first
-        // Team room: tools only on work do/deliver; discuss/plan/review stay tools-off
-        const { roomRoleAllowsTools } = await import('@shared/agent-room')
+        // Team room: full tools on do/deliver; swarm plan = task tools only; else tools-off
+        const { roomRoleAllowsTaskToolsOnly, roomRoleAllowsTools } = await import('@shared/agent-room')
         const roomRoleForTools = options?.roomRole ?? targetMsg.roomRole
+        const roomModeForTools = options?.roomMode
         const roomToolsAllowed = Boolean(roomMulti && roomRoleAllowsTools(roomRoleForTools))
+        const roomTaskToolsOnly = Boolean(
+          roomMulti && roomRoleAllowsTaskToolsOnly(roomRoleForTools, roomModeForTools)
+        )
         const isPlanMode = Boolean(!roomMulti && isAgentEnabled && session.agentMode && effectiveSettings.planMode)
         const isPendingPlan = existingPlanPart?.status === 'pending'
         managesPlanPhase = isPlanMode
@@ -797,8 +852,18 @@ export async function generate(
           planningToolsInstructions = readonlyTools.instructions
         }
         // Room multi without tools: empty object = no tools (undefined still attaches MCP/web).
-        if (roomMulti && !roomToolsAllowed) {
+        if (roomMulti && !roomToolsAllowed && !roomTaskToolsOnly) {
           toolsToUse = {}
+        }
+        // Swarm plan: only checklist tools so lead cannot free-run MCP/web as "plan"
+        if (roomTaskToolsOnly) {
+          const taskTracking = await import('@/packages/model-calls/toolsets/task-tracking')
+          toolsToUse = { ...taskTracking.CANONICAL_TASK_TOOLS } as ToolSet
+          // stream-text skips default task instructions when custom tools are passed
+          await taskStore.getState().hydrateSessionTasks(sessionId)
+          planningToolsInstructions =
+            (taskTracking.default?.description || '') +
+            formatActiveTaskContext(taskStore.getState().getSessionTasks(sessionId))
         }
 
         // Inject planning tools instructions into system prompt if in planning phase
@@ -873,10 +938,18 @@ export async function generate(
           await modifyMessage(sessionId, targetMsg, false, true)
         }
 
-        // Agent coding tools: solo agent execute, or team Work do/deliver with agentMode
+        // Agent coding tools: solo agent execute, or team Work/Swarm do/deliver with agentMode
         const isAgentExecuteTurn =
           (!roomMulti && isAgentEnabled && Boolean(session.agentMode) && (!isPlanMode || isExecutionPhase)) ||
           (roomToolsAllowed && isAgentEnabled && Boolean(session.agentMode))
+
+        // Room chat with no tools: strip web/KB and single-step. Swarm plan keeps multi-step for create_task×N.
+        const roomBlocksExternalTools = roomMulti && !roomToolsAllowed
+        const roomMaxSteps = roomTaskToolsOnly
+          ? Math.min(maxSteps ?? COPILOT_MAX_STEPS_DEFAULT, MAX_SWARM_TASKS + 4)
+          : roomBlocksExternalTools
+            ? 1
+            : maxSteps
 
         const { result } = await streamText(model, {
           sessionId: session.id,
@@ -891,17 +964,18 @@ export async function generate(
             void modifyMessage(sessionId, targetMsg, false, true)
           },
           providerOptions: effectiveSettings.providerOptions,
-          // Discuss/plan/review: pure chat. Work do/deliver: allow tools/web like solo agent.
-          knowledgeBase: roomMulti && !roomToolsAllowed ? undefined : knowledgeBase,
-          webBrowsing: roomMulti && !roomToolsAllowed ? false : webBrowsing,
+          // Discuss/plan/review: pure chat. Work/Swarm do/deliver: allow tools/web like solo agent.
+          // Swarm plan: task tools only (no KB/web).
+          knowledgeBase: roomBlocksExternalTools ? undefined : knowledgeBase,
+          webBrowsing: roomBlocksExternalTools ? false : webBrowsing,
           nativeWebSearch:
-            roomMulti && !roomToolsAllowed ? undefined : useGeminiGrounding ? 'gemini-grounding' : undefined,
+            roomBlocksExternalTools ? undefined : useGeminiGrounding ? 'gemini-grounding' : undefined,
           agentImageFlowInstructions: executionAgentImageFlowInstructions,
           agentCoding: {
             enabled: isAgentExecuteTurn,
             workspaceRoot: session.workspaceRoot,
           },
-          maxSteps: roomMulti && !roomToolsAllowed ? 1 : maxSteps,
+          maxSteps: roomMaxSteps,
           tools: toolsToUse,
           toolAccess: copilotOverrides?.toolAccess,
           memory: speakerAgentId
@@ -999,6 +1073,27 @@ export async function generate(
         }
         await modifyMessage(sessionId, targetMsg, true)
         await flushSessionTasks(sessionId)
+
+        // Provider usage status: local rollup + clear exhausted on success
+        try {
+          const { providerUsageService } = await import('@/packages/usage-tracking')
+          await providerUsageService.init()
+          await providerUsageService.recordFromMessage(targetMsg)
+          const pid = String(effectiveSettings.provider ?? targetMsg.aiProvider ?? '')
+          if (pid) {
+            await providerUsageService.clearExhausted(pid)
+            const budgetHit = await providerUsageService.evaluateAndMaybeNotify(
+              settingsStore.getState(),
+              pid
+            )
+            if (budgetHit?.shouldToast) {
+              const { add: addToast } = await import('@/stores/toastActions')
+              addToast(budgetHit.message)
+            }
+          }
+        } catch {
+          // non-fatal
+        }
 
         if (isExecutionPhase) {
           await chatStore.updateSession(sessionId, { planPhase: undefined })
@@ -1121,6 +1216,29 @@ export async function generate(
       status: [],
     }
     await modifyMessage(sessionId, targetMsg, true)
+
+    // Mark provider plan exhausted on quota errors (best-effort)
+    try {
+      const pid = String(effectiveSettings.provider ?? '')
+      if (pid) {
+        const { providerUsageService } = await import('@/packages/usage-tracking')
+        await providerUsageService.handleGenerationError({
+          providerId: pid,
+          modelId: effectiveSettings.modelId,
+          message: error.message,
+          responseBody:
+            error instanceof ApiError
+              ? error.responseBody
+              : causeError instanceof ApiError
+                ? causeError.responseBody
+                : undefined,
+          errorCode,
+        })
+      }
+    } catch {
+      // non-fatal
+    }
+
     if (managesPlanPhase) {
       await chatStore.updateSession(sessionId, { planPhase: undefined })
     }

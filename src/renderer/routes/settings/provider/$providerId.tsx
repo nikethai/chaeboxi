@@ -52,7 +52,7 @@ import { SettingsCollapsible } from '@/components/settings/SettingsCollapsible'
 import { SettingsSection } from '@/components/settings/SettingsSection'
 import { getModelSettingUtil } from '@/packages/model-setting-utils'
 import platform from '@/platform'
-import { useLanguage, useProviderSettings, useSettingsStore } from '@/stores/settingsStore'
+import { useProviderSettings, useSettingsStore } from '@/stores/settingsStore'
 import { add as addToast } from '@/stores/toastActions'
 import { type ModelTestState, testModelCapabilities } from '@/utils/model-tester'
 import { useComfyUIInfo } from '@/hooks/useComfyUIInfo'
@@ -79,6 +79,8 @@ import {
   resolveXaiAuthMode,
   resolveXaiBearer,
 } from '@shared/providers/oauth'
+import { ProviderUsageCard } from '@/components/usage'
+import { useProviderUsageStatus } from '@/packages/usage-tracking'
 
 export const Route = createFileRoute('/settings/provider/$providerId')({
   component: RouteComponent,
@@ -257,11 +259,10 @@ function ProviderSettings({ providerId }: { providerId: string }) {
   const { t } = useTranslation()
   const { setSettings, ...settings } = useSettingsStore((state) => state)
 
-  const language = useLanguage()
-
   const baseInfo = [...SystemProviders(), ...(settings.customProviders || [])].find((p) => p.id === providerId)
 
   const { providerSettings, setProviderSettings } = useProviderSettings(providerId)
+  const { status: usageStatus, loading: usageLoading, refresh: refreshUsage } = useProviderUsageStatus(providerId)
 
   const displayModels = providerSettings?.models || baseInfo?.defaultSettings?.models || []
   const isNoApiKeyProvider = [
@@ -490,8 +491,8 @@ function ProviderSettings({ providerId }: { providerId: string }) {
       <SettingsPageHeader
         title={t(baseInfo.name)}
         description={
-          baseInfo.isCustom && language === 'zh-Hans' ? (
-            <a href="https://docs.chatboxai.app/guides/providers" target="_blank" rel="noopener">
+          baseInfo.isCustom ? (
+            <a href="https://github.com/nikethai/chaeboxi" target="_blank" rel="noopener">
               {t('Setup guide')}
             </a>
           ) : undefined
@@ -738,6 +739,21 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           </SettingsCard>
         </SettingsSection>
 
+        {usageStatus && (
+          <SettingsSection
+            title={t('Plan & usage')}
+            description={t(
+              'In this app usage is measured here. Provider plan remaining is best-effort and often unknown.'
+            )}
+          >
+            <ProviderUsageCard
+              status={usageStatus}
+              onRefresh={() => void refreshUsage(true)}
+              refreshing={usageLoading}
+            />
+          </SettingsSection>
+        )}
+
         {((!isNoApiKeyProvider && !isSubscriptionOAuthMode) || showBuiltinApiHostSection) && (
           <SettingsCollapsible
             title={t('Advanced')}
@@ -911,7 +927,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 <Flex align="center" gap={4}>
                   <ScalableIcon icon={IconDiscount2} size={14} color="var(--chatbox-tint-tertiary)" />
                   <Text span size="xs" c="chatbox-tertiary">
-                    {t('AIHubMix integration in Chatbox offers 10% discount')}
+                    {t('AIHubMix integration in Chaeboxi offers 10% discount')}
                   </Text>
                 </Flex>
               )}
@@ -1082,7 +1098,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                   onClick={async () => {
                     setSelectedTestModel(model.modelId)
                     setShowTestModelSelector(false)
-                    // 执行检查
+                    // (legacy comment removed)
                     await handleCheckApiKey(model.modelId)
                   }}
                   styles={{

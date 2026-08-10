@@ -66,6 +66,7 @@ import { ensureMemoryStoreInit, useMemoryStore } from '@/stores/memoryStore'
 import { usePromptPresets } from '@/stores/promptPresetsStore'
 import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
 import { useSkills } from '@/stores/skillsStore'
+import type { QuoteDraft } from '@/stores/uiStore'
 import { useUIStore } from '@/stores/uiStore'
 import { delay } from '@/utils'
 import { getModelDisplayName } from '@/utils/modelDisplayName'
@@ -77,6 +78,7 @@ import type {
   KnowledgeBase,
   MemoryAttachment,
   Message,
+  MessageQuoteAttachment,
   SessionType,
   ShortcutSendValue,
   SkillPackage,
@@ -125,6 +127,7 @@ import {
   storeLinkPromise,
 } from './preprocessState'
 import QueuedMessageList from './QueuedMessageList'
+import QuoteChip from './QuoteChip'
 import SkillPicker, { filterSkills } from './SkillPicker'
 import TeamModeSelect from './TeamModeSelect'
 
@@ -135,7 +138,7 @@ export type InputBoxPayload = {
 }
 
 export type InputBoxRef = {
-  setQuote: (quote: string) => void
+  setQuote: (quote: QuoteDraft | string) => void
   insertMemory: (entry: MemoryEntry) => void
   getMemorySaveContent: () => string
 }
@@ -167,8 +170,8 @@ export type InputBoxProps = {
    * Used for Team mode visibility and room strip.
    */
   draftAgentIds?: string[]
-  draftRoomMode?: 'discuss' | 'work'
-  onDraftRoomModeChange?(mode: 'discuss' | 'work'): void
+  draftRoomMode?: 'discuss' | 'work' | 'swarm'
+  onDraftRoomModeChange?(mode: 'discuss' | 'work' | 'swarm'): void
 }
 
 const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
@@ -261,6 +264,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     /** Turn-sticky agent chips selected via @ */
     const [selectedAgents, setSelectedAgents] = useState<AgentDetail[]>([])
     const [memoryAttachments, setMemoryAttachments] = useState<MemoryAttachment[]>([])
+    const [quoteDraft, setLocalQuoteDraft] = useState<QuoteDraft | null>(null)
     const [memoryMentionPickerDismissed, setMemoryMentionPickerDismissed] = useState(false)
     const [memoryMentionHighlightIndex, setMemoryMentionHighlightIndex] = useState(0)
     const [agentPickerDismissed, setAgentPickerDismissed] = useState(false)
@@ -387,9 +391,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           links?.length ||
           attachments?.length ||
           pictureKeys?.length ||
-          memoryAttachments.length
+          memoryAttachments.length ||
+          !!quoteDraft?.text?.trim()
         ),
-      [messageInput, links, attachments, pictureKeys, memoryAttachments.length]
+      [messageInput, links, attachments, pictureKeys, memoryAttachments.length, quoteDraft?.text]
     )
 
     const { providers } = useProviders()
@@ -669,16 +674,24 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     useImperativeHandle(
       ref,
       () => ({
-        // 暂时并没有用到，还是使用了之前atom的方案
         setQuote: (data) => {
-          setMessageInput((prev) => `${prev}\n\n${data}`)
+          if (typeof data === 'string') {
+            const text = data
+              .replace(/^> /gm, '')
+              .replace(/\n*-------------------\n*$/g, '')
+              .trim()
+            if (!text) return
+            setLocalQuoteDraft({ text, isPartial: false })
+          } else {
+            setLocalQuoteDraft(data)
+          }
           dom.focusMessageInput()
           dom.setMessageInputCursorToEnd()
         },
         insertMemory,
         getMemorySaveContent,
       }),
-      [getMemorySaveContent, insertMemory, setMessageInput]
+      [getMemorySaveContent, insertMemory]
     )
 
     const { addInputBoxHistory, getPreviousHistoryInput, getNextHistoryInput, resetHistoryIndex } = useInputBoxHistory()
@@ -903,7 +916,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     )
 
     const handleRoomModeChange = useCallback(
-      async (mode: 'discuss' | 'work') => {
+      async (mode: 'discuss' | 'work' | 'swarm') => {
         if (isNewSession) {
           onDraftRoomModeChange?.(mode)
           return
@@ -990,16 +1003,16 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         return
       }
 
-      // 有解析失败的文件或链接时，阻止发送并显示 toast
+      // (legacy comment)
       if (hasPreprocessErrors) {
         toastActions.add(t('Some files failed to parse. Please remove them and try again.'))
         return
       }
 
-      // 未选择模型时 显示error tip
+      // error tip
       if (platformCapabilities.isMobileLayout && modelReadiness.status !== 'ready') {
         if (!model) {
-          // 如果不延时执行，会导致error tip 立即消失
+          // (legacy comment)
           await delay(100)
           if (closeSelectModelErrorTipCb.current) {
             clearTimeout(closeSelectModelErrorTipCb.current)
@@ -1074,6 +1087,15 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             commandIds: commandIds.length ? commandIds : undefined,
             mentionedAgentIds: mentionedAgentIds.length ? mentionedAgentIds : undefined,
             memoryAttachments: memoryAttachments.length ? memoryAttachments : undefined,
+            quoteAttachment: quoteDraft
+              ? ({
+                  sourceMessageId: quoteDraft.sourceMessageId,
+                  sourceRole: quoteDraft.sourceRole,
+                  text: quoteDraft.text,
+                  isPartial: quoteDraft.isPartial,
+                  createdAt: Date.now(),
+                } satisfies MessageQuoteAttachment)
+              : undefined,
             contentParts: constructedMessage.contentParts.map((p) =>
               p.type === 'text' ? { ...p, text: cleanedText } : p
             ),
@@ -1128,6 +1150,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             clearDraft()
             setSelectedAgents([])
             setMemoryAttachments([])
+            setLocalQuoteDraft(null)
             setLinks([])
             setPreConstructedMessage({
               text: '',
@@ -1398,10 +1421,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         return
       }
 
-      // 发送消息
+      // (legacy comment removed)
       if (isPressedHash[shortcuts.inputBoxSendMessage]) {
         if (platform.formFactor === 'mobile' && isSmallScreen && shortcuts.inputBoxSendMessage === 'Enter') {
-          // 移动端点击回车不会发送消息
+          // (legacy comment removed)
           return
         }
         event.preventDefault()
@@ -1409,19 +1432,19 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         return
       }
 
-      // 发送消息但不生成回复
+      // (legacy comment removed)
       if (isPressedHash[shortcuts.inputBoxSendMessageWithoutResponse]) {
         event.preventDefault()
         handleSubmit(false)
         return
       }
 
-      // 向上向下键翻阅历史消息
+      // (legacy comment removed)
       if (
         (event.key === 'ArrowUp' || event.key === 'ArrowDown') &&
         inputRef.current &&
-        inputRef.current === document.activeElement && // 聚焦在输入框
-        (messageInput.length === 0 || window.getSelection()?.toString() === messageInput) // 要么为空，要么输入框全选
+        inputRef.current === document.activeElement && // (legacy)
+        (messageInput.length === 0 || window.getSelection()?.toString() === messageInput) // ，
       ) {
         event.preventDefault()
         if (event.key === 'ArrowUp') {
@@ -1456,10 +1479,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     // ----- Preprocessing helpers -----
     const startLinkPreprocessing = (url: string) => {
-      // 设置为处理中状态
+      // (legacy comment removed)
       setPreConstructedMessage((prev) => markLinkProcessing(prev, url))
 
-      // 异步预处理链接，失败时标记为 error，并吞掉异常避免 Promise.all reject
+      // ， error， Promise.all reject
       const preprocessPromise = sessionHelpers
         .preprocessLink(url, { provider: model?.provider || '', modelId: model?.modelId || '' })
         .then((preprocessedLink) => {
@@ -1487,7 +1510,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     }
 
     const startFilePreprocessing = (file: File) => {
-      // 异步预处理文件，失败时标记为 error，并吞掉异常避免 Promise.all reject
+      // ， error， Promise.all reject
       return sessionHelpers
         .preprocessFile(file, { provider: model?.provider || '', modelId: model?.modelId || '' })
         .then((preprocessedFile) => {
@@ -1513,10 +1536,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const insertLinks = (urls: string[]) => {
       let newLinks = [...(links || []), ...urls.map((u) => ({ url: u }))]
       newLinks = _.uniqBy(newLinks, 'url')
-      newLinks = newLinks.slice(-6) // 最多插入 6 个链接
+      newLinks = newLinks.slice(-6) // 6
       setLinks(newLinks)
 
-      // 预处理链接（只处理前6个）
+      // (legacy comment removed)
       for (let i = 0; i < Math.min(urls.length, 6); i++) {
         const url = urls[i]
         const linkIndex = newLinks.findIndex((l) => l.url === url)
@@ -1770,7 +1793,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         ...prev,
         pictureKeys: (prev.pictureKeys || []).filter((k) => k !== picKey),
       }))
-      // 不删除图片数据，因为可能在其他地方引用，比如通过上下键盘的历史消息快捷输入、发送的消息中引用
+      // (legacy comment)
       // await storage.delBlob(picKey)
     }
 
@@ -1779,10 +1802,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         return
       }
       if (event.clipboardData?.items) {
-        // 对于 Doc/PPT/XLS 等文件中的内容，粘贴时一般会有 4 个 items，分别是 text 文本、html、某格式和图片
-        // 因为 getAsString 为异步操作，无法根据 items 中的内容来定制不同的粘贴行为，因此这里选择了最简单的做法：
-        // 保持默认的粘贴行为，这时候会粘贴从文档中复制的文本和图片。我认为应该保留图片，因为文档中的表格、图表等图片信息也很重要，很难通过文本格式来表述。
-        // 仅在只粘贴图片或文件时阻止默认行为，防止插入文件或图片的名字
+        // (legacy comment)
+        // (legacy comment)
+        // (legacy comment removed)
+        // (legacy comment removed)
         let hasText = false
         for (let i = 0; i < event.clipboardData.items.length; i++) {
           const item = event.clipboardData.items[i]
@@ -1796,7 +1819,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           }
           hasText = true
           if (item.kind === 'string' && item.type === 'text/plain') {
-            // 插入链接：如果复制的是链接，则插入链接
+            // (legacy comment removed)
             item.getAsString((text) => {
               const raw = text.trim()
               if (raw.startsWith('http://') || raw.startsWith('https://')) {
@@ -1811,12 +1834,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   type: 'text/plain',
                 })
                 insertFiles([file])
-                setMessageInput(messageInput) // 删除掉默认粘贴进去的长文本
+                setMessageInput(messageInput) // (legacy)
               }
             })
           }
         }
-        // 如果没有任何文本，则说明只是复制了图片或文件。这里阻止默认行为，防止插入文件或图片的名字
+        // (legacy comment removed)
         if (!hasText) {
           event.preventDefault()
         }
@@ -1830,27 +1853,18 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       }
     }
 
-    // 引用消息
-    const quote = useUIStore((state) => state.quote)
-    const setQuote = useUIStore((state) => state.setQuote)
-    // const [quote, setQuote] = useUIStore(state => [state]) useAtom(atoms.quoteAtom)
-    // biome-ignore lint/correctness/useExhaustiveDependencies: todo
+    // Consume pending quote draft into a single composer chip (no textarea dump)
+    const pendingQuoteDraft = useUIStore((state) => state.quoteDraft)
+    const setQuoteDraft = useUIStore((state) => state.setQuoteDraft)
     useEffect(() => {
-      if (quote !== '') {
-        // TODO: 支持引用消息中的图片
-        // TODO: 支持引用消息中的文件
-        setQuote('')
-        setMessageInput((val) => {
-          const newValue = !val
-            ? quote
-            : val + '\n'.repeat(Math.max(0, 2 - (val.match(/(\n)+$/)?.[0].length || 0))) + quote
-          return newValue
-        })
-        // setPreviousMessageQuickInputMark('')
-        dom.focusMessageInput()
-        dom.setMessageInputCursorToEnd()
+      if (!pendingQuoteDraft?.text?.trim()) {
+        return
       }
-    }, [quote])
+      setLocalQuoteDraft(pendingQuoteDraft)
+      setQuoteDraft(null)
+      dom.focusMessageInput()
+      dom.setMessageInputCursorToEnd()
+    }, [pendingQuoteDraft, setQuoteDraft])
 
     const handleKnowledgeBaseSelect = useCallback(
       (kb: KnowledgeBase | null) => {
@@ -1886,12 +1900,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       )
     }
 
-    const roomMode: 'discuss' | 'work' = isNewSession
-      ? draftRoomMode === 'work'
-        ? 'work'
+    const roomMode: 'discuss' | 'work' | 'swarm' = isNewSession
+      ? draftRoomMode === 'work' || draftRoomMode === 'swarm'
+        ? draftRoomMode
         : 'discuss'
-      : currentSession?.roomMode === 'work'
-        ? 'work'
+      : currentSession?.roomMode === 'work' || currentSession?.roomMode === 'swarm'
+        ? currentSession.roomMode
         : 'discuss'
     const showRoomModeChip = roomAgentIds.length >= 2 || selectedAgents.length >= 2
 
@@ -2001,7 +2015,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               roomAgentIds.length > 0 ||
               selectedSkills.length > 0 ||
               selectedCommands.length > 0 ||
-              memoryAttachments.length > 0) && (
+              memoryAttachments.length > 0 ||
+              !!quoteDraft) && (
               <div className="composer-meta-stack">
                 {selectedAgents.length > 0 ? (
                   <div className="composer-meta-row">
@@ -2106,6 +2121,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                         </span>
                       </Tooltip>
                     ))}
+                  </div>
+                ) : null}
+
+                {quoteDraft ? (
+                  <div className="composer-meta-row">
+                    <QuoteChip quote={quoteDraft} onRemove={() => setLocalQuoteDraft(null)} />
                   </div>
                 ) : null}
               </div>
@@ -2374,9 +2395,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   onInsertMemory={insertMemory}
                   getMemorySaveContent={getMemorySaveContent}
                   memoryAutoSave={currentSession?.settings?.memoryAutoSave}
-                  onMemoryAutoSaveChange={
-                    !isNewSession && currentSessionId ? handleMemoryAutoSaveChange : undefined
-                  }
+                  onMemoryAutoSaveChange={!isNewSession && currentSessionId ? handleMemoryAutoSaveChange : undefined}
                   memoryAutoSaveDisabled={isNewSession || !currentSessionId}
                 />
               </Flex>

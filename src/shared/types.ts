@@ -130,6 +130,13 @@ export const MAX_ROOM_ROUNDS = 2
 export const MAX_ROOM_KEEP_DISCUSS_ROUNDS = 3
 /** Headroom for up to MAX_ROOM_AGENTS speakers × rounds. */
 export const MAX_AGENT_TURNS_PER_USER_MSG = 6
+/** Soft cap for tasks created during a Swarm plan/execute run. */
+export const MAX_SWARM_TASKS = 12
+/**
+ * Budget for Swarm agent turns per user message:
+ * 1 plan (+ optional retry) + ≤ MAX_SWARM_TASKS execute + 1 deliver.
+ */
+export const MAX_SWARM_TURNS = MAX_SWARM_TASKS + 3
 
 export interface PromptPreset {
   id: string

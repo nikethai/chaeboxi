@@ -36,7 +36,7 @@ export const ProviderHeader = ({
   const isFavorite = variant === 'favorite' || variant === 'mobile-favorite'
   const isMobile = variant === 'mobile' || variant === 'mobile-favorite'
 
-  // 根据是否是移动端决定样式
+  // (legacy comment removed)
   const iconSize = isMobile ? 16 : 12
   const padding = isMobile ? 'py-xs pb-0 px-xxs' : 'px-sm py-xs'
   const textColor = isMobile ? 'chatbox-tertiary' : 'chatbox-secondary'
@@ -56,7 +56,7 @@ export const ProviderHeader = ({
     className
   )
 
-  // Mobile 版本的容器样式
+  // (legacy comment)
   const mobileContainerClass = `${padding} ${isMobile ? 'text-chatbox-tint-tertiary' : ''} sticky top-0 z-10 bg-chatbox-background-primary ${className}`
 
   const containerClass = isMobile ? mobileContainerClass : desktopContainerClass

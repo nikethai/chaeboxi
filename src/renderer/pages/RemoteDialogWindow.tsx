@@ -24,7 +24,7 @@ export default function RemoteDialogWindow() {
     const settings = settingsStore.getState().getSettings()
     const version = await platform.getVersion()
     if (version === '0.0.1') {
-      return // 本地开发环境不显示远程弹窗
+      return // (legacy)
     }
     try {
       const dialog = await remote.getDialogConfig({
@@ -42,9 +42,9 @@ export default function RemoteDialogWindow() {
   }
   useEffect(() => {
     checkRemoteDialog()
-    setInterval(checkRemoteDialog, 1000 * 60 * 60 * 24) // 对于常年不关机的用户，也要每天检查一次
+    setInterval(checkRemoteDialog, 1000 * 60 * 60 * 24) // ，
   }, [])
-  // 打点上报
+  // (legacy comment removed)
   useEffect(() => {
     if (open) {
       trackingEvent('remote_dialog_window', { event_category: 'screen_view' })

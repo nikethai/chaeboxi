@@ -1,7 +1,7 @@
 /**
- * 获取图片base64，在必要时缩小到主流模型支持的尺寸，同时支持将 svg、gif 等文件转成 png 格式
- * @param file 图片文件
- * @returns 图片base64
+ * (legacy comment)
+ * @param file
+ * @returns base64
  */
 export async function getImageBase64AndResize(file: File) {
   if (!file.type.startsWith('image/')) {
@@ -23,39 +23,39 @@ export async function getImageBase64AndResize(file: File) {
     const img = new Image()
     const objectUrl = URL.createObjectURL(file)
     img.onload = () => {
-      // 释放 object URL
+      // object URL
       URL.revokeObjectURL(objectUrl)
-      // 获取原始图片尺寸
+      // (legacy comment removed)
       const originalWidth = img.width
       const originalHeight = img.height
-      // 计算目标尺寸,保持宽高比
+      // (legacy comment removed)
       let newWidth = originalWidth
       let newHeight = originalHeight
-      // 如果图片尺寸超过限制,则按比例缩小
+      // (legacy comment removed)
       if (originalWidth > maxPixelL1 || originalHeight > maxPixelL1) {
         const scale = Math.min(maxPixelL1 / originalWidth, maxPixelL1 / originalHeight)
         newWidth = Math.floor(originalWidth * scale)
         newHeight = Math.floor(originalHeight * scale)
       }
-      // 确保短边不超过 maxPixelL2
+      // maxPixelL2
       const minSide = Math.min(newWidth, newHeight)
       if (minSide > maxPixelL2) {
         const scale = maxPixelL2 / minSide
         newWidth = Math.floor(newWidth * scale)
         newHeight = Math.floor(newHeight * scale)
       }
-      // 设置canvas尺寸为缩放后的尺寸
+      // (legacy comment)
       canvas.width = newWidth
       canvas.height = newHeight
-      // 绘制缩放后的图片
+      // (legacy comment removed)
       ctx.drawImage(img, 0, 0, newWidth, newHeight)
-      // 转换为base64,jpeg使用0.9质量以减小文件大小
+      // (legacy comment)
       const base64 =
         file.type === 'image/jpeg' ? canvas.toDataURL('image/jpeg', 0.9) : canvas.toDataURL('image/png', 1.0)
       resolve(base64)
     }
     img.onerror = (error) => {
-      // 发生错误时也要释放 object URL
+      // object URL
       URL.revokeObjectURL(objectUrl)
       reject(error)
     }
@@ -83,7 +83,7 @@ export async function svgToPngBase64(svgBase64: string): Promise<string> {
           if (items.length === 4) {
             const [, , viewBoxWidth, viewBoxHeight] = items.map((item) => parseFloat(item))
             if (viewBoxWidth && viewBoxHeight) {
-              // 检查NaN
+              // NaN
               width = Math.max(viewBoxWidth, img.width)
               height = Math.max(viewBoxHeight, img.height)
               // console.log('viewBoxWidth', viewBoxWidth, 'viewBoxHeight', viewBoxHeight)
@@ -108,7 +108,7 @@ export async function svgToPngBase64(svgBase64: string): Promise<string> {
       ctx.scale(scale, scale)
       ctx.drawImage(img, 0, 0, width, height)
       try {
-        const pngBase64 = canvas.toDataURL('image/png', 1.0) // 使用最高质量设置
+        const pngBase64 = canvas.toDataURL('image/png', 1.0) // (legacy)
         resolve(pngBase64)
       } catch (error) {
         reject(error)

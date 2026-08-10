@@ -1,4 +1,4 @@
-import type { MemoryAttachment, Message, MessageContentParts } from '@shared/types'
+import type { MemoryAttachment, Message, MessageContentParts, MessageQuoteAttachment } from '@shared/types'
 import type { ModelDependencies } from '@shared/types/adapters'
 import type { FilePart, ImagePart, ModelMessage, ReasoningUIPart, TextPart } from 'ai'
 import dayjs from 'dayjs'
@@ -136,6 +136,17 @@ function formatMemoryAttachments(attachments: MemoryAttachment[] | undefined): s
   return `User-selected memory for this turn:\n${facts.join('\n')}`
 }
 
+export function formatQuoteAttachment(quote: MessageQuoteAttachment | undefined): string {
+  if (!quote?.text?.trim()) return ''
+
+  const role = quote.sourceRole || 'message'
+  const kind = quote.isPartial ? 'partial selection' : 'full message'
+  const lines = quote.text.replace(/\r\n/g, '\n').split('\n')
+  const quoted = lines.map((line) => `> ${line}`).join('\n')
+
+  return `Quoted ${kind} (${role}):\n${quoted}`
+}
+
 export async function convertToModelMessages(
   messages: Message[],
   options?: {
@@ -155,10 +166,15 @@ export async function convertToModelMessages(
           }
         case 'user': {
           const contentParts = await convertUserContentParts(m.contentParts || [], dependencies, options)
+          const quoteContext = formatQuoteAttachment(m.quoteAttachment)
           const memoryContext = formatMemoryAttachments(m.memoryAttachments)
           return {
             role: 'user' as const,
-            content: memoryContext ? [...contentParts, { type: 'text', text: memoryContext }] : contentParts,
+            content: [
+              ...(quoteContext ? [{ type: 'text' as const, text: quoteContext }] : []),
+              ...contentParts,
+              ...(memoryContext ? [{ type: 'text' as const, text: memoryContext }] : []),
+            ],
           }
         }
         case 'assistant': {
@@ -242,7 +258,7 @@ function buildMemorySection(memory: MemoryInjectContext | undefined, messages: M
 }
 
 /**
- * 在 system prompt 中注入模型信息 + long-term memory
+ *  system prompt + long-term memory
  */
 export function injectModelSystemPrompt(
   model: string,
@@ -259,7 +275,7 @@ export function injectModelSystemPrompt(
   let hasInjected = false
   return messages.map((m) => {
     if (m.role === role && !hasInjected) {
-      m = cloneMessage(m) // 复制，防止原始数据在其他地方被直接渲染使用
+      m = cloneMessage(m) // ，other
       m.contentParts = [{ type: 'text', text: metadataPrompt + getMessageText(m) }]
       hasInjected = true
     }

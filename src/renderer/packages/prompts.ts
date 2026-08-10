@@ -19,7 +19,7 @@ Here's the conversation:
 
 \`\`\`
 ${
-  format(msgs.slice(0, 5).map((msg) => getMessageText(msg, true, false).slice(0, 100))) // 限制长度以节省 tokens
+  format(msgs.slice(0, 5).map((msg) => getMessageText(msg, true, false).slice(0, 100))) // tokens
 }
 \`\`\`
 

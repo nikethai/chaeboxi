@@ -1,38 +1,30 @@
-import { Anchor, Box, Button, Container, Divider, Flex, Image, Popover, Stack, Text, Title } from '@mantine/core'
-import { useDisclosure } from '@mantine/hooks'
+import { Anchor, Box, Button, Container, Divider, Flex, Image, Stack, Text, Title } from '@mantine/core'
 import {
-  IconAlertTriangle,
   IconChevronRight,
-  IconClipboard,
   IconFileText,
   IconHome,
-  IconMail,
   IconMessage2,
   IconPencil,
 } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Fragment, type ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
+import { PRODUCT } from '@shared/product'
 import BrandGithub from '@/components/icons/BrandGithub'
-import BrandRedNote from '@/components/icons/BrandRedNote'
-import BrandWechat from '@/components/icons/BrandWechat'
-import Page from '@/components/layout/Page'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
+import Page from '@/components/layout/Page'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import useVersion from '@/hooks/useVersion'
 import platform from '@/platform'
 import iconPNG from '@/static/icon.png'
-import IMG_WECHAT_QRCODE from '@/static/wechat_qrcode.png'
-import { useLanguage } from '@/stores/settingsStore'
 
 export const Route = createFileRoute('/about')({
   component: RouteComponent,
 })
 
 function RouteComponent() {
-  const { t, i18n: _i18n } = useTranslation()
+  const { t } = useTranslation()
   const version = useVersion()
-  const language = useLanguage()
   const isSmallScreen = useIsSmallScreen()
 
   return (
@@ -43,8 +35,8 @@ function RouteComponent() {
             <Image h={100} w={100} mah={'20vw'} maw={'20vw'} src={iconPNG} />
             <Stack flex={1} gap="xxs">
               <Flex justify="space-between" align="center" wrap="wrap" gap={isSmallScreen ? 'xs' : 'sm'} rowGap="xs">
-                <Title order={5} lh={1.5} lineClamp={1} title={`Chaeboxi v${version.version}`}>
-                  Chaeboxi {/\d/.test(version.version) ? `(v${version.version})` : ''}
+                <Title order={5} lh={1.5} lineClamp={1} title={`${PRODUCT.name} v${version.version}`}>
+                  {PRODUCT.name} {/\d/.test(version.version) ? `(v${version.version})` : ''}
                 </Title>
 
                 <Button
@@ -52,7 +44,7 @@ function RouteComponent() {
                   variant="default"
                   radius="xl"
                   className="flex-shrink-0"
-                  onClick={() => platform.openLink(`https://chatboxai.app/redirect_app/check_update/${language}`)}
+                  onClick={() => platform.openLink(PRODUCT.releasesUrl)}
                 >
                   {t('Check Update')}
                 </Button>
@@ -61,134 +53,57 @@ function RouteComponent() {
               <Text c="chatbox-tertiary">{t('about-introduction')}</Text>
 
               <Flex gap="sm">
-                <Anchor
-                  size="sm"
-                  href="https://chatboxai.app/privacy"
-                  target="_blank"
-                  underline="hover"
-                  c="chatbox-tertiary"
-                >
+                <Anchor size="sm" href={PRODUCT.privacyUrl} target="_blank" underline="hover" c="chatbox-tertiary">
                   {t('Privacy Policy')}
                 </Anchor>
-                <Anchor
-                  size="sm"
-                  href="https://chatboxai.app/terms"
-                  target="_blank"
-                  underline="hover"
-                  c="chatbox-tertiary"
-                >
+                <Anchor size="sm" href={PRODUCT.termsUrl} target="_blank" underline="hover" c="chatbox-tertiary">
                   {t('User Terms')}
                 </Anchor>
               </Flex>
             </Stack>
           </Flex>
 
-          {_i18n.language === 'zh-Hans' ? (
-            <Stack gap="xs" p="md" className="rounded-lg bg-chatbox-background-warning-secondary">
-              <Flex align="center" gap="xxs" c="chatbox-error">
-                <ScalableIcon icon={IconAlertTriangle} size={24} className="!text-inherit" />
-                <Title order={5}>正版提示</Title>
-              </Flex>
-              <Text>
-                近期出现了附带 Chatbox 的所谓一键本地部署 DeepSeek 的付费捆绑软件安装包。
-                Chatbox客户端本身是开源免费软件，只在官网(chatboxai.app)销售托管AI服务。
-                如果发现上当受骗，请尽快在对应支付平台如微信、支付宝申请退款。
-              </Text>
-            </Stack>
-          ) : null}
-
           <List>
             <ListItem
               icon={<BrandGithub className="w-full h-full" />}
               title={t('Github')}
-              link="https://github.com/chatboxai/chatbox"
-              value="chatbox"
+              link={PRODUCT.githubRepo}
+              value="nikethai/chaeboxi"
             />
-            {/* <ListItem
-              icon={<BrandX className="w-full h-full" />}
-              title={t('X(Twitter)')}
-              link="https://x.com/ChatboxAI_HQ"
-              value="@ChatboxAI_HQ"
-            /> */}
-            <ListItem
-              icon={<BrandRedNote className="w-full h-full" />}
-              title={t('RedNote')}
-              link="https://www.xiaohongshu.com/user/profile/67b581b6000000000e01d11f"
-              value="@63844903136"
-            />
-            <ListItem icon={<BrandWechat className="w-full h-full" />} title={t('WeChat')} right={<WechatQRCode />} />
           </List>
 
           <List>
-            <ListItem
-              icon={<IconHome className="w-full h-full" />}
-              title={t('Homepage')}
-              link={`https://chatboxai.app/redirect_app/homepage/${language}`}
-            />
-            <ListItem
-              icon={<IconClipboard className="w-full h-full" />}
-              title={t('Survey')}
-              link={_i18n.language === 'zh-Hans' ? 'https://jsj.top/f/fcMYEa' : 'https://jsj.top/f/RUMbvY'}
-            />
+            <ListItem icon={<IconHome className="w-full h-full" />} title={t('Homepage')} link={PRODUCT.homepage} />
             <ListItem
               icon={<IconPencil className="w-full h-full" />}
               title={t('Feedback')}
-              link={`https://chatboxai.app/redirect_app/feedback/${language}`}
+              link={PRODUCT.feedbackUrl}
             />
             <ListItem
               icon={<IconFileText className="w-full h-full" />}
               title={t('Changelog')}
-              link={`https://chatboxai.app/${language.split('-')[0] || 'en'}/help-center/changelog`}
-            />
-            <ListItem
-              icon={<IconMail className="w-full h-full" />}
-              title={t('E-mail')}
-              link={`mailto:hi@chatboxai.com`}
-              value="hi@chatboxai.com"
+              link={PRODUCT.changelogUrl}
             />
             <ListItem
               icon={<IconMessage2 className="w-full h-full" />}
               title={t('FAQs')}
-              link={`https://chatboxai.app/${language.split('-')[0] || 'en'}/help-center/chatbox-ai-service-faqs`}
+              link={PRODUCT.githubRepo}
             />
           </List>
         </Stack>
-
-        {/* 开发环境下显示错误测试面板 */}
-        {/* {process.env.NODE_ENV === 'development' && (
-          <div className="mt-8 max-w-md">
-            <ErrorTestPanel />
-          </div>
-        )} */}
       </Container>
     </Page>
   )
 }
 
-function WechatQRCode() {
-  const { t } = useTranslation()
-  const [opened, { close, open }] = useDisclosure(false)
-  return (
-    <Popover position="top" withArrow shadow="md" opened={opened}>
-      <Popover.Target>
-        <Text onMouseEnter={open} onMouseLeave={close} c="chatbox-brand" className="cursor-pointer">
-          {t('QR Code')}
-        </Text>
-      </Popover.Target>
-      <Popover.Dropdown style={{ pointerEvents: 'none' }}>
-        <Image src={IMG_WECHAT_QRCODE} alt="wechat qrcode" w={160} h={160} />
-      </Popover.Dropdown>
-    </Popover>
-  )
-}
-
-function List(props: { children: ReactElement[] }) {
+function List(props: { children: ReactElement | ReactElement[] }) {
+  const children = Array.isArray(props.children) ? props.children : [props.children]
   return (
     <Stack gap={0} className="rounded-lg bg-chatbox-background-secondary">
-      {props.children.map((child, index) => (
+      {children.map((child, index) => (
         <Fragment key={`child-${index}`}>
           {child}
-          {index !== props.children.length - 1 && <Divider />}
+          {index !== children.length - 1 && <Divider />}
         </Fragment>
       ))}
     </Stack>

@@ -24,6 +24,12 @@ export enum StorageKey {
   MemorySettings = 'memory-settings',
   /** Global memory bank (shared across models/agents) */
   MemoryBankGlobal = 'memory-bank-global',
+  /** Local usage rollup (day × provider × model) */
+  UsageRollup = 'usage-rollup',
+  /** Cached provider quota snapshots */
+  UsageQuotaCache = 'usage-quota-cache',
+  /** Soft budget one-shot notify state */
+  UsageBudgetNotify = 'usage-budget-notify',
 }
 
 export const StorageKeyGenerator = {
@@ -63,13 +69,14 @@ export default class StoreStorage extends BaseStorage {
     StorageKey.ConfigVersion,
     StorageKey.MemorySettings,
     StorageKey.MemoryBankGlobal,
+    StorageKey.UsageBudgetNotify,
   ])
 
   public async getItem<T>(key: string, initialValue: T): Promise<T> {
     const value: T = await super.getItem(key, initialValue)
 
     if (key === StorageKey.Configs && value === initialValue) {
-      await super.setItemNow(key, initialValue) // 持久化初始生成的 uuid
+      await super.setItemNow(key, initialValue) // uuid
     }
 
     return value

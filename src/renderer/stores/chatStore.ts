@@ -14,6 +14,7 @@ import {
   type UpdaterFn,
 } from '@shared/types'
 import { useQuery } from '@tanstack/react-query'
+import { getDefaultStore } from 'jotai'
 import compact from 'lodash/compact'
 import isEmpty from 'lodash/isEmpty'
 import { useMemo } from 'react'
@@ -23,17 +24,16 @@ import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import * as defaults from '../../shared/defaults'
 import { getLogger } from '../lib/utils'
 import { migrateSession, sortSessions } from '../utils/session-utils'
-import { uiStore } from './uiStore'
-
-const log = getLogger('chat-store')
-
 import { clearScrollPositionCache } from '@/components/chat/MessageList'
+import { uiStore } from './uiStore'
+import { currentSessionIdAtom } from './atoms'
 import { cleanupSessionAtomCache } from './atoms/throttleWriteSessionAtom'
 import { lastUsedModelStore } from './lastUsedModelStore'
 import queryClient from './queryClient'
 import { getSessionMeta } from './sessionHelpers'
 import { settingsStore, useSettingsStore } from './settingsStore'
 import { UpdateQueue } from './updateQueue'
+const log = getLogger('chat-store')
 
 const QueryKeys = {
   ChatSessionsList: ['chat-sessions-list'],
@@ -130,6 +130,11 @@ const getSessionQueryOptions = (sessionId: string) => ({
 
 export async function getSession(sessionId: string) {
   return await queryClient.fetchQuery(getSessionQueryOptions(sessionId))
+}
+
+/** Read a session directly from storage without consulting the stale React Query cache. */
+export async function sessionExistsInStorage(sessionId: string): Promise<boolean> {
+  return (await storage.getItem<Session | null>(StorageKeyGenerator.session(sessionId), null)) !== null
 }
 
 /** Drop local React Query cache and re-read session(s) from shared storage. */
@@ -279,13 +284,18 @@ export async function deleteSession(id: string) {
     }
     return sessions.filter((session) => session.id !== id)
   })
-  // Clean up UI state and caches to prevent memory leaks
+  if (getDefaultStore().get(currentSessionIdAtom) === id) {
+    getDefaultStore().set(currentSessionIdAtom, null)
+  }
+
+  // Clean up UI state and caches to prevent memory leaks.
   uiStore.getState().clearSessionWebBrowsing(id)
   uiStore.getState().removeSessionKnowledgeBase(id)
   cleanupSessionAtomCache(id)
   clearScrollPositionCache(id)
   delete sessionUpdateQueues[id]
-  // Clear in-chat todo checklist for this session (memory + disk)
+
+  // Clear in-chat todo checklist for this session (memory + disk).
   try {
     const { taskStore } = await import('@/stores/taskStore')
     taskStore.getState().clearSessionTasks(id)

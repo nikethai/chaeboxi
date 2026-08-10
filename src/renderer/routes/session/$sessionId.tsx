@@ -26,8 +26,10 @@ import { continueActiveSessionTasks } from '@/stores/session/messages'
 import { getAllMessageList } from '@/stores/sessionHelpers'
 import { useUIStore } from '@/stores/uiStore'
 import { isThreadVisuallyEmpty } from '@/utils/chat-starters'
+import { getModelDisplayName } from '@/utils/modelDisplayName'
 import { getSessionRouteState } from '@/utils/sessionRouteState'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
+import { useProviders } from '@/hooks/useProviders'
 
 // Agent-mode panels are not used on Android. Use compile-time conditional
 // dynamic imports so the modules (and their @mantine/openclaw deps) are
@@ -48,6 +50,7 @@ function RouteComponent() {
   const navigate = useNavigate()
   const { session: currentSession, isPending, isError, refetch } = useSession(currentSessionId)
   const sessionRouteState = getSessionRouteState({ session: currentSession, isPending, isError })
+  const { providers } = useProviders()
   const [showToolAudit, setShowToolAudit] = useState(false)
 
   const currentMessageList = useMemo(() => (currentSession ? getAllMessageList(currentSession) : []), [currentSession])
@@ -189,6 +192,7 @@ function RouteComponent() {
       modelId: currentSession.settings.modelId,
     }
   }, [currentSession?.settings?.provider, currentSession?.settings?.modelId])
+  const modelDisplayName = useMemo(() => getModelDisplayName(providers, model), [model, providers])
 
   const isOpenClawProvider = currentSession?.settings?.provider === ModelProviderEnum.OpenClaw
   const [showSessionPanel, setShowSessionPanel] = useState(false)
@@ -280,36 +284,37 @@ function RouteComponent() {
 
           <div className="session-dock">
             <div className="session-dock-pad">
-              <ChatDockStack key={currentSession.id} sessionId={currentSession.id} onContinueTasks={onContinueTasks}>
-                <ErrorBoundary name="session-inputbox">
-                  <InputBox
-                    key={`input-box${currentSession.id}`}
-                    ref={inputBoxRef}
-                    sessionId={currentSession.id}
-                    sessionType={currentSession.type}
-                    model={model}
-                    agentMode={currentSession.agentMode ?? false}
-                    workspaceRoot={currentSession.workspaceRoot}
-                    onStartNewThread={onStartNewThread}
-                    onRollbackThread={onRollbackThread}
-                    onSelectModel={onSelectModel}
-                    onToggleAgentMode={(agentMode) => {
-                      void updateSessionStore(currentSession.id, { agentMode })
-                    }}
-                    onWorkspaceRootChange={(workspaceRoot) => {
-                      void updateSessionStore(currentSession.id, { workspaceRoot })
-                    }}
-                    onClickSessionSettings={onClickSessionSettings}
-                    generating={!!lastGeneratingMessage}
-                    onSubmit={onSubmit}
-                    onStopGenerating={onStopGenerating}
-                  />
-                </ErrorBoundary>
-              </ChatDockStack>
+<ChatDockStack key={currentSession.id} sessionId={currentSession.id} onContinueTasks={onContinueTasks}>
+  <ErrorBoundary name="session-inputbox">
+    <InputBox
+      key={`input-box${currentSession.id}`}
+      ref={inputBoxRef}
+      sessionId={currentSession.id}
+      sessionType={currentSession.type}
+      model={model}
+      modelDisplayName={modelDisplayName}
+      agentMode={currentSession.agentMode ?? false}
+      workspaceRoot={currentSession.workspaceRoot}
+      onStartNewThread={onStartNewThread}
+      onRollbackThread={onRollbackThread}
+      onSelectModel={onSelectModel}
+      onToggleAgentMode={(agentMode) => {
+        void updateSessionStore(currentSession.id, { agentMode })
+      }}
+      onWorkspaceRootChange={(workspaceRoot) => {
+        void updateSessionStore(currentSession.id, { workspaceRoot })
+      }}
+      onClickSessionSettings={onClickSessionSettings}
+      generating={!!lastGeneratingMessage}
+      onSubmit={onSubmit}
+      onStopGenerating={onStopGenerating}
+    />
+  </ErrorBoundary>
+</ChatDockStack>
             </div>
             <SessionStatusBar
               messages={currentMessageList}
-              modelLabel={model?.modelId}
+              modelLabel={modelDisplayName}
               providerId={model?.provider}
               generating={!!lastGeneratingMessage}
               sessionId={currentSession.id}

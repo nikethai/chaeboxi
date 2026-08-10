@@ -11,6 +11,7 @@ import { updateSession } from '@/stores/chatStore'
 import { scheduleGenerateNameAndThreadName, scheduleGenerateThreadName } from '@/stores/sessionActions'
 import * as settingActions from '@/stores/settingActions'
 import { useUIStore } from '@/stores/uiStore'
+import { getSidebarToggleResult } from '@/utils/sidebarToggle'
 import { ScalableIcon } from '../common/ScalableIcon'
 import TitleBarRow from './TitleBarRow'
 import Toolbar from './Toolbar'
@@ -20,6 +21,8 @@ export default function Header(props: { session: Session }) {
   const { t } = useTranslation()
   const showSidebar = useUIStore((s) => s.showSidebar)
   const setShowSidebar = useUIStore((s) => s.setShowSidebar)
+  const sidebarLayout = useUIStore((s) => s.sidebarLayout)
+  const setSidebarLayout = useUIStore((s) => s.setSidebarLayout)
   const isSmallScreen = useIsSmallScreen()
   const { needRoomForMacWindowControls } = useNeedRoomForWinControls()
 
@@ -86,14 +89,22 @@ export default function Header(props: { session: Session }) {
     setRenaming(false)
   }
 
-  // Mobile only: hamburger for temporary drawer.
-  // Desktop icon rail has expand above the user control — no duplicate in chat header.
-  const showSidebarToggle = isSmallScreen
+  // Mobile toggles the temporary drawer; the desktop rail hamburger expands it in place.
+  const showSidebarToggle = isSmallScreen || sidebarLayout === 'rail'
   const macTrafficInset = showSidebarToggle && needRoomForMacWindowControls
 
   const handleSidebarToggle = () => {
-    setShowSidebar(!showSidebar)
+    const next = getSidebarToggleResult({ isSmallScreen, sidebarLayout, showSidebar })
+    setSidebarLayout(next.sidebarLayout)
+    setShowSidebar(next.showSidebar)
   }
+
+  const sidebarToggleLabel =
+    !isSmallScreen && sidebarLayout === 'rail'
+      ? t('Expand sidebar')
+      : showSidebar
+        ? t('Hide sidebar')
+        : t('Show sidebar')
 
   return (
     <TitleBarRow
@@ -111,7 +122,7 @@ export default function Header(props: { session: Session }) {
             color="chatbox-tertiary"
             mr={isSmallScreen ? 'xs' : 'sm'}
             onClick={handleSidebarToggle}
-            aria-label={showSidebar ? t('Hide sidebar') : t('Show sidebar')}
+            aria-label={sidebarToggleLabel}
           >
             <IconMenu2 />
           </ActionIcon>

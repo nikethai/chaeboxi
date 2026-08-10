@@ -168,8 +168,8 @@ export type InputBoxProps = {
    * Used for Team mode visibility and room strip.
    */
   draftAgentIds?: string[]
-  draftRoomMode?: 'discuss' | 'work'
-  onDraftRoomModeChange?(mode: 'discuss' | 'work'): void
+  draftRoomMode?: 'discuss' | 'work' | 'swarm'
+  onDraftRoomModeChange?(mode: 'discuss' | 'work' | 'swarm'): void
 }
 
 const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
@@ -922,7 +922,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     )
 
     const handleRoomModeChange = useCallback(
-      async (mode: 'discuss' | 'work') => {
+      async (mode: 'discuss' | 'work' | 'swarm') => {
         if (isNewSession) {
           onDraftRoomModeChange?.(mode)
           return
@@ -1906,12 +1906,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       )
     }
 
-    const roomMode: 'discuss' | 'work' = isNewSession
-      ? draftRoomMode === 'work'
-        ? 'work'
+    const roomMode: 'discuss' | 'work' | 'swarm' = isNewSession
+      ? draftRoomMode === 'work' || draftRoomMode === 'swarm'
+        ? draftRoomMode
         : 'discuss'
-      : currentSession?.roomMode === 'work'
-        ? 'work'
+      : currentSession?.roomMode === 'work' || currentSession?.roomMode === 'swarm'
+        ? currentSession.roomMode
         : 'discuss'
     const showRoomModeChip = roomAgentIds.length >= 2 || selectedAgents.length >= 2
 

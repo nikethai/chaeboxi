@@ -13,6 +13,12 @@ export type TeamRoomLiveStatus = {
   speakerName?: string
   round?: number
   totalRounds?: number
+  /** Swarm: 1-based current task index among planned tasks */
+  taskIndex?: number
+  /** Swarm: total tasks on the board for this run */
+  taskTotal?: number
+  /** Swarm: short title of current task */
+  taskTitle?: string
 } | null
 
 export type TeamRoomActionsState = {

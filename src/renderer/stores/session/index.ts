@@ -47,6 +47,7 @@ export {
   keepDiscussing,
   requestTeamAnswer,
   runAgentRoomDiscussion,
+  runAgentRoomSwarm,
   runAgentRoomWork,
   setSessionRoomMode,
   shouldRunMultiAgentRoom,

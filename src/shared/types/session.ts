@@ -476,8 +476,8 @@ export const SessionSchema = z.object({
   copilotId: z.string().optional(),
   /** Room members: agent persona ids in this session (Slack-style multi-agent) */
   agentIds: z.array(z.string()).optional().catch(undefined),
-  /** Team room mode: discuss (default) or work together */
-  roomMode: z.enum(['discuss', 'work']).optional().catch(undefined),
+  /** Team room mode: discuss (default), work pipeline, or swarm task board */
+  roomMode: z.enum(['discuss', 'work', 'swarm']).optional().catch(undefined),
   /** Preferred lead agent for Team answer / Work execute (defaults to first speaker) */
   roomLeadId: z.string().optional().catch(undefined),
   folderId: z.string().optional(),

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  assignTasks,
+  buildProtocolForRoomRole,
   buildRoomContinuePrompt,
   buildRoomProtocol,
   buildSpeakerTurnQueue,
@@ -11,6 +13,7 @@ import {
   resolveSpeakers,
   resolveStanceLabel,
   resolveSynthesisLead,
+  roomRoleAllowsTaskToolsOnly,
   roomRoleAllowsTools,
   roundForQueueIndex,
   shouldRunSynthesis,
@@ -135,5 +138,59 @@ describe('agent-room', () => {
     expect(roomRoleAllowsTools('turn')).toBe(false)
     expect(roomRoleAllowsTools('synthesis')).toBe(false)
     expect(roomRoleAllowsTools('plan')).toBe(false)
+  })
+
+  it('allows task tools only on swarm plan', () => {
+    expect(roomRoleAllowsTaskToolsOnly('plan', 'swarm')).toBe(true)
+    expect(roomRoleAllowsTaskToolsOnly('plan', 'work')).toBe(false)
+    expect(roomRoleAllowsTaskToolsOnly('do', 'swarm')).toBe(false)
+  })
+
+  it('assignTasks keeps explicit assignee and matches names', () => {
+    const agents = [
+      { id: 'a1', name: 'Researcher' },
+      { id: 'a2', name: 'Writer' },
+      { id: 'a3', name: 'Critic' },
+    ]
+    const map = assignTasks(
+      [
+        { id: 't1', title: 'Research market trends' },
+        { id: 't2', title: 'Write draft', assigneeAgentId: 'a2' },
+        { id: 't3', title: 'Critique draft' },
+      ],
+      agents,
+      'a1'
+    )
+    expect(map.t2).toBe('a2')
+    expect(map.t1).toBe('a1')
+    expect(map.t3).toBe('a3')
+  })
+
+  it('assignTasks load-balances when no name match', () => {
+    const agents = [
+      { id: 'a1', name: 'Alpha' },
+      { id: 'a2', name: 'Beta' },
+    ]
+    const map = assignTasks(
+      [
+        { id: 't1', title: 'Step one' },
+        { id: 't2', title: 'Step two' },
+        { id: 't3', title: 'Step three' },
+      ],
+      agents,
+      'a1'
+    )
+    const loads = { a1: 0, a2: 0 } as Record<string, number>
+    for (const agentId of Object.values(map)) loads[agentId] += 1
+    expect(Math.abs(loads.a1 - loads.a2)).toBeLessThanOrEqual(1)
+  })
+
+  it('buildProtocolForRoomRole uses swarm plan copy', () => {
+    const text = buildProtocolForRoomRole('plan', 'Lead', ['Lead', 'Writer'], {
+      roomMode: 'swarm',
+      leadName: 'Lead',
+    })
+    expect(text).toContain('Swarm')
+    expect(text).toContain('create_task')
   })
 })

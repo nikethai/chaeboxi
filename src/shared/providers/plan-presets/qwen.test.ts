@@ -21,7 +21,7 @@ describe('qwen plan presets', () => {
     expect(preset!.models.some((m) => m.modelId === 'qwen3.7-plus')).toBe(true)
   })
 
-  it('includes international Coding Plan host from QwenCloud Chatbox docs', () => {
+  it('includes international Coding Plan host from QwenCloud docs', () => {
     const preset = getQwenPreset('coding-plan', 'international')
     expect(preset!.apiHost).toBe('https://coding-intl.dashscope.aliyuncs.com/compatible-mode/v1')
   })

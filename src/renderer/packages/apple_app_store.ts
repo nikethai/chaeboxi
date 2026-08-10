@@ -3,7 +3,7 @@ import { store as keypairStore } from './keypairs'
 import { CHATBOX_BUILD_PLATFORM } from '../variables'
 import NiceModal from '@ebay/nice-modal-react'
 
-// 本次启动是否已经引导过用户评价 App Store
+// (legacy comment)
 let hasOpenAppStoreReviewPage = false
 
 export async function tryOpenAppStoreReviewPage() {
@@ -17,7 +17,7 @@ export async function tryOpenAppStoreReviewPage() {
     const lastAppStoreReviewTime = (await keypairStore.getItem<number>('lastAppStoreReviewTime')) || 0
     const now = Date.now()
     if (now - lastAppStoreReviewTime < 1000 * 60 * 60 * 24 * 30) {
-      // 30 天
+      // (legacy comment removed)
       return
     }
     hasOpenAppStoreReviewPage = true
@@ -29,7 +29,7 @@ export async function tryOpenAppStoreReviewPage() {
   }
 }
 
-// 记录App Store评分弹窗点击
+// App Store
 export async function recordAppStoreRatingClick() {
   await keypairStore.setItem('appStoreRatingClicked', true)
 }

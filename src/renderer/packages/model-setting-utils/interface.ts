@@ -2,13 +2,13 @@ import type { ModelProvider, ProviderBaseInfo, ProviderModelInfo, ProviderSettin
 
 export interface ModelSettingUtil {
   provider: ModelProvider
-  // 用在消息下面展示的模型名称
+  // (legacy comment removed)
   getCurrentModelDisplayName(
     model: string,
     sessionType: SessionType,
     providerSettings?: ProviderSettings,
     providerBaseInfo?: ProviderBaseInfo
   ): Promise<string>
-  // 获取该provider远程的模型组
+  // (legacy comment)
   getMergeOptionGroups(providerSettings: ProviderSettings): Promise<ProviderModelInfo[]>
 }

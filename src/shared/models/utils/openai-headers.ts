@@ -1,3 +1,5 @@
+import { PRODUCT } from '../../product'
+
 export interface CloudflareAccessSettings {
   cloudflareClientId?: string
   cloudflareClientSecret?: string
@@ -22,8 +24,8 @@ export function buildOpenAICompatibleHeaders(
 ): Record<string, string> | undefined {
   const providerHeaders = apiHost.includes('openrouter.ai')
     ? {
-        'HTTP-Referer': 'https://chatboxai.app',
-        'X-Title': 'Chatbox AI',
+        'HTTP-Referer': PRODUCT.openRouterReferer,
+        'X-Title': PRODUCT.openRouterTitle,
       }
     : apiHost.includes('aihubmix.com')
       ? {

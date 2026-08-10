@@ -54,7 +54,7 @@ To add a provider:
 
 ## Non-goals
 
-- Chaeboxi / Chatbox AI license billing UI (CE strips paid license features).
+- Chaeboxi / legacy cloud service license billing UI (CE strips paid license features).
 - Scraping undocumented high-frequency provider billing endpoints.
 - Fake hard-coded subscription meters (e.g. “Plus = 40 messages”).
 

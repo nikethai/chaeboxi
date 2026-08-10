@@ -1,5 +1,5 @@
 import { getModel } from '@shared/models'
-import { AIProviderNoImplementedPaintError, ChatboxAIAPIError } from '@shared/models/errors'
+import { AIProviderNoImplementedPaintError, ProviderAPIError } from '@shared/models/errors'
 import { ComfyUIClient } from '@shared/providers/definitions/models/comfyui-client'
 import type { ComfyUIGenerationParams } from '@shared/providers/definitions/models/comfyui-types'
 import { ModelProviderEnum, type ImageGeneration, type ImageGenerationModel } from '@shared/types'
@@ -215,7 +215,7 @@ async function runGeneration(recordId: string): Promise<void> {
 
     log.error('Image generation failed:', error)
 
-    const errorCode = err instanceof ChatboxAIAPIError ? err.code : undefined
+    const errorCode = err instanceof ProviderAPIError ? err.code : undefined
     const updatedRecord = await updateRecord(recordId, {
       status: 'error',
       error: error.message,

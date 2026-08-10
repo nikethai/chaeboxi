@@ -17,11 +17,11 @@ export type ActionMenuItemProps =
       doubleCheck?:
         | boolean
         | {
-            text?: string // 二次确认的文字，默认 t('Confirm?')
+            text?: string // ， t('Confirm?')
             icon?: React.ElementType<IconProps>
             color?: MenuItemProps['color']
-            timeout?: number // 二次确认的超时时间，默认 5000 毫秒
-          } // 点击时需要二次确认
+            timeout?: number // ， 5000
+          } // (legacy)
     }
   | {
       divider: true

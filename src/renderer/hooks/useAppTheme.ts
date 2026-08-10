@@ -137,7 +137,7 @@ export function getThemeDesign(realTheme: 'light' | 'dark', fontSize: number, la
     breakpoints: {
       values: {
         xs: 0,
-        sm: 640, // 修改sm的值与tailwindcss保持一致
+        sm: 640, // smtailwindcss
         md: 900,
         lg: 1200,
         xl: 1536,

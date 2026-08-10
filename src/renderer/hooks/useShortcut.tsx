@@ -18,7 +18,7 @@ export default function useShortcut() {
       keyboardShortcut(e)
     }
     const focusMessageInput = () => {
-      // 大屏幕下，窗口显示时自动聚焦输入框
+      // (legacy comment removed)
       if (!isSmallScreen) {
         dom.focusMessageInput()
       }
@@ -34,7 +34,7 @@ export default function useShortcut() {
   }, [isSmallScreen])
 
   function keyboardShortcut(e: KeyboardEvent) {
-    // 这里不用 e.key 是因为 alt、 option、shift 都会改变 e.key 的值
+    // e.key alt、 option、shift e.key
     const ctrlOrCmd = e.ctrlKey || e.metaKey
     const shift = e.shiftKey
     const altOrOption = e.altKey
@@ -53,21 +53,21 @@ export default function useShortcut() {
       return
     }
 
-    // 创建新会话 CmdOrCtrl + N
+    // CmdOrCtrl + N
     if (e.key === 'n' && ctrlKey && !shift) {
       router.navigate({
         to: '/',
       })
       return
     }
-    // 创建新图片会话 CmdOrCtrl + Shift + N
+    // CmdOrCtrl + Shift + N
     if (e.key === 'n' && ctrlKey && shift) {
       router.navigate({
         to: '/image-creator',
       })
       return
     }
-    // 归档当前会话的上下文。
+    // (legacy comment removed)
     if (e.key === 'r' && ctrlKey) {
       e.preventDefault()
       const sid = getDefaultStore().get(currentSessionIdAtom)

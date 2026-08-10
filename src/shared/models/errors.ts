@@ -5,7 +5,7 @@ export class BaseError extends Error {
   }
 }
 
-// 10000 - 19999 为通用网络接口错误
+// (legacy comment removed)
 
 export class ApiError extends BaseError {
   public code = 10001
@@ -50,87 +50,87 @@ export class OCRError extends BaseError {
   }
 }
 
-// 20000 - 29999 为远程服务错误（含兼容旧版本错误码）
+// (legacy comment removed)
 
-// 远程服务错误
-// 注意，在开发时 i18nKey 中的标签和参数，都需要在 MessageErrTips 中定义
-// NOTE： 这个文件不会被 translate script 扫描到，为了能提取 key，把这里新增的 key 去 `src/renderer/i18n/for-key-scan.ts` 也添加一份
-export class ChatboxAIAPIError extends BaseError {
-  static codeNameMap: { [codename: string]: ChatboxAIAPIErrorDetail } = {
-    // 超出配额
+// (legacy comment removed)
+// (legacy comment)
+// NOTE： translate script ， key， key `src/renderer/i18n/for-key-scan.ts`
+export class ProviderAPIError extends BaseError {
+  static codeNameMap: { [codename: string]: ProviderAPIErrorDetail } = {
+    // (legacy comment removed)
     token_quota_exhausted: {
       name: 'token_quota_exhausted',
-      code: 10004, // 小于 20000 是为了兼容旧版本
+      code: 10004, // 20000
       i18nKey:
         'You have reached your current quota for the {{model}} model. Please <OpenSettingButton>go to Settings</OpenSettingButton> to switch to a different model or check your provider configuration.',
     },
-    // 当前套餐不支持该模型
+    // (legacy comment removed)
     license_upgrade_required: {
       name: 'license_upgrade_required',
       code: 20001,
       i18nKey:
         'The current account configuration does not support the {{model}} model. Please <OpenSettingButton>open Settings</OpenSettingButton> and switch to another model or provider.',
     },
-    // license 过期
+    // license
     expired_license: {
       name: 'expired_license',
       code: 20002,
       i18nKey: 'Authentication has expired or is invalid. Please check your provider credentials and try again.',
     },
-    // 未输入 license
+    // license
     license_key_required: {
       name: 'license_key_required',
       code: 20003,
       i18nKey:
         'The selected model provider requires credentials that are not configured yet. Please <OpenSettingButton>open Settings</OpenSettingButton> and configure provider credentials, or choose a different provider.',
     },
-    // 输入的 license 未找到
+    // license
     license_not_found: {
       name: 'license_not_found',
       code: 20004,
       i18nKey: 'The configured provider credentials are invalid. Please update them and try again.',
     },
-    // 超出配额
+    // (legacy comment removed)
     rate_limit_exceeded: {
       name: 'rate_limit_exceeded',
       code: 20005,
       i18nKey: 'You have exceeded the provider rate limit. Please try again later.',
     },
-    // 参数错误
+    // (legacy comment removed)
     bad_params: {
       name: 'bad_params',
       code: 20006,
       i18nKey:
         'Invalid request parameters detected. Please try again later. Persistent failures may indicate an outdated software version. Consider upgrading to access the latest performance improvements and features.',
     },
-    // 文件类型不支持。支持的类型有 txt、md、html、doc、docx、pdf、excel、pptx、csv 以及所有文本类型的文件，包括代码文件
+    // 。 txt、md、html、doc、docx、pdf、excel、pptx、csv ，
     file_type_not_supported: {
       name: 'file_type_not_supported',
       code: 20007,
       i18nKey:
         'File type not supported. Supported types include txt, md, html, doc, docx, pdf, excel, pptx, csv, and all text-based files, including code files.',
     },
-    // 发送的文件已经超过七天，为了保护您的隐私，所有文件相关的缓存数据已经清理。您需要重新创建对话或刷新上下文，然后再次发送文件。
+    // (legacy comment removed)
     file_expired: {
       name: 'file_expired',
       code: 20008,
       i18nKey:
         'The file you sent has expired. To protect your privacy, all file-related cache data has been cleared. You need to create a new conversation or refresh the context, and then send the file again.',
     },
-    // 未找到文件的缓存数据。请重新创建对话或刷新上下文，然后再次发送文件。
+    // (legacy comment removed)
     file_not_found: {
       name: 'file_not_found',
       code: 20009,
       i18nKey:
         'The cache data for the file was not found. Please create a new conversation or refresh the context, and then send the file again.',
     },
-    // 文件大小超过 50MB
+    // (legacy comment removed)
     file_too_large: {
       name: 'file_too_large',
       code: 20010,
       i18nKey: 'The file size exceeds the limit of 50MB. Please reduce the file size and try again.',
     },
-    // 当前模型不支持发送文件
+    // (legacy comment removed)
     model_not_support_file: {
       name: 'model_not_support_file',
       code: 20011,
@@ -143,7 +143,7 @@ export class ChatboxAIAPIError extends BaseError {
       i18nKey:
         "The {{model}} API doesn't support document understanding. Please switch to a model with vision/document capabilities.",
     },
-    // 当前模型不支持发送图片
+    // (legacy comment removed)
     model_not_support_image: {
       name: 'model_not_support_image',
       code: 20013,
@@ -156,7 +156,7 @@ export class ChatboxAIAPIError extends BaseError {
       i18nKey:
         'Vision capability is not enabled for Model {{model}}. Please enable it or set a default OCR model in <OpenSettingButton>Settings</OpenSettingButton>',
     },
-    // 当前模型不支持发送链接
+    // (legacy comment removed)
     // 'model_not_support_link': {
     //     name: 'model_not_support_link',
     //     code: 20015,
@@ -298,8 +298,8 @@ export class ChatboxAIAPIError extends BaseError {
     if (!codeName) {
       return null
     }
-    if (ChatboxAIAPIError.codeNameMap[codeName]) {
-      return new ChatboxAIAPIError(response, ChatboxAIAPIError.codeNameMap[codeName])
+    if (ProviderAPIError.codeNameMap[codeName]) {
+      return new ProviderAPIError(response, ProviderAPIError.codeNameMap[codeName])
     }
     return null
   }
@@ -307,23 +307,23 @@ export class ChatboxAIAPIError extends BaseError {
     if (!code) {
       return null
     }
-    for (const name in ChatboxAIAPIError.codeNameMap) {
-      if (ChatboxAIAPIError.codeNameMap[name].code === code) {
-        return ChatboxAIAPIError.codeNameMap[name]
+    for (const name in ProviderAPIError.codeNameMap) {
+      if (ProviderAPIError.codeNameMap[name].code === code) {
+        return ProviderAPIError.codeNameMap[name]
       }
     }
     return null
   }
 
-  public detail: ChatboxAIAPIErrorDetail
-  constructor(message: string, detail: ChatboxAIAPIErrorDetail) {
+  public detail: ProviderAPIErrorDetail
+  constructor(message: string, detail: ProviderAPIErrorDetail) {
     super(message)
     this.detail = detail
     this.code = detail.code
   }
 }
 
-interface ChatboxAIAPIErrorDetail {
+interface ProviderAPIErrorDetail {
   name: string
   code: number
   i18nKey: string

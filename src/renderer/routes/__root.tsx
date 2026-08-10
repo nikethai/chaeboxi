@@ -79,19 +79,19 @@ function Root() {
     if (initialized.current) {
       return
     }
-    // 通过定时器延迟启动，防止处理状态底层存储的异步加载前错误的初始数据
+    // Delay startup until async settings storage has loaded
     const tid = setTimeout(() => {
       // biome-ignore lint/nursery/noFloatingPromises: inline call
       ;(async () => {
         setRemoteConfig((conf) => ({ ...conf }))
-        // 是否需要弹出设置窗口
+        // (legacy comment removed)
         initialized.current = true
         if (settingActions.needEditSetting() && location.pathname !== '/settings/mcp') {
           await NiceModal.show('welcome')
           return
         }
-        // 是否需要弹出关于窗口（更新后首次启动）
-        // 目前仅在桌面版本更新后首次启动才自动弹窗
+        // (legacy comment removed)
+        // (legacy comment removed)
         const shouldShowAboutDialogWhenStartUp = await platform.shouldShowAboutDialogWhenStartUp()
         if (shouldShowAboutDialogWhenStartUp) {
           setOpenAboutDialog(true)
@@ -150,7 +150,7 @@ function Root() {
 
   useEffect(() => {
     if (platform.onNavigate) {
-      // 移动端和其他平台的导航监听器
+      // (legacy comment)
       return platform.onNavigate((path) => {
         // Keep platform navigations aligned with in-app settings entry (full-page routes)
         if (path.startsWith('/settings')) {
@@ -223,31 +223,31 @@ function Root() {
           </Box>
         </Grid>
       )}
-      {/* 对话设置 */}
+      {/* Session settings */}
       {/* <AppStoreRatingDialog /> */}
-      {/* 代码预览 */}
+      {/* Code preview */}
       {/* <ArtifactDialog /> */}
-      {/* 对话列表清理 */}
+      {/* Session list cleanup */}
       {/* <ChatConfigWindow /> */}
-      {/* 似乎未使用 */}
+      {/* Possibly unused */}
       {/* <CleanWidnow /> */}
-      {/* 对话列表清理 */}
+      {/* Session list cleanup */}
       {/* <ClearConversationListWindow /> */}
-      {/* 导出聊天记录 */}
+      {/* Export chat */}
       {/* <ExportChatDialog /> */}
-      {/* 编辑消息 */}
+      {/* Edit message */}
       {/* <MessageEditDialog /> */}
-      {/* 添加链接 */}
+      {/* Add link */}
       {/* <OpenAttachLinkDialog /> */}
-      {/* 图片预览 */}
+      {/* Image preview */}
       <PictureDialog />
-      {/* 似乎是从后端拉一个弹窗的配置 */}
+      {/* Remote dialog config */}
       <RemoteDialogWindow />
-      {/* 手机端举报内容 */}
+      {/* Mobile report content */}
       {/* <ReportContentDialog /> */}
-      {/* 搜索 */}
+      {/* Search */}
       <SearchDialog />
-      {/* 没有配置模型时的欢迎弹窗 */}
+      {/* Welcome when no model configured */}
       {/* <WelcomeDialog /> */}
       <Toasts /> {/* mui */}
     </Box>

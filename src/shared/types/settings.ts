@@ -428,7 +428,7 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
   licenseDetail: ChatboxAILicenseDetailSchema.optional().catch(undefined),
   licenseActivationMethod: z.enum(['login', 'manual']).optional(),
   lastSelectedLicenseByUser: z.record(z.string(), z.string()).optional().catch(undefined),
-  // 在 licensekeyview UI中显示/记忆的key，以免用户使用 login 方式后老 key 被清除，他也不记得
+  // licensekeyview UI/key， login key ，
   memorizedManualLicenseKey: z.string().optional(),
 
   // chat settings
@@ -465,24 +465,24 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
 
   startupPage: z.enum(['home', 'session']).optional(),
 
-  // disableQuickToggleShortcut?: boolean // 是否关闭快捷键切换窗口显隐（弃用，为了兼容历史数据，这个字段永远不要使用）
+  // disableQuickToggleShortcut?: boolean // （，，）
 
-  defaultPrompt: z.string().optional(), // 新会话的默认 prompt
+  defaultPrompt: z.string().optional(), // Default prompt for new sessions
 
-  proxy: z.string().optional(), // 代理地址
+  proxy: z.string().optional(), // Proxy URL
 
-  allowReportingAndTracking: z.boolean().optional(), // 是否允许错误报告和事件追踪
+  allowReportingAndTracking: z.boolean().optional(), // Allow error reporting and analytics
 
-  userAvatarKey: z.string().optional(), // 用户头像的 key
-  defaultAssistantAvatarKey: z.string().optional(), // 默认助手头像的 key
+  userAvatarKey: z.string().optional(), // User avatar storage key
+  defaultAssistantAvatarKey: z.string().optional(), // Default assistant avatar key
 
   enableMarkdownRendering: z.boolean().default(true),
   enableMermaidRendering: z.boolean().default(true),
   enableLaTeXRendering: z.boolean().default(true),
-  injectDefaultMetadata: z.boolean().default(true), // 是否注入默认附加元数据（如模型名称、当前日期）
-  autoPreviewArtifacts: z.boolean().default(false), // 是否自动展开预览 artifacts
-  autoCollapseCodeBlock: z.boolean().default(true), // 是否自动折叠代码块
-  pasteLongTextAsAFile: z.boolean().default(true), // 是否将长文本粘贴为文件
+  injectDefaultMetadata: z.boolean().default(true), // Inject default metadata (model name, date)
+  autoPreviewArtifacts: z.boolean().default(false), // Auto-expand artifact previews
+  autoCollapseCodeBlock: z.boolean().default(true), // Auto-collapse code blocks
+  pasteLongTextAsAFile: z.boolean().default(true), // Paste long text as a file
 
   autoGenerateTitle: z.boolean().default(true),
 
@@ -491,8 +491,8 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
   contextOverflowBehavior: z.enum(['ask', 'auto-compact', 'truncate']).default('ask'),
 
   autoLaunch: z.boolean().default(false),
-  autoUpdate: z.boolean().default(true), // 是否自动检查更新
-  betaUpdate: z.boolean().default(false), // 是否自动检查 beta 更新
+  autoUpdate: z.boolean().default(true), // Auto-check for updates
+  betaUpdate: z.boolean().default(false), // Auto-check beta updates
 
   /** Keep process running in menu bar / system tray when window is closed (desktop) */
   keepInTray: z.boolean().default(true).catch(true),
@@ -537,7 +537,7 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
     .catch(undefined),
 })
 
-// TODO: provider的 base info 和 settings混在一起了，可以考虑像 session settings 和 global settings一样拆开
+// TODO: provider base info settings， session settings global settings
 export type ProviderInfo = (ProviderBaseInfo | CustomProviderBaseInfo) & ProviderSettings
 
 export type SessionSettings = z.infer<typeof SessionSettingsSchema>

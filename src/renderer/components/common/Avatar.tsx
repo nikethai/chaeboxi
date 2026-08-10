@@ -71,7 +71,7 @@ export type AssistantAvatarProps = {
   sessionType?: 'chat' | 'picture'
 } & PolymorphicComponentProps<'div', AvatarProps>
 
-// 优先级: avatarKey > picUrl > defaultAssistantAvatarKey > sessionType
+// : avatarKey > picUrl > defaultAssistantAvatarKey > sessionType
 export const AssistantAvatar: FC<AssistantAvatarProps> = ({
   size = 'md',
   type = 'assistant',

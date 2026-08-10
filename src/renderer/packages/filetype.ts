@@ -1,5 +1,5 @@
 /**
- * 可以判断当前文件是否为常见的文本文件
+ * (legacy comment removed)
  */
 export function isTextFile(file: File) {
   return (

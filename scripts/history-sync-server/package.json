@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Self-hosted history sync server for Chatbox cross-machine conversation sync",
+  "description": "Self-hosted history sync server for Chaeboxi cross-machine conversation sync",
   "engines": {
     "node": ">=20"
   },

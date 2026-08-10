@@ -11,9 +11,9 @@ const pattern =
   /[a-zA-Z0-9_\u0392-\u03c9\u00c0-\u00ff\u0600-\u06ff\u0400-\u04ff]+|[\u4e00-\u9fff\u3400-\u4dbf\uf900-\ufaff\u3040-\u309f\uac00-\ud7af]+/g
 
 /**
- * 统计文本中的字数，支持中日韩字符
- * @param data 要统计的文本
- * @returns 字数
+ * (legacy comment removed)
+ * @param data
+ * @returns
  */
 export function countWord(data: string): number {
   try {
@@ -32,7 +32,7 @@ export function countWord(data: string): number {
     }
     return count
   } catch (e) {
-    // 在共享层不使用 Sentry，简单返回 -1 表示错误
+    // (legacy comment)
     return -1
   }
 } 

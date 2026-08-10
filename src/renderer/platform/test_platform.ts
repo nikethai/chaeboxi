@@ -1,10 +1,10 @@
 /**
- * TestPlatform - 用于集成测试的平台实现
+ * TestPlatform -
  *
- * 特点：
- * - 使用内存存储，不依赖真实文件系统或数据库
- * - 支持文件对话测试场景
- * - 可导出会话结果到文件
+ * (legacy comment removed)
+ * (legacy comment removed)
+ * (legacy comment removed)
+ * (legacy comment removed)
  */
 
 import * as defaults from '@shared/defaults'
@@ -15,7 +15,7 @@ import type { Exporter, Platform, PlatformType, FormFactor, Storage } from './in
 import type { KnowledgeBaseController } from './knowledge-base/interface'
 
 /**
- * 内存存储类，用于测试环境
+ * (legacy comment removed)
  */
 export class InMemoryStorage implements Storage {
   private store = new Map<string, any>()
@@ -61,7 +61,7 @@ export class InMemoryStorage implements Storage {
 }
 
 /**
- * 测试用导出器
+ * (legacy comment removed)
  */
 class TestExporter implements Exporter {
   private exports: Map<string, any> = new Map()
@@ -108,7 +108,7 @@ class TestExporter implements Exporter {
 }
 
 /**
- * TestPlatform 实现
+ * TestPlatform
  */
 export default class TestPlatform implements Platform {
   public type: PlatformType = 'web'
@@ -122,12 +122,12 @@ export default class TestPlatform implements Platform {
   private settings: Settings | null = null
 
   constructor() {
-    // 初始化默认配置
+    // (legacy comment removed)
     this.configs = defaults.newConfigs()
     this.settings = defaults.settings()
   }
 
-  // ============ Storage 接口实现 ============
+  // ============ Storage ============
 
   public getStorageType(): string {
     return 'IN_MEMORY_TEST'
@@ -157,7 +157,7 @@ export default class TestPlatform implements Platform {
     return this.storage.setAllStoreValues(data)
   }
 
-  // ============ Blob 存储实现 ============
+  // ============ Blob ============
 
   public async getStoreBlob(key: string): Promise<string | null> {
     return this.blobs.get(key) ?? null
@@ -175,7 +175,7 @@ export default class TestPlatform implements Platform {
     return Array.from(this.blobs.keys())
   }
 
-  // ============ 系统相关 ============
+  // (legacy comment removed)
 
   public async getVersion(): Promise<string> {
     return 'test'
@@ -237,7 +237,7 @@ export default class TestPlatform implements Platform {
     // no-op in test
   }
 
-  // ============ 数据配置 ============
+  // (legacy comment removed)
 
   public async getConfig(): Promise<Config> {
     if (!this.configs) {
@@ -253,7 +253,7 @@ export default class TestPlatform implements Platform {
     return this.settings
   }
 
-  // ============ 追踪 ============
+  // (legacy comment removed)
 
   public initTracking(): void {
     // no-op in test
@@ -263,7 +263,7 @@ export default class TestPlatform implements Platform {
     // no-op in test
   }
 
-  // ============ 通知 ============
+  // (legacy comment removed)
 
   public async shouldShowAboutDialogWhenStartUp(): Promise<boolean> {
     return false
@@ -286,7 +286,7 @@ export default class TestPlatform implements Platform {
   }
 
   public async parseFileLocally(file: File): Promise<{ key?: string; isSupported: boolean }> {
-    // 简单实现：读取文件内容
+    // (legacy comment removed)
     try {
       const text = await file.text()
       const key = `parseFile-${uuidv4()}`
@@ -362,20 +362,20 @@ export default class TestPlatform implements Platform {
     return () => {}
   }
 
-  // ============ 测试辅助方法 ============
+  // (legacy comment removed)
 
   /**
-   * 加载文件内容到 blob 存储
-   * @param storageKey 存储键名
-   * @param content 文件内容
+   * (legacy comment)
+   * @param storageKey
+   * @param content
    */
   public loadFile(storageKey: string, content: string): void {
     this.blobs.set(storageKey, content)
   }
 
   /**
-   * 批量加载文件
-   * @param files 文件映射 { storageKey: content }
+   * (legacy comment removed)
+   * @param files { storageKey: content }
    */
   public loadFiles(files: Record<string, string>): void {
     for (const [key, content] of Object.entries(files)) {
@@ -384,7 +384,7 @@ export default class TestPlatform implements Platform {
   }
 
   /**
-   * 获取所有 blob 存储的内容
+   * (legacy comment)
    */
   public getAllBlobs(): Record<string, string> {
     const result: Record<string, string> = {}
@@ -395,7 +395,7 @@ export default class TestPlatform implements Platform {
   }
 
   /**
-   * 清空所有存储
+   * (legacy comment removed)
    */
   public clear(): void {
     this.storage.clear()
@@ -407,21 +407,21 @@ export default class TestPlatform implements Platform {
   }
 
   /**
-   * 设置测试用的 settings
+   *  settings
    */
   public setSettings(settings: Partial<Settings>): void {
     this.settings = { ...defaults.settings(), ...settings }
   }
 
   /**
-   * 设置测试用的 config
+   *  config
    */
   public setConfig(config: Partial<Config>): void {
     this.configs = { ...defaults.newConfigs(), ...config }
   }
 
   /**
-   * 获取内部存储实例
+   * (legacy comment removed)
    */
   public getInternalStorage(): InMemoryStorage {
     return this.storage

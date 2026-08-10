@@ -28,6 +28,18 @@ export class UpdateQueue<T extends object> {
     })
   }
 
+  /**
+   * Align in-memory state with an external source (e.g. React Query cache-only
+   * stream patches) so the next persist does not clobber fresher UI state.
+   * No-op while a flush is in flight — the next set()/flush will re-read via getSession.
+   */
+  syncState(state: T): void {
+    if (this.scheduled) {
+      return
+    }
+    this.state = state
+  }
+
   /** Test hook; normally scheduled via microtask */
   async flush(): Promise<void> {
     if (this.state === null) {

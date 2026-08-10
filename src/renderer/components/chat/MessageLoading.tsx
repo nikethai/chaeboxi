@@ -1,6 +1,7 @@
 import type { Message } from '@shared/types'
-import { Loader } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AssistantStatusRow, PendingDots } from './AssistantPending'
 
 export default function MessageStatuses(props: { statuses: Message['status'] }) {
   const { statuses } = props
@@ -21,34 +22,26 @@ function MessageStatus(props: { status: NonNullable<Message['status']>[number] }
   const { t } = useTranslation()
   if (status.type === 'sending_file') {
     return (
-      <div>
-        <LoadingBubble>
-          <span className="flex flex-col">
-            <span>{t('Reading file...')}</span>
-            {status.mode && (
-              <span className="text-[10px] opacity-70 font-normal">
-                {status.mode === 'local' ? t('Local Mode') : t('Advanced Mode')}
-              </span>
-            )}
+      <AssistantStatusRow className="mb-1.5">
+        <span className="assistant-status-row-title">{t('Reading file…')}</span>
+        {status.mode ? (
+          <span className="assistant-status-row-meta">
+            {status.mode === 'local' ? t('Local') : t('Advanced')}
           </span>
-        </LoadingBubble>
-      </div>
+        ) : null}
+      </AssistantStatusRow>
     )
   }
   if (status.type === 'loading_webpage') {
     return (
-      <div>
-        <LoadingBubble>
-          <span className="flex flex-col">
-            <span>{t('Loading webpage...')}</span>
-            {status.mode && (
-              <span className="text-[10px] opacity-70 font-normal">
-                {status.mode === 'local' ? t('Local Mode') : t('Advanced Mode')}
-              </span>
-            )}
+      <AssistantStatusRow className="mb-1.5">
+        <span className="assistant-status-row-title">{t('Loading webpage…')}</span>
+        {status.mode ? (
+          <span className="assistant-status-row-meta">
+            {status.mode === 'local' ? t('Local') : t('Advanced')}
           </span>
-        </LoadingBubble>
-      </div>
+        ) : null}
+      </AssistantStatusRow>
     )
   }
   if (status.type === 'retrying') {
@@ -61,26 +54,22 @@ function RetryingIndicator(props: { attempt: number; maxAttempts: number }) {
   const { attempt, maxAttempts } = props
   const { t } = useTranslation()
   return (
-    <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 mb-1">
-      <Loader className="w-3 h-3 animate-spin" />
-      <span>{t('Retrying {{attempt}}/{{maxAttempts}}', { attempt, maxAttempts })}</span>
-    </div>
+    <AssistantStatusRow className="mb-1.5">
+      <span className="assistant-status-row-title">
+        {t('Retrying {{attempt}}/{{maxAttempts}}', { attempt, maxAttempts })}
+      </span>
+    </AssistantStatusRow>
   )
 }
 
-export function LoadingBubble(props: { children: React.ReactNode }) {
-  const { children } = props
+/** @deprecated Prefer AssistantStatusRow — kept for any external imports. */
+export function LoadingBubble(props: { children: ReactNode }) {
   return (
-    <div className="flex flex-row items-start justify-start overflow-x-auto overflow-y-hidden">
-      <div
-        className="flex justify-start items-center mb-1 px-1 py-2
-                                                    border-solid border-blue-400/20 shadow-md rounded-lg
-                                                    bg-blue-100
-                                                    "
-      >
-        <Loader className="w-6 h-6 ml-1 mr-2 text-black animate-spin" />
-        <span className="mr-4 animate-pulse font-bold text-gray-800/70">{children}</span>
-      </div>
-    </div>
+    <AssistantStatusRow>
+      <span className="assistant-status-row-title">{props.children}</span>
+    </AssistantStatusRow>
   )
 }
+
+// silence unused if tree-shaken — PendingDots re-export for convenience
+export { PendingDots }

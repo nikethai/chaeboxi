@@ -15,6 +15,9 @@ const statusLabelKey: Record<TaskStatus, string> = {
   failed: 'Failed',
 }
 
+/** Collapse completed rows by default when the list would otherwise be a wall of Done. */
+const COMPLETED_COLLAPSE_THRESHOLD = 2
+
 function StatusGlyph({ status }: { status: TaskStatus }) {
   if (status === 'done') {
     return (
@@ -67,7 +70,6 @@ export const TodoAppCard: FC<TodoAppCardProps> = ({
   skipEnterAnimation = false,
 }) => {
   const { t } = useTranslation()
-  const [collapsed, setCollapsed] = useState(false)
   // Select stable store slice — never `.filter()` inside the selector (new array → infinite re-render / React #185)
   const allTasks = useTaskStore((s) => s.tasks)
   const toggleTaskDone = useTaskStore((s) => s.toggleTaskDone)
@@ -90,9 +92,27 @@ export const TodoAppCard: FC<TodoAppCardProps> = ({
     const done = items.filter((i) => i.status === 'done').length
     const failed = items.filter((i) => i.status === 'failed').length
     const inProgress = items.filter((i) => i.status === 'in-progress').length
+    const remaining = items.filter((i) => i.status === 'pending' || i.status === 'in-progress').length
     const pct = total > 0 ? Math.round(((done + failed) / total) * 100) : 0
-    return { total, done, failed, inProgress, pct }
+    const allComplete = total > 0 && remaining === 0 && failed === 0
+    return { total, done, failed, inProgress, remaining, pct, allComplete }
   }, [items])
+
+  // Collapse by default when the checklist is finished or would be a huge Done wall.
+  const [collapsed, setCollapsed] = useState(() => summary.allComplete || summary.done >= COMPLETED_COLLAPSE_THRESHOLD)
+  const [showCompleted, setShowCompleted] = useState(false)
+
+  const activeItems = useMemo(
+    () => items.filter((item) => item.status !== 'done'),
+    [items]
+  )
+  const completedItems = useMemo(
+    () => items.filter((item) => item.status === 'done'),
+    [items]
+  )
+  const collapseCompleted = completedItems.length > COMPLETED_COLLAPSE_THRESHOLD
+  const visibleCompleted =
+    !collapseCompleted || showCompleted ? completedItems : ([] as TaskSnapshot[])
 
   const onToggle = useCallback(
     (id: string, status: TaskStatus) => {
@@ -110,8 +130,23 @@ export const TodoAppCard: FC<TodoAppCardProps> = ({
 
   if (items.length === 0) return null
 
+  const headSubtitle = summary.allComplete
+    ? t('All done')
+    : summary.inProgress > 0
+      ? t('In Progress')
+      : summary.remaining > 0
+        ? t('{{count}} remaining', { count: summary.remaining })
+        : null
+
   return (
-    <div className={clsx('todo-app', className, skipEnterAnimation && 'is-static')}>
+    <div
+      className={clsx(
+        'todo-app',
+        className,
+        skipEnterAnimation && 'is-static',
+        summary.allComplete && 'is-all-complete'
+      )}
+    >
       <div className="todo-app-shell">
         <div className="todo-app-core">
           <button
@@ -124,11 +159,14 @@ export const TodoAppCard: FC<TodoAppCardProps> = ({
             <span className="todo-app-count tabular-nums">
               {summary.done}/{summary.total}
             </span>
-            {summary.inProgress > 0 && (
-              <span className="todo-app-live" aria-hidden>
-                {t('In Progress')}
+            {headSubtitle ? (
+              <span
+                className={clsx('todo-app-live', summary.allComplete && 'is-complete')}
+                aria-hidden
+              >
+                {headSubtitle}
               </span>
-            )}
+            ) : null}
             <span className={clsx('todo-app-chevron', !collapsed && 'is-open')} aria-hidden>
               ›
             </span>
@@ -138,22 +176,25 @@ export const TodoAppCard: FC<TodoAppCardProps> = ({
             <>
               <div className="todo-app-progress-track" aria-hidden>
                 <div
-                  className={clsx('todo-app-progress-fill', summary.failed > 0 && 'is-warn')}
+                  className={clsx(
+                    'todo-app-progress-fill',
+                    summary.failed > 0 && 'is-warn',
+                    summary.allComplete && 'is-complete'
+                  )}
                   style={{ transform: `scaleX(${summary.pct / 100})` }}
                 />
               </div>
               <ul className="todo-app-list" role="list">
-                {items.map((item, index) => {
+                {activeItems.map((item, index) => {
                   const canToggle = interactive && liveTasks.some((t) => t.id === item.id)
-                  const isDone = item.status === 'done'
                   return (
                     <li
                       key={item.id}
-                      className={clsx('todo-app-row', `is-${item.status}`, isDone && 'is-complete')}
+                      className={clsx('todo-app-row', `is-${item.status}`)}
                       style={
                         skipEnterAnimation
                           ? undefined
-                          : { animationDelay: `${Math.min(index, 12) * 80}ms` }
+                          : { animationDelay: `${Math.min(index, 12) * 40}ms` }
                       }
                     >
                       <button
@@ -161,12 +202,8 @@ export const TodoAppCard: FC<TodoAppCardProps> = ({
                         className={clsx('todo-app-check', canToggle && 'is-interactive')}
                         onClick={() => onToggle(item.id, item.status)}
                         disabled={!canToggle}
-                        aria-label={
-                          isDone
-                            ? t('Mark as pending: {{title}}', { title: item.title })
-                            : t('Mark as done: {{title}}', { title: item.title })
-                        }
-                        aria-pressed={isDone}
+                        aria-label={t('Mark as done: {{title}}', { title: item.title })}
+                        aria-pressed={false}
                       >
                         <StatusGlyph status={item.status} />
                       </button>
@@ -176,12 +213,59 @@ export const TodoAppCard: FC<TodoAppCardProps> = ({
                           <span className="todo-app-row-meta tabular-nums">{item.progress}%</span>
                         )}
                       </div>
-                      <span className={clsx('todo-app-status', `is-${item.status}`)}>
-                        {t(statusLabelKey[item.status])}
-                      </span>
+                      {item.status !== 'pending' ? (
+                        <span className={clsx('todo-app-status', `is-${item.status}`)}>
+                          {t(statusLabelKey[item.status])}
+                        </span>
+                      ) : null}
                     </li>
                   )
                 })}
+
+                {collapseCompleted && !showCompleted && completedItems.length > 0 ? (
+                  <li className="todo-app-row is-toggle">
+                    <button
+                      type="button"
+                      className="todo-app-completed-toggle"
+                      onClick={() => setShowCompleted(true)}
+                    >
+                      {t('Show {{count}} completed', { count: completedItems.length })}
+                    </button>
+                  </li>
+                ) : null}
+
+                {visibleCompleted.map((item) => {
+                  const canToggle = interactive && liveTasks.some((t) => t.id === item.id)
+                  return (
+                    <li key={item.id} className="todo-app-row is-done is-complete">
+                      <button
+                        type="button"
+                        className={clsx('todo-app-check', canToggle && 'is-interactive')}
+                        onClick={() => onToggle(item.id, item.status)}
+                        disabled={!canToggle}
+                        aria-label={t('Mark as pending: {{title}}', { title: item.title })}
+                        aria-pressed
+                      >
+                        <StatusGlyph status={item.status} />
+                      </button>
+                      <div className="todo-app-row-main min-w-0">
+                        <span className="todo-app-title">{item.title}</span>
+                      </div>
+                    </li>
+                  )
+                })}
+
+                {collapseCompleted && showCompleted && completedItems.length > 0 ? (
+                  <li className="todo-app-row is-toggle">
+                    <button
+                      type="button"
+                      className="todo-app-completed-toggle"
+                      onClick={() => setShowCompleted(false)}
+                    >
+                      {t('Hide completed')}
+                    </button>
+                  </li>
+                ) : null}
               </ul>
             </>
           )}

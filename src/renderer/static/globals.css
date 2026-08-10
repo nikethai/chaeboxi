@@ -456,7 +456,8 @@
 
   /*
    * Quick Chat type + chrome scale — one base so thread / composer / chips match.
-   * Full session stays at ~1.02rem prose; floating panel uses ~0.875rem body.
+   * Full session: chat-readable ~0.95rem body (not blog-scale 1.02rem).
+   * Floating panel uses ~0.875rem body.
    */
   .quick-chat-shell {
     --quick-type: 0.875rem; /* 14px body */
@@ -600,7 +601,7 @@
     flex-wrap: nowrap;
     font-size: var(--quick-type-xs);
   }
-  .quick-chat-shell .session-statusline.is-compact .session-statusline-seg {
+  .quick-chat-shell .session-statusline.is-compact .session-statusline-model {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -633,13 +634,12 @@
       -6px 0 20px -10px rgba(0, 0, 0, 0.35);
   }
 
-  /* Grok-style quiet nav stack */
+  /* Quiet nav stack — same radius language as session rows */
   .rail-nav {
     display: flex;
     flex-direction: column;
-    gap: 1px;
-    /* tight under in-chrome rail head — avoid double air with title bar */
-    padding: 0.05rem 0.45rem 0.3rem;
+    gap: 2px;
+    padding: 0.15rem 0.5rem 0.45rem;
   }
 
   /* Brand lockup — left with nav, not centered / traffic-light-shifted */
@@ -649,8 +649,9 @@
     width: 100%;
     justify-content: flex-start !important;
     /* Match .rail-nav horizontal inset so logo lines up with Search */
-    padding-left: 0.65rem !important;
-    padding-right: 0.65rem !important;
+    padding-left: 0.7rem !important;
+    padding-right: 0.7rem !important;
+    padding-bottom: 0.15rem !important;
   }
 
   .rail-head .chaeboxi-wordmark {
@@ -663,16 +664,16 @@
   .rail-nav-item {
     display: flex;
     align-items: center;
-    gap: 0.65rem;
+    gap: 0.6rem;
     width: 100%;
-    min-height: 44px;
-    padding: 0.4rem 0.65rem;
+    min-height: 36px;
+    padding: 0.35rem 0.65rem;
     margin: 0;
     border: none;
-    border-radius: 999px;
+    border-radius: 10px;
     background: transparent;
     color: var(--chatbox-tint-secondary);
-    font-size: 0.9rem;
+    font-size: 0.875rem;
     font-weight: 500;
     letter-spacing: -0.01em;
     text-align: left;
@@ -683,17 +684,31 @@
   }
 
   .rail-nav-item:hover {
-    background: var(--chatbox-background-tertiary);
+    background: color-mix(in srgb, var(--chatbox-background-tertiary) 90%, transparent);
     color: var(--chatbox-tint-primary);
   }
 
   .rail-nav-item:active {
-    opacity: 0.88;
+    opacity: 0.9;
+  }
+
+  /* Primary action in the stack */
+  .rail-nav-item--primary {
+    color: var(--chatbox-tint-primary);
+    font-weight: 600;
+    background: color-mix(in srgb, var(--chatbox-tint-brand) 8%, transparent);
+  }
+
+  .rail-nav-item--primary:hover {
+    background: color-mix(in srgb, var(--chatbox-tint-brand) 13%, transparent);
+    color: var(--chatbox-tint-primary);
   }
 
   .rail-nav-item > svg {
     flex-shrink: 0;
-    opacity: 0.9;
+    opacity: 0.88;
+    width: 1.1rem;
+    height: 1.1rem;
   }
 
   .rail-nav-item > span {
@@ -703,14 +718,15 @@
 
   .rail-nav-kbd {
     font-family: var(--chatbox-font-mono);
-    font-size: 0.65rem;
+    font-size: 0.625rem;
     font-weight: 500;
     letter-spacing: 0.02em;
     color: var(--chatbox-tint-tertiary);
-    border: 1px solid var(--chatbox-border-primary);
-    border-radius: 4px;
-    padding: 0.1rem 0.3rem;
+    border: 1px solid color-mix(in srgb, var(--chatbox-border-primary) 80%, transparent);
+    border-radius: 5px;
+    padding: 0.12rem 0.32rem;
     line-height: 1.2;
+    opacity: 0.9;
   }
 
   .rail-nav-badge {
@@ -797,8 +813,31 @@
     color: var(--chatbox-tint-secondary);
   }
 
+  /* Utility strip between nav and session list */
   .rail-tools {
-    border-bottom: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin: 0.15rem 0.5rem 0.35rem;
+    padding: 0.2rem;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--chatbox-background-tertiary) 55%, transparent);
+    border: none;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 45%, transparent);
+  }
+
+  .rail-tools .mantine-ActionIcon-root {
+    color: var(--chatbox-tint-tertiary);
+  }
+
+  .rail-tools .mantine-ActionIcon-root:hover {
+    color: var(--chatbox-tint-primary);
+    background: color-mix(in srgb, var(--chatbox-background-primary) 70%, transparent);
+  }
+
+  /* Session list scroller */
+  .rail-session-list {
+    padding: 0 0 0.5rem;
   }
 
   /* Section headers: Projects / Recents */
@@ -807,8 +846,8 @@
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    min-height: 36px;
-    padding: 0.55rem 0.75rem 0.3rem;
+    min-height: 30px;
+    padding: 0.65rem 0.85rem 0.25rem;
     margin: 0;
     border: none;
     background: transparent;
@@ -822,9 +861,9 @@
   }
 
   .rail-section-label {
-    font-size: 0.6875rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
+    font-size: 0.65rem;
+    font-weight: 650;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
     color: var(--chatbox-tint-tertiary);
     transition: color 120ms var(--chatbox-ease);
@@ -833,18 +872,63 @@
   .rail-section-trail {
     display: inline-flex;
     align-items: center;
-    gap: 2px;
+    gap: 1px;
     color: var(--chatbox-tint-tertiary);
+    opacity: 0.85;
+  }
+
+  .rail-section:hover .rail-section-trail {
+    opacity: 1;
   }
 
   .rail-section-chevron {
-    transition: transform 140ms cubic-bezier(0.32, 0.72, 0, 1);
+    transition: transform 180ms cubic-bezier(0.32, 0.72, 0, 1);
     transform: rotate(-90deg);
     opacity: 0.7;
   }
 
   .rail-section-chevron.is-open {
     transform: rotate(0deg);
+  }
+
+  /* Section / folder list rows — enter + exit when collapsible groups toggle */
+  @keyframes rail-row-in {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes rail-row-out {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-5px);
+    }
+  }
+
+  /* Animation only while toggling — not on Virtuoso scroll recycle remounts. */
+  .rail-row-anim.is-entering {
+    animation: rail-row-in 180ms cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+
+  .rail-row-anim.is-exiting {
+    animation: rail-row-out 160ms cubic-bezier(0.32, 0.72, 0, 1) both;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .rail-row-anim.is-entering,
+    .rail-row-anim.is-exiting {
+      animation: none;
+    }
   }
 
   .rail-section-add {
@@ -857,57 +941,86 @@
     opacity: 1;
   }
 
-  /* Recents / session row — soft pill (quiet selected, hairline depth) */
+  /*
+   * Recents / session row — chat-app selection, not sausage pill + stub bar.
+   * Idle: flat. Hover: soft wash. Active: brand-tinted fill + clear title weight.
+   */
   .studio-rail-row {
     position: relative;
-    border-radius: 999px;
+    border-radius: 10px;
     min-height: 34px;
-    transition-property: background-color, box-shadow, color;
+    transition-property: background-color, color, box-shadow;
     transition-duration: 140ms;
     transition-timing-function: var(--chatbox-ease);
   }
 
   .studio-rail-row:hover {
-    background: var(--chatbox-background-tertiary);
+    background: color-mix(in srgb, var(--chatbox-background-tertiary) 92%, transparent);
   }
 
   .studio-rail-row-active {
-    background: var(--chatbox-background-tertiary) !important;
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+    background: color-mix(
+      in srgb,
+      var(--chatbox-tint-brand) 12%,
+      var(--chatbox-background-secondary)
+    ) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 16%, transparent);
   }
 
+  /* Slim brand edge — full height of the rounded row, not a floating stub */
   .studio-rail-row-active::before {
     content: "";
     position: absolute;
-    inset-inline-start: 4px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 3px;
-    height: 55%;
-    border-radius: 999px;
+    inset-inline-start: 0;
+    top: 7px;
+    bottom: 7px;
+    width: 2.5px;
+    border-radius: 0 2px 2px 0;
     background: var(--chatbox-tint-brand);
-    opacity: 0.9;
+    opacity: 1;
   }
 
   :root[data-mantine-color-scheme="dark"] .studio-rail-row-active {
-    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+    background: color-mix(
+      in srgb,
+      var(--chatbox-tint-brand) 18%,
+      var(--chatbox-background-secondary)
+    ) !important;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 24%, transparent);
   }
 
   .studio-rail-row-active:hover {
-    background: color-mix(in srgb, var(--chatbox-background-tertiary) 88%, var(--chatbox-tint-primary) 6%) !important;
+    background: color-mix(
+      in srgb,
+      var(--chatbox-tint-brand) 16%,
+      var(--chatbox-background-secondary)
+    ) !important;
+  }
+
+  .studio-rail-row-active .rail-session-title {
+    color: var(--chatbox-tint-primary) !important;
+    font-weight: 600 !important;
+  }
+
+  .studio-rail-row-active .rail-session-time {
+    opacity: 0.9;
+    color: var(--chatbox-tint-secondary);
   }
 
   /* Nested under expanded project */
   .rail-session-nested {
-    margin-inline-start: 0.85rem;
-    padding-inline-start: 0.95rem !important;
+    margin-inline-start: 0.55rem;
+    padding-inline-start: 0.85rem !important;
   }
 
   .rail-coaching-row {
     display: flex;
     align-items: flex-start;
     gap: 6px;
-    padding: 4px 12px 6px;
+    margin: 0.15rem 0.55rem 0.35rem;
+    padding: 0.45rem 0.55rem;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--chatbox-background-tertiary) 60%, transparent);
   }
 
   .rail-coaching-dismiss {
@@ -920,29 +1033,73 @@
   }
 
   .rail-session-time {
-    opacity: 0.72;
+    opacity: 0.65;
+    font-variant-numeric: tabular-nums;
   }
 
   .group\/session-item:hover .rail-session-time {
-    opacity: 0.55;
+    opacity: 0.5;
   }
 
   .rail-day-header {
     display: flex;
     align-items: center;
-    padding: 0.4rem 0.95rem 0.15rem;
-    font-size: 0.68rem;
-    font-weight: 500;
-    letter-spacing: 0.02em;
+    padding: 0.55rem 0.9rem 0.2rem;
+    font-size: 0.625rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--chatbox-tint-tertiary);
-    opacity: 0.85;
+    opacity: 0.75;
   }
 
   .rail-empty-hint,
   .rail-coaching-hint {
-    line-height: 1.35;
-    opacity: 0.9;
+    line-height: 1.4;
+    opacity: 0.95;
+  }
+
+  .rail-empty-card {
+    margin: 0.15rem 0.55rem 0.35rem;
+    padding: 0.7rem 0.75rem;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--chatbox-background-tertiary) 50%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 40%, transparent);
+  }
+
+  .rail-empty-card-title {
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--chatbox-tint-secondary);
+  }
+
+  .rail-empty-card-desc {
+    margin: 0.25rem 0 0;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--chatbox-tint-tertiary);
+  }
+
+  .rail-empty-card-action {
+    margin-top: 0.55rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.55rem;
+    border: none;
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--chatbox-tint-brand) 12%, transparent);
+    color: var(--chatbox-tint-primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 120ms var(--chatbox-ease);
+  }
+
+  .rail-empty-card-action:hover {
+    background: color-mix(in srgb, var(--chatbox-tint-brand) 18%, transparent);
   }
 
   .rail-drop-target {
@@ -958,6 +1115,14 @@
     align-items: center;
     gap: 0.4rem 0.5rem;
     -webkit-font-smoothing: antialiased;
+  }
+
+  .skill-activations--suggested {
+    opacity: 0.92;
+  }
+
+  .skill-activations--suggested .skill-chip {
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 5%, transparent);
   }
 
   .skill-activations-label {
@@ -1019,7 +1184,13 @@
   }
 
   .skill-chip--auto {
-    color: var(--chatbox-tint-secondary);
+    color: var(--chatbox-tint-tertiary);
+    background: color-mix(in srgb, var(--chatbox-background-secondary) 95%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 5%, transparent);
+  }
+
+  .skill-chip--auto .skill-chip-name {
+    font-weight: 450;
   }
 
   .skill-chip--session {
@@ -1190,6 +1361,220 @@
     transform: scale(0.96);
   }
 
+  /* Slack/Discord-style mention chips in user messages */
+  .msg-mention,
+  .msg-mention-btn {
+    display: inline;
+    padding: 0.08em 0.32em;
+    margin: 0 0.06em;
+    border: none;
+    border-radius: 0.35em;
+    font: inherit;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    line-height: inherit;
+    white-space: nowrap;
+    vertical-align: baseline;
+    cursor: pointer;
+    -webkit-font-smoothing: antialiased;
+    transition-property: filter, box-shadow;
+    transition-duration: 120ms;
+    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  }
+
+  button.msg-mention-btn {
+    /* reset button; keep inline flow like Slack */
+    background: transparent;
+    appearance: none;
+  }
+
+  .msg-mention-btn:hover,
+  .msg-mention-btn:focus-visible {
+    filter: brightness(0.97);
+    box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent);
+  }
+
+  .msg-mention-btn:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 45%, transparent);
+    outline-offset: 1px;
+  }
+
+  .msg-mention-agent,
+  .msg-mention-btn.msg-mention-agent {
+    color: var(--chatbox-tint-brand);
+    background: color-mix(in srgb, var(--chatbox-background-brand-secondary) 92%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 14%, transparent);
+  }
+
+  .msg-mention-skill,
+  .msg-mention-btn.msg-mention-skill {
+    color: color-mix(in srgb, var(--chatbox-tint-primary) 78%, #6d4aff);
+    background: color-mix(in srgb, #7c5cff 14%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, #7c5cff 16%, transparent);
+  }
+
+  .msg-mention-account,
+  .msg-mention-btn.msg-mention-account {
+    color: color-mix(in srgb, var(--chatbox-tint-primary) 78%, #0284c7);
+    background: color-mix(in srgb, #0ea5e9 14%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, #0ea5e9 16%, transparent);
+  }
+
+  .msg-mention-mem,
+  .msg-mention-btn.msg-mention-mem {
+    color: color-mix(in srgb, var(--chatbox-tint-primary) 78%, #059669);
+    background: color-mix(in srgb, #10b981 14%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, #10b981 16%, transparent);
+  }
+
+  .mention-hover-card {
+    border-radius: 10px !important;
+  }
+
+  .mention-hover-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+  }
+
+  .mention-hover-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.45rem;
+    flex-shrink: 0;
+    color: var(--chatbox-tint-secondary);
+    background: color-mix(in srgb, var(--chatbox-background-tertiary) 90%, transparent);
+  }
+
+  .mention-hover-icon-agent {
+    color: var(--chatbox-tint-brand);
+    background: color-mix(in srgb, var(--chatbox-background-brand-secondary) 90%, transparent);
+  }
+
+  .mention-hover-icon-skill {
+    color: #6d4aff;
+    background: color-mix(in srgb, #7c5cff 14%, transparent);
+  }
+
+  .mention-hover-icon-account {
+    color: #0284c7;
+    background: color-mix(in srgb, #0ea5e9 14%, transparent);
+  }
+
+  .mention-hover-icon-mem {
+    color: #059669;
+    background: color-mix(in srgb, #10b981 14%, transparent);
+  }
+
+  .mention-hover-emoji {
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+
+  .mention-hover-kind {
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.65rem !important;
+  }
+
+  .mention-hover-desc {
+    line-height: 1.4;
+  }
+
+  /*
+   * Composer mention highlight layer — under a transparent textarea.
+   * Glyph metrics must match the textarea (no extra padding/weight on chips).
+   */
+  .composer-mention-field {
+    position: relative;
+    width: 100%;
+    isolation: isolate;
+  }
+
+  .composer-mention-highlight {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: anywhere;
+    color: var(--chatbox-tint-primary);
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1.55;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .composer-mention-input-root,
+  .composer-mention-input-wrapper {
+    background: transparent !important;
+  }
+
+  /* Beat Tailwind text-* utilities + Mantine input color */
+  .composer-card .composer-mention-field textarea.composer-textarea,
+  .composer-card .composer-mention-field textarea.composer-textarea-mentions,
+  .composer-mention-field textarea.composer-textarea {
+    position: relative;
+    z-index: 1;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+    caret-color: var(--chatbox-tint-primary) !important;
+    background: transparent !important;
+  }
+
+  .composer-card .composer-mention-field textarea.composer-textarea::placeholder,
+  .composer-mention-field textarea.composer-textarea::placeholder {
+    color: var(--chatbox-tint-tertiary) !important;
+    -webkit-text-fill-color: var(--chatbox-tint-tertiary) !important;
+    opacity: 1 !important;
+  }
+
+  .composer-card .composer-mention-field textarea.composer-textarea::selection,
+  .composer-mention-field textarea.composer-textarea::selection {
+    background: color-mix(in srgb, var(--chatbox-tint-brand) 32%, transparent) !important;
+    color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
+  }
+
+  /* Stronger pills so tags read clearly vs body text */
+  .composer-mention {
+    border-radius: 0.3em;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    font-weight: 400; /* keep metrics aligned with textarea */
+  }
+
+  .composer-mention-agent {
+    color: var(--chatbox-tint-brand) !important;
+    background: color-mix(in srgb, var(--chatbox-tint-brand) 16%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 28%, transparent);
+  }
+
+  .composer-mention-skill {
+    color: #6d4aff !important;
+    background: color-mix(in srgb, #7c5cff 18%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, #7c5cff 26%, transparent);
+  }
+
+  .composer-mention-account {
+    color: #0284c7 !important;
+    background: color-mix(in srgb, #0ea5e9 18%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, #0ea5e9 26%, transparent);
+  }
+
+  .composer-mention-mem {
+    color: #059669 !important;
+    background: color-mix(in srgb, #10b981 18%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, #10b981 26%, transparent);
+  }
+
   /*
    * Message actions — Grok DNA:
    * hidden by default; full opacity on hover / focus / last message (.is-visible).
@@ -1244,8 +1629,8 @@
     background: var(--chatbox-background-user-bubble);
     border: none;
     border-radius: 1.25rem;
-    padding: 0.75rem 1.1rem;
-    font-size: 0.975rem;
+    padding: 0.7rem 1rem;
+    font-size: 0.9375rem; /* 15px — match assistant chat scale */
     line-height: 1.55;
     letter-spacing: -0.01em;
     color: var(--chatbox-tint-primary);
@@ -1262,10 +1647,10 @@
   }
 
   .user-msg .msg-content p + p {
-    margin-top: 0.45rem;
+    margin-top: 0.4rem;
   }
 
-  /* —— ASSISTANT open prose —— */
+  /* —— ASSISTANT open prose (chat, not blog) —— */
   .assistant-msg .msg-bubble {
     width: 100%;
     max-width: 100%;
@@ -1276,8 +1661,8 @@
   }
 
   .assistant-msg .msg-content {
-    font-size: 1.02rem;
-    line-height: 1.7;
+    font-size: 0.95rem; /* ~15.2px — scannable long answers */
+    line-height: 1.58;
     letter-spacing: -0.011em;
     color: var(--chatbox-tint-primary);
   }
@@ -1287,14 +1672,80 @@
   }
 
   .assistant-msg .msg-content p + p {
-    margin-top: 0.85rem;
+    margin-top: 0.6rem;
   }
 
-  .assistant-msg .msg-content ul {
-    margin: 0.55rem 0 0;
+  .assistant-msg .msg-content ul,
+  .assistant-msg .msg-content ol {
+    margin: 0.5rem 0 0;
     padding-left: 1.2rem;
     display: grid;
-    gap: 0.45rem;
+    gap: 0.35rem;
+  }
+
+  /*
+   * Headings: one step above body — never browser-default 1.5–2em.
+   * Keeps "# Summary" readable without dominating the thread.
+   */
+  .assistant-msg .msg-content h1,
+  .assistant-msg .msg-content h2,
+  .assistant-msg .msg-content h3,
+  .assistant-msg .msg-content h4,
+  .assistant-msg .msg-content h5,
+  .assistant-msg .msg-content h6 {
+    margin: 1rem 0 0.4rem;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+    font-weight: 650;
+    color: var(--chatbox-tint-primary);
+  }
+
+  .assistant-msg .msg-content h1:first-child,
+  .assistant-msg .msg-content h2:first-child,
+  .assistant-msg .msg-content h3:first-child {
+    margin-top: 0;
+  }
+
+  .assistant-msg .msg-content h1 {
+    font-size: 1.125rem; /* ~18px */
+    font-weight: 650;
+  }
+
+  .assistant-msg .msg-content h2 {
+    font-size: 1.05rem; /* ~16.8px — "## Summary" */
+    font-weight: 600;
+  }
+
+  .assistant-msg .msg-content h3 {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .assistant-msg .msg-content h4,
+  .assistant-msg .msg-content h5,
+  .assistant-msg .msg-content h6 {
+    font-size: 0.95rem;
+    font-weight: 600;
+  }
+
+  .assistant-msg .msg-content strong,
+  .assistant-msg .msg-content b {
+    font-weight: 580;
+  }
+
+  /* Softer label-line pattern: **Summary:** still readable, not shouty */
+  .assistant-msg .msg-content p > strong:first-child,
+  .assistant-msg .msg-content li > strong:first-child {
+    font-weight: 600;
+    color: var(--chatbox-tint-primary);
+  }
+
+  .assistant-msg .msg-content li > p {
+    margin: 0;
+  }
+
+  .assistant-msg .msg-content li + li {
+    margin-top: 0;
   }
 
   /*
@@ -1307,7 +1758,7 @@
     display: block;
     width: 100%;
     height: 0;
-    margin: 1.1rem 0;
+    margin: 0.9rem 0;
     padding: 0;
     border: none;
     border-top: 1px solid color-mix(in srgb, var(--chatbox-tint-primary) 10%, transparent);
@@ -1322,11 +1773,12 @@
 
   /* Soft blockquote — match prose, no heavy left bar */
   .msg-content blockquote {
-    margin: 0.85rem 0;
+    margin: 0.7rem 0;
     padding: 0.15rem 0 0.15rem 0.85rem;
     border: none;
     border-left: 2px solid color-mix(in srgb, var(--chatbox-tint-primary) 12%, transparent);
     color: var(--chatbox-tint-secondary);
+    font-size: 0.95em;
   }
 
   .msg-content blockquote p {
@@ -1337,47 +1789,12 @@
     margin-top: 0.55rem;
   }
 
-  /* —— SYSTEM: Grok gear mark + softed card —— */
+  /*
+   * System prompts are filtered out of the thread (Session options only).
+   * Keep minimal styles if a legacy path still mounts a system row.
+   */
   .system-msg {
-    opacity: 1;
-  }
-
-  .msg-system-mark {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.65rem;
-    height: 1.65rem;
-    margin: 0 0 0.45rem;
-    padding: 0;
-    border: none;
-    border-radius: 50%;
-    background: color-mix(in srgb, var(--chatbox-tint-brand) 18%, transparent);
-    color: color-mix(in srgb, var(--chatbox-tint-brand) 85%, var(--chatbox-tint-primary));
-    cursor: pointer;
-    transition:
-      background-color 120ms var(--chatbox-ease),
-      color 120ms var(--chatbox-ease);
-  }
-
-  .msg-system-mark:hover {
-    background: color-mix(in srgb, var(--chatbox-tint-brand) 28%, transparent);
-  }
-
-  .msg-system-label {
     display: none;
-  }
-
-  .system-msg .msg-bubble {
-    width: 100%;
-    max-width: 100%;
-    background: var(--chatbox-background-secondary);
-    border: 1px solid var(--chatbox-border-primary);
-    border-radius: 0.9rem;
-    padding: 0.85rem 1.05rem;
-    color: var(--chatbox-tint-secondary);
-    font-size: 0.95rem;
-    line-height: 1.55;
   }
 
   /*
@@ -1504,48 +1921,105 @@
   }
 
   .msg-worked-body {
-    margin-top: 0.4rem;
-    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    margin-top: 0.35rem;
+    padding: 0 0 0 0.1rem;
     border: none;
     border-radius: 0;
     background: transparent;
     color: var(--chatbox-tint-secondary);
-    font-size: 0.9rem;
-    line-height: 1.55;
+    font-size: 0.875rem;
+    line-height: 1.5;
   }
 
-  /* ── Tool steps (Parse Link / Web Search / generic) ── */
+  .msg-worked-reasoning {
+    opacity: 0.9;
+    color: var(--chatbox-tint-secondary);
+  }
+
+  .msg-worked-monologue {
+    margin-top: 0.45rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent);
+  }
+
+  .msg-worked-monologue-line {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--chatbox-tint-tertiary);
+    letter-spacing: -0.01em;
+  }
+
+  .msg-worked-monologue-line + .msg-worked-monologue-line {
+    margin-top: 0.35rem;
+  }
+
+  .tool-step-wrap {
+    /* spacing handled by tool-step timeline */
+  }
+
+  /*
+   * Tool steps — quiet timeline under “Worked”, not chat-dock cards.
+   * Left rail + light row hover; expand for detail only.
+   */
   .tool-step {
     width: 100%;
-    margin: 0.15rem 0 0.45rem;
+    margin: 0;
+    position: relative;
+    padding-left: 0.85rem;
+  }
+
+  .tool-step::before {
+    content: '';
+    position: absolute;
+    left: 0.28rem;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: color-mix(in srgb, var(--chatbox-border-primary) 75%, transparent);
+  }
+
+  .tool-step:first-child::before {
+    top: 0.7rem;
+  }
+
+  .tool-step:last-child::before {
+    bottom: calc(100% - 0.7rem);
+  }
+
+  .tool-step:only-child::before {
+    display: none;
   }
 
   .tool-step-header {
     display: flex;
     align-items: center;
-    gap: 0.45rem;
+    gap: 0.4rem;
     width: 100%;
-    min-height: 36px;
+    min-height: 28px;
     margin: 0;
-    padding: 0.35rem 0.55rem;
+    padding: 0.2rem 0.35rem 0.2rem 0;
     border: none;
-    border-radius: 10px;
-    background: color-mix(in srgb, var(--chatbox-background-secondary) 88%, transparent);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 70%, transparent);
+    border-radius: 6px;
+    background: transparent;
+    box-shadow: none;
     cursor: pointer;
     text-align: left;
     color: var(--chatbox-tint-secondary);
-    transition-property: background-color, box-shadow, transform;
-    transition-duration: 140ms;
-    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+    transition-property: background-color, color;
+    transition-duration: 120ms;
+    transition-timing-function: var(--chatbox-ease);
   }
 
   .tool-step-header:hover {
-    background: var(--chatbox-background-tertiary);
+    background: color-mix(in srgb, var(--chatbox-background-secondary) 70%, transparent);
   }
 
   .tool-step-header:active {
-    transform: scale(0.99);
+    transform: none;
   }
 
   .tool-step-header:focus-visible {
@@ -1554,61 +2028,98 @@
   }
 
   .tool-step-header.is-open {
-    border-radius: 10px 10px 6px 6px;
+    border-radius: 6px;
   }
 
   .tool-step-header.is-mobile {
-    min-height: 40px;
-    padding: 0.45rem 0.65rem;
-    border-radius: 12px;
+    min-height: 32px;
+    padding: 0.28rem 0.4rem 0.28rem 0;
+    border-radius: 8px;
   }
 
   .tool-step-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
-    border-radius: 7px;
-    background: color-mix(in srgb, var(--chatbox-background-tertiary) 80%, transparent);
+    width: 1.15rem;
+    height: 1.15rem;
+    border-radius: 999px;
+    background: var(--chatbox-background-primary);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 80%, transparent);
     color: var(--chatbox-tint-tertiary);
     flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+    margin-left: -0.05rem;
   }
 
   .tool-step-main {
     display: flex;
-    flex-direction: column;
-    gap: 0.05rem;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.25rem 0.45rem;
     min-width: 0;
   }
 
   .tool-step-title {
     font-size: 0.8125rem;
-    font-weight: 600;
+    font-weight: 500;
     letter-spacing: -0.01em;
+    color: var(--chatbox-tint-secondary);
+    line-height: 1.35;
+  }
+
+  .tool-step-header:hover .tool-step-title,
+  .tool-step-header.is-open .tool-step-title {
     color: var(--chatbox-tint-primary);
-    line-height: 1.3;
   }
 
   .tool-step-summary {
     font-size: 0.75rem;
     font-weight: 400;
     color: var(--chatbox-tint-tertiary);
-    line-height: 1.3;
+    line-height: 1.35;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+
+  .tool-step-badge {
+    display: inline-flex;
+    align-items: center;
+    max-width: 10rem;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    color: var(--chatbox-tint-secondary);
+    background: color-mix(in srgb, var(--chatbox-background-secondary) 90%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 65%, transparent);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
+  .tool-step-count {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--chatbox-tint-tertiary);
+  }
+
   .tool-step-meta {
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
+    gap: 0.25rem;
+    margin-left: auto;
   }
 
   .tool-step-chevron {
     color: var(--chatbox-tint-tertiary);
-    opacity: 0.85;
+    opacity: 0.7;
     transition-property: transform, opacity;
     transition-duration: 140ms;
     transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
@@ -1620,11 +2131,11 @@
   }
 
   .tool-step-body {
-    margin-top: 0.25rem;
-    padding: 0.65rem 0.75rem 0.7rem;
-    border-radius: 6px 6px 10px 10px;
-    background: var(--chatbox-background-secondary);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 65%, transparent);
+    margin: 0.15rem 0 0.45rem;
+    padding: 0.55rem 0.65rem 0.6rem;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--chatbox-background-secondary) 75%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 55%, transparent);
   }
 
   .tool-step-field-label {
@@ -1714,6 +2225,102 @@
   }
 
   .tool-kv-key {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--chatbox-tint-tertiary);
+    padding-top: 0.15rem;
+  }
+
+  .tool-kv-val {
+    font-size: 0.8125rem;
+    color: var(--chatbox-tint-secondary);
+    line-height: 1.45;
+    word-break: break-word;
+  }
+
+  .tool-human-line {
+    margin: 0 0 0.35rem;
+  }
+
+  .tool-human-line:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Memory match cards — readable product UI, not JSON dump */
+  .tool-memory-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .tool-memory-card {
+    padding: 0.55rem 0.65rem;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--chatbox-background-tertiary) 55%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 50%, transparent);
+  }
+
+  .tool-memory-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .tool-memory-scope {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--chatbox-tint-secondary);
+    background: color-mix(in srgb, var(--chatbox-background-primary) 80%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 60%, transparent);
+  }
+
+  .tool-memory-scope.is-pinned {
+    color: var(--chatbox-tint-brand);
+  }
+
+  .tool-memory-score {
+    margin-left: auto;
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--chatbox-tint-tertiary);
+  }
+
+  .tool-memory-content {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--chatbox-tint-primary);
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .tool-memory-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin-top: 0.35rem;
+  }
+
+  .tool-memory-tag {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--chatbox-tint-tertiary);
+    padding: 0.05rem 0.35rem;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--chatbox-background-secondary) 80%, transparent);
+  }
+
+  .tool-kv-key {
     font-size: 0.7rem;
     font-weight: 600;
     letter-spacing: 0.04em;
@@ -1738,27 +2345,22 @@
     scrollbar-width: thin;
   }
 
-  .tool-search-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
-    gap: 0.45rem;
-  }
-
   .tool-search-card-link {
     text-decoration: none;
     color: inherit;
     display: block;
-    min-width: 11rem;
+    min-width: 10.5rem;
+    max-width: 12rem;
     flex: 0 0 auto;
   }
 
   .tool-search-card {
     height: 100%;
-    padding: 0.55rem 0.6rem;
+    padding: 0.5rem 0.55rem;
     border-radius: 9px;
-    background: color-mix(in srgb, var(--chatbox-background-tertiary) 75%, transparent);
+    background: color-mix(in srgb, var(--chatbox-background-tertiary) 70%, transparent);
     box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 50%, transparent);
-    transition-property: background-color, box-shadow, transform;
+    transition-property: background-color, box-shadow;
     transition-duration: 140ms;
     transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   }
@@ -1772,7 +2374,7 @@
     display: flex;
     align-items: center;
     gap: 0.3rem;
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.2rem;
   }
 
   .tool-search-card-index {
@@ -1801,6 +2403,149 @@
   .tool-search-card-title {
     color: var(--chatbox-tint-primary) !important;
     letter-spacing: -0.01em;
+  }
+
+  /* Expanded web search — product meta + vertical result list */
+  .tool-search-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.55rem 0.65rem;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--chatbox-background-tertiary) 50%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 50%, transparent);
+  }
+
+  .tool-search-meta-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .tool-search-meta-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--chatbox-tint-primary);
+    background: color-mix(in srgb, var(--chatbox-background-primary) 85%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 55%, transparent);
+  }
+
+  .tool-search-meta-stat {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--chatbox-tint-tertiary);
+  }
+
+  .tool-search-query-text {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+    color: var(--chatbox-tint-primary);
+  }
+
+  .tool-search-query-mark {
+    color: var(--chatbox-tint-tertiary);
+    font-weight: 500;
+  }
+
+  .tool-search-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .tool-search-row-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    border-radius: 8px;
+  }
+
+  .tool-search-row-link:hover .tool-search-row {
+    background: color-mix(in srgb, var(--chatbox-background-tertiary) 80%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 22%, var(--chatbox-border-primary));
+  }
+
+  .tool-search-row {
+    display: flex;
+    gap: 0.55rem;
+    align-items: flex-start;
+    padding: 0.55rem 0.6rem;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--chatbox-background-tertiary) 45%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 48%, transparent);
+    transition-property: background-color, box-shadow;
+    transition-duration: 120ms;
+  }
+
+  .tool-search-row-index {
+    flex-shrink: 0;
+    width: 1.15rem;
+    padding-top: 0.1rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--chatbox-tint-tertiary);
+    text-align: right;
+  }
+
+  .tool-search-row-main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .tool-search-row-host-line {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-bottom: 0.12rem;
+  }
+
+  .tool-search-row-host {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--chatbox-tint-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tool-search-row-title {
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    color: var(--chatbox-tint-primary);
+  }
+
+  .tool-search-row-link:hover .tool-search-row-title {
+    color: var(--chatbox-tint-brand);
+  }
+
+  .tool-search-row-snippet {
+    margin: 0.2rem 0 0;
+    font-size: 0.75rem;
+    line-height: 1.4;
+    color: var(--chatbox-tint-secondary);
+  }
+
+  .tool-search-empty {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.65rem 0.7rem;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--chatbox-background-tertiary) 40%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 45%, transparent);
   }
 
   /* action strip — quiet icons, solid on hover */
@@ -1978,12 +2723,20 @@
     background: color-mix(in srgb, var(--chatbox-background-secondary) 55%, transparent);
     opacity: 0;
     visibility: hidden;
+    /* Hide from a11y/layout when inactive so a stuck class cannot block the dock */
+    content-visibility: auto;
     transition-property: opacity, visibility;
     transition-duration: 150ms;
     transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
   }
 
+  .composer-drop-overlay:not(.is-active) {
+    /* Hard hide — never leave ghost overlay chrome over the blank-home dock */
+    display: none;
+  }
+
   .composer-drop-overlay.is-active {
+    display: flex;
     opacity: 1;
     visibility: visible;
   }
@@ -2332,36 +3085,142 @@
     background: color-mix(in srgb, var(--chatbox-background-tertiary) 85%, transparent);
   }
 
+  .tool-video-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    padding: 0.55rem 0.65rem;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--chatbox-background-tertiary) 50%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 50%, transparent);
+  }
+
+  .tool-video-meta-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .tool-video-platform {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--chatbox-tint-primary);
+    background: color-mix(in srgb, var(--chatbox-background-primary) 85%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 55%, transparent);
+  }
+
+  .tool-video-meta-stat {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--chatbox-tint-tertiary);
+  }
+
+  .tool-video-meta-stat.is-warn {
+    color: var(--chatbox-tint-warning, #c48a00);
+  }
+
+  .tool-video-title {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    color: var(--chatbox-tint-primary);
+  }
+
+  .tool-video-author {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--chatbox-tint-secondary);
+  }
+
+  .tool-video-open {
+    margin-top: 0.1rem;
+    width: fit-content;
+  }
+
+  .tool-video-transcript {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .tool-video-transcript-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .tool-video-transcript-body {
+    max-height: 14rem;
+  }
+
+  .tool-video-more {
+    align-self: flex-start;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--chatbox-tint-brand);
+    padding: 0.1rem 0;
+  }
+
+  .tool-video-more:hover {
+    opacity: 0.85;
+  }
+
+  .tool-video-warnings {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .tool-video-warning-chip {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--chatbox-tint-secondary);
+    padding: 0.15rem 0.45rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--chatbox-background-tertiary) 70%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 55%, transparent);
+  }
+
   .tool-video-filmstrip {
     display: flex;
-    gap: 0.4rem;
+    gap: 0.45rem;
     overflow-x: auto;
-    padding-bottom: 0.15rem;
+    padding: 0.15rem 0 0.25rem;
     max-width: 100%;
+    scrollbar-width: thin;
   }
 
   .tool-video-filmstrip-item {
     flex: 0 0 auto;
-    width: 4.5rem;
+    width: 5rem;
     display: flex;
     flex-direction: column;
-    gap: 0.2rem;
+    gap: 0.25rem;
     animation: tool-video-filmstrip-in 220ms cubic-bezier(0.2, 0, 0, 1) both;
   }
 
   .tool-video-filmstrip-thumb {
-    width: 4.5rem;
-    height: 3.15rem;
+    width: 5rem;
+    height: 3.5rem;
     overflow: hidden;
-    border-radius: 0.35rem;
+    border-radius: 0.45rem;
     background: var(--chatbox-background-tertiary);
-    outline: 1px solid rgba(0, 0, 0, 0.1);
-    outline-offset: -1px;
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 65%, transparent);
   }
 
   :root[data-mantine-color-scheme="dark"] .tool-video-filmstrip-thumb,
   .dark .tool-video-filmstrip-thumb {
-    outline-color: rgba(255, 255, 255, 0.1);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
   }
 
   .tool-video-filmstrip-time {
@@ -2434,11 +3293,27 @@
     --input-bd: transparent !important;
   }
 
+  /* Mirror textarea metrics so mention pills stay under the caret */
+  .composer-card .composer-mention-highlight {
+    font-size: 1rem;
+    line-height: 1.55;
+    letter-spacing: -0.01em;
+  }
+
   /* Quick Chat must beat .composer-card .composer-textarea { 1rem !important } above */
   .quick-chat-shell .composer-card .composer-textarea {
     font-size: 0.875rem !important;
     line-height: 1.45 !important;
     min-height: 2.35rem !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.25rem !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+  .quick-chat-shell .composer-card .composer-mention-highlight {
+    font-size: 0.875rem;
+    line-height: 1.45;
+    letter-spacing: -0.01em;
     padding-top: 0.5rem !important;
     padding-bottom: 0.25rem !important;
     padding-left: 0.75rem !important;
@@ -2782,6 +3657,139 @@ div[data-vaul-drawer] {
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  animation: shimmer-sweep 1.6s ease-in-out infinite;
+}
+
+@keyframes shimmer-sweep {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+/* ── Assistant pending / status (product waiting state) ── */
+.assistant-pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 1.75rem;
+  padding: 0.15rem 0;
+  color: var(--chatbox-tint-tertiary);
+  /* Enter softly so the post-send wait never feels like a blank hole */
+  animation: assistant-pending-in 180ms var(--chatbox-ease, ease) both;
+}
+
+@keyframes assistant-pending-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.assistant-pending-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--chatbox-tint-secondary);
+  line-height: 1.3;
+}
+
+.assistant-pending-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 1em;
+  flex-shrink: 0;
+}
+
+.assistant-pending-dots > i {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--chatbox-tint-secondary);
+  opacity: 0.45;
+  animation: assistant-dot-pulse 1.2s ease-in-out infinite;
+}
+
+.assistant-pending-dots > i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.assistant-pending-dots > i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.assistant-pending-dots--sm > i {
+  width: 4px;
+  height: 4px;
+  gap: 3px;
+}
+
+@keyframes assistant-dot-pulse {
+  0%,
+  80%,
+  100% {
+    opacity: 0.28;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 0.95;
+    transform: translateY(-1.5px);
+  }
+}
+
+.assistant-status-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 1.75rem;
+  max-width: 100%;
+  padding: 0.35rem 0.65rem 0.35rem 0.55rem;
+  border-radius: 9px;
+  border: 1px solid color-mix(in srgb, var(--chatbox-border-primary) 90%, transparent);
+  background: color-mix(in srgb, var(--chatbox-background-secondary) 88%, transparent);
+  color: var(--chatbox-tint-secondary);
+}
+
+.assistant-status-row-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  min-width: 0;
+}
+
+.assistant-status-row-title {
+  font-size: 0.8125rem;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  color: var(--chatbox-tint-secondary);
+}
+
+.assistant-status-row-meta {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--chatbox-tint-tertiary);
+  letter-spacing: -0.01em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .assistant-pending,
+  .assistant-pending-dots > i,
+  .shimmer-text {
+    animation: none !important;
+  }
+
+  .assistant-pending-dots > i {
+    opacity: 0.55;
+  }
 }
 
 .reasoning-content {
@@ -2831,9 +3839,9 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
 /* ── Rail account footer + dropdown (mock DNA) ── */
 .rail-foot {
   position: relative;
-  border-top: 1px solid var(--chatbox-border-primary);
-  padding: 0.45rem 0.5rem 0.55rem;
-  background: transparent;
+  border-top: 1px solid color-mix(in srgb, var(--chatbox-border-primary) 70%, transparent);
+  padding: 0.4rem 0.5rem 0.5rem;
+  background: color-mix(in srgb, var(--chatbox-background-secondary) 40%, transparent);
   flex-shrink: 0;
   margin-top: auto;
 }
@@ -2841,12 +3849,13 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
 .user-trigger {
   display: grid;
   grid-template-columns: 32px 1fr auto;
-  gap: 0.55rem;
+  gap: 0.5rem;
   align-items: center;
   width: 100%;
-  height: 44px;
-  padding: 0 0.5rem;
-  border-radius: 999px;
+  min-height: 42px;
+  height: auto;
+  padding: 0.3rem 0.45rem;
+  border-radius: 10px;
   border: 1px solid transparent;
   color: var(--chatbox-tint-primary);
   text-align: left;
@@ -2860,7 +3869,7 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
 .user-trigger:hover,
 .user-trigger[data-expanded="true"],
 .user-trigger[aria-expanded="true"] {
-  background: var(--chatbox-background-tertiary);
+  background: color-mix(in srgb, var(--chatbox-background-tertiary) 90%, transparent);
   border-color: transparent;
 }
 
@@ -2913,9 +3922,10 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
 }
 
 .user-meta span {
-  font-family: var(--chatbox-font-mono);
-  font-size: 0.65rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
   color: var(--chatbox-tint-tertiary);
+  letter-spacing: -0.01em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2932,40 +3942,92 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   transform: rotate(180deg);
 }
 
-/* Mantine menu styled as mock .user-menu — full rail width */
+/* Account menu — product identity, not fake cloud logout */
 .user-menu-dropdown.mantine-Menu-dropdown,
 .user-menu-dropdown {
   background: var(--chatbox-background-secondary) !important;
-  border: 1px solid var(--chatbox-border-secondary) !important;
-  border-radius: var(--chatbox-radius-md) !important;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45) !important;
-  padding: 0.3rem !important;
+  border: 1px solid var(--chatbox-border-primary) !important;
+  border-radius: 12px !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 4%, transparent),
+    0 10px 28px rgba(0, 0, 0, 0.12),
+    0 22px 48px -16px rgba(0, 0, 0, 0.18) !important;
+  padding: 0.4rem !important;
   min-width: 0 !important;
   box-sizing: border-box !important;
 }
 
+:root[data-mantine-color-scheme="dark"] .user-menu-dropdown.mantine-Menu-dropdown,
+:root[data-mantine-color-scheme="dark"] .user-menu-dropdown {
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 12px 32px rgba(0, 0, 0, 0.45),
+    0 24px 52px -12px rgba(0, 0, 0, 0.55) !important;
+}
+
 .user-menu-dropdown-full.mantine-Menu-dropdown,
 .user-menu-dropdown-full {
-  /* width set in JS from trigger; force full use of that box */
   max-width: none !important;
 }
 
+.user-menu-identity {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 0.55rem;
+  align-items: center;
+  padding: 0.45rem 0.5rem 0.55rem;
+}
+
+.user-menu-identity-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid var(--chatbox-border-primary);
+  display: grid;
+  place-items: center;
+}
+
+.user-menu-identity-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.user-menu-identity-meta strong {
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--chatbox-tint-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-menu-identity-meta span {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--chatbox-tint-tertiary);
+  letter-spacing: -0.01em;
+}
+
 .user-menu-dropdown .mantine-Menu-label {
-  padding: 0.35rem 0.55rem 0.25rem !important;
-  font-family: var(--chatbox-font-mono) !important;
-  font-size: 0.62rem !important;
-  letter-spacing: 0.06em !important;
+  padding: 0.4rem 0.55rem 0.2rem !important;
+  font-size: 0.65rem !important;
+  letter-spacing: 0.04em !important;
   text-transform: uppercase !important;
-  color: var(--chatbox-tint-disabled, #4a4a52) !important;
-  font-weight: 500 !important;
+  color: var(--chatbox-tint-tertiary) !important;
+  font-weight: 600 !important;
+  opacity: 0.85;
 }
 
 .user-menu-dropdown .mantine-Menu-item {
-  border-radius: var(--chatbox-radius-sm) !important;
+  border-radius: 8px !important;
   color: var(--chatbox-tint-secondary) !important;
   font-size: 0.8125rem !important;
   font-weight: 500 !important;
-  min-height: 34px;
+  min-height: 36px;
   padding: 0 0.55rem !important;
 }
 
@@ -2974,36 +4036,87 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   color: var(--chatbox-tint-primary) !important;
 }
 
-.user-menu-dropdown .mantine-Menu-item[data-danger="true"],
-.user-menu-dropdown .user-menu-item-danger {
-  color: var(--chatbox-tint-secondary) !important;
-}
-
-.user-menu-dropdown .mantine-Menu-item[data-danger="true"]:hover,
-.user-menu-dropdown .user-menu-item-danger:hover {
-  color: #f0a0a4 !important;
-  background: rgba(242, 85, 90, 0.1) !important;
-}
-
 .user-menu-dropdown .mantine-Menu-divider {
-  border-color: var(--chatbox-border-primary) !important;
-  margin: 0.25rem 0.35rem !important;
+  border-color: color-mix(in srgb, var(--chatbox-border-primary) 85%, transparent) !important;
+  margin: 0.3rem 0.35rem !important;
 }
 
 .user-menu-kbd {
-  font-family: var(--chatbox-font-mono);
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   font-style: normal;
   color: var(--chatbox-tint-tertiary);
   font-weight: 500;
+  letter-spacing: -0.01em;
+  opacity: 0.9;
 }
 
 .user-menu-badge {
-  font-family: var(--chatbox-font-mono);
   font-size: 0.65rem;
   font-style: normal;
   color: var(--chatbox-tint-tertiary);
-  font-weight: 500;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+  text-transform: lowercase;
+}
+
+/* ── Clean up chats modal — calm product, not red-slider joke ── */
+.cleanup-modal-body {
+  min-width: 0;
+}
+
+.cleanup-keep-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.cleanup-keep-chip {
+  min-height: 34px;
+  padding: 0.4rem 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--chatbox-border-primary);
+  background: var(--chatbox-background-secondary);
+  color: var(--chatbox-tint-secondary);
+  font-size: 0.8125rem;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+  transition:
+    background-color 120ms var(--chatbox-ease),
+    border-color 120ms var(--chatbox-ease),
+    color 120ms var(--chatbox-ease);
+}
+
+.cleanup-keep-chip:hover {
+  background: var(--chatbox-background-tertiary);
+  color: var(--chatbox-tint-primary);
+}
+
+.cleanup-keep-chip.is-selected {
+  border-color: color-mix(in srgb, var(--chatbox-tint-brand) 45%, var(--chatbox-border-primary));
+  background: color-mix(in srgb, var(--chatbox-tint-brand) 12%, var(--chatbox-background-secondary));
+  color: var(--chatbox-tint-primary);
+  font-weight: 600;
+}
+
+.cleanup-keep-slider .mantine-Slider-markLabel {
+  font-size: 0.65rem;
+  color: var(--chatbox-tint-tertiary);
+}
+
+.cleanup-summary {
+  border-radius: 10px;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--chatbox-border-primary);
+  background: var(--chatbox-background-secondary);
+}
+
+.cleanup-summary.is-destructive {
+  border-color: color-mix(in srgb, var(--chatbox-tint-error, #d65c63) 28%, var(--chatbox-border-primary));
+  background: color-mix(in srgb, var(--chatbox-tint-error, #d65c63) 7%, var(--chatbox-background-secondary));
+}
+
+.cleanup-summary.is-idle {
+  opacity: 0.95;
 }
 
 /* ── App dialogs (desktop, not web marketing modals) ── */
@@ -3369,8 +4482,10 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   list-style: none;
   margin: 0;
   padding: 0.35rem 0.35rem 0.45rem;
-  max-height: 220px;
+  max-height: min(280px, 42vh);
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .todo-app-row {
@@ -3416,10 +4531,52 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   background: color-mix(in srgb, var(--chatbox-background-tertiary) 65%, transparent);
 }
 
+/* Soft complete: mute, no harsh full strikethrough wall */
+.todo-app-row.is-complete {
+  opacity: 0.72;
+}
+
 .todo-app-row.is-complete .todo-app-title {
   color: var(--chatbox-tint-tertiary);
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
+  font-weight: 450;
+  text-decoration: none;
+}
+
+.todo-app-row.is-toggle {
+  padding: 0.15rem 0.55rem 0.35rem;
+}
+
+.todo-app-completed-toggle {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  padding: 0.35rem 0.45rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--chatbox-tint-tertiary);
+  cursor: pointer;
+  transition:
+    background-color 120ms var(--chatbox-ease),
+    color 120ms var(--chatbox-ease);
+}
+
+.todo-app-completed-toggle:hover {
+  background: color-mix(in srgb, var(--chatbox-background-tertiary) 70%, transparent);
+  color: var(--chatbox-tint-secondary);
+}
+
+.todo-app.is-all-complete .todo-app-head {
+  border-bottom-color: transparent;
+}
+
+.todo-app-live.is-complete {
+  color: var(--chatbox-tint-success, #4fb286);
+}
+
+.todo-app-progress-fill.is-complete {
+  background: var(--chatbox-tint-success, #4fb286);
 }
 
 .todo-app-check {
@@ -3680,9 +4837,25 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   border-radius: 6px;
 }
 
+.todo-dock-completed-toggle.is-summary {
+  text-align: center;
+  color: var(--chatbox-tint-success, #4fb286);
+  font-weight: 600;
+}
+
 .todo-dock-completed-toggle:hover {
   color: var(--chatbox-tint-secondary);
   background: var(--chatbox-background-tertiary);
+}
+
+.todo-dock-title-done {
+  color: var(--chatbox-tint-tertiary) !important;
+  font-weight: 450;
+  opacity: 0.85;
+}
+
+.todo-dock-row.is-complete {
+  opacity: 0.75;
 }
 
 .todo-dock-sheet-overlay {
@@ -4133,36 +5306,54 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
 .model-picker-options {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--chatbox-tint-primary) 18%, transparent) transparent;
-  padding: 4px 6px 8px !important;
+  padding: 4px 6px 10px !important;
+  overscroll-behavior: contain;
+  /* No sticky rails — section headers scroll with the list (product picker, not OS file tree) */
+  scroll-padding-top: 4px;
 }
 
 .model-picker-provider {
-  padding: 0.5rem 0.5rem 0.28rem;
+  position: relative;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  padding: 0.55rem 0.55rem 0.28rem;
+  margin: 0;
   background: transparent;
   border: none;
-  border-radius: var(--mp-r-inner, 6px);
-  transition: background-color 120ms cubic-bezier(0.2, 0, 0, 1);
+  border-radius: 0;
+  box-shadow: none;
+  transition: opacity 120ms cubic-bezier(0.2, 0, 0, 1);
+  user-select: none;
 }
 
 .model-picker-provider:hover {
-  background: color-mix(in srgb, var(--chatbox-tint-primary) 4%, transparent);
+  background: transparent;
+  opacity: 0.92;
 }
 
 .model-picker-provider-name {
-  font-family: var(--chatbox-font-mono) !important;
-  font-size: 0.625rem !important;
-  letter-spacing: 0.07em !important;
-  text-transform: uppercase !important;
-  font-weight: 500 !important;
+  font-family: inherit !important;
+  font-size: 0.6875rem !important;
+  letter-spacing: -0.01em !important;
+  text-transform: none !important;
+  font-weight: 600 !important;
   color: var(--chatbox-tint-tertiary) !important;
 }
 
 .model-picker-provider-count {
-  font-family: var(--chatbox-font-mono) !important;
-  font-size: 0.625rem !important;
+  font-family: inherit !important;
+  font-size: 0.6875rem !important;
   font-variant-numeric: tabular-nums !important;
+  font-weight: 500 !important;
   color: var(--chatbox-tint-tertiary) !important;
-  opacity: 0.85;
+  opacity: 0.7;
+}
+
+.model-picker-group + .model-picker-group {
+  margin-top: 0.35rem;
+  padding-top: 0.2rem;
+  box-shadow: 0 -1px 0 color-mix(in srgb, var(--chatbox-tint-primary) 6%, transparent);
 }
 
 .model-picker-option.mantine-Combobox-option,
@@ -4179,6 +5370,7 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   background: transparent !important;
   color: var(--chatbox-tint-primary);
   position: relative;
+  z-index: 0;
   cursor: pointer;
   transition:
     background-color 120ms cubic-bezier(0.2, 0, 0, 1),
@@ -4228,10 +5420,10 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   outline-color: rgba(255, 255, 255, 0.1);
 }
 
-.model-picker-option .mono-meta {
-  font-family: var(--chatbox-font-mono);
-  font-size: 0.625rem;
-  letter-spacing: 0.02em;
+.model-picker-option .mono-meta,
+.model-picker-option .model-picker-provider-meta {
+  font-size: 0.6875rem;
+  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
 }
 
@@ -4264,12 +5456,6 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
 
 .model-picker-star:active {
   transform: scale(0.96);
-}
-
-.model-picker-group + .model-picker-group {
-  margin-top: 0.2rem;
-  padding-top: 0.15rem;
-  box-shadow: 0 -1px 0 color-mix(in srgb, var(--chatbox-tint-primary) 6%, transparent);
 }
 
 /* ── Quick Chat: portaled pickers (outside .quick-chat-shell) ──
@@ -4382,8 +5568,9 @@ html[data-quick-chat] .model-picker-option .mantine-Text-root {
   line-height: 1.25 !important;
 }
 
-html[data-quick-chat] .model-picker-option .mono-meta {
-  font-size: 0.625rem !important;
+html[data-quick-chat] .model-picker-option .mono-meta,
+html[data-quick-chat] .model-picker-option .model-picker-provider-meta {
+  font-size: 0.6875rem !important;
 }
 
 html[data-quick-chat] .model-picker-option .mantine-Badge-root {
@@ -4812,7 +5999,9 @@ html[data-quick-chat] .composer-tools-menu .mantine-Menu-item .mantine-Flex-root
 }
 
 .empty-thread--compact {
-  padding: 1rem var(--chatbox-col-pad-x);
+  padding: 0.75rem var(--chatbox-col-pad-x);
+  /* Center invite in the floating panel’s thread region */
+  min-height: 100%;
 }
 
 .empty-thread-stage {
@@ -4835,14 +6024,16 @@ html[data-quick-chat] .composer-tools-menu .mantine-Menu-item .mantine-Flex-root
 }
 
 .empty-thread--compact .empty-thread-title {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
+  font-weight: 550;
+  color: var(--chatbox-tint-secondary);
 }
 
-/* Session dock statusline — Claude Code / Codex DNA */
+/* Session dock footer — quiet product meta, not a chip tray */
 .session-statusline {
   flex-shrink: 0;
-  border-top: 1px solid var(--chatbox-border-primary);
-  background: var(--chatbox-background-rail);
+  border-top: 1px solid color-mix(in srgb, var(--chatbox-border-primary) 55%, transparent);
+  background: transparent;
   padding: 0 var(--chatbox-col-pad-x);
   min-width: 0;
   max-width: 100%;
@@ -4850,7 +6041,7 @@ html[data-quick-chat] .composer-tools-menu .mantine-Menu-item .mantine-Flex-root
 }
 
 .session-statusline.is-empty {
-  opacity: 0.92;
+  opacity: 0.9;
 }
 
 .session-statusline.is-compact {
@@ -4861,27 +6052,26 @@ html[data-quick-chat] .composer-tools-menu .mantine-Menu-item .mantine-Flex-root
   max-width: var(--chatbox-col);
   margin-inline: auto;
   width: 100%;
-  min-height: 26px;
+  min-height: 28px;
   padding: 0.2rem 0;
-  font-family: var(--chatbox-font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.01em;
+  font-size: 0.75rem;
+  letter-spacing: -0.01em;
   color: var(--chatbox-tint-tertiary);
 }
 
 .session-statusline-dot {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
   background: var(--chatbox-tint-tertiary);
   flex-shrink: 0;
-  opacity: 0.7;
+  opacity: 0.4;
 }
 
 .session-statusline-dot.is-live {
   background: var(--chatbox-tint-success, #4fb286);
   opacity: 1;
-  box-shadow: 0 0 0 2px rgba(79, 178, 134, 0.2);
+  box-shadow: 0 0 0 2px rgba(79, 178, 134, 0.18);
   animation: statusline-pulse 1.2s ease-in-out infinite;
 }
 
@@ -4895,93 +6085,139 @@ html[data-quick-chat] .composer-tools-menu .mantine-Menu-item .mantine-Flex-root
   }
 }
 
-.session-statusline-seg {
-  font-family: var(--chatbox-font-mono) !important;
-  font-size: 0.68rem !important;
-  line-height: 1.2 !important;
+.session-statusline-model {
+  font-size: 0.72rem !important;
+  line-height: 1.25 !important;
+  font-weight: 500 !important;
   color: var(--chatbox-tint-tertiary) !important;
-  white-space: nowrap;
+  letter-spacing: -0.012em;
 }
 
-.session-statusline-key {
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-right: 0.35rem;
-  opacity: 0.75;
+.session-statusline-meta {
+  gap: 1px !important;
 }
 
-.session-statusline-val {
-  color: var(--chatbox-tint-secondary);
-  font-weight: 500;
-}
-
-.session-statusline-muted {
-  color: var(--chatbox-tint-tertiary);
-  font-weight: 400;
-  opacity: 0.85;
-}
-
-.session-statusline-muted-label {
-  color: var(--chatbox-tint-tertiary);
-  font-family: var(--chatbox-font-mono);
-  font-size: 0.65rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  opacity: 0.9;
-}
-
-.session-statusline-live {
-  color: var(--chatbox-tint-success, #4fb286) !important;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-family: var(--chatbox-font-mono) !important;
-  font-size: 0.65rem !important;
-}
-
-/* Interactive tok control — opens context/compress menu */
-.session-statusline-tok {
+/* Icon + value actions (memory, context) — light touch targets */
+.session-statusline-action {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
+  gap: 0.28rem;
+  min-height: 26px;
   margin: 0;
-  padding: 0.15rem 0.35rem;
+  padding: 0.12rem 0.4rem;
   border: none;
   border-radius: 6px;
   background: transparent;
   cursor: pointer;
   font: inherit;
-  color: inherit;
-  transition-property: color, background-color, transform;
+  color: var(--chatbox-tint-tertiary);
+  white-space: nowrap;
+  transition-property: color, background-color;
   transition-duration: 120ms;
   transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 
-.session-statusline-tok:hover {
+.session-statusline-action:hover:not(:disabled) {
   color: var(--chatbox-tint-secondary);
-  background: color-mix(in srgb, var(--chatbox-background-tertiary) 80%, transparent);
+  background: color-mix(in srgb, var(--chatbox-background-tertiary) 70%, transparent);
 }
 
-.session-statusline-tok:active {
-  transform: scale(0.96);
-}
-
-.session-statusline-tok:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 55%, transparent);
+.session-statusline-action:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 45%, transparent);
   outline-offset: 1px;
 }
 
-button.session-statusline-plan {
+.session-statusline-action.is-muted {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.session-statusline-action.is-busy {
+  opacity: 0.7;
+}
+
+.session-statusline-action.is-warn {
+  color: var(--chatbox-tint-warning, #c4922a);
+}
+
+.session-statusline-action-val {
+  font-size: 0.7rem;
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: inherit;
+}
+
+/* Legacy chip classes still used elsewhere */
+.session-statusline-chip,
+.session-statusline-chip .session-statusline-tok {
   display: inline-flex;
   align-items: center;
-  min-height: 28px;
-  margin: 0;
-  padding: 0.15rem 0.35rem;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
+  gap: 0.3rem;
+  min-height: 26px;
+  padding: 0.15rem 0.45rem;
+  border-radius: 7px;
+  white-space: nowrap;
+  font-size: 0.72rem !important;
+  line-height: 1.2 !important;
+  color: var(--chatbox-tint-tertiary) !important;
+  transition:
+    background-color 120ms var(--chatbox-ease),
+    color 120ms var(--chatbox-ease);
+}
+
+.session-statusline-chip:hover,
+button.session-statusline-tok:hover {
+  background: color-mix(in srgb, var(--chatbox-background-tertiary) 88%, transparent);
+  color: var(--chatbox-tint-secondary) !important;
+}
+
+.session-statusline-chip-label {
+  color: var(--chatbox-tint-tertiary);
+  font-weight: 500;
+  opacity: 0.9;
+}
+
+.session-statusline-chip-label::after {
+  content: '·';
+  margin-left: 0.3rem;
+  opacity: 0.55;
+}
+
+.session-statusline-val {
+  color: var(--chatbox-tint-secondary);
+  font-weight: 550;
+  font-variant-numeric: tabular-nums;
+}
+
+.session-statusline-plan.is-warn,
+.session-statusline-action.session-statusline-plan.is-warn {
+  color: var(--chatbox-tint-warning, #c4922a) !important;
+}
+
+.session-statusline-plan.is-critical,
+.session-statusline-action.session-statusline-plan.is-critical {
+  color: var(--chatbox-tint-error, #d65c63) !important;
+}
+
+.session-statusline-live {
+  color: var(--chatbox-tint-tertiary) !important;
+  font-size: 0.7rem !important;
+  font-weight: 500 !important;
+}
+
+.session-statusline-ready {
+  color: var(--chatbox-tint-tertiary) !important;
+  font-size: 0.72rem !important;
+  font-weight: 500 !important;
+}
+
+/* Generating pulse label — calm, not neon */
+.session-statusline-live {
+  color: var(--chatbox-tint-tertiary) !important;
+  font-size: 0.7rem !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.01em;
 }
 
 button.session-statusline-plan:hover {
@@ -5019,7 +6255,9 @@ button.session-statusline-plan:focus-visible {
 }
 
 .project-folder-chevron {
-  transition: transform 140ms cubic-bezier(0.32, 0.72, 0, 1);
+  transition:
+    transform 180ms cubic-bezier(0.32, 0.72, 0, 1),
+    opacity 140ms var(--chatbox-ease);
 }
 
 .project-folder-name {
@@ -5566,22 +6804,6 @@ button.session-statusline-plan:focus-visible {
 }
 
 /* Thread header search — quiet pill, wider trigger for breathing room */
-.thread-search-trigger {
-  background: var(--chatbox-background-tertiary) !important;
-  border: none !important;
-  color: var(--chatbox-tint-secondary) !important;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-  min-width: 11.5rem;
-  justify-content: flex-start !important;
-  padding-inline: 0.85rem !important;
-}
-
-.thread-search-trigger:hover {
-  background: color-mix(in srgb, var(--chatbox-background-tertiary) 70%, var(--chatbox-tint-tertiary) 12%) !important;
-  color: var(--chatbox-tint-primary) !important;
-}
-
 /* ── Workspace side panel (diagram / artifact) — studio, Claude Artifacts–like ── */
 .workspace-panel {
   position: relative;
@@ -6136,4 +7358,211 @@ button.session-statusline-plan:focus-visible {
   color: rgba(255, 255, 255, 0.55);
   pointer-events: none;
   white-space: nowrap;
+}
+
+/*
+ * Unlayered composer mention overrides.
+ * @layer components loses to unlayered Mantine/Tailwind — keep tags visible.
+ */
+.composer-mention-field {
+  position: relative;
+  width: 100%;
+  isolation: isolate;
+}
+
+.composer-mention-highlight {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  color: var(--chatbox-tint-primary);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+}
+
+.composer-card .composer-mention-field textarea.composer-textarea,
+.composer-mention-field textarea.composer-textarea,
+.composer-mention-field textarea.composer-textarea-mentions {
+  position: relative !important;
+  z-index: 1 !important;
+  color: transparent !important;
+  -webkit-text-fill-color: transparent !important;
+  caret-color: var(--chatbox-tint-primary) !important;
+  background: transparent !important;
+}
+
+.composer-card .composer-mention-field textarea.composer-textarea::placeholder,
+.composer-mention-field textarea.composer-textarea::placeholder {
+  color: var(--chatbox-tint-tertiary) !important;
+  -webkit-text-fill-color: var(--chatbox-tint-tertiary) !important;
+  opacity: 1 !important;
+}
+
+.composer-mention {
+  border-radius: 0.3em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  font-weight: 400;
+}
+
+.composer-mention-agent {
+  color: var(--chatbox-tint-brand) !important;
+  background: color-mix(in srgb, var(--chatbox-tint-brand) 18%, transparent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 30%, transparent);
+}
+
+.composer-mention-skill {
+  color: #6d4aff !important;
+  background: color-mix(in srgb, #7c5cff 20%, transparent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #7c5cff 28%, transparent);
+}
+
+.composer-mention-account {
+  color: #0284c7 !important;
+  background: color-mix(in srgb, #0ea5e9 20%, transparent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #0ea5e9 28%, transparent);
+}
+
+.composer-mention-mem {
+  color: #059669 !important;
+  background: color-mix(in srgb, #10b981 20%, transparent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #10b981 28%, transparent);
+}
+
+.quick-chat-shell .composer-card .composer-mention-highlight {
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+/* —— Slack-style contenteditable composer —— */
+.composer-card .composer-rich-input,
+.composer-rich-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin: 0;
+  /* Single line box when empty — tall min-height stretches WebKit caret */
+  min-height: 1.55em !important;
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  color: var(--chatbox-tint-primary);
+  caret-color: var(--chatbox-tint-primary);
+  font-size: 1rem !important;
+  font-weight: 400 !important;
+  line-height: 1.55 !important;
+  letter-spacing: -0.01em;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Grow with content after first line (inline style maxHeight still caps scroll) */
+.composer-card .composer-rich-input:not(.is-empty),
+.composer-rich-input:not(.is-empty) {
+  min-height: 3.1em !important;
+}
+
+.composer-card .composer-rich-input:focus,
+.composer-card .composer-rich-input:focus-visible,
+.composer-rich-input:focus,
+.composer-rich-input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* Placeholder sits in the first line box — same metrics as typed text */
+.composer-rich-input.is-empty::before,
+.composer-rich-input:empty::before {
+  content: attr(data-placeholder);
+  color: var(--chatbox-tint-tertiary);
+  opacity: 0.88;
+  pointer-events: none;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+/* When focused + empty, still show placeholder (Slack-style) */
+.composer-rich-input.is-empty:focus::before {
+  opacity: 0.72;
+}
+
+.composer-inline-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  max-width: 100%;
+  margin: 0 0.1em;
+  padding: 0.05em 0.4em 0.05em 0.28em;
+  border-radius: 0.4em;
+  font-size: 0.92em;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.35;
+  vertical-align: baseline;
+  white-space: nowrap;
+  user-select: none;
+  cursor: default;
+  -webkit-user-modify: read-only;
+}
+
+.composer-inline-chip-emoji,
+.composer-inline-chip-sigil {
+  flex-shrink: 0;
+  font-size: 0.85em;
+  line-height: 1;
+  opacity: 0.9;
+}
+
+.composer-inline-chip-sigil {
+  font-weight: 700;
+  opacity: 0.7;
+}
+
+.composer-inline-chip-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 14rem;
+}
+
+.composer-inline-chip-agent {
+  color: var(--chatbox-tint-brand);
+  background: color-mix(in srgb, var(--chatbox-tint-brand) 14%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 26%, transparent);
+}
+
+.composer-inline-chip-skill {
+  color: #6d4aff;
+  background: color-mix(in srgb, #7c5cff 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #7c5cff 24%, transparent);
+}
+
+.composer-inline-chip-account {
+  color: #0284c7;
+  background: color-mix(in srgb, #0ea5e9 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #0ea5e9 24%, transparent);
+}
+
+.composer-inline-chip-mem {
+  color: #059669;
+  background: color-mix(in srgb, #10b981 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #10b981 24%, transparent);
+}
+
+.quick-chat-shell .composer-card .composer-rich-input,
+.quick-chat-shell .composer-rich-input {
+  font-size: 0.875rem !important;
+  line-height: 1.45 !important;
+  min-height: 2.9em !important;
 }

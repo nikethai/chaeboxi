@@ -70,6 +70,25 @@ export function migrateMessage(
     })
   }
 
+  // After cold load, abort handles are gone — never leave a turn stuck generating.
+  if (result.generating) {
+    result.generating = false
+    result.cancel = undefined
+    result.status = []
+    if (result.contentParts?.length) {
+      result.contentParts = result.contentParts.map((part) => {
+        if (part.type === 'tool-call' && part.state === 'call') {
+          return {
+            ...part,
+            state: 'error' as const,
+            result: { message: 'Interrupted (app reloaded)', cancelled: true },
+          }
+        }
+        return part
+      })
+    }
+  }
+
   return result
 }
 

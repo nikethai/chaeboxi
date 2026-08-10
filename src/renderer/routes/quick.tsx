@@ -35,7 +35,6 @@ import { continueActiveSessionTasks } from '@/stores/session/messages'
 import { getAllMessageList, initEmptyChatSession } from '@/stores/sessionHelpers'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { getModelDisplayName } from '@/utils/modelDisplayName'
-import { isThreadVisuallyEmpty } from '@/utils/chat-starters'
 import {
   readQuickSessionSnapshot,
   resolveQuickSessionId,
@@ -135,7 +134,6 @@ function QuickChatPage() {
   }, [])
 
   const currentMessageList = useMemo(() => (session ? getAllMessageList(session) : []), [session])
-  const hasVisibleThread = useMemo(() => !isThreadVisuallyEmpty(currentMessageList), [currentMessageList])
 
   const model = useMemo(() => {
     if (session?.settings?.provider && session?.settings?.modelId) {
@@ -188,9 +186,10 @@ function QuickChatPage() {
   )
 
   const onStopGenerating = useCallback(() => {
-    if (!session || !lastGenerating?.generating) return false
-    lastGenerating.cancel?.()
-    void modifyMessage(session.id, { ...lastGenerating, generating: false }, true)
+    if (!session) return false
+    void import('@/stores/session/stop-generation').then(({ stopSessionGeneration }) =>
+      stopSessionGeneration(session.id, lastGenerating)
+    )
     return true
   }, [session, lastGenerating])
 
@@ -284,57 +283,54 @@ function QuickChatPage() {
         <Box w={32} aria-hidden />
       </Flex>
 
-      {hasVisibleThread ? (
-        <div className="session-thread">
-          <MessageList ref={messageListRef} key={`quick-ml-${sessionId}`} currentSession={session} alignToBottom />
-        </div>
-      ) : (
-        <div className="session-thread quick-chat-thread-empty" aria-hidden />
-      )}
+      {/* Always mount MessageList so empty state + turns render (never a blank spacer). */}
+      <div className="session-thread">
+        <MessageList ref={messageListRef} key={`quick-ml-${sessionId}`} currentSession={session} alignToBottom />
+      </div>
 
       <div className="session-dock">
         <div className="session-dock-pad">
-<ChatDockStack
-  key={session.id}
-  sessionId={session.id}
-  onContinueTasks={onContinueTasks}
-  taskDetailsMode="sheet"
->
-  <ErrorBoundary name="quick-inputbox">
-    <InputBox
-      key={`quick-input-${session.id}`}
-      ref={inputBoxRef}
-      sessionId={session.id}
-      sessionType={session.type || 'chat'}
-      model={model}
-      modelDisplayName={modelDisplayName}
-      agentMode={session.agentMode ?? false}
-      workspaceRoot={session.workspaceRoot}
-      generating={Boolean(lastGenerating?.generating)}
-      onSelectModel={onSelectModel}
-      onSubmit={onSubmit}
-      onStopGenerating={onStopGenerating}
-      onStartNewThread={onStartNewThread}
-      onRollbackThread={onRollbackThread}
-      onToggleAgentMode={(agentMode) => {
-        void updateSessionWithMessages(session.id, { agentMode })
-      }}
-      onWorkspaceRootChange={(workspaceRoot) => {
-        void updateSessionWithMessages(session.id, { workspaceRoot })
-      }}
-    />
-  </ErrorBoundary>
-</ChatDockStack>
-<Flex justify="flex-start" align="center" mt={8} gap="sm" wrap="wrap" className="quick-chat-hints">
-  <Text size="xs" c="dimmed" className="inline-flex items-center gap-1.5 flex-wrap">
-    <span>{t('Toggle')}</span>
-    <ShortcutHint label={quickToggle} />
-    <span className="opacity-30 mx-0.5">·</span>
-    <span>{t('Screenshot')}</span>
-    <ShortcutHint label={shotKey} />
-  </Text>
-</Flex>
-</div>
+          <ChatDockStack
+            key={session.id}
+            sessionId={session.id}
+            onContinueTasks={onContinueTasks}
+            taskDetailsMode="sheet"
+          >
+            <ErrorBoundary name="quick-inputbox">
+              <InputBox
+                key={`quick-input-${session.id}`}
+                ref={inputBoxRef}
+                sessionId={session.id}
+                sessionType={session.type || 'chat'}
+                model={model}
+                modelDisplayName={modelDisplayName}
+                agentMode={session.agentMode ?? false}
+                workspaceRoot={session.workspaceRoot}
+                generating={Boolean(lastGenerating?.generating)}
+                onSelectModel={onSelectModel}
+                onSubmit={onSubmit}
+                onStopGenerating={onStopGenerating}
+                onStartNewThread={onStartNewThread}
+                onRollbackThread={onRollbackThread}
+                onToggleAgentMode={(agentMode) => {
+                  void updateSessionWithMessages(session.id, { agentMode })
+                }}
+                onWorkspaceRootChange={(workspaceRoot) => {
+                  void updateSessionWithMessages(session.id, { workspaceRoot })
+                }}
+              />
+            </ErrorBoundary>
+          </ChatDockStack>
+          <Flex justify="flex-start" align="center" mt={8} gap="sm" wrap="wrap" className="quick-chat-hints">
+            <Text size="xs" c="dimmed" className="inline-flex items-center gap-1.5 flex-wrap">
+              <span>{t('Toggle')}</span>
+              <ShortcutHint label={quickToggle} />
+              <span className="opacity-30 mx-0.5">·</span>
+              <span>{t('Screenshot')}</span>
+              <ShortcutHint label={shotKey} />
+            </Text>
+          </Flex>
+        </div>
       </div>
     </div>
   )

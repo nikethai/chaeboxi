@@ -1,6 +1,6 @@
 import { ActionIcon, Box, Collapse, Group, Text } from '@mantine/core'
 import type { Message, MessageContentParts, MessageReasoningPart, MessageToolCallPart } from '@shared/types'
-import { IconBulb, IconCircleXFilled, IconCopy, IconLoader } from '@tabler/icons-react'
+import { IconCircleXFilled, IconCopy, IconLoader } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { type FC, useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,22 +17,33 @@ interface ThinkingGroupUIProps {
   message: Message
   sessionId?: string
   parts: MessageContentParts
+  /** Mid-turn assistant prose absorbed from between tools — only shown when expanded */
+  monologueTexts?: string[]
+  /** True while the model is still running tools/reasoning (not final answer yet) */
   isLastGroup: boolean
 }
 
 /**
- * Thinking group — Grok plain “Worked for Xs ›”; tools nested when expanded.
- * No bordered pill chrome.
+ * Single product “Worked” strip for an assistant turn.
+ * All tools + reasoning + monologue live here; final answer renders outside.
+ * Collapsed by default when finished successfully.
  */
-export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLastGroup }) => {
+export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({
+  message,
+  parts,
+  monologueTexts = [],
+  isLastGroup,
+}) => {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
 
   const reasoningParts = useMemo(() => parts.filter((p) => p.type === 'reasoning') as MessageReasoningPart[], [parts])
   const toolCallParts = useMemo(() => parts.filter((p) => p.type === 'tool-call') as MessageToolCallPart[], [parts])
-  // Task tools are coalesced into TodoAppCard outside this group — exclude from quiet tool chrome
   const visibleToolCallParts = useMemo(
-    () => toolCallParts.filter((p) => !isTaskTrackingTool(p.toolName)),
+    () =>
+      toolCallParts.filter(
+        (p) => !isTaskTrackingTool(p.toolName) && p.toolName !== 'memory_lookup'
+      ),
     [toolCallParts]
   )
   const toolCount = visibleToolCallParts.length
@@ -54,15 +65,21 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
     )
   }, [visibleToolCallParts])
   const hasAttentionToolState = toolStatusCounts.failed > 0 || toolStatusCounts.running > 0
-  const [isExpanded, setIsExpanded] = useState<boolean>(() => hasAttentionToolState)
+  // isLastGroup = work still active (generating and last part is tool/reasoning)
+  const isThinking = Boolean(isLastGroup && message.generating)
 
-  const lastPart = parts[parts.length - 1]
-  const isThinking =
-    isLastGroup &&
-    message.generating === true &&
-    message.contentParts &&
-    message.contentParts.length > 0 &&
-    message.contentParts[message.contentParts.length - 1] === lastPart
+  const [isExpanded, setIsExpanded] = useState(false)
+
+  // Live: open when tools need attention. Done + ok: force closed (product default).
+  useEffect(() => {
+    if (hasAttentionToolState || (isThinking && toolStatusCounts.running > 0)) {
+      setIsExpanded(true)
+      return
+    }
+    if (!message.generating && !hasAttentionToolState) {
+      setIsExpanded(false)
+    }
+  }, [hasAttentionToolState, isThinking, message.generating, toolStatusCounts.running])
 
   const totalDuration = useMemo(() => {
     return reasoningParts.reduce((sum, p) => sum + (p.duration || 0), 0)
@@ -74,17 +91,10 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
 
   const displayTime = totalDuration > 0 ? totalDuration : isThinking && elapsedTime > 0 ? elapsedTime : 0
 
-  const allReasoningText = useMemo(() => reasoningParts.map((p) => p.text).join('\n\n'), [reasoningParts])
-
-  const statusLine = useMemo(() => {
-    if (!allReasoningText) return ''
-    const first = allReasoningText
-      .split(/\n+/)
-      .map((l) => l.trim())
-      .find((l) => l.length > 0)
-    if (!first) return ''
-    return first.replace(/^[#>*\-\s]+/, '').slice(0, 120)
-  }, [allReasoningText])
+  const allReasoningText = useMemo(() => {
+    const fromParts = reasoningParts.map((p) => p.text).filter(Boolean)
+    return [...fromParts, ...monologueTexts].join('\n\n')
+  }, [reasoningParts, monologueTexts])
 
   const toggleExpanded = useCallback(() => {
     setIsExpanded((prev) => !prev)
@@ -101,48 +111,56 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
     [allReasoningText, t]
   )
 
-  useEffect(() => {
-    if (hasAttentionToolState) {
-      setIsExpanded(true)
-    }
-  }, [hasAttentionToolState])
-
   const headerLabel = useMemo(() => {
+    // Only say "Using tools…" while a tool is actually in-flight.
+    // Completed tools + still streaming next tokens → "Thinking…" (not a stuck tools row).
+    if (toolStatusCounts.running > 0) {
+      return toolCount === 1 ? t('Using tools…') : t('Using {{count}} tools…', { count: toolCount })
+    }
     if (isThinking) {
-      return t('Working…')
+      return t('Thinking…')
     }
 
     const hasDuration = shouldShowTimer && displayTime > 0
     const compact = hasDuration ? formatWorkedDuration(displayTime) : null
-    const durationStr = compact ? t('Worked for {{duration}}', { duration: compact }) : null
 
     if (toolCount > 0 && compact) {
-      const key =
-        toolCount === 1 ? 'Worked for {{duration}} · {{count}} tool' : 'Worked for {{duration}} · {{count}} tools'
-      return t(key, {
-        duration: compact,
-        count: toolCount,
-      })
+      return toolCount === 1
+        ? t('Worked · 1 tool · {{duration}}', { duration: compact })
+        : t('Worked · {{count}} tools · {{duration}}', { count: toolCount, duration: compact })
     }
 
     if (toolCount > 0) {
-      const key = toolCount === 1 ? 'Worked · {{count}} tool' : 'Worked · {{count}} tools'
-      return t(key, { count: toolCount })
+      return toolCount === 1 ? t('Worked · 1 tool') : t('Worked · {{count}} tools', { count: toolCount })
     }
 
-    if (durationStr) {
-      return durationStr
+    if (compact) {
+      return t('Worked · {{duration}}', { duration: compact })
     }
 
     return t('Worked')
-  }, [isThinking, shouldShowTimer, displayTime, toolCount, t])
+  }, [isThinking, toolStatusCounts.running, shouldShowTimer, displayTime, toolCount, t])
+
+  const hasExpandableBody = toolCount > 0 || allReasoningText.length > 0
 
   return (
     <div className={clsx('msg-worked', isSmallScreen && 'mx-0.5')}>
       <div className="msg-worked-row">
-        <button type="button" className="msg-worked-toggle" onClick={toggleExpanded} aria-expanded={isExpanded}>
-          <span className={clsx('msg-worked-label', isThinking && 'animate-shimmer shimmer-text')}>{headerLabel}</span>
-          {/* Attention chips only — hide zero success noise when all tools succeeded */}
+        <button
+          type="button"
+          className="msg-worked-toggle"
+          onClick={hasExpandableBody ? toggleExpanded : undefined}
+          aria-expanded={isExpanded}
+          disabled={!hasExpandableBody}
+        >
+          <span
+            className={clsx(
+              'msg-worked-label',
+              (isThinking || toolStatusCounts.running > 0) && 'animate-shimmer shimmer-text'
+            )}
+          >
+            {headerLabel}
+          </span>
           {toolCount > 0 && hasAttentionToolState && (
             <Group gap={6} ml={4} wrap="nowrap" className="shrink-0">
               {toolStatusCounts.failed > 0 && (
@@ -168,12 +186,14 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
               )}
             </Group>
           )}
-          {isThinking && elapsedTime > 0 && shouldShowTimer && (
+          {(isThinking || toolStatusCounts.running > 0) && elapsedTime > 0 && shouldShowTimer && (
             <span className="msg-worked-live tabular-nums">({formatElapsedTime(elapsedTime)})</span>
           )}
-          <span className={clsx('msg-worked-chevron', isExpanded && 'is-open')} aria-hidden>
-            ›
-          </span>
+          {hasExpandableBody && (
+            <span className={clsx('msg-worked-chevron', isExpanded && 'is-open')} aria-hidden>
+              ›
+            </span>
+          )}
         </button>
         {allReasoningText.length > 0 && (
           <ActionIcon
@@ -189,35 +209,74 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, isLa
         )}
       </div>
 
-      {/* Live preview only when collapsed — expanded body is the single source of content */}
-      {isThinking && !isExpanded && statusLine && (
-        <div className="msg-worked-status">
-          <IconBulb size={15} stroke={1.5} className="msg-worked-bulb" aria-hidden />
-          <span className="msg-worked-status-text">{statusLine}</span>
-        </div>
-      )}
-
-      <Collapse in={isExpanded}>
+      <Collapse in={isExpanded && hasExpandableBody}>
         <div className="msg-worked-body">
-          {parts.map((part, index) =>
-            part.type === 'reasoning' ? (
-              <Box key={`group-reasoning-${index}`} className="reasoning-content" mb={toolCount > 0 ? 'xs' : 0}>
-                <Markdown
-                  enableLaTeXRendering={false}
-                  enableMermaidRendering={false}
-                  hiddenCodeCopyButton={false}
-                  className={isSmallScreen ? 'text-[13px]' : 'text-sm'}
-                  generating={isThinking && index === parts.length - 1}
-                >
-                  {part.text}
-                </Markdown>
-              </Box>
-            ) : part.type === 'tool-call' && !isTaskTrackingTool(part.toolName) ? (
-              <Box key={`group-tool-${part.toolCallId}`} py={4}>
-                <ToolCallPartUI part={part as MessageToolCallPart} />
-              </Box>
-            ) : null
-          )}
+          {(() => {
+            type RenderItem =
+              | { kind: 'reasoning'; index: number; part: MessageReasoningPart }
+              | { kind: 'tool'; part: MessageToolCallPart; runCount: number; key: string }
+
+            const items: RenderItem[] = []
+            for (let index = 0; index < parts.length; index++) {
+              const part = parts[index]
+              if (part.type === 'reasoning') {
+                items.push({ kind: 'reasoning', index, part: part as MessageReasoningPart })
+                continue
+              }
+              if (part.type !== 'tool-call' || isTaskTrackingTool(part.toolName)) continue
+              const toolPart = part as MessageToolCallPart
+              const sig = `${toolPart.toolName}::${JSON.stringify(toolPart.args ?? {})}`
+              const prev = items[items.length - 1]
+              if (
+                prev?.kind === 'tool' &&
+                prev.part.state !== 'call' &&
+                toolPart.state !== 'call' &&
+                prev.part.state === toolPart.state &&
+                `${prev.part.toolName}::${JSON.stringify(prev.part.args ?? {})}` === sig
+              ) {
+                prev.runCount += 1
+                continue
+              }
+              items.push({ kind: 'tool', part: toolPart, runCount: 1, key: toolPart.toolCallId })
+            }
+
+            return (
+              <>
+                {items.map((item) =>
+                  item.kind === 'reasoning' ? (
+                    <Box
+                      key={`group-reasoning-${item.index}`}
+                      className="reasoning-content msg-worked-reasoning"
+                      mb={toolCount > 0 ? 'xs' : 0}
+                    >
+                      <Markdown
+                        enableLaTeXRendering={false}
+                        enableMermaidRendering={false}
+                        hiddenCodeCopyButton={false}
+                        className={isSmallScreen ? 'text-[13px]' : 'text-sm'}
+                        generating={isThinking && item.index === parts.length - 1}
+                      >
+                        {item.part.text}
+                      </Markdown>
+                    </Box>
+                  ) : (
+                    <Box key={`group-tool-${item.key}`} className="tool-step-wrap">
+                      <ToolCallPartUI part={item.part} runCount={item.runCount} />
+                    </Box>
+                  )
+                )}
+                {monologueTexts.length > 0 && (
+                  <div className="msg-worked-monologue">
+                    {monologueTexts.map((text, i) => (
+                      <p key={`monologue-${i}`} className="msg-worked-monologue-line">
+                        {text}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </>
+            )
+          })()}
         </div>
       </Collapse>
     </div>

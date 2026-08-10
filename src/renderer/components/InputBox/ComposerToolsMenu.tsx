@@ -172,7 +172,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
               setOpened(false)
             }}
           >
-            {t('Attach Image')}
+            {t('Image')}
           </Menu.Item>
           <Menu.Item
             leftSection={<IconFolder size={16} stroke={1.5} />}
@@ -181,7 +181,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
               setOpened(false)
             }}
           >
-            {t('Select File')}
+            {t('File')}
           </Menu.Item>
           <Menu.Item
             leftSection={<IconLink size={16} stroke={1.5} />}
@@ -190,7 +190,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
               setOpened(false)
             }}
           >
-            {t('Attach Link')}
+            {t('Link')}
           </Menu.Item>
 
           {(showWeb || showMcp || showKb) && (
@@ -234,8 +234,9 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
           {showMcp && (
             <>
               <Flex justify="space-between" align="center" px="sm" pt="xs">
-                <Text size="xs" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.04em' }}>
-                  MCP {mcpEnabledCount > 0 ? `(${mcpEnabledCount})` : ''}
+                <Text size="xs" fw={600} c="dimmed" style={{ letterSpacing: '-0.01em' }}>
+                  {t('Extensions')}
+                  {mcpEnabledCount > 0 ? ` · ${mcpEnabledCount}` : ''}
                 </Text>
                 <ActionIcon
                   variant="subtle"
@@ -244,7 +245,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
                     setOpened(false)
                     navigateToSettings('/mcp')
                   }}
-                  aria-label={t('MCP Settings')}
+                  aria-label={t('Extension settings')}
                 >
                   <ScalableIcon icon={IconSettings2} size={14} color="var(--chatbox-tint-tertiary)" />
                 </ActionIcon>
@@ -269,7 +270,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
               ))}
               {!mcpServers.length && !mcp.enabledBuiltinServers.length && (
                 <Menu.Item component={Link} to="/settings/mcp" onClick={() => setOpened(false)}>
-                  {t('Add your first MCP server')}
+                  {t('Connect an extension')}
                 </Menu.Item>
               )}
             </>
@@ -278,8 +279,8 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
           {showKb && (
             <>
               <Flex justify="space-between" align="center" px="sm" pt="xs">
-                <Text size="xs" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.04em' }}>
-                  {t('Knowledge Base')}
+                <Text size="xs" fw={600} c="dimmed" style={{ letterSpacing: '-0.01em' }}>
+                  {t('Knowledge')}
                 </Text>
                 <ActionIcon
                   variant="subtle"
@@ -318,7 +319,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
                 </Menu.Item>
               )}
               {knowledgeBaseId != null && (
-                <Menu.Item onClick={() => onSelectKnowledgeBase?.(null)}>{t('Clear knowledge base')}</Menu.Item>
+                <Menu.Item onClick={() => onSelectKnowledgeBase?.(null)}>{t('Clear selection')}</Menu.Item>
               )}
             </>
           )}
@@ -343,7 +344,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
                 <Flex direction="column" gap={2}>
                   <Text size="sm">{t('Agent Mode')}</Text>
                   <Text size="xs" c="dimmed" style={{ lineHeight: 1.3 }}>
-                    {t('Multi-step tools & agent loops (uses more tokens).')}
+                    {t('Use tools and work in steps')}
                   </Text>
                 </Flex>
               </Menu.Item>
@@ -355,7 +356,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
                       <ActionIcon
                         size={18}
                         variant="subtle"
-                        aria-label={t('Clear workspace')}
+                        aria-label={t('Clear project folder')}
                         onClick={(e) => {
                           e.stopPropagation()
                           onWorkspaceRootChange?.(undefined)
@@ -370,9 +371,9 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
                   }}
                 >
                   <Flex direction="column" gap={2}>
-                    <Text size="sm">{t('Workspace folder')}</Text>
+                    <Text size="sm">{t('Project folder')}</Text>
                     <Text size="xs" c="dimmed" style={{ lineHeight: 1.3 }} lineClamp={1}>
-                      {workspaceLabel ? workspaceLabel : t('Required for file write & terminal tools')}
+                      {workspaceLabel ? workspaceLabel : t('Where the AI can read and edit files')}
                     </Text>
                   </Flex>
                 </Menu.Item>
@@ -381,7 +382,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
           )}
 
           <Menu.Divider />
-          <Menu.Label fw={600}>{t('Session')}</Menu.Label>
+          <Menu.Label fw={600}>{t('Chat')}</Menu.Label>
           {showRollbackThreadButton ? (
             <Menu.Item
               leftSection={<IconArrowBackUp size={16} stroke={1.5} />}
@@ -390,7 +391,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
                 setOpened(false)
               }}
             >
-              {t('Rollback Thread')}
+              {t('Undo last reply')}
             </Menu.Item>
           ) : (
             <Menu.Item
@@ -412,7 +413,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
               setOpened(false)
             }}
           >
-            {t('Conversation Settings')}
+            {t('Chat settings')}
           </Menu.Item>
 
           {isSmallScreen && null}
@@ -422,18 +423,18 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
       <Modal
         opened={workspaceModalOpen}
         onClose={() => setWorkspaceModalOpen(false)}
-        title={t('Session workspace folder')}
+        title={t('Project folder')}
         centered
         size="md"
       >
         <Flex direction="column" gap="sm">
           <Text size="sm" c="dimmed">
             {t(
-              'Agent file write and terminal tools are limited to this folder. Paste an absolute path (e.g. /Users/you/projects/my-app).'
+              'The AI can only read and edit files inside this folder. Paste the full path (for example /Users/you/projects/my-app).'
             )}
           </Text>
           <TextInput
-            label={t('Absolute path')}
+            label={t('Folder path')}
             placeholder="/Users/you/projects/my-app"
             value={workspaceDraft}
             onChange={(e) => setWorkspaceDraft(e.currentTarget.value)}

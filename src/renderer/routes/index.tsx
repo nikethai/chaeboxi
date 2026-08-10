@@ -56,11 +56,22 @@ function Index() {
   const [isSending, setIsSending] = useState(false)
 
   const fillComposer = useCallback((text: string) => {
+    // Persist first so remounted useMessageInput restore cannot race with empty draft
+    localStorage.setItem('new-chat', text)
     setComposerDraft(text)
     setComposerKey((key) => key + 1)
-    localStorage.setItem('new-chat', text)
     requestAnimationFrame(() => {
-      document.getElementById('message-input')?.focus()
+      const el = document.getElementById('message-input') as HTMLElement | null
+      el?.focus()
+      // contenteditable: place caret at end of starter text
+      if (el && typeof window.getSelection === 'function') {
+        const range = document.createRange()
+        range.selectNodeContents(el)
+        range.collapse(false)
+        const sel = window.getSelection()
+        sel?.removeAllRanges()
+        sel?.addRange(range)
+      }
     })
   }, [])
 
@@ -305,6 +316,7 @@ function Index() {
                 workspaceRoot={session.workspaceRoot}
                 initialMessage={composerDraft}
                 draftAgentIds={selectedAgentIds}
+                onDraftAgentIdsChange={handleAgentIdsChange}
                 draftRoomMode={
                   session.roomMode === 'work' || session.roomMode === 'swarm' ? session.roomMode : 'discuss'
                 }

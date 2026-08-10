@@ -38,6 +38,20 @@ describe('UpdateQueue concurrency', () => {
     await expect(innerPromise!).resolves.toEqual({ value: 2 })
   })
 
+  test('syncState updates memory without persisting', async () => {
+    const onChange = vi.fn()
+    const queue = new UpdateQueue<State>({ value: 0 }, onChange)
+
+    await queue.set(() => ({ value: 1 }))
+    expect(onChange).toHaveBeenCalledWith({ value: 1 })
+    onChange.mockClear()
+
+    queue.syncState({ value: 42 })
+    const next = await queue.set((prev) => ({ value: (prev?.value ?? 0) + 1 }))
+    expect(next).toEqual({ value: 43 })
+    expect(onChange).toHaveBeenCalledWith({ value: 43 })
+  })
+
   test('initializes from async loader once for concurrent requests', async () => {
     const initialLoader = vi.fn(async () => {
       await Promise.resolve()

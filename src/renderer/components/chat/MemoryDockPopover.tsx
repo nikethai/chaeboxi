@@ -147,7 +147,7 @@ export const MemoryDockPopover: FC<MemoryDockPopoverProps> = ({
         <span className="inline-flex" onClick={() => setOpened((current) => !current)}>
           {trigger ?? (
             <UnstyledButton type="button" className={className} aria-label={label} title={title}>
-              <span className="session-statusline-key">mem</span>
+              <span className="session-statusline-chip-label">{t('Memory')}</span>
               <span className="session-statusline-val" style={{ opacity: on ? 1 : 0.55 }}>
                 {label}
               </span>
@@ -258,7 +258,7 @@ export const MemoryDockPopover: FC<MemoryDockPopoverProps> = ({
                 disabled={!ready}
               />
               <Text size="xs" c="chatbox-tertiary">
-                {query.trim() ? t('Matches use the same recall ranking as chat.') : t('Pinned and recent memories')}
+                {query.trim() ? t('Results ranked by relevance') : t('Pinned and recent')}
               </Text>
               <MemoryTagFilter tags={tagsByBank} activeTag={activeTag} onTagChange={changeActiveTag} />
               <MemorySearchResults

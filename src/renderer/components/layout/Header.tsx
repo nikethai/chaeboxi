@@ -1,7 +1,6 @@
-import NiceModal from '@ebay/nice-modal-react'
 import { ActionIcon, Flex, TextInput, Title, Tooltip } from '@mantine/core'
 import type { Session } from '@shared/types'
-import { IconCheck, IconMenu2, IconPencil, IconSettings, IconX } from '@tabler/icons-react'
+import { IconCheck, IconMenu2, IconPencil, IconX } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -58,13 +57,6 @@ export default function Header(props: { session: Session }) {
       scheduleGenerateThreadName(currentSession.id)
     }
   }, [currentSession])
-
-  const openSessionSettings = () => {
-    if (!currentSession) {
-      return
-    }
-    NiceModal.show('session-settings', { session: currentSession })
-  }
 
   const startRename = () => {
     setRenameValue(currentSession.name)
@@ -226,24 +218,12 @@ export default function Header(props: { session: Session }) {
                 <ScalableIcon icon={IconPencil} size={isSmallScreen ? 16 : 15} />
               </ActionIcon>
             </Tooltip>
-
-            <Tooltip label={t('Session options')}>
-              <ActionIcon
-                className="controls active:scale-[0.96] transition-transform"
-                variant="subtle"
-                color="chatbox-tertiary"
-                size={isSmallScreen ? 24 : 22}
-                onClick={openSessionSettings}
-                aria-label={t('Session options')}
-              >
-                <ScalableIcon icon={IconSettings} size={isSmallScreen ? 16 : 15} />
-              </ActionIcon>
-            </Tooltip>
           </>
         )}
       </Flex>
 
-      <Toolbar sessionId={currentSession.id} />
+      {/* Search lives in the sidebar only; session options live in the single ⋯ menu. */}
+      <Toolbar session={currentSession} />
 
       <WindowControls className="-mr-3 ml-2" />
     </TitleBarRow>

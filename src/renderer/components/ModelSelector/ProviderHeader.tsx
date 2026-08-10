@@ -49,15 +49,19 @@ export const ProviderHeader = ({
         ? 'text-chatbox-tint-gray'
         : ''
 
-  // Desktop: mono section rail (studio picker)
+  // Sticky + opaque surface lives in CSS (.model-picker-provider) so scroll never clips brand through names
   const desktopContainerClass = clsx(
-    'model-picker-provider sticky top-0 z-10',
+    'model-picker-provider',
     isClickable && 'cursor-pointer select-none',
     className
   )
 
-  // (legacy comment)
-  const mobileContainerClass = `${padding} ${isMobile ? 'text-chatbox-tint-tertiary' : ''} sticky top-0 z-10 bg-chatbox-background-primary ${className}`
+  const mobileContainerClass = clsx(
+    padding,
+    'model-picker-provider',
+    isMobile && 'text-chatbox-tint-tertiary',
+    className
+  )
 
   const containerClass = isMobile ? mobileContainerClass : desktopContainerClass
 
@@ -123,12 +127,12 @@ export const ProviderHeader = ({
           span
           c={isMobile ? textColor : 'chatbox-tertiary'}
           size="xs"
-          fw={isMobile ? textWeight : 500}
+          fw={isMobile ? textWeight : 600}
           className={!isMobile ? 'model-picker-provider-name' : undefined}
         >
           {provider.name}
         </Text>
-        {(showModelCount || isMobile) && modelCount !== undefined && (
+        {showModelCount && !isMobile && modelCount !== undefined && modelCount > 0 && (
           <Text span c="dimmed" size="xs" ml="auto" className="model-picker-provider-count tabular-nums">
             {modelCount}
           </Text>

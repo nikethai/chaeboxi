@@ -9,19 +9,26 @@ import type { Message, ModelProvider } from '@shared/types'
 import { IconCamera, IconClipboard, IconExternalLink } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useAtom } from 'jotai'
-import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import ChatDockStack from '@/components/chat/ChatDockStack'
 import MessageList, { type MessageListRef } from '@/components/chat/MessageList'
 import SessionStatusBar from '@/components/chat/SessionStatusBar'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
-import InputBox from '@/components/InputBox/InputBox'
+import InputBox, { type InputBoxRef } from '@/components/InputBox/InputBox'
 import { formatShortcutLabel } from '@/components/Shortcut'
 import { attachScreenshotToComposer } from '@/hooks/useDesktopShell'
 import platform from '@/platform'
 import { currentSessionIdAtom } from '@/stores/atoms'
 import { createSession, listSessionsMeta, updateSessionWithMessages, useSession } from '@/stores/chatStore'
 import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
-import { modifyMessage, removeCurrentThread, startNewThread, submitNewUserMessage } from '@/stores/sessionActions'
+import {
+  modifyMessage,
+  removeCurrentThread,
+  startNewThread,
+  submitNewUserMessage,
+} from '@/stores/sessionActions'
+import { continueActiveSessionTasks } from '@/stores/session/messages'
 import { getAllMessageList, initEmptyChatSession } from '@/stores/sessionHelpers'
 import { useSettingsStore } from '@/stores/settingsStore'
 import * as toastActions from '@/stores/toastActions'
@@ -50,6 +57,7 @@ function QuickChatPage() {
   const { t } = useTranslation()
   const [sessionId, setSessionId] = useState<string | null>(null)
   const messageListRef = useRef<MessageListRef>(null)
+  const inputBoxRef = useRef<InputBoxRef>(null)
   const { session } = useSession(sessionId)
   const [cachedSessionId, setCachedSessionId] = useAtom(currentSessionIdAtom)
   const shortcuts = useSettingsStore((s) => s.shortcuts)
@@ -91,6 +99,15 @@ function QuickChatPage() {
     void platform.notifyQuickRendererReady?.()
     return () => {
       void platform.notifyQuickRendererGone?.()
+    }
+  }, [])
+
+  // Portaled popovers leave .quick-chat-shell — flag root early so density CSS applies same paint.
+  useLayoutEffect(() => {
+    const root = document.documentElement
+    root.dataset.quickChat = '1'
+    return () => {
+      delete root.dataset.quickChat
     }
   }, [])
 
@@ -152,6 +169,11 @@ function QuickChatPage() {
     void modifyMessage(session.id, { ...lastGenerating, generating: false }, true)
     return true
   }, [session, lastGenerating])
+
+  const onContinueTasks = useCallback(() => {
+    if (!session) return
+    void continueActiveSessionTasks(session.id)
+  }, [session])
 
   const onStartNewThread = useCallback(() => {
     if (!session) return false
@@ -241,12 +263,12 @@ function QuickChatPage() {
 
   return (
     <div className="session-shell quick-chat-shell">
-      {/* Title row — same density as full session header */}
+      {/* Compact floating header — shortcuts live in tooltips, not a footer row */}
       <Flex
         align="center"
         gap="xs"
-        px="md"
-        py={8}
+        px="sm"
+        py={6}
         className="quick-chat-header shrink-0 bg-[var(--chatbox-background-primary)]"
         style={{ WebkitAppRegion: 'drag' } as CSSProperties}
       >
@@ -255,7 +277,7 @@ function QuickChatPage() {
           fw={600}
           lineClamp={1}
           className="flex-1 min-w-0 tracking-tight text-[var(--chatbox-tint-primary)]"
-          style={{ letterSpacing: '-0.02em', fontSize: '0.95rem' }}
+          style={{ letterSpacing: '-0.02em', fontSize: '0.9rem' }}
           title={session.name}
         >
           {session.name || t('Quick Chat')}
@@ -292,7 +314,16 @@ function QuickChatPage() {
               <IconClipboard size={16} stroke={1.5} />
             </ActionIcon>
           </Tooltip>
-          <Tooltip label={t('Open full app')}>
+          <Tooltip
+            label={
+              <span className="inline-flex items-center gap-1.5">
+                {t('Open full app')}
+                <span className="opacity-50">·</span>
+                <span className="opacity-80">{t('Toggle')}</span>
+                <ShortcutHint label={quickToggle} />
+              </span>
+            }
+          >
             <ActionIcon
               variant="subtle"
               size={28}
@@ -314,38 +345,37 @@ function QuickChatPage() {
 
       <div className="session-dock">
         <div className="session-dock-pad">
-          <ErrorBoundary name="quick-inputbox">
-            <InputBox
-              key={`quick-input-${session.id}`}
-              sessionId={session.id}
-              sessionType={session.type || 'chat'}
-              model={model}
-              agentMode={session.agentMode ?? false}
-              workspaceRoot={session.workspaceRoot}
-              generating={Boolean(lastGenerating?.generating)}
-              onSelectModel={onSelectModel}
-              onSubmit={onSubmit}
-              onStopGenerating={onStopGenerating}
-              onStartNewThread={onStartNewThread}
-              onRollbackThread={onRollbackThread}
-              onClickSessionSettings={onClickSessionSettings}
-              onToggleAgentMode={(agentMode) => {
-                void updateSessionWithMessages(session.id, { agentMode })
-              }}
-              onWorkspaceRootChange={(workspaceRoot) => {
-                void updateSessionWithMessages(session.id, { workspaceRoot })
-              }}
-            />
-          </ErrorBoundary>
-          <Flex justify="flex-start" align="center" mt={8} gap="sm" wrap="wrap" className="quick-chat-hints">
-            <Text size="xs" c="dimmed" className="inline-flex items-center gap-1.5 flex-wrap">
-              <span>{t('Toggle')}</span>
-              <ShortcutHint label={quickToggle} />
-              <span className="opacity-30 mx-0.5">·</span>
-              <span>{t('Screenshot')}</span>
-              <ShortcutHint label={shotKey} />
-            </Text>
-          </Flex>
+          <ChatDockStack
+            key={session.id}
+            sessionId={session.id}
+            onContinueTasks={onContinueTasks}
+            taskDetailsMode="sheet"
+          >
+            <ErrorBoundary name="quick-inputbox">
+              <InputBox
+                key={`quick-input-${session.id}`}
+                ref={inputBoxRef}
+                sessionId={session.id}
+                sessionType={session.type || 'chat'}
+                model={model}
+                agentMode={session.agentMode ?? false}
+                workspaceRoot={session.workspaceRoot}
+                generating={Boolean(lastGenerating?.generating)}
+                onSelectModel={onSelectModel}
+                onSubmit={onSubmit}
+                onStopGenerating={onStopGenerating}
+                onStartNewThread={onStartNewThread}
+                onRollbackThread={onRollbackThread}
+                onClickSessionSettings={onClickSessionSettings}
+                onToggleAgentMode={(agentMode) => {
+                  void updateSessionWithMessages(session.id, { agentMode })
+                }}
+                onWorkspaceRootChange={(workspaceRoot) => {
+                  void updateSessionWithMessages(session.id, { workspaceRoot })
+                }}
+              />
+            </ErrorBoundary>
+          </ChatDockStack>
         </div>
         <SessionStatusBar
           messages={currentMessageList}
@@ -353,7 +383,11 @@ function QuickChatPage() {
           providerId={model?.provider}
           generating={Boolean(lastGenerating?.generating)}
           sessionId={session.id}
+          memoryAutoSave={session.settings?.memoryAutoSave}
           empty={threadEmpty}
+          compact
+          onInsertMemory={(content) => inputBoxRef.current?.insertMemory(content)}
+          getMemorySaveContent={() => inputBoxRef.current?.getMemorySaveContent() ?? ''}
         />
       </div>
     </div>

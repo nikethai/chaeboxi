@@ -184,6 +184,12 @@ export const SessionSettingsSchema = GlobalSessionSettingsSchema.extend({
   autoCompaction: z.boolean().optional().catch(undefined),
   planMode: z.boolean().optional().catch(undefined),
   openclawAgentId: z.string().optional().catch(undefined),
+  /**
+   * Per-chat memory auto-save / tool-retain opt-out.
+   * - undefined | true → inherit global Memory auto-save / allow tool retain
+   * - false → do not auto-extract or model-retain from this chat (manual save still allowed)
+   */
+  memoryAutoSave: z.boolean().optional().catch(undefined),
 })
 
 const UnifiedTokenUsageDetailSchema = z.object({

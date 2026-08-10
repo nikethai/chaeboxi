@@ -1,27 +1,33 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { Button, Flex, Text } from '@mantine/core'
-import { createMessage, type Message, type ModelProvider, ModelProviderEnum } from '@shared/types'
+import { type Message, type ModelProvider, ModelProviderEnum } from '@shared/types'
 import { IconMessage, IconShield } from '@tabler/icons-react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { type FC, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import ChatDockStack from '@/components/chat/ChatDockStack'
 import MessageList, { type MessageListRef } from '@/components/chat/MessageList'
 import SessionStatusBar from '@/components/chat/SessionStatusBar'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
-import InputBox from '@/components/InputBox/InputBox'
+import InputBox, { type InputBoxRef } from '@/components/InputBox/InputBox'
 import Header from '@/components/layout/Header'
 import ThreadHistoryDrawer from '@/components/session/ThreadHistoryDrawer'
 import WorkspacePanel, { useWorkspaceChromeActive } from '@/components/workspace/WorkspacePanel'
 import { updateSessionWithMessages as updateSessionStore, useSession } from '@/stores/chatStore'
 import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 import * as scrollActions from '@/stores/scrollActions'
-import { modifyMessage, removeCurrentThread, startNewThread, submitNewUserMessage } from '@/stores/sessionActions'
+import {
+  modifyMessage,
+  removeCurrentThread,
+  startNewThread,
+  submitNewUserMessage,
+} from '@/stores/sessionActions'
+import { continueActiveSessionTasks } from '@/stores/session/messages'
 import { getAllMessageList } from '@/stores/sessionHelpers'
-import { taskStore } from '@/stores/taskStore'
 import { useUIStore } from '@/stores/uiStore'
 import { isThreadVisuallyEmpty } from '@/utils/chat-starters'
-import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 import { getSessionRouteState } from '@/utils/sessionRouteState'
+import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
 // Agent-mode panels are not used on Android. Use compile-time conditional
 // dynamic imports so the modules (and their @mantine/openclaw deps) are
@@ -32,10 +38,6 @@ const SessionPanel = isAgentEnabled ? lazy(() => import('@/openclaw/components/S
 const ToolAuditPanel = isAgentEnabled
   ? lazy(() => import('@/components/ToolAuditPanel').then((m) => ({ default: m.ToolAuditPanel })))
   : null
-const TaskProgress = isAgentEnabled
-  ? lazy(() => import('@/components/TaskProgress/TaskProgress').then((m) => ({ default: m.TaskProgress })))
-  : null
-
 export const Route = createFileRoute('/session/$sessionId')({
   component: RouteComponent,
 })
@@ -56,6 +58,7 @@ function RouteComponent() {
   )
 
   const messageListRef = useRef<MessageListRef>(null)
+  const inputBoxRef = useRef<InputBoxRef>(null)
 
   const goHome = useCallback(() => {
     navigate({ to: '/', replace: true })
@@ -66,12 +69,6 @@ function RouteComponent() {
       scrollActions.scrollToBottom('auto') // 每次启动时自动滚动到底部
     }, 200)
   }, [])
-
-  // Hydrate persisted in-chat todos for this session (reload-safe checklist)
-  useEffect(() => {
-    if (!currentSessionId) return
-    void taskStore.getState().hydrateSessionTasks(currentSessionId)
-  }, [currentSessionId])
 
   // currentSession变化时（包括session settings变化），存下当前的settings作为新Session的默认值
   const currentSessionType = currentSession?.type
@@ -159,13 +156,7 @@ function RouteComponent() {
 
   const onContinueTasks = useCallback(() => {
     if (!currentSession) return
-    void submitNewUserMessage(currentSession.id, {
-      newUserMsg: createMessage(
-        'user',
-        'Continue the active task plan. First inspect the current tasks, then resume the next appropriate pending task. Update task statuses before responding.'
-      ),
-      needGenerating: true,
-    })
+    void continueActiveSessionTasks(currentSession.id)
   }, [currentSession])
 
   const onClickSessionSettings = useCallback(() => {
@@ -216,7 +207,13 @@ function RouteComponent() {
   }
 
   if (sessionRouteState === 'error') {
-    return <SessionState message={t('Could not load conversation')} actionLabel={t('Retry')} onAction={() => void refetch()} />
+    return (
+      <SessionState
+        message={t('Could not load conversation')}
+        actionLabel={t('Retry')}
+        onAction={() => void refetch()}
+      />
+    )
   }
 
   if (sessionRouteState === 'not-found') {
@@ -283,34 +280,32 @@ function RouteComponent() {
 
           <div className="session-dock">
             <div className="session-dock-pad">
-              {TaskProgress && (
-                <Suspense fallback={null}>
-                  <TaskProgress sessionId={currentSession.id} onContinue={onContinueTasks} />
-                </Suspense>
-              )}
-              <ErrorBoundary name="session-inputbox">
-                <InputBox
-                  key={`input-box${currentSession.id}`}
-                  sessionId={currentSession.id}
-                  sessionType={currentSession.type}
-                  model={model}
-                  agentMode={currentSession.agentMode ?? false}
-                  workspaceRoot={currentSession.workspaceRoot}
-                  onStartNewThread={onStartNewThread}
-                  onRollbackThread={onRollbackThread}
-                  onSelectModel={onSelectModel}
-                  onToggleAgentMode={(agentMode) => {
-                    void updateSessionStore(currentSession.id, { agentMode })
-                  }}
-                  onWorkspaceRootChange={(workspaceRoot) => {
-                    void updateSessionStore(currentSession.id, { workspaceRoot })
-                  }}
-                  onClickSessionSettings={onClickSessionSettings}
-                  generating={!!lastGeneratingMessage}
-                  onSubmit={onSubmit}
-                  onStopGenerating={onStopGenerating}
-                />
-              </ErrorBoundary>
+              <ChatDockStack key={currentSession.id} sessionId={currentSession.id} onContinueTasks={onContinueTasks}>
+                <ErrorBoundary name="session-inputbox">
+                  <InputBox
+                    key={`input-box${currentSession.id}`}
+                    ref={inputBoxRef}
+                    sessionId={currentSession.id}
+                    sessionType={currentSession.type}
+                    model={model}
+                    agentMode={currentSession.agentMode ?? false}
+                    workspaceRoot={currentSession.workspaceRoot}
+                    onStartNewThread={onStartNewThread}
+                    onRollbackThread={onRollbackThread}
+                    onSelectModel={onSelectModel}
+                    onToggleAgentMode={(agentMode) => {
+                      void updateSessionStore(currentSession.id, { agentMode })
+                    }}
+                    onWorkspaceRootChange={(workspaceRoot) => {
+                      void updateSessionStore(currentSession.id, { workspaceRoot })
+                    }}
+                    onClickSessionSettings={onClickSessionSettings}
+                    generating={!!lastGeneratingMessage}
+                    onSubmit={onSubmit}
+                    onStopGenerating={onStopGenerating}
+                  />
+                </ErrorBoundary>
+              </ChatDockStack>
             </div>
             <SessionStatusBar
               messages={currentMessageList}
@@ -318,7 +313,10 @@ function RouteComponent() {
               providerId={model?.provider}
               generating={!!lastGeneratingMessage}
               sessionId={currentSession.id}
+              memoryAutoSave={currentSession.settings?.memoryAutoSave}
               empty={threadEmpty}
+              onInsertMemory={(content) => inputBoxRef.current?.insertMemory(content)}
+              getMemorySaveContent={() => inputBoxRef.current?.getMemorySaveContent() ?? ''}
             />
           </div>
         </div>

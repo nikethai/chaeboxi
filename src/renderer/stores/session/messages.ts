@@ -10,7 +10,7 @@ import {
 import { createMessage, type Message } from '@shared/types'
 import { countMessageWords } from '@shared/utils/message'
 import { createModelDependencies } from '@/adapters'
-import { checkSessionOverflowFast, runCompactionWithUIState } from '@/packages/context-management'
+import { checkSessionOverflowFast } from '@/packages/context-management'
 import { getModelDisplayName } from '@/packages/model-setting-utils'
 import { estimateTokensFromMessages } from '@/packages/token'
 import platform from '@/platform'
@@ -273,4 +273,14 @@ export async function submitNewUserMessage(
       speakerAgentId: speakers[0],
     })
   }
+}
+
+export function continueActiveSessionTasks(sessionId: string) {
+  return submitNewUserMessage(sessionId, {
+    newUserMsg: createMessage(
+      'user',
+      'Continue the active task plan. First inspect the current tasks, then resume the next appropriate pending task. Update task statuses before responding.'
+    ),
+    needGenerating: true,
+  })
 }

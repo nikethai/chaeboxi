@@ -742,7 +742,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           <SettingsCollapsible
             title={t('Advanced')}
             description={t('API host, Cloudflare Access, and other optional connection settings.')}
-            badge={t('Optional')}
+            badge={t('Advanced')}
             defaultOpen={Boolean(
               providerSettings?.cloudflareClientId ||
                 providerSettings?.cloudflareClientSecret ||

@@ -166,6 +166,7 @@ A: 增加 `CurrentVersion`，在 `migrateFunctions` 添加迁移函数，更新�
 - [Migration 源码](../src/renderer/stores/migration.ts)
 - [Migration 测试](../src/renderer/stores/migration.test.ts)
 - [测试文档](./testing.md)
+- [Provider usage status](./provider-usage-status.md) — keys `usage-rollup`, `usage-quota-cache`, `usage-budget-notify`
 
 ---
 

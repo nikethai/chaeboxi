@@ -4904,6 +4904,38 @@ html[data-quick-chat] .composer-tools-menu .mantine-Menu-item .mantine-Flex-root
   outline-offset: 1px;
 }
 
+button.session-statusline-plan {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  margin: 0;
+  padding: 0.15rem 0.35rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+button.session-statusline-plan:hover {
+  color: var(--chatbox-tint-secondary);
+  background: color-mix(in srgb, var(--chatbox-background-tertiary) 80%, transparent);
+}
+
+button.session-statusline-plan:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 55%, transparent);
+  outline-offset: 1px;
+}
+
+.session-statusline-plan.is-warn .session-statusline-val {
+  color: var(--mantine-color-yellow-5, #eab308);
+}
+
+.session-statusline-plan.is-critical .session-statusline-val {
+  color: var(--mantine-color-red-5, #ef4444);
+}
+
 /* Project row shared outline mark */
 .project-row-icon {
   flex-shrink: 0;

@@ -12,9 +12,11 @@ import { useAtomValue } from 'jotai'
 import { type FC, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MemoryDockPopover } from '@/components/chat/MemoryDockPopover'
+import { ProviderUsagePopover } from '@/components/usage'
 import TokenCountMenu from '@/components/InputBox/TokenCountMenu'
 import { aggregateSessionCosts, formatCost } from '@/packages/cost-tracking'
 import { getMemoryInjectStats } from '@/packages/memory/inject'
+import { useProviderUsageStatus, useUsageBudgetState } from '@/packages/usage-tracking'
 import { composerTokenMenuAtom } from '@/stores/atoms/uiAtoms'
 import * as chatStore from '@/stores/chatStore'
 import { ensureMemoryStoreInit, useMemoryStore } from '@/stores/memoryStore'
@@ -134,6 +136,38 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
   const providerShort = providerId ? String(providerId) : undefined
   const modelTitle = providerShort ? `${providerShort} · ${model}` : model
 
+  const { status: providerUsage } = useProviderUsageStatus(compact ? undefined : providerId, '30d')
+  const budgetState = useUsageBudgetState(compact ? undefined : providerId)
+
+  const planSegment = useMemo(() => {
+    if (compact || !providerUsage) return null
+    const exhausted = providerUsage.quota.state === 'exhausted'
+    const hasPlan = Boolean(providerUsage.plan)
+    const budgetWarn = budgetState.level === 'warn' || budgetState.level === 'critical'
+    if (!exhausted && !hasPlan && !budgetWarn) return null
+
+    let label = 'plan'
+    if (exhausted) {
+      label = 'plan · exhausted'
+    } else if (
+      providerUsage.quota.state === 'known' &&
+      providerUsage.quota.limit != null &&
+      providerUsage.quota.limit > 0
+    ) {
+      const used = providerUsage.quota.used ?? 0
+      const pct = Math.min(100, Math.round((used / providerUsage.quota.limit) * 100))
+      label = `plan ${pct}%`
+    } else if (providerUsage.plan) {
+      const short = providerUsage.plan.label.replace(/^ChatGPT\s+/i, '').replace(/^Antigravity\s+/i, '')
+      label = `plan ${short}`
+    } else if (budgetWarn) {
+      label = budgetState.level === 'critical' ? 'plan · budget' : 'plan · warn'
+    }
+
+    const tone = exhausted || budgetState.level === 'critical' ? 'is-critical' : budgetWarn ? 'is-warn' : ''
+    return { label, tone, status: providerUsage }
+  }, [compact, providerUsage, budgetState])
+
   const menuForSession = !compact && tokenMenu && sessionId && tokenMenu.sessionId === sessionId ? tokenMenu : null
 
   const tokSegment = (
@@ -188,6 +222,20 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
 
         {!compact && !empty && (
           <Flex align="center" gap={12} className="shrink-0">
+            {planSegment && (
+              <ProviderUsagePopover status={planSegment.status}>
+                <Text
+                  className={`session-statusline-seg session-statusline-plan ${planSegment.tone}`}
+                  title={t('Provider plan & usage')}
+                >
+                  <span className="session-statusline-key">plan</span>
+                  <span className="session-statusline-val">
+                    {planSegment.label.replace(/^plan\s*/, '') || '—'}
+                  </span>
+                </Text>
+              </ProviderUsagePopover>
+            )}
+
             {memoryChip && (
               <MemoryDockPopover
                 className="session-statusline-seg shrink-0"

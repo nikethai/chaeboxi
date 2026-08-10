@@ -7,7 +7,7 @@ const decoder = new TextDecoder()
  * Derive an AES-GCM key from a passphrase using PBKDF2-HMAC-SHA-256.
  * Minimum 310,000 iterations per the memory sync spec.
  */
-export async function deriveMemorySyncKey(passphrase: string, salt: Uint8Array): Promise<CryptoKey> {
+export async function deriveMemorySyncKey(passphrase: string, salt: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
   const keyMaterial = await crypto.subtle.importKey('raw', encoder.encode(passphrase), 'PBKDF2', false, ['deriveKey'])
   return await crypto.subtle.deriveKey(
     { name: 'PBKDF2', salt, iterations: ITERATIONS, hash: 'SHA-256' },
@@ -24,7 +24,7 @@ function toBase64(bytes: Uint8Array): string {
   return btoa(binary)
 }
 
-function fromBase64(value: string): Uint8Array {
+function fromBase64(value: string): Uint8Array<ArrayBuffer> {
   const binary = atob(value)
   const bytes = new Uint8Array(binary.length)
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
@@ -46,7 +46,7 @@ export interface MemorySyncEncryptedPayload {
 export async function encryptMemorySyncPayload(
   passphrase: string,
   plaintext: string,
-  salt?: Uint8Array
+  salt?: Uint8Array<ArrayBuffer>
 ): Promise<MemorySyncEncryptedPayload> {
   const saltBytes = salt ?? crypto.getRandomValues(new Uint8Array(16))
   const key = await deriveMemorySyncKey(passphrase, saltBytes)

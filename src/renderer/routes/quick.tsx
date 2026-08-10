@@ -10,6 +10,7 @@ import { type CSSProperties, useCallback, useEffect, useLayoutEffect, useMemo, u
 import { useTranslation } from 'react-i18next'
 import ChatDockStack from '@/components/chat/ChatDockStack'
 import MessageList, { type MessageListRef } from '@/components/chat/MessageList'
+import SessionStatusBar from '@/components/chat/SessionStatusBar'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
 import InputBox, { type InputBoxRef } from '@/components/InputBox/InputBox'
 import { formatShortcutLabel } from '@/components/Shortcut'
@@ -290,12 +291,7 @@ function QuickChatPage() {
 
       <div className="session-dock">
         <div className="session-dock-pad">
-          <ChatDockStack
-            key={session.id}
-            sessionId={session.id}
-            onContinueTasks={onContinueTasks}
-            taskDetailsMode="sheet"
-          >
+          <ChatDockStack key={session.id} sessionId={session.id} onContinueTasks={onContinueTasks} taskDetailsMode="sheet">
             <ErrorBoundary name="quick-inputbox">
               <InputBox
                 key={`quick-input-${session.id}`}
@@ -321,6 +317,17 @@ function QuickChatPage() {
               />
             </ErrorBoundary>
           </ChatDockStack>
+          <SessionStatusBar
+            messages={currentMessageList}
+            modelLabel={modelDisplayName}
+            model={model}
+            settings={session.settings}
+            providerId={model?.provider}
+            generating={Boolean(lastGenerating?.generating)}
+            sessionId={session.id}
+            memoryAutoSave={session.settings?.memoryAutoSave}
+            compact={true}
+          />
           <Flex justify="flex-start" align="center" mt={8} gap="sm" wrap="wrap" className="quick-chat-hints">
             <Text size="xs" c="dimmed" className="inline-flex items-center gap-1.5 flex-wrap">
               <span>{t('Toggle')}</span>

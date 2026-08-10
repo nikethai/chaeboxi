@@ -24,6 +24,7 @@ import {
   type Session,
   type SessionSettings,
 } from '@shared/types'
+import { applyOpenAIReasoningEffort, getReasoningDropdownValue } from '@shared/utils'
 import { isReasoningReplayAvailable } from '@shared/utils/reasoning-replay'
 import { IconChevronDown, IconInfoCircle, IconTrash } from '@tabler/icons-react'
 import { pick } from 'lodash'
@@ -591,21 +592,14 @@ function OpenAIProviderConfig({
 
   const handleReasoningEffortChange = useCallback(
     (value: string) => {
-      const reasoningEffort = value === 'null' ? undefined : (value as 'low' | 'medium' | 'high')
       onSettingsChange({
-        providerOptions: {
-          openai: { reasoningEffort },
-        },
+        providerOptions: applyOpenAIReasoningEffort(settings, value as 'null' | 'low' | 'medium' | 'high'),
       })
     },
-    [onSettingsChange]
+    [onSettingsChange, settings]
   )
 
-  // Simplify value calculation to avoid instability
-  const currentValue = useMemo(() => {
-    const effort = providerOptions?.reasoningEffort
-    return effort === undefined ? 'null' : effort
-  }, [providerOptions?.reasoningEffort])
+  const currentValue = useMemo(() => getReasoningDropdownValue(settings), [settings])
 
   return (
     <Stack gap={isQuickChat ? 'sm' : 'md'} className="session-thinking-budget">

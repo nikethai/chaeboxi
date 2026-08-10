@@ -99,6 +99,11 @@ export function settings(): Settings {
     autoCompaction: true,
     compactionThreshold: 0.6,
     contextOverflowBehavior: 'ask',
+    providerOptions: {
+      openai: {
+        reasoningEffort: 'medium',
+      },
+    },
 
     autoLaunch: false,
     autoUpdate: true,

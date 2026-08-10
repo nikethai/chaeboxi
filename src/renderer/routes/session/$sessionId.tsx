@@ -314,6 +314,8 @@ function RouteComponent() {
             <SessionStatusBar
               messages={currentMessageList}
               modelLabel={modelDisplayName}
+              model={model}
+              settings={currentSession.settings}
               providerId={model?.provider}
               generating={!!lastGeneratingMessage}
               sessionId={currentSession.id}

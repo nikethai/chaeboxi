@@ -9,8 +9,7 @@ import { Modal } from '../layout/Overlay'
 /** Quick Chat is ~520px (under sm) but is a desktop floating HUD — use centered modal, not mobile sheet. */
 function useAdaptiveMobileLayout() {
   const isSmallScreen = useIsSmallScreen()
-  const isQuickChat =
-    typeof document !== 'undefined' && document.documentElement.dataset.quickChat === '1'
+  const isQuickChat = typeof document !== 'undefined' && document.documentElement.dataset.quickChat === '1'
   return isSmallScreen && !isQuickChat
 }
 
@@ -107,8 +106,9 @@ function AdaptiveModalActions({ children }: { children: ReactNode }) {
     )
   }
 
+  // wrap so multi-button footers (e.g. Deny / Allow session / Allow once) never clip
   return (
-    <Flex gap={8} mt="md" justify="flex-end" align="center">
+    <Flex gap="sm" mt="md" justify="flex-end" align="center" wrap="wrap" className="w-full">
       {children}
     </Flex>
   )

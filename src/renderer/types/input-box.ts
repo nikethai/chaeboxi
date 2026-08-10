@@ -28,6 +28,10 @@ export interface PreprocessedLink {
   lineCount?: number
   byteLength?: number
   error?: string
+  /** Stored poster/OG image for composer chip preview */
+  imageStorageKey?: string
+  /** Remote image URL (fallback if not yet stored) */
+  thumbnailUrl?: string
 }
 
 export interface PreConstructedMessageState {

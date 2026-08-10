@@ -72,12 +72,13 @@ src-tauri/        # Tauri/Rust backend (native APIs, MCP client, IPC)
 **Modals**: `@ebay/nice-modal-react` for declarative modal management. Modals registered in `src/renderer/modals/`.
 
 **Key packages** (`src/renderer/packages/`):
-- `model-calls/` — LLM API wrapper layer (sends requests to providers)
+- `model-calls/` — LLM API wrapper layer (sends requests to providers); toolsets under `model-calls/toolsets/`
 - `model-context/` — Conversation context assembly
 - `mcp/` — MCP client integration (IPC-based transport to Rust backend)
 - `token-estimation/` — Token counting for context management
 - `context-management/` — Context window management
 - `web-search/` — Web search integration
+- `video-url/` — Public video URL reader (YouTube/Vimeo/TikTok/Facebook); agent tool `read_video_url` — see `docs/video-url-reader.md`
 - `tools/` — Tool execution framework
 - `model-setting-utils/` — Provider settings helpers
 

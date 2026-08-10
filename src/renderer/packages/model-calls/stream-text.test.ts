@@ -37,6 +37,10 @@ const settingsState = vi.hoisted(() => ({
     webSearch: {
       provider: 'bing',
     },
+    // Keep off in unit tests unless a case enables it
+    videoUrl: {
+      enabled: false,
+    },
   },
   providers: {
     comfyui: {
@@ -159,6 +163,15 @@ vi.mock('./toolsets/video', () => ({
   },
   initVideoToolBudget: vi.fn(),
   resetVideoToolBudget: vi.fn(),
+}))
+
+vi.mock('./toolsets/video-url', () => ({
+  default: {
+    description: '',
+    tools: {
+      read_video_url: { description: 'read_video_url', execute: vi.fn() },
+    },
+  },
 }))
 
 vi.mock('./toolsets/task-tracking', () => ({

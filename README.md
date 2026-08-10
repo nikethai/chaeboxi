@@ -20,7 +20,7 @@ Desktop builds: [GitHub Releases](https://github.com/nikethai/chaeboxi/releases)
 - **Local-first** — chats and settings stay on your device
 - **Bring your own keys** — no bundled paid AI subscription
 - **16+ providers** — OpenAI, Anthropic, Gemini, Ollama, OpenRouter, and more
-- **Agents & tools** — multi-agent rooms, skills, hooks, MCP
+- **Agents & tools** — multi-agent rooms, skills, hooks, MCP, public video URL reader
 - **Memory & RAG** — knowledge base and session memory
 - **Cross-platform** — Windows, macOS, Linux, web, iOS, Android targets
 

@@ -118,3 +118,12 @@ interrupt: new user message aborts remaining queue
 | Speaker UI | `AgentSpeakerHeader`, `Message.tsx`, `MessageList.tsx` |
 | Actions bar | `TeamRoomActions.tsx` |
 | Dock UI | `InputBox`, `TeamModeSelect`, `AgentPicker`, `AgentRoomStrip` |
+
+## Related agent tools
+
+When Work/Swarm **do** / **deliver** enable tools (and `agentMode` is on), agents can call the full tool surface for the session—including media tools:
+
+- **`read_video_url`** — public YouTube / Vimeo / TikTok / Facebook links (metadata + transcript). See [video-url-reader.md](./video-url-reader.md).
+- **`read_video`** — local uploaded `FILE_KEY` frame sample (not remote URLs).
+
+Configure Video URL in **Settings → Video URL**.

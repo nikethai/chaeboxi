@@ -1,7 +1,7 @@
 import { google } from '@ai-sdk/google'
 import NiceModal from '@ebay/nice-modal-react'
 import { getModel } from '@shared/models'
-import { ProviderAPIError, OCRError } from '@shared/models/errors'
+import { OCRError, ProviderAPIError } from '@shared/models/errors'
 import type { ModelDependencies } from '@shared/types/adapters'
 import { ToolRiskTier } from '@shared/types/mcp'
 import { sequenceMessages } from '@shared/utils/message'
@@ -18,10 +18,10 @@ import { isSessionMemoryToolRetainAllowed } from '@/packages/memory/session-poli
 import { getMemoryToolSet, MEMORY_TOOL_NAMES } from '@/packages/memory/tools'
 import platform from '@/platform'
 import { ensureMemoryStoreInit, memoryStore } from '@/stores/memoryStore'
-import { getMessageText } from '@/utils/message'
 import { settingsStore } from '@/stores/settingsStore'
 import { formatActiveTaskContext, taskStore } from '@/stores/taskStore'
 import { getToolApproval, toolApprovalStore } from '@/stores/toolApprovalStore'
+import { getMessageText } from '@/utils/message'
 import type {
   ModelInterface,
   OnResultChange,
@@ -57,6 +57,7 @@ import { getToolSet } from './toolsets/knowledge-base'
 import taskTrackingToolSet from './toolsets/task-tracking'
 import { createTerminalToolSet } from './toolsets/terminal'
 import videoToolSet, { initVideoToolBudget, resetVideoToolBudget } from './toolsets/video'
+import videoUrlToolSet from './toolsets/video-url'
 import websearchToolSet, { parseLinkTool, webSearchTool } from './toolsets/web-search'
 
 /** Agent coding context: enables workspace write + terminal tools when set. */
@@ -224,17 +225,20 @@ function wrapMCPToolsWithApproval(sessionId: string | undefined, tools: ToolSet)
           ...definition,
           execute: async (args: unknown, context) => {
             const existingApproval = getToolApproval(sessionId, toolName)
+            // Built-in read-only tools (web_search, read_video_url, …) are LOW and
+            // should not interrupt the user with an approval modal.
             const canAutoApprove =
-              existingApproval?.scope === 'session' &&
-              existingApproval.riskTier === riskTier &&
-              riskTier !== ToolRiskTier.HIGH
+              riskTier === ToolRiskTier.LOW ||
+              (existingApproval?.scope === 'session' &&
+                existingApproval.riskTier === riskTier &&
+                riskTier !== ToolRiskTier.HIGH)
 
             if (canAutoApprove) {
               toolApprovalStore.getState().addAuditEntry({
                 sessionId,
                 toolName,
                 riskTier,
-                scope: existingApproval.scope,
+                scope: existingApproval?.scope || 'session',
                 decision: 'auto-approve',
                 timestamp: Date.now(),
                 args,
@@ -402,6 +406,9 @@ export async function streamText(
   const needWorkspaceCodingTools =
     Boolean(agentCoding?.enabled) && Boolean(workspaceRoot) && platform.type === 'desktop' && model.isSupportToolUse()
   const needVideoToolSet = hasVideoAttachment && model.isSupportToolUse() && model.isSupportVision()
+  // Public video URL reader — independent of local video attachments
+  const videoUrlExtension = settingsStore.getState().extension?.videoUrl
+  const needVideoUrlToolSet = videoUrlExtension?.enabled !== false && model.isSupportToolUse()
   const kbNotSupported = knowledgeBase && !model.isSupportToolUse('knowledge-base')
   const webNotSupported = webBrowsing && !model.isSupportToolUse('web-browsing')
   const workspaceFileToolSet = needWorkspaceCodingTools ? createWorkspaceFileToolSet(workspaceRoot) : null
@@ -465,6 +472,7 @@ export async function streamText(
     Boolean(needAttachmentFileToolSet) ||
     Boolean(needWorkspaceCodingTools) ||
     Boolean(needVideoToolSet) ||
+    Boolean(needVideoUrlToolSet) ||
     taskToolsAvailable ||
     memoryToolsAvailable ||
     needGenerateImageTool
@@ -499,6 +507,9 @@ ${!workspaceRoot ? '- No session workspace folder is set. Ask the user to set a 
   }
   if (needVideoToolSet) {
     toolSetInstructions += videoToolSet.description
+  }
+  if (needVideoUrlToolSet) {
+    toolSetInstructions += videoUrlToolSet.description
   }
   // Memory tools + priority instructions BEFORE web search so models see recall first.
   let memoryToolSet: ReturnType<typeof getMemoryToolSet> | null = null
@@ -805,6 +816,14 @@ Do not open with repeated web searches when personal memory may apply.
         tools = {
           ...tools,
           ...wrappedVideoTools,
+        }
+      }
+
+      if (needVideoUrlToolSet) {
+        const wrappedVideoUrlTools = wrapMCPToolsWithApproval(sessionId, videoUrlToolSet.tools as ToolSet)
+        tools = {
+          ...tools,
+          ...wrappedVideoUrlTools,
         }
       }
 

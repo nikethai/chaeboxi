@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest'
 import { ToolRiskTier } from '@shared/types/mcp'
+import { describe, expect, it } from 'vitest'
 import { classifyToolRisk, getToolRiskTier } from './risk-engine'
 
 describe('risk-engine', () => {
@@ -17,6 +17,13 @@ describe('risk-engine', () => {
       expect(getToolRiskTier('http_request', 'Make an HTTP request')).toBe(ToolRiskTier.MEDIUM)
       expect(getToolRiskTier('download_file', 'Download a file')).toBe(ToolRiskTier.MEDIUM)
       expect(getToolRiskTier('read_file', 'Read file contents from filesystem')).toBe(ToolRiskTier.MEDIUM)
+    })
+
+    it('returns LOW for built-in web/video read tools', () => {
+      expect(getToolRiskTier('read_video_url', 'Fetches metadata + transcript for a video URL')).toBe(ToolRiskTier.LOW)
+      expect(getToolRiskTier('web_search', 'Search the web')).toBe(ToolRiskTier.LOW)
+      expect(getToolRiskTier('parse_link', 'Parse a URL')).toBe(ToolRiskTier.LOW)
+      expect(getToolRiskTier('read_video', 'Extract frames from video')).toBe(ToolRiskTier.LOW)
     })
 
     it('returns HIGH for write/execute/delete tools', () => {

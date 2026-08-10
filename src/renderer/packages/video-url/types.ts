@@ -93,6 +93,8 @@ export type VideoUrlSettings = {
 export const DEFAULT_MAX_TRANSCRIPT_CHARS = 12_000
 export const MIN_TRANSCRIPT_CHARS = 500
 export const MAX_TRANSCRIPT_CHARS = 50_000
-export const DEFAULT_CAPTION_TIMEOUT_MS = 20_000
+export const DEFAULT_CAPTION_TIMEOUT_MS = 12_000
 export const DEFAULT_PROVIDER_TIMEOUT_MS = 45_000
 export const DEFAULT_STT_TIMEOUT_MS = 120_000
+/** Hard cap for a full read_video_url waterfall so the agent cannot hang forever. */
+export const DEFAULT_READ_TIMEOUT_MS = 60_000

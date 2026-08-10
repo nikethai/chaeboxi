@@ -171,8 +171,9 @@ async function fetchCaptionSegments(
     throw new Error(`Caption URL blocked: ${safe.errorMessage}`)
   }
 
-  // Try formats in order of parse reliability
-  for (const fmt of ['json3', 'srv3', 'vtt'] as const) {
+  // Prefer json3 (fast parse); only fall back once so hung timedtext cannot triple latency.
+  for (const fmt of ['json3', 'srv3'] as const) {
+    if (signal?.aborted) break
     try {
       const url = new URL(safe.url)
       url.searchParams.set('fmt', fmt)
@@ -197,7 +198,7 @@ async function fetchCaptionSegments(
           },
         })
         if (!body.trim()) continue
-        const segments = fmt === 'vtt' ? parseVtt(body) : parseSrv3Xml(body)
+        const segments = parseSrv3Xml(body)
         if (segments.length) return { segments }
       }
     } catch {
@@ -292,14 +293,18 @@ function extractPlayerResponseFromHtml(html: string): PlayerPayload | null {
   return null
 }
 
+/** Cap track attempts so multi-language videos cannot multiply into multi-minute hangs. */
+const MAX_CAPTION_TRACKS_TO_TRY = 3
+
 async function fetchCaptionFromTracks(
   tracks: CaptionTrack[],
   language: string | undefined,
   signal?: AbortSignal
 ): Promise<{ segments: TranscriptSegment[]; language?: string; trackLabel?: string } | null> {
-  const ordered = pickCaptionTrack(tracks, language)
+  const ordered = pickCaptionTrack(tracks, language).slice(0, MAX_CAPTION_TRACKS_TO_TRY)
   for (const track of ordered) {
     if (!track.baseUrl) continue
+    if (signal?.aborted) break
     try {
       const { segments } = await fetchCaptionSegments(track.baseUrl, signal)
       if (segments.length) {

@@ -11,7 +11,23 @@ import { getConfiguredTranscriptProvider } from './providers/registry'
 import { isSttConfigured, sttRequiresMedia, transcribeAudioUrl } from './stt/fallback'
 import { clampMaxChars, truncateTranscript } from './truncate'
 import type { NormalizedVideoRead, ReadVideoUrlOptions, VideoUrlSettings } from './types'
-import { DEFAULT_MAX_TRANSCRIPT_CHARS } from './types'
+import { DEFAULT_MAX_TRANSCRIPT_CHARS, DEFAULT_READ_TIMEOUT_MS } from './types'
+
+function combineAbortSignals(...signals: Array<AbortSignal | undefined>): AbortSignal | undefined {
+  const active = signals.filter((s): s is AbortSignal => Boolean(s))
+  if (active.length === 0) return undefined
+  if (active.length === 1) return active[0]
+  const controller = new AbortController()
+  const onAbort = () => controller.abort()
+  for (const signal of active) {
+    if (signal.aborted) {
+      controller.abort()
+      return controller.signal
+    }
+    signal.addEventListener('abort', onAbort, { once: true })
+  }
+  return controller.signal
+}
 
 const adapters: Record<string, PlatformAdapter> = {
   youtube: youtubeAdapter,
@@ -144,6 +160,10 @@ export async function readVideoUrl(options: ReadVideoUrlOptions): Promise<Normal
   if (existing) return existing
 
   const work = (async (): Promise<NormalizedVideoRead> => {
+    const deadlineController = new AbortController()
+    const deadlineTimer = setTimeout(() => deadlineController.abort(), DEFAULT_READ_TIMEOUT_MS)
+    const abortSignal = combineAbortSignals(options.abortSignal, deadlineController.signal)
+
     const adapter = adapters[parsed.platform]
     let result: NormalizedVideoRead = {
       platform: parsed.platform,
@@ -157,18 +177,25 @@ export async function readVideoUrl(options: ReadVideoUrlOptions): Promise<Normal
     const adapterOpts = {
       language: options.language,
       mode: mode === 'frames' ? ('auto' as const) : mode,
-      abortSignal: options.abortSignal,
+      abortSignal,
       startSec: options.startSec,
       endSec: options.endSec,
     }
 
+    try {
     // 1. Native adapter
     if (adapter) {
       try {
         const native = await adapter.fetch(parsed, adapterOpts)
         result = mergeMeta(native, result)
       } catch (err) {
-        result.warnings.push(`Native adapter error: ${err instanceof Error ? err.message : String(err)}`)
+        const message = err instanceof Error ? err.message : String(err)
+        result.warnings.push(`Native adapter error: ${message}`)
+        if (deadlineController.signal.aborted || /abort|timeout/i.test(message)) {
+          result.errorCode = 'TIMEOUT'
+          result.errorMessage =
+            'Video URL read timed out. Try again, or configure a BYOK provider under Settings → Video URL.'
+        }
       }
     }
 
@@ -190,7 +217,7 @@ export async function readVideoUrl(options: ReadVideoUrlOptions): Promise<Normal
     }
 
     // 2. BYOK provider
-    if (wantsTranscript && !hasUsableTranscript(result)) {
+    if (wantsTranscript && !hasUsableTranscript(result) && !deadlineController.signal.aborted) {
       const provider = getConfiguredTranscriptProvider(settings)
       if (provider) {
         try {
@@ -217,75 +244,85 @@ export async function readVideoUrl(options: ReadVideoUrlOptions): Promise<Normal
             }
           }
         } catch (err) {
-          result.warnings.push(`Provider error: ${err instanceof Error ? err.message : String(err)}`)
-          result.errorCode = 'PROVIDER_FAILED'
-          result.errorMessage = err instanceof Error ? err.message : String(err)
+          const message = err instanceof Error ? err.message : String(err)
+          result.warnings.push(`Provider error: ${message}`)
+          if (deadlineController.signal.aborted || /abort|timeout/i.test(message)) {
+            result.errorCode = 'TIMEOUT'
+            result.errorMessage =
+              'Video URL read timed out. Try again, or configure a BYOK provider under Settings → Video URL.'
+          } else {
+            result.errorCode = 'PROVIDER_FAILED'
+            result.errorMessage = message
+          }
         }
       }
     }
 
-    // 3. Desktop extractor
-    let desktopMediaUrl: string | undefined
-    if (wantsTranscript && !hasUsableTranscript(result) && settings.desktopExtractorEnabled) {
-      const extract = await desktopExtract({
-        parsed,
-        settings,
-        abortSignal: options.abortSignal,
-      })
-      if (extract) {
-        if (extract.subtitleText) {
-          result = mergeDesktopSubtitles(result, extract)
-        }
-        if (extract.mediaUrl) desktopMediaUrl = extract.mediaUrl
-        if (extract.error) result.warnings.push(extract.error)
-        if (extract.title && !result.title) result.title = extract.title
-        if (extract.durationSec != null && result.durationSec == null) {
-          result.durationSec = extract.durationSec
-        }
-      }
-    }
-
-    // 4. STT if media available
-    if (wantsTranscript && !hasUsableTranscript(result) && desktopMediaUrl && isSttConfigured(settings)) {
-      if (result.durationSec && result.durationSec > settings.maxSttDurationSec) {
-        result.warnings.push(
-          `Video duration (${Math.round(result.durationSec)}s) exceeds max STT duration (${settings.maxSttDurationSec}s).`
-        )
-        result.errorCode = 'BUDGET_EXCEEDED'
-        result.errorMessage = 'Video too long for STT with current settings.'
-      } else {
-        const sttResult = await transcribeAudioUrl({
-          audioUrl: desktopMediaUrl,
-          language: options.language,
-          settings,
+    // Skip slower waterfall steps if overall deadline already elapsed.
+    if (!deadlineController.signal.aborted) {
+      // 3. Desktop extractor
+      let desktopMediaUrl: string | undefined
+      if (wantsTranscript && !hasUsableTranscript(result) && settings.desktopExtractorEnabled) {
+        const extract = await desktopExtract({
           parsed,
-          abortSignal: options.abortSignal,
+          settings,
+          abortSignal,
         })
-        result = mergeMeta(result, sttResult)
-        if (hasUsableTranscript(sttResult)) {
-          result.transcript = sttResult.transcript
-          result.partial = false
-          result.errorCode = undefined
-          result.errorMessage = undefined
-          result.warnings = [...result.warnings, ...(sttResult.warnings || [])]
-        } else {
-          result.errorCode = sttResult.errorCode || result.errorCode
-          result.errorMessage = sttResult.errorMessage || result.errorMessage
+        if (extract) {
+          if (extract.subtitleText) {
+            result = mergeDesktopSubtitles(result, extract)
+          }
+          if (extract.mediaUrl) desktopMediaUrl = extract.mediaUrl
+          if (extract.error) result.warnings.push(extract.error)
+          if (extract.title && !result.title) result.title = extract.title
+          if (extract.durationSec != null && result.durationSec == null) {
+            result.durationSec = extract.durationSec
+          }
         }
       }
-    } else if (
-      wantsTranscript &&
-      !hasUsableTranscript(result) &&
-      isSttConfigured(settings) &&
-      !desktopMediaUrl &&
-      (result.errorCode === 'NO_CAPTIONS' || result.errorCode === 'PROVIDER_REQUIRED')
-    ) {
-      // STT configured but no media — explain
-      const hint = sttRequiresMedia(parsed)
-      result.warnings = [...result.warnings, ...hint.warnings]
-      if (!getConfiguredTranscriptProvider(settings)) {
-        result.errorCode = hint.errorCode
-        result.errorMessage = hint.errorMessage
+
+      // 4. STT if media available
+      if (wantsTranscript && !hasUsableTranscript(result) && desktopMediaUrl && isSttConfigured(settings)) {
+        if (result.durationSec && result.durationSec > settings.maxSttDurationSec) {
+          result.warnings.push(
+            `Video duration (${Math.round(result.durationSec)}s) exceeds max STT duration (${settings.maxSttDurationSec}s).`
+          )
+          result.errorCode = 'BUDGET_EXCEEDED'
+          result.errorMessage = 'Video too long for STT with current settings.'
+        } else {
+          const sttResult = await transcribeAudioUrl({
+            audioUrl: desktopMediaUrl,
+            language: options.language,
+            settings,
+            parsed,
+            abortSignal,
+          })
+          result = mergeMeta(result, sttResult)
+          if (hasUsableTranscript(sttResult)) {
+            result.transcript = sttResult.transcript
+            result.partial = false
+            result.errorCode = undefined
+            result.errorMessage = undefined
+            result.warnings = [...result.warnings, ...(sttResult.warnings || [])]
+          } else {
+            result.errorCode = sttResult.errorCode || result.errorCode
+            result.errorMessage = sttResult.errorMessage || result.errorMessage
+          }
+        }
+      } else if (
+        wantsTranscript &&
+        !hasUsableTranscript(result) &&
+        isSttConfigured(settings) &&
+        !desktopMediaUrl &&
+        (result.errorCode === 'NO_CAPTIONS' || result.errorCode === 'PROVIDER_REQUIRED')
+      ) {
+        // STT configured but no media — explain
+        const hint = sttRequiresMedia(parsed)
+        result.warnings = [...result.warnings, ...hint.warnings]
+        if (!getConfiguredTranscriptProvider(settings)) {
+          result.errorCode = hint.errorCode
+          result.errorMessage = hint.errorMessage
+        }
       }
     }
 
@@ -304,9 +341,23 @@ export async function readVideoUrl(options: ReadVideoUrlOptions): Promise<Normal
       }
     }
 
+    // If the overall deadline fired mid-waterfall, surface TIMEOUT when still empty.
+    if (deadlineController.signal.aborted && !hasUsableTranscript(result) && !result.errorCode) {
+      result = {
+        ...result,
+        errorCode: 'TIMEOUT',
+        errorMessage:
+          'Video URL read timed out. Try again, or configure a BYOK provider under Settings → Video URL.',
+        partial: true,
+      }
+    }
+
     const out = applyTruncation(finalizeError(result, settings, needsProPath), options)
     setCachedVideoRead(cacheKey, out)
     return out
+    } finally {
+      clearTimeout(deadlineTimer)
+    }
   })()
 
   setInflight(cacheKey, work)

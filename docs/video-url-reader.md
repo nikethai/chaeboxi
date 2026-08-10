@@ -74,6 +74,8 @@ Tool returns `errorCode` + `errorMessage` (secrets scrubbed). Common codes:
 
 `UNSUPPORTED_URL` · `PRIVATE_OR_UNAVAILABLE` · `NO_CAPTIONS` · `PROVIDER_REQUIRED` · `PROVIDER_FAILED` · `STT_FAILED` · `RATE_LIMITED` · `TIMEOUT` · `SSRF_BLOCKED` · `BUDGET_EXCEEDED` · `NETWORK_ERROR`
 
+**Timeouts:** Desktop `http:request` cannot cancel mid-flight, but the video reader races AbortSignal + hard timers (per request ~12s, full waterfall ~60s, tool ~70s) so agent turns finish with `TIMEOUT` instead of spinning forever.
+
 ## Security
 
 - Host allowlist for the four platforms only  

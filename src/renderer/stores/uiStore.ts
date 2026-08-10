@@ -1,4 +1,4 @@
-import type { KnowledgeBase, MessagePicture, Toast } from '@shared/types'
+import type { KnowledgeBase, MessagePicture, MessageQuoteAttachment, Toast } from '@shared/types'
 import type { RefObject } from 'react'
 import type { VirtuosoHandle } from 'react-virtuoso'
 import { v4 as uuidv4 } from 'uuid'
@@ -7,6 +7,9 @@ import { combine, persist } from 'zustand/middleware'
 import platform from '@/platform'
 import { safeStorage } from './safeStorage'
 
+/** Ephemeral composer quote draft (not persisted). */
+export type QuoteDraft = Pick<MessageQuoteAttachment, 'sourceMessageId' | 'sourceRole' | 'text' | 'isPartial'>
+
 // UI store for managing UI-related state
 // 不能使用immer middleware，会导致RefObject出问题
 export const uiStore = createStore(
@@ -14,7 +17,8 @@ export const uiStore = createStore(
     combine(
       {
         toasts: [] as Toast[],
-        quote: '',
+        /** Pending quote for the composer chip (single slot; replace on new Quote). */
+        quoteDraft: null as QuoteDraft | null,
         realTheme: localStorage.getItem('initial-theme') === 'dark' ? 'dark' : ('light' as 'light' | 'dark'),
         messageListElement: null as RefObject<HTMLDivElement> | null,
         messageScrolling: null as RefObject<VirtuosoHandle> | null,
@@ -48,14 +52,12 @@ export const uiStore = createStore(
          * Side workspace (Claude Artifacts–style): chat left, preview right.
          * HTML artifacts only — Mermaid stays inline in the chat card.
          */
-        workspacePanel: null as
-          | null
-          | {
-              kind: 'html'
-              htmlCode: string
-              title?: string
-              messageId?: string
-            },
+        workspacePanel: null as null | {
+          kind: 'html'
+          htmlCode: string
+          title?: string
+          messageId?: string
+        },
         workspaceWidthPx: 520 as number,
         showCopilotsInNewSession: false,
         sidebarWidth: null as number | null, // Custom sidebar width, null means use default
@@ -77,8 +79,8 @@ export const uiStore = createStore(
           }))
         },
 
-        setQuote: (quote: string) => {
-          set({ quote })
+        setQuoteDraft: (quoteDraft: QuoteDraft | null) => {
+          set({ quoteDraft })
         },
 
         setShowSidebar: (showSidebar: boolean) => {

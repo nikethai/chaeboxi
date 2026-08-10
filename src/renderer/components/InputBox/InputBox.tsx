@@ -66,6 +66,7 @@ import { ensureMemoryStoreInit, useMemoryStore } from '@/stores/memoryStore'
 import { usePromptPresets } from '@/stores/promptPresetsStore'
 import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
 import { useSkills } from '@/stores/skillsStore'
+import type { QuoteDraft } from '@/stores/uiStore'
 import { useUIStore } from '@/stores/uiStore'
 import { delay } from '@/utils'
 import { getModelReadiness } from '@/utils/modelReadiness'
@@ -76,6 +77,7 @@ import type {
   KnowledgeBase,
   MemoryAttachment,
   Message,
+  MessageQuoteAttachment,
   SessionType,
   ShortcutSendValue,
   SkillPackage,
@@ -124,6 +126,7 @@ import {
   storeLinkPromise,
 } from './preprocessState'
 import QueuedMessageList from './QueuedMessageList'
+import QuoteChip from './QuoteChip'
 import SkillPicker, { filterSkills } from './SkillPicker'
 import TeamModeSelect from './TeamModeSelect'
 
@@ -134,7 +137,7 @@ export type InputBoxPayload = {
 }
 
 export type InputBoxRef = {
-  setQuote: (quote: string) => void
+  setQuote: (quote: QuoteDraft | string) => void
   insertMemory: (entry: MemoryEntry) => void
   getMemorySaveContent: () => string
 }
@@ -258,6 +261,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     /** Turn-sticky agent chips selected via @ */
     const [selectedAgents, setSelectedAgents] = useState<AgentDetail[]>([])
     const [memoryAttachments, setMemoryAttachments] = useState<MemoryAttachment[]>([])
+    const [quoteDraft, setLocalQuoteDraft] = useState<QuoteDraft | null>(null)
     const [memoryMentionPickerDismissed, setMemoryMentionPickerDismissed] = useState(false)
     const [memoryMentionHighlightIndex, setMemoryMentionHighlightIndex] = useState(0)
     const [agentPickerDismissed, setAgentPickerDismissed] = useState(false)
@@ -384,9 +388,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           links?.length ||
           attachments?.length ||
           pictureKeys?.length ||
-          memoryAttachments.length
+          memoryAttachments.length ||
+          !!quoteDraft?.text?.trim()
         ),
-      [messageInput, links, attachments, pictureKeys, memoryAttachments.length]
+      [messageInput, links, attachments, pictureKeys, memoryAttachments.length, quoteDraft?.text]
     )
 
     const { providers } = useProviders()
@@ -675,16 +680,24 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     useImperativeHandle(
       ref,
       () => ({
-        // 暂时并没有用到，还是使用了之前atom的方案
         setQuote: (data) => {
-          setMessageInput((prev) => `${prev}\n\n${data}`)
+          if (typeof data === 'string') {
+            const text = data
+              .replace(/^> /gm, '')
+              .replace(/\n*-------------------\n*$/g, '')
+              .trim()
+            if (!text) return
+            setLocalQuoteDraft({ text, isPartial: false })
+          } else {
+            setLocalQuoteDraft(data)
+          }
           dom.focusMessageInput()
           dom.setMessageInputCursorToEnd()
         },
         insertMemory,
         getMemorySaveContent,
       }),
-      [getMemorySaveContent, insertMemory, setMessageInput]
+      [getMemorySaveContent, insertMemory]
     )
 
     const { addInputBoxHistory, getPreviousHistoryInput, getNextHistoryInput, resetHistoryIndex } = useInputBoxHistory()
@@ -1080,6 +1093,15 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             commandIds: commandIds.length ? commandIds : undefined,
             mentionedAgentIds: mentionedAgentIds.length ? mentionedAgentIds : undefined,
             memoryAttachments: memoryAttachments.length ? memoryAttachments : undefined,
+            quoteAttachment: quoteDraft
+              ? ({
+                  sourceMessageId: quoteDraft.sourceMessageId,
+                  sourceRole: quoteDraft.sourceRole,
+                  text: quoteDraft.text,
+                  isPartial: quoteDraft.isPartial,
+                  createdAt: Date.now(),
+                } satisfies MessageQuoteAttachment)
+              : undefined,
             contentParts: constructedMessage.contentParts.map((p) =>
               p.type === 'text' ? { ...p, text: cleanedText } : p
             ),
@@ -1134,6 +1156,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             clearDraft()
             setSelectedAgents([])
             setMemoryAttachments([])
+            setLocalQuoteDraft(null)
             setLinks([])
             setPreConstructedMessage({
               text: '',
@@ -1836,27 +1859,18 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       }
     }
 
-    // 引用消息
-    const quote = useUIStore((state) => state.quote)
-    const setQuote = useUIStore((state) => state.setQuote)
-    // const [quote, setQuote] = useUIStore(state => [state]) useAtom(atoms.quoteAtom)
-    // biome-ignore lint/correctness/useExhaustiveDependencies: todo
+    // Consume pending quote draft into a single composer chip (no textarea dump)
+    const pendingQuoteDraft = useUIStore((state) => state.quoteDraft)
+    const setQuoteDraft = useUIStore((state) => state.setQuoteDraft)
     useEffect(() => {
-      if (quote !== '') {
-        // TODO: 支持引用消息中的图片
-        // TODO: 支持引用消息中的文件
-        setQuote('')
-        setMessageInput((val) => {
-          const newValue = !val
-            ? quote
-            : val + '\n'.repeat(Math.max(0, 2 - (val.match(/(\n)+$/)?.[0].length || 0))) + quote
-          return newValue
-        })
-        // setPreviousMessageQuickInputMark('')
-        dom.focusMessageInput()
-        dom.setMessageInputCursorToEnd()
+      if (!pendingQuoteDraft?.text?.trim()) {
+        return
       }
-    }, [quote])
+      setLocalQuoteDraft(pendingQuoteDraft)
+      setQuoteDraft(null)
+      dom.focusMessageInput()
+      dom.setMessageInputCursorToEnd()
+    }, [pendingQuoteDraft, setQuoteDraft])
 
     const handleKnowledgeBaseSelect = useCallback(
       (kb: KnowledgeBase | null) => {
@@ -2007,7 +2021,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               roomAgentIds.length > 0 ||
               selectedSkills.length > 0 ||
               selectedCommands.length > 0 ||
-              memoryAttachments.length > 0) && (
+              memoryAttachments.length > 0 ||
+              !!quoteDraft) && (
               <div className="composer-meta-stack">
                 {selectedAgents.length > 0 ? (
                   <div className="composer-meta-row">
@@ -2112,6 +2127,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                         </span>
                       </Tooltip>
                     ))}
+                  </div>
+                ) : null}
+
+                {quoteDraft ? (
+                  <div className="composer-meta-row">
+                    <QuoteChip quote={quoteDraft} onRemove={() => setLocalQuoteDraft(null)} />
                   </div>
                 ) : null}
               </div>
@@ -2380,9 +2401,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   onInsertMemory={insertMemory}
                   getMemorySaveContent={getMemorySaveContent}
                   memoryAutoSave={currentSession?.settings?.memoryAutoSave}
-                  onMemoryAutoSaveChange={
-                    !isNewSession && currentSessionId ? handleMemoryAutoSaveChange : undefined
-                  }
+                  onMemoryAutoSaveChange={!isNewSession && currentSessionId ? handleMemoryAutoSaveChange : undefined}
                   memoryAutoSaveDisabled={isNewSession || !currentSessionId}
                 />
               </Flex>

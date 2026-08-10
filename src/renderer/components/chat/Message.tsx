@@ -24,6 +24,7 @@ import {
 import { getMessageText } from '@shared/utils/message'
 import {
   IconArrowDown,
+  IconBrain,
   IconBug,
   IconCode,
   IconCopy,
@@ -33,7 +34,6 @@ import {
   IconPencil,
   IconPhoto,
   IconPhotoPlus,
-  IconBrain,
   type IconProps,
   IconQuoteFilled,
   IconReload,
@@ -130,6 +130,7 @@ import { SourceCardList } from '../search/SourceCardList'
 import { MessageAttachmentGrid } from './MessageAttachmentGrid'
 import MessageErrTips from './MessageErrTips'
 import MessageStatuses from './MessageLoading'
+import MessageQuoteBar from './MessageQuoteBar'
 import TextSelectionToolbar from './TextSelectionToolbar'
 
 interface Props {
@@ -229,16 +230,38 @@ const _Message: FC<Props> = (props) => {
     }
   }, [messageText, msg, sessionId])
 
-  const setQuote = useUIStore((state) => state.setQuote)
+  const setQuoteDraft = useUIStore((state) => state.setQuoteDraft)
 
   const quoteMsg = useCallback(() => {
-    let input = getMessageText(msg)
-      .split('\n')
-      .map((line) => `> ${line}`)
-      .join('\n')
-    input += '\n\n-------------------\n\n'
-    setQuote(input)
-  }, [msg, setQuote])
+    // Prefer in-message selection when present; otherwise quote full text.
+    const selection = window.getSelection()
+    const selectedText = selection?.toString().trim() || ''
+    let isPartial = false
+    let text = getMessageText(msg)
+
+    if (selectedText && selection && selection.rangeCount > 0 && messageContentRef.current) {
+      const range = selection.getRangeAt(0)
+      const commonAncestor =
+        range.commonAncestorContainer.nodeType === Node.TEXT_NODE
+          ? range.commonAncestorContainer.parentElement
+          : (range.commonAncestorContainer as HTMLElement)
+      if (commonAncestor && messageContentRef.current.contains(commonAncestor)) {
+        text = selectedText
+        isPartial = true
+      }
+    }
+
+    if (!text.trim()) {
+      return
+    }
+
+    setQuoteDraft({
+      sourceMessageId: msg.id,
+      sourceRole: msg.role,
+      text,
+      isPartial,
+    })
+  }, [msg, setQuoteDraft])
 
   const handleStop = useCallback(() => {
     modifyMessage(sessionId, { ...msg, generating: false }, true)
@@ -321,6 +344,19 @@ const _Message: FC<Props> = (props) => {
   const clearSelectionToolbar = useCallback(() => {
     setSelectionToolbar(null)
   }, [])
+
+  const quoteSelection = useCallback(() => {
+    if (!selectionToolbar?.text?.trim()) {
+      return
+    }
+    setQuoteDraft({
+      sourceMessageId: msg.id,
+      sourceRole: msg.role,
+      text: selectionToolbar.text,
+      isPartial: true,
+    })
+    clearSelectionToolbar()
+  }, [clearSelectionToolbar, msg.id, msg.role, selectionToolbar?.text, setQuoteDraft])
 
   const sendSelectionPrompt = useCallback(
     async (prompt: string) => {
@@ -715,6 +751,11 @@ const _Message: FC<Props> = (props) => {
       )}
       <div className={cn('w-full', isUser && 'flex flex-col items-end')}>
         <MessageStatuses statuses={msg.status} />
+        {isUser && msg.quoteAttachment?.text ? (
+          <div className="mb-1.5 w-full max-w-full min-w-[200px]">
+            <MessageQuoteBar quote={msg.quoteAttachment} />
+          </div>
+        ) : null}
         <div className={cn('msg-bubble', isUser ? 'inline-block' : 'w-full')}>
           <Box
             ref={messageContentRef}
@@ -903,6 +944,7 @@ const _Message: FC<Props> = (props) => {
           position={selectionToolbar ? { x: selectionToolbar.x, y: selectionToolbar.y } : null}
           onExplain={onExplainSelection}
           onTranslate={onTranslateSelection}
+          onQuote={quoteSelection}
           onCopy={onCopySelection}
           onClose={clearSelectionToolbar}
         />

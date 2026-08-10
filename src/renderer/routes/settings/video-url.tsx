@@ -1,18 +1,37 @@
-import { Button, Flex, NumberInput, PasswordInput, Select, Stack, Switch, Text, TextInput } from '@mantine/core'
-import { IconDownload, IconExternalLink } from '@tabler/icons-react'
+import {
+  Badge,
+  Button,
+  Flex,
+  NumberInput,
+  PasswordInput,
+  Progress,
+  Select,
+  Stack,
+  Switch,
+  Text,
+  TextInput,
+} from '@mantine/core'
+import { IconCheck, IconDownload, IconExternalLink, IconRefresh } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
 import { ofetch } from 'ofetch'
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { SettingsCard } from '@/components/settings/SettingsCard'
 import { SettingsPage } from '@/components/settings/SettingsPage'
 import { SettingsPageHeader } from '@/components/settings/SettingsPageHeader'
 import { SettingsPrefRow } from '@/components/settings/SettingsPrefRow'
 import { SettingsSection } from '@/components/settings/SettingsSection'
 import { getOS } from '@/packages/navigator'
+import {
+  detectYtDlp,
+  installerLabel,
+  installYtDlp,
+  type YtDlpDetectResult,
+} from '@/packages/video-url/desktop/yt-dlp-install'
 import { assertSafeHttpUrl, buildCapabilitySummary, type VideoUrlSettings } from '@/packages/video-url'
 import platform from '@/platform'
-import { useSettingsStore } from '@/stores/settingsStore'
+import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
 
 export const Route = createFileRoute('/settings/video-url')({
   component: RouteComponent,
@@ -32,29 +51,18 @@ const defaultVideoUrl: VideoUrlSettings = {
   desktopExtractorPath: '',
 }
 
-/** Friendly install targets for non-technical users (open in browser). */
-function getYtDlpInstallHelp(): { installUrl: string; guideUrl: string; hint: string } {
+const YT_DLP_GUIDE_URL = 'https://github.com/yt-dlp/yt-dlp/wiki/Installation'
+const BREW_URL = 'https://brew.sh'
+
+function getYtDlpFallbackHint(): string {
   const os = getOS()
-  const guideUrl = 'https://github.com/yt-dlp/yt-dlp/wiki/Installation'
   if (os === 'Mac') {
-    return {
-      installUrl: 'https://formulae.brew.sh/formula/yt-dlp',
-      guideUrl,
-      hint: 'On Mac, the easiest way is Homebrew. Open the install page, then run: brew install yt-dlp',
-    }
+    return 'On Mac we install via Homebrew when available. If Homebrew is missing, install it first, then try again.'
   }
   if (os === 'Windows') {
-    return {
-      installUrl: 'https://github.com/yt-dlp/yt-dlp/wiki/Installation#windows',
-      guideUrl,
-      hint: 'On Windows, use winget or the official Windows install steps on the guide page.',
-    }
+    return 'On Windows we install via winget when available. You can also follow the full install guide.'
   }
-  return {
-    installUrl: guideUrl,
-    guideUrl,
-    hint: 'Install yt-dlp with your package manager (or pipx), then leave the path empty if it is on PATH.',
-  }
+  return 'On Linux we try pipx. You can also install yt-dlp with your package manager and leave the path empty if it is on PATH.'
 }
 
 export function RouteComponent() {
@@ -71,9 +79,15 @@ export function RouteComponent() {
 
   const [checking, setChecking] = useState(false)
   const [checkResult, setCheckResult] = useState<boolean | undefined>()
-  const ytDlpHelp = useMemo(() => getYtDlpInstallHelp(), [])
+
+  const [ytDetecting, setYtDetecting] = useState(false)
+  const [ytInstalling, setYtInstalling] = useState(false)
+  const [ytPhase, setYtPhase] = useState<string | null>(null)
+  const [ytDetect, setYtDetect] = useState<YtDlpDetectResult | null>(null)
+  const [ytInstallLog, setYtInstallLog] = useState<string | null>(null)
 
   const capability = useMemo(() => buildCapabilitySummary(videoUrl), [videoUrl])
+  const fallbackHint = useMemo(() => getYtDlpFallbackHint(), [])
 
   const patch = (partial: Partial<VideoUrlSettings>) => {
     setSettings({
@@ -85,6 +99,113 @@ export function RouteComponent() {
         },
       },
     })
+  }
+
+  const refreshYtDlp = useCallback(async (opts?: { silent?: boolean; fillPath?: boolean }) => {
+    if (platform.type !== 'desktop' || !platform.executeCommand) {
+      setYtDetect({
+        installed: false,
+        installer: 'none',
+        installerAvailable: false,
+        error: 'Desktop only',
+      })
+      return
+    }
+    setYtDetecting(true)
+    if (!opts?.silent) setYtInstallLog(null)
+    try {
+      const currentPath =
+        (settingsStore.getState().extension?.videoUrl as Partial<VideoUrlSettings> | undefined)
+          ?.desktopExtractorPath ||
+        videoUrl.desktopExtractorPath ||
+        ''
+      const result = await detectYtDlp({ customPath: currentPath })
+      setYtDetect(result)
+      if (opts?.fillPath && result.installed && result.path && !String(currentPath).trim()) {
+        setSettings((state) => {
+          const prev = (state.extension?.videoUrl || {}) as Partial<VideoUrlSettings>
+          state.extension = {
+            ...state.extension,
+            videoUrl: {
+              ...defaultVideoUrl,
+              ...prev,
+              desktopExtractorPath: result.path,
+            },
+          }
+        })
+      }
+    } catch (err) {
+      setYtDetect({
+        installed: false,
+        installer: 'none',
+        installerAvailable: false,
+        error: err instanceof Error ? err.message : String(err),
+      })
+    } finally {
+      setYtDetecting(false)
+    }
+  }, [setSettings, videoUrl.desktopExtractorPath])
+
+  // Auto-detect when the desktop extractor section is enabled.
+  useEffect(() => {
+    if (platform.type !== 'desktop') return
+    if (!videoUrl.desktopExtractorEnabled) return
+    void refreshYtDlp({ silent: true })
+    // Intentionally only when the section is toggled on — manual Check for re-runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoUrl.desktopExtractorEnabled])
+
+  const handleInstallYtDlp = async () => {
+    if (platform.type !== 'desktop' || !platform.executeCommand) {
+      toast.error(t('Install is only available in the desktop app.'))
+      return
+    }
+    setYtInstalling(true)
+    setYtPhase(t('Starting…'))
+    setYtInstallLog(null)
+    try {
+      const result = await installYtDlp({
+        onPhase: (phase) => setYtPhase(t(phase)),
+      })
+      setYtInstallLog(result.log || null)
+      if (result.ok) {
+        setYtDetect({
+          installed: true,
+          path: result.path,
+          version: result.version,
+          installer: ytDetect?.installer || 'brew',
+          installerAvailable: true,
+        })
+        if (result.path && !videoUrl.desktopExtractorPath?.trim()) {
+          setSettings((state) => {
+            const prev = (state.extension?.videoUrl || {}) as Partial<VideoUrlSettings>
+            state.extension = {
+              ...state.extension,
+              videoUrl: {
+                ...defaultVideoUrl,
+                ...prev,
+                desktopExtractorPath: result.path,
+              },
+            }
+          })
+        }
+        toast.success(
+          result.version
+            ? t('yt-dlp is ready ({{version}})', { version: result.version })
+            : t('yt-dlp is installed and ready')
+        )
+      } else {
+        toast.error(result.error || t('Install failed'))
+        await refreshYtDlp({ silent: true })
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setYtInstallLog(message)
+      toast.error(message)
+    } finally {
+      setYtInstalling(false)
+      setYtPhase(null)
+    }
   }
 
   const testProvider = async () => {
@@ -355,26 +476,103 @@ export function RouteComponent() {
               {videoUrl.desktopExtractorEnabled && (
                 <>
                   <div className="rounded-lg border border-[color-mix(in_srgb,var(--chatbox-tint-primary)_10%,transparent)] bg-[color-mix(in_srgb,var(--chatbox-background-primary)_55%,transparent)] px-3 py-3">
-                    <Text size="sm" fw={600} mb={4}>
-                      {t('Install yt-dlp')}
-                    </Text>
+                    <Flex align="center" justify="space-between" gap="sm" mb={6} wrap="wrap">
+                      <Text size="sm" fw={600}>
+                        {t('yt-dlp helper')}
+                      </Text>
+                      {ytDetecting && !ytInstalling ? (
+                        <Badge size="sm" variant="light" color="gray">
+                          {t('Checking…')}
+                        </Badge>
+                      ) : ytDetect?.installed ? (
+                        <Badge size="sm" color="green" leftSection={<IconCheck size={12} />}>
+                          {ytDetect.version
+                            ? t('Installed · {{version}}', { version: ytDetect.version })
+                            : t('Installed')}
+                        </Badge>
+                      ) : ytDetect ? (
+                        <Badge size="sm" color="orange" variant="light">
+                          {t('Not installed')}
+                        </Badge>
+                      ) : null}
+                    </Flex>
+
                     <Text size="sm" c="dimmed" mb="sm">
-                      {t(ytDlpHelp.hint)}
+                      {ytDetect?.installed && ytDetect.path
+                        ? t('Found at {{path}}. You can leave the path field empty if this binary is on PATH.', {
+                            path: ytDetect.path,
+                          })
+                        : t(fallbackHint)}
                     </Text>
+
+                    {ytDetect && !ytDetect.installed && ytDetect.installer !== 'none' && (
+                      <Text size="xs" c="dimmed" mb="sm">
+                        {ytDetect.installerAvailable
+                          ? t('One-click install uses {{manager}} on this computer.', {
+                              manager: installerLabel(ytDetect.installer),
+                            })
+                          : t('{{manager}} was not found. Install it first, or use the full guide.', {
+                              manager: installerLabel(ytDetect.installer),
+                            })}
+                      </Text>
+                    )}
+
+                    {ytInstalling && (
+                      <Stack gap={6} mb="sm">
+                        <Text size="xs" c="dimmed">
+                          {ytPhase || t('Installing…')}
+                        </Text>
+                        <Progress value={100} animated striped size="sm" />
+                      </Stack>
+                    )}
+
+                    {ytInstallLog && !ytInstalling && (
+                      <Text
+                        size="xs"
+                        c="dimmed"
+                        mb="sm"
+                        className="max-h-24 overflow-auto whitespace-pre-wrap font-mono rounded-md border border-[var(--chatbox-border-primary)] p-2"
+                      >
+                        {ytInstallLog.slice(0, 1200)}
+                      </Text>
+                    )}
+
                     <Flex gap="sm" wrap="wrap">
                       <Button
                         size="xs"
                         variant="filled"
                         leftSection={<IconDownload size={14} />}
-                        onClick={() => void platform.openLink(ytDlpHelp.installUrl)}
+                        loading={ytInstalling}
+                        disabled={ytDetecting || (ytDetect?.installed === true && !ytInstalling)}
+                        onClick={() => void handleInstallYtDlp()}
                       >
-                        {t('Install yt-dlp')}
+                        {ytDetect?.installed ? t('Already installed') : t('Install yt-dlp')}
                       </Button>
                       <Button
                         size="xs"
                         variant="light"
+                        leftSection={<IconRefresh size={14} />}
+                        loading={ytDetecting && !ytInstalling}
+                        disabled={ytInstalling}
+                        onClick={() => void refreshYtDlp({ fillPath: true })}
+                      >
+                        {t('Check status')}
+                      </Button>
+                      {getOS() === 'Mac' && ytDetect && !ytDetect.installerAvailable && (
+                        <Button
+                          size="xs"
+                          variant="light"
+                          leftSection={<IconExternalLink size={14} />}
+                          onClick={() => void platform.openLink(BREW_URL)}
+                        >
+                          {t('Install Homebrew')}
+                        </Button>
+                      )}
+                      <Button
+                        size="xs"
+                        variant="subtle"
                         leftSection={<IconExternalLink size={14} />}
-                        onClick={() => void platform.openLink(ytDlpHelp.guideUrl)}
+                        onClick={() => void platform.openLink(YT_DLP_GUIDE_URL)}
                       >
                         {t('Full install guide')}
                       </Button>
@@ -391,7 +589,12 @@ export function RouteComponent() {
                       <TextInput
                         value={videoUrl.desktopExtractorPath || ''}
                         onChange={(e) => patch({ desktopExtractorPath: e.currentTarget.value })}
-                        placeholder="/usr/local/bin/yt-dlp"
+                        onBlur={() => {
+                          if (videoUrl.desktopExtractorPath?.trim()) {
+                            void refreshYtDlp({ silent: true })
+                          }
+                        }}
+                        placeholder={ytDetect?.path || '/opt/homebrew/bin/yt-dlp'}
                         w={360}
                       />
                     }

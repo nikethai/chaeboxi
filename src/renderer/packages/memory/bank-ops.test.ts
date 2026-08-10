@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { defaultMemorySettings, emptyMemoryBank } from '@shared/types/memory'
 import {
   createEntry,
+  markEntryDeleted,
   pruneEntries,
   retainEntry,
   searchEntries,
@@ -51,6 +52,76 @@ describe('bank-ops', () => {
     })
     bank = retainEntry(bank, e2!, settings)
     expect(bank.entries).toHaveLength(1)
+  })
+
+  it('does not resurrect a tombstoned entry into active memory via retain dedupe (exact match)', () => {
+    let bank = emptyMemoryBank('global')
+    const e = createEntry({
+      content: 'User prefers dark mode',
+      scope: 'global',
+      source: 'user',
+      maxEntryChars: 500,
+      tags: ['preference'],
+    })!
+    bank = retainEntry(bank, e, settings)
+    expect(bank.entries).toHaveLength(1)
+
+    // Delete via sync tombstone (same path as memoryStore.remove).
+    bank = markEntryDeleted(bank, e.id, 100)
+    expect(bank.entries[0].deleted).toBe(true)
+    expect(bank.entries[0].enabled).toBe(false)
+
+    // Auto-save re-extracts the same fact. retainEntry must NOT resurrect the
+    // tombstone into active memory.
+    const again = createEntry({
+      content: 'User prefers dark mode',
+      scope: 'global',
+      source: 'auto',
+      maxEntryChars: 500,
+      tags: ['preference'],
+    })!
+    bank = retainEntry(bank, again, settings)
+
+    // The tombstoned entry itself stays deleted and disabled.
+    const tombstone = bank.entries.find((x) => x.id === e.id)
+    expect(tombstone?.deleted).toBe(true)
+    expect(tombstone?.enabled).toBe(false)
+
+    // The deleted entry is not recalled into active memory.
+    expect(searchEntries(bank, 'dark mode').map((h) => h.id)).not.toContain(e.id)
+
+    // The re-extracted fact lands as a fresh active entry instead.
+    const fresh = bank.entries.find((x) => x.id !== e.id)
+    expect(fresh).toBeDefined()
+    expect(fresh?.deleted).toBeUndefined()
+    expect(fresh?.enabled).toBe(true)
+  })
+
+  it('does not resurrect a tombstoned entry via near-duplicate retain', () => {
+    let bank = emptyMemoryBank('global')
+    const e = createEntry({
+      content: 'User prefers dark mode',
+      scope: 'global',
+      source: 'user',
+      maxEntryChars: 500,
+    })!
+    bank = retainEntry(bank, e, settings)
+    bank = markEntryDeleted(bank, e.id, 100)
+
+    // Same token set, different word order → near-dup (Jaccard 1.0) but not a
+    // fingerprint match. Must not revive the tombstone.
+    const nearDup = createEntry({
+      content: 'dark mode user prefers',
+      scope: 'global',
+      source: 'auto',
+      maxEntryChars: 500,
+    })!
+    bank = retainEntry(bank, nearDup, settings)
+
+    const tombstone = bank.entries.find((x) => x.id === e.id)
+    expect(tombstone?.deleted).toBe(true)
+    expect(tombstone?.enabled).toBe(false)
+    expect(searchEntries(bank, 'dark mode').map((h) => h.id)).not.toContain(e.id)
   })
 
   it('prunes non-pinned first (hard)', () => {

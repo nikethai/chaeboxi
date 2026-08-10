@@ -1,6 +1,72 @@
+/**
+ * @vitest-environment jsdom
+ */
+import { MantineProvider } from '@mantine/core'
 import type { MemoryEntry } from '@shared/types/memory'
-import { describe, expect, it } from 'vitest'
+import { defaultMemorySettings } from '@shared/types/memory'
+import { render, screen } from '@testing-library/react'
+import { createElement } from 'react'
+import { describe, expect, it, vi } from 'vitest'
+import { MemoryAdvancedPanel } from './MemoryAdvancedPanel'
 import { filterMemoryEntries, memoryScopeKey, parseTagsInput, sortMemoryEntries } from './memory-ui-state'
+
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({ t: (key: string) => key }),
+}))
+
+vi.mock('@/stores/settingsStore', () => ({
+  useSettingsStore: (selector: (state: unknown) => unknown) =>
+    selector({
+      extension: {
+        memorySync: { enabled: false, endpoint: '', token: '', autoSync: false, intervalSeconds: 60 },
+      },
+      setSettings: vi.fn(),
+    }),
+}))
+
+vi.mock('@/stores/memorySync', () => ({
+  getMemorySyncState: vi.fn(async () => ({ revision: 0 })),
+  testMemorySyncConnection: vi.fn(),
+  pullMemoryFromServer: vi.fn(),
+  pushMemoryToServer: vi.fn(),
+  syncMemoryNow: vi.fn(),
+}))
+
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: () => ({
+    addEventListener: vi.fn(),
+    matches: false,
+    removeEventListener: vi.fn(),
+  }),
+})
+
+class ResizeObserverMock {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+Object.defineProperty(globalThis, 'ResizeObserver', {
+  writable: true,
+  value: ResizeObserverMock,
+})
+
+function renderSyncPanel() {
+  render(
+    createElement(
+      MantineProvider,
+      null,
+      createElement(MemoryAdvancedPanel, {
+        settings: defaultMemorySettings(),
+        factCount: 0,
+        injectTokens: 0,
+        injectText: '',
+        onSettingsChange: vi.fn(),
+      })
+    )
+  )
+}
 
 function entry(partial: Partial<MemoryEntry> & Pick<MemoryEntry, 'id' | 'content'>): MemoryEntry {
   return {
@@ -44,5 +110,15 @@ describe('memory-ui-state', () => {
     expect(filterMemoryEntries(list, 'dark').map((e) => e.id)).toEqual(['abc'])
     expect(filterMemoryEntries(list, 'bio').map((e) => e.id)).toEqual(['def'])
     expect(filterMemoryEntries(list, 'abc').map((e) => e.id)).toEqual(['abc'])
+  })
+})
+
+describe('MemoryAdvancedPanel sync section', () => {
+  it('shows endpoint, token, passphrase, and sync actions', () => {
+    renderSyncPanel()
+    expect(screen.getByLabelText(/sync server endpoint/i)).not.toBeNull()
+    expect(screen.getByLabelText(/sync token/i)).not.toBeNull()
+    expect(screen.getByLabelText(/sync passphrase/i)).not.toBeNull()
+    expect(screen.getByRole('button', { name: /sync now/i })).not.toBeNull()
   })
 })

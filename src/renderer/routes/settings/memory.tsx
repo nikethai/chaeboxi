@@ -14,6 +14,7 @@ import {
 import { useMyCopilots } from '@/hooks/useCopilots'
 import { getMemoryInjectStats } from '@/packages/memory/inject'
 import { ensureMemoryStoreInit, memoryStore, useMemoryStore } from '@/stores/memoryStore'
+import { initSettingsStore } from '@/stores/settingsStore'
 
 export const Route = createFileRoute('/settings/memory')({
   component: MemorySettingsPage,
@@ -49,6 +50,9 @@ export function MemorySettingsPage() {
 
   useEffect(() => {
     void ensureMemoryStoreInit()
+    // Memory Sync reads extension.memorySync from the settings store; ensure it
+    // is hydrated even on deep-link navigation before the Advanced panel renders.
+    void initSettingsStore()
   }, [])
 
   useEffect(() => {

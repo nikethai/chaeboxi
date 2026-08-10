@@ -7,8 +7,12 @@ Small self-hosted sync service for cross-machine chat history sync.
 - `GET /health`: health check
 - `GET /api/history-sync`: read current snapshot (token required)
 - `PUT /api/history-sync`: compare-and-swap update with `baseRevision` (token required)
+- `GET /api/sync/memory`: read current encrypted memory snapshot (token required)
+- `PUT /api/sync/memory`: compare-and-swap update of the encrypted memory snapshot with `baseRevision` (token required)
 - Conflict handling: if revision mismatches, returns `409` with current `snapshot`
 - Storage: SQLite file via `@libsql/client`
+  - `history_snapshot` table holds the chat history payload
+  - `memory_snapshot` table holds the encrypted memory payload and its encryption metadata (`alg`, `kdf`, `salt`, `iv`) separately
 
 ## Environment variables
 
@@ -115,12 +119,71 @@ curl \
   http://127.0.0.1:8788/api/history-sync
 ```
 
-## Chaeboxi app settings
+```bash
+curl \
+  -H "Authorization: Bearer replace-with-strong-token" \
+  http://127.0.0.1:8788/api/sync/memory
+```
 
-In **Settings -> General -> Self-hosted History Sync**:
+## Memory Sync
+
+Memory sync stores an **encrypted** snapshot of the app's memory (settings plus
+global/agent memory banks) through the same self-hosted server. The server never
+sees the plaintext memory: the client encrypts the snapshot with a passphrase
+(PBKDF2-HMAC-SHA-256 + AES-GCM) before pushing it, and only stores the
+ciphertext plus its encryption metadata.
+
+- Endpoint: `GET`/`PUT /api/sync/memory`
+- Transport auth: bearer token (same `SYNC_TOKEN` as history sync)
+- `GET` returns the current `revision`, encrypted `payload`, and encryption
+  metadata (`alg`, `kdf`, `salt`, `iv`); `payload` is `null` before the first push
+- `PUT` accepts `{ baseRevision, payload, salt, iv, alg, kdf }` and is a
+  compare-and-swap: a mismatched `baseRevision` returns `409` with the current
+  `snapshot` so the client can merge and retry
+
+> **Passphrase warning:** there is **no recovery** for the sync passphrase. If
+> you lose it, the encrypted memory snapshot on the server cannot be decrypted
+> and is unrecoverable. Choose a strong passphrase and store it somewhere safe.
+
+## Chatbox app settings
+
+**History sync** — in **Settings -> General -> Self-hosted History Sync**:
 
 - Enable server sync
 - Set endpoint: `http://<your-host>:8788`
 - Set token: same `SYNC_TOKEN`
 - Optional: enable auto sync + interval
 - Use **Test Connection**, then **Sync Now**
+
+**Memory sync** — in **Settings -> Memory -> Advanced -> Memory Sync**:
+
+- Enable memory sync
+- Set endpoint: `http://<your-host>:8788`
+- Set token: same `SYNC_TOKEN`
+- Set a **sync passphrase** (never saved; used only to encrypt/decrypt snapshots)
+- Optional: enable background auto sync + interval (min 15s)
+- Save sync settings, then use **Test Connection**, **Pull from Server**, **Push to Server**, or **Sync Now**
+
+## Manual two-device verification
+
+With one server running (`SYNC_TOKEN` set), verify memory sync end-to-end on two
+devices or two app instances. Both must use the **same** server, token, and sync
+passphrase.
+
+1. **Device A — push:** Settings -> Memory -> Advanced -> Memory Sync. Enable
+   memory sync, set endpoint + token, enter the sync passphrase, save, and add a
+   test fact to the Global bank ("e.g. `prefer short answers`"). Press **Push to
+   Server**.
+2. **Device B — pull:** on the second device, configure the same endpoint, token,
+   and passphrase, then press **Pull from Server**. The fact from Device A
+   appears in its Global bank.
+3. **Device B — edit + push:** edit or add a fact on Device B, then **Push to
+   Server**.
+4. **Device A — pull + merge:** press **Pull from Server** on Device A again.
+   Device B's change is merged in; a `409` conflict on push is handled by
+   re-pulling, merging, and re-pushing automatically.
+5. **Tombstones:** delete a fact on Device A and **Push to Server**. On Device B,
+   **Pull from Server** — the fact stays deleted (the delete is synced as a
+   tombstone, not re-added by an older copy).
+6. **Passphrase check:** pulling with a **wrong** passphrase fails to decrypt
+   (remote state cannot be read); with the correct passphrase it succeeds.

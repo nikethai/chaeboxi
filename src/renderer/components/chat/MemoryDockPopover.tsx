@@ -142,12 +142,12 @@ export const MemoryDockPopover: FC<MemoryDockPopoverProps> = ({
         </span>
       </Popover.Target>
 
-      <Popover.Dropdown p="sm">
-        <Stack gap="sm">
-          <Flex justify="space-between" align="center" gap="sm">
+      <Popover.Dropdown p="sm" className="memory-dock-dropdown">
+        <Stack gap="sm" className="memory-dock-body">
+          <Flex justify="space-between" align="center" gap="sm" className="memory-dock-header">
             <Flex align="center" gap={6}>
-              <IconBrain size={16} stroke={1.6} />
-              <Text size="sm" fw={600}>
+              <IconBrain size={16} stroke={1.6} className="memory-dock-header-icon" />
+              <Text size="sm" fw={600} className="memory-dock-title">
                 {t('Memory')}
               </Text>
             </Flex>
@@ -159,6 +159,7 @@ export const MemoryDockPopover: FC<MemoryDockPopoverProps> = ({
                 setOpened(false)
                 navigateToSettings('memory')
               }}
+              className="memory-dock-manage"
             >
               {t('Manage')}
             </Button>

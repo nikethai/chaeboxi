@@ -172,8 +172,13 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
             />
           ) : (
             <Virtuoso
-              style={{ scrollbarGutter: 'stable' }}
-              className={platformType === 'win32' ? 'scrollbar-custom' : ''}
+              // Full session reserves gutter so layout does not jump; quick chat is
+              // narrow — stable gutter + any min-content overflow shows a useless X bar.
+              style={alignToBottom ? undefined : { scrollbarGutter: 'stable' }}
+              className={cn(
+                platformType === 'win32' && 'scrollbar-custom',
+                alignToBottom && 'message-list-scroller--no-x'
+              )}
               data={currentMessageList}
               ref={virtuoso}
               // Keep pinned to latest while user is at bottom; room orchestrator also

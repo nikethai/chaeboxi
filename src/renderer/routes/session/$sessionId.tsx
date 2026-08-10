@@ -1,10 +1,11 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { Button, Flex, Text } from '@mantine/core'
-import { createMessage, type Message, type ModelProvider, ModelProviderEnum } from '@shared/types'
+import { type Message, type ModelProvider, ModelProviderEnum } from '@shared/types'
 import { IconMessage, IconShield } from '@tabler/icons-react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { type FC, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import ChatDockStack from '@/components/chat/ChatDockStack'
 import MessageList, { type MessageListRef } from '@/components/chat/MessageList'
 import SessionStatusBar from '@/components/chat/SessionStatusBar'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
@@ -15,9 +16,14 @@ import WorkspacePanel, { useWorkspaceChromeActive } from '@/components/workspace
 import { updateSessionWithMessages as updateSessionStore, useSession } from '@/stores/chatStore'
 import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 import * as scrollActions from '@/stores/scrollActions'
-import { modifyMessage, removeCurrentThread, startNewThread, submitNewUserMessage } from '@/stores/sessionActions'
+import {
+  modifyMessage,
+  removeCurrentThread,
+  startNewThread,
+  submitNewUserMessage,
+} from '@/stores/sessionActions'
+import { continueActiveSessionTasks } from '@/stores/session/messages'
 import { getAllMessageList } from '@/stores/sessionHelpers'
-import { taskStore } from '@/stores/taskStore'
 import { useUIStore } from '@/stores/uiStore'
 import { isThreadVisuallyEmpty } from '@/utils/chat-starters'
 import { getSessionRouteState } from '@/utils/sessionRouteState'
@@ -32,10 +38,6 @@ const SessionPanel = isAgentEnabled ? lazy(() => import('@/openclaw/components/S
 const ToolAuditPanel = isAgentEnabled
   ? lazy(() => import('@/components/ToolAuditPanel').then((m) => ({ default: m.ToolAuditPanel })))
   : null
-const TaskProgress = isAgentEnabled
-  ? lazy(() => import('@/components/TaskProgress/TaskProgress').then((m) => ({ default: m.TaskProgress })))
-  : null
-
 export const Route = createFileRoute('/session/$sessionId')({
   component: RouteComponent,
 })
@@ -67,12 +69,6 @@ function RouteComponent() {
       scrollActions.scrollToBottom('auto') // 每次启动时自动滚动到底部
     }, 200)
   }, [])
-
-  // Hydrate persisted in-chat todos for this session (reload-safe checklist)
-  useEffect(() => {
-    if (!currentSessionId) return
-    void taskStore.getState().hydrateSessionTasks(currentSessionId)
-  }, [currentSessionId])
 
   // currentSession变化时（包括session settings变化），存下当前的settings作为新Session的默认值
   const currentSessionType = currentSession?.type
@@ -160,13 +156,7 @@ function RouteComponent() {
 
   const onContinueTasks = useCallback(() => {
     if (!currentSession) return
-    void submitNewUserMessage(currentSession.id, {
-      newUserMsg: createMessage(
-        'user',
-        'Continue the active task plan. First inspect the current tasks, then resume the next appropriate pending task. Update task statuses before responding.'
-      ),
-      needGenerating: true,
-    })
+    void continueActiveSessionTasks(currentSession.id)
   }, [currentSession])
 
   const onClickSessionSettings = useCallback(() => {
@@ -290,35 +280,32 @@ function RouteComponent() {
 
           <div className="session-dock">
             <div className="session-dock-pad">
-              {TaskProgress && (
-                <Suspense fallback={null}>
-                  <TaskProgress sessionId={currentSession.id} onContinue={onContinueTasks} />
-                </Suspense>
-              )}
-              <ErrorBoundary name="session-inputbox">
-                <InputBox
-                  key={`input-box${currentSession.id}`}
-                  ref={inputBoxRef}
-                  sessionId={currentSession.id}
-                  sessionType={currentSession.type}
-                  model={model}
-                  agentMode={currentSession.agentMode ?? false}
-                  workspaceRoot={currentSession.workspaceRoot}
-                  onStartNewThread={onStartNewThread}
-                  onRollbackThread={onRollbackThread}
-                  onSelectModel={onSelectModel}
-                  onToggleAgentMode={(agentMode) => {
-                    void updateSessionStore(currentSession.id, { agentMode })
-                  }}
-                  onWorkspaceRootChange={(workspaceRoot) => {
-                    void updateSessionStore(currentSession.id, { workspaceRoot })
-                  }}
-                  onClickSessionSettings={onClickSessionSettings}
-                  generating={!!lastGeneratingMessage}
-                  onSubmit={onSubmit}
-                  onStopGenerating={onStopGenerating}
-                />
-              </ErrorBoundary>
+              <ChatDockStack key={currentSession.id} sessionId={currentSession.id} onContinueTasks={onContinueTasks}>
+                <ErrorBoundary name="session-inputbox">
+                  <InputBox
+                    key={`input-box${currentSession.id}`}
+                    ref={inputBoxRef}
+                    sessionId={currentSession.id}
+                    sessionType={currentSession.type}
+                    model={model}
+                    agentMode={currentSession.agentMode ?? false}
+                    workspaceRoot={currentSession.workspaceRoot}
+                    onStartNewThread={onStartNewThread}
+                    onRollbackThread={onRollbackThread}
+                    onSelectModel={onSelectModel}
+                    onToggleAgentMode={(agentMode) => {
+                      void updateSessionStore(currentSession.id, { agentMode })
+                    }}
+                    onWorkspaceRootChange={(workspaceRoot) => {
+                      void updateSessionStore(currentSession.id, { workspaceRoot })
+                    }}
+                    onClickSessionSettings={onClickSessionSettings}
+                    generating={!!lastGeneratingMessage}
+                    onSubmit={onSubmit}
+                    onStopGenerating={onStopGenerating}
+                  />
+                </ErrorBoundary>
+              </ChatDockStack>
             </div>
             <SessionStatusBar
               messages={currentMessageList}

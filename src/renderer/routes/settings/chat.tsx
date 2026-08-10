@@ -220,7 +220,7 @@ export function RouteComponent() {
         </SettingsCard>
       </SettingsSection>
 
-      <SettingsCollapsible title={t('Display')} description={t('What metadata shows on messages.')} badge={t('Optional')}>
+      <SettingsCollapsible title={t('Display')} description={t('What metadata shows on messages.')} badge={t('Advanced')}>
         <SettingsCard divided>
           <SettingsPrefRow
             title={t('show message word count')}
@@ -283,7 +283,7 @@ export function RouteComponent() {
         </SettingsCard>
       </SettingsCollapsible>
 
-      <SettingsCollapsible title={t('Function')} description={t('Rendering and automation behavior.')} badge={t('Optional')}>
+      <SettingsCollapsible title={t('Function')} description={t('Rendering and automation behavior.')} badge={t('Advanced')}>
         <SettingsCard divided>
           <SettingsPrefRow
             title={t('Auto-collapse code blocks')}
@@ -554,7 +554,7 @@ function ContextManagementSection() {
   }, [settings.compactionThreshold, t])
 
   return (
-    <SettingsCollapsible title={t('Context Management')} description={t('Compaction and overflow behavior.')} badge={t('Optional')}>
+    <SettingsCollapsible title={t('Context Management')} description={t('Compaction and overflow behavior.')} badge={t('Advanced')}>
       <SettingsCard divided>
         <SettingsPrefRow
           title={t('Auto Compaction')}

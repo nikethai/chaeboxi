@@ -123,17 +123,36 @@ export function RouteComponent() {
 
       <SettingsCollapsible
         title={t('Network Proxy')}
-        description={t('Optional proxy for outbound network requests.')}
-        badge={t('Optional')}
+        description={t('Route outbound API traffic through a SOCKS or HTTP proxy.')}
+        badge={settings.proxy?.trim() ? t('On') : t('Advanced')}
+        badgeTone={settings.proxy?.trim() ? 'active' : 'quiet'}
         defaultOpen={Boolean(settings.proxy?.trim())}
       >
         <SettingsCard>
           <div className="settings-field">
+            <span className="settings-field-label">{t('Proxy URL')}</span>
             <TextInput
               placeholder="socks5://127.0.0.1:6153"
               value={settings.proxy}
               onChange={(e) => setSettings({ proxy: e.currentTarget.value })}
+              classNames={{ input: 'settings-mono-input' }}
+              rightSection={
+                settings.proxy?.trim() ? (
+                  <button
+                    type="button"
+                    className="settings-input-clear"
+                    aria-label={t('Clear')}
+                    onClick={() => setSettings({ proxy: '' })}
+                  >
+                    ×
+                  </button>
+                ) : null
+              }
+              rightSectionPointerEvents="all"
             />
+            <span className="settings-field-hint">
+              {t('Supports socks5://, http://, and https://. Leave empty to use the system network.')}
+            </span>
           </div>
         </SettingsCard>
       </SettingsCollapsible>
@@ -141,7 +160,7 @@ export function RouteComponent() {
       <SettingsCollapsible
         title={t('Data & backup')}
         description={t('Recovery, sync, export/import, and diagnostic logs.')}
-        badge={t('Optional')}
+        badge={t('Advanced')}
       >
         <div className="settings-collapsible-stack">
           <DataRecoverySection />

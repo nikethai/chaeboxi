@@ -156,7 +156,7 @@ export class MCPServer extends Emittery<{ status: MCPServerStatus }> {
   }
 }
 
-// 根据用户配置管理MCP服务器的实际运行
+// (legacy comment)
 export const mcpController = {
   servers: new Map<string, { instance: MCPServer; config: MCPServerConfig }>(),
   _statusSubscribers: new Map<string, Set<(status: MCPServerStatus) => void>>(),
@@ -176,7 +176,7 @@ export const mcpController = {
     const server = new MCPServer(serverConfig.transport)
     this.servers.set(serverConfig.id, { instance: server, config: serverConfig })
 
-    // 如果有订阅者，重新连接他们
+    // (legacy comment removed)
     const subscribers = this._statusSubscribers.get(serverConfig.id)
     if (subscribers) {
       subscribers.forEach((subscriber) => {
@@ -253,7 +253,7 @@ export const mcpController = {
             try {
               return await rawExecute?.(args, options)
             } catch (err) {
-              // 返回而非抛出，否则会导致流程中断
+              // (legacy comment removed)
               return err
             }
           },

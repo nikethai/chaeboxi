@@ -1,4 +1,4 @@
-import { ApiError, BaseError, ChatboxAIAPIError, NetworkError } from '../models/errors'
+import { ApiError, BaseError, ProviderAPIError, NetworkError } from '../models/errors'
 import { parseJsonOrEmpty } from '../utils/json_utils'
 import { isChatboxAPI } from './chatboxai_pool'
 
@@ -35,12 +35,12 @@ export function createAfetch(platformInfo: PlatformInfo) {
           }
         }
         const res = await fetch(url, init)
-        // 状态码不在 200～299 之间，一般是接口报错了，这里也需要抛错后重试
+        // (legacy comment removed)
         if (!res.ok) {
           const response = await res.text().catch((e) => '')
           if (options.parseChatboxRemoteError) {
             const errorCodeName = parseJsonOrEmpty(response)?.error?.code
-            const chatboxAIError = ChatboxAIAPIError.fromCodeName(response, errorCodeName)
+            const chatboxAIError = ProviderAPIError.fromCodeName(response, errorCodeName)
             if (chatboxAIError) {
               throw chatboxAIError
             }
@@ -73,8 +73,8 @@ export function createAfetch(platformInfo: PlatformInfo) {
 }
 
 export async function uploadFile(file: File, url: string) {
-  // COS 需要使用原始的 XMLHttpRequest（根据官网示例）
-  // 如果使用 fetch，会导致上传的 excel、docx 格式不正确
+  // COS XMLHttpRequest（）
+  // (legacy comment)
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest()
     xhr.open('PUT', url, true)
@@ -113,7 +113,7 @@ interface AuthenticatedAfetchConfig {
 export function createAuthenticatedAfetch(config: AuthenticatedAfetchConfig) {
   const { platformInfo, getTokens, refreshTokens, clearTokens } = config
 
-  // 用于防止并发刷新 token
+  // (legacy comment)
   let refreshPromise: Promise<AuthTokens> | null = null
 
   return async function authenticatedAfetch(
@@ -124,13 +124,13 @@ export function createAuthenticatedAfetch(config: AuthenticatedAfetchConfig) {
       parseChatboxRemoteError?: boolean
     } = {}
   ) {
-    // 获取当前 tokens
+    // tokens
     const tokens = await getTokens()
     if (!tokens) {
       throw new ApiError('No authentication tokens available')
     }
 
-    // 构建包含 token 的 headers 的辅助函数
+    // token headers
     function buildHeaders(accessToken: string) {
       const authHeaders: Record<string, string> = {
         'x-chatbox-access-token': accessToken,
@@ -149,7 +149,7 @@ export function createAuthenticatedAfetch(config: AuthenticatedAfetchConfig) {
       }
     }
 
-    // 添加 access token 到 headers
+    // access token headers
     init = {
       ...init,
       headers: buildHeaders(tokens.accessToken),
@@ -162,11 +162,11 @@ export function createAuthenticatedAfetch(config: AuthenticatedAfetchConfig) {
       try {
         const res = await fetch(url, init)
 
-        // 检查 401 Unauthorized
+        // 401 Unauthorized
         if (res.status === 401) {
           console.log('🔄 Access token expired, refreshing...')
 
-          // 防止并发刷新：如果已有刷新请求，等待它完成
+          // (legacy comment removed)
           if (!refreshPromise) {
             refreshPromise = (async () => {
               try {
@@ -181,7 +181,7 @@ export function createAuthenticatedAfetch(config: AuthenticatedAfetchConfig) {
                 return newTokens
               } catch (error) {
                 console.error('❌ Failed to refresh token:', error)
-                // 刷新失败，清除所有 tokens
+                // (legacy comment)
                 await clearTokens()
                 throw new ApiError('Token refresh failed, please login again')
               } finally {
@@ -190,10 +190,10 @@ export function createAuthenticatedAfetch(config: AuthenticatedAfetchConfig) {
             })()
           }
 
-          // 等待刷新完成
+          // (legacy comment removed)
           const newTokens = await refreshPromise
 
-          // 使用新 token 重试请求
+          // (legacy comment)
           init = {
             ...init,
             headers: buildHeaders(newTokens.accessToken),
@@ -206,7 +206,7 @@ export function createAuthenticatedAfetch(config: AuthenticatedAfetchConfig) {
             const response = await retryRes.text().catch(() => '')
             if (options.parseChatboxRemoteError) {
               const errorCodeName = parseJsonOrEmpty(response)?.error?.code
-              const chatboxAIError = ChatboxAIAPIError.fromCodeName(response, errorCodeName)
+              const chatboxAIError = ProviderAPIError.fromCodeName(response, errorCodeName)
               if (chatboxAIError) {
                 throw chatboxAIError
               }
@@ -217,12 +217,12 @@ export function createAuthenticatedAfetch(config: AuthenticatedAfetchConfig) {
           return retryRes
         }
 
-        // 其他错误状态码
+        // other
         if (!res.ok) {
           const response = await res.text().catch(() => '')
           if (options.parseChatboxRemoteError) {
             const errorCodeName = parseJsonOrEmpty(response)?.error?.code
-            const chatboxAIError = ChatboxAIAPIError.fromCodeName(response, errorCodeName)
+            const chatboxAIError = ProviderAPIError.fromCodeName(response, errorCodeName)
             if (chatboxAIError) {
               throw chatboxAIError
             }

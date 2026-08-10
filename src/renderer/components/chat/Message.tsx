@@ -139,8 +139,8 @@ interface Props {
   sessionType: SessionType
   msg: Message
   className?: string
-  collapseThreshold?: number // 文本长度阀值, 超过这个长度则会被折叠
-  buttonGroup?: 'auto' | 'always' | 'none' // 按钮组显示策略, auto: 只在 hover 时显示; always: 总是显示; none: 不显示
+  collapseThreshold?: number // ,
+  buttonGroup?: 'auto' | 'always' | 'none' // , auto: hover ; always: ; none:
   small?: boolean
   assistantAvatarKey?: string
   sessionPicUrl?: string
@@ -193,9 +193,9 @@ const _Message: FC<Props> = (props) => {
 
   const needCollapse =
     collapseThreshold &&
-    props.sessionType !== 'picture' && // 绘图会话不折叠
+    props.sessionType !== 'picture' && // (legacy)
     contentLength > collapseThreshold &&
-    contentLength - collapseThreshold > 50 // 只有折叠有明显效果才折叠，为了更好的用户体验
+    contentLength - collapseThreshold > 50 // ，
   const [isCollapsed, setIsCollapsed] = useState(needCollapse)
 
   const ref = useRef<HTMLDivElement>(null)
@@ -294,7 +294,7 @@ const _Message: FC<Props> = (props) => {
     navigate({ to: '/image-creator', search: { prompt: messageText } })
   }, [navigate, messageText])
 
-  // 复制特定 reasoning 内容
+  // reasoning
   const onCopyReasoningContent =
     (content: string): MouseEventHandler<HTMLButtonElement> =>
     (e) => {
@@ -500,25 +500,25 @@ const _Message: FC<Props> = (props) => {
     tips.push(`first token latency: ${latency}`)
   }
 
-  // 消息时间戳
+  // (legacy comment removed)
   if (showMessageTimestamp && msg.timestamp !== undefined) {
     const date = new Date(msg.timestamp)
     let messageTimestamp: string
     if (dateFns.isToday(date)) {
-      // - 当天，显示 HH:mm
+      // - ， HH:mm
       messageTimestamp = dateFns.format(date, 'HH:mm')
     } else if (dateFns.isThisYear(date)) {
-      // - 当年，显示 MM-dd HH:mm
+      // - ， MM-dd HH:mm
       messageTimestamp = dateFns.format(date, 'MM-dd HH:mm')
     } else {
-      // - 其他年份：yyyy-MM-dd HH:mm
+      // - other：yyyy-MM-dd HH:mm
       messageTimestamp = dateFns.format(date, 'yyyy-MM-dd HH:mm')
     }
 
     tips.push(`time: ${messageTimestamp}`)
   }
 
-  // 是否需要渲染 Aritfact 组件
+  // Aritfact
   const needArtifact = useMemo(() => {
     if (msg.role !== 'assistant') {
       return false
@@ -612,7 +612,7 @@ const _Message: FC<Props> = (props) => {
               icon: IconArrowDown,
               onClick: onGenerateMore,
             },
-            !msg.model?.startsWith('Chatbox-AI') &&
+            !msg.model?.startsWith('chatboxai') &&
               !(msg.role === 'assistant' && props.sessionType === 'picture') && {
                 text: t('Edit'),
                 icon: IconPencil,
@@ -657,7 +657,7 @@ const _Message: FC<Props> = (props) => {
             },
           ]
         : []),
-      // 开发环境添加测试错误按钮
+      // (legacy comment removed)
       ...(process.env.NODE_ENV === 'development'
         ? [
             // {
@@ -768,8 +768,8 @@ const _Message: FC<Props> = (props) => {
               <ReasoningContentUI message={msg} onCopyReasoningContent={onCopyReasoningContent} />
             )}
             {
-              // 这里的空行仅仅是为了在只发送文件时消息气泡的美观
-              // 正常情况下，应该考虑优化 msg-content 的样式。现在这里是一个临时的偷懒方式。
+              // (legacy comment removed)
+              // (legacy comment)
               getMessageText(msg, true, true).trim() === '' && <p></p>
             }
             {groupedParts.length > 0 && (
@@ -1007,10 +1007,10 @@ const _Message: FC<Props> = (props) => {
               )}
 
               {
-                // Chatbox-AI 模型不支持编辑消息
+                // legacy cloud model prefix
                 !isSamllScreen &&
-                  !msg.model?.startsWith('Chatbox-AI') &&
-                  // 图片会话中，助手消息无需编辑
+                  !msg.model?.startsWith('chatboxai') &&
+                  // (legacy comment removed)
                   !(msg.role === 'assistant' && props.sessionType === 'picture') && (
                     <MessageActionIcon icon={IconPencil} tooltip={t('edit')} onClick={onEditClick} />
                   )
@@ -1124,7 +1124,7 @@ const PictureGallery = memo(({ pictures, compact, onReport }: PictureGalleryProp
             if (!base64) {
               return
             }
-            // storageKey中含有冒号，会在android端导致存储失败，且android端在同文件名的情况下不会再次保存图片，也无提示，可能对用户造成困扰，所以增加随机后缀
+            // (legacy comment)
             const filename =
               platform.formFactor === 'mobile'
                 ? `${picture.storageKey.replaceAll(':', '_')}_${Math.random().toString(36).substring(7)}`

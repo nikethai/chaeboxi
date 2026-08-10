@@ -8,22 +8,22 @@ export type CustomProviderIconProps = {
 }
 
 const BG_COLORS = [
-  '#1ABC9C', // 活力绿
-  '#3498DB', // 明亮蓝
-  '#9B59B6', // 紫色
-  '#E67E22', // 橙色
-  '#E74C3C', // 鲜红
-  '#2ECC71', // 草绿
-  '#34495E', // 深蓝灰
-  '#F1C40F', // 明黄
-  '#F39C12', // 橙黄
-  '#16A085', // 墨绿
-  '#2980B9', // 深蓝
-  '#8E44AD', // 深紫
-  '#2C3E50', // 暗靛
-  '#C0392B', // 深红
-  '#27AE60', // 洋绿
-  '#7F8C8D', // 高级灰
+  '#1ABC9C', // (legacy)
+  '#3498DB', // (legacy)
+  '#9B59B6', // (legacy)
+  '#E67E22', // (legacy)
+  '#E74C3C', // (legacy)
+  '#2ECC71', // (legacy)
+  '#34495E', // (legacy)
+  '#F1C40F', // (legacy)
+  '#F39C12', // (legacy)
+  '#16A085', // (legacy)
+  '#2980B9', // (legacy)
+  '#8E44AD', // (legacy)
+  '#2C3E50', // (legacy)
+  '#C0392B', // (legacy)
+  '#27AE60', // (legacy)
+  '#7F8C8D', // (legacy)
 ]
 
 const DEFAULT_SIZE = 32

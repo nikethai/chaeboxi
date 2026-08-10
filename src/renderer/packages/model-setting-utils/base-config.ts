@@ -33,7 +33,7 @@ export default abstract class BaseConfig implements ModelSettingUtil {
       })
   }
 
-  // 有三个来源：本地写死、后端配置、服务商模型列表
+  // (legacy comment removed)
   public async getMergeOptionGroups(providerSettings: ProviderSettings): Promise<ProviderModelInfo[]> {
     const localOptionGroups = providerSettings.models || []
     const [remoteModels, models] = await Promise.all([
@@ -46,26 +46,26 @@ export default abstract class BaseConfig implements ModelSettingUtil {
         return []
       }),
     ])
-    // 确保两个数组都是有效的数组
+    // (legacy comment removed)
     const safeRemoteModels = Array.isArray(remoteModels) ? remoteModels : []
     const safeProviderModels = Array.isArray(models) ? models : []
     const remoteOptionGroups = [...safeRemoteModels, ...safeProviderModels]
     const mergedModels = this.mergeOptionGroups(localOptionGroups, remoteOptionGroups)
 
-    // 尝试获取模型信息来丰富模型数据
+    // (legacy comment removed)
     const enrichedModels = await this.enrichModelsWithInfo(mergedModels)
     return enrichedModels
   }
 
   /**
-   * 合并本地与远程的模型选项组。
-   * 本地模型优先，远程模型中与本地重复的会被过滤。
-   * @param localOptionGroups 本地模型选项组
-   * @param remoteOptionGroups 远程模型选项组
+   * (legacy comment removed)
+   * (legacy comment removed)
+   * @param localOptionGroups
+   * @param remoteOptionGroups
    * @returns
    */
   protected mergeOptionGroups(localOptionGroups: ProviderModelInfo[], remoteOptionGroups: ProviderModelInfo[]) {
-    // 创建本地模型的映射，用于快速查找
+    // (legacy comment removed)
     const localModelMap = new Map<string, ProviderModelInfo>()
     for (const model of localOptionGroups) {
       localModelMap.set(model.modelId, model)
@@ -74,16 +74,16 @@ export default abstract class BaseConfig implements ModelSettingUtil {
     const mergedModels: ProviderModelInfo[] = []
     const processedModelIds = new Set<string>()
 
-    // 先添加所有本地模型
+    // (legacy comment removed)
     for (const model of localOptionGroups) {
       mergedModels.push(model)
       processedModelIds.add(model.modelId)
     }
 
-    // 处理远程模型
+    // (legacy comment removed)
     for (const remoteModel of remoteOptionGroups) {
       if (!processedModelIds.has(remoteModel.modelId)) {
-        // 新的远程模型，直接添加
+        // (legacy comment removed)
         mergedModels.push(remoteModel)
         processedModelIds.add(remoteModel.modelId)
       }
@@ -98,23 +98,23 @@ export default abstract class BaseConfig implements ModelSettingUtil {
     }
 
     try {
-      // 检查模型信息是否完整，只查询信息不完整的模型
+      // (legacy comment removed)
       const incompleteModels = models.filter(
         (model) => !model.type || !model.capabilities || !model.contextWindow || !model.maxOutput
       )
 
       if (incompleteModels.length === 0) {
-        // 所有模型信息都完整，无需API请求
+        // (legacy comment)
         return models
       }
 
-      // 收集需要查询的模型ID，最多100个
+      // (legacy comment removed)
       const modelIds = incompleteModels.map((model) => model.modelId).slice(0, 100)
 
-      // 调用API获取模型信息
+      // (legacy comment)
       const modelsInfoData = await remote.getProviderModelsInfo({ modelIds })
 
-      // 用获取到的信息丰富现有模型数据，只添加缺失的字段
+      // (legacy comment removed)
       return models.map((model) => {
         const modelInfo = modelsInfoData[model.modelId]
         if (modelInfo) {
@@ -131,7 +131,7 @@ export default abstract class BaseConfig implements ModelSettingUtil {
         return model
       })
     } catch (error) {
-      // 如果获取模型信息失败，返回原始模型列表
+      // (legacy comment removed)
       Sentry.captureException(error)
       return models
     }

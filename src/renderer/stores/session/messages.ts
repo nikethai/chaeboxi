@@ -4,7 +4,7 @@ import {
   AIProviderNoImplementedPaintError,
   ApiError,
   BaseError,
-  ChatboxAIAPIError,
+  ProviderAPIError,
   NetworkError,
 } from '@shared/models/errors'
 import { createMessage, type Message } from '@shared/types'
@@ -21,7 +21,7 @@ import { messageQueueStore } from './messageQueue'
 import { getSessionWebBrowsing } from './session-web-browsing'
 
 /**
- * 在当前主题的最后插入一条消息。
+ * (legacy comment removed)
  * @param sessionId
  * @param msg
  */
@@ -36,7 +36,7 @@ export async function insertMessage(sessionId: string, msg: Message) {
 }
 
 /**
- * 在某条消息后面插入新消息。如果消息在历史主题中，也能支持插入
+ * (legacy comment removed)
  * @param sessionId
  * @param msg
  * @param afterMsgId
@@ -53,7 +53,7 @@ export async function insertMessageAfter(sessionId: string, msg: Message, afterM
 }
 
 /**
- * 根据 id 修改消息。如果消息在历史主题中，也能支持修改
+ * (legacy comment removed)
  * @param sessionId
  * @param updated
  * @param refreshCounting
@@ -74,7 +74,7 @@ export async function modifyMessage(
     updated.tokenCountMap = undefined
   }
 
-  // 更新消息时间戳
+  // (legacy comment removed)
   updated.timestamp = Date.now()
   if (updateOnlyCache) {
     await chatStore.updateMessageCache(sessionId, updated.id, updated)
@@ -84,7 +84,7 @@ export async function modifyMessage(
 }
 
 /**
- * 在会话中删除消息。如果消息存在于历史主题中，也能支持删除
+ * (legacy comment removed)
  * @param sessionId
  * @param messageId
  */
@@ -93,7 +93,7 @@ export async function removeMessage(sessionId: string, messageId: string) {
 }
 
 /**
- * 在会话中发送新用户消息，并根据需要生成回复
+ * (legacy comment removed)
  * @param params
  */
 export async function submitNewUserMessage(
@@ -138,7 +138,7 @@ export async function submitNewUserMessage(
   const { newUserMsg, needGenerating } = params
   const webBrowsing = getSessionWebBrowsing(sessionId, settings.provider)
 
-  // 先在聊天列表中插入发送的用户消息
+  // (legacy comment removed)
   await insertMessage(sessionId, newUserMsg)
 
   const globalSettings = settingsStore.getState().getSettings()
@@ -155,7 +155,7 @@ export async function submitNewUserMessage(
   const speakers = resolveSpeakers(roomAfterMembership, newUserMsg.mentionedAgentIds)
   const isMultiAgentRoom = needGenerating && shouldRunMultiAgentRoom(newUserMsg.mentionedAgentIds, roomAfterMembership)
 
-  // 根据需要，插入空白的回复消息（multi-agent room creates its own assistants)
+  // ，（multi-agent room creates its own assistants)
   let newAssistantMsg = createMessage('assistant', '')
   if (newUserMsg.files && newUserMsg.files.length > 0) {
     if (!newAssistantMsg.status) {
@@ -194,12 +194,12 @@ export async function submitNewUserMessage(
   }
 
   try {
-    // 如果本次消息开启了联网问答，需要检查当前模型是否支持
-    // 桌面版&手机端总是支持联网问答，不再需要检查模型是否支持
+    // (legacy comment removed)
+    // (legacy comment removed)
     const dependencies = await createModelDependencies()
     const model = getModel(settings, globalSettings, { uuid: '' }, dependencies)
     if (webBrowsing && platform.type === 'web' && !model.isSupportToolUse()) {
-      throw ChatboxAIAPIError.fromCodeName('model_not_support_web_browsing_2', 'model_not_support_web_browsing_2')
+      throw ProviderAPIError.fromCodeName('model_not_support_web_browsing_2', 'model_not_support_web_browsing_2')
     }
 
     // Files and links are now preprocessed in InputBox with storage keys, so no need to process them here
@@ -217,7 +217,7 @@ export async function submitNewUserMessage(
       }
     }
   } catch (err: unknown) {
-    // 如果文件上传失败，一定会出现带有错误信息的回复消息
+    // (legacy comment removed)
     const error = !(err instanceof Error) ? new Error(`${err}`) : err
     if (
       !(
@@ -240,7 +240,7 @@ export async function submitNewUserMessage(
       model: await getModelDisplayName(settings, globalSettings, 'chat'),
       contentParts: [{ type: 'text', text: '' }],
       errorCode,
-      error: `${error.message}`, // 这么写是为了避免类型问题
+      error: `${error.message}`, // (legacy)
       status: [],
     }
     if (needGenerating && !isMultiAgentRoom) {
@@ -248,9 +248,9 @@ export async function submitNewUserMessage(
     } else {
       await insertMessage(sessionId, newAssistantMsg)
     }
-    return // 文件上传失败，不再继续生成回复
+    return // ，
   }
-  // 根据需要，生成这条回复消息
+  // (legacy comment removed)
   if (needGenerating) {
     let freshSession = await chatStore.getSession(sessionId)
     if (freshSession?.planMode && freshSession?.agentMode && !freshSession?.planPhase) {

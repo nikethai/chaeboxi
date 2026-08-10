@@ -6,7 +6,7 @@ import { createModelDependencies } from '@/adapters'
 export async function generateImage(
   model: ModelInterface,
   params: {
-    message: Message // 图片并不关注session context，只需要上一条用户消息
+    message: Message // session context，
     num: number
   },
   callback?: (picBase64: string) => void

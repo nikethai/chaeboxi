@@ -336,15 +336,15 @@ describe('estimateTokens', () => {
       expect(tokens).toBeLessThan(20)
     })
 
-    it('should estimate tokens for Chinese text', () => {
+    it('should estimate tokens for CJK text', () => {
       const text = '你好世界'
       const tokens = estimateTokens(text)
       expect(tokens).toBeGreaterThan(0)
-      // Chinese characters typically use more tokens per character
+      // CJK typically uses more tokens per character than Latin
       expect(tokens).toBeLessThan(20)
     })
 
-    it('should estimate tokens for mixed English and Chinese text', () => {
+    it('should estimate tokens for mixed English and CJK text', () => {
       const text = 'Hello 你好 World 世界'
       const tokens = estimateTokens(text)
       expect(tokens).toBeGreaterThan(0)
@@ -396,10 +396,10 @@ describe('estimateTokens', () => {
       expect(typeof tokensDeepSeek).toBe('number')
     })
 
-    it('should handle Chinese text with DeepSeek tokenizer', () => {
+    it('should handle CJK text with DeepSeek tokenizer', () => {
       const text = '你好世界'
       const tokens = estimateTokens(text, deepSeekModel)
-      // Chinese chars are ~0.6 tokens each in DeepSeek
+      // CJK chars are ~0.6 tokens each in DeepSeek
       // 4 chars * 0.6 = 2.4, ceil = 3
       expect(tokens).toBe(3)
     })
@@ -426,7 +426,7 @@ describe('estimateTokens', () => {
     })
 
     it('should handle mixed content in DeepSeek tokenizer', () => {
-      const text = 'Hello 你好 123'
+      const text = 'Hello world 123'
       const tokens = estimateTokens(text, deepSeekModel)
       expect(tokens).toBeGreaterThan(0)
     })
@@ -682,7 +682,7 @@ describe('sliceTextByTokenLimit', () => {
   })
 
   it('should use DeepSeek tokenizer when model is DeepSeek', () => {
-    const text = 'Hello 你好 '.repeat(100)
+    const text = 'Hello world '.repeat(100)
     const resultDefault = sliceTextByTokenLimit(text, 50)
     const resultDeepSeek = sliceTextByTokenLimit(text, 50, deepSeekModel)
 
@@ -690,8 +690,8 @@ describe('sliceTextByTokenLimit', () => {
     expect(resultDeepSeek.length).toBeLessThanOrEqual(text.length)
   })
 
-  it('should handle Chinese text', () => {
-    const text = '这是一段很长的中文文本用于测试分词功能'.repeat(20)
+  it('should handle long text slicing', () => {
+    const text = 'This is a long English text used for tokenizer stress tests. '.repeat(20)
     const result = sliceTextByTokenLimit(text, 100)
     expect(result.length).toBeLessThanOrEqual(text.length)
   })

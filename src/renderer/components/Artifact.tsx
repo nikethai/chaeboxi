@@ -322,7 +322,7 @@ export function Artifact(props: { htmlCode: string; reloadSign?: number; classNa
     }
     ref.current.contentWindow?.postMessage({ type, code }, '*')
   }
-  // 当 reloadSign 改变时，重新加载 iframe 内容
+  // reloadSign ， iframe
   useEffect(() => {
     ;(async () => {
       sendIframeMsg('html', '')
@@ -331,7 +331,7 @@ export function Artifact(props: { htmlCode: string; reloadSign?: number; classNa
     })()
   }, [reloadSign])
 
-  // 当 htmlCode 改变时，防抖地刷新 iframe 内容
+  // htmlCode ， iframe
   const updateIframe = useMemo(
     () =>
       debounce(() => {
@@ -387,7 +387,7 @@ function generateHtml(markdowns: string[]): string {
       }
     }
   }
-  // 仅保留最后一个
+  // (legacy comment removed)
   // const htmlWholes = codeBlocks.html.filter(c => c.includes('</html>'))
   // codeBlocks.html = [
   //     htmlWholes[htmlWholes.length - 1],

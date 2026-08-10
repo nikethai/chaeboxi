@@ -9,7 +9,7 @@ export const aiProviderNameHash: Record<ModelProviderEnum, string> = {
   [ModelProviderEnum.OpenAIResponses]: 'OpenAI Responses API',
   [ModelProviderEnum.Azure]: 'Azure OpenAI API',
   [ModelProviderEnum.ChatGLM6B]: 'ChatGLM API',
-  [ModelProviderEnum.ChatboxAI]: 'Chatbox AI',
+  [ModelProviderEnum.ChatboxAI]: 'Legacy (disabled)',
   [ModelProviderEnum.Claude]: 'Claude API',
   [ModelProviderEnum.Gemini]: 'Google Gemini API',
   [ModelProviderEnum.Ollama]: 'Ollama API',
@@ -134,7 +134,7 @@ export const AIModelProviderMenuOptionList = [
   },
   // {
   //     value: 'hunyuan',
-  //     label: '腾讯混元',
+  // label: '',
   //     disabled: true,
   // },
 ]

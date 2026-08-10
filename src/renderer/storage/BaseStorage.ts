@@ -84,7 +84,7 @@ export default class BaseStorage {
     return platform.setAllStoreValues(data)
   }
 
-  // TODO: 这些数据也应该实现数据导出与导入
+  // (legacy comment)
   public async setBlob(key: string, value: string) {
     return platform.setStoreBlob(key, value)
   }

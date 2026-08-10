@@ -82,7 +82,7 @@ chmod 640 "${ENV_FILE}"
 
 cat > "/etc/systemd/system/${SERVICE_NAME}.service" <<EOF
 [Unit]
-Description=Chatbox History Sync Server
+Description=Chaeboxi History Sync Server
 After=network-online.target
 Wants=network-online.target
 

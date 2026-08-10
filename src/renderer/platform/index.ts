@@ -16,7 +16,7 @@ function createDesktopPlatformWithFormFactor(api: DesktopIPC): DesktopPlatform {
 }
 
 function initPlatform(): Platform {
-  // 测试环境使用 TestPlatform
+  // TestPlatform
   if (process.env.NODE_ENV === 'test') {
     return new TestPlatform()
   }

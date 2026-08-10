@@ -2,7 +2,7 @@ import { cachified } from '@epic-web/cachified'
 import type { SearchResultItem } from '@shared/types'
 import { truncate } from 'lodash'
 import { getExtensionSettings, getLanguage } from '@/stores/settingActions'
-import { ChatboxAIAPIError } from '../../../shared/models/errors'
+import { ProviderAPIError } from '../../../shared/models/errors'
 import type WebSearch from './base'
 import { BingSearch } from './bing'
 import { BingNewsSearch } from './bing-news'
@@ -17,7 +17,7 @@ import { TavilySearch } from './tavily'
 const MAX_CONTEXT_ITEMS = 10
 const SCRAPE_RESULT_COUNT = 3
 
-// 根据配置的搜索提供方来选择搜索服务
+// (legacy comment removed)
 function getSearchProviders() {
   const settings = getExtensionSettings()
 
@@ -27,13 +27,13 @@ function getSearchProviders() {
   const addBingProviders = () => {
     selectedProviders.push(new BingSearch())
     if (language !== 'zh-Hans') {
-      selectedProviders.push(new BingNewsSearch()) // 国内无法使用
+      selectedProviders.push(new BingNewsSearch()) // (legacy)
     }
   }
 
   switch (provider) {
     case 'build-in':
-      // Chatbox paid search is disabled in this build.
+      // Paid first-party search is disabled in this build.
       // Fallback to free Bing search for legacy settings values.
       addBingProviders()
       break
@@ -45,13 +45,13 @@ function getSearchProviders() {
       break
     case 'serper':
       if (!settings.webSearch.serperApiKey?.trim()) {
-        throw ChatboxAIAPIError.fromCodeName('serper_api_key_required', 'serper_api_key_required')
+        throw ProviderAPIError.fromCodeName('serper_api_key_required', 'serper_api_key_required')
       }
       selectedProviders.push(new SerperSearch(settings.webSearch.serperApiKey.trim()))
       break
     case 'google':
       if (!settings.webSearch.googleApiKey?.trim() || !settings.webSearch.googleCseId?.trim()) {
-        throw ChatboxAIAPIError.fromCodeName('google_search_credentials_required', 'google_search_credentials_required')
+        throw ProviderAPIError.fromCodeName('google_search_credentials_required', 'google_search_credentials_required')
       }
       selectedProviders.push(
         new GoogleSearch(settings.webSearch.googleApiKey.trim(), settings.webSearch.googleCseId.trim())
@@ -59,7 +59,7 @@ function getSearchProviders() {
       break
     case 'tavily':
       if (!settings.webSearch.tavilyApiKey?.trim()) {
-        throw ChatboxAIAPIError.fromCodeName('tavily_api_key_required', 'tavily_api_key_required')
+        throw ProviderAPIError.fromCodeName('tavily_api_key_required', 'tavily_api_key_required')
       }
       selectedProviders.push(
         new TavilySearch(
@@ -73,7 +73,7 @@ function getSearchProviders() {
       break
     case 'exa':
       if (!settings.webSearch.exaApiKey?.trim()) {
-        throw ChatboxAIAPIError.fromCodeName('exa_api_key_required', 'exa_api_key_required')
+        throw ProviderAPIError.fromCodeName('exa_api_key_required', 'exa_api_key_required')
       }
       selectedProviders.push(new ExaSearch(settings.webSearch.exaApiKey.trim()))
       break

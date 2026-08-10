@@ -12,10 +12,10 @@ const iconsModules = import.meta.glob<{ default: string }>('../../static/icons/p
 
 const icons: { name: string; src: string }[] = Object.entries(iconsModules).map(([path, module]) => {
   const filename = path.split('/').pop() || ''
-  const name = filename.replace('.png', '') // 获取图片名称（不含扩展名）
+  const name = filename.replace('.png', '') // （）
   return {
     name,
-    src: (module as { default: string }).default, // 获取图片路径
+    src: (module as { default: string }).default, // (legacy)
   }
 })
 

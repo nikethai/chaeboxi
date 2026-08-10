@@ -236,7 +236,7 @@ export async function updateSessionWithMessages(sessionId: string, updater: Upda
   return updated
 }
 
-// 这里只能修改messages之外的字段
+// (legacy comment)
 export async function updateSession(sessionId: string, updater: Updater<Omit<Session, 'messages'>>) {
   return await updateSessionWithMessages(sessionId, (session) => {
     if (!session) {
@@ -312,7 +312,7 @@ function mergeDefaultSessionSettings(session: Session): SessionSettings {
     return merged
   }
 
-  // Chatbox AI provider is disabled in this build; remap legacy sessions.
+  // legacy cloud service provider is disabled in this build; remap legacy sessions.
   if (session.type === 'picture') {
     return {
       ...merged,
@@ -568,8 +568,8 @@ function cleanupEmptyForkBranches(
     const forkIndexInMessages = resultMessages.findIndex((m) => m.id === forkMessageId)
 
     if (forkIndexInMessages >= 0) {
-      // Fork is in main messages - check if tail is empty fork point 是 user msg，之后的 bot msg 是具体的分叉
-      // 当用户这条消息(fork point)是最后一条消息，后面没了 bot msg，则当前分支是空的
+      // Fork is in main messages - check if tail is empty fork point user msg， bot msg
+      // (legacy comment)
       const currentBranchIsEmpty = forkIndexInMessages === resultMessages.length - 1
 
       if (currentBranchIsEmpty) {

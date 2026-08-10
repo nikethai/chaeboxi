@@ -2,7 +2,7 @@ import { ActionIcon, Collapse, Flex, Tooltip } from '@mantine/core'
 import Alert from '@mui/material/Alert'
 import Link from '@mui/material/Link'
 import { aiProviderNameHash } from '@shared/models'
-import { ChatboxAIAPIError } from '@shared/models/errors'
+import { ProviderAPIError } from '@shared/models/errors'
 import type { Message } from '@shared/types'
 import { IconCheck, IconChevronDown, IconChevronUp, IconCopy } from '@tabler/icons-react'
 import type React from 'react'
@@ -82,7 +82,7 @@ export default function MessageErrTips(props: { msg: Message }) {
   }
 
   const tips: React.ReactNode[] = []
-  let onlyShowTips = false // 是否只显示提示，不显示错误信息详情
+  let onlyShowTips = false // ，
 
   const quotaKind = classifyQuotaError({
     message: msg.error,
@@ -202,8 +202,8 @@ export default function MessageErrTips(props: { msg: Message }) {
         ]}
       />
     )
-  } else if (msg.errorCode && ChatboxAIAPIError.getDetail(msg.errorCode)) {
-    const chatboxAIErrorDetail = ChatboxAIAPIError.getDetail(msg.errorCode)
+  } else if (msg.errorCode && ProviderAPIError.getDetail(msg.errorCode)) {
+    const chatboxAIErrorDetail = ProviderAPIError.getDetail(msg.errorCode)
     if (chatboxAIErrorDetail) {
       onlyShowTips = true
       tips.push(

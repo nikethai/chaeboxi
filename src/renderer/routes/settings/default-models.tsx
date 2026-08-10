@@ -33,7 +33,7 @@ export function RouteComponent() {
         <SettingsCard divided>
           <SettingsPrefRow
             title={t('Default Chat Model')}
-            description={t('Chatbox will use this model as the default for new chats.')}
+            description={t('Chaeboxi will use this model as the default for new chats.')}
             align="start"
             control={
               <ModelSelector
@@ -72,7 +72,7 @@ export function RouteComponent() {
 
           <SettingsPrefRow
             title={t('Default Thread Naming Model')}
-            description={t('Chatbox will automatically use this model to rename threads.')}
+            description={t('Chaeboxi will automatically use this model to rename threads.')}
             align="start"
             control={
               <ModelSelector
@@ -106,7 +106,7 @@ export function RouteComponent() {
 
           <SettingsPrefRow
             title={t('Search Term Construction Model')}
-            description={t('Chatbox will automatically use this model to construct search term.')}
+            description={t('Chaeboxi will automatically use this model to construct search term.')}
             align="start"
             control={
               <ModelSelector
@@ -140,7 +140,7 @@ export function RouteComponent() {
 
           <SettingsPrefRow
             title={t('OCR Model')}
-            description={t('Chatbox OCRs images with this model and sends the text to models without image support.')}
+            description={t('Chaeboxi OCRs images with this model and sends the text to models without image support.')}
             align="start"
             control={
               <ModelSelector

@@ -3,14 +3,14 @@
 // import * as defaults from '../../shared/defaults'
 
 /**
- * 根据模型提供方、模型版本的设置，重置模型的 maxTokens、maxContextTokens
+ * 、， maxTokens、maxContextTokens
  */
 // export function resetTokenConfig(settings: SessionSettings): SessionSettings {
 //     switch (settings.aiProvider) {
 //         case ModelProviderEnum.OpenAI:
 //             const model = getTokenLimits(settings)
-//             settings.openaiMaxTokens = model.maxTokens // 默认最小值
-//             settings.openaiMaxContextTokens = model.maxContextTokens // 默认最大值
+// settings.openaiMaxTokens = model.maxTokens //
+// settings.openaiMaxContextTokens = model.maxContextTokens //
 //             if (settings.model.startsWith('gpt-4')) {
 //                 settings.openaiMaxContextMessageCount = 6
 //             } else {
@@ -42,7 +42,7 @@
 // }
 
 /**
- * 根据设置获取模型的 maxTokens、maxContextTokens 的取值范围
+ *  maxTokens、maxContextTokens
  * @param settings
  * @returns
  */

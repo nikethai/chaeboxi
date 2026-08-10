@@ -258,7 +258,7 @@ function buildMemorySection(memory: MemoryInjectContext | undefined, messages: M
 }
 
 /**
- * 在 system prompt 中注入模型信息 + long-term memory
+ *  system prompt + long-term memory
  */
 export function injectModelSystemPrompt(
   model: string,
@@ -275,7 +275,7 @@ export function injectModelSystemPrompt(
   let hasInjected = false
   return messages.map((m) => {
     if (m.role === role && !hasInjected) {
-      m = cloneMessage(m) // 复制，防止原始数据在其他地方被直接渲染使用
+      m = cloneMessage(m) // ，other
       m.contentParts = [{ type: 'text', text: metadataPrompt + getMessageText(m) }]
       hasInjected = true
     }

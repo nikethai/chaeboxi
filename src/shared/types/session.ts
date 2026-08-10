@@ -328,6 +328,12 @@ export const MessageArtifactSchema = z.object({
   timestamp: z.number(),
 })
 
+export const MemoryAttachmentSchema = z.object({
+  id: z.string(),
+  content: z.string(),
+  tags: z.array(z.string()).default([]),
+})
+
 export const MessageSchema = z.object({
   id: z.string(),
   role: z.nativeEnum(MessageRoleEnum),
@@ -364,6 +370,8 @@ export const MessageSchema = z.object({
   isSummary: z.boolean().optional(), // Marks message as a compaction summary
   feedback: MessageFeedbackSchema.optional().catch(undefined),
   artifacts: z.array(MessageArtifactSchema).optional().catch(undefined),
+  /** Memories explicitly attached to this user turn from the composer. */
+  memoryAttachments: z.array(MemoryAttachmentSchema).optional().catch(undefined),
   /** Explicit skill package ids selected via $ tags / chips on this user message */
   skillIds: z.array(z.string()).optional().catch(undefined),
   /** Skills that were actually activated for this turn (assistant message) */
@@ -527,6 +535,7 @@ export type ModelProvider = z.infer<typeof ModelProviderSchema>
 export type MessageStatus = z.infer<typeof MessageStatusSchema>
 export type MessageFeedback = z.infer<typeof MessageFeedbackSchema>
 export type MessageArtifact = z.infer<typeof MessageArtifactSchema>
+export type MemoryAttachment = z.infer<typeof MemoryAttachmentSchema>
 export type Message = z.infer<typeof MessageSchema>
 export type SessionType = z.infer<typeof SessionTypeSchema>
 export type CompactionPoint = z.infer<typeof CompactionPointSchema>

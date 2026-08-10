@@ -1,4 +1,4 @@
-import type { Message, MessageContentParts } from '@shared/types'
+import type { MemoryAttachment, Message, MessageContentParts } from '@shared/types'
 import type { ModelDependencies } from '@shared/types/adapters'
 import type { FilePart, ImagePart, ModelMessage, ReasoningUIPart, TextPart } from 'ai'
 import dayjs from 'dayjs'
@@ -125,6 +125,17 @@ async function convertAssistantContentParts(
   return compact(convertedParts)
 }
 
+function formatMemoryAttachments(attachments: MemoryAttachment[] | undefined): string {
+  if (!attachments?.length) return ''
+
+  const facts = attachments.map((attachment) => {
+    const tags = attachment.tags.length ? ` [tags: ${attachment.tags.join(', ')}]` : ''
+    return `- ${attachment.content}${tags}`
+  })
+
+  return `User-selected memory for this turn:\n${facts.join('\n')}`
+}
+
 export async function convertToModelMessages(
   messages: Message[],
   options?: {
@@ -144,9 +155,10 @@ export async function convertToModelMessages(
           }
         case 'user': {
           const contentParts = await convertUserContentParts(m.contentParts || [], dependencies, options)
+          const memoryContext = formatMemoryAttachments(m.memoryAttachments)
           return {
             role: 'user' as const,
-            content: contentParts,
+            content: memoryContext ? [...contentParts, { type: 'text', text: memoryContext }] : contentParts,
           }
         }
         case 'assistant': {

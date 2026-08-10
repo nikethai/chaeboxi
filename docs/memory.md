@@ -51,7 +51,13 @@ Legacy **User Personal Info** is migrated into the global bank; `/settings/user-
 
 ## UI affordances
 
-- **Statusline chip** (`mem on · N`): session dock bar; click opens Settings → Memory
+- **Memory controls**: the composer brain button (next to `+`) and the `mem on · N` statusline chip open an in-chat Global memory popover
+  - Search uses the same scored recall behavior as chat, with pinned/recent entries shown before searching
+  - Click a tag chip to filter Global memories, then check multiple entries and use **Insert N selected** to add their facts to the draft together
+  - **Insert** adds selected memories as removable composer chips. Hover a chip to preview its full content; the text is added to the model request only when the message is sent.
+  - Type **`@mem`** or **`@memory`** in the composer to search memories from the keyboard; add a search phrase after a space, then use arrow keys plus Enter or Tab to attach the highlighted result.
+  - **Save memory from draft** uses selected composer text first (otherwise the draft), requires review + optional tags, and saves unpinned by default
+  - **Manage** opens Settings → Memory for full editing, archive, export, and advanced controls
 - **Save to memory**: message action toolbar (brain icon), next to edit / more
 - **Settings → Memory** tabs: **Global** | **Agents** | **Advanced**
   - Header: master **Enabled** / **Auto-save** + status strip (`On · N facts · ~T tokens`)

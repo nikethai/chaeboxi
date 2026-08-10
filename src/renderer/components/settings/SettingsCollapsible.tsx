@@ -1,3 +1,4 @@
+import { IconChevronDown } from '@tabler/icons-react'
 import type { ReactNode } from 'react'
 import { useId, useState } from 'react'
 
@@ -10,8 +11,10 @@ export interface SettingsCollapsibleProps {
   /** Force open when true (e.g. section has values). */
   forceOpen?: boolean
   className?: string
-  /** Optional badge on the right of the trigger (e.g. "Optional"). */
+  /** Optional badge on the right of the trigger (e.g. "Advanced"). */
   badge?: ReactNode
+  /** Visual weight for the badge: quiet (default) or active (configured / on). */
+  badgeTone?: 'quiet' | 'active'
 }
 
 /**
@@ -25,6 +28,7 @@ export function SettingsCollapsible({
   forceOpen,
   className,
   badge,
+  badgeTone = 'quiet',
 }: SettingsCollapsibleProps) {
   const [open, setOpen] = useState(defaultOpen || Boolean(forceOpen))
   const panelId = useId()
@@ -46,9 +50,15 @@ export function SettingsCollapsible({
           {description ? <span className="settings-collapsible-desc text-pretty">{description}</span> : null}
         </span>
         <span className="settings-collapsible-meta">
-          {badge ? <span className="settings-collapsible-badge">{badge}</span> : null}
-          <span className="settings-collapsible-chevron" aria-hidden>
-            ›
+          {badge ? (
+            <span
+              className={`settings-collapsible-badge${badgeTone === 'active' ? ' settings-collapsible-badge-active' : ''}`}
+            >
+              {badge}
+            </span>
+          ) : null}
+          <span className="settings-collapsible-chevron" aria-hidden data-open={expanded ? 'true' : undefined}>
+            <IconChevronDown size={16} stroke={1.75} />
           </span>
         </span>
       </button>

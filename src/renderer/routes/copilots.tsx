@@ -419,7 +419,7 @@ function CopilotForm(props: CopilotFormProps) {
       <SettingsCollapsible
         title={t('Model Settings Override')}
         description={t('Leave blank to use session defaults')}
-        badge={t('Optional')}
+        badge={t('Advanced')}
         defaultOpen={Boolean(
           copilotEdit.modelSettings?.temperature != null ||
             copilotEdit.modelSettings?.topP != null ||
@@ -496,7 +496,7 @@ function CopilotForm(props: CopilotFormProps) {
       <SettingsCollapsible
         title={t('Agent Settings')}
         description={t('Configure agent mode behavior')}
-        badge={t('Optional')}
+        badge={t('Advanced')}
         defaultOpen={
           copilotEdit.maxSteps != null && copilotEdit.maxSteps !== COPILOT_MAX_STEPS_DEFAULT
         }
@@ -538,7 +538,7 @@ function CopilotForm(props: CopilotFormProps) {
       <SettingsCollapsible
         title={t('Tool Access')}
         description={t('Control which tools this agent can use')}
-        badge={t('Optional')}
+        badge={t('Advanced')}
         defaultOpen={Boolean(copilotEdit.toolAccess?.tools?.length)}
       >
         <SettingsCard>
@@ -604,7 +604,7 @@ function CopilotForm(props: CopilotFormProps) {
       <SettingsCollapsible
         title={t('Hooks')}
         description={t('Configure pre-turn and post-turn hook actions')}
-        badge={t('Optional')}
+        badge={t('Advanced')}
         defaultOpen={Boolean(
           (copilotEdit.hooks?.preTurn?.length ?? 0) > 0 || (copilotEdit.hooks?.postTurn?.length ?? 0) > 0
         )}

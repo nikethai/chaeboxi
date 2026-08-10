@@ -340,14 +340,31 @@
     padding: var(--chatbox-dock-pad-y) var(--chatbox-col-pad-x) var(--chatbox-dock-pad-b);
   }
 
-  /* Floating quick chat — same conversation DNA as full session */
+  .chat-dock-stack {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .chat-dock-composer,
+  .chat-dock-composer > .chat-input-shell {
+    min-width: 0;
+  }
+
+  .chat-dock-after-composer {
+    margin-top: 0.5rem;
+  }
+
+  /* Floating quick chat — compact HUD density of full session DNA */
   .quick-chat-shell {
     min-width: 0;
     max-width: 100%;
-    overflow-x: hidden; /* no horizontal scrollbar in floating panel */
-    /* slightly tighter content column in a floating frame */
+    overflow-x: hidden; /* shell clip; Virtuoso also clips X (see below) */
+    /* tighter content column in a floating frame */
     --chatbox-col: min(42rem, 100%);
-    --chatbox-col-pad-x: 1rem;
+    --chatbox-col-pad-x: 0.75rem;
+    --chatbox-dock-pad-y: 0.35rem;
+    --chatbox-dock-pad-b: 0.3rem;
   }
   .quick-chat-header {
     border-bottom: none;
@@ -357,7 +374,7 @@
     min-width: 0;
     max-width: 100%;
     overflow-x: hidden;
-    padding: 0.35rem var(--chatbox-col-pad-x) 0.5rem;
+    padding: 0.25rem var(--chatbox-col-pad-x) 0.35rem;
   }
   .quick-chat-shell .session-dock {
     min-width: 0;
@@ -366,26 +383,58 @@
   }
   .quick-chat-shell .session-dock-pad {
     min-width: 0;
-    padding-top: 0.45rem;
-    padding-bottom: 0.4rem;
+    padding-top: 0.35rem;
+    padding-bottom: 0.3rem;
   }
   .quick-chat-shell .chat-col,
   .quick-chat-shell .chat-col-full {
     max-width: 100%;
     min-width: 0;
   }
+  .quick-chat-shell .chat-dock-stack,
+  .quick-chat-shell .chat-dock-composer,
+  .quick-chat-shell .todo-dock,
+  .quick-chat-shell .todo-dock-panel {
+    min-width: 0;
+    max-width: 100%;
+  }
+  /* Virtuoso is the real scrollport — shell overflow alone does not hide its X bar */
+  .quick-chat-shell .message-list-scroller--no-x {
+    overflow-x: hidden !important;
+  }
+  .quick-chat-shell .message-list-scroller--no-x > div {
+    min-width: 0;
+    max-width: 100%;
+  }
+  /* Contain min-content growth from message rows / prose */
+  .quick-chat-shell .session-thread .chat-col,
+  .quick-chat-shell .session-thread .msg-content,
+  .quick-chat-shell .session-thread .mantine-Stack-root,
+  .quick-chat-shell .session-thread .mantine-Group-root,
+  .quick-chat-shell .session-thread .mantine-Text-root {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .quick-chat-shell .session-thread p,
+  .quick-chat-shell .session-thread li,
+  .quick-chat-shell .session-thread td,
+  .quick-chat-shell .session-thread th,
+  .quick-chat-shell .session-thread .msg-content,
+  .quick-chat-shell .session-thread [class*='markdown'] {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
   /* Wide media / code must shrink inside the floating frame */
   .quick-chat-shell img,
   .quick-chat-shell video,
   .quick-chat-shell pre,
-  .quick-chat-shell table {
+  .quick-chat-shell table,
+  .quick-chat-shell .code-fence {
     max-width: 100%;
   }
-  .quick-chat-shell pre {
+  .quick-chat-shell pre,
+  .quick-chat-shell .code-fence {
     overflow-x: auto;
-  }
-  .quick-chat-hints {
-    user-select: none;
   }
 
   /* Keep the compact quick-chat footer clear of the composer's deep shadow. */
@@ -403,6 +452,160 @@
   .quick-chat-shell .composer-card.composer-card-drag-active,
   .quick-chat-shell .composer-card.composer-card-drag-active:focus-within {
     box-shadow: var(--chatbox-composer-shadow-drag) !important;
+  }
+
+  /*
+   * Quick Chat type + chrome scale — one base so thread / composer / chips match.
+   * Full session stays at ~1.02rem prose; floating panel uses ~0.875rem body.
+   */
+  .quick-chat-shell {
+    --quick-type: 0.875rem; /* 14px body */
+    --quick-type-sm: 0.75rem; /* chips / meta */
+    --quick-type-xs: 0.65rem; /* model / statusline */
+    --quick-lh: 1.5;
+  }
+
+  /* —— Thread prose —— */
+  .quick-chat-shell .msg-turn {
+    padding-bottom: 1.1rem;
+  }
+  .quick-chat-shell .assistant-msg .msg-content {
+    font-size: var(--quick-type) !important;
+    line-height: var(--quick-lh) !important;
+    letter-spacing: -0.01em;
+  }
+  .quick-chat-shell .assistant-msg .msg-content p + p {
+    margin-top: 0.55rem;
+  }
+  .quick-chat-shell .assistant-msg .msg-content ul {
+    margin-top: 0.4rem;
+    gap: 0.3rem;
+    padding-left: 1.05rem;
+  }
+  .quick-chat-shell .assistant-msg .msg-content h1,
+  .quick-chat-shell .assistant-msg .msg-content h2,
+  .quick-chat-shell .assistant-msg .msg-content h3,
+  .quick-chat-shell .assistant-msg .msg-content h4 {
+    font-size: 0.95rem !important;
+    line-height: 1.35 !important;
+    margin-top: 0.65rem !important;
+    margin-bottom: 0.3rem !important;
+  }
+  .quick-chat-shell .assistant-msg .msg-content h1 {
+    font-size: 1.05rem !important;
+  }
+  .quick-chat-shell .assistant-msg .msg-content code:not(pre code) {
+    font-size: 0.8em !important;
+    padding: 0.08em 0.3em !important;
+  }
+  .quick-chat-shell .assistant-msg .msg-content pre,
+  .quick-chat-shell .assistant-msg .msg-content pre code {
+    font-size: 0.75rem !important;
+    line-height: 1.45 !important;
+  }
+  .quick-chat-shell .user-msg .msg-bubble {
+    font-size: var(--quick-type) !important;
+    line-height: var(--quick-lh) !important;
+    padding: 0.5rem 0.8rem !important;
+    border-radius: 1rem;
+  }
+  .quick-chat-shell .skill-chip {
+    font-size: var(--quick-type-sm) !important;
+    padding: 0.12rem 0.45rem !important;
+    gap: 0.2rem;
+  }
+  .quick-chat-shell .skill-chip-sigil {
+    font-size: 0.65rem !important;
+  }
+  .quick-chat-shell .skill-chip-mode {
+    font-size: 0.58rem !important;
+    padding: 0.06rem 0.28rem !important;
+  }
+  .quick-chat-shell .quick-chat-header .mantine-Text-root {
+    font-size: 0.85rem !important;
+  }
+
+  /* —— Composer bar (textarea type scale is after global .composer-textarea) —— */
+  .quick-chat-shell .composer-bar {
+    gap: 0.3rem;
+    padding: 0.15rem 0.3rem 0.25rem 0.35rem;
+    align-items: center;
+  }
+  /* + / memory / overflow hits: 36 → 28 (exclude model chip + send) */
+  .quick-chat-shell .composer-bar .mantine-UnstyledButton-root:not(.model-picker-trigger):not(.composer-send),
+  .quick-chat-shell .composer-bar button:not(.model-picker-trigger):not(.composer-send):not(.session-statusline-tok) {
+    min-width: 28px !important;
+    min-height: 28px !important;
+    width: 28px !important;
+    height: 28px !important;
+    padding: 0 !important;
+    border-radius: 0.4rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .quick-chat-shell .composer-bar .mantine-UnstyledButton-root:not(.model-picker-trigger) > svg,
+  .quick-chat-shell .composer-bar button:not(.model-picker-trigger):not(.composer-send) > svg {
+    width: 15px !important;
+    height: 15px !important;
+  }
+  /* Model chip: tight vertical padding, optical center */
+  .quick-chat-shell .model-picker-trigger {
+    display: inline-flex !important;
+    align-items: center !important;
+    height: 26px !important;
+    min-height: 26px !important;
+    max-height: 26px !important;
+    width: auto !important;
+    min-width: 0 !important;
+    padding: 0 6px !important; /* no vertical padding — height owns the box */
+    gap: 4px !important;
+    border-radius: 6px;
+    line-height: 1 !important;
+    box-sizing: border-box;
+  }
+  .quick-chat-shell .model-picker-trigger .mantine-Text-root {
+    font-size: var(--quick-type-xs) !important;
+    max-width: 7.25rem !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .quick-chat-shell .model-picker-trigger img,
+  .quick-chat-shell .model-picker-trigger svg {
+    width: 12px !important;
+    height: 12px !important;
+    flex-shrink: 0;
+  }
+  .quick-chat-shell .composer-send.mantine-ActionIcon-root,
+  .quick-chat-shell .composer-send {
+    width: 26px !important;
+    height: 26px !important;
+    min-width: 26px !important;
+    min-height: 26px !important;
+    border-radius: 0.375rem !important;
+    padding: 0 !important;
+  }
+  .quick-chat-shell .composer-send svg {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .quick-chat-shell .session-statusline.is-compact {
+    border-top-color: color-mix(in srgb, var(--chatbox-border-primary) 70%, transparent);
+  }
+  .quick-chat-shell .session-statusline.is-compact .session-statusline-inner {
+    min-height: 20px;
+    padding: 0.1rem 0;
+    flex-wrap: nowrap;
+    font-size: var(--quick-type-xs);
+  }
+  .quick-chat-shell .session-statusline.is-compact .session-statusline-seg {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: var(--quick-type-xs) !important;
+    line-height: 1.2 !important;
   }
 
   .studio-rail {
@@ -2231,6 +2434,22 @@
     --input-bd: transparent !important;
   }
 
+  /* Quick Chat must beat .composer-card .composer-textarea { 1rem !important } above */
+  .quick-chat-shell .composer-card .composer-textarea {
+    font-size: 0.875rem !important;
+    line-height: 1.45 !important;
+    min-height: 2.35rem !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: 0.25rem !important;
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+  .quick-chat-shell .composer-card .composer-textarea::placeholder {
+    font-size: 0.8125rem !important; /* slightly quieter than typed text */
+    line-height: 1.45 !important;
+    opacity: 0.85;
+  }
+
   .composer-bar {
     display: flex;
     align-items: center;
@@ -3258,18 +3477,34 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   color: var(--chatbox-tint-error);
 }
 
-/* Session tasks — lives in session-dock above composer (not mid-thread) */
+/* Session tasks — attached to the composer dock, never mid-thread */
 .todo-dock {
   width: 100%;
-  margin: 0 0 0.5rem;
+  margin: 0;
   flex: none;
+  position: relative;
+  z-index: 1;
 }
 
 .todo-dock-panel {
   overflow: hidden;
-  border-radius: 9px;
+  border-radius: 1.15rem 1.15rem 0.7rem 0.7rem;
   border: 1px solid var(--chatbox-border-primary);
   background: var(--chatbox-background-secondary);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 3%, transparent),
+    0 3px 10px -8px rgba(0, 0, 0, 0.28);
+}
+
+.chat-dock-stack:has(> .todo-dock) .chat-dock-composer {
+  position: relative;
+  z-index: 2;
+  margin-top: -1px;
+}
+
+.chat-dock-stack:has(> .todo-dock) .composer-card {
+  border-top-left-radius: 0.7rem;
+  border-top-right-radius: 0.7rem;
 }
 
 .todo-dock-chip {
@@ -3285,6 +3520,12 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   cursor: pointer;
   text-align: left;
   transition: background-color 120ms var(--chatbox-ease);
+}
+
+.todo-dock-chip:focus-visible,
+.todo-dock-completed-toggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 55%, transparent);
+  outline-offset: -2px;
 }
 
 .todo-dock-chip:hover {
@@ -3346,8 +3587,9 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
 }
 
 .todo-dock-list {
-  max-height: 12rem;
+  max-height: min(12rem, 32dvh);
   overflow-y: auto;
+  overscroll-behavior: contain;
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
@@ -3375,6 +3617,59 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
 .todo-dock-completed-toggle:hover {
   color: var(--chatbox-tint-secondary);
   background: var(--chatbox-background-tertiary);
+}
+
+.todo-dock-sheet-overlay {
+  z-index: 500;
+}
+
+.todo-dock-sheet {
+  z-index: 501;
+  overflow: hidden;
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 0.75rem);
+  box-shadow:
+    0 -1px 0 color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent),
+    0 -20px 48px -28px rgba(0, 0, 0, 0.65);
+}
+
+.todo-dock-sheet-head {
+  border-bottom: 1px solid var(--chatbox-border-primary);
+}
+
+.todo-dock-sheet-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.todo-dock-body.is-mobile-sheet {
+  border-top: 0;
+  padding-bottom: 1rem;
+}
+
+.todo-dock-body.is-mobile-sheet .todo-dock-list {
+  max-height: none;
+  overflow: visible;
+}
+
+@media (max-width: 37.5em) {
+  .todo-dock-chip {
+    min-height: 44px;
+    padding-inline: 0.75rem;
+  }
+
+  .todo-dock-panel {
+    border-radius: 1.15rem 1.15rem 0.75rem 0.75rem;
+  }
+
+  .chat-dock-stack:has(> .todo-dock) .composer-card {
+    border-top-left-radius: 0.75rem;
+    border-top-right-radius: 0.75rem;
+  }
+
+  .todo-dock-chip-active {
+    display: none;
+  }
 }
 
 /* ── Settings page (full route, not modal) ──
@@ -3911,6 +4206,454 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   box-shadow: 0 -1px 0 color-mix(in srgb, var(--chatbox-tint-primary) 6%, transparent);
 }
 
+/* ── Quick Chat: portaled pickers (outside .quick-chat-shell) ──
+ * html[data-quick-chat] is set by /quick while mounted.
+ * Model selector uses Desktop combobox on /quick (not the 85vh mobile drawer).
+ * Target: readable HUD — slightly tighter than full session, never microscopic.
+ */
+html[data-quick-chat] .model-picker-dropdown.mantine-Combobox-dropdown,
+html[data-quick-chat] .model-picker-dropdown {
+  --mp-r-outer: 11px;
+  --mp-r-inner: 6px;
+  --mp-pad: 6px;
+  width: min(320px, calc(100vw - 16px)) !important;
+  max-width: calc(100vw - 12px) !important;
+  max-height: min(420px, calc(100vh - 64px)) !important;
+}
+
+html[data-quick-chat] .model-picker-toolbar {
+  padding: 7px 8px;
+}
+
+html[data-quick-chat] .model-picker-search {
+  gap: 7px;
+}
+
+html[data-quick-chat] .model-picker-search-field {
+  height: 32px !important;
+  padding: 0 9px 0 8px !important;
+}
+
+html[data-quick-chat] .model-picker-search-field .mantine-TextInput-input,
+html[data-quick-chat] .model-picker-search-field .mantine-Input-input,
+html[data-quick-chat] .model-picker-search-field input {
+  font-size: 0.8125rem !important;
+  line-height: 1.3 !important;
+}
+
+html[data-quick-chat] .model-picker-search-field .tabler-icon,
+html[data-quick-chat] .model-picker-search-field svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+html[data-quick-chat] .model-picker-search-clear {
+  width: 20px;
+  height: 20px;
+  font-size: 14px;
+  border-radius: 5px;
+}
+
+html[data-quick-chat] .model-picker-tabs.mantine-SegmentedControl-root,
+html[data-quick-chat] .model-picker-tabs {
+  min-height: 0 !important;
+  height: 32px !important;
+}
+
+html[data-quick-chat] .model-picker-tabs .mantine-SegmentedControl-label {
+  min-height: 26px !important;
+  line-height: 26px !important;
+  font-size: 0.75rem !important;
+  padding-inline: 0.55rem !important;
+  padding-block: 0 !important;
+}
+
+html[data-quick-chat] .model-picker-options,
+html[data-quick-chat] .model-picker-options.mantine-Combobox-options {
+  max-height: 280px !important;
+  padding: 4px 5px 8px !important;
+}
+
+html[data-quick-chat] .model-picker-provider {
+  padding: 0.4rem 0.45rem 0.22rem !important;
+}
+
+html[data-quick-chat] .model-picker-provider-name,
+html[data-quick-chat] .model-picker-provider-count {
+  font-size: 0.625rem !important;
+}
+
+html[data-quick-chat] .model-picker-option.mantine-Combobox-option,
+html[data-quick-chat] .model-picker-option {
+  min-height: 34px !important;
+  height: auto !important;
+  gap: 0.45rem !important;
+  padding: 0.35rem 0.5rem 0.35rem 0.55rem !important;
+  margin: 1px 0 !important;
+}
+
+html[data-quick-chat] .model-picker-option-on::before {
+  top: 7px;
+  bottom: 7px;
+  left: 3px;
+  width: 2.5px;
+}
+
+html[data-quick-chat] .model-picker-option .model-picker-icon {
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 5px !important;
+}
+
+html[data-quick-chat] .model-picker-option .model-picker-icon img,
+html[data-quick-chat] .model-picker-option .model-picker-icon svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+html[data-quick-chat] .model-picker-option .mantine-Text-root {
+  font-size: 0.8125rem !important;
+  line-height: 1.25 !important;
+}
+
+html[data-quick-chat] .model-picker-option .mono-meta {
+  font-size: 0.625rem !important;
+}
+
+html[data-quick-chat] .model-picker-option .mantine-Badge-root {
+  font-size: 0.625rem !important;
+  height: 1.1rem !important;
+  padding-inline: 0.3rem !important;
+}
+
+html[data-quick-chat] .model-picker-option .mantine-Flex-root svg,
+html[data-quick-chat] .model-picker-option [class*='ScalableIcon'] svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+html[data-quick-chat] .model-picker-star {
+  width: 26px !important;
+  height: 26px !important;
+  margin: -3px -2px -3px 0 !important;
+  border-radius: 5px;
+}
+
+html[data-quick-chat] .model-picker-star::after {
+  inset: -5px;
+}
+
+html[data-quick-chat] .model-picker-star svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+/* Session options modal — readable HUD density (desktop modal forced on /quick) */
+html[data-quick-chat] .session-settings-modal.mantine-Modal-content,
+html[data-quick-chat] .session-settings-modal {
+  max-width: min(360px, calc(100vw - 20px)) !important;
+  border-radius: 12px !important;
+}
+
+html[data-quick-chat] .session-settings-modal-header {
+  padding: 0.75rem 0.9rem 0.35rem !important;
+  min-height: 0 !important;
+}
+
+html[data-quick-chat] .session-settings-modal-title,
+html[data-quick-chat] .session-settings-modal-header .mantine-Modal-title {
+  font-size: 0.9375rem !important;
+  font-weight: 600 !important;
+  line-height: 1.25 !important;
+}
+
+html[data-quick-chat] .session-settings-modal-body {
+  padding: 0.35rem 0.9rem 0.85rem !important;
+}
+
+html[data-quick-chat] .session-settings-stack {
+  gap: 0.65rem !important;
+}
+
+html[data-quick-chat] .session-settings-modal .mantine-InputWrapper-label,
+html[data-quick-chat] .session-settings-modal .mantine-Textarea-label,
+html[data-quick-chat] .session-settings-modal .mantine-Input-label {
+  font-size: 0.75rem !important;
+  margin-bottom: 0.25rem !important;
+}
+
+html[data-quick-chat] .session-settings-modal .mantine-Input-input,
+html[data-quick-chat] .session-settings-modal .mantine-Textarea-input,
+html[data-quick-chat] .session-settings-modal .mantine-Select-input {
+  font-size: 0.8125rem !important;
+  min-height: 32px !important;
+}
+
+html[data-quick-chat] .session-settings-modal .mantine-Textarea-input {
+  min-height: 2.5rem !important;
+  line-height: 1.4 !important;
+}
+
+html[data-quick-chat] .session-settings-modal .mantine-Button-root {
+  font-size: 0.8125rem !important;
+  min-height: 32px !important;
+  height: auto !important;
+}
+
+html[data-quick-chat] .session-settings-modal .mantine-Button-root[data-size='compact-xs'] {
+  min-height: 24px !important;
+  font-size: 0.6875rem !important;
+}
+
+html[data-quick-chat] .session-settings-advanced-toggle {
+  padding: 0.5rem 0.65rem !important;
+}
+
+html[data-quick-chat] .session-settings-advanced-toggle .mantine-Text-root {
+  font-size: 0.8125rem !important;
+}
+
+html[data-quick-chat] .session-settings-modal .mantine-Text-root {
+  font-size: 0.8125rem !important;
+}
+
+/* Thinking Budget / Effort — short labels + no clip in ~360px modal */
+html[data-quick-chat] .session-thinking-budget-control {
+  min-width: 0;
+  width: 100%;
+  overflow: visible;
+}
+
+html[data-quick-chat] .session-thinking-budget-segments.mantine-SegmentedControl-root,
+html[data-quick-chat] .session-thinking-budget-segments {
+  width: 100% !important;
+  min-width: 0 !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+
+html[data-quick-chat] .session-thinking-budget-segments .mantine-SegmentedControl-label {
+  font-size: 0.6875rem !important;
+  font-weight: 500 !important;
+  line-height: 1.2 !important;
+  padding-inline: 0.2rem !important;
+  padding-block: 0.35rem !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: clip !important;
+  min-width: 0 !important;
+}
+
+html[data-quick-chat] .session-thinking-budget-segments .mantine-SegmentedControl-control {
+  min-width: 0 !important;
+  flex: 1 1 0 !important;
+}
+
+html[data-quick-chat] .session-thinking-budget-segments .mantine-SegmentedControl-innerLabel {
+  overflow: visible !important;
+}
+
+/* Memory dock popover (portaled) */
+html[data-quick-chat] .memory-dock-dropdown.mantine-Popover-dropdown,
+html[data-quick-chat] .memory-dock-dropdown {
+  width: min(300px, calc(100vw - 20px)) !important;
+  max-width: calc(100vw - 16px) !important;
+  padding: 0.55rem 0.6rem !important;
+  border-radius: 10px !important;
+}
+
+html[data-quick-chat] .memory-dock-dropdown .memory-dock-body {
+  gap: 0.45rem !important;
+}
+
+html[data-quick-chat] .memory-dock-dropdown .memory-dock-header {
+  gap: 0.35rem !important;
+}
+
+html[data-quick-chat] .memory-dock-dropdown .memory-dock-header-icon {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+html[data-quick-chat] .memory-dock-dropdown .memory-dock-title {
+  font-size: 0.8125rem !important;
+  line-height: 1.2 !important;
+}
+
+html[data-quick-chat] .memory-dock-dropdown .memory-dock-manage {
+  font-size: 0.6875rem !important;
+  height: 24px !important;
+  min-height: 24px !important;
+  padding-inline: 0.4rem !important;
+}
+
+html[data-quick-chat] .memory-dock-dropdown .memory-dock-manage svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+html[data-quick-chat] .memory-dock-dropdown .mantine-TextInput-root,
+html[data-quick-chat] .memory-dock-dropdown .mantine-Textarea-root {
+  --input-height: 30px;
+  --input-fz: 0.75rem;
+}
+
+html[data-quick-chat] .memory-dock-dropdown .mantine-TextInput-input,
+html[data-quick-chat] .memory-dock-dropdown .mantine-Textarea-input,
+html[data-quick-chat] .memory-dock-dropdown .mantine-Input-input {
+  font-size: 0.75rem !important;
+  min-height: 30px !important;
+  padding-top: 0.3rem !important;
+  padding-bottom: 0.3rem !important;
+}
+
+html[data-quick-chat] .memory-dock-dropdown .mantine-TextInput-section svg,
+html[data-quick-chat] .memory-dock-dropdown .mantine-Input-section svg {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+html[data-quick-chat] .memory-dock-dropdown .mantine-Text-root {
+  font-size: 0.75rem !important;
+  line-height: 1.35 !important;
+}
+
+html[data-quick-chat] .memory-dock-dropdown .mantine-Text-root[data-size='xs'],
+html[data-quick-chat] .memory-dock-dropdown .mantine-Text-root[class*='xs'] {
+  font-size: 0.6875rem !important;
+}
+
+html[data-quick-chat] .memory-dock-dropdown .mantine-Button-root {
+  font-size: 0.6875rem !important;
+  min-height: 26px !important;
+  height: auto !important;
+  padding-block: 0.2rem !important;
+}
+
+html[data-quick-chat] .memory-dock-dropdown .mantine-Button-root[data-size='compact-xs'],
+html[data-quick-chat] .memory-dock-dropdown .mantine-Button-root.mantine-Button-compact-xs {
+  min-height: 22px !important;
+  font-size: 0.625rem !important;
+  padding-inline: 0.35rem !important;
+}
+
+html[data-quick-chat] .memory-dock-dropdown .mantine-Badge-root {
+  font-size: 0.5625rem !important;
+  height: 1.05rem !important;
+  padding-inline: 0.3rem !important;
+}
+
+html[data-quick-chat] .memory-dock-dropdown .mantine-Checkbox-root {
+  --checkbox-size: 0.85rem;
+}
+
+html[data-quick-chat] .memory-dock-dropdown .rounded-lg.border {
+  padding: 0.4rem 0.45rem !important;
+  border-radius: 0.5rem !important;
+}
+
+html[data-quick-chat] .memory-dock-dropdown .mantine-Stack-root[style*='max-height'],
+html[data-quick-chat] .memory-dock-dropdown .memory-dock-body > .mantine-Stack-root {
+  max-height: 180px !important;
+  gap: 0.35rem !important;
+}
+
+/* Composer + overflow menu (portaled Menu.Dropdown) */
+html[data-quick-chat] .composer-tools-menu.mantine-Menu-dropdown,
+html[data-quick-chat] .composer-tools-menu {
+  width: min(260px, calc(100vw - 20px)) !important;
+  max-width: calc(100vw - 16px) !important;
+  max-height: min(420px, calc(100vh - 48px)) !important;
+  overflow-y: auto !important;
+  padding: 4px !important;
+  border-radius: 10px !important;
+}
+
+html[data-quick-chat] .composer-tools-menu .mantine-Menu-label {
+  font-size: 0.625rem !important;
+  line-height: 1.2 !important;
+  padding: 0.35rem 0.5rem 0.15rem !important;
+  letter-spacing: 0.03em;
+}
+
+html[data-quick-chat] .composer-tools-menu .mantine-Menu-item {
+  min-height: 28px !important;
+  font-size: 0.75rem !important;
+  line-height: 1.25 !important;
+  padding: 0.28rem 0.5rem !important;
+  border-radius: 6px !important;
+  gap: 0.4rem !important;
+}
+
+html[data-quick-chat] .composer-tools-menu .mantine-Menu-itemLabel {
+  font-size: 0.75rem !important;
+  line-height: 1.25 !important;
+}
+
+html[data-quick-chat] .composer-tools-menu .mantine-Menu-itemSection {
+  margin-inline-end: 0 !important;
+}
+
+html[data-quick-chat] .composer-tools-menu .mantine-Menu-itemSection svg,
+html[data-quick-chat] .composer-tools-menu .mantine-Menu-item > svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+html[data-quick-chat] .composer-tools-menu .mantine-Text-root {
+  font-size: 0.75rem !important;
+  line-height: 1.3 !important;
+}
+
+html[data-quick-chat] .composer-tools-menu .mantine-Text-root[data-size='xs'] {
+  font-size: 0.625rem !important;
+  line-height: 1.25 !important;
+}
+
+html[data-quick-chat] .composer-tools-menu .mantine-Switch-root {
+  --switch-height: 16px;
+  --switch-width: 28px;
+  --switch-thumb-size: 12px;
+}
+
+html[data-quick-chat] .composer-tools-menu .mantine-Switch-track {
+  min-width: 28px !important;
+  width: 28px !important;
+  height: 16px !important;
+  min-height: 16px !important;
+}
+
+html[data-quick-chat] .composer-tools-menu .mantine-Switch-thumb {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+html[data-quick-chat] .composer-tools-menu .mantine-ActionIcon-root {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+}
+
+html[data-quick-chat] .composer-tools-menu .mantine-ActionIcon-root svg {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+html[data-quick-chat] .composer-tools-menu .mantine-Menu-divider {
+  margin: 0.2rem 0 !important;
+}
+
+/* MCP / Knowledge Base section headers only (direct Flex children) */
+html[data-quick-chat] .composer-tools-menu > .mantine-Flex-root {
+  padding: 0.25rem 0.5rem 0.1rem !important;
+  min-height: 0 !important;
+}
+
+html[data-quick-chat] .composer-tools-menu .mantine-Menu-item .mantine-Flex-root {
+  gap: 1px !important;
+}
+
 /* Trigger chip in composer dock */
 .model-picker-trigger {
   height: 32px;
@@ -4035,10 +4778,17 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   border-top: 1px solid var(--chatbox-border-primary);
   background: var(--chatbox-background-rail);
   padding: 0 var(--chatbox-col-pad-x);
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .session-statusline.is-empty {
   opacity: 0.92;
+}
+
+.session-statusline.is-compact {
+  overflow: hidden;
 }
 
 .session-statusline-inner {

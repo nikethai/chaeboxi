@@ -50,6 +50,7 @@ export function MessageAttachmentGrid({ files, links }: MessageAttachmentGridPro
               url={link.url}
               byteLength={link.byteLength}
               storageKey={link.storageKey}
+              posterStorageKey={link.imageStorageKey}
             />
           </div>
         ))}

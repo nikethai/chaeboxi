@@ -320,6 +320,23 @@ const ExtensionSettingsSchema = z.object({
   documentParser: DocumentParserConfigSchema.optional(),
   historySync: HistorySyncConfigSchema.optional().catch(undefined),
   memorySync: MemorySyncConfigSchema.optional().catch(undefined),
+  /** Read public video URLs (YouTube/Vimeo/TikTok/Facebook) in agent tools */
+  videoUrl: z
+    .object({
+      enabled: z.boolean().default(true).catch(true),
+      provider: z.enum(['none', 'supadata', 'custom']).default('none').catch('none'),
+      apiKey: z.string().optional().catch(undefined),
+      customEndpoint: z.string().optional().catch(undefined),
+      sttProvider: z.enum(['none', 'openai']).default('none').catch('none'),
+      sttApiKey: z.string().optional().catch(undefined),
+      preferCaptions: z.boolean().default(true).catch(true),
+      maxTranscriptChars: z.number().int().min(500).max(50_000).default(12_000).catch(12_000),
+      maxSttDurationSec: z.number().int().min(60).max(7200).default(1800).catch(1800),
+      desktopExtractorEnabled: z.boolean().default(false).catch(false),
+      desktopExtractorPath: z.string().optional().catch(undefined),
+    })
+    .optional()
+    .catch(undefined),
 })
 
 const MCPTransportConfigSchema = z.discriminatedUnion('type', [

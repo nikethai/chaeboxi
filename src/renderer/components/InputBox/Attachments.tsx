@@ -318,6 +318,7 @@ export function MessageAttachment(props: {
   const { label, filename, url, storageKey, fileType, byteLength, mediaKind, posterStorageKey, durationSec } = props
   const { t } = useTranslation()
   const isVideo = mediaKind === 'video'
+  const isLinkWithThumb = Boolean(url && posterStorageKey)
 
   const handleClick = async () => {
     if (isVideo && storageKey) {
@@ -349,11 +350,13 @@ export function MessageAttachment(props: {
   const durationLabel = durationSec !== undefined ? formatDurationForDisplay(durationSec) : ''
   const subtitle = isVideo
     ? [durationLabel || t('Video'), sizeLabel].filter(Boolean).join(' · ')
-    : [typeLabel, sizeLabel].filter(Boolean).join(' · ')
+    : isLinkWithThumb
+      ? [t('Link'), sizeLabel].filter(Boolean).join(' · ')
+      : [typeLabel, sizeLabel].filter(Boolean).join(' · ')
 
-  if (isVideo) {
+  if (isVideo || isLinkWithThumb) {
     return (
-      <Tooltip title={isClickable ? t('Open video') : label}>
+      <Tooltip title={isClickable ? (isVideo ? t('Open video') : t('Open link content')) : label}>
         <button
           type="button"
           className={cn(
@@ -364,17 +367,21 @@ export function MessageAttachment(props: {
           )}
           onClick={handleClick}
           disabled={!isClickable}
-          aria-label={t('Open video')}
+          aria-label={isVideo ? t('Open video') : t('Open link content')}
         >
           <div className="relative h-[52px] w-[72px] shrink-0 overflow-hidden bg-[var(--chatbox-background-tertiary)]">
             {posterStorageKey ? (
               <PosterThumb storageKey={posterStorageKey} className="size-full" />
             ) : (
               <div className="flex size-full items-center justify-center">
-                <Film className="size-5 text-chatbox-tertiary" strokeWidth={1.5} />
+                {isVideo ? (
+                  <Film className="size-5 text-chatbox-tertiary" strokeWidth={1.5} />
+                ) : (
+                  <Link2 className="size-5 text-chatbox-tertiary" strokeWidth={1.5} />
+                )}
               </div>
             )}
-            {durationLabel && (
+            {isVideo && durationLabel && (
               <span className="absolute right-1 bottom-1 rounded bg-black/60 px-1 font-mono text-[10px] tabular-nums text-white">
                 {durationLabel}
               </span>
@@ -444,11 +451,16 @@ export function LinkMiniCard(props: {
   errorMessage?: string
   onErrorClick?: () => void
   staggerIndex?: number
+  /** Optional display title (video/page title) */
+  title?: string
+  /** Stored OG / thumbnail image */
+  imageStorageKey?: string
 }) {
-  const { url, onDelete, status, errorMessage, onErrorClick, staggerIndex } = props
+  const { url, onDelete, status, errorMessage, onErrorClick, staggerIndex, title, imageStorageKey } = props
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
-  const label = url.replace(/^https?:\/\//, '')
+  const hostLabel = url.replace(/^https?:\/\//, '').replace(/\/$/, '')
+  const label = title?.trim() || hostLabel
 
   const handleClick = () => {
     if (status === 'error' && onErrorClick) {
@@ -458,6 +470,7 @@ export function LinkMiniCard(props: {
 
   // (legacy comment removed)
   const translatedError = getTranslatedErrorMessage(errorMessage, t)
+  const hasThumb = Boolean(imageStorageKey)
 
   return (
     <div
@@ -466,18 +479,35 @@ export function LinkMiniCard(props: {
       onClick={handleClick}
       role={status === 'error' ? 'button' : undefined}
     >
-      <Tooltip title={status === 'error' && translatedError ? translatedError : url}>
-        <div className="flex w-full flex-col items-center justify-center gap-1 px-1.5">
-          <Link className="h-7 w-7 text-[var(--chatbox-tint-primary)]" strokeWidth={1.5} />
-          <Typography
-            className="w-full text-center text-[var(--chatbox-tint-primary)]"
-            noWrap
-            sx={{ fontSize: '11px', lineHeight: 1.3, letterSpacing: '-0.01em' }}
-          >
-            {label}
-          </Typography>
-          <span className="font-mono text-[10px] text-[var(--chatbox-tint-tertiary)]">URL</span>
-        </div>
+      <Tooltip title={status === 'error' && translatedError ? translatedError : title ? `${title}\n${url}` : url}>
+        {hasThumb && imageStorageKey ? (
+          <div className="relative flex size-full flex-col overflow-hidden">
+            <div className="min-h-0 flex-1">
+              <PosterThumb storageKey={imageStorageKey} className="size-full" />
+            </div>
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 pb-1.5 pt-5">
+              <Typography
+                className="w-full text-center text-white"
+                noWrap
+                sx={{ fontSize: '10px', lineHeight: 1.25, letterSpacing: '-0.01em', fontWeight: 600 }}
+              >
+                {label}
+              </Typography>
+            </div>
+          </div>
+        ) : (
+          <div className="flex w-full flex-col items-center justify-center gap-1 px-1.5">
+            <Link className="h-7 w-7 text-[var(--chatbox-tint-primary)]" strokeWidth={1.5} />
+            <Typography
+              className="w-full text-center text-[var(--chatbox-tint-primary)]"
+              noWrap
+              sx={{ fontSize: '11px', lineHeight: 1.3, letterSpacing: '-0.01em' }}
+            >
+              {label}
+            </Typography>
+            <span className="font-mono text-[10px] text-[var(--chatbox-tint-tertiary)]">URL</span>
+          </div>
+        )}
       </Tooltip>
 
       <StatusBadge status={status} />

@@ -188,16 +188,16 @@ class ResultPersister {
     const timeSinceLastFlush = now - this.lastFlushTime
 
     if (timeSinceLastFlush >= this.throttleMs) {
-      // 距离上次 flush 已超过 throttleMs，立即 flush
+      // flush throttleMs， flush
       this.doFlush()
     } else if (!this.flushTimer) {
-      // 安排在剩余时间后 flush
+      // (legacy comment)
       this.flushTimer = setTimeout(() => {
         this.flushTimer = null
         this.doFlush()
       }, this.throttleMs - timeSinceLastFlush)
     }
-    // 如果已有计时器，不做任何事（throttle 行为）
+    // (legacy comment)
   }
 
   private doFlush(): void {

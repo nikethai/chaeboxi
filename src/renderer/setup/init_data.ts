@@ -5,7 +5,7 @@ export async function initData() {
 }
 
 async function initSessionsIfNeeded() {
-  // 已经做过 migration，只需要检查是否存在 sessionList
+  // migration， sessionList
   const sessionList = await chatStore.listSessionsMeta()
   if (sessionList.length > 0) {
     return

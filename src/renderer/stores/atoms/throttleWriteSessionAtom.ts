@@ -12,7 +12,7 @@ const _createSessionAtom = (sessionId: string) => {
 
   const at = atom<Session | null>(null)
   sessionAtomCache.set(sessionId, at)
-  // 第一次初始化的时候，从本地存储读取
+  // (legacy comment removed)
   const store = getDefaultStore()
   storage.getItem(StorageKeyGenerator.session(sessionId), null).then((value) => {
     store.set(at, value)
@@ -78,7 +78,7 @@ export function createSessionAtom(sessionId: string) {
 
   const throttleWriteSessionAtom = atom(
     (get) => {
-      // init 从 storage 读取
+      // init storage
       return get(_createSessionAtom(sessionId))
     },
     (get, set, update: SetStateAction<Session | null>) => {

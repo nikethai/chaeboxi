@@ -44,7 +44,7 @@ describe('SequenceMessages', () => {
       ],
     },
     {
-      name: '助手先于用户发言',
+      name: 'assistant before user',
       input: [
         { id: '', role: 'system', contentParts: [{ type: 'text', text: 'S1' }] },
         {
@@ -88,7 +88,7 @@ L3
       ],
     },
     {
-      name: '没有系统消息',
+      name: 'no system message',
       input: [
         { id: '', role: 'assistant', contentParts: [{ type: 'text', text: 'A1' }] },
         { id: '', role: 'assistant', contentParts: [{ type: 'text', text: 'A2' }] },
@@ -103,7 +103,7 @@ L3
       ],
     },
     {
-      name: '没有系统消息 2',
+      name: 'no system message 2',
       input: [
         { id: '', role: 'user', contentParts: [{ type: 'text', text: 'U1' }] },
         { id: '', role: 'assistant', contentParts: [{ type: 'text', text: 'A1' }] },
@@ -118,7 +118,7 @@ L3
       ],
     },
     {
-      name: '去除空消息',
+      name: 'remove empty messages',
       input: [
         { id: '', role: 'system', contentParts: [{ type: 'text', text: '' }] },
         { id: '', role: 'user', contentParts: [{ type: 'text', text: '' }] },
@@ -136,7 +136,7 @@ L3
       ],
     },
     {
-      name: '只有 user 消息',
+      name: 'only user messages',
       input: [
         { id: '', role: 'user', contentParts: [{ type: 'text', text: 'U1' }] },
         { id: '', role: 'user', contentParts: [{ type: 'text', text: 'U2' }] },
@@ -153,7 +153,7 @@ L3
       ],
     },
     {
-      name: '只有 assistant 消息',
+      name: 'only assistant messages',
       input: [
         { id: '', role: 'assistant', contentParts: [{ type: 'text', text: 'A1' }] },
         { id: '', role: 'assistant', contentParts: [{ type: 'text', text: 'A2' }] },
@@ -164,12 +164,12 @@ L3
       ],
     },
     {
-      name: '只有一条 assistant 消息，应该转化成 user 消息',
+      name: 'single assistant message becomes user',
       input: [{ id: '', role: 'assistant', contentParts: [{ type: 'text', text: 'A1' }] }],
       expected: [{ id: '', role: 'user', contentParts: [{ type: 'text', text: '> A1\n' }] }],
     },
     {
-      name: '只有一条不为空的 assistant 消息，应该转化成 user 消息',
+      name: 'non-empty assistant becomes user',
       input: [
         { id: '', role: 'user', contentParts: [{ type: 'text', text: '' }] },
         { id: '', role: 'assistant', contentParts: [{ type: 'text', text: 'A1' }] },
@@ -178,12 +178,12 @@ L3
       expected: [{ id: '', role: 'user', contentParts: [{ type: 'text', text: '> A1\n' }] }],
     },
     {
-      name: '只有一条 system 消息，应该转化成 user 消息',
+      name: 'single system message becomes user',
       input: [{ id: '', role: 'system', contentParts: [{ type: 'text', text: 'S1' }] }],
       expected: [{ id: '', role: 'user', contentParts: [{ type: 'text', text: 'S1' }] }],
     },
     {
-      name: '只有一条不为空的 system 消息，应该转化成 user 消息',
+      name: 'non-empty system becomes user',
       input: [
         { id: '', role: 'system', contentParts: [{ type: 'text', text: '' }] },
         { id: '', role: 'user', contentParts: [{ type: 'text', text: '' }] },
@@ -204,7 +204,7 @@ L3
       ],
     },
     {
-      name: '合并图片',
+      name: 'merge images',
       input: [
         { id: '', role: 'user', contentParts: [{ type: 'text', text: 'U1' }] },
         {

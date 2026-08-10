@@ -11,7 +11,7 @@ import { safeStorage } from './safeStorage'
 export type QuoteDraft = Pick<MessageQuoteAttachment, 'sourceMessageId' | 'sourceRole' | 'text' | 'isPartial'>
 
 // UI store for managing UI-related state
-// 不能使用immer middleware，会导致RefObject出问题
+// immer middleware，RefObject
 export const uiStore = createStore(
   persist(
     combine(
@@ -29,8 +29,8 @@ export const uiStore = createStore(
         sidebarLayout: 'expanded' as 'expanded' | 'rail',
         sidebarMode: 'chat' as 'chat' | 'task',
         openSearchDialog: false,
-        searchDialogGlobalOnly: false, // 是否只显示全局搜索（用于对话列表）
-        openAboutDialog: false, // 是否展示相关信息的窗口
+        searchDialogGlobalOnly: false, // （）
+        openAboutDialog: false, // (legacy)
         inputBoxWebBrowsingMode: false,
         sessionWebBrowsingMap: {} as Record<string, boolean | undefined>,
         // Cache for current session's computed web browsing state (for keyboard shortcut)

@@ -18,7 +18,7 @@ const ContentViewer = NiceModal.create(({ title, content: directContent, storage
   const modal = useModal()
   const { t } = useTranslation()
 
-  // 如果提供了 storageKey，则异步加载内容；否则直接使用 content
+  // (legacy comment)
   const { data: loadedContent, isLoading } = useQuery({
     queryKey: ['content-viewer', storageKey],
     queryFn: async () => {

@@ -183,7 +183,7 @@ describe('executeTask', () => {
 
     it('uses deepseek tokenizer when specified', async () => {
       const session = createSession({
-        messages: [createMessage({ id: 'msg-1', contentParts: [{ type: 'text', text: '你好世界' }] })],
+        messages: [createMessage({ id: 'msg-1', contentParts: [{ type: 'text', text: 'Hello world' }] })],
       })
       mockGetSession.mockResolvedValue(session)
 

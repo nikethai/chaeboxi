@@ -1,6 +1,7 @@
 import { createDesktopAwareFetch, hasDesktopHttpTransport } from '@shared/utils/desktop-http-fetch'
 import platform, { isCapacitorMobile } from '@/platform'
 import { ApiError, BaseError, NetworkError } from '../../shared/models/errors'
+import { CHATBOX_CLOUD_ENABLED } from '../../shared/product'
 import { isLocalHost } from '../../shared/utils/network_utils'
 import { handleMobileRequest } from './mobile-request'
 
@@ -20,7 +21,7 @@ async function retryRequest<T>(fn: () => Promise<T>, retry: number, url: string)
     try {
       return await fn()
     } catch (e) {
-      // 对 ApiError（通常代表 4xx/业务错误）不重试
+      // Do not retry ApiError (typically 4xx / business errors)
       if (e instanceof ApiError) {
         throw e
       }
@@ -84,7 +85,8 @@ async function doRequest(url: string, options: RequestOptions): Promise<Response
     return retryRequest(makeDesktopRequest, retry, url)
   }
 
-  if (useProxy && !isLocalHost(url) && !isCapacitorMobile) {
+  // Legacy CORS proxy only when cloud is explicitly enabled (off by default)
+  if (CHATBOX_CLOUD_ENABLED && useProxy && !isLocalHost(url) && !isCapacitorMobile) {
     const version = await platform.getVersion()
     headers.set('CHATBOX-VERSION', version || 'unknown')
     requestUrl = 'https://cors-proxy.chatboxai.app/proxy-api/completions'

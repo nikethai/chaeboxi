@@ -172,7 +172,7 @@ export function RouteComponent() {
       <SettingsSection
         title={t('Error Reporting')}
         description={t(
-          'Chatbox respects your privacy and only uploads anonymous error data and events when necessary. You can change your preferences at any time in the settings.'
+          'Chaeboxi respects your privacy and only uploads anonymous error data and events when necessary. You can change your preferences at any time in the settings.'
         )}
       >
         <SettingsCard divided>
@@ -580,9 +580,9 @@ const ImportExportDataSection = () => {
 
   const onExport = async () => {
     const data = await storage.getAll()
-    delete data[StorageKey.Configs] // 不导出 uuid
-    ;(data[StorageKey.Settings] as Settings).licenseDetail = undefined // 不导出历史兼容字段
-    ;(data[StorageKey.Settings] as Settings).licenseInstances = undefined // 不导出历史兼容字段
+    delete data[StorageKey.Configs] // uuid
+    ;(data[StorageKey.Settings] as Settings).licenseDetail = undefined // (legacy)
+    ;(data[StorageKey.Settings] as Settings).licenseInstances = undefined // (legacy)
     if (!exportItems.includes(ExportDataItem.Key)) {
       delete (data[StorageKey.Settings] as Settings).licenseKey
       data[StorageKey.Settings].providers = mapValues(
@@ -639,7 +639,7 @@ const ImportExportDataSection = () => {
             throw new Error('FileReader result is not string')
           }
           const importData = JSON.parse(result)
-          // 如果导入数据中包含了老的版本号，应该仅仅针对老的版本号进行迁移
+          // (legacy comment removed)
           await migrateOnData(
             {
               getData: (key, defaultValue) => Promise.resolve(importData[key] ?? defaultValue),
@@ -676,9 +676,9 @@ const ImportExportDataSection = () => {
             )
           }
 
-          // 由于即将重启应用，这里不需要清理loading状态
-          // props.onCancel() // 导入成功后立即关闭设置窗口，防止用户点击保存、导致设置数据被覆盖
-          platform.relaunch() // 重启应用以生效
+          // (legacy comment)
+          // (legacy comment)
+          platform.relaunch() // (legacy)
         } catch (err) {
           setImportTips(errTip)
 

@@ -47,7 +47,7 @@ export default function MaxContextMessageCountSlider({ value, onChange, classNam
   }, [])
   const handleSliderChangeEnd = useCallback(
     (v: number) => {
-      // 有概率会出现SliderChangeEnd事件之后又产生一个SliderChange，所以延时处理
+      // SliderChangeEndSliderChange，
       setTimeout(() => {
         setTempSliderValue(undefined)
         onChange?.(MESSAGE_COUNT_OPTIONS[v])

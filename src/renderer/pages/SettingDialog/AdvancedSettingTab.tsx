@@ -160,9 +160,9 @@ function ExportAndImport(props: { onCancel: () => void }) {
   const [importTips, setImportTips] = useState('')
   const onExport = async () => {
     const data = await storage.getAll()
-    delete data[StorageKey.Configs] // 不导出 uuid
-    ;(data[StorageKey.Settings] as Settings).licenseDetail = undefined // 不导出历史兼容字段
-    ;(data[StorageKey.Settings] as Settings).licenseInstances = undefined // 不导出历史兼容字段
+    delete data[StorageKey.Configs] // uuid
+    ;(data[StorageKey.Settings] as Settings).licenseDetail = undefined // (legacy)
+    ;(data[StorageKey.Settings] as Settings).licenseInstances = undefined // (legacy)
     if (!exportItems.includes(ExportDataItem.Key)) {
       delete (data[StorageKey.Settings] as Settings).licenseKey
       delete (data[StorageKey.Settings] as Settings).providers
@@ -204,7 +204,7 @@ function ExportAndImport(props: { onCancel: () => void }) {
             throw new Error('FileReader result is not string')
           }
           const importData = JSON.parse(result)
-          // 如果导入数据中包含了老的版本号，应该仅仅针对老的版本号进行迁移
+          // (legacy comment removed)
           await migrateOnData(
             {
               getData: async (key, defaultValue) => {
@@ -221,9 +221,9 @@ function ExportAndImport(props: { onCancel: () => void }) {
           )
 
           const previousData = await storage.getAll()
-          // FIXME: 这里缺少了数据校验
+          // (legacy comment)
           await storage.setAll({
-            ...previousData, // 有时候 importData 在导出时没有包含一些数据，这些数据应该保持原样
+            ...previousData, // importData ，
             ...importData,
             [StorageKey.ChatSessionsList]: uniqBy(
               [
@@ -233,8 +233,8 @@ function ExportAndImport(props: { onCancel: () => void }) {
               'id'
             ),
           })
-          props.onCancel() // 导出成功后立即关闭设置窗口，防止用户点击保存、导致设置数据被覆盖
-          platform.relaunch() // 重启应用以生效
+          props.onCancel() // ，、
+          platform.relaunch() // (legacy)
         } catch (err) {
           setImportTips(errTip)
 
@@ -324,7 +324,7 @@ export function AnalyticsSetting() {
       <div>
         <p className="opacity-70">
           {t(
-            'Chatbox respects your privacy and only uploads anonymous error data and events when necessary. You can change your preferences at any time in the settings.'
+            'Chaeboxi respects your privacy and only uploads anonymous error data and events when necessary. You can change your preferences at any time in the settings.'
           )}
         </p>
       </div>

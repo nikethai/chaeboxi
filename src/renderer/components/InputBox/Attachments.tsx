@@ -1,7 +1,7 @@
 import NiceModal from '@ebay/nice-modal-react'
 import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
-import { ChatboxAIAPIError } from '@shared/models/errors'
+import { ProviderAPIError } from '@shared/models/errors'
 import { useQuery } from '@tanstack/react-query'
 import { AlertCircle, CheckCircle, Eye, Film, Link, Link2, Loader2, Trash2 } from 'lucide-react'
 import { type CSSProperties, useEffect, useState } from 'react'
@@ -12,14 +12,14 @@ import { formatDurationForDisplay } from '@/packages/video'
 import storage from '@/storage'
 import FileIcon from '../FileIcon'
 
-// 根据错误码获取翻译后的错误消息
+// (legacy comment removed)
 function getTranslatedErrorMessage(errorCode: string | undefined, t: (key: string) => string): string | undefined {
   if (!errorCode) return undefined
-  const errorDetail = ChatboxAIAPIError.codeNameMap[errorCode]
+  const errorDetail = ProviderAPIError.codeNameMap[errorCode]
   if (errorDetail) {
-    // 使用 i18nKey 进行翻译，去掉其中的 HTML 标签以便在 Tooltip 中显示纯文本
+    // (legacy comment)
     const translated = t(errorDetail.i18nKey)
-    // 移除 HTML/JSX 标签，只保留纯文本
+    // (legacy comment)
     return translated.replace(/<[^>]*>/g, '')
   }
   return t('Processing failed')
@@ -207,7 +207,7 @@ export function FileMiniCard(props: {
     }
   }
 
-  // 获取翻译后的错误消息
+  // (legacy comment removed)
   const translatedError = getTranslatedErrorMessage(errorMessage, t)
   const typeLabel = durationLabel || getFileTypeLabel(name, props.fileType)
   const tooltipTitle =
@@ -456,7 +456,7 @@ export function LinkMiniCard(props: {
     }
   }
 
-  // 获取翻译后的错误消息
+  // (legacy comment removed)
   const translatedError = getTranslatedErrorMessage(errorMessage, t)
 
   return (

@@ -60,8 +60,8 @@ export interface ResultChange {
   searchQuery?: string
   searchProvider?: string
   groundingMetadata?: GroundingMetadata
-  tokenCount?: number // 当前消息的 token 数量
-  tokensUsed?: number // 生成当前消息的 token 使用量
+  tokenCount?: number // token
+  tokensUsed?: number // token
   tokenSpeed?: number // tokens per second (live during streaming, final when done)
 }
 

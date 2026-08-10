@@ -26,7 +26,7 @@ const AttachLink = NiceModal.create(() => {
   }
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     const ctrlOrCmd = event.ctrlKey || event.metaKey
-    // ctrl + enter 提交
+    // ctrl + enter
     if (event.keyCode === 13 && ctrlOrCmd) {
       event.preventDefault()
       onSubmit()

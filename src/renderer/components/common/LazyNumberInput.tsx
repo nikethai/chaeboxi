@@ -19,7 +19,7 @@ export type Props = {
   step?: number
 }
 
-// LazyNumberInput: 只有在 input blur 或者按 Enter 键时才触发 onChange
+// LazyNumberInput: input blur Enter onChange
 export default function LazyNumberInput({
   value,
   onChange,
@@ -53,7 +53,7 @@ export default function LazyNumberInput({
     } else if (tempInputValue) {
       const v = allowDecimal ? parseFloat(tempInputValue) : parseInt(tempInputValue)
       if (!Number.isNaN(v)) {
-        // 检查范围限制
+        // (legacy comment removed)
         let newValue = v
         if (min !== undefined && newValue < min) newValue = min
         if (max !== undefined && newValue > max) newValue = max

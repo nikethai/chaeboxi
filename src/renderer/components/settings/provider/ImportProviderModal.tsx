@@ -66,7 +66,7 @@ export function ImportProviderModal({ opened, onClose, importedConfig, existingP
   )
 
   const handleConfirmImport = useCallback(() => {
-    // 如果有 existing provider， 可能是 built-in 也可能是 custom provider，如果没有，一定是 custom provider
+    // existing provider， built-in custom provider，， custom provider
 
     const providerSettings = {
       ...providers?.[providerId],

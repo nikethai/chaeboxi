@@ -40,7 +40,7 @@ export default function TopPSlider(props: Props) {
       setInput(`${props.topP}`)
       return
     }
-    // 保留一位小数
+    // (legacy comment removed)
     num = Math.round(num * 100) / 100
     setInput(num.toString())
     props.setTopP(num)

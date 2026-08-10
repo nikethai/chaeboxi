@@ -27,6 +27,11 @@ export type SessionStatusBarProps = {
   sessionId?: string
   /** Quiet bar for empty threads (model only, no msg/tok noise) */
   empty?: boolean
+  /**
+   * Floating Quick Chat density: model + live/ready only.
+   * Hides mem / msg / tok / cost (available in full app).
+   */
+  compact?: boolean
   onInsertMemory?: (entry: MemoryEntry) => void
   getMemorySaveContent?: () => string
 }
@@ -48,6 +53,7 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
   providerId,
   sessionId,
   empty = false,
+  compact = false,
   onInsertMemory,
   getMemorySaveContent,
 }) => {
@@ -58,11 +64,12 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
   const memorySettings = useMemoryStore((s) => s.settings)
 
   useEffect(() => {
+    if (compact) return
     void ensureMemoryStoreInit()
-  }, [])
+  }, [compact])
 
   const memoryChip = useMemo(() => {
-    if (!memoryReady) return null
+    if (compact || !memoryReady) return null
     const stats = getMemoryInjectStats({
       settings: memorySettings,
       globalBank,
@@ -83,24 +90,29 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
       factCount: stats.factCount,
       on: true,
     }
-  }, [memoryReady, globalBank, memorySettings, t])
+  }, [compact, memoryReady, globalBank, memorySettings, t])
 
-  const metrics = useMemo(() => aggregateSessionCosts(messages), [messages])
+  const metrics = useMemo(() => (compact ? null : aggregateSessionCosts(messages)), [compact, messages])
   const model = modelLabel || lastAssistantModel(messages) || '—'
 
-  const totalTokens = metrics.totalInputTokens + metrics.totalOutputTokens
-  const hasUsage = metrics.messagesWithUsage > 0
+  const totalTokens = metrics ? metrics.totalInputTokens + metrics.totalOutputTokens : 0
+  const hasUsage = Boolean(metrics && metrics.messagesWithUsage > 0)
 
   const providerShort = providerId ? String(providerId) : undefined
+  const modelTitle = providerShort ? `${providerShort} · ${model}` : model
 
-  const menuForSession = tokenMenu && sessionId && tokenMenu.sessionId === sessionId ? tokenMenu : null
+  const menuForSession = !compact && tokenMenu && sessionId && tokenMenu.sessionId === sessionId ? tokenMenu : null
 
   const tokSegment = (
     <button type="button" className="session-statusline-tok" aria-label={t('Estimated Token Usage')}>
       <span className="session-statusline-key">tok</span>
       <span className="session-statusline-val">
-        {hasUsage ? formatNumber(totalTokens) : menuForSession ? formatNumber(menuForSession.totalTokens) : '—'}
-        {hasUsage && (
+        {hasUsage && metrics
+          ? formatNumber(totalTokens)
+          : menuForSession
+            ? formatNumber(menuForSession.totalTokens)
+            : '—'}
+        {hasUsage && metrics && (
           <span className="session-statusline-muted">
             {' '}
             ↑{formatNumber(metrics.totalInputTokens)} ↓{formatNumber(metrics.totalOutputTokens)}
@@ -111,27 +123,37 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
   )
 
   return (
-    <div className={`session-statusline${empty ? ' is-empty' : ''}`} role="status" aria-live="polite">
-      <Flex className="session-statusline-inner" align="center" justify="space-between" gap="sm" wrap="wrap">
-        <Flex align="center" gap={10} miw={0} className="min-w-0">
+    <div
+      className={`session-statusline${empty ? ' is-empty' : ''}${compact ? ' is-compact' : ''}`}
+      role="status"
+      aria-live="polite"
+    >
+      <Flex
+        className="session-statusline-inner"
+        align="center"
+        justify={compact ? 'flex-start' : 'space-between'}
+        gap="sm"
+        wrap={compact ? 'nowrap' : 'wrap'}
+      >
+        <Flex align="center" gap={10} miw={0} className="min-w-0 flex-1">
           <span className={`session-statusline-dot ${generating ? 'is-live' : ''}`} aria-hidden />
-          <Text className="session-statusline-seg" lineClamp={1} title={model}>
+          <Text className="session-statusline-seg min-w-0" lineClamp={1} title={modelTitle}>
             <span className="session-statusline-key">{t('model')}</span>
-            <span className="session-statusline-val">{providerShort ? `${providerShort} · ${model}` : model}</span>
+            <span className="session-statusline-val">{modelTitle}</span>
           </Text>
           {generating && (
-            <Text className="session-statusline-live" size="xs">
+            <Text className="session-statusline-live shrink-0" size="xs">
               {t('generating')}
             </Text>
           )}
-          {empty && !generating && (
-            <Text className="session-statusline-muted-label" size="xs">
+          {!generating && empty && (
+            <Text className="session-statusline-muted-label shrink-0" size="xs">
               {t('Ready')}
             </Text>
           )}
         </Flex>
 
-        {!empty && (
+        {!compact && !empty && (
           <Flex align="center" gap={12} className="shrink-0">
             {memoryChip && (
               <MemoryDockPopover
@@ -179,7 +201,7 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
             ) : (
               <Tooltip
                 label={
-                  hasUsage
+                  hasUsage && metrics
                     ? `${t('Input')}: ${formatNumber(metrics.totalInputTokens)} · ${t('Output')}: ${formatNumber(metrics.totalOutputTokens)}`
                     : t('No token usage yet')
                 }
@@ -190,7 +212,7 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
               </Tooltip>
             )}
 
-            {CHATBOX_BUILD_PLATFORM !== 'android' && hasUsage && metrics.actualCost > 0 && (
+            {CHATBOX_BUILD_PLATFORM !== 'android' && metrics && hasUsage && metrics.actualCost > 0 && (
               <Tooltip label={t('Session cost estimate')} withArrow openDelay={400}>
                 <Text className="session-statusline-seg">
                   <span className="session-statusline-key">$</span>
@@ -201,8 +223,8 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
           </Flex>
         )}
 
-        {/* Show memory chip even on empty threads */}
-        {empty && memoryChip && (
+        {/* Show memory chip even on empty threads (full session only) */}
+        {!compact && empty && memoryChip && (
           <MemoryDockPopover
             className="session-statusline-seg shrink-0"
             label={memoryChip.label}

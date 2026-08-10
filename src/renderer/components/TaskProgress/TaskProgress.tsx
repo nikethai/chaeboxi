@@ -1,15 +1,11 @@
-import { Badge, Button, Group, Progress, Stack, Text, Tooltip } from '@mantine/core'
-import { CheckCircle2, ChevronDown, Circle, ListTodo, Loader2, XCircle } from 'lucide-react'
-import { useId, useMemo, useState } from 'react'
+import { Badge, Flex, Progress, Text, Tooltip } from '@mantine/core'
+import { ChevronDown, ListTodo } from 'lucide-react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { type Task, type TaskStatus, useTaskStore } from '@/stores/taskStore'
-
-const statusConfig: Record<TaskStatus, { color: string; icon: typeof Circle; label: string }> = {
-  pending: { color: 'gray', icon: Circle, label: 'Pending' },
-  'in-progress': { color: 'blue', icon: Loader2, label: 'In Progress' },
-  done: { color: 'green', icon: CheckCircle2, label: 'Done' },
-  failed: { color: 'red', icon: XCircle, label: 'Failed' },
-}
+import { Drawer } from 'vaul'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { type Task, type TaskStatus, taskStore, useTaskStore } from '@/stores/taskStore'
+import TaskProgressDetails from './TaskProgressDetails'
 
 const STATUS_SORT: Record<TaskStatus, number> = {
   'in-progress': 0,
@@ -27,28 +23,31 @@ export function sortTasksForDisplay(tasks: Task[]): Task[] {
   })
 }
 
-function StatusIcon({ status }: { status: TaskStatus }) {
-  const config = statusConfig[status]
-  const Icon = config.icon
-  const isSpinning = status === 'in-progress'
+export type TaskDetailsMode = 'inline' | 'sheet'
 
-  return (
-    <Icon
-      size={16}
-      className={isSpinning ? 'animate-spin' : ''}
-      style={{ color: `var(--mantine-color-${config.color}-6)` }}
-    />
-  )
-}
-
-export function TaskProgress({ sessionId, onContinue }: { sessionId: string; onContinue?: () => void }) {
+export function TaskProgress({
+  sessionId,
+  onContinue,
+  detailsMode = 'inline',
+}: {
+  sessionId: string
+  onContinue?: () => void
+  /** `sheet` always opens details in a bottom drawer (Quick Chat / narrow). */
+  detailsMode?: TaskDetailsMode
+}) {
   const { t } = useTranslation()
   const listId = useId()
+  const sheetDescriptionId = useId()
+  const isSmallScreen = useIsSmallScreen()
+  const useSheet = detailsMode === 'sheet' || isSmallScreen
   const allTasks = useTaskStore((state) => state.tasks)
   const tasks = useMemo(() => allTasks.filter((task) => task.sessionId === sessionId), [allTasks, sessionId])
-  // Collapse-first: do not auto-expand on in-progress (long plans steal the thread).
   const [expanded, setExpanded] = useState(false)
   const [showCompleted, setShowCompleted] = useState(false)
+
+  useEffect(() => {
+    void taskStore.getState().hydrateSessionTasks(sessionId)
+  }, [sessionId])
 
   const summary = useMemo(() => {
     const total = tasks.length
@@ -62,9 +61,6 @@ export function TaskProgress({ sessionId, onContinue }: { sessionId: string; onC
   }, [tasks])
 
   const sortedTasks = useMemo(() => sortTasksForDisplay(tasks), [tasks])
-  const activeTasks = useMemo(() => sortedTasks.filter((task) => task.status !== 'done'), [sortedTasks])
-  const completedTasks = useMemo(() => sortedTasks.filter((task) => task.status === 'done'), [sortedTasks])
-  const collapseDoneGroup = completedTasks.length > 3
 
   if (tasks.length === 0) {
     return null
@@ -80,42 +76,105 @@ export function TaskProgress({ sessionId, onContinue }: { sessionId: string; onC
           ? t('{{count}} remaining', { count: summary.remaining })
           : t('All done'))
 
-  return (
-    <div className="todo-dock chat-col">
-      <div className="todo-dock-panel">
-        <button
-          type="button"
-          className="todo-dock-chip"
-          onClick={() => setExpanded((v) => !v)}
-          aria-expanded={expanded}
-          aria-controls={listId}
-        >
-          <ListTodo size={14} strokeWidth={1.75} className="shrink-0 opacity-80" aria-hidden />
-          <span className="todo-dock-chip-label">{t('Tasks')}</span>
-          <span className="todo-dock-chip-count tabular-nums">
-            {summary.done}/{summary.total}
-          </span>
-          {summary.inProgress > 0 && (
-            <Badge size="xs" variant="dot" color="blue" className="todo-dock-chip-badge">
-              {t('In Progress')}
-            </Badge>
-          )}
-          {summary.inProgress === 0 && summary.failed > 0 && (
-            <Badge size="xs" variant="dot" color="red" className="todo-dock-chip-badge">
-              {t('Failed')}
-            </Badge>
-          )}
-          <Tooltip label={chipSubtitle} multiline maw={320} openDelay={400} disabled={expanded}>
-            <span className="todo-dock-chip-active min-w-0 flex-1 truncate">{chipSubtitle}</span>
-          </Tooltip>
-          <ChevronDown
-            size={14}
-            className={`todo-dock-chip-chevron shrink-0 ${expanded ? 'is-open' : ''}`}
-            aria-hidden
-          />
-        </button>
+  const summaryButton = (
+    <button
+      type="button"
+      className="todo-dock-chip"
+      onClick={useSheet ? undefined : () => setExpanded((value) => !value)}
+      aria-expanded={expanded}
+      aria-controls={useSheet ? undefined : listId}
+    >
+      <ListTodo size={14} strokeWidth={1.75} className="shrink-0 opacity-80" aria-hidden />
+      <span className="todo-dock-chip-label">{t('Tasks')}</span>
+      <span className="todo-dock-chip-count tabular-nums" aria-live="polite" aria-atomic="true">
+        {summary.done}/{summary.total}
+      </span>
+      {summary.inProgress > 0 ? (
+        <Badge size="xs" variant="dot" color="blue" className="todo-dock-chip-badge">
+          {t('In Progress')}
+        </Badge>
+      ) : null}
+      {summary.inProgress === 0 && summary.failed > 0 ? (
+        <Badge size="xs" variant="dot" color="red" className="todo-dock-chip-badge">
+          {t('Failed')}
+        </Badge>
+      ) : null}
+      <Tooltip label={chipSubtitle} multiline maw={320} openDelay={400} disabled={expanded || useSheet}>
+        <span className="todo-dock-chip-active min-w-0 flex-1 truncate">{chipSubtitle}</span>
+      </Tooltip>
+      <ChevronDown size={14} className={`todo-dock-chip-chevron shrink-0 ${expanded ? 'is-open' : ''}`} aria-hidden />
+    </button>
+  )
 
-        {summary.inProgress > 0 && !expanded && (
+  const details = (
+    <TaskProgressDetails
+      tasks={sortedTasks}
+      overallProgress={summary.overallProgress}
+      inProgressCount={summary.inProgress}
+      remainingCount={summary.remaining}
+      failedCount={summary.failed}
+      showCompleted={showCompleted}
+      onShowCompletedChange={setShowCompleted}
+      onContinue={onContinue}
+    />
+  )
+
+  return (
+    <div className="todo-dock">
+      <div className={`todo-dock-panel ${expanded && !useSheet ? 'is-expanded' : ''}`}>
+        {useSheet ? (
+          <Drawer.Root open={expanded} onOpenChange={setExpanded} noBodyStyles>
+            <Drawer.Trigger asChild>{summaryButton}</Drawer.Trigger>
+            <Drawer.Portal>
+              <Drawer.Overlay className="todo-dock-sheet-overlay fixed inset-0 bg-chatbox-background-mask-overlay" />
+              <Drawer.Content
+                className="todo-dock-sheet fixed inset-x-0 bottom-0 flex max-h-[70dvh] flex-col rounded-t-xl bg-[var(--chatbox-background-primary)] outline-none"
+                aria-describedby={sheetDescriptionId}
+              >
+                <Drawer.Handle />
+                <Flex align="center" justify="space-between" gap="sm" px="md" py="sm" className="todo-dock-sheet-head">
+                  <div className="min-w-0">
+                    <Drawer.Title asChild>
+                      <Text size="sm" fw={600}>
+                        {t('Tasks')}
+                      </Text>
+                    </Drawer.Title>
+                    <Text id={sheetDescriptionId} size="xs" c="dimmed" lineClamp={1}>
+                      {chipSubtitle}
+                    </Text>
+                  </div>
+                  <Text size="xs" c="dimmed" className="shrink-0 font-mono tabular-nums">
+                    {summary.done}/{summary.total}
+                  </Text>
+                </Flex>
+                <div className="todo-dock-sheet-scroll">
+                  <TaskProgressDetails
+                    tasks={sortedTasks}
+                    overallProgress={summary.overallProgress}
+                    inProgressCount={summary.inProgress}
+                    remainingCount={summary.remaining}
+                    failedCount={summary.failed}
+                    showCompleted={showCompleted}
+                    onShowCompletedChange={setShowCompleted}
+                    onContinue={
+                      onContinue
+                        ? () => {
+                            setExpanded(false)
+                            onContinue()
+                          }
+                        : undefined
+                    }
+                    mobileSheet
+                  />
+                </div>
+              </Drawer.Content>
+            </Drawer.Portal>
+          </Drawer.Root>
+        ) : (
+          summaryButton
+        )}
+
+        {summary.inProgress > 0 && !expanded ? (
           <div className="todo-dock-thin-progress" aria-hidden>
             <Progress
               value={summary.overallProgress}
@@ -125,76 +184,9 @@ export function TaskProgress({ sessionId, onContinue }: { sessionId: string; onC
               animated
             />
           </div>
-        )}
+        ) : null}
 
-        {expanded && (
-          <Stack gap="xs" p="sm" className="todo-dock-body" id={listId}>
-            <Progress
-              value={summary.overallProgress}
-              color={summary.failed > 0 ? 'orange' : 'chatbox-brand'}
-              size="sm"
-              radius="sm"
-              animated={summary.inProgress > 0}
-            />
-
-            {summary.remaining > 0 && onContinue && (
-              <Button size="xs" variant="light" onClick={onContinue}>
-                {t('Continue remaining work')}
-              </Button>
-            )}
-
-            <div className="todo-dock-list">
-              {activeTasks.map((task) => {
-                const config = statusConfig[task.status]
-                return (
-                  <Group key={task.id} gap="xs" wrap="nowrap" className="todo-dock-row">
-                    <StatusIcon status={task.status} />
-                    <Tooltip label={task.title} multiline maw={300} openDelay={500}>
-                      <Text size="xs" lineClamp={1} className="flex-1">
-                        {task.title}
-                      </Text>
-                    </Tooltip>
-                    {task.progress !== undefined && task.status === 'in-progress' && (
-                      <Text size="xs" c="dimmed" className="whitespace-nowrap tabular-nums">
-                        {task.progress}%
-                      </Text>
-                    )}
-                    <Badge size="xs" variant="dot" color={config.color}>
-                      {t(config.label)}
-                    </Badge>
-                  </Group>
-                )
-              })}
-
-              {completedTasks.length > 0 && collapseDoneGroup && !showCompleted && (
-                <button type="button" className="todo-dock-completed-toggle" onClick={() => setShowCompleted(true)}>
-                  {t('Completed ({{count}})', { count: completedTasks.length })}
-                </button>
-              )}
-
-              {(showCompleted || !collapseDoneGroup) &&
-                completedTasks.map((task) => (
-                  <Group key={task.id} gap="xs" wrap="nowrap" className="todo-dock-row">
-                    <StatusIcon status={task.status} />
-                    <Tooltip label={task.title} multiline maw={300} openDelay={500}>
-                      <Text size="xs" lineClamp={1} className="flex-1" c="dimmed" td="line-through">
-                        {task.title}
-                      </Text>
-                    </Tooltip>
-                    <Badge size="xs" variant="dot" color="green">
-                      {t('Done')}
-                    </Badge>
-                  </Group>
-                ))}
-
-              {completedTasks.length > 0 && collapseDoneGroup && showCompleted && (
-                <button type="button" className="todo-dock-completed-toggle" onClick={() => setShowCompleted(false)}>
-                  {t('Hide completed')}
-                </button>
-              )}
-            </div>
-          </Stack>
-        )}
+        {!useSheet && expanded ? <div id={listId}>{details}</div> : null}
       </div>
     </div>
   )

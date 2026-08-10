@@ -4,7 +4,7 @@
  */
 
 import { Flex, Text, Tooltip } from '@mantine/core'
-import type { Message } from '@shared/types'
+import type { Message, SessionSettings } from '@shared/types'
 import type { MemoryEntry } from '@shared/types/memory'
 import { formatNumber } from '@shared/utils'
 import { IconBrain, IconFileZip } from '@tabler/icons-react'
@@ -12,18 +12,25 @@ import { useAtomValue } from 'jotai'
 import { type FC, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MemoryDockPopover } from '@/components/chat/MemoryDockPopover'
+
 import TokenCountMenu from '@/components/InputBox/TokenCountMenu'
 import { ProviderUsagePopover } from '@/components/usage'
-import { aggregateSessionCosts } from '@/packages/cost-tracking'
+import { aggregateSessionCosts, formatCost } from '@/packages/cost-tracking'
 import { getMemoryInjectStats } from '@/packages/memory/inject'
 import { useProviderUsageStatus, useUsageBudgetState } from '@/packages/usage-tracking'
 import { composerTokenMenuAtom } from '@/stores/atoms/uiAtoms'
 import * as chatStore from '@/stores/chatStore'
 import { ensureMemoryStoreInit, useMemoryStore } from '@/stores/memoryStore'
+import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
 export type SessionStatusBarProps = {
   messages: Message[]
   modelLabel?: string
+  model?: {
+    provider: string
+    modelId: string
+  }
+  settings?: SessionSettings
   generating?: boolean
   providerId?: string
   sessionId?: string
@@ -69,6 +76,8 @@ function formatModelTitle(model: string, providerId?: string): string {
 const SessionStatusBar: FC<SessionStatusBarProps> = ({
   messages,
   modelLabel,
+  model: activeModel,
+  settings,
   generating,
   providerId,
   sessionId,
@@ -145,13 +154,12 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
   }, [compact, memoryReady, globalBank, memorySettings, sessionAutoSaveOff, t])
 
   const metrics = useMemo(() => (compact ? null : aggregateSessionCosts(messages)), [compact, messages])
-  const model = modelLabel || lastAssistantModel(messages) || '—'
+  const activeModelLabel = modelLabel || lastAssistantModel(messages) || '—'
 
   const totalTokens = metrics ? metrics.totalInputTokens + metrics.totalOutputTokens : 0
   const hasUsage = Boolean(metrics && metrics.messagesWithUsage > 0)
 
-  const modelTitle = useMemo(() => formatModelTitle(model, providerId), [model, providerId])
-
+  const modelTitle = useMemo(() => formatModelTitle(activeModelLabel, providerId), [activeModelLabel, providerId])
   const { status: providerUsage } = useProviderUsageStatus(compact ? undefined : providerId, '30d')
   const budgetState = useUsageBudgetState(compact ? undefined : providerId)
 
@@ -228,8 +236,40 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
       title={t('Context & compact')}
     >
       <IconFileZip size={13} stroke={1.7} aria-hidden />
-      <span className="session-statusline-action-val">
-        {contextLabel ?? t('Context')}
+      <span className="session-statusline-action-val">{contextLabel ?? t('Context')}</span>
+    </button>
+  )
+
+  const cacheSegment = useMemo(() => {
+    if (compact || !metrics || !hasUsage) return null
+    if (metrics.totalCachedInputTokens > 0) {
+      const hitRatePercent = Math.round(metrics.cacheHitRate * 100)
+      return {
+        label: hitRatePercent > 0 ? `cache ${hitRatePercent}%` : 'cache',
+        title: `${t('Cached tokens')}: ${formatNumber(metrics.totalCachedInputTokens)} · ${t('Cache hit rate')}: ${hitRatePercent}%`,
+      }
+    }
+    return {
+      label: t('cache n/a'),
+      title: t('No upstream cache telemetry was returned for this session yet.'),
+    }
+  }, [compact, metrics, hasUsage, t])
+
+  const tokSegment = (
+    <button type="button" className="session-statusline-tok" aria-label={t('Estimated Token Usage')}>
+      <span className="session-statusline-key">tok</span>
+      <span className="session-statusline-val">
+        {hasUsage && metrics
+          ? formatNumber(totalTokens)
+          : menuForSession
+            ? formatNumber(menuForSession.totalTokens)
+            : '—'}
+        {hasUsage && metrics && (
+          <span className="session-statusline-muted">
+            {' '}
+            ↑{formatNumber(metrics.totalInputTokens)} ↓{formatNumber(metrics.totalOutputTokens)}
+          </span>
+        )}
       </span>
     </button>
   )
@@ -306,11 +346,34 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
                 {contextTrigger}
               </TokenCountMenu>
             ) : (
-              <Tooltip label={t('No token usage yet')} withArrow openDelay={400}>
-                <span className="session-statusline-action is-muted" aria-hidden>
-                  <IconFileZip size={13} stroke={1.7} />
-                  <span className="session-statusline-action-val">—</span>
-                </span>
+              <Tooltip
+                label={
+                  hasUsage && metrics
+                    ? `${t('Input')}: ${formatNumber(metrics.totalInputTokens)} · ${t('Output')}: ${formatNumber(metrics.totalOutputTokens)}`
+                    : t('No token usage yet')
+                }
+                withArrow
+                openDelay={400}
+              >
+                <Text className="session-statusline-seg">{tokSegment}</Text>
+              </Tooltip>
+            )}
+
+            {cacheSegment && (
+              <Tooltip label={cacheSegment.title} withArrow openDelay={400}>
+                <Text className="session-statusline-seg">
+                  <span className="session-statusline-key">cache</span>
+                  <span className="session-statusline-val">{cacheSegment.label.replace(/^cache\s*/, '') || '—'}</span>
+                </Text>
+              </Tooltip>
+            )}
+
+            {CHATBOX_BUILD_PLATFORM !== 'android' && metrics && hasUsage && metrics.actualCost > 0 && (
+              <Tooltip label={t('Session cost estimate')} withArrow openDelay={400}>
+                <Text className="session-statusline-seg">
+                  <span className="session-statusline-key">$</span>
+                  <span className="session-statusline-val">{formatCost(metrics.actualCost)}</span>
+                </Text>
               </Tooltip>
             )}
           </Flex>

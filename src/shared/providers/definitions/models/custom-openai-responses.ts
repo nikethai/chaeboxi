@@ -37,12 +37,14 @@ export default class CustomOpenAIResponses extends AbstractAISDKModel {
     this.options = { ...options, apiHost, apiPath }
   }
 
-  protected getCallSettings() {
+  protected getCallSettings(options: CallChatCompletionOptions) {
+    const openaiProviderOptions = options.providerOptions?.openai
     return {
       temperature: this.options.temperature,
       topP: this.options.topP,
       maxOutputTokens: this.options.maxOutputTokens,
       stream: this.options.stream,
+      providerOptions: openaiProviderOptions ? { openai: openaiProviderOptions } : undefined,
     }
   }
 

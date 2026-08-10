@@ -89,6 +89,14 @@ function AgentRoomStrip({ agentIds, sessionId, onRemove, className, embedded }: 
 
 function formatLiveStatus(live: NonNullable<TeamRoomLiveStatus>, t: (k: string) => string): string {
   const who = live.speakerName || t('Agent')
+  if (live.mode === 'swarm') {
+    if (live.phase === 'plan') return `${t('Swarm')} · ${t('Plan')} · ${who}`
+    if (live.phase === 'deliver') return `${t('Swarm')} · ${t('Deliverable')} · ${who}`
+    if (live.phase === 'do' && live.taskIndex && live.taskTotal) {
+      return `${t('Swarm')} · ${t('Task')} ${live.taskIndex}/${live.taskTotal} · ${who} ${t('working…')}`
+    }
+    if (live.phase === 'do') return `${t('Swarm')} · ${t('Working')} · ${who}`
+  }
   if (live.phase === 'turn' && live.round) {
     const total = live.totalRounds ? `/${live.totalRounds}` : ''
     return `${t('Round')} ${live.round}${total} · ${who} ${t('speaking…')}`

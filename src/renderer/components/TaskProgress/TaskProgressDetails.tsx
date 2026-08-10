@@ -80,6 +80,11 @@ export default function TaskProgressDetails({
                   {task.title}
                 </Text>
               </Tooltip>
+              {task.assigneeAgentId ? (
+                <Text size="xs" c="dimmed" className="whitespace-nowrap max-w-[72px] truncate" title={task.assigneeAgentId}>
+                  {task.assigneeAgentId.slice(0, 10)}
+                </Text>
+              ) : null}
               {task.progress !== undefined && task.status === 'in-progress' ? (
                 <Text size="xs" c="dimmed" className="whitespace-nowrap tabular-nums">
                   {task.progress}%

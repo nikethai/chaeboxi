@@ -5,14 +5,35 @@ import { StorageKeyGenerator } from '@/storage/StoreStorage'
 
 export type TaskStatus = 'pending' | 'in-progress' | 'done' | 'failed'
 
+export type TaskCreatedBy = 'orchestrator' | 'agent' | 'user'
+
 export type Task = {
   id: string
   sessionId: string
   title: string
   status: TaskStatus
   progress?: number
+  /** Room agent persona id assigned to this task (Swarm multi-owner board). */
+  assigneeAgentId?: string
+  /** Task ids that must be `done` before this task is ready. */
+  dependsOn?: string[]
+  createdBy?: TaskCreatedBy
   createdAt: number
   updatedAt: number
+}
+
+export type CreateTaskOptions = {
+  assigneeAgentId?: string
+  dependsOn?: string[]
+  createdBy?: TaskCreatedBy
+}
+
+export type UpdateTaskFields = {
+  title?: string
+  status?: TaskStatus
+  progress?: number
+  assigneeAgentId?: string | null
+  dependsOn?: string[] | null
 }
 
 export const MAX_SESSION_TASKS = 20
@@ -21,8 +42,17 @@ type TaskState = {
   tasks: Task[]
   /** Sessions currently hydrated from storage (avoids re-fetch thrash). */
   hydratedSessionIds: Record<string, true>
-  createTask: (sessionId: string, id: string, title: string) => { ok: true; task: Task } | { ok: false; error: string }
-  updateTask: (id: string, updates: { title?: string; status?: TaskStatus; progress?: number }) => Task | null
+  createTask: (
+    sessionId: string,
+    id: string,
+    title: string,
+    options?: CreateTaskOptions
+  ) => { ok: true; task: Task } | { ok: false; error: string }
+  updateTask: (id: string, updates: UpdateTaskFields) => Task | null
+  setTaskAssignee: (id: string, assigneeAgentId: string | undefined) => Task | null
+  setTaskDeps: (id: string, dependsOn: string[] | undefined) => Task | null
+  /** Pending tasks whose dependencies are all done (stable createdAt order). */
+  listReadyTasks: (sessionId: string) => Task[]
   toggleTaskDone: (id: string) => Task | null
   getSessionTasks: (sessionId: string) => Task[]
   clearSessionTasks: (sessionId: string) => void
@@ -67,6 +97,30 @@ function normalizeTitle(title: string): string {
   return title.replace(/\s+/g, ' ').trim()
 }
 
+function sanitizeDependsOn(dependsOn: string[] | undefined, selfId: string): string[] {
+  if (!dependsOn?.length) return []
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const dep of dependsOn) {
+    if (!dep || dep === selfId || seen.has(dep)) continue
+    seen.add(dep)
+    out.push(dep)
+  }
+  return out
+}
+
+/** Pure ready-queue helper (also used by tests without store). */
+export function listReadyTasksFrom(tasks: Task[]): Task[] {
+  const byId = new Map(tasks.map((t) => [t.id, t]))
+  return tasks
+    .filter((task) => {
+      if (task.status !== 'pending') return false
+      if (!task.dependsOn?.length) return true
+      return task.dependsOn.every((depId) => byId.get(depId)?.status === 'done')
+    })
+    .sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id))
+}
+
 const MAX_ACTIVE_TASK_CONTEXT = 12
 
 export function formatActiveTaskContext(tasks: Task[]): string {
@@ -82,10 +136,11 @@ export function formatActiveTaskContext(tasks: Task[]): string {
     return `\n\n## Active session tasks\nNo active tasks. Create a checklist only if the current request is genuinely multi-step.\n`
   }
 
-  const lines = activeTasks.map(
-    (task) =>
-      `- ${task.id}: ${JSON.stringify(task.title)} [${task.status}${task.progress === undefined ? '' : `, ${task.progress}%`}]`
-  )
+  const lines = activeTasks.map((task) => {
+    const owner = task.assigneeAgentId ? `, owner=${task.assigneeAgentId}` : ''
+    const deps = task.dependsOn?.length ? `, deps=${task.dependsOn.join('|')}` : ''
+    return `- ${task.id}: ${JSON.stringify(task.title)} [${task.status}${task.progress === undefined ? '' : `, ${task.progress}%`}${owner}${deps}]`
+  })
 
   return `\n\n## Active session tasks\nThese tasks are authoritative. Reuse their IDs instead of creating duplicates.\n${lines.join(
     '\n'
@@ -97,7 +152,7 @@ export const taskStore = createStore<TaskState>()(
     tasks: [],
     hydratedSessionIds: {},
 
-    createTask: (sessionId, id, title) => {
+    createTask: (sessionId, id, title, options) => {
       const cleaned = normalizeTitle(title)
       if (!cleaned) {
         return { ok: false, error: 'Task title cannot be empty.' }
@@ -114,6 +169,7 @@ export const taskStore = createStore<TaskState>()(
       }
 
       const now = Date.now()
+      const deps = sanitizeDependsOn(options?.dependsOn, id)
       const task: Task = {
         id,
         sessionId,
@@ -121,6 +177,9 @@ export const taskStore = createStore<TaskState>()(
         status: 'pending',
         createdAt: now,
         updatedAt: now,
+        ...(options?.assigneeAgentId ? { assigneeAgentId: options.assigneeAgentId } : {}),
+        ...(deps.length > 0 ? { dependsOn: deps } : {}),
+        ...(options?.createdBy ? { createdBy: options.createdBy } : {}),
       }
       set((state) => {
         state.tasks.push(task)
@@ -158,6 +217,20 @@ export const taskStore = createStore<TaskState>()(
         } else if (updates.progress !== undefined) {
           task.progress = Math.max(0, Math.min(100, updates.progress))
         }
+        if (updates.assigneeAgentId !== undefined) {
+          if (updates.assigneeAgentId === null || updates.assigneeAgentId === '') {
+            delete task.assigneeAgentId
+          } else {
+            task.assigneeAgentId = updates.assigneeAgentId
+          }
+        }
+        if (updates.dependsOn !== undefined) {
+          if (updates.dependsOn === null || updates.dependsOn.length === 0) {
+            delete task.dependsOn
+          } else {
+            task.dependsOn = sanitizeDependsOn(updates.dependsOn, task.id)
+          }
+        }
         task.updatedAt = Date.now()
         updated = { ...task }
         sessionId = task.sessionId
@@ -167,6 +240,27 @@ export const taskStore = createStore<TaskState>()(
         schedulePersist(persistedSessionId, () => get().getSessionTasks(persistedSessionId))
       }
       return updated
+    },
+
+    setTaskAssignee: (id, assigneeAgentId) => {
+      return get().updateTask(id, { assigneeAgentId: assigneeAgentId ?? null })
+    },
+
+    setTaskDeps: (id, dependsOn) => {
+      return get().updateTask(id, { dependsOn: dependsOn ?? null })
+    },
+
+    listReadyTasks: (sessionId) => {
+      const sessionTasks = get()
+        .tasks.filter((t) => t.sessionId === sessionId)
+        .slice()
+        .sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id))
+      const byId = new Map(sessionTasks.map((t) => [t.id, t]))
+      return sessionTasks.filter((task) => {
+        if (task.status !== 'pending') return false
+        if (!task.dependsOn?.length) return true
+        return task.dependsOn.every((depId) => byId.get(depId)?.status === 'done')
+      })
     },
 
     toggleTaskDone: (id) => {

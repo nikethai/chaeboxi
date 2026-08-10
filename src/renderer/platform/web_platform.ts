@@ -5,9 +5,23 @@ import { v4 as uuidv4 } from 'uuid'
 import { parseLocale } from '@/i18n/parser'
 import { type ImageGenerationStorage, IndexedDBImageGenerationStorage } from '@/storage/ImageGenerationStorage'
 import { getBrowser, getOS } from '../packages/navigator'
-import type { Platform, PlatformType, FormFactor } from './interfaces'
+import { CHATBOX_BUILD_TARGET } from '@/variables'
+import type {
+  FormFactor,
+  Platform,
+  PlatformType,
+  SystemNotificationClickPayload,
+  SystemNotificationPayload,
+  SystemNotificationPermission,
+} from './interfaces'
 import type { KnowledgeBaseController } from './knowledge-base/interface'
 import { IndexedDBStorage } from './storages'
+import {
+  getWebOrCapacitorNotificationPermission,
+  onWebOrCapacitorNotificationClick,
+  requestWebOrCapacitorNotificationPermission,
+  showWebOrCapacitorNotification,
+} from './system-notifications-web'
 import WebExporter from './web_exporter'
 import webLogger from './web_logger'
 import WebKnowledgeBaseController from './knowledge-base/web-controller'
@@ -21,9 +35,19 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
 
   private _kbController?: WebKnowledgeBaseController
   private imageGenerationStorage: ImageGenerationStorage | null = null
+  /** Capacitor mobile builds prefer LocalNotifications over browser Notification API */
+  private readonly preferCapacitorNotifications: boolean
 
   constructor() {
     super()
+    // Capacitor iOS/Android shells are built with mobile_app target
+    if (CHATBOX_BUILD_TARGET === 'mobile_app') {
+      this.type = 'mobile'
+      this.formFactor = 'mobile'
+      this.preferCapacitorNotifications = true
+    } else {
+      this.preferCapacitorNotifications = false
+    }
     webLogger.init().catch((e) => console.error('Failed to init web logger:', e))
     if (window.desktopAPI) {
       this._kbController = new WebKnowledgeBaseController(window.desktopAPI)
@@ -212,5 +236,21 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
 
   public onMaximizedChange() {
     return () => null
+  }
+
+  public async getSystemNotificationPermission(): Promise<SystemNotificationPermission> {
+    return getWebOrCapacitorNotificationPermission(this.preferCapacitorNotifications)
+  }
+
+  public async requestSystemNotificationPermission(): Promise<SystemNotificationPermission> {
+    return requestWebOrCapacitorNotificationPermission(this.preferCapacitorNotifications)
+  }
+
+  public async showSystemNotification(payload: SystemNotificationPayload): Promise<void> {
+    await showWebOrCapacitorNotification(payload, this.preferCapacitorNotifications)
+  }
+
+  public onSystemNotificationClick(callback: (payload: SystemNotificationClickPayload) => void): () => void {
+    return onWebOrCapacitorNotificationClick(callback, this.preferCapacitorNotifications)
   }
 }

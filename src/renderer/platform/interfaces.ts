@@ -134,6 +134,30 @@ export interface Platform extends Storage {
     cwd?: string,
     timeoutMs?: number
   ): Promise<{ exitCode: number; stdout: string; stderr: string }>
+
+  // Local OS system notifications (not remote push)
+  getSystemNotificationPermission(): Promise<SystemNotificationPermission>
+  requestSystemNotificationPermission(): Promise<SystemNotificationPermission>
+  showSystemNotification(payload: SystemNotificationPayload): Promise<void>
+  onSystemNotificationClick?(callback: (payload: SystemNotificationClickPayload) => void): () => void
+}
+
+/** Permission state for local OS notifications */
+export type SystemNotificationPermission = 'granted' | 'denied' | 'default' | 'unsupported'
+
+export type SystemNotificationPayload = {
+  title: string
+  body?: string
+  /** Opaque data for click routing; never message content */
+  data?: {
+    sessionId?: string
+    kind?: string
+  }
+}
+
+export type SystemNotificationClickPayload = {
+  sessionId?: string
+  kind?: string
 }
 
 export type ScreenshotImagePayload = {

@@ -264,6 +264,17 @@ export async function runAgentRoomSwarm(
 
   setTeamRoomLive(null)
   clearTeamRoomState(sessionId)
+  try {
+    const { notifySystemEvent } = await import('@/packages/notifications')
+    const session = await chatStore.getSession(sessionId)
+    await notifySystemEvent({
+      kind: 'room_complete',
+      sessionId,
+      sessionName: session?.name || undefined,
+    })
+  } catch {
+    // non-fatal
+  }
 }
 
 function listRunTasks(sessionId: string, runStartedAt: number) {

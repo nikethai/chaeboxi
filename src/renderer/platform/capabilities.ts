@@ -14,6 +14,8 @@ export interface PlatformCapabilities {
   supportsKnowledgeBase: boolean
   supportsDesktopOnlySettings: boolean
   supportsAgentSkillScan: boolean
+  /** Local OS notifications (not remote push) */
+  supportsSystemNotifications: boolean
 }
 
 /**
@@ -23,6 +25,10 @@ export interface PlatformCapabilities {
 export function createPlatformCapabilities({ type, formFactor, buildPlatform }: PlatformCapabilityInput): PlatformCapabilities {
   const isAndroidRuntime = buildPlatform === 'android'
   const isDesktopRuntime = type === 'desktop' && !isAndroidRuntime
+  // Local OS notifications: desktop Tauri, Capacitor mobile shells, and web secure contexts.
+  // Runtime still checks permission APIs; this is capability-level support only.
+  const supportsSystemNotifications =
+    type === 'desktop' || type === 'mobile' || type === 'web' || isAndroidRuntime
 
   return {
     isMobileLayout: formFactor === 'mobile',
@@ -34,5 +40,6 @@ export function createPlatformCapabilities({ type, formFactor, buildPlatform }: 
     supportsKnowledgeBase: isDesktopRuntime,
     supportsDesktopOnlySettings: isDesktopRuntime,
     supportsAgentSkillScan: isDesktopRuntime,
+    supportsSystemNotifications,
   }
 }

@@ -51,6 +51,21 @@ function scrollChatToLatest(behavior: 'auto' | 'smooth' = 'smooth') {
   setTimeout(run, 320)
 }
 
+/** Local OS notification when a multi-agent pipeline finishes (no message content). */
+async function notifyRoomPipelineComplete(sessionId: string) {
+  try {
+    const { notifySystemEvent } = await import('@/packages/notifications')
+    const session = await chatStore.getSession(sessionId)
+    await notifySystemEvent({
+      kind: 'room_complete',
+      sessionId,
+      sessionName: session?.name || undefined,
+    })
+  } catch {
+    // non-fatal
+  }
+}
+
 /**
  * Update session room membership from mentions; dual-write copilotId.
  * Returns the new agentIds list.
@@ -337,6 +352,8 @@ export async function runAgentRoomDiscussion(
     return
   }
 
+  void notifyRoomPipelineComplete(sessionId)
+
   setTeamRoomActions({
     sessionId,
     speakers,
@@ -488,6 +505,7 @@ export async function runAgentRoomWork(
 
   setTeamRoomLive(null)
   clearTeamRoomState(sessionId)
+  void notifyRoomPipelineComplete(sessionId)
 }
 
 /**

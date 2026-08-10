@@ -21,19 +21,19 @@ import { CHATBOX_BUILD_PLATFORM, CHATBOX_BUILD_TARGET } from './variables'
 
 const log = getLogger('index')
 
-// 按需加载 polyfill
+// Load polyfills as needed
 import './setup/load_polyfill'
 
 // Sentry initialization disabled
 // import './setup/sentry_init'
 
-// 全局错误处理
+// Global error handling
 import './setup/global_error_handler'
 
 // GA4 initialization disabled
 // import './setup/ga_init'
 
-// 引入保护代码
+// Import protect module
 import './setup/protect'
 import { isTauriRuntime } from './platform/tauri_ipc_adapter'
 import { isCapacitorMobile } from './platform'
@@ -42,7 +42,7 @@ import { initLastUsedModelStore } from './stores/lastUsedModelStore'
 import { ensureMemoryStoreInit } from './stores/memoryStore'
 import { initSettingsStore } from './stores/settingsStore'
 
-// 开发环境下引入错误测试工具
+// Error testing tools in development
 // if (process.env.NODE_ENV === 'development') {
 //   import('./utils/error-testing')
 // }
@@ -50,7 +50,7 @@ import { initSettingsStore } from './stores/settingsStore'
 // Token estimation system initialization (runs in all environments)
 import('./setup/token_estimation_init')
 
-// 引入移动端安全区域代码，主要为了解决异形屏幕的问题
+// Mobile safe-area handling for notched screens
 if (CHATBOX_BUILD_TARGET === 'mobile_app' && CHATBOX_BUILD_PLATFORM === 'ios') {
   import('./setup/mobile_safe_area')
 }
@@ -65,12 +65,12 @@ if (CHATBOX_BUILD_PLATFORM === 'android' && isTauriRuntime()) {
   import('./setup/tauri_android_keyboard')
 }
 
-// ==========执行初始化==============
+// (legacy comment removed)
 async function initializeApp() {
   log.info('initializeApp')
 
   try {
-    // 数据迁移
+    // (legacy comment removed)
     await migration.migrate()
     log.info('migrate done')
   } catch (e) {
@@ -85,16 +85,16 @@ async function initializeApp() {
     log.error('memory store init error', e)
   }
 
-  // 最后执行 storage 清理，清理不 block 进入UI
+  // storage ， block UI
   import('./setup/storage_clear')
 
-  // 启动mcp服务器 (desktop only — MCP is feature-flagged off on mobile)
+  // mcp (desktop only — MCP is feature-flagged off on mobile)
   if (CHATBOX_BUILD_PLATFORM !== 'android') {
     import('./setup/mcp_bootstrap')
   }
 }
 
-// ==========渲染节点==============
+// (legacy comment removed)
 
 function InitPage() {
   const log = useAtomValue(initLogAtom)
@@ -122,7 +122,7 @@ function InitPage() {
           {showLoadingLog ? 'Hide Loading Log' : 'Show Loading Log'}
         </div>
       </div>
-      {/* 倒叙展示，能够看到最新的日志 */}
+      {/* Newest logs first */}
       {showLoadingLog && (
         <pre className="whitespace-pre-wrap flex-1 overflow-y-auto m-0 p-2">{[...log].reverse().join('\n')}</pre>
       )}
@@ -130,7 +130,7 @@ function InitPage() {
   )
 }
 
-// initializeApp执行时间少于1s的话，将不会看到log
+// initializeApp1s，log
 const hideSplashScreen = isCapacitorMobile
   ? () => import('@capacitor/splash-screen').then(({ SplashScreen }) => SplashScreen.hide()).catch(() => {})
   : () => {}
@@ -148,21 +148,21 @@ const tid = setTimeout(() => {
   }
 }, 1000)
 
-// 等待初始化完成后再渲染
+// (legacy comment removed)
 initializeApp()
   .catch((e) => {
-    // 初始化中的各个步骤已经捕获了错误，这里防止未来添加未捕获的逻辑
+    // (legacy comment removed)
     Sentry.captureException(e)
     log.error('initializeApp error', e)
   })
   .finally(async () => {
     clearTimeout(tid)
 
-    // 等待settings初始化完成，避免闪屏
+    // (legacy comment)
     const [settings] = await Promise.all([initSettingsStore(), initLastUsedModelStore()])
 
     i18n.changeLanguage(settings.language)
-    // 初始化完成，可以开始渲染
+    // (legacy comment removed)
     ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
       <StrictMode>
         <ErrorBoundary>

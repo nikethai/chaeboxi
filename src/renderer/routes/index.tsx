@@ -305,7 +305,9 @@ function Index() {
                 workspaceRoot={session.workspaceRoot}
                 initialMessage={composerDraft}
                 draftAgentIds={selectedAgentIds}
-                draftRoomMode={session.roomMode === 'work' ? 'work' : 'discuss'}
+                draftRoomMode={
+                  session.roomMode === 'work' || session.roomMode === 'swarm' ? session.roomMode : 'discuss'
+                }
                 onDraftRoomModeChange={(mode) => setSession((old) => ({ ...old, roomMode: mode }))}
                 onSelectModel={onSelectModel}
                 onToggleAgentMode={(agentMode) => setSession((old) => ({ ...old, agentMode }))}

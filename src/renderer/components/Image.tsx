@@ -18,7 +18,7 @@ export const ImageInStorage = memo(
       queryKey: ['image-in-storage', props.storageKey],
       queryFn: async ({ queryKey: [, storageKey] }) => {
         const blob = await storage.getBlob(storageKey)
-        return blob ? blob : false // false 意味着不存在
+        return blob ? blob : false // false
       },
       staleTime: Infinity,
     })

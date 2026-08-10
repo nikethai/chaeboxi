@@ -112,8 +112,8 @@ chown "${RUN_USER}:${RUN_USER}" "${INSTALL_DIR}/run.sh"
 
 cat > "${INIT_FILE}" <<EOF
 #!/sbin/openrc-run
-name="Chatbox History Sync Server"
-description="Self-hosted history sync server for Chatbox"
+name="Chaeboxi History Sync Server"
+description="Self-hosted history sync server for Chaeboxi"
 
 command="${INSTALL_DIR}/run.sh"
 command_user="${RUN_USER}:${RUN_USER}"

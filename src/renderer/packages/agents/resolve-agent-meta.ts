@@ -35,7 +35,7 @@ export function getAgentDetailById(id: string | undefined | null): CopilotDetail
     // jotai store unavailable (tests / early boot)
   }
 
-  // Remote catalog (Chatbox shared agents) — same list as @ picker / AgentRoomStrip
+  // Remote catalog (shared agents) — same list as @ picker / AgentRoomStrip
   try {
     const remoteEntries = queryClient.getQueriesData<CopilotDetail[]>({ queryKey: ['remote-copilots'] })
     for (const [, data] of remoteEntries) {

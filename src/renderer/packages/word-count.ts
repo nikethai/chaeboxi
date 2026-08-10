@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/react'
 import { countWord as sharedCountWord } from '../../shared/utils/word_count'
 
 /**
- * Renderer 层的 countWord 包装器，包含 Sentry 错误报告
+ * Renderer countWord ， Sentry
  */
 export function countWord(data: string): number {
   try {

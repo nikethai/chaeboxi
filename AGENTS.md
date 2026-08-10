@@ -1,8 +1,10 @@
 ## Project Overview
 
-Chaeboxi is a multi-platform AI copilot desktop/web client (community edition fork of Chatbox) supporting 16+ LLM providers. Built with **Tauri 2 + React 18 + TypeScript**, it targets Windows, macOS, Linux, iOS, Android, and Web from a single codebase.
+Chaeboxi is a multi-platform AI copilot (desktop/web/mobile) supporting 16+ LLM providers. Built with **Tauri 2 + React 18 + TypeScript**, it targets Windows, macOS, Linux, iOS, Android, and Web from a single codebase.
 
-**Community Edition Note**: The settings store (`settingsStore.ts`) actively strips Chatbox AI paid features (license keys, paid provider settings) on load. When modifying settings persistence, be aware of `stripChatboxPaidFeatures()`.
+**Independence note**: Chaeboxi is an independent GPLv3 product (derived from an earlier open-source client; see `NOTICE`). Hosted third-party cloud is disabled (`CHATBOX_CLOUD_ENABLED`). Settings still strip legacy paid-cloud keys via `stripChatboxPaidFeatures()` for migration stability.
+
+**Language policy**: Repository docs, code comments, and default product copy are **English**. Optional UI locales (including Chinese) remain for end-user preference, but first-run language is always English.
 
 ## Build & Development Commands
 

@@ -1,5 +1,5 @@
 /**
- * Team-room orchestrator: Discuss (multi-round, no auto Final) + Work (plan/do/review/deliver).
+ * Team-room orchestrator: Discuss + Work + Swarm (plan → assign → sequential execute → deliver).
  * Interruptible via message cancel / new user send.
  */
 
@@ -28,6 +28,7 @@ import * as scrollActions from '../scrollActions'
 import { generate } from './generation'
 import { messageQueueStore } from './messageQueue'
 import { insertMessage, modifyMessage, submitNewUserMessage } from './messages'
+import { runAgentRoomSwarm as runSwarmLoop } from './multi-agent-room-swarm'
 import {
   clearTeamRoomState,
   setTeamRoomActions,
@@ -98,6 +99,11 @@ async function generateSpeakerTurn(
     stanceLabel?: string
     leadName?: string
     mode: RoomMode
+    taskId?: string
+    taskTitle?: string
+    taskIndex?: number
+    taskTotal?: number
+    participantDirectory?: string
   }
 ): Promise<{ msg: Message; interrupted: boolean }> {
   const assistantMsg: Message = {
@@ -117,6 +123,9 @@ async function generateSpeakerTurn(
     speakerName: params.meta.name,
     round: params.roomRound,
     totalRounds: params.mode === 'discuss' ? MAX_ROOM_ROUNDS : undefined,
+    taskIndex: params.taskIndex,
+    taskTotal: params.taskTotal,
+    taskTitle: params.taskTitle,
   })
 
   // Always pin viewport to the newest room turn (discuss turns used to leave user mid-list).
@@ -129,10 +138,14 @@ async function generateSpeakerTurn(
       speakerAgentId: params.meta.id,
       roomMulti: true,
       roomRole: params.roomRole,
+      roomMode: params.mode,
       participantNames: params.participantNames,
       roomRound: params.roomRound,
       stanceLabel: params.stanceLabel,
       leadName: params.leadName,
+      taskId: params.taskId,
+      taskTitle: params.taskTitle,
+      participantDirectory: params.participantDirectory,
       skipQueuedMessages: true,
     })
   }
@@ -284,6 +297,15 @@ export async function runAgentRoomDiscussion(
 
   if (mode === 'work') {
     await runAgentRoomWork(sessionId, {
+      speakers,
+      truncateTokenLimit: params.truncateTokenLimit,
+      roomLeadId: session?.roomLeadId,
+    })
+    return
+  }
+
+  if (mode === 'swarm') {
+    await runAgentRoomSwarm(sessionId, {
       speakers,
       truncateTokenLimit: params.truncateTokenLimit,
       roomLeadId: session?.roomLeadId,
@@ -466,6 +488,23 @@ export async function runAgentRoomWork(
 
   setTeamRoomLive(null)
   clearTeamRoomState(sessionId)
+}
+
+/**
+ * Swarm mode: lead plans tasks → auto-assign → sequential execute → lead deliver.
+ */
+export async function runAgentRoomSwarm(
+  sessionId: string,
+  params: {
+    speakers: string[]
+    truncateTokenLimit?: number
+    roomLeadId?: string
+  }
+): Promise<void> {
+  await runSwarmLoop(sessionId, {
+    ...params,
+    generateSpeakerTurn: generateSpeakerTurn as Parameters<typeof runSwarmLoop>[1]['generateSpeakerTurn'],
+  })
 }
 
 /**

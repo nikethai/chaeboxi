@@ -12,7 +12,7 @@ export type Props = {
   className?: string
 }
 
-// SliderChangeEnd触发 或者 input blur的时候才触发onChange
+// SliderChangeEnd input bluronChange
 export default function SliderWithInput({ value, onChange, min = 0, max = 1, step = 0.01, className }: Props) {
   const { t } = useTranslation()
   const [tempSliderValue, setTempSliderValue] = useState<number>()
@@ -22,7 +22,7 @@ export default function SliderWithInput({ value, onChange, min = 0, max = 1, ste
   }, [])
   const handleSliderChangeEnd = useCallback(
     (v: number) => {
-      // 有概率会出现SliderChangeEnd事件之后又产生一个SliderChange，所以延时处理
+      // SliderChangeEndSliderChange，
       setTimeout(() => {
         setTempSliderValue(undefined)
         onChange?.(v)

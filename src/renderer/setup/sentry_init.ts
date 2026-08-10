@@ -24,7 +24,7 @@ void (async () => {
       replaysSessionSampleRate: 0.05,
       replaysOnErrorSampleRate: 0.05,
       release: version,
-      // 设置全局标签
+      // (legacy comment removed)
       initialScope: {
         tags: {
           platform: platform.type,

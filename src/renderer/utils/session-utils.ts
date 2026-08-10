@@ -6,7 +6,7 @@ export function migrateSession(session: Session): Session {
   return {
     ...session,
     settings: {
-      // temperature未设置的时候使用默认值undefined，这样才能覆盖全局设置
+      // (legacy comment)
       temperature: undefined,
       ...session.settings,
     },

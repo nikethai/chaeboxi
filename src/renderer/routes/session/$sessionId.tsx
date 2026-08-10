@@ -69,11 +69,11 @@ function RouteComponent() {
 
   useEffect(() => {
     setTimeout(() => {
-      scrollActions.scrollToBottom('auto') // 每次启动时自动滚动到底部
+      scrollActions.scrollToBottom('auto') // (legacy)
     }, 200)
   }, [])
 
-  // currentSession变化时（包括session settings变化），存下当前的settings作为新Session的默认值
+  // currentSession（session settings），settingsSession
   const currentSessionType = currentSession?.type
   const currentSessionProvider = currentSession?.settings?.provider
   const currentSessionModelId = currentSession?.settings?.modelId
@@ -230,7 +230,7 @@ function RouteComponent() {
 
       <div className="session-body-row">
         <div className="session-main-col">
-          {/* MessageList 设置 key，确保每个 session 对应新的 MessageList 实例 */}
+          {/* key ensures a fresh MessageList instance per session */}
           <div className="session-thread">
             <MessageList ref={messageListRef} key={`message-list${currentSessionId}`} currentSession={currentSession} />
           </div>

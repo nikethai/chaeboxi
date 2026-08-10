@@ -649,7 +649,7 @@ function CopilotForm(props: CopilotFormProps) {
         <Switch
           checked={copilotEdit.shared}
           onChange={(e) => setCopilotEdit({ ...copilotEdit, shared: e.currentTarget.checked })}
-          label={t('Share with Chatbox')}
+          label={t('Share (unavailable)')}
         />
         <div className="agents-form-actions">
           <Button variant="default" onClick={() => props.close()}>

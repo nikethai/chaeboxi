@@ -1,4 +1,4 @@
-# Chatbox History Sync Server
+# Chaeboxi History Sync Server
 
 Small self-hosted sync service for cross-machine chat history sync.
 

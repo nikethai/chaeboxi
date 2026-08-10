@@ -1,11 +1,11 @@
 # Provider Config Import - Manual Test Cases
 
-This document contains test configurations for manually verifying the provider config import functionality in Chatbox.
+This document contains test configurations for manually verifying the provider config import functionality in Chaeboxi.
 
 ## How to Test
 
 1. Copy any of the JSON configurations below
-2. In Chatbox, navigate to Settings → Providers
+2. In Chaeboxi, navigate to Settings → Providers
 3. Click "Import from Clipboard" button
 4. Verify the import results match the expected behavior
 
@@ -187,7 +187,7 @@ chatbox://provider/import?config=eyJpZCI6Im1pbmltYWwtcHJvdmlkZXIiLCJuYW1lIjoiTWl
 ```
 
 **Expected Result:**
-- ✅ Deep link opens Chatbox
+- ✅ Deep link opens Chaeboxi
 - Import dialog shows with decoded config
 - Same result as manual clipboard import
 

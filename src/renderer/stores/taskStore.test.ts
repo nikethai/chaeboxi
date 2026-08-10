@@ -257,4 +257,49 @@ describe('taskStore', () => {
       expect(context).toContain('Completed: 1')
     })
   })
+
+  describe('assignee + dependsOn + listReadyTasks', () => {
+    it('creates tasks with assignee and deps', () => {
+      const a = taskStore.getState().createTask('session-1', 'a', 'First', {
+        assigneeAgentId: 'agent-1',
+        createdBy: 'orchestrator',
+      })
+      const b = taskStore.getState().createTask('session-1', 'b', 'Second', {
+        dependsOn: ['a'],
+        assigneeAgentId: 'agent-2',
+      })
+      expect(a.ok && a.task.assigneeAgentId).toBe('agent-1')
+      expect(b.ok && b.task.dependsOn).toEqual(['a'])
+    })
+
+    it('lists only pending tasks with satisfied deps', () => {
+      taskStore.getState().createTask('session-1', 'a', 'First')
+      taskStore.getState().createTask('session-1', 'b', 'Second', { dependsOn: ['a'] })
+      taskStore.getState().createTask('session-1', 'c', 'Third')
+
+      let ready = taskStore.getState().listReadyTasks('session-1')
+      expect(ready.map((t) => t.id)).toEqual(['a', 'c'])
+
+      taskStore.getState().updateTask('a', { status: 'done' })
+      ready = taskStore.getState().listReadyTasks('session-1')
+      // Stable createdAt order: b (blocked until a done) then c was always ready
+      expect(ready.map((t) => t.id)).toEqual(['b', 'c'])
+    })
+
+    it('setTaskAssignee and setTaskDeps update fields', () => {
+      taskStore.getState().createTask('session-1', 'a', 'First')
+      taskStore.getState().setTaskAssignee('a', 'agent-x')
+      taskStore.getState().setTaskDeps('a', ['missing-ok'])
+      const task = taskStore.getState().tasks.find((t) => t.id === 'a')
+      expect(task?.assigneeAgentId).toBe('agent-x')
+      expect(task?.dependsOn).toEqual(['missing-ok'])
+    })
+
+    it('does not auto-ready when dependency failed', () => {
+      taskStore.getState().createTask('session-1', 'a', 'First')
+      taskStore.getState().createTask('session-1', 'b', 'Second', { dependsOn: ['a'] })
+      taskStore.getState().updateTask('a', { status: 'failed' })
+      expect(taskStore.getState().listReadyTasks('session-1').map((t) => t.id)).toEqual([])
+    })
+  })
 })

@@ -82,7 +82,7 @@ export function listFilesTool(knowledgeBaseId: number) {
   })
 }
 async function getToolSetDescription(knowledgeBaseId: number, knowledgeBaseName: string) {
-  // 预加载文件列表，让模型知道知识库中有什么文件
+  // (legacy comment removed)
   const knowledgeBaseController = platform.getKnowledgeBaseController()
   const files = await knowledgeBaseController.listFilesPaginated(knowledgeBaseId, 0, 50)
   const doneFiles = files.filter((f) => f.status === 'done')

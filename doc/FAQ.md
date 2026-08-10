@@ -1,41 +1,23 @@
 # Frequently Asked Questions
 
-<p align="center">
-    English | <a href="./FAQ-CN.md">中文</a>
-</p>
+If you still have questions, open an [issue](https://github.com/nikethai/chaeboxi/issues).
 
-If you still haven't found the answer you're looking for, feel free to submit an [Issue](https://github.com/Bin-Huang/chatbox/issues/new/choose) as well.
+### Message sending failed (`Failed to fetch`)?
 
-### 1001
+Chaeboxi cannot reach the AI provider endpoint you configured. Check your network and the **API Host** for that provider (for OpenAI the default is `https://api.openai.com`).
 
-#### Message sending failed, showing `Failed to fetch`?
+### Quota / billing errors from the provider?
 
-This issue occurs when Chatbox cannot connect to the AI model server you've set up. Please check your current network environment and make sure it can connect properly to the AI model server.
+Errors like `insufficient_quota` or “exceeded your current quota” come from the **provider account** (OpenAI, Anthropic, etc.), not from Chaeboxi. Check that provider’s billing dashboard and API key limits.
 
-For OpenAI API users, if you've chosen OpenAI API as the AI model provider (meaning you've selected `OpenAI API` in the AI Provider settings), it's typically because Chatbox cannot access the `API HOST` you've set. By default, Chatbox uses `https://api.openai.com` as the API HOST. Please make sure your current network can access this service.
+### Model not found (e.g. GPT-4)?
 
-### 1002
+Your API key or account may not have access to that model, or the model id is wrong. Pick a model your account supports, or use a local provider such as Ollama.
 
-#### Everything was working fine before, but now I keep getting an error: `{"error":{"message":"You exceeded your current quota, please check your plan and billing details`?
+### How do I use Chaeboxi?
 
-If everything was working fine before and now you're unable to use the service, with each message sending attempt resulting in the following error:
+Chaeboxi is **BYOK** (bring your own keys). Open **Settings → Provider**, add a provider, paste your API key, and select a model. There is no built-in paid hosted LLM subscription.
 
-```
-{"error":{"message":"You exceeded your current quota, please check your plan and billing details.","type":"insufficient_quota","param":null,"code":null}}
-```
+### Privacy
 
-Please note that this issue is not related to Chatbox. In this situation, it's likely that you're using your own OpenAI API account and your free quota has either been used up or expired (usually due to expiration). You need to log in to your OpenAI account's dashboard and link a credit card to continue using the service. The OpenAI API account has many requirements for credit cards. If your card doesn't meet these requirements, you'll need to resolve this issue yourself (it can be quite frustrating).
-
-**Consider using `Chatbox AI`:** If you don't want to deal with these issues, you can also use Chatbox's built-in `Chatbox AI` service. This service allows you to enjoy AI capabilities without any hassle. Go to the settings page and set the AI Provider to `Chatbox AI`, and you'll see the corresponding options.
-
-### 1003
-
-#### Unable to use GPT-4?
-
-If you select GPT-4 and receive a similar error message when sending messages:
-
-```
-{"error":{"message":"The model: gpt-4-32k does not exist","type":"invalid_request_error","param":null,"code":"model_not_found"}}
-```
-
-This issue often occurs when you're using your own OpenAI account and have selected the GPT-4 model, but your OpenAI API account does not support GPT-4. As of July 4, 2023, all OpenAI API accounts require a request to be submitted to OpenAI before the GPT-4 model can be used. Here's the application link: https://openai.com/waitlist/gpt-4-api. Please note that even if you're a ChatGPT Plus user, you still need to apply for access to use the GPT-4 API model.
+Conversation data stays on your device (platform storage). See the [README](../README.md#privacy) privacy section.

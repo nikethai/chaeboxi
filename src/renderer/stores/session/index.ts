@@ -1,7 +1,7 @@
 /**
  * Session Module Public API
  *
- * This module provides all session-related operations for Chatbox.
+ * This module provides all session-related operations for Chaeboxi.
  * Internal helpers (prefixed with _) are intentionally not exported.
  *
  * Public exports: 40 functions + types + state
@@ -47,6 +47,7 @@ export {
   keepDiscussing,
   requestTeamAnswer,
   runAgentRoomDiscussion,
+  runAgentRoomSwarm,
   runAgentRoomWork,
   setSessionRoomMode,
   shouldRunMultiAgentRoom,

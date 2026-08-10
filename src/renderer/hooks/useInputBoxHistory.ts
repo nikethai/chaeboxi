@@ -19,7 +19,7 @@ const useInputBoxHistory = () => {
 
   const getPreviousHistoryInput = () => {
     if (currentHistoryIndex < inputBoxHistory.length - 1) {
-      // 如果当前索引小于历史记录长度减1，说明有历史记录可供前进
+      // (legacy comment removed)
       const previousIndex = currentHistoryIndex + 1
       setCurrentHistoryIndex(previousIndex)
       return inputBoxHistory[previousIndex]
@@ -28,7 +28,7 @@ const useInputBoxHistory = () => {
 
   const getNextHistoryInput = () => {
     if (currentHistoryIndex > 0) {
-      // 如果当前索引大于0，说明有历史记录可供回退
+      // (legacy comment removed)
       const nextIndex = currentHistoryIndex - 1
       setCurrentHistoryIndex(nextIndex)
       return inputBoxHistory[nextIndex]

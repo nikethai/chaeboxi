@@ -36,22 +36,22 @@ export default function Header(props: { session: Session }) {
     }
   }, [currentSession.name, renaming])
 
-  // 会话名称自动生成
+  // (legacy comment removed)
   useEffect(() => {
     const autoGenerateTitle = settingActions.getAutoGenerateTitle()
     if (!autoGenerateTitle) {
       return
     }
 
-    // 检查是否有正在生成的消息
+    // (legacy comment removed)
     const hasGeneratingMessage = currentSession.messages.some((msg) => msg.generating)
 
-    // 如果有消息正在生成，或者消息数量少于2条，不触发名称生成
+    // (legacy comment removed)
     if (hasGeneratingMessage || currentSession.messages.length < 2) {
       return
     }
 
-    // 触发名称生成（在 sessionActions 中进行去重和延迟处理）
+    // (legacy comment)
     if (currentSession.name === 'Untitled') {
       scheduleGenerateNameAndThreadName(currentSession.id)
     } else if (!currentSession.threadName) {

@@ -172,10 +172,10 @@ async function parseFileWithMineruService(
 }
 
 /**
- * 预处理文件以获取内容和存储键
- * @param file 文件对象
- * @param settings 会话设置
- * @returns 预处理后的文件信息
+ * (legacy comment removed)
+ * @param file
+ * @param settings
+ * (legacy comment)
  */
 export async function preprocessFile(
   file: File,
@@ -257,7 +257,7 @@ export async function preprocessFile(
         }
 
         case 'chatbox-ai': {
-          // Chatbox AI cloud parsing is disabled in this build.
+          // legacy cloud service cloud parsing is disabled in this build.
           // Treat legacy parser values as local parsing.
           try {
             result = await parseFileWithLocalParser(file, uniqKey)
@@ -320,10 +320,10 @@ export async function preprocessFile(
 }
 
 /**
- * 预处理链接以获取内容
- * @param url 链接地址
- * @param settings 会话设置
- * @returns 预处理后的链接信息
+ * (legacy comment removed)
+ * @param url
+ * @param settings
+ * (legacy comment)
  */
 export async function preprocessLink(
   url: string,
@@ -341,10 +341,10 @@ export async function preprocessLink(
   try {
     const uniqKey = StorageKeyGenerator.linkUniqKey(url)
 
-    // 检查是否已经处理过这个链接
+    // (legacy comment removed)
     const existingContent = await storage.getBlob(uniqKey).catch(() => null)
     if (existingContent) {
-      // 如果已经有内容，尝试从内容中提取标题
+      // (legacy comment removed)
       const titleMatch = existingContent.match(/<title[^>]*>([^<]+)<\/title>/i)
       const title = titleMatch ? titleMatch[1] : url.replace(/^https?:\/\//, '')
 
@@ -374,11 +374,11 @@ export async function preprocessLink(
       }
     }
 
-    // 本地方案：解析链接内容
+    // (legacy comment removed)
     const { key, title } = await localParser.parseUrl(url)
     const content = (await storage.getBlob(key).catch(() => '')) || ''
 
-    // 将内容存储到唯一键下
+    // (legacy comment removed)
     if (content) {
       await storage.setBlob(uniqKey, content)
     }
@@ -581,12 +581,12 @@ export async function enrichUserMessageWithVideoFrames(
 }
 
 /**
- * 构建用户消息，只包含元数据不包含内容
- * @param text 消息文本
- * @param pictureKeys 图片存储键列表
- * @param preprocessedFiles 预处理后的文件信息
- * @param preprocessedLinks 预处理后的链接信息
- * @returns 构建好的消息对象
+ * (legacy comment removed)
+ * @param text
+ * @param pictureKeys
+ * @param preprocessedFiles
+ * @param preprocessedLinks
+ * (legacy comment)
  */
 export function constructUserMessage(
   text: string,
@@ -617,10 +617,10 @@ export function constructUserMessage(
     byteLength?: number
   }> = []
 ): Message {
-  // 只使用原始文本，不添加文件和链接内容
+  // (legacy comment removed)
   const msg = createMessage('user', text)
 
-  // 添加图片
+  // (legacy comment removed)
   if (pictureKeys.length > 0) {
     msg.contentParts = msg.contentParts ?? []
     msg.contentParts.push(...pictureKeys.map((k) => ({ type: 'image' as const, storageKey: k })))
@@ -787,7 +787,7 @@ function _searchSessions(regexp: RegExp, s: Session) {
       matchedMessages.push(message)
     }
   }
-  // 搜索会话的历史主题
+  // (legacy comment removed)
   if (session.threads) {
     for (let i = session.threads.length - 1; i >= 0; i--) {
       const thread = session.threads[i]

@@ -1,6 +1,9 @@
 import type { Language } from '../../shared/types'
 
-// 将桌面端 getLocale、浏览器的 navigator.language 返回的语言信息，转换为应用的 locale
+/**
+ * Map desktop `getLocale` / browser `navigator.language` to app Language codes.
+ * Comments and identifiers are English-only.
+ */
 export function parseLocale(locale: string): Language {
   if (
     locale === 'zh' ||
@@ -37,9 +40,7 @@ export function parseLocale(locale: string): Language {
     return 'fr'
   }
   if (locale.startsWith('pt')) {
-    // 这两种语言都是葡萄牙语，但是区域不同，一些用词习惯也不同，以后可能需要区分
-    // 葡萄牙（Portugal） - pt-PT
-    // 巴西（Brazil） - pt-BR
+    // Portugal and Brazil both map to pt-PT for now.
     return 'pt-PT'
   }
   if (locale.startsWith('es')) {

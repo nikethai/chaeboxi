@@ -1,5 +1,5 @@
 import { Alert, Button, Flex, Group, Pill, ScrollArea, Stack, Text, Tooltip } from '@mantine/core'
-import { ChatboxAIAPIError } from '@shared/models/errors'
+import { ProviderAPIError } from '@shared/models/errors'
 import type { KnowledgeBaseFile } from '@shared/types'
 import { formatFileSize } from '@shared/utils'
 import { IconAlertTriangle, IconFile, IconInfoCircle, IconRefresh } from '@tabler/icons-react'
@@ -11,7 +11,7 @@ import platform from '@/platform'
 
 /**
  * Parse error message to extract user-friendly message
- * Handles JSON error responses and uses i18nKey from ChatboxAIAPIError.codeNameMap
+ * Handles JSON error responses and uses i18nKey from ProviderAPIError.codeNameMap
  */
 function parseErrorMessage(errorMessage: string): string {
   try {
@@ -22,9 +22,9 @@ function parseErrorMessage(errorMessage: string): string {
       const parsed = JSON.parse(jsonStr)
       const errorCode = parsed.error?.code
 
-      // Try to get i18nKey from ChatboxAIAPIError.codeNameMap
-      if (errorCode && ChatboxAIAPIError.codeNameMap[errorCode]) {
-        return ChatboxAIAPIError.codeNameMap[errorCode].i18nKey
+      // Try to get i18nKey from ProviderAPIError.codeNameMap
+      if (errorCode && ProviderAPIError.codeNameMap[errorCode]) {
+        return ProviderAPIError.codeNameMap[errorCode].i18nKey
       }
 
       // Fallback to detail or title

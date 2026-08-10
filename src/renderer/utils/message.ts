@@ -23,7 +23,7 @@ export function getMessageText(message: Message, includeImagePlaceHolder = true,
   return ''
 }
 
-// 只有这里可以访问 message 的 content / webBrowsing 字段，迁移到 contentParts 字段
+// message content / webBrowsing ， contentParts
 export function migrateMessage(
   message: Omit<Message, 'contentParts'> & { contentParts?: MessageContentParts }
 ): Message {
@@ -32,10 +32,10 @@ export function migrateMessage(
     role: message.role || 'user',
     contentParts: message.contentParts || [],
   }
-  // 还是保留原始content字段，删除webBrowsing字段
+  // content，webBrowsing
   assign(result, omit(message, 'webBrowsing'))
 
-  // 如果 contentParts 不存在，或者 contentParts 为空，或者 contentParts 的内容为 '...'(placeholder)，则使用 content 的值
+  // contentParts ， contentParts ， contentParts '...'(placeholder)， content
   if (
     (!result.contentParts?.length || getMessageText(result) === '...' || !getMessageText(result)) &&
     'content' in message
@@ -98,10 +98,10 @@ export function fixMessageRoleSequence(messages: Message[]): Message[] {
   if (messages.length <= 1) {
     result = messages
   } else {
-    let currentMessage = cloneMessage(messages[0]) // 复制，避免后续修改导致的引用问题
+    let currentMessage = cloneMessage(messages[0]) // ，
 
     for (let i = 1; i < messages.length; i++) {
-      const message = cloneMessage(messages[i]) // 复制消息避免修改原对象
+      const message = cloneMessage(messages[i]) // (legacy)
 
       if (message.role === currentMessage.role) {
         currentMessage = mergeMessages(currentMessage, message)
@@ -112,7 +112,7 @@ export function fixMessageRoleSequence(messages: Message[]): Message[] {
     }
     result.push(currentMessage)
   }
-  // 如果顺序中的第一条 assistant 消息前面不是 user 消息，则插入一个 user 消息
+  // (legacy comment)
   const firstAssistantIndex = result.findIndex((m) => m.role === 'assistant')
   if (firstAssistantIndex !== -1 && result[firstAssistantIndex - 1]?.role !== 'user') {
     result = [
@@ -126,8 +126,8 @@ export function fixMessageRoleSequence(messages: Message[]): Message[] {
 
 /**
  * SequenceMessages organizes and orders messages to follow the sequence: system -> user -> assistant -> user -> etc.
- * 这个方法只能用于 llm 接口请求前的参数构造，因为会过滤掉消息中的无关字段，所以不适用于其他消息存储的场景
- * 这个方法本质上是 golang API 服务中方法的 TypeScript 实现
+ * (legacy comment)
+ *  golang API TypeScript
  * @param msgs
  * @returns
  */

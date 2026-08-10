@@ -1,4 +1,4 @@
-// 完全参考了： https://github.com/danny-avila/LibreChat/blob/main/client/src/utils/latex.ts
+// ： https://github.com/danny-avila/LibreChat/blob/main/client/src/utils/latex.ts
 
 /**
  * Preprocesses LaTeX content by replacing delimiters and escaping certain characters.

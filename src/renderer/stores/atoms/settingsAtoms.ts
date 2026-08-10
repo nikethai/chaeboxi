@@ -33,29 +33,29 @@ const _settingsAtom = atomWithStorage<Settings>(
 export const settingsAtom = atom(
   (get) => {
     const _settings = get(_settingsAtom) as Settings
-    // 兼容早期版本
+    // (legacy comment removed)
     const settings = Object.assign({}, defaults.settings(), _settings)
     settings.shortcuts = Object.assign({}, defaults.settings().shortcuts, _settings.shortcuts)
     settings.mcp = Object.assign({}, defaults.settings().mcp, _settings.mcp)
-    // 移除已废弃的属性
+    // (legacy comment removed)
     return omit(settings, ['maxTokens', 'maxContextSize']) as Settings
   },
   (get, set, update: SetStateAction<Settings>) => {
     const settings = get(_settingsAtom) as Settings
     const newSettings = typeof update === 'function' ? update(settings) : update
-    // 考虑关键配置的缺省情况
+    // (legacy comment removed)
     // if (!newSettings.apiHost) {
     //   newSettings.apiHost = defaults.settings().apiHost
     // }
-    // 如果快捷键配置发生变化，需要重新注册快捷键
+    // (legacy comment removed)
     if (newSettings.shortcuts !== settings.shortcuts) {
       platform.ensureShortcutConfig(newSettings.shortcuts)
     }
-    // 如果代理配置发生变化，需要重新注册代理
+    // (legacy comment removed)
     if (newSettings.proxy !== settings.proxy) {
       platform.ensureProxyConfig({ proxy: newSettings.proxy })
     }
-    // 如果开机自启动配置发生变化，需要重新设置开机自启动
+    // (legacy comment removed)
     if (Boolean(newSettings.autoLaunch) !== Boolean(settings.autoLaunch)) {
       platform.ensureAutoLaunch(newSettings.autoLaunch)
     }
@@ -91,7 +91,7 @@ export const pasteLongTextAsAFileAtom = focusAtom(settingsAtom, (optic) => optic
 // Related UI state, moved here for proximity to settings
 export const openSettingDialogAtom = atom<SettingWindowTab | null>(null)
 
-// 存储新创建SessionSettings的默认值 缓存在 localStorage
+// SessionSettings localStorage
 export const chatSessionSettingsAtom = atomWithStorage<SessionSettings>(StorageKey.ChatSessionSettings, {}, storage)
 export const pictureSessionSettingsAtom = atomWithStorage<SessionSettings>(
   StorageKey.PictureSessionSettings,

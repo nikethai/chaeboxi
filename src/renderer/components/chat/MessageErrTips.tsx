@@ -2,7 +2,7 @@ import { ActionIcon, Collapse, Flex, Tooltip } from '@mantine/core'
 import Alert from '@mui/material/Alert'
 import Link from '@mui/material/Link'
 import { aiProviderNameHash } from '@shared/models'
-import { ChatboxAIAPIError } from '@shared/models/errors'
+import { ProviderAPIError } from '@shared/models/errors'
 import type { Message } from '@shared/types'
 import { IconCheck, IconChevronDown, IconChevronUp, IconCopy } from '@tabler/icons-react'
 import type React from 'react'
@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useCopied } from '@/hooks/useCopied'
 import { navigateToSettings } from '@/modals/Settings'
+import { classifyQuotaError } from '@shared/providers/usage'
 import * as settingActions from '@/stores/settingActions'
 
 const MAX_CHARS = 200
@@ -81,9 +82,54 @@ export default function MessageErrTips(props: { msg: Message }) {
   }
 
   const tips: React.ReactNode[] = []
-  let onlyShowTips = false // 是否只显示提示，不显示错误信息详情
+  let onlyShowTips = false // ，
 
-  if (isContextLengthError(msg.error) || isContextLengthError(errorMessage)) {
+  const quotaKind = classifyQuotaError({
+    message: msg.error,
+    responseBody: typeof msg.errorExtra?.responseBody === 'string' ? msg.errorExtra.responseBody : undefined,
+    errorCode: msg.errorCode,
+  }).kind
+
+  if (quotaKind === 'exhausted' || msg.errorCode === 10004) {
+    tips.push(
+      <Trans
+        i18nKey="You may have reached your provider plan limit. Check <ViewUsageLink>Usage</ViewUsageLink> or <OpenSettingButton>provider settings</OpenSettingButton> to switch models."
+        components={{
+          ViewUsageLink: (
+            <Link
+              className="cursor-pointer italic"
+              onClick={() => {
+                navigateToSettings('/usage')
+              }}
+            />
+          ),
+          OpenSettingButton: (
+            <Link
+              className="cursor-pointer italic"
+              onClick={() => {
+                navigateToSettings(msg.aiProvider ? `/provider/${msg.aiProvider}` : '/provider')
+              }}
+            />
+          ),
+        }}
+      />
+    )
+  } else if (quotaKind === 'rate_limit' || msg.errorCode === 20005) {
+    tips.push(
+      <Trans i18nKey="You have exceeded the provider rate limit. Please try again later. You can also review <ViewUsageLink>Usage</ViewUsageLink>."
+        components={{
+          ViewUsageLink: (
+            <Link
+              className="cursor-pointer italic"
+              onClick={() => {
+                navigateToSettings('/usage')
+              }}
+            />
+          ),
+        }}
+      />
+    )
+  } else if (isContextLengthError(msg.error) || isContextLengthError(errorMessage)) {
     tips.push(
       <Trans i18nKey="Your conversation has exceeded the model's context limit. Try compressing the conversation, starting a new chat, or reducing the number of context messages in settings." />
     )
@@ -156,8 +202,8 @@ export default function MessageErrTips(props: { msg: Message }) {
         ]}
       />
     )
-  } else if (msg.errorCode && ChatboxAIAPIError.getDetail(msg.errorCode)) {
-    const chatboxAIErrorDetail = ChatboxAIAPIError.getDetail(msg.errorCode)
+  } else if (msg.errorCode && ProviderAPIError.getDetail(msg.errorCode)) {
+    const chatboxAIErrorDetail = ProviderAPIError.getDetail(msg.errorCode)
     if (chatboxAIErrorDetail) {
       onlyShowTips = true
       tips.push(

@@ -1,11 +1,11 @@
 /**
- * Compact Team mode control (Discuss | Work) — same visual weight as model picker.
+ * Compact Team mode control (Discuss | Work | Swarm) — same visual weight as model picker.
  * Only rendered when the room has 2+ agents.
  */
 
 import { Menu, Text, Tooltip, UnstyledButton } from '@mantine/core'
 import type { RoomMode } from '@shared/agent-room'
-import { IconChevronRight, IconMessages, IconTool } from '@tabler/icons-react'
+import { IconChevronRight, IconMessages, IconTool, IconUsersGroup } from '@tabler/icons-react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
@@ -18,15 +18,36 @@ export interface TeamModeSelectProps {
   className?: string
 }
 
+const MODE_META: Record<
+  RoomMode,
+  { labelKey: string; hintKey: string; Icon: typeof IconMessages }
+> = {
+  discuss: {
+    labelKey: 'Discuss',
+    hintKey: 'Multi-round discussion',
+    Icon: IconMessages,
+  },
+  work: {
+    labelKey: 'Work',
+    hintKey: 'Plan · do · review · deliver',
+    Icon: IconTool,
+  },
+  swarm: {
+    labelKey: 'Swarm',
+    hintKey: 'Auto task assign · sequential execute',
+    Icon: IconUsersGroup,
+  },
+}
+
 function TeamModeSelect({ value, onChange, toolbarButtonClass, isSmallScreen, className }: TeamModeSelectProps) {
   const { t } = useTranslation()
-  const isWork = value === 'work'
-  const label = isWork ? t('Work') : t('Discuss')
-  const Icon = isWork ? IconTool : IconMessages
-  const hint = isWork ? t('Plan · do · review · deliver') : t('Multi-round discussion')
+  const current = MODE_META[value] ?? MODE_META.discuss
+  const Icon = current.Icon
+  const label = t(current.labelKey)
+  const hint = t(current.hintKey)
 
   return (
-    <Menu position="top-end" withinPortal shadow="md" width={240} transitionProps={{ transition: 'fade-up', duration: 160 }}>
+    <Menu position="top-end" withinPortal shadow="md" width={260} transitionProps={{ transition: 'fade-up', duration: 160 }}>
       <Menu.Target>
         <Tooltip label={`${t('Team mode')}: ${hint}`} withArrow position="top" openDelay={400}>
           <UnstyledButton
@@ -55,46 +76,34 @@ function TeamModeSelect({ value, onChange, toolbarButtonClass, isSmallScreen, cl
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Label>{t('Team mode')}</Menu.Label>
-        <Menu.Item
-          leftSection={<IconMessages size={15} stroke={1.6} />}
-          onClick={() => onChange('discuss')}
-          rightSection={
-            !isWork ? (
-              <Text size="xs" c="chatbox-brand" fw={600}>
-                ✓
-              </Text>
-            ) : undefined
-          }
-        >
-          <div className="min-w-0">
-            <Text size="sm" fw={500}>
-              {t('Discuss')}
-            </Text>
-            <Text size="xs" c="dimmed" lineClamp={2}>
-              {t('Multi-round discussion')}
-            </Text>
-          </div>
-        </Menu.Item>
-        <Menu.Item
-          leftSection={<IconTool size={15} stroke={1.6} />}
-          onClick={() => onChange('work')}
-          rightSection={
-            isWork ? (
-              <Text size="xs" c="chatbox-brand" fw={600}>
-                ✓
-              </Text>
-            ) : undefined
-          }
-        >
-          <div className="min-w-0">
-            <Text size="sm" fw={500}>
-              {t('Work')}
-            </Text>
-            <Text size="xs" c="dimmed" lineClamp={2}>
-              {t('Plan · do · review · deliver')}
-            </Text>
-          </div>
-        </Menu.Item>
+        {(Object.keys(MODE_META) as RoomMode[]).map((mode) => {
+          const meta = MODE_META[mode]
+          const ModeIcon = meta.Icon
+          const selected = value === mode
+          return (
+            <Menu.Item
+              key={mode}
+              leftSection={<ModeIcon size={15} stroke={1.6} />}
+              onClick={() => onChange(mode)}
+              rightSection={
+                selected ? (
+                  <Text size="xs" c="chatbox-brand" fw={600}>
+                    ✓
+                  </Text>
+                ) : undefined
+              }
+            >
+              <div className="min-w-0">
+                <Text size="sm" fw={500}>
+                  {t(meta.labelKey)}
+                </Text>
+                <Text size="xs" c="dimmed" lineClamp={2}>
+                  {t(meta.hintKey)}
+                </Text>
+              </div>
+            </Menu.Item>
+          )
+        })}
       </Menu.Dropdown>
     </Menu>
   )

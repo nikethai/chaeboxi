@@ -427,6 +427,10 @@ export default class DesktopPlatform implements Platform {
     }
   }
 
+  public onQuickShown(callback: () => void): () => void {
+    return listenShellEvent('shell:quick-shown', () => callback())
+  }
+
   public onShellNavigate(callback: (path: string) => void): () => void {
     return listenShellEvent<string>('shell:navigate', (path) => {
       if (typeof path === 'string') {
@@ -434,7 +438,6 @@ export default class DesktopPlatform implements Platform {
       }
     })
   }
-
   public onScreenshotCaptured(callback: (payload: ScreenshotImagePayload) => void): () => void {
     return listenShellEvent<ScreenshotImagePayload>('shell:screenshot-captured', (payload) => {
       if (payload?.base64) {

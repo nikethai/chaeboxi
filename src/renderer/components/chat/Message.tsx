@@ -146,6 +146,8 @@ interface Props {
   sessionPicUrl?: string
   /** First turn in a consecutive team discussion / plan / review run */
   discussionGroupStart?: boolean
+  /** When false, suppress follow-up suggestions (only the latest assistant message should show them). */
+  showFollowUpSuggestions?: boolean
 }
 
 const _Message: FC<Props> = (props) => {
@@ -159,6 +161,7 @@ const _Message: FC<Props> = (props) => {
     assistantAvatarKey: _assistantAvatarKey,
     sessionPicUrl: _sessionPicUrl,
     discussionGroupStart,
+    showFollowUpSuggestions = false
   } = props
 
   const { t } = useTranslation()
@@ -1071,8 +1074,12 @@ const _Message: FC<Props> = (props) => {
             }}
           />
         )}
-        {msg.role === 'assistant' && !msg.generating && msg.citations?.length ? (
-          <FollowUpSuggestions sessionId={sessionId} citations={msg.citations} searchQuery={msg.searchQuery} />
+        {showFollowUpSuggestions && msg.role === 'assistant' && !msg.generating && msg.citations?.length ? (
+          <FollowUpSuggestions
+            sessionId={sessionId}
+            message={msg}
+            cachedFollowUpSuggestions={msg.followUpSuggestions}
+          />
         ) : null}
       </div>
     </Box>

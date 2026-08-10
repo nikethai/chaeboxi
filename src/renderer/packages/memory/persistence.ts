@@ -125,3 +125,20 @@ export async function deleteAgentBank(agentId: string): Promise<void> {
   await flushKey(key)
   await storage.removeItem(key)
 }
+
+const AGENT_BANK_KEY_PREFIX = StorageKeyGenerator.memoryAgent('')
+
+/** Enumerate every agent id that has a persisted bank, including inactive agents. */
+export async function listAgentBankIds(): Promise<string[]> {
+  const keys = await storage.getAllKeys()
+  return keys
+    .filter((key) => key.startsWith(AGENT_BANK_KEY_PREFIX))
+    .map((key) => key.slice(AGENT_BANK_KEY_PREFIX.length))
+    .sort()
+}
+
+/** Load every persisted agent bank for snapshot building. */
+export async function loadAllAgentBanks(): Promise<Array<{ agentId: string; bank: MemoryBank }>> {
+  const ids = await listAgentBankIds()
+  return await Promise.all(ids.map(async (agentId) => ({ agentId, bank: await loadAgentBank(agentId) })))
+}

@@ -18,4 +18,11 @@ describe('BlankStateStarters', () => {
 
     expect(onSelect).toHaveBeenCalledWith('Help me plan ')
   })
+  it('keeps the shortcut number and starter label as separate layout elements', () => {
+    const { container } = render(<BlankStateStarters onSelect={vi.fn()} />)
+    const starter = container.querySelector('.blank-starter')
+    expect(starter?.querySelector('.blank-starter-n')).not.toBeNull()
+    expect(starter?.querySelector('.blank-starter-t')).not.toBeNull()
+    expect(starter?.className).toContain('blank-starter')
+  })
 })

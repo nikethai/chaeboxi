@@ -1,6 +1,7 @@
 import { getDefaultStore } from 'jotai'
 import { router } from '@/router'
 import { currentSessionIdAtom } from '@/stores/atoms'
+import { sessionExistsInStorage } from '@/stores/chatStore'
 import { getSettingsParentPath, resolveSettingsEntryPath, resolveSettingsExitTarget } from '@/utils/settings-navigation'
 
 export { getSettingsParentPath }
@@ -19,12 +20,17 @@ export function navigateToSettings(path?: string) {
  * Leave settings and return to the last chat session, or home if none.
  * Prefer this over history.back() so deep links and cold entry always exit cleanly.
  */
-export function closeSettings() {
-  const sessionId = getDefaultStore().get(currentSessionIdAtom)
-  const target = resolveSettingsExitTarget(sessionId)
+export async function closeSettings() {
+  const store = getDefaultStore()
+  const sessionId = store.get(currentSessionIdAtom)
+  const sessionExists = Boolean(sessionId && sessionId !== 'new' && (await sessionExistsInStorage(sessionId)))
+  const target = resolveSettingsExitTarget(sessionId, sessionExists)
   if (target.to === '/session/$sessionId' && target.params) {
     void router.navigate({ to: target.to, params: target.params })
     return
+  }
+  if (sessionId) {
+    store.set(currentSessionIdAtom, null)
   }
   void router.navigate({ to: '/' })
 }

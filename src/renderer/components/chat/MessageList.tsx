@@ -119,6 +119,17 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
     return null
   }, [currentMessageList])
 
+  // Follow-up suggestions are model-backed and would otherwise fire once per
+  // historical assistant message with citations — restrict them to the latest.
+  const latestAssistantMessageId = useMemo(() => {
+    for (let i = currentMessageList.length - 1; i >= 0; i--) {
+      if (currentMessageList[i].role === 'assistant') {
+        return currentMessageList[i].id
+      }
+    }
+    return null
+  }, [currentMessageList])
+
   const virtuoso = useRef<VirtuosoHandle>(null)
   const messageListRef = useRef<HTMLDivElement>(null)
 
@@ -251,6 +262,7 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
                           assistantAvatarKey={currentSession.assistantAvatarKey}
                           sessionPicUrl={currentSession.picUrl}
                           discussionGroupStart={discussionGroupStart}
+                          showFollowUpSuggestions={msg.id === latestAssistantMessageId}
                         />
                       )}
                     </ErrorBoundary>

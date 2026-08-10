@@ -4,17 +4,19 @@
  * Token segment opens context/compress menu (composer chip removed).
  */
 
-import { Flex, Text, Tooltip, UnstyledButton } from '@mantine/core'
+import { Flex, Text, Tooltip } from '@mantine/core'
 import type { Message } from '@shared/types'
+import type { MemoryEntry } from '@shared/types/memory'
 import { formatNumber } from '@shared/utils'
 import { useAtomValue } from 'jotai'
-import { type FC, useEffect, useMemo } from 'react'
+import { type FC, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { MemoryDockPopover } from '@/components/chat/MemoryDockPopover'
 import TokenCountMenu from '@/components/InputBox/TokenCountMenu'
-import { getMemoryInjectStats } from '@/packages/memory/inject'
 import { aggregateSessionCosts, formatCost } from '@/packages/cost-tracking'
+import { getMemoryInjectStats } from '@/packages/memory/inject'
 import { composerTokenMenuAtom } from '@/stores/atoms/uiAtoms'
-import { navigateToSettings } from '@/modals/Settings'
+import * as chatStore from '@/stores/chatStore'
 import { ensureMemoryStoreInit, useMemoryStore } from '@/stores/memoryStore'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
@@ -24,8 +26,20 @@ export type SessionStatusBarProps = {
   generating?: boolean
   providerId?: string
   sessionId?: string
+  /**
+   * Session settings.memoryAutoSave. When false, statusline shows auto-save off
+   * while Memory inject may still be on.
+   */
+  memoryAutoSave?: boolean
   /** Quiet bar for empty threads (model only, no msg/tok noise) */
   empty?: boolean
+  /**
+   * Floating Quick Chat density: model + live/ready only.
+   * Hides mem / msg / tok / cost (available in full app).
+   */
+  compact?: boolean
+  onInsertMemory?: (entry: MemoryEntry) => void
+  getMemorySaveContent?: () => string
 }
 
 function lastAssistantModel(messages: Message[]): string | undefined {
@@ -44,21 +58,44 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
   generating,
   providerId,
   sessionId,
+  memoryAutoSave,
   empty = false,
+  compact = false,
+  onInsertMemory,
+  getMemorySaveContent,
 }) => {
   const { t } = useTranslation()
   const tokenMenu = useAtomValue(composerTokenMenuAtom)
   const memoryReady = useMemoryStore((s) => s.ready)
-  const memoryEnabled = useMemoryStore((s) => s.settings.enabled)
   const globalBank = useMemoryStore((s) => s.globalBank)
   const memorySettings = useMemoryStore((s) => s.settings)
+  const sessionAutoSaveOff = memoryAutoSave === false
+
+  const handleMemoryAutoSaveChange = useCallback(
+    (enabled: boolean) => {
+      if (!sessionId) return
+      void chatStore.updateSession(sessionId, (session) => {
+        if (!session) throw new Error('Session not found')
+        return {
+          ...session,
+          settings: {
+            ...session.settings,
+            // undefined = inherit global; false = session opt-out
+            memoryAutoSave: enabled ? undefined : false,
+          },
+        }
+      })
+    },
+    [sessionId]
+  )
 
   useEffect(() => {
+    if (compact) return
     void ensureMemoryStoreInit()
-  }, [])
+  }, [compact])
 
   const memoryChip = useMemo(() => {
-    if (!memoryReady) return null
+    if (compact || !memoryReady) return null
     const stats = getMemoryInjectStats({
       settings: memorySettings,
       globalBank,
@@ -67,36 +104,48 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
     if (!stats.enabled) {
       return { label: t('Memory off'), title: t('Open Memory settings'), factCount: 0, on: false }
     }
+    const baseTitle =
+      stats.factCount > 0
+        ? t('{{count}} enabled facts will inject into model prompts (~{{tokens}} tokens)', {
+            count: stats.factCount,
+            tokens: stats.injectTokens,
+          })
+        : t('Memory enabled but empty — add facts in Settings')
+    const autoSaveNote = sessionAutoSaveOff
+      ? t('Auto-save is off for this chat. Manual Save to memory still works.')
+      : ''
     return {
-      label: t('Memory on · {{count}} facts', { count: stats.factCount }),
-      title:
-        stats.factCount > 0
-          ? t('{{count}} enabled facts will inject into model prompts (~{{tokens}} tokens)', {
-              count: stats.factCount,
-              tokens: stats.injectTokens,
-            })
-          : t('Memory enabled but empty — add facts in Settings'),
+      label: sessionAutoSaveOff
+        ? t('Memory on · {{count}} facts · auto-save off', { count: stats.factCount })
+        : t('Memory on · {{count}} facts', { count: stats.factCount }),
+      title: autoSaveNote ? `${baseTitle} ${autoSaveNote}` : baseTitle,
       factCount: stats.factCount,
       on: true,
+      autoSaveOff: sessionAutoSaveOff,
     }
-  }, [memoryReady, memoryEnabled, globalBank, memorySettings, t])
+  }, [compact, memoryReady, globalBank, memorySettings, sessionAutoSaveOff, t])
 
-  const metrics = useMemo(() => aggregateSessionCosts(messages), [messages])
+  const metrics = useMemo(() => (compact ? null : aggregateSessionCosts(messages)), [compact, messages])
   const model = modelLabel || lastAssistantModel(messages) || '—'
 
-  const totalTokens = metrics.totalInputTokens + metrics.totalOutputTokens
-  const hasUsage = metrics.messagesWithUsage > 0
+  const totalTokens = metrics ? metrics.totalInputTokens + metrics.totalOutputTokens : 0
+  const hasUsage = Boolean(metrics && metrics.messagesWithUsage > 0)
 
   const providerShort = providerId ? String(providerId) : undefined
+  const modelTitle = providerShort ? `${providerShort} · ${model}` : model
 
-  const menuForSession = tokenMenu && sessionId && tokenMenu.sessionId === sessionId ? tokenMenu : null
+  const menuForSession = !compact && tokenMenu && sessionId && tokenMenu.sessionId === sessionId ? tokenMenu : null
 
   const tokSegment = (
     <button type="button" className="session-statusline-tok" aria-label={t('Estimated Token Usage')}>
       <span className="session-statusline-key">tok</span>
       <span className="session-statusline-val">
-        {hasUsage ? formatNumber(totalTokens) : menuForSession ? formatNumber(menuForSession.totalTokens) : '—'}
-        {hasUsage && (
+        {hasUsage && metrics
+          ? formatNumber(totalTokens)
+          : menuForSession
+            ? formatNumber(menuForSession.totalTokens)
+            : '—'}
+        {hasUsage && metrics && (
           <span className="session-statusline-muted">
             {' '}
             ↑{formatNumber(metrics.totalInputTokens)} ↓{formatNumber(metrics.totalOutputTokens)}
@@ -107,28 +156,61 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
   )
 
   return (
-    <div className={`session-statusline${empty ? ' is-empty' : ''}`} role="status" aria-live="polite">
-      <Flex className="session-statusline-inner" align="center" justify="space-between" gap="sm">
-        <Flex align="center" gap={10} miw={0} className="min-w-0">
+    <div
+      className={`session-statusline${empty ? ' is-empty' : ''}${compact ? ' is-compact' : ''}`}
+      role="status"
+      aria-live="polite"
+    >
+      <Flex
+        className="session-statusline-inner"
+        align="center"
+        justify={compact ? 'flex-start' : 'space-between'}
+        gap="sm"
+        wrap={compact ? 'nowrap' : 'wrap'}
+      >
+        <Flex align="center" gap={10} miw={0} className="min-w-0 flex-1">
           <span className={`session-statusline-dot ${generating ? 'is-live' : ''}`} aria-hidden />
-          <Text className="session-statusline-seg" lineClamp={1} title={model}>
+          <Text className="session-statusline-seg min-w-0" lineClamp={1} title={modelTitle}>
             <span className="session-statusline-key">{t('model')}</span>
-            <span className="session-statusline-val">{providerShort ? `${providerShort} · ${model}` : model}</span>
+            <span className="session-statusline-val">{modelTitle}</span>
           </Text>
           {generating && (
-            <Text className="session-statusline-live" size="xs">
+            <Text className="session-statusline-live shrink-0" size="xs">
               {t('generating')}
             </Text>
           )}
-          {empty && !generating && (
-            <Text className="session-statusline-muted-label" size="xs">
+          {!generating && empty && (
+            <Text className="session-statusline-muted-label shrink-0" size="xs">
               {t('Ready')}
             </Text>
           )}
         </Flex>
 
-        {!empty && (
+        {!compact && !empty && (
           <Flex align="center" gap={12} className="shrink-0">
+            {memoryChip && (
+              <MemoryDockPopover
+                className="session-statusline-seg shrink-0"
+                label={
+                  memoryChip.on
+                    ? memoryChip.autoSaveOff
+                      ? memoryChip.factCount > 0
+                        ? t('on · {{count}} · auto-save off', { count: memoryChip.factCount })
+                        : t('on · 0 · auto-save off')
+                      : memoryChip.factCount > 0
+                        ? t('on · {{count}}', { count: memoryChip.factCount })
+                        : t('on · 0')
+                    : t('off')
+                }
+                on={memoryChip.on}
+                title={memoryChip.title}
+                onInsertMemory={onInsertMemory}
+                getMemorySaveContent={getMemorySaveContent}
+                memoryAutoSave={memoryAutoSave}
+                onMemoryAutoSaveChange={sessionId ? handleMemoryAutoSaveChange : undefined}
+              />
+            )}
+
             <Tooltip label={t('Messages in this thread')} withArrow openDelay={400}>
               <Text className="session-statusline-seg">
                 <span className="session-statusline-key">msg</span>
@@ -158,7 +240,7 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
             ) : (
               <Tooltip
                 label={
-                  hasUsage
+                  hasUsage && metrics
                     ? `${t('Input')}: ${formatNumber(metrics.totalInputTokens)} · ${t('Output')}: ${formatNumber(metrics.totalOutputTokens)}`
                     : t('No token usage yet')
                 }
@@ -169,7 +251,7 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
               </Tooltip>
             )}
 
-            {CHATBOX_BUILD_PLATFORM !== 'android' && hasUsage && metrics.actualCost > 0 && (
+            {CHATBOX_BUILD_PLATFORM !== 'android' && metrics && hasUsage && metrics.actualCost > 0 && (
               <Tooltip label={t('Session cost estimate')} withArrow openDelay={400}>
                 <Text className="session-statusline-seg">
                   <span className="session-statusline-key">$</span>
@@ -177,49 +259,21 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
                 </Text>
               </Tooltip>
             )}
-
-            {memoryChip && (
-              <Tooltip label={memoryChip.title} withArrow openDelay={300}>
-                <UnstyledButton
-                  type="button"
-                  className="session-statusline-seg"
-                  onClick={() => navigateToSettings('memory')}
-                  aria-label={memoryChip.label}
-                >
-                  <span className="session-statusline-key">mem</span>
-                  <span
-                    className="session-statusline-val"
-                    style={{ opacity: memoryChip.on ? 1 : 0.55 }}
-                  >
-                    {memoryChip.on
-                      ? memoryChip.factCount > 0
-                        ? t('on · {{count}}', { count: memoryChip.factCount })
-                        : t('on · 0')
-                      : t('off')}
-                  </span>
-                </UnstyledButton>
-              </Tooltip>
-            )}
           </Flex>
         )}
 
-        {/* Show memory chip even on empty threads */}
-        {empty && memoryChip && (
-          <Tooltip label={memoryChip.title} withArrow openDelay={300}>
-            <UnstyledButton
-              type="button"
-              className="session-statusline-seg shrink-0"
-              onClick={() => navigateToSettings('memory')}
-              aria-label={memoryChip.label}
-            >
-              <span className="session-statusline-key">mem</span>
-              <span className="session-statusline-val" style={{ opacity: memoryChip.on ? 1 : 0.55 }}>
-                {memoryChip.on
-                  ? t('Memory on · {{count}} facts', { count: memoryChip.factCount })
-                  : t('Memory off')}
-              </span>
-            </UnstyledButton>
-          </Tooltip>
+        {/* Show memory chip even on empty threads (full session only) */}
+        {!compact && empty && memoryChip && (
+          <MemoryDockPopover
+            className="session-statusline-seg shrink-0"
+            label={memoryChip.label}
+            on={memoryChip.on}
+            title={memoryChip.title}
+            onInsertMemory={onInsertMemory}
+            getMemorySaveContent={getMemorySaveContent}
+            memoryAutoSave={memoryAutoSave}
+            onMemoryAutoSaveChange={sessionId ? handleMemoryAutoSaveChange : undefined}
+          />
         )}
       </Flex>
     </div>

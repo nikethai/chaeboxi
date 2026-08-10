@@ -155,6 +155,9 @@ const SessionSettingsModal = NiceModal.create(
       return null
     }
 
+    const isQuickChat =
+      typeof document !== 'undefined' && document.documentElement.dataset.quickChat === '1'
+
     return (
       <AdaptiveModal
         opened={modal.visible}
@@ -163,15 +166,24 @@ const SessionSettingsModal = NiceModal.create(
           modal.hide()
         }}
         centered
-        size="md"
+        size={isQuickChat ? 'sm' : 'md'}
         title={t('Session options')}
         onFocus={(e) => e.stopPropagation()}
         trapFocus={false}
+        classNames={{
+          content: 'session-settings-modal',
+          header: 'session-settings-modal-header',
+          body: 'session-settings-modal-body',
+          title: 'session-settings-modal-title',
+        }}
       >
-        <div style={{ maxHeight: '60vh', overflowY: 'auto', overflowX: 'hidden' }}>
-          <Stack gap="md">
+        <div
+          className="session-settings-scroll"
+          style={{ maxHeight: isQuickChat ? 'min(52vh, 360px)' : '60vh', overflowY: 'auto', overflowX: 'hidden' }}
+        >
+          <Stack gap={isQuickChat ? 'sm' : 'md'} className="session-settings-stack">
             {/* Compact identity row — avatar demoted, name primary */}
-            <Flex align="center" gap="sm">
+            <Flex align="center" gap={isQuickChat ? 'xs' : 'sm'} className="session-settings-identity">
               <FileButton
                 accept="image/png,image/jpeg"
                 onChange={(file) => {
@@ -186,7 +198,7 @@ const SessionSettingsModal = NiceModal.create(
                 {(props) => (
                   <Flex className="relative shrink-0">
                     <AssistantAvatar
-                      size={40}
+                      size={isQuickChat ? 32 : 40}
                       avatarKey={editingData.assistantAvatarKey}
                       picUrl={editingData.picUrl}
                       sessionType={editingData.type}
@@ -216,24 +228,25 @@ const SessionSettingsModal = NiceModal.create(
               <Input.Wrapper label={t('Name')} className="flex-1 min-w-0">
                 <Input
                   placeholder={t('Name')}
-                  autoFocus={!isSmallScreen}
+                  autoFocus={!isSmallScreen || isQuickChat}
                   value={editingData.name}
                   onChange={(e) => setEditingData({ ...editingData, name: e.target.value })}
                   classNames={{
                     input: '!text-chatbox-tint-primary',
                   }}
+                  size={isQuickChat ? 'sm' : undefined}
                 />
               </Input.Wrapper>
             </Flex>
 
             {editingData.settings?.provider !== ModelProviderEnum.OpenClaw && (
-              <Stack gap="xs">
+              <Stack gap="xs" className="session-settings-prompt">
                 <Textarea
                   label={t('System prompt')}
                   placeholder={t('Copilot Prompt Demo') || ''}
                   autosize
-                  minRows={2}
-                  maxRows={8}
+                  minRows={isQuickChat ? 2 : 2}
+                  maxRows={isQuickChat ? 5 : 8}
                   value={systemPrompt}
                   onChange={(event) => setSystemPrompt(event.target.value)}
                   classNames={{
@@ -242,16 +255,52 @@ const SessionSettingsModal = NiceModal.create(
                   styles={{
                     input: { touchAction: 'manipulation' },
                   }}
+                  size={isQuickChat ? 'sm' : undefined}
                 />
                 <SystemPromptPresetPicker value={systemPrompt} onChange={setSystemPrompt} />
               </Stack>
             )}
 
+            {isChatSession(session) && (
+              <Stack gap={4} className="session-settings-memory-autosave">
+                <Flex align="center" justify="space-between" gap="sm">
+                  <Text size="sm" fw={600}>
+                    {t('Auto-save memories from this chat')}
+                  </Text>
+                  <Switch
+                    checked={editingData.settings?.memoryAutoSave !== false}
+                    onChange={(e) =>
+                      setEditingData((_data) => {
+                        if (!_data) return null
+                        return {
+                          ..._data,
+                          settings: {
+                            ..._data.settings,
+                            // undefined = inherit global; false = session opt-out
+                            memoryAutoSave: e.currentTarget.checked ? undefined : false,
+                          },
+                        }
+                      })
+                    }
+                  />
+                </Flex>
+                <Text size="xs" c="dimmed">
+                  {editingData.settings?.memoryAutoSave === false
+                    ? t(
+                        'Auto-extract and model retain are off for this chat. You can still save facts manually.'
+                      )
+                    : t(
+                        'When on, durable facts may be auto-extracted and model-retained (if Memory auto-save is enabled globally).'
+                      )}
+                </Text>
+              </Stack>
+            )}
+
             {/* Advanced model settings — collapsed by default */}
-            <Stack gap={0} className="border border-solid border-chatbox-border-primary rounded-lg overflow-hidden">
+            <Stack gap={0} className="border border-solid border-chatbox-border-primary rounded-lg overflow-hidden session-settings-advanced">
               <UnstyledButton
                 onClick={() => setAdvancedOpen((v) => !v)}
-                className="w-full px-3 py-2.5 hover:bg-[var(--chatbox-background-tertiary)] transition-colors"
+                className="w-full px-3 py-2.5 hover:bg-[var(--chatbox-background-tertiary)] transition-colors session-settings-advanced-toggle"
                 aria-expanded={advancedOpen}
               >
                 <Flex align="center" justify="space-between" gap="sm">
@@ -340,19 +389,31 @@ function ThinkingBudgetConfig({
   maxValue = 10000,
 }: ThinkingBudgetConfigProps) {
   const { t } = useTranslation()
+  const isQuickChat =
+    typeof document !== 'undefined' && document.documentElement.dataset.quickChat === '1'
 
   // Define preset values in one place
   const PRESET_VALUES = useMemo(() => [2048, 5120, 10240], [])
 
+  // Full session: "Low (2K)"; Quick Chat modal is ~360px — short labels so chips don't clip.
   const thinkingBudgetOptions = useMemo(
-    () => [
-      { label: t('Disabled'), value: 'disabled' },
-      { label: `${t('Low')} (2K)`, value: PRESET_VALUES[0].toString() },
-      { label: `${t('Medium')} (5K)`, value: PRESET_VALUES[1].toString() },
-      { label: `${t('High')} (10K)`, value: PRESET_VALUES[2].toString() },
-      { label: t('Custom'), value: 'custom' },
-    ],
-    [t, PRESET_VALUES]
+    () =>
+      isQuickChat
+        ? [
+            { label: t('Off'), value: 'disabled' },
+            { label: '2K', value: PRESET_VALUES[0].toString() },
+            { label: '5K', value: PRESET_VALUES[1].toString() },
+            { label: '10K', value: PRESET_VALUES[2].toString() },
+            { label: t('Custom'), value: 'custom' },
+          ]
+        : [
+            { label: t('Disabled'), value: 'disabled' },
+            { label: `${t('Low')} (2K)`, value: PRESET_VALUES[0].toString() },
+            { label: `${t('Medium')} (5K)`, value: PRESET_VALUES[1].toString() },
+            { label: `${t('High')} (10K)`, value: PRESET_VALUES[2].toString() },
+            { label: t('Custom'), value: 'custom' },
+          ],
+    [t, PRESET_VALUES, isQuickChat]
   )
 
   // Add state to track custom mode selection
@@ -418,29 +479,34 @@ function ThinkingBudgetConfig({
   const currentSegmentValue = getCurrentSegmentValue()
 
   return (
-    <Stack gap="md" style={{ minWidth: 0 }}>
+    <Stack gap={isQuickChat ? 'sm' : 'md'} style={{ minWidth: 0 }} className="session-thinking-budget">
       <Flex align="center" gap="xs">
         <Text size="sm" fw="600">
           {t('Thinking Budget')}
         </Text>
         <Tooltip
-          label={tooltipText}
+          label={
+            isQuickChat
+              ? `${tooltipText} · ${t('Off')} / 2K (${t('Low')}) / 5K (${t('Medium')}) / 10K (${t('High')}) / ${t('Custom')}`
+              : tooltipText
+          }
           withArrow={true}
           maw={320}
           className="!whitespace-normal"
           zIndex={3000}
           events={{ hover: true, focus: true, touch: true }}
         >
-          <ScalableIcon icon={IconInfoCircle} size={20} className="text-chatbox-tint-tertiary" />
+          <ScalableIcon icon={IconInfoCircle} size={isQuickChat ? 16 : 20} className="text-chatbox-tint-tertiary" />
         </Tooltip>
       </Flex>
 
-      <div style={{ minWidth: 0, overflowX: 'auto' }}>
+      <div className="session-thinking-budget-control" style={{ minWidth: 0 }}>
         <SegmentedControl
-          key="thinking-budget-control"
+          key={isQuickChat ? 'thinking-budget-control-quick' : 'thinking-budget-control'}
           value={currentSegmentValue}
           onChange={handleThinkingConfigChange}
           data={thinkingBudgetOptions}
+          className="session-thinking-budget-segments"
         />
       </div>
 
@@ -500,17 +566,27 @@ function OpenAIProviderConfig({
   onSettingsChange: (data: Session['settings']) => void
 }) {
   const { t } = useTranslation()
+  const isQuickChat =
+    typeof document !== 'undefined' && document.documentElement.dataset.quickChat === '1'
   const providerOptions = settings?.providerOptions?.openai
 
   // Memoize options to prevent recreation on every render
   const reasoningEffortOptions = useMemo(
-    () => [
-      { label: t('Disabled'), value: 'null' },
-      { label: t('Low'), value: 'low' },
-      { label: t('Medium'), value: 'medium' },
-      { label: t('High'), value: 'high' },
-    ],
-    [t]
+    () =>
+      isQuickChat
+        ? [
+            { label: t('Off'), value: 'null' },
+            { label: t('Low'), value: 'low' },
+            { label: t('Med'), value: 'medium' },
+            { label: t('High'), value: 'high' },
+          ]
+        : [
+            { label: t('Disabled'), value: 'null' },
+            { label: t('Low'), value: 'low' },
+            { label: t('Medium'), value: 'medium' },
+            { label: t('High'), value: 'high' },
+          ],
+    [t, isQuickChat]
   )
 
   const handleReasoningEffortChange = useCallback(
@@ -532,7 +608,7 @@ function OpenAIProviderConfig({
   }, [providerOptions?.reasoningEffort])
 
   return (
-    <Stack gap="md">
+    <Stack gap={isQuickChat ? 'sm' : 'md'} className="session-thinking-budget">
       <Flex align="center" gap="xs">
         <Text size="sm" fw="600">
           {t('Thinking Effort')}
@@ -545,16 +621,19 @@ function OpenAIProviderConfig({
           zIndex={3000}
           events={{ hover: true, focus: true, touch: true }}
         >
-          <ScalableIcon icon={IconInfoCircle} size={20} className="text-chatbox-tint-tertiary" />
+          <ScalableIcon icon={IconInfoCircle} size={isQuickChat ? 16 : 20} className="text-chatbox-tint-tertiary" />
         </Tooltip>
       </Flex>
 
-      <SegmentedControl
-        key="reasoning-effort-control"
-        value={currentValue}
-        onChange={handleReasoningEffortChange}
-        data={reasoningEffortOptions}
-      />
+      <div className="session-thinking-budget-control" style={{ minWidth: 0 }}>
+        <SegmentedControl
+          key={isQuickChat ? 'reasoning-effort-control-quick' : 'reasoning-effort-control'}
+          value={currentValue}
+          onChange={handleReasoningEffortChange}
+          data={reasoningEffortOptions}
+          className="session-thinking-budget-segments"
+        />
+      </div>
     </Stack>
   )
 }

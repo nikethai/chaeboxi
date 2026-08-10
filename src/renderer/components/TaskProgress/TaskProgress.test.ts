@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type { Task } from '@/stores/taskStore'
 import { sortTasksForDisplay } from './TaskProgress'
+
+vi.mock('@/hooks/useScreenChange', () => ({
+  useIsSmallScreen: () => false,
+}))
 
 function task(partial: Partial<Task> & Pick<Task, 'id' | 'status'>): Task {
   return {

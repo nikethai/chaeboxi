@@ -359,6 +359,21 @@ describe('provider settings schema', () => {
     expect(parsed.preserveReasoningInContext).toBeUndefined()
   })
 
+  it('keeps memoryAutoSave optional and accepts false opt-out', () => {
+    const inherited = SessionSettingsSchema.parse({
+      provider: 'openai',
+      modelId: 'gpt-4o',
+    })
+    expect(inherited.memoryAutoSave).toBeUndefined()
+
+    const optedOut = SessionSettingsSchema.parse({
+      provider: 'openai',
+      modelId: 'gpt-4o',
+      memoryAutoSave: false,
+    })
+    expect(optedOut.memoryAutoSave).toBe(false)
+  })
+
   it('parses image prompt prepend fields', () => {
     const parsed = ProviderSettingsSchema.parse({
       imagePromptCharacterPrepend: '1girl, blue hair',

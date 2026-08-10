@@ -13,10 +13,12 @@ import { getModel } from '@shared/providers'
 import {
   IconAlertCircle,
   IconArrowUp,
+  IconBrain,
   IconChevronRight,
   IconFolder,
   IconLoader2,
   IconPlayerStopFilled,
+  IconX,
 } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
@@ -34,9 +36,9 @@ import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import { navigateToSettings } from '@/modals/Settings'
-import { platformCapabilities } from '@/platform'
 import type { GatewayCommandInfo } from '@/openclaw/gateway'
 import { getActiveAgentAtQuery, stripActiveAgentAtToken } from '@/packages/agents'
+import { extractCommandNamesFromText, getActiveCommandSlashQuery, stripCommandSlashTokens } from '@/packages/commands'
 import {
   getContextMessageIds,
   isAutoCompactionEnabled,
@@ -44,18 +46,14 @@ import {
   useContextTokens,
 } from '@/packages/context-management'
 import { trackingEvent } from '@/packages/event'
+import { searchEntries } from '@/packages/memory/bank-ops'
 import { replacePromptTemplateVars } from '@/packages/model-calls/message-utils'
 import { getModelContextWindowSync } from '@/packages/model-context'
-import {
-  extractCommandNamesFromText,
-  getActiveCommandSlashQuery,
-  stripCommandSlashTokens,
-} from '@/packages/commands'
-import { extractSkillNamesFromText, getActiveSkillDollarQuery, stripSkillDollarTokens } from '@/packages/skills'
 import * as picUtils from '@/packages/pic_utils'
+import { extractSkillNamesFromText, getActiveSkillDollarQuery, stripSkillDollarTokens } from '@/packages/skills'
 import { formatBytesForDisplay, formatDurationForDisplay, getVideoLimits } from '@/packages/video'
 import { isWebSearchConfigured } from '@/packages/web-search/is-configured'
-import platform from '@/platform'
+import platform, { platformCapabilities } from '@/platform'
 import storage from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import * as atoms from '@/stores/atoms'
@@ -63,18 +61,20 @@ import { compactionUIStateMapAtom } from '@/stores/atoms/compactionAtoms'
 import { composerTokenMenuAtom } from '@/stores/atoms/uiAtoms'
 import * as chatStore from '@/stores/chatStore'
 import { useSession, useSessionSettings } from '@/stores/chatStore'
+import { useCommands } from '@/stores/commandsStore'
+import { ensureMemoryStoreInit, useMemoryStore } from '@/stores/memoryStore'
 import { usePromptPresets } from '@/stores/promptPresetsStore'
 import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
-import { useCommands } from '@/stores/commandsStore'
 import { useSkills } from '@/stores/skillsStore'
 import { useUIStore } from '@/stores/uiStore'
 import { delay } from '@/utils'
+import { getModelReadiness } from '@/utils/modelReadiness'
 import { trackEvent } from '@/utils/track'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
-import { getModelReadiness } from '@/utils/modelReadiness'
 import type {
   CommandPackage,
   KnowledgeBase,
+  MemoryAttachment,
   Message,
   SessionType,
   ShortcutSendValue,
@@ -87,22 +87,30 @@ import {
   ModelProviderEnum,
   SKILL_EXPLICIT_MAX,
 } from '../../../shared/types'
+import type { MemoryEntry } from '../../../shared/types/memory'
 import * as dom from '../../hooks/dom'
 import * as sessionHelpers from '../../stores/sessionHelpers'
 import * as toastActions from '../../stores/toastActions'
 import AgentRoomStrip from '../chat/AgentRoomStrip'
-import TeamRoomActions from '../chat/TeamRoomActions'
 import { CompactionStatus } from '../chat/CompactionStatus'
+import { MemoryDockPopover } from '../chat/MemoryDockPopover'
+import {
+  getActiveMemoryMentionQuery,
+  getComposerSelectionOrDraft,
+  stripActiveMemoryMention,
+} from '../chat/memory-dock-utils'
+import TeamRoomActions from '../chat/TeamRoomActions'
 import { CompressionModal } from '../common/CompressionModal'
 import { ScalableIcon } from '../common/ScalableIcon'
 import ProviderImageIcon from '../icons/ProviderImageIcon'
 import ModelSelector from '../ModelSelector'
 import AgentPicker, { filterAgents } from './AgentPicker'
 import { FileMiniCard, ImageMiniCard, LinkMiniCard } from './Attachments'
+import CommandPicker, { filterCommands } from './CommandPicker'
 import ComposerToolsMenu from './ComposerToolsMenu'
-import { ModelReadinessNotice } from './ModelReadinessNotice'
-import TeamModeSelect from './TeamModeSelect'
 import { ImageUploadInput } from './ImageUploadInput'
+import MemoryMentionPicker from './MemoryMentionPicker'
+import { ModelReadinessNotice } from './ModelReadinessNotice'
 import OpenClawCommandPicker, { filterOpenClawCommands, getCommandAlias } from './OpenClawCommandPicker'
 import PresetPicker, { filterPresets } from './PresetPicker'
 import {
@@ -116,8 +124,8 @@ import {
   storeLinkPromise,
 } from './preprocessState'
 import QueuedMessageList from './QueuedMessageList'
-import CommandPicker, { filterCommands } from './CommandPicker'
 import SkillPicker, { filterSkills } from './SkillPicker'
+import TeamModeSelect from './TeamModeSelect'
 
 export type InputBoxPayload = {
   constructedMessage: Message
@@ -127,6 +135,8 @@ export type InputBoxPayload = {
 
 export type InputBoxRef = {
   setQuote: (quote: string) => void
+  insertMemory: (entry: MemoryEntry) => void
+  getMemorySaveContent: () => string
 }
 
 export type InputBoxProps = {
@@ -227,6 +237,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     )
 
     const { messageInput, setMessageInput, clearDraft } = useMessageInput(initialMessage, { isNewSession })
+    const memoryReady = useMemoryStore((state) => state.ready)
+    const globalMemoryBank = useMemoryStore((state) => state.globalBank)
+
+    useEffect(() => {
+      void ensureMemoryStoreInit()
+    }, [])
 
     const { promptPresets } = usePromptPresets()
     const { enabledSkills, skills: allSkills } = useSkills()
@@ -241,6 +257,9 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const [commandHighlightIndex, setCommandHighlightIndex] = useState(0)
     /** Turn-sticky agent chips selected via @ */
     const [selectedAgents, setSelectedAgents] = useState<AgentDetail[]>([])
+    const [memoryAttachments, setMemoryAttachments] = useState<MemoryAttachment[]>([])
+    const [memoryMentionPickerDismissed, setMemoryMentionPickerDismissed] = useState(false)
+    const [memoryMentionHighlightIndex, setMemoryMentionHighlightIndex] = useState(0)
     const [agentPickerDismissed, setAgentPickerDismissed] = useState(false)
     const [agentHighlightIndex, setAgentHighlightIndex] = useState(0)
     const { copilots: myAgents } = useMyCopilots()
@@ -359,8 +378,15 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     }, [preConstructedMessage.preprocessingStatus])
 
     const disableSubmit = useMemo(
-      () => !(messageInput.trim() || links?.length || attachments?.length || pictureKeys?.length),
-      [messageInput, links, attachments, pictureKeys]
+      () =>
+        !(
+          messageInput.trim() ||
+          links?.length ||
+          attachments?.length ||
+          pictureKeys?.length ||
+          memoryAttachments.length
+        ),
+      [messageInput, links, attachments, pictureKeys, memoryAttachments.length]
     )
 
     const { providers } = useProviders()
@@ -478,7 +504,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       ? disableSubmit
         ? false
         : isModelReadinessBlocking || isPreprocessing || isSubmitting || isSamplingVideoFrames || isCompactionRunning
-      : isModelReadinessBlocking || disableSubmit || isPreprocessing || isSubmitting || isSamplingVideoFrames || isCompactionRunning
+      : isModelReadinessBlocking ||
+        disableSubmit ||
+        isPreprocessing ||
+        isSubmitting ||
+        isSamplingVideoFrames ||
+        isCompactionRunning
 
     const autoCompactionEnabled = useMemo(() => {
       if (!currentSession) return globalSettings.autoCompaction ?? true
@@ -522,6 +553,25 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             settings: {
               ...session.settings,
               autoCompaction: enabled,
+            },
+          }
+        })
+      },
+      [currentSessionId, isNewSession]
+    )
+
+    const handleMemoryAutoSaveChange = useCallback(
+      async (enabled: boolean) => {
+        if (!currentSessionId || isNewSession) return
+        await chatStore.updateSession(currentSessionId, (session) => {
+          if (!session) {
+            throw new Error('Session not found')
+          }
+          return {
+            ...session,
+            settings: {
+              ...session.settings,
+              memoryAutoSave: enabled ? undefined : false,
             },
           }
         })
@@ -603,6 +653,25 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
+    const insertMemory = useCallback((entry: MemoryEntry) => {
+      setMemoryAttachments((previous) => {
+        if (previous.some((attachment) => attachment.id === entry.id)) return previous
+        return [...previous, { id: entry.id, content: entry.content, tags: entry.tags }]
+      })
+      requestAnimationFrame(() => {
+        dom.focusMessageInput()
+      })
+    }, [])
+
+    const removeMemoryAttachment = useCallback((id: string) => {
+      setMemoryAttachments((previous) => previous.filter((attachment) => attachment.id !== id))
+    }, [])
+
+    const getMemorySaveContent = useCallback(
+      () => getComposerSelectionOrDraft(inputRef.current, messageInput),
+      [messageInput]
+    )
+
     useImperativeHandle(
       ref,
       () => ({
@@ -612,8 +681,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           dom.focusMessageInput()
           dom.setMessageInputCursorToEnd()
         },
+        insertMemory,
+        getMemorySaveContent,
       }),
-      [setMessageInput]
+      [getMemorySaveContent, insertMemory, setMessageInput]
     )
 
     const { addInputBoxHistory, getPreviousHistoryInput, getNextHistoryInput, resetHistoryIndex } = useInputBoxHistory()
@@ -633,8 +704,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       [isOpenClawModel, messageInput, sessionType, openClawPickerDismissed]
     )
     const commandSlashQuery = useMemo(
-      () =>
-        sessionType === 'chat' && !isOpenClawModel ? getActiveCommandSlashQuery(messageInput) : null,
+      () => (sessionType === 'chat' && !isOpenClawModel ? getActiveCommandSlashQuery(messageInput) : null),
       [isOpenClawModel, messageInput, sessionType]
     )
     const skillDollarQuery = useMemo(
@@ -645,6 +715,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       () => (sessionType === 'chat' ? getActiveAgentAtQuery(messageInput) : null),
       [messageInput, sessionType]
     )
+    const memoryMentionQuery = useMemo(
+      () => (sessionType === 'chat' ? getActiveMemoryMentionQuery(messageInput) : null),
+      [messageInput, sessionType]
+    )
     const showCommandPicker = useMemo(
       () =>
         sessionType === 'chat' &&
@@ -652,13 +726,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         !showOpenClawCommandPicker &&
         !commandPickerDismissed &&
         selectedCommands.length < COMMAND_EXPLICIT_MAX,
-      [
-        sessionType,
-        commandSlashQuery,
-        showOpenClawCommandPicker,
-        commandPickerDismissed,
-        selectedCommands.length,
-      ]
+      [sessionType, commandSlashQuery, showOpenClawCommandPicker, commandPickerDismissed, selectedCommands.length]
     )
     const showSkillPicker = useMemo(
       () =>
@@ -681,6 +749,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       () =>
         sessionType === 'chat' &&
         agentAtQuery !== null &&
+        memoryMentionQuery === null &&
         !showCommandPicker &&
         !showOpenClawCommandPicker &&
         !showSkillPicker &&
@@ -689,11 +758,29 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       [
         sessionType,
         agentAtQuery,
+        memoryMentionQuery,
         showCommandPicker,
         showOpenClawCommandPicker,
         showSkillPicker,
         agentPickerDismissed,
         selectedAgents.length,
+      ]
+    )
+    const showMemoryMentionPicker = useMemo(
+      () =>
+        sessionType === 'chat' &&
+        memoryMentionQuery !== null &&
+        !showCommandPicker &&
+        !showOpenClawCommandPicker &&
+        !showSkillPicker &&
+        !memoryMentionPickerDismissed,
+      [
+        sessionType,
+        memoryMentionQuery,
+        showCommandPicker,
+        showOpenClawCommandPicker,
+        showSkillPicker,
+        memoryMentionPickerDismissed,
       ]
     )
     const filteredCommands = useMemo(
@@ -719,6 +806,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           agentAtQuery || ''
         ).slice(0, 8),
       [allAgents, selectedAgents, agentAtQuery]
+    )
+    const filteredMemoryMentions = useMemo(
+      () => searchEntries(globalMemoryBank, memoryMentionQuery || '', { limit: 8, enabledOnly: true }),
+      [globalMemoryBank, memoryMentionQuery]
     )
     const roomAgentIds = useMemo(() => {
       if (isNewSession && draftAgentIds && draftAgentIds.length > 0) {
@@ -772,10 +863,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       setPresetHighlightIndex(0)
       setSkillHighlightIndex(0)
       setAgentHighlightIndex(0)
+      setMemoryMentionHighlightIndex(0)
       setOpenClawPickerDismissed(false)
       setSkillPickerDismissed(false)
       setAgentPickerDismissed(false)
-    }, [presetQuery, skillDollarQuery, agentAtQuery, messageInput])
+      setMemoryMentionPickerDismissed(false)
+    }, [presetQuery, skillDollarQuery, agentAtQuery, memoryMentionQuery, messageInput])
 
     const handleAgentSelect = useCallback(
       (agent: AgentDetail) => {
@@ -788,6 +881,16 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         dom.focusMessageInput()
       },
       [setMessageInput]
+    )
+
+    const handleMemoryMentionSelect = useCallback(
+      (entry: MemoryEntry) => {
+        insertMemory(entry)
+        setMessageInput((previous) => stripActiveMemoryMention(previous))
+        setMemoryMentionPickerDismissed(true)
+        dom.focusMessageInput()
+      },
+      [insertMemory, setMessageInput]
     )
 
     const handleRemoveRoomAgent = useCallback(
@@ -976,6 +1079,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             skillIds: skillIds.length ? skillIds : undefined,
             commandIds: commandIds.length ? commandIds : undefined,
             mentionedAgentIds: mentionedAgentIds.length ? mentionedAgentIds : undefined,
+            memoryAttachments: memoryAttachments.length ? memoryAttachments : undefined,
             contentParts: constructedMessage.contentParts.map((p) =>
               p.type === 'text' ? { ...p, text: cleanedText } : p
             ),
@@ -1029,6 +1133,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             setIsSubmitting(false)
             clearDraft()
             setSelectedAgents([])
+            setMemoryAttachments([])
             setLinks([])
             setPreConstructedMessage({
               text: '',
@@ -1072,6 +1177,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         setCommandPickerDismissed(false)
         setSkillPickerDismissed(false)
         setAgentPickerDismissed(false)
+        setMemoryMentionPickerDismissed(false)
         resetHistoryIndex()
       },
       [setMessageInput, resetHistoryIndex]
@@ -1113,6 +1219,47 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         if (event.key === 'Tab' && filteredCommands[commandHighlightIndex]) {
           event.preventDefault()
           handleCommandSelect(filteredCommands[commandHighlightIndex])
+          return
+        }
+      }
+
+      if (showMemoryMentionPicker) {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault()
+          if (filteredMemoryMentions.length > 0) {
+            setMemoryMentionHighlightIndex((index) => (index + 1) % filteredMemoryMentions.length)
+          }
+          return
+        }
+        if (event.key === 'ArrowUp') {
+          event.preventDefault()
+          if (filteredMemoryMentions.length > 0) {
+            setMemoryMentionHighlightIndex(
+              (index) => (index - 1 + filteredMemoryMentions.length) % filteredMemoryMentions.length
+            )
+          }
+          return
+        }
+        if (event.key === 'Escape') {
+          event.preventDefault()
+          setMemoryMentionPickerDismissed(true)
+          return
+        }
+        if (
+          event.key === 'Enter' &&
+          !event.shiftKey &&
+          !event.ctrlKey &&
+          !event.altKey &&
+          !event.metaKey &&
+          filteredMemoryMentions[memoryMentionHighlightIndex]
+        ) {
+          event.preventDefault()
+          handleMemoryMentionSelect(filteredMemoryMentions[memoryMentionHighlightIndex])
+          return
+        }
+        if (event.key === 'Tab' && filteredMemoryMentions[memoryMentionHighlightIndex]) {
+          event.preventDefault()
+          handleMemoryMentionSelect(filteredMemoryMentions[memoryMentionHighlightIndex])
           return
         }
       }
@@ -1767,6 +1914,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               isFileDragActive && 'composer-card-drag-active',
               (showCommandPicker ||
                 showSkillPicker ||
+                showMemoryMentionPicker ||
                 showAgentPicker ||
                 showPresetPicker ||
                 showOpenClawCommandPicker) &&
@@ -1810,6 +1958,16 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 query={openClawCommandQuery}
               />
             )}
+            {showMemoryMentionPicker && (
+              <MemoryMentionPicker
+                anchorRef={composerCardRef}
+                entries={filteredMemoryMentions}
+                highlightedIndex={memoryMentionHighlightIndex}
+                onHighlightChange={setMemoryMentionHighlightIndex}
+                onSelect={handleMemoryMentionSelect}
+                ready={memoryReady}
+              />
+            )}
             {showAgentPicker && (
               <AgentPicker
                 anchorRef={composerCardRef}
@@ -1848,7 +2006,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             {(selectedAgents.length > 0 ||
               roomAgentIds.length > 0 ||
               selectedSkills.length > 0 ||
-              selectedCommands.length > 0) && (
+              selectedCommands.length > 0 ||
+              memoryAttachments.length > 0) && (
               <div className="composer-meta-stack">
                 {selectedAgents.length > 0 ? (
                   <div className="composer-meta-row">
@@ -1924,6 +2083,37 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     ))}
                   </div>
                 ) : null}
+
+                {memoryAttachments.length > 0 ? (
+                  <div className="composer-meta-row">
+                    {memoryAttachments.map((attachment) => (
+                      <Tooltip
+                        key={attachment.id}
+                        label={attachment.content}
+                        multiline
+                        w={320}
+                        withArrow
+                        openDelay={250}
+                      >
+                        <span className="composer-skill-chip">
+                          <IconBrain size={14} stroke={1.8} aria-hidden />
+                          <span>{attachment.tags[0] || t('Memory')}</span>
+                          {attachment.tags.length > 1 && <span>+{attachment.tags.length - 1}</span>}
+                          <UnstyledButton
+                            className="composer-skill-chip-remove"
+                            aria-label={t('Remove memory')}
+                            onClick={(event) => {
+                              event.stopPropagation()
+                              removeMemoryAttachment(attachment.id)
+                            }}
+                          >
+                            <IconX size={12} stroke={2} />
+                          </UnstyledButton>
+                        </span>
+                      </Tooltip>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             )}
 
@@ -1955,7 +2145,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               size="sm"
               id={dom.messageInputID}
               ref={inputRef}
-              placeholder={t('Type your question here… Use @ for agents, $ for skills') || ''}
+              placeholder={t('Type your question here… Use @ for agents, @mem for memory, $ for skills') || ''}
               bg="transparent"
               autosize={true}
               minRows={2}
@@ -2161,6 +2351,40 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   toolbarButtonClass={toolbarButtonClass}
                   toolbarIconSize={toolbarIconSize}
                 />
+                <MemoryDockPopover
+                  label={t('Memory')}
+                  on
+                  title={
+                    currentSession?.settings?.memoryAutoSave === false
+                      ? t('Memory · auto-save off for this chat')
+                      : t('Search and save memory')
+                  }
+                  trigger={
+                    <UnstyledButton
+                      className={cn(
+                        toolbarButtonClass,
+                        'min-h-9 min-w-9 active:scale-[0.96] transition-transform',
+                        isSmallScreen && 'mobile-touch-target',
+                        currentSession?.settings?.memoryAutoSave === false && 'opacity-80'
+                      )}
+                      aria-label={t('Memory')}
+                      title={
+                        currentSession?.settings?.memoryAutoSave === false
+                          ? t('Memory · auto-save off for this chat')
+                          : t('Search and save memory')
+                      }
+                    >
+                      <IconBrain size={toolbarIconSize} stroke={1.8} />
+                    </UnstyledButton>
+                  }
+                  onInsertMemory={insertMemory}
+                  getMemorySaveContent={getMemorySaveContent}
+                  memoryAutoSave={currentSession?.settings?.memoryAutoSave}
+                  onMemoryAutoSaveChange={
+                    !isNewSession && currentSessionId ? handleMemoryAutoSaveChange : undefined
+                  }
+                  memoryAutoSaveDisabled={isNewSession || !currentSessionId}
+                />
               </Flex>
 
               {/* Right Group: Team mode (multi-agent) + Model + Send */}
@@ -2199,7 +2423,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     }}
                   >
                     <UnstyledButton
-                      className={cn(toolbarButtonClass, 'model-picker-trigger', isSmallScreen && 'px-2.5 mobile-touch-target min-h-11')}
+                      className={cn(
+                        toolbarButtonClass,
+                        'model-picker-trigger',
+                        isSmallScreen && 'px-2.5 mobile-touch-target min-h-11'
+                      )}
                       aria-label={t('Select Model')}
                     >
                       {!!model && <ProviderImageIcon size={15} provider={model.provider} />}

@@ -2,7 +2,7 @@
 
 **Status:** Active design contract for the UI redesign  
 **Visual source of truth:** `plans/2026-08-05-ui-ux-redesign/mock-dark-shell.html`  
-**Last updated:** 2026-08-09
+**Last updated:** 2026-08-10
 
 ## Product intent
 
@@ -37,6 +37,7 @@ Desktop AI copilot chrome that feels like a focused studio tool — Grok + ChatG
 | Projects | Always-visible section (even when empty); section-like folder rows; hover-only project `+` + New Chat in menu; New Project on section trail **and** rail-tools |
 | Recents | Unfiled chats (`folderId` empty) — **not** a synthetic project; day groups + optional coaching when many unfiled; drag chat onto project / Recents |
 | Composer tools | Single **`+` overflow** (click-primary) for attach / web / MCP / KB / agent / thread / settings — not always-on icon rail |
+| Session tasks | Attached above composer in one joined dock stack; desktop expands inline with bounded scroll, narrow/mobile opens a bottom sheet; task state stays outside `InputBox` |
 | Auto tools | Web search **default ON** when configured; MCP tools from **enabled servers** always attached for tool-capable models; agent mode **opt-in**; KB **explicit select** |
 | Telemetry | Session statusline is SoT for tok/$/msg; **no composer token chip**; click statusline `tok` for compress / auto-compaction |
 | Rail brand | Left-aligned `ChaeboxiWordmark`; no collapse control in brand row (hide via menu / resizer double-click) |
@@ -66,11 +67,33 @@ main: flex column; min-height: 0
 thread: flex 1 1 0; min-height: 0; overflow auto
 dock: flex-none; no border-top
 .session-dock-pad: horizontal --chatbox-col-pad-x + bottom breathing room
+.chat-dock-stack: session task summary + composer share one aligned surface; no empty task gap
+.todo-dock-list: bounded internal scroll so expanded tasks never displace the composer
 .chat-col: max-width var(--chatbox-col); margin-inline auto
 .blank-workbench: max-width var(--chatbox-col) (same measure as composer)
 ```
 
 Blank home, thread content, and composer left edges **must** align.
+
+Session tasks render only for persisted chat sessions. Main chat and Quick Chat share the same task dock composition. On small screens **and in Quick Chat**, keep the attached summary chip in the dock and move task details into a safe-area-aware bottom sheet rather than expanding the dock vertically.
+
+## Quick Chat (floating panel)
+
+Compact HUD density of the full session — not a second main window.
+
+| Rule | Value |
+|---|---|
+| Shell | `.quick-chat-shell` on `.session-shell`; tighter `--chatbox-col-pad-x` (~0.75rem) |
+| Horizontal scroll | **Never** page-level X scrollbar; Virtuoso uses `message-list-scroller--no-x` + `overflow-x: hidden`; prose `overflow-wrap: anywhere`; code keeps **internal** X scroll |
+| Statusline | `SessionStatusBar compact` — model + live/ready only (no mem/msg/tok/$) |
+| Shortcuts | Header tooltips only — **no** always-visible footer hint row |
+| Tasks | `taskDetailsMode="sheet"` always — chip + thin progress; details overlay, never grow dock |
+| InputBox | Shared component; CSS density only under `.quick-chat-shell` |
+| Type scale | One HUD scale: body **0.875rem** (thread + composer), meta **0.75rem**, model/statusline **0.65rem**; line-height ~1.5 (not full-session 1.02rem/1.7) |
+| Composer chrome | Toolbar **28×28**; model chip **26px** tall, **no vertical padding** (height-owned box); send **26×26**; textarea min-height ~2.35rem |
+| Portaled pickers / modals | `html[data-quick-chat]` densifies model picker, memory dock, composer `+` tools menu, and **Session options**. **Force desktop** surfaces on `/quick` (window is &lt; sm — would otherwise mount 85vh mobile drawers): model combobox + `AdaptiveModal` centered modal. Model picker ~320px / rows ~34px / type **0.8125rem**; session options ~360px `sm` modal with tighter form; tools menu scrolls ~420px max |
+| Window size | Keep native default (~520×700); fix layout, do not shrink the window to hide density bugs |
+| Session | Same session as main app |
 
 ## Composer pickers (@ / $ / /)
 
@@ -94,7 +117,7 @@ Blank home, thread content, and composer left edges **must** align.
 - Section micro-label (uppercase, tertiary) **above** a single soft `SettingsCard`.
 - Toggles / single selects → `SettingsPrefRow` (title + helper left, control right) inside `SettingsCard divided`.
 - Multi-field groups → stacked fields inside a padded card (`settings-card-fields`).
-- **Progressive disclosure:** advanced / optional blocks use `SettingsCollapsible` (collapsed by default; open when already configured). Keep primary setup (connection, name, essentials) always visible.
+- **Progressive disclosure:** advanced blocks use `SettingsCollapsible` (collapsed by default; open when already configured). Badge: **Advanced** (quiet) or **On** (active tone when configured) — avoid vague “Optional”. Chevron is IconChevronDown (rotates open). Nested cards inside stack use primary surface + soft hairline, not double secondary wash. Keep primary setup always visible.
 - Sticky save/cancel footers on long forms when needed.
 - Primitives: `SettingsPage`, `SettingsPageHeader`, `SettingsSection`, `SettingsCard`, `SettingsPrefRow`, `SettingsCallout`, `SettingsCollapsible`.
 - Callouts: quiet brand-tinted; avoid solid light-blue Alert slabs as primary hierarchy.

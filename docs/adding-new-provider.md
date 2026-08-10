@@ -300,6 +300,12 @@ export const groqProvider = defineProvider({
    - Models are listed in model selector
    - Chat functionality works
 
+## Optional: Provider plan & usage adapter
+
+If the provider exposes plan identity or quota (OAuth plan type, exhausted flags, billing links), add a `ProviderQuotaAdapter` under `src/renderer/packages/usage-tracking/adapters/` and register it in `adapters/index.ts`. Prefer official APIs only; otherwise leave quota as `unknown` / `unsupported`.
+
+Details: [provider-usage-status.md](./provider-usage-status.md).
+
 ## Migration Notes
 
 The registry-based architecture replaces the previous scattered approach:

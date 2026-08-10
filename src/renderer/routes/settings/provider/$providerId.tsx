@@ -79,6 +79,8 @@ import {
   resolveXaiAuthMode,
   resolveXaiBearer,
 } from '@shared/providers/oauth'
+import { ProviderUsageCard } from '@/components/usage'
+import { useProviderUsageStatus } from '@/packages/usage-tracking'
 
 export const Route = createFileRoute('/settings/provider/$providerId')({
   component: RouteComponent,
@@ -262,6 +264,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
   const baseInfo = [...SystemProviders(), ...(settings.customProviders || [])].find((p) => p.id === providerId)
 
   const { providerSettings, setProviderSettings } = useProviderSettings(providerId)
+  const { status: usageStatus, loading: usageLoading, refresh: refreshUsage } = useProviderUsageStatus(providerId)
 
   const displayModels = providerSettings?.models || baseInfo?.defaultSettings?.models || []
   const isNoApiKeyProvider = [
@@ -737,6 +740,21 @@ function ProviderSettings({ providerId }: { providerId: string }) {
             </div>
           </SettingsCard>
         </SettingsSection>
+
+        {usageStatus && (
+          <SettingsSection
+            title={t('Plan & usage')}
+            description={t(
+              'In this app usage is measured here. Provider plan remaining is best-effort and often unknown.'
+            )}
+          >
+            <ProviderUsageCard
+              status={usageStatus}
+              onRefresh={() => void refreshUsage(true)}
+              refreshing={usageLoading}
+            />
+          </SettingsSection>
+        )}
 
         {((!isNoApiKeyProvider && !isSubscriptionOAuthMode) || showBuiltinApiHostSection) && (
           <SettingsCollapsible

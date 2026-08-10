@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next'
 import MessageList, { type MessageListRef } from '@/components/chat/MessageList'
 import SessionStatusBar from '@/components/chat/SessionStatusBar'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
-import InputBox from '@/components/InputBox/InputBox'
+import InputBox, { type InputBoxRef } from '@/components/InputBox/InputBox'
 import { formatShortcutLabel } from '@/components/Shortcut'
 import { attachScreenshotToComposer } from '@/hooks/useDesktopShell'
 import platform from '@/platform'
@@ -50,6 +50,7 @@ function QuickChatPage() {
   const { t } = useTranslation()
   const [sessionId, setSessionId] = useState<string | null>(null)
   const messageListRef = useRef<MessageListRef>(null)
+  const inputBoxRef = useRef<InputBoxRef>(null)
   const { session } = useSession(sessionId)
   const [cachedSessionId, setCachedSessionId] = useAtom(currentSessionIdAtom)
   const shortcuts = useSettingsStore((s) => s.shortcuts)
@@ -317,6 +318,7 @@ function QuickChatPage() {
           <ErrorBoundary name="quick-inputbox">
             <InputBox
               key={`quick-input-${session.id}`}
+              ref={inputBoxRef}
               sessionId={session.id}
               sessionType={session.type || 'chat'}
               model={model}
@@ -354,6 +356,8 @@ function QuickChatPage() {
           generating={Boolean(lastGenerating?.generating)}
           sessionId={session.id}
           empty={threadEmpty}
+          onInsertMemory={(content) => inputBoxRef.current?.insertMemory(content)}
+          getMemorySaveContent={() => inputBoxRef.current?.getMemorySaveContent() ?? ''}
         />
       </div>
     </div>

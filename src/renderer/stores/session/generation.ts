@@ -517,6 +517,36 @@ export async function generate(
   // Track generation event
   trackGenerateEvent(sessionId, effectiveSettings, globalSettings, session.type, options)
 
+  // Soft budget hard-pause (user opt-in only)
+  try {
+    const budgetCfg = globalSettings.usageBudget
+    if (budgetCfg?.enabled && budgetCfg.pauseWhenExceeded) {
+      const { providerUsageService, evaluateBudget } = await import('@/packages/usage-tracking')
+      await providerUsageService.init()
+      const period = budgetCfg.period
+      const pid = String(effectiveSettings.provider ?? '')
+      const evalResult = evaluateBudget({
+        config: budgetCfg,
+        globalLocal: providerUsageService.getLocalSnapshot(period),
+        providerLocal: pid ? providerUsageService.getLocalSnapshot(period, pid) : undefined,
+        providerId: pid || undefined,
+      })
+      if (evalResult.level === 'critical') {
+        targetMsg = {
+          ...targetMsg,
+          generating: false,
+          cancel: undefined,
+          error: `Generation paused: ${evalResult.message}. Disable “Pause generation when budget exceeded” in Settings → Usage, or raise your soft budget.`,
+          status: [],
+        }
+        await modifyMessage(sessionId, targetMsg, true)
+        return
+      }
+    }
+  } catch {
+    // non-fatal — never block chat on budget evaluation failure
+  }
+
   // Reset message state to initial state
   targetMsg = {
     ...targetMsg,
@@ -1000,6 +1030,27 @@ export async function generate(
         await modifyMessage(sessionId, targetMsg, true)
         await flushSessionTasks(sessionId)
 
+        // Provider usage status: local rollup + clear exhausted on success
+        try {
+          const { providerUsageService } = await import('@/packages/usage-tracking')
+          await providerUsageService.init()
+          await providerUsageService.recordFromMessage(targetMsg)
+          const pid = String(effectiveSettings.provider ?? targetMsg.aiProvider ?? '')
+          if (pid) {
+            await providerUsageService.clearExhausted(pid)
+            const budgetHit = await providerUsageService.evaluateAndMaybeNotify(
+              settingsStore.getState(),
+              pid
+            )
+            if (budgetHit?.shouldToast) {
+              const { add: addToast } = await import('@/stores/toastActions')
+              addToast(budgetHit.message)
+            }
+          }
+        } catch {
+          // non-fatal
+        }
+
         if (isExecutionPhase) {
           await chatStore.updateSession(sessionId, { planPhase: undefined })
         }
@@ -1121,6 +1172,29 @@ export async function generate(
       status: [],
     }
     await modifyMessage(sessionId, targetMsg, true)
+
+    // Mark provider plan exhausted on quota errors (best-effort)
+    try {
+      const pid = String(effectiveSettings.provider ?? '')
+      if (pid) {
+        const { providerUsageService } = await import('@/packages/usage-tracking')
+        await providerUsageService.handleGenerationError({
+          providerId: pid,
+          modelId: effectiveSettings.modelId,
+          message: error.message,
+          responseBody:
+            error instanceof ApiError
+              ? error.responseBody
+              : causeError instanceof ApiError
+                ? causeError.responseBody
+                : undefined,
+          errorCode,
+        })
+      }
+    } catch {
+      // non-fatal
+    }
+
     if (managesPlanPhase) {
       await chatStore.updateSession(sessionId, { planPhase: undefined })
     }

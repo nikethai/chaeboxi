@@ -508,6 +508,33 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
   openclaw: OpenClawSettingsSchema,
 
   userPersonalInfo: UserPersonalInfoSettingsSchema,
+
+  /**
+   * Soft budgets for provider usage (in-app). Optional; default disabled.
+   * Does not hard-block generation unless pauseWhenExceeded is true.
+   */
+  usageBudget: z
+    .object({
+      enabled: z.boolean().default(false).catch(false),
+      period: z.enum(['7d', '30d', 'calendar-month']).default('30d').catch('30d'),
+      tokenLimit: z.number().positive().optional().catch(undefined),
+      costLimitUsd: z.number().positive().optional().catch(undefined),
+      perProvider: z
+        .record(
+          z.string(),
+          z.object({
+            tokenLimit: z.number().positive().optional().catch(undefined),
+            costLimitUsd: z.number().positive().optional().catch(undefined),
+          })
+        )
+        .optional()
+        .catch(undefined),
+      warnAtPercent: z.number().min(1).max(100).default(80).catch(80),
+      criticalAtPercent: z.number().min(1).max(100).default(100).catch(100),
+      pauseWhenExceeded: z.boolean().default(false).catch(false),
+    })
+    .optional()
+    .catch(undefined),
 })
 
 // TODO: provider的 base info 和 settings混在一起了，可以考虑像 session settings 和 global settings一样拆开

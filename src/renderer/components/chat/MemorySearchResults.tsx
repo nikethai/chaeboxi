@@ -3,6 +3,7 @@ import type { MemoryEntry } from '@shared/types/memory'
 import { IconCopy } from '@tabler/icons-react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import { memoryTagLabel } from './memory-tag-label'
 
 export type MemorySearchResultsProps = {
   entries: MemoryEntry[]
@@ -45,11 +46,19 @@ export const MemorySearchResults: FC<MemorySearchResultsProps> = ({
           </Flex>
           <Flex justify="space-between" align="center" gap="xs" mt={6}>
             <Flex gap={4} wrap="wrap" className="min-w-0">
-              {entry.tags.slice(0, 3).map((tag) => (
-                <Badge key={tag} size="xs" variant="light" color="gray">
-                  {tag}
+              {entry.pinned && (
+                <Badge size="xs" variant="light" color="chatbox-brand">
+                  {t('Pinned')}
                 </Badge>
-              ))}
+              )}
+              {entry.tags
+                .filter((tag) => tag.toLowerCase() !== 'pinned')
+                .slice(0, 2)
+                .map((tag) => (
+                  <Badge key={tag} size="xs" variant="light" color="gray">
+                    {memoryTagLabel(tag)}
+                  </Badge>
+                ))}
             </Flex>
             <Flex gap={2} className="shrink-0">
               <Tooltip label={t('Copy')} withArrow>

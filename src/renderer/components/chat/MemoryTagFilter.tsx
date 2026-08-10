@@ -1,6 +1,7 @@
 import { Button, Flex } from '@mantine/core'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import { memoryTagLabel } from './memory-tag-label'
 
 export type MemoryTagFilterProps = {
   tags: string[]
@@ -25,7 +26,7 @@ export const MemoryTagFilter: FC<MemoryTagFilterProps> = ({ tags, activeTag, onT
           variant={activeTag === tag ? 'filled' : 'default'}
           onClick={() => onTagChange(activeTag === tag ? null : tag)}
         >
-          {tag}
+          {memoryTagLabel(tag)}
         </Button>
       ))}
     </Flex>

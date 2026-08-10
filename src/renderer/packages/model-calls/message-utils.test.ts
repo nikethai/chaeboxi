@@ -108,6 +108,60 @@ describe('convertToModelMessages', () => {
     ])
   })
 
+  it('fills tool-only assistant turns so Gemini does not get empty content', async () => {
+    const result = await convertToModelMessages(
+      [
+        {
+          id: 'assistant-tools',
+          role: 'assistant',
+          contentParts: [
+            {
+              type: 'tool-call',
+              state: 'result',
+              toolCallId: 't1',
+              toolName: 'create_task',
+              args: { title: 'Step 1' },
+              result: { id: 'task-1', title: 'Step 1', status: 'done' },
+            },
+          ],
+        },
+      ],
+      { modelSupportVision: true, dependencies }
+    )
+
+    expect(result).toEqual([
+      {
+        role: 'assistant',
+        content: [{ type: 'text', text: '(Completed tools: create_task)' }],
+      },
+    ])
+  })
+
+  it('drops empty user turns that would invalidate Gemini requests', async () => {
+    const result = await convertToModelMessages(
+      [
+        {
+          id: 'user-empty',
+          role: 'user',
+          contentParts: [],
+        },
+        {
+          id: 'user-ok',
+          role: 'user',
+          contentParts: [{ type: 'text', text: 'hello' }],
+        },
+      ],
+      { modelSupportVision: true, dependencies }
+    )
+
+    expect(result).toEqual([
+      {
+        role: 'user',
+        content: [{ type: 'text', text: 'hello' }],
+      },
+    ])
+  })
+
   it('keeps assistant reasoning parts out of resend payloads by default', async () => {
     const result = await convertToModelMessages(
       [

@@ -214,6 +214,7 @@ async function generateSpeakerTurn(
       await submitNewUserMessage(sessionId, {
         newUserMsg: nextQueuedMessage.message,
         needGenerating: nextQueuedMessage.needGenerating,
+        userAlreadyInserted: nextQueuedMessage.userAlreadyInserted,
       })
       if (nextQueuedMessage.needGenerating) break
     }
@@ -346,6 +347,7 @@ export async function runAgentRoomDiscussion(
       await submitNewUserMessage(sessionId, {
         newUserMsg: nextQueuedMessage.message,
         needGenerating: nextQueuedMessage.needGenerating,
+        userAlreadyInserted: nextQueuedMessage.userAlreadyInserted,
       })
       if (nextQueuedMessage.needGenerating) break
     }
@@ -370,6 +372,7 @@ export async function runAgentRoomDiscussion(
     await submitNewUserMessage(sessionId, {
       newUserMsg: nextQueuedMessage.message,
       needGenerating: nextQueuedMessage.needGenerating,
+      userAlreadyInserted: nextQueuedMessage.userAlreadyInserted,
     })
     if (nextQueuedMessage.needGenerating) break
   }

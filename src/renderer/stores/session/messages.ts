@@ -98,7 +98,13 @@ export async function removeMessage(sessionId: string, messageId: string) {
  */
 export async function submitNewUserMessage(
   sessionId: string,
-  params: { newUserMsg: Message; needGenerating: boolean; onUserMessageReady?: () => void }
+  params: {
+    newUserMsg: Message
+    needGenerating: boolean
+    onUserMessageReady?: () => void
+    /** Drain path: user row already inserted while a prior turn was generating */
+    userAlreadyInserted?: boolean
+  }
 ) {
   // Import generate lazily to avoid circular dependency
   // generate will be moved to generation.ts in US-006, then this import will change
@@ -110,9 +116,20 @@ export async function submitNewUserMessage(
     return
   }
 
-  if (getAllMessageList(session).some((message) => message.generating)) {
-    messageQueueStore.getState().enqueueMessage(sessionId, params.newUserMsg, params.needGenerating)
+  // While a reply is streaming, still show the user turn in the thread immediately,
+  // then schedule generation for after the active turn finishes.
+  if (!params.userAlreadyInserted && getAllMessageList(session).some((message) => message.generating)) {
+    await insertMessage(sessionId, params.newUserMsg)
+    messageQueueStore.getState().enqueueMessage(sessionId, params.newUserMsg, params.needGenerating, {
+      userAlreadyInserted: true,
+    })
     params.onUserMessageReady?.()
+    try {
+      const scrollActions = await import('../scrollActions')
+      scrollActions.scrollToBottom('auto')
+    } catch {
+      // non-fatal
+    }
     return
   }
 
@@ -139,7 +156,9 @@ export async function submitNewUserMessage(
   const webBrowsing = getSessionWebBrowsing(sessionId, settings.provider)
 
   // (legacy comment removed)
-  await insertMessage(sessionId, newUserMsg)
+  if (!params.userAlreadyInserted) {
+    await insertMessage(sessionId, newUserMsg)
+  }
 
   const globalSettings = settingsStore.getState().getSettings()
 
@@ -149,13 +168,8 @@ export async function submitNewUserMessage(
   const { clearTeamRoomState } = await import('./team-room-state')
   const { getBuiltInCopilotById } = await import('@/hooks/useCopilots')
 
-  clearTeamRoomState(sessionId)
-
-  const roomAfterMembership = await applyRoomMembership(sessionId, newUserMsg.mentionedAgentIds)
-  const speakers = resolveSpeakers(roomAfterMembership, newUserMsg.mentionedAgentIds)
-  const isMultiAgentRoom = needGenerating && shouldRunMultiAgentRoom(newUserMsg.mentionedAgentIds, roomAfterMembership)
-
-  // ，（multi-agent room creates its own assistants)
+  // Pin optimistic assistant ASAP so the thread never looks dead while room setup runs.
+  // Multi-agent rooms create their own assistant rows — we remove this placeholder if needed.
   let newAssistantMsg = createMessage('assistant', '')
   if (newUserMsg.files && newUserMsg.files.length > 0) {
     if (!newAssistantMsg.status) {
@@ -176,8 +190,33 @@ export async function submitNewUserMessage(
     })
   }
 
-  // Label single-agent speaker on the assistant bubble (built-in + custom agents)
-  if (speakers.length === 1) {
+  let earlyAssistantInserted = false
+  if (needGenerating) {
+    newAssistantMsg.generating = true
+    await insertMessage(sessionId, newAssistantMsg)
+    earlyAssistantInserted = true
+    try {
+      const scrollActions = await import('../scrollActions')
+      scrollActions.scrollToBottom('auto')
+    } catch {
+      // non-fatal
+    }
+  }
+
+  clearTeamRoomState(sessionId)
+
+  const roomAfterMembership = await applyRoomMembership(sessionId, newUserMsg.mentionedAgentIds)
+  const speakers = resolveSpeakers(roomAfterMembership, newUserMsg.mentionedAgentIds)
+  const isMultiAgentRoom = needGenerating && shouldRunMultiAgentRoom(newUserMsg.mentionedAgentIds, roomAfterMembership)
+
+  if (isMultiAgentRoom) {
+    // Room discussion owns assistant turns — drop the solo placeholder
+    if (earlyAssistantInserted) {
+      await removeMessage(sessionId, newAssistantMsg.id)
+      earlyAssistantInserted = false
+    }
+  } else if (speakers.length === 1 && earlyAssistantInserted) {
+    // Label single-agent speaker on the assistant bubble (built-in + custom agents)
     const speakerId = speakers[0]
     const { resolveAgentMeta } = await import('@/packages/agents')
     const meta = resolveAgentMeta(speakerId)
@@ -186,11 +225,7 @@ export async function submitNewUserMessage(
       agentId: speakerId,
       name: meta?.name ?? getBuiltInCopilotById(speakerId)?.name,
     }
-  }
-
-  if (needGenerating && !isMultiAgentRoom) {
-    newAssistantMsg.generating = true
-    await insertMessage(sessionId, newAssistantMsg)
+    await modifyMessage(sessionId, newAssistantMsg)
   }
 
   try {
@@ -243,9 +278,9 @@ export async function submitNewUserMessage(
       error: `${error.message}`, // (legacy)
       status: [],
     }
-    if (needGenerating && !isMultiAgentRoom) {
+    if (earlyAssistantInserted) {
       await modifyMessage(sessionId, newAssistantMsg)
-    } else {
+    } else if (needGenerating && !isMultiAgentRoom) {
       await insertMessage(sessionId, newAssistantMsg)
     }
     return // ，

@@ -18,6 +18,7 @@ export {
   extractSkillNamesFromText,
   fuzzyScoreSkill,
   getActiveSkillDollarQuery,
+  replaceActiveSkillDollarWithToken,
   SKILL_DOLLAR_TOKEN_RE,
   stripSkillDollarTokens,
 } from './dollar-tokens'

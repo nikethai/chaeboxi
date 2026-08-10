@@ -117,6 +117,12 @@ describe('dollar tokens', () => {
     expect(getActiveSkillDollarQuery('hello $100')).toBe(null)
     expect(getActiveSkillDollarQuery('no trigger')).toBe(null)
   })
+
+  it('replaces active partial with completed skill token', async () => {
+    const { replaceActiveSkillDollarWithToken } = await import('./dollar-tokens')
+    expect(replaceActiveSkillDollarWithToken('use $cod', 'code-review')).toBe('use $code-review ')
+    expect(replaceActiveSkillDollarWithToken('$', 'writing-editor')).toBe('$writing-editor ')
+  })
 })
 
 describe('activation', () => {

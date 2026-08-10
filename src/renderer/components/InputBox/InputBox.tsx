@@ -1,5 +1,5 @@
 import NiceModal from '@ebay/nice-modal-react'
-import { ActionIcon, Box, Button, Flex, Stack, Text, Textarea, Tooltip, UnstyledButton } from '@mantine/core'
+import { ActionIcon, Box, Button, Flex, Stack, Text, Tooltip, UnstyledButton } from '@mantine/core'
 import { useViewportSize } from '@mantine/hooks'
 import {
   getFileAcceptString,
@@ -37,8 +37,21 @@ import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import { navigateToSettings } from '@/modals/Settings'
 import type { GatewayCommandInfo } from '@/openclaw/gateway'
-import { getActiveAgentAtQuery, stripActiveAgentAtToken } from '@/packages/agents'
-import { extractCommandNamesFromText, getActiveCommandSlashQuery, stripCommandSlashTokens } from '@/packages/commands'
+import {
+  extractAgentSlugsFromText,
+  getActiveAgentAtQuery,
+  matchAgentBySlug,
+  replaceActiveAgentAtWithToken,
+  slugifyAgentName,
+  stripAgentTokenFromText,
+} from '@/packages/agents'
+import {
+  extractCommandNamesFromText,
+  getActiveCommandSlashQuery,
+  matchSystemSlashCommand,
+  stripCommandSlashTokens,
+} from '@/packages/commands'
+import { runCompactionWithUIState } from '@/packages/context-management'
 import {
   getContextMessageIds,
   isAutoCompactionEnabled,
@@ -50,7 +63,22 @@ import { searchEntries } from '@/packages/memory/bank-ops'
 import { replacePromptTemplateVars } from '@/packages/model-calls/message-utils'
 import { getModelContextWindowSync } from '@/packages/model-context'
 import * as picUtils from '@/packages/pic_utils'
-import { extractSkillNamesFromText, getActiveSkillDollarQuery, stripSkillDollarTokens } from '@/packages/skills'
+import {
+  CREDENTIAL_CHIP_MAX,
+  extractCredentialSlugsFromText,
+  getActiveCredentialHashQuery,
+  matchCredentialBySlug,
+  replaceActiveCredentialHashWithToken,
+  slugifyCredentialLabel,
+} from '@/packages/integrations/hash-tokens'
+import {
+  extractSkillNamesFromText,
+  getActiveSkillDollarQuery,
+  replaceActiveSkillDollarWithToken,
+} from '@/packages/skills'
+import { ensureIntegrationsStoreInit, useIntegrationsStore } from '@/stores/integrationsStore'
+import type { IntegrationAccount } from '@shared/types/integrations'
+import { getConnector } from '@shared/integrations'
 import { formatBytesForDisplay, formatDurationForDisplay, getVideoLimits } from '@/packages/video'
 import { isWebSearchConfigured } from '@/packages/web-search/is-configured'
 import platform, { platformCapabilities } from '@/platform'
@@ -97,10 +125,13 @@ import * as toastActions from '../../stores/toastActions'
 import AgentRoomStrip from '../chat/AgentRoomStrip'
 import { CompactionStatus } from '../chat/CompactionStatus'
 import { MemoryDockPopover } from '../chat/MemoryDockPopover'
+import ComposerRichInput, { type ComposerRichInputHandle } from './ComposerRichInput'
+import type { ComposerChipData } from './composer-chip-dom'
 import {
   getActiveMemoryMentionQuery,
   getComposerSelectionOrDraft,
-  stripActiveMemoryMention,
+  replaceActiveMemoryMentionWithToken,
+  slugifyMemoryLabel,
 } from '../chat/memory-dock-utils'
 import TeamRoomActions from '../chat/TeamRoomActions'
 import { CompressionModal } from '../common/CompressionModal'
@@ -109,7 +140,7 @@ import ProviderImageIcon from '../icons/ProviderImageIcon'
 import ModelSelector from '../ModelSelector'
 import AgentPicker, { filterAgents } from './AgentPicker'
 import { FileMiniCard, ImageMiniCard, LinkMiniCard } from './Attachments'
-import CommandPicker, { filterCommands } from './CommandPicker'
+import CommandPicker, { buildCommandPickerItems, type CommandPickerItem } from './CommandPicker'
 import ComposerToolsMenu from './ComposerToolsMenu'
 import { ImageUploadInput } from './ImageUploadInput'
 import MemoryMentionPicker from './MemoryMentionPicker'
@@ -128,6 +159,7 @@ import {
 } from './preprocessState'
 import QueuedMessageList from './QueuedMessageList'
 import QuoteChip from './QuoteChip'
+import CredentialPicker, { filterCredentials } from './CredentialPicker'
 import SkillPicker, { filterSkills } from './SkillPicker'
 import TeamModeSelect from './TeamModeSelect'
 
@@ -170,6 +202,8 @@ export type InputBoxProps = {
    * Used for Team mode visibility and room strip.
    */
   draftAgentIds?: string[]
+  /** Persist room-member changes on blank home (NewChatAgentBar + dock strip). */
+  onDraftAgentIdsChange?(ids: string[]): void
   draftRoomMode?: 'discuss' | 'work' | 'swarm'
   onDraftRoomModeChange?(mode: 'discuss' | 'work' | 'swarm'): void
 }
@@ -195,6 +229,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       onWorkspaceRootChange,
       initialMessage = '',
       draftAgentIds,
+      onDraftAgentIdsChange,
       draftRoomMode,
       onDraftRoomModeChange,
     },
@@ -257,11 +292,21 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const [selectedSkills, setSelectedSkills] = useState<SkillPackage[]>([])
     const [skillPickerDismissed, setSkillPickerDismissed] = useState(false)
     const [skillHighlightIndex, setSkillHighlightIndex] = useState(0)
+    /** Session-sticky connected accounts selected via # */
+    const [selectedCredentials, setSelectedCredentials] = useState<IntegrationAccount[]>([])
+    const [credentialPickerDismissed, setCredentialPickerDismissed] = useState(false)
+    const [credentialHighlightIndex, setCredentialHighlightIndex] = useState(0)
+    const integrationAccounts = useIntegrationsStore((s) => s.catalog.accounts)
+    const integrationsReady = useIntegrationsStore((s) => s.ready)
+
+    useEffect(() => {
+      void ensureIntegrationsStoreInit()
+    }, [])
     /** Turn-sticky command chips selected via / */
     const [selectedCommands, setSelectedCommands] = useState<CommandPackage[]>([])
     const [commandPickerDismissed, setCommandPickerDismissed] = useState(false)
     const [commandHighlightIndex, setCommandHighlightIndex] = useState(0)
-    /** Turn-sticky agent chips selected via @ */
+    /** Turn-sticky agent chips selected via @ — pruned when @token leaves the draft */
     const [selectedAgents, setSelectedAgents] = useState<AgentDetail[]>([])
     const [memoryAttachments, setMemoryAttachments] = useState<MemoryAttachment[]>([])
     const [quoteDraft, setLocalQuoteDraft] = useState<QuoteDraft | null>(null)
@@ -279,6 +324,52 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       }
       return Array.from(map.values())
     }, [myAgents, remoteAgents])
+
+    /**
+     * Source of truth for turn mentions is the draft text (@ $ # tokens).
+     * When the user backspaces a chip, drop sticky picker state so send/room
+     * does not keep routing to a removed agent/skill/account.
+     */
+    useEffect(() => {
+      const slugs = extractAgentSlugsFromText(messageInput)
+      const matchables = allAgents.map((a) => ({ id: a.id, name: a.name }))
+      const idsInText = new Set(
+        slugs
+          .map((slug) => matchAgentBySlug(matchables, slug)?.id)
+          .filter((id): id is string => Boolean(id))
+      )
+      setSelectedAgents((prev) => {
+        if (prev.length === 0) return prev
+        const next = prev.filter((a) => idsInText.has(a.id))
+        return next.length === prev.length ? prev : next
+      })
+
+      const skillNames = new Set(extractSkillNamesFromText(messageInput))
+      setSelectedSkills((prev) => {
+        if (prev.length === 0) return prev
+        const next = prev.filter((s) => skillNames.has(s.name))
+        return next.length === prev.length ? prev : next
+      })
+
+      const credSlugs = extractCredentialSlugsFromText(messageInput)
+      const credMatchables = integrationAccounts.map((a) => ({
+        id: a.id,
+        label: a.label,
+        accountHint: a.accountHint,
+        connectorId: a.connectorId,
+        connectorName: getConnector(a.connectorId)?.name,
+      }))
+      const credIdsInText = new Set(
+        credSlugs
+          .map((slug) => matchCredentialBySlug(credMatchables, slug)?.id)
+          .filter((id): id is string => Boolean(id))
+      )
+      setSelectedCredentials((prev) => {
+        if (prev.length === 0) return prev
+        const next = prev.filter((a) => credIdsInText.has(a.id))
+        return next.length === prev.length ? prev : next
+      })
+    }, [messageInput, allAgents, integrationAccounts])
 
     // Pre-constructed message state (scoped by session)
     const [preConstructedMessage, setPreConstructedMessage] = useAtom(
@@ -650,7 +741,58 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       }
     }, [showRollbackThreadButton])
 
-    const inputRef = useRef<HTMLTextAreaElement | null>(null)
+    const richInputRef = useRef<ComposerRichInputHandle | null>(null)
+    /** Prevent double Tab/Enter when both native capture + React handlers fire */
+    const pickerSelectLockRef = useRef(false)
+
+    const resolveComposerToken = useCallback(
+      (token: string): Partial<ComposerChipData> | null => {
+        if (token.toLowerCase().startsWith('@mem:')) {
+          const slug = token.slice(5)
+          return { kind: 'mem', token, label: slug || t('Memory') }
+        }
+        if (token.startsWith('@')) {
+          const slug = token.slice(1)
+          const matched = matchAgentBySlug(
+            allAgents.map((a) => ({ id: a.id, name: a.name })),
+            slug
+          )
+          const agent = matched ? allAgents.find((a) => a.id === matched.id) : undefined
+          if (agent) {
+            return {
+              kind: 'agent',
+              token,
+              label: agent.name,
+              emoji: agent.emojiAvatar,
+              id: agent.id,
+            }
+          }
+          return null
+        }
+        if (token.startsWith('$')) {
+          const name = token.slice(1)
+          const skill = allSkills.find((s) => s.name.toLowerCase() === name.toLowerCase())
+          if (skill) return { kind: 'skill', token, label: skill.name, id: skill.id }
+          return null
+        }
+        if (token.startsWith('#')) {
+          const slug = token.slice(1)
+          const matchables = integrationAccounts.map((a) => ({
+            id: a.id,
+            label: a.label,
+            accountHint: a.accountHint,
+            connectorId: a.connectorId,
+            connectorName: getConnector(a.connectorId)?.name,
+          }))
+          const matched = matchCredentialBySlug(matchables, slug)
+          if (matched) {
+            return { kind: 'account', token, label: matched.label, id: matched.id }
+          }
+        }
+        return null
+      },
+      [allAgents, allSkills, integrationAccounts, t]
+    )
 
     const insertMemory = useCallback((entry: MemoryEntry) => {
       setMemoryAttachments((previous) => {
@@ -667,7 +809,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     }, [])
 
     const getMemorySaveContent = useCallback(
-      () => getComposerSelectionOrDraft(inputRef.current, messageInput),
+      () => getComposerSelectionOrDraft(richInputRef.current?.getElement() ?? null, messageInput),
       [messageInput]
     )
 
@@ -718,6 +860,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       () => (sessionType === 'chat' ? getActiveSkillDollarQuery(messageInput) : null),
       [messageInput, sessionType]
     )
+    const credentialHashQuery = useMemo(
+      () => (sessionType === 'chat' ? getActiveCredentialHashQuery(messageInput) : null),
+      [messageInput, sessionType]
+    )
     const agentAtQuery = useMemo(
       () => (sessionType === 'chat' ? getActiveAgentAtQuery(messageInput) : null),
       [messageInput, sessionType]
@@ -726,6 +872,46 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       () => (sessionType === 'chat' ? getActiveMemoryMentionQuery(messageInput) : null),
       [messageInput, sessionType]
     )
+
+    /** Agents already tagged in the draft (inline @slug + picker selections). */
+    const draftMentionedAgentIds = useMemo(() => {
+      const ids = new Set(selectedAgents.map((a) => a.id))
+      for (const slug of extractAgentSlugsFromText(messageInput)) {
+        const matched = matchAgentBySlug(
+          allAgents.map((a) => ({ id: a.id, name: a.name })),
+          slug
+        )
+        if (matched) ids.add(matched.id)
+      }
+      return Array.from(ids)
+    }, [allAgents, messageInput, selectedAgents])
+
+    const draftMentionedSkillIds = useMemo(() => {
+      const ids = new Set(selectedSkills.map((s) => s.id))
+      const nameToSkill = new Map(enabledSkills.map((s) => [s.name, s]))
+      for (const name of extractSkillNamesFromText(messageInput)) {
+        const s = nameToSkill.get(name)
+        if (s) ids.add(s.id)
+      }
+      return Array.from(ids)
+    }, [enabledSkills, messageInput, selectedSkills])
+
+    const draftMentionedCredentialIds = useMemo(() => {
+      const ids = new Set(selectedCredentials.map((a) => a.id))
+      const matchables = integrationAccounts.map((a) => ({
+        id: a.id,
+        label: a.label,
+        accountHint: a.accountHint,
+        connectorId: a.connectorId,
+        connectorName: getConnector(a.connectorId)?.name,
+      }))
+      for (const slug of extractCredentialSlugsFromText(messageInput)) {
+        const matched = matchCredentialBySlug(matchables, slug)
+        if (matched) ids.add(matched.id)
+      }
+      return Array.from(ids)
+    }, [integrationAccounts, messageInput, selectedCredentials])
+
     const showCommandPicker = useMemo(
       () =>
         sessionType === 'chat' &&
@@ -742,14 +928,33 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         !showCommandPicker &&
         !showOpenClawCommandPicker &&
         !skillPickerDismissed &&
-        selectedSkills.length < SKILL_EXPLICIT_MAX,
+        draftMentionedSkillIds.length < SKILL_EXPLICIT_MAX,
       [
         sessionType,
         skillDollarQuery,
         showCommandPicker,
         showOpenClawCommandPicker,
         skillPickerDismissed,
-        selectedSkills.length,
+        draftMentionedSkillIds.length,
+      ]
+    )
+    const showCredentialPicker = useMemo(
+      () =>
+        sessionType === 'chat' &&
+        credentialHashQuery !== null &&
+        !showCommandPicker &&
+        !showOpenClawCommandPicker &&
+        !showSkillPicker &&
+        !credentialPickerDismissed &&
+        draftMentionedCredentialIds.length < CREDENTIAL_CHIP_MAX,
+      [
+        sessionType,
+        credentialHashQuery,
+        showCommandPicker,
+        showOpenClawCommandPicker,
+        showSkillPicker,
+        credentialPickerDismissed,
+        draftMentionedCredentialIds.length,
       ]
     )
     const showAgentPicker = useMemo(
@@ -760,8 +965,9 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         !showCommandPicker &&
         !showOpenClawCommandPicker &&
         !showSkillPicker &&
+        !showCredentialPicker &&
         !agentPickerDismissed &&
-        selectedAgents.length < MAX_ROOM_AGENTS,
+        draftMentionedAgentIds.length < MAX_ROOM_AGENTS,
       [
         sessionType,
         agentAtQuery,
@@ -769,8 +975,9 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         showCommandPicker,
         showOpenClawCommandPicker,
         showSkillPicker,
+        showCredentialPicker,
         agentPickerDismissed,
-        selectedAgents.length,
+        draftMentionedAgentIds.length,
       ]
     )
     const showMemoryMentionPicker = useMemo(
@@ -780,6 +987,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         !showCommandPicker &&
         !showOpenClawCommandPicker &&
         !showSkillPicker &&
+        !showCredentialPicker &&
         !memoryMentionPickerDismissed,
       [
         sessionType,
@@ -787,32 +995,56 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         showCommandPicker,
         showOpenClawCommandPicker,
         showSkillPicker,
+        showCredentialPicker,
         memoryMentionPickerDismissed,
       ]
     )
-    const filteredCommands = useMemo(
+    const filteredCommandItems = useMemo(
       () =>
-        filterCommands(
-          enabledCommands.filter((c) => !selectedCommands.some((sel) => sel.id === c.id)),
-          commandSlashQuery || ''
-        ).slice(0, 8),
+        buildCommandPickerItems(commandSlashQuery || '', enabledCommands, {
+          excludePackageIds: selectedCommands.map((c) => c.id),
+          includeSystem: true,
+        }),
       [enabledCommands, selectedCommands, commandSlashQuery]
     )
+    const filteredCommands = useMemo(
+      () => filteredCommandItems.filter((i) => i.kind === 'package').map((i) => i.command),
+      [filteredCommandItems]
+    )
+
     const filteredSkills = useMemo(
       () =>
         filterSkills(
-          enabledSkills.filter((s) => !selectedSkills.some((sel) => sel.id === s.id)),
+          enabledSkills.filter((s) => !draftMentionedSkillIds.includes(s.id)),
           skillDollarQuery || ''
         ).slice(0, 8),
-      [enabledSkills, selectedSkills, skillDollarQuery]
+      [enabledSkills, draftMentionedSkillIds, skillDollarQuery]
     )
+    const filteredCredentials = useMemo(
+      () =>
+        filterCredentials(
+          integrationAccounts.filter((a) => !draftMentionedCredentialIds.includes(a.id)),
+          credentialHashQuery || ''
+        ).slice(0, 8),
+      [integrationAccounts, draftMentionedCredentialIds, credentialHashQuery]
+    )
+
+    // Hydrate session-sticky credentials when session loads
+    useEffect(() => {
+      if (!integrationsReady || !currentSession?.credentialIds?.length) return
+      const ids = currentSession.credentialIds
+      setSelectedCredentials((prev) => {
+        if (prev.length > 0) return prev
+        return integrationAccounts.filter((a) => ids.includes(a.id))
+      })
+    }, [integrationsReady, currentSession?.id, currentSession?.credentialIds, integrationAccounts])
     const filteredAgents = useMemo(
       () =>
         filterAgents(
-          allAgents.filter((a) => !selectedAgents.some((sel) => sel.id === a.id)),
+          allAgents.filter((a) => !draftMentionedAgentIds.includes(a.id)),
           agentAtQuery || ''
         ).slice(0, 8),
-      [allAgents, selectedAgents, agentAtQuery]
+      [allAgents, draftMentionedAgentIds, agentAtQuery]
     )
     const filteredMemoryMentions = useMemo(
       () => searchEntries(globalMemoryBank, memoryMentionQuery || '', { limit: 8, enabledOnly: true }),
@@ -869,50 +1101,111 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     useEffect(() => {
       setPresetHighlightIndex(0)
       setSkillHighlightIndex(0)
+      setCredentialHighlightIndex(0)
       setAgentHighlightIndex(0)
+      setCommandHighlightIndex(0)
       setMemoryMentionHighlightIndex(0)
       setOpenClawPickerDismissed(false)
       setSkillPickerDismissed(false)
+      setCredentialPickerDismissed(false)
       setAgentPickerDismissed(false)
+      setCommandPickerDismissed(false)
       setMemoryMentionPickerDismissed(false)
-    }, [presetQuery, skillDollarQuery, agentAtQuery, memoryMentionQuery, messageInput])
+    }, [presetQuery, skillDollarQuery, credentialHashQuery, agentAtQuery, memoryMentionQuery, commandSlashQuery, messageInput])
 
     const handleAgentSelect = useCallback(
       (agent: AgentDetail) => {
+        const slug = slugifyAgentName(agent.name) || agent.id
         setSelectedAgents((prev) => {
           if (prev.some((a) => a.id === agent.id) || prev.length >= MAX_ROOM_AGENTS) return prev
           return [...prev, agent]
         })
-        setMessageInput((prev) => stripActiveAgentAtToken(prev))
+        const token = `@${slug}`
+        const chip: ComposerChipData = {
+          kind: 'agent',
+          token,
+          label: agent.name,
+          emoji: agent.emojiAvatar,
+          id: agent.id,
+        }
+        if (richInputRef.current) {
+          richInputRef.current.insertChipAtTrigger(chip, 'agent')
+        } else {
+          setMessageInput((prev) => replaceActiveAgentAtWithToken(prev, slug))
+        }
         setAgentPickerDismissed(true)
+        resetHistoryIndex()
         dom.focusMessageInput()
       },
-      [setMessageInput]
+      [resetHistoryIndex, setMessageInput]
     )
 
     const handleMemoryMentionSelect = useCallback(
       (entry: MemoryEntry) => {
         insertMemory(entry)
-        setMessageInput((previous) => stripActiveMemoryMention(previous))
+        const label = entry.tags[0] || entry.content.slice(0, 32) || 'note'
+        const slug = slugifyMemoryLabel(label) || 'note'
+        const token = `@mem:${slug}`
+        const chip: ComposerChipData = { kind: 'mem', token, label: entry.tags[0] || label, id: entry.id }
+        if (richInputRef.current) {
+          richInputRef.current.insertChipAtTrigger(chip, 'mem')
+        } else {
+          setMessageInput((previous) => replaceActiveMemoryMentionWithToken(previous, label))
+        }
         setMemoryMentionPickerDismissed(true)
+        resetHistoryIndex()
         dom.focusMessageInput()
       },
-      [insertMemory, setMessageInput]
+      [insertMemory, resetHistoryIndex, setMessageInput]
     )
 
+    /**
+     * Remove agent from room membership (session or blank-home draft) AND drop
+     * matching @ chips / sticky picker state so discuss/swarm tags stay in sync.
+     */
     const handleRemoveRoomAgent = useCallback(
       async (agentId: string) => {
-        if (!sessionId) return
         const next = roomAgentIds.filter((id) => id !== agentId)
-        const { toSessionAgentFields } = await import('@shared/agent-room')
-        const fields = toSessionAgentFields(next)
-        await chatStore.updateSession(sessionId, {
-          agentIds: fields.agentIds,
-          copilotId: fields.copilotId,
-        })
+        const agent =
+          allAgents.find((a) => a.id === agentId) ||
+          selectedAgents.find((a) => a.id === agentId) ||
+          ({ id: agentId, name: agentId } as AgentDetail)
+
+        // 1) Room membership
+        if (isNewSession) {
+          onDraftAgentIdsChange?.(next)
+        } else if (sessionId) {
+          const { toSessionAgentFields } = await import('@shared/agent-room')
+          const fields = toSessionAgentFields(next)
+          await chatStore.updateSession(sessionId, {
+            agentIds: fields.agentIds,
+            copilotId: fields.copilotId,
+          })
+        }
+
+        // 2) Turn-sticky picker state
         setSelectedAgents((prev) => prev.filter((a) => a.id !== agentId))
+
+        // 3) Composer inline @chip / token
+        setMessageInput((prev) => {
+          const cleaned = stripAgentTokenFromText(prev, agent)
+          if (cleaned === prev) return prev
+          // Keep rich input DOM in sync on next layout
+          queueMicrotask(() => {
+            richInputRef.current?.setSerializedValue(cleaned, { cursorToEnd: true })
+          })
+          return cleaned
+        })
       },
-      [sessionId, roomAgentIds]
+      [
+        allAgents,
+        isNewSession,
+        onDraftAgentIdsChange,
+        roomAgentIds,
+        selectedAgents,
+        sessionId,
+        setMessageInput,
+      ]
     )
 
     const handleRoomModeChange = useCallback(
@@ -934,18 +1227,89 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           if (prev.some((s) => s.id === skill.id) || prev.length >= SKILL_EXPLICIT_MAX) return prev
           return [...prev, skill]
         })
-        // Remove trailing $partial token from draft
-        setMessageInput((prev) =>
-          prev.replace(/(?:^|[\s([{])\$[a-z0-9-]*$/i, (m) => m.replace(/\$.*$/, '')).replace(/\s+$/, ' ')
-        )
+        const token = `$${skill.name}`
+        const chip: ComposerChipData = { kind: 'skill', token, label: skill.name, id: skill.id }
+        if (richInputRef.current) {
+          richInputRef.current.insertChipAtTrigger(chip, 'skill')
+        } else {
+          setMessageInput((prev) => replaceActiveSkillDollarWithToken(prev, skill.name))
+        }
         resetHistoryIndex()
         dom.focusMessageInput()
-        setTimeout(() => {
-          dom.setMessageInputCursorToEnd()
-        }, 0)
       },
       [resetHistoryIndex, setMessageInput]
     )
+
+    const persistSessionCredentials = useCallback(
+      async (accounts: IntegrationAccount[]) => {
+        if (!sessionId || isNewSession) return
+        try {
+          const { updateSession } = await import('@/stores/chatStore')
+          await updateSession(sessionId, {
+            credentialIds: accounts.length ? accounts.map((a) => a.id) : undefined,
+          })
+        } catch {
+          /* non-fatal */
+        }
+      },
+      [sessionId, isNewSession]
+    )
+
+    const handleCredentialSelect = useCallback(
+      (account: IntegrationAccount) => {
+        setSelectedCredentials((prev) => {
+          if (prev.some((a) => a.id === account.id) || prev.length >= CREDENTIAL_CHIP_MAX) return prev
+          const next = [...prev, account]
+          void persistSessionCredentials(next)
+          return next
+        })
+        const slug =
+          slugifyCredentialLabel(account.label) ||
+          slugifyCredentialLabel(account.accountHint || '') ||
+          account.connectorId
+        const token = `#${slug}`
+        const chip: ComposerChipData = {
+          kind: 'account',
+          token,
+          label: account.label,
+          id: account.id,
+        }
+        if (richInputRef.current) {
+          richInputRef.current.insertChipAtTrigger(chip, 'account')
+        } else {
+          setMessageInput((prev) => replaceActiveCredentialHashWithToken(prev, slug))
+        }
+        resetHistoryIndex()
+        dom.focusMessageInput()
+      },
+      [persistSessionCredentials, resetHistoryIndex, setMessageInput]
+    )
+
+    const runManualCompact = useCallback(async () => {
+      if (isNewSession || !sessionId) {
+        toastActions.add(t('Start a chat with a few messages before compacting.'))
+        return
+      }
+      if (isCompactionRunning) {
+        toastActions.add(t('Already compacting…'))
+        return
+      }
+      setMessageInput('')
+      clearDraft()
+      setSelectedCommands([])
+      setCommandPickerDismissed(true)
+      resetHistoryIndex()
+      const result = await runCompactionWithUIState(sessionId, { force: true })
+      if (!result.success) {
+        toastActions.add(result.error?.message || t('Compaction failed'))
+        return
+      }
+      if (!result.compacted) {
+        toastActions.add(t('Nothing to compact yet'))
+        return
+      }
+      toastActions.add(t('Conversation compacted'))
+    }, [clearDraft, isCompactionRunning, isNewSession, resetHistoryIndex, sessionId, setMessageInput, t])
 
     const handleCommandSelect = useCallback(
       (command: CommandPackage) => {
@@ -963,6 +1327,19 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         }, 0)
       },
       [resetHistoryIndex, setMessageInput]
+    )
+
+    const handleCommandPickerItem = useCallback(
+      (item: CommandPickerItem) => {
+        if (item.kind === 'system') {
+          if (item.command.id === 'compact') {
+            void runManualCompact()
+          }
+          return
+        }
+        handleCommandSelect(item.command)
+      },
+      [handleCommandSelect, runManualCompact]
     )
 
     const handlePresetSelect = useCallback(
@@ -1003,6 +1380,13 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         return
       }
 
+      // Built-in slash actions (e.g. /compact) — not chat messages
+      const systemCommand = matchSystemSlashCommand(messageInput)
+      if (systemCommand?.id === 'compact') {
+        await runManualCompact()
+        return
+      }
+
       // (legacy comment)
       if (hasPreprocessErrors) {
         toastActions.add(t('Some files failed to parse. Please remove them and try again.'))
@@ -1036,8 +1420,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         // Sample video frames for vision models right before send
         let constructedMessage = preConstructedMessage.message
 
-        // Attach skills from $ chips + inline $tokens; commands from / chips + tokens
-        // Attach agents from @ chips
+        // Parse @ / $ / # tokens from the message body (Slack-style).
+        // Keep completed tokens in the sent text so models can follow who/what is directed.
         {
           const rawText = constructedMessage.contentParts.find((p) => p.type === 'text')?.text || ''
           const namesFromText = extractSkillNamesFromText(rawText)
@@ -1076,16 +1460,60 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             }
           }
 
-          let cleanedText = stripSkillDollarTokens(rawText)
-          cleanedText = stripCommandSlashTokens(cleanedText)
-          cleanedText = stripActiveAgentAtToken(cleanedText)
+          // Commands still strip: /foo is a lead-in draft, not conversational mention prose
+          let cleanedText = stripCommandSlashTokens(rawText)
 
-          const mentionedAgentIds = selectedAgents.map((a) => a.id).slice(0, MAX_ROOM_AGENTS)
+          // Agents: chips + inline @slug tokens
+          const agentMatchables = allAgents.map((a) => ({ id: a.id, name: a.name }))
+          const mentionedAgentIds: string[] = []
+          const seenAgent = new Set<string>()
+          for (const a of selectedAgents) {
+            if (!seenAgent.has(a.id) && mentionedAgentIds.length < MAX_ROOM_AGENTS) {
+              seenAgent.add(a.id)
+              mentionedAgentIds.push(a.id)
+            }
+          }
+          for (const slug of extractAgentSlugsFromText(rawText)) {
+            const matched = matchAgentBySlug(agentMatchables, slug)
+            if (matched && !seenAgent.has(matched.id) && mentionedAgentIds.length < MAX_ROOM_AGENTS) {
+              seenAgent.add(matched.id)
+              mentionedAgentIds.push(matched.id)
+            }
+          }
+
+          const credentialSlugsFromText = extractCredentialSlugsFromText(rawText)
+          const matchables = integrationAccounts.map((a) => ({
+            id: a.id,
+            label: a.label,
+            accountHint: a.accountHint,
+            connectorId: a.connectorId,
+            connectorName: getConnector(a.connectorId)?.name,
+          }))
+          const credentialIds: string[] = []
+          const seenCred = new Set<string>()
+          for (const a of selectedCredentials) {
+            if (!seenCred.has(a.id)) {
+              seenCred.add(a.id)
+              credentialIds.push(a.id)
+            }
+          }
+          for (const slug of credentialSlugsFromText) {
+            const matched = matchCredentialBySlug(matchables, slug)
+            if (matched && !seenCred.has(matched.id) && credentialIds.length < CREDENTIAL_CHIP_MAX) {
+              seenCred.add(matched.id)
+              credentialIds.push(matched.id)
+            }
+          }
+
+          // Do not strip @ $ # completed mentions — they are part of the user instruction
+          cleanedText = cleanedText.replace(/[ \t]{2,}/g, ' ').replace(/ *\n */g, '\n').trim()
+
           constructedMessage = {
             ...constructedMessage,
             skillIds: skillIds.length ? skillIds : undefined,
             commandIds: commandIds.length ? commandIds : undefined,
             mentionedAgentIds: mentionedAgentIds.length ? mentionedAgentIds : undefined,
+            credentialIds: credentialIds.length ? credentialIds : undefined,
             memoryAttachments: memoryAttachments.length ? memoryAttachments : undefined,
             quoteAttachment: quoteDraft
               ? ({
@@ -1099,6 +1527,13 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             contentParts: constructedMessage.contentParts.map((p) =>
               p.type === 'text' ? { ...p, text: cleanedText } : p
             ),
+          }
+
+          // Session sticky: keep selected credentials after send
+          if (credentialIds.length && sessionId && !isNewSession) {
+            void persistSessionCredentials(
+              integrationAccounts.filter((a) => credentialIds.includes(a.id))
+            )
           }
         }
 
@@ -1149,6 +1584,9 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             setIsSubmitting(false)
             clearDraft()
             setSelectedAgents([])
+            setSelectedSkills([])
+            setSelectedCredentials([])
+            setSelectedCommands([])
             setMemoryAttachments([])
             setLocalQuoteDraft(null)
             setLinks([])
@@ -1187,237 +1625,371 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       }
     }
 
-    const onMessageInput = useCallback(
-      (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-        const input = event.target.value
-        setMessageInput(input)
-        setCommandPickerDismissed(false)
-        setSkillPickerDismissed(false)
-        setAgentPickerDismissed(false)
-        setMemoryMentionPickerDismissed(false)
-        resetHistoryIndex()
+    /** Clamp highlight into range; fall back to 0 so Tab/Enter still complete. */
+    const pickIndex = useCallback((index: number, length: number) => {
+      if (length <= 0) return -1
+      if (index >= 0 && index < length) return index
+      return 0
+    }, [])
+
+    /**
+     * Handle / @ $ # picker keys. Returns true when the event was consumed.
+     * Tab always completes the highlighted (or first) row when a picker is open.
+     */
+    const handlePickerKeyDown = useCallback(
+      (event: {
+        key: string
+        shiftKey: boolean
+        ctrlKey: boolean
+        altKey: boolean
+        metaKey: boolean
+        preventDefault: () => void
+        stopPropagation: () => void
+      }): boolean => {
+        const isPlainEnter =
+          event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey
+        // Tab complete — ignore Ctrl/Cmd+Tab (session switch) and Alt+Tab
+        const isTabComplete =
+          event.key === 'Tab' && !event.ctrlKey && !event.metaKey && !event.altKey
+
+        const consume = () => {
+          event.preventDefault()
+          event.stopPropagation()
+        }
+
+        const runOnce = (fn: () => void) => {
+          if (pickerSelectLockRef.current) return
+          pickerSelectLockRef.current = true
+          try {
+            fn()
+          } finally {
+            // Unlock after both native capture + React bubble have finished
+            window.setTimeout(() => {
+              pickerSelectLockRef.current = false
+            }, 0)
+          }
+        }
+
+        if (showCommandPicker) {
+          if (event.key === 'ArrowDown') {
+            consume()
+            if (filteredCommandItems.length > 0) {
+              setCommandHighlightIndex((index) => (index + 1) % filteredCommandItems.length)
+            }
+            return true
+          }
+          if (event.key === 'ArrowUp') {
+            consume()
+            if (filteredCommandItems.length > 0) {
+              setCommandHighlightIndex(
+                (index) => (index - 1 + filteredCommandItems.length) % filteredCommandItems.length
+              )
+            }
+            return true
+          }
+          if (event.key === 'Escape') {
+            consume()
+            setCommandPickerDismissed(true)
+            return true
+          }
+          if ((isPlainEnter || isTabComplete) && filteredCommandItems.length > 0) {
+            const item = filteredCommandItems[pickIndex(commandHighlightIndex, filteredCommandItems.length)]
+            if (item) {
+              consume()
+              runOnce(() => handleCommandPickerItem(item))
+              return true
+            }
+          }
+          // Keep focus in composer while the picker is open (don't tab-away)
+          if (isTabComplete) {
+            consume()
+            return true
+          }
+        }
+
+        if (showMemoryMentionPicker) {
+          if (event.key === 'ArrowDown') {
+            consume()
+            if (filteredMemoryMentions.length > 0) {
+              setMemoryMentionHighlightIndex((index) => (index + 1) % filteredMemoryMentions.length)
+            }
+            return true
+          }
+          if (event.key === 'ArrowUp') {
+            consume()
+            if (filteredMemoryMentions.length > 0) {
+              setMemoryMentionHighlightIndex(
+                (index) => (index - 1 + filteredMemoryMentions.length) % filteredMemoryMentions.length
+              )
+            }
+            return true
+          }
+          if (event.key === 'Escape') {
+            consume()
+            setMemoryMentionPickerDismissed(true)
+            return true
+          }
+          if ((isPlainEnter || isTabComplete) && filteredMemoryMentions.length > 0) {
+            const entry =
+              filteredMemoryMentions[pickIndex(memoryMentionHighlightIndex, filteredMemoryMentions.length)]
+            if (entry) {
+              consume()
+              runOnce(() => handleMemoryMentionSelect(entry))
+              return true
+            }
+          }
+          if (isTabComplete) {
+            consume()
+            return true
+          }
+        }
+
+        if (showAgentPicker) {
+          if (event.key === 'ArrowDown') {
+            consume()
+            if (filteredAgents.length > 0) {
+              setAgentHighlightIndex((index) => (index + 1) % filteredAgents.length)
+            }
+            return true
+          }
+          if (event.key === 'ArrowUp') {
+            consume()
+            if (filteredAgents.length > 0) {
+              setAgentHighlightIndex((index) => (index - 1 + filteredAgents.length) % filteredAgents.length)
+            }
+            return true
+          }
+          if (event.key === 'Escape') {
+            consume()
+            setAgentPickerDismissed(true)
+            return true
+          }
+          if ((isPlainEnter || isTabComplete) && filteredAgents.length > 0) {
+            const agent = filteredAgents[pickIndex(agentHighlightIndex, filteredAgents.length)]
+            if (agent) {
+              consume()
+              runOnce(() => handleAgentSelect(agent))
+              return true
+            }
+          }
+          if (isTabComplete) {
+            consume()
+            return true
+          }
+        }
+
+        if (showCredentialPicker) {
+          if (event.key === 'ArrowDown') {
+            consume()
+            if (filteredCredentials.length > 0) {
+              setCredentialHighlightIndex((index) => (index + 1) % filteredCredentials.length)
+            }
+            return true
+          }
+          if (event.key === 'ArrowUp') {
+            consume()
+            if (filteredCredentials.length > 0) {
+              setCredentialHighlightIndex(
+                (index) => (index - 1 + filteredCredentials.length) % filteredCredentials.length
+              )
+            }
+            return true
+          }
+          if (event.key === 'Escape') {
+            consume()
+            setCredentialPickerDismissed(true)
+            return true
+          }
+          if ((isPlainEnter || isTabComplete) && filteredCredentials.length > 0) {
+            const account =
+              filteredCredentials[pickIndex(credentialHighlightIndex, filteredCredentials.length)]
+            if (account) {
+              consume()
+              runOnce(() => handleCredentialSelect(account))
+              return true
+            }
+          }
+          if (isTabComplete) {
+            consume()
+            return true
+          }
+        }
+
+        if (showSkillPicker) {
+          if (event.key === 'ArrowDown') {
+            consume()
+            if (filteredSkills.length > 0) {
+              setSkillHighlightIndex((index) => (index + 1) % filteredSkills.length)
+            }
+            return true
+          }
+          if (event.key === 'ArrowUp') {
+            consume()
+            if (filteredSkills.length > 0) {
+              setSkillHighlightIndex((index) => (index - 1 + filteredSkills.length) % filteredSkills.length)
+            }
+            return true
+          }
+          if (event.key === 'Escape') {
+            consume()
+            setSkillPickerDismissed(true)
+            return true
+          }
+          if ((isPlainEnter || isTabComplete) && filteredSkills.length > 0) {
+            const skill = filteredSkills[pickIndex(skillHighlightIndex, filteredSkills.length)]
+            if (skill) {
+              consume()
+              runOnce(() => handleSkillSelect(skill))
+              return true
+            }
+          }
+          if (isTabComplete) {
+            consume()
+            return true
+          }
+        }
+
+        if (showPresetPicker || showOpenClawCommandPicker) {
+          const activePickerItems = showOpenClawCommandPicker ? filteredOpenClawCommands : filteredPresets
+
+          if (event.key === 'ArrowDown') {
+            consume()
+            if (activePickerItems.length > 0) {
+              setPresetHighlightIndex((index) => (index + 1) % activePickerItems.length)
+            }
+            return true
+          }
+          if (event.key === 'ArrowUp') {
+            consume()
+            if (activePickerItems.length > 0) {
+              setPresetHighlightIndex((index) => (index - 1 + activePickerItems.length) % activePickerItems.length)
+            }
+            return true
+          }
+          if (event.key === 'Escape') {
+            consume()
+            if (showOpenClawCommandPicker) {
+              setOpenClawPickerDismissed(true)
+            } else {
+              setMessageInput('')
+            }
+            return true
+          }
+          if ((isPlainEnter || isTabComplete) && activePickerItems.length > 0) {
+            const item = activePickerItems[pickIndex(presetHighlightIndex, activePickerItems.length)]
+            if (item) {
+              consume()
+              runOnce(() => {
+                if (showOpenClawCommandPicker) {
+                  handleOpenClawCommandSelect(item as GatewayCommandInfo)
+                } else {
+                  void handlePresetSelect((item as { id: string }).id)
+                }
+              })
+              return true
+            }
+          }
+          if (isTabComplete) {
+            consume()
+            return true
+          }
+        }
+
+        return false
       },
-      [setMessageInput, resetHistoryIndex]
+      [
+        agentHighlightIndex,
+        commandHighlightIndex,
+        credentialHighlightIndex,
+        filteredAgents,
+        filteredCommandItems,
+        filteredCredentials,
+        filteredMemoryMentions,
+        filteredOpenClawCommands,
+        filteredPresets,
+        filteredSkills,
+        handleAgentSelect,
+        handleCommandPickerItem,
+        handleCredentialSelect,
+        handleMemoryMentionSelect,
+        handleOpenClawCommandSelect,
+        handlePresetSelect,
+        handleSkillSelect,
+        memoryMentionHighlightIndex,
+        pickIndex,
+        presetHighlightIndex,
+        setMessageInput,
+        showAgentPicker,
+        showCommandPicker,
+        showCredentialPicker,
+        showMemoryMentionPicker,
+        showOpenClawCommandPicker,
+        showPresetPicker,
+        showSkillPicker,
+        skillHighlightIndex,
+      ]
     )
 
-    const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (showCommandPicker) {
-        if (event.key === 'ArrowDown') {
-          event.preventDefault()
-          if (filteredCommands.length > 0) {
-            setCommandHighlightIndex((index) => (index + 1) % filteredCommands.length)
-          }
-          return
+    // Native capture: Tab can leave the textarea before React's bubble handler runs in some webviews
+    useEffect(() => {
+      const anyPicker =
+        showCommandPicker ||
+        showAgentPicker ||
+        showSkillPicker ||
+        showCredentialPicker ||
+        showMemoryMentionPicker ||
+        showPresetPicker ||
+        showOpenClawCommandPicker
+      if (!anyPicker) return
+
+      const onNativeKeyDown = (event: KeyboardEvent) => {
+        const target = event.target as HTMLElement | null
+        const inputEl =
+          richInputRef.current?.getElement() ||
+          (document.getElementById(dom.messageInputID) as HTMLElement | null)
+        // Only when focus is the composer (or body after a stolen tab)
+        if (target !== inputEl && target !== document.body && !(inputEl && inputEl.contains(target))) {
+          // Still handle Tab if a picker is open and focus somehow left the field
+          if (event.key !== 'Tab') return
         }
-        if (event.key === 'ArrowUp') {
-          event.preventDefault()
-          if (filteredCommands.length > 0) {
-            setCommandHighlightIndex((index) => (index - 1 + filteredCommands.length) % filteredCommands.length)
-          }
-          return
-        }
-        if (event.key === 'Escape') {
-          event.preventDefault()
-          setCommandPickerDismissed(true)
-          return
-        }
-        if (
-          event.key === 'Enter' &&
-          !event.shiftKey &&
-          !event.ctrlKey &&
-          !event.altKey &&
-          !event.metaKey &&
-          filteredCommands[commandHighlightIndex]
-        ) {
-          event.preventDefault()
-          handleCommandSelect(filteredCommands[commandHighlightIndex])
-          return
-        }
-        if (event.key === 'Tab' && filteredCommands[commandHighlightIndex]) {
-          event.preventDefault()
-          handleCommandSelect(filteredCommands[commandHighlightIndex])
-          return
+        const consumed = handlePickerKeyDown(event)
+        if (consumed && inputEl && document.activeElement !== inputEl) {
+          inputEl.focus()
         }
       }
 
-      if (showMemoryMentionPicker) {
-        if (event.key === 'ArrowDown') {
-          event.preventDefault()
-          if (filteredMemoryMentions.length > 0) {
-            setMemoryMentionHighlightIndex((index) => (index + 1) % filteredMemoryMentions.length)
-          }
-          return
-        }
-        if (event.key === 'ArrowUp') {
-          event.preventDefault()
-          if (filteredMemoryMentions.length > 0) {
-            setMemoryMentionHighlightIndex(
-              (index) => (index - 1 + filteredMemoryMentions.length) % filteredMemoryMentions.length
-            )
-          }
-          return
-        }
-        if (event.key === 'Escape') {
-          event.preventDefault()
-          setMemoryMentionPickerDismissed(true)
-          return
-        }
-        if (
-          event.key === 'Enter' &&
-          !event.shiftKey &&
-          !event.ctrlKey &&
-          !event.altKey &&
-          !event.metaKey &&
-          filteredMemoryMentions[memoryMentionHighlightIndex]
-        ) {
-          event.preventDefault()
-          handleMemoryMentionSelect(filteredMemoryMentions[memoryMentionHighlightIndex])
-          return
-        }
-        if (event.key === 'Tab' && filteredMemoryMentions[memoryMentionHighlightIndex]) {
-          event.preventDefault()
-          handleMemoryMentionSelect(filteredMemoryMentions[memoryMentionHighlightIndex])
-          return
-        }
+      window.addEventListener('keydown', onNativeKeyDown, true)
+      return () => window.removeEventListener('keydown', onNativeKeyDown, true)
+    }, [
+      handlePickerKeyDown,
+      showAgentPicker,
+      showCommandPicker,
+      showCredentialPicker,
+      showMemoryMentionPicker,
+      showOpenClawCommandPicker,
+      showPresetPicker,
+      showSkillPicker,
+    ])
+
+    const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement | HTMLTextAreaElement>) => {
+      if (handlePickerKeyDown(event)) {
+        return
       }
 
-      if (showAgentPicker) {
-        if (event.key === 'ArrowDown') {
-          event.preventDefault()
-          if (filteredAgents.length > 0) {
-            setAgentHighlightIndex((index) => (index + 1) % filteredAgents.length)
-          }
-          return
-        }
-        if (event.key === 'ArrowUp') {
-          event.preventDefault()
-          if (filteredAgents.length > 0) {
-            setAgentHighlightIndex((index) => (index - 1 + filteredAgents.length) % filteredAgents.length)
-          }
-          return
-        }
-        if (event.key === 'Escape') {
-          event.preventDefault()
-          setAgentPickerDismissed(true)
-          return
-        }
-        if (
-          event.key === 'Enter' &&
-          !event.shiftKey &&
-          !event.ctrlKey &&
-          !event.altKey &&
-          !event.metaKey &&
-          filteredAgents[agentHighlightIndex]
-        ) {
-          event.preventDefault()
-          handleAgentSelect(filteredAgents[agentHighlightIndex])
-          return
-        }
-        if (event.key === 'Tab' && filteredAgents[agentHighlightIndex]) {
-          event.preventDefault()
-          handleAgentSelect(filteredAgents[agentHighlightIndex])
-          return
-        }
-      }
-
-      if (showSkillPicker) {
-        if (event.key === 'ArrowDown') {
-          event.preventDefault()
-          if (filteredSkills.length > 0) {
-            setSkillHighlightIndex((index) => (index + 1) % filteredSkills.length)
-          }
-          return
-        }
-        if (event.key === 'ArrowUp') {
-          event.preventDefault()
-          if (filteredSkills.length > 0) {
-            setSkillHighlightIndex((index) => (index - 1 + filteredSkills.length) % filteredSkills.length)
-          }
-          return
-        }
-        if (event.key === 'Escape') {
-          event.preventDefault()
-          setSkillPickerDismissed(true)
-          return
-        }
-        if (
-          event.key === 'Enter' &&
-          !event.shiftKey &&
-          !event.ctrlKey &&
-          !event.altKey &&
-          !event.metaKey &&
-          filteredSkills[skillHighlightIndex]
-        ) {
-          event.preventDefault()
-          handleSkillSelect(filteredSkills[skillHighlightIndex])
-          return
-        }
-        if (event.key === 'Tab' && filteredSkills[skillHighlightIndex]) {
-          event.preventDefault()
-          handleSkillSelect(filteredSkills[skillHighlightIndex])
-          return
-        }
-      }
-
-      if (showPresetPicker || showOpenClawCommandPicker) {
-        const activePickerItems = showOpenClawCommandPicker ? filteredOpenClawCommands : filteredPresets
-
-        if (event.key === 'ArrowDown') {
-          event.preventDefault()
-          if (activePickerItems.length > 0) {
-            setPresetHighlightIndex((index) => (index + 1) % activePickerItems.length)
-          }
-          return
-        }
-
-        if (event.key === 'ArrowUp') {
-          event.preventDefault()
-          if (activePickerItems.length > 0) {
-            setPresetHighlightIndex((index) => (index - 1 + activePickerItems.length) % activePickerItems.length)
-          }
-          return
-        }
-
-        if (event.key === 'Escape') {
-          event.preventDefault()
-          if (showOpenClawCommandPicker) {
-            setOpenClawPickerDismissed(true)
-          } else {
-            setMessageInput('')
-          }
-          return
-        }
-
-        if (
-          event.key === 'Enter' &&
-          !event.shiftKey &&
-          !event.ctrlKey &&
-          !event.altKey &&
-          !event.metaKey &&
-          activePickerItems[presetHighlightIndex]
-        ) {
-          event.preventDefault()
-          if (showOpenClawCommandPicker) {
-            handleOpenClawCommandSelect(activePickerItems[presetHighlightIndex] as GatewayCommandInfo)
-          } else {
-            void handlePresetSelect(filteredPresets[presetHighlightIndex].id)
-          }
-          return
-        }
-      }
-
+      // Prefer event.key (contenteditable / WebView often has keyCode 0)
+      const isEnter = event.key === 'Enter' || event.keyCode === 13
       const isPressedHash: Record<ShortcutSendValue, boolean> = {
         '': false,
-        Enter: event.keyCode === 13 && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey,
-        'CommandOrControl+Enter': event.keyCode === 13 && (event.ctrlKey || event.metaKey) && !event.shiftKey,
-        'Ctrl+Enter': event.keyCode === 13 && event.ctrlKey && !event.shiftKey,
-        'Command+Enter': event.keyCode === 13 && event.metaKey,
-        'Shift+Enter': event.keyCode === 13 && event.shiftKey,
-        'Ctrl+Shift+Enter': event.keyCode === 13 && event.ctrlKey && event.shiftKey,
+        Enter: isEnter && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey,
+        'CommandOrControl+Enter': isEnter && (event.ctrlKey || event.metaKey) && !event.shiftKey,
+        'Ctrl+Enter': isEnter && event.ctrlKey && !event.shiftKey,
+        'Command+Enter': isEnter && event.metaKey,
+        'Shift+Enter': isEnter && event.shiftKey,
+        'Ctrl+Shift+Enter': isEnter && event.ctrlKey && event.shiftKey,
       }
 
       // Alt/Option+Enter always inserts a newline (does not send)
-      if (event.keyCode === 13 && event.altKey && !event.ctrlKey && !event.metaKey) {
+      if (isEnter && event.altKey && !event.ctrlKey && !event.metaKey) {
         return
       }
 
@@ -1440,24 +2012,25 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       }
 
       // (legacy comment removed)
+      const editorEl = richInputRef.current?.getElement()
       if (
         (event.key === 'ArrowUp' || event.key === 'ArrowDown') &&
-        inputRef.current &&
-        inputRef.current === document.activeElement && // (legacy)
-        (messageInput.length === 0 || window.getSelection()?.toString() === messageInput) // ，
+        editorEl &&
+        editorEl === document.activeElement &&
+        (messageInput.length === 0 || window.getSelection()?.toString() === messageInput)
       ) {
         event.preventDefault()
         if (event.key === 'ArrowUp') {
           const previousInput = getPreviousHistoryInput()
           if (previousInput !== undefined) {
             setMessageInput(previousInput)
-            setTimeout(() => inputRef.current?.select(), 10)
+            setTimeout(() => richInputRef.current?.setCursorToEnd(), 10)
           }
         } else if (event.key === 'ArrowDown') {
           const nextInput = getNextHistoryInput()
           if (nextInput !== undefined) {
             setMessageInput(nextInput)
-            setTimeout(() => inputRef.current?.select(), 10)
+            setTimeout(() => richInputRef.current?.setCursorToEnd(), 10)
           }
         }
       }
@@ -1716,6 +2289,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         return Array.from(types).includes('Files')
       }
 
+      const clearFileDrag = () => {
+        dragDepth = 0
+        setIsFileDragActive(false)
+      }
+
       const onDragEnter = (event: DragEvent) => {
         if (!isFileDrag(event)) {
           return
@@ -1727,6 +2305,13 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
       const onDragLeave = (event: DragEvent) => {
         if (!isFileDrag(event)) {
+          return
+        }
+        // Leaving the window (relatedTarget null) always clears — dragDepth alone
+        // gets stuck when OS cancels a drag without matching leave events.
+        const leavingWindow = event.relatedTarget === null
+        if (leavingWindow) {
+          clearFileDrag()
           return
         }
         dragDepth = Math.max(0, dragDepth - 1)
@@ -1752,23 +2337,35 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         }
         event.preventDefault()
         event.stopPropagation()
-        dragDepth = 0
-        setIsFileDragActive(false)
+        clearFileDrag()
         const files = Array.from(event.dataTransfer?.files ?? [])
         if (files.length > 0) {
           void insertFilesRef.current(files)
         }
       }
 
+      // Esc / cancelled OS drag / focus loss must never leave the overlay stuck on.
+      const onDragEnd = () => clearFileDrag()
+      const onKeyDown = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') clearFileDrag()
+      }
+      const onWindowBlur = () => clearFileDrag()
+
       window.addEventListener('dragenter', onDragEnter)
       window.addEventListener('dragleave', onDragLeave)
       window.addEventListener('dragover', onDragOver)
       window.addEventListener('drop', onDrop)
+      window.addEventListener('dragend', onDragEnd)
+      window.addEventListener('keydown', onKeyDown)
+      window.addEventListener('blur', onWindowBlur)
       return () => {
         window.removeEventListener('dragenter', onDragEnter)
         window.removeEventListener('dragleave', onDragLeave)
         window.removeEventListener('dragover', onDragOver)
         window.removeEventListener('drop', onDrop)
+        window.removeEventListener('dragend', onDragEnd)
+        window.removeEventListener('keydown', onKeyDown)
+        window.removeEventListener('blur', onWindowBlur)
       }
     }, [sessionType])
 
@@ -1797,7 +2394,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       // await storage.delBlob(picKey)
     }
 
-    const onPaste = (event: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const onPaste = (event: React.ClipboardEvent<HTMLDivElement | HTMLTextAreaElement>) => {
       if (sessionType === 'picture') {
         return
       }
@@ -1907,7 +2504,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       : currentSession?.roomMode === 'work' || currentSession?.roomMode === 'swarm'
         ? currentSession.roomMode
         : 'discuss'
-    const showRoomModeChip = roomAgentIds.length >= 2 || selectedAgents.length >= 2
+    const showRoomModeChip = roomAgentIds.length >= 2 || draftMentionedAgentIds.length >= 2
 
     return (
       <Box id={dom.InputBoxID} className="chat-input-shell">
@@ -1922,6 +2519,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               isFileDragActive && 'composer-card-drag-active',
               (showCommandPicker ||
                 showSkillPicker ||
+                showCredentialPicker ||
                 showMemoryMentionPicker ||
                 showAgentPicker ||
                 showPresetPicker ||
@@ -1984,7 +2582,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 onHighlightChange={setAgentHighlightIndex}
                 onSelect={handleAgentSelect}
                 query={agentAtQuery || ''}
-                excludeIds={selectedAgents.map((a) => a.id)}
+                excludeIds={draftMentionedAgentIds}
               />
             )}
             {showCommandPicker && (
@@ -1994,8 +2592,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 highlightedIndex={commandHighlightIndex}
                 onHighlightChange={setCommandHighlightIndex}
                 onSelect={handleCommandSelect}
+                onSelectItem={handleCommandPickerItem}
                 query={commandSlashQuery || ''}
                 excludeIds={selectedCommands.map((c) => c.id)}
+                includeSystem
               />
             )}
             {showSkillPicker && (
@@ -2006,48 +2606,42 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 onHighlightChange={setSkillHighlightIndex}
                 onSelect={handleSkillSelect}
                 query={skillDollarQuery || ''}
-                excludeIds={selectedSkills.map((s) => s.id)}
+                excludeIds={draftMentionedSkillIds}
+              />
+            )}
+            {showCredentialPicker && (
+              <CredentialPicker
+                anchorRef={composerCardRef}
+                accounts={integrationAccounts}
+                highlightedIndex={credentialHighlightIndex}
+                onHighlightChange={setCredentialHighlightIndex}
+                onSelect={handleCredentialSelect}
+                query={credentialHashQuery || ''}
+                excludeIds={draftMentionedCredentialIds}
               />
             )}
 
-            {/* Agent room + skills + commands — shared horizontal inset */}
-            {(selectedAgents.length > 0 ||
-              roomAgentIds.length > 0 ||
-              selectedSkills.length > 0 ||
+            {/*
+              Mentions live in the message body (Slack-style @ $ # @mem:).
+              Only session room membership, memory payload chips, and quotes stay above.
+            */}
+            {(roomAgentIds.length > 0 ||
               selectedCommands.length > 0 ||
               memoryAttachments.length > 0 ||
               !!quoteDraft) && (
               <div className="composer-meta-stack">
-                {selectedAgents.length > 0 ? (
-                  <div className="composer-meta-row">
-                    <span className="composer-meta-label">{t('This turn')}:</span>
-                    {selectedAgents.map((agent) => (
-                      <span key={agent.id} className="composer-skill-chip">
-                        <span className="composer-skill-chip-sigil" aria-hidden>
-                          @
-                        </span>
-                        <span>
-                          {agent.emojiAvatar ? `${agent.emojiAvatar} ` : ''}
-                          {agent.name}
-                        </span>
-                        <button
-                          type="button"
-                          className="composer-skill-chip-remove"
-                          aria-label={t('Remove agent')}
-                          onClick={() => setSelectedAgents((prev) => prev.filter((a) => a.id !== agent.id))}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                    <span className="composer-meta-label">· {t('You')}</span>
-                  </div>
-                ) : roomAgentIds.length > 0 ? (
+                {roomAgentIds.length > 0 ? (
                   <AgentRoomStrip
                     agentIds={roomAgentIds}
-                    sessionId={sessionId}
+                    sessionId={isNewSession ? undefined : sessionId}
                     embedded
-                    onRemove={sessionId ? handleRemoveRoomAgent : undefined}
+                    onRemove={
+                      isNewSession
+                        ? onDraftAgentIdsChange
+                          ? handleRemoveRoomAgent
+                          : undefined
+                        : handleRemoveRoomAgent
+                    }
                   />
                 ) : null}
 
@@ -2064,27 +2658,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                           className="composer-skill-chip-remove"
                           aria-label={t('Remove command')}
                           onClick={() => setSelectedCommands((prev) => prev.filter((c) => c.id !== command.id))}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-
-                {selectedSkills.length > 0 ? (
-                  <div className="composer-meta-row">
-                    {selectedSkills.map((skill) => (
-                      <span key={skill.id} className="composer-skill-chip">
-                        <span className="composer-skill-chip-sigil" aria-hidden>
-                          $
-                        </span>
-                        <span>{skill.name}</span>
-                        <button
-                          type="button"
-                          className="composer-skill-chip-remove"
-                          aria-label={t('Remove skill')}
-                          onClick={() => setSelectedSkills((prev) => prev.filter((s) => s.id !== skill.id))}
                         >
                           ×
                         </button>
@@ -2132,45 +2705,28 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
               </div>
             )}
 
-            {/* Text area — full width of card (mock .composer textarea) */}
-            <Textarea
-              unstyled={true}
-              variant="unstyled"
-              classNames={{
-                root: 'w-full',
-                wrapper: 'w-full',
-                input:
-                  'composer-textarea block w-full outline-none border-none shadow-none px-4 pt-3.5 pb-2 resize-none bg-transparent text-chatbox-tint-primary placeholder:text-[var(--chatbox-tint-tertiary)] focus:outline-none focus:border-none focus:shadow-none focus-visible:outline-none',
-              }}
-              styles={{
-                input: {
-                  border: 'none',
-                  borderColor: 'transparent',
-                  boxShadow: 'none',
-                  outline: 'none',
-                  backgroundColor: 'transparent',
-                  '&:focus, &:focus-visible, &:focus-within': {
-                    border: 'none',
-                    borderColor: 'transparent',
-                    boxShadow: 'none',
-                    outline: 'none',
-                  },
-                },
-              }}
-              size="sm"
+            {/* Slack-style rich composer: real inline chips for @ $ # @mem */}
+            <ComposerRichInput
+              ref={richInputRef}
               id={dom.messageInputID}
-              ref={inputRef}
-              placeholder={t('Type your question here… Use @ for agents, @mem for memory, $ for skills') || ''}
-              bg="transparent"
-              autosize={true}
-              minRows={2}
-              maxRows={Math.max(4, Math.floor(viewportHeight / 100))}
+              className="px-4 pt-3.5 pb-2"
               value={messageInput}
-              autoFocus={!isSmallScreen}
-              readOnly={isCompactionRunning}
-              onChange={onMessageInput}
+              onChange={(serialized) => {
+                setMessageInput(serialized)
+                setCommandPickerDismissed(false)
+                setSkillPickerDismissed(false)
+                setAgentPickerDismissed(false)
+                setMemoryMentionPickerDismissed(false)
+                resetHistoryIndex()
+              }}
               onKeyDown={onKeyDown}
               onPaste={onPaste}
+              placeholder={t('Write a message…') || 'Write a message…'}
+              disabled={isCompactionRunning}
+              autoFocus={!isSmallScreen}
+              minRows={2}
+              maxRows={Math.max(4, Math.floor(viewportHeight / 100))}
+              resolveToken={resolveComposerToken}
             />
 
             {(!!pictureKeys.length || !!attachments.length || !!links.length) && (
@@ -2449,10 +3005,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       <Text
                         size="xs"
                         className={cn(
-                          'text-[var(--chatbox-tint-secondary)] truncate font-[family-name:var(--chatbox-font-mono)] tabular-nums',
-                          isSmallScreen ? 'max-w-[108px]' : 'max-w-[140px]'
+                          'text-[var(--chatbox-tint-secondary)] truncate',
+                          isSmallScreen ? 'max-w-[108px]' : 'max-w-[148px]'
                         )}
-                        style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '-0.01em' }}
+                        style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '-0.015em' }}
+                        title={model?.modelId}
                       >
                         {modelSelectorDisplayText}
                       </Text>

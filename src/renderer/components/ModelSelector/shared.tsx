@@ -1,8 +1,9 @@
 import { Badge, Combobox, Flex, Text, Tooltip } from '@mantine/core'
 import type { ProviderModelInfo } from '@shared/types'
-import { IconBulb, IconEye, IconStar, IconStarFilled, IconTool } from '@tabler/icons-react'
+import { IconBulb, IconEye, IconStar, IconStarFilled } from '@tabler/icons-react'
 import clsx from 'clsx'
 import { useTranslation } from 'react-i18next'
+import { formatModelDisplayName } from '@/utils/modelDisplayName'
 import { ModelIcon } from '../icons/ModelIcon'
 import { ScalableIcon } from '../common/ScalableIcon'
 
@@ -64,11 +65,12 @@ export const ModelItem = ({
         fw={isSelected ? 600 : 500}
         c={model.labels?.includes('recommended') ? 'chatbox-brand' : 'chatbox-primary'}
         style={{ fontSize: '0.8125rem', letterSpacing: '-0.012em' }}
+        title={model.modelId}
       >
-        {model.nickname || model.modelId}
+        {formatModelDisplayName(model.modelId, model.nickname)}
       </Text>
       {providerName && (
-        <Text span size="xs" c="chatbox-tertiary" className="shrink-0 mono-meta">
+        <Text span size="xs" c="chatbox-tertiary" className="shrink-0 model-picker-provider-meta">
           {providerName}
         </Text>
       )}
@@ -78,25 +80,19 @@ export const ModelItem = ({
         </Badge>
       )}
 
-      <Flex align="center" gap={3} className="shrink-0 opacity-65">
+      {/* Only distinctive caps — tool_use is near-universal noise for end users */}
+      <Flex align="center" gap={3} className="shrink-0 opacity-0 group-hover:opacity-70 transition-opacity">
         {model.capabilities?.includes('reasoning') && (
           <Tooltip label={t('Reasoning')} events={{ hover: true, focus: true, touch: true }}>
             <Text span c="chatbox-warning" className="flex items-center" style={{ transform: 'translateY(0.5px)' }}>
-              <ScalableIcon icon={IconBulb} size={13} />
+              <ScalableIcon icon={IconBulb} size={12} />
             </Text>
           </Tooltip>
         )}
         {model.capabilities?.includes('vision') && (
           <Tooltip label={t('Vision')} events={{ hover: true, focus: true, touch: true }}>
             <Text span c="chatbox-brand" className="flex items-center" style={{ transform: 'translateY(0.5px)' }}>
-              <ScalableIcon icon={IconEye} size={13} />
-            </Text>
-          </Tooltip>
-        )}
-        {model.capabilities?.includes('tool_use') && (
-          <Tooltip label={t('Tool Use')} events={{ hover: true, focus: true, touch: true }}>
-            <Text span c="chatbox-success" className="flex items-center" style={{ transform: 'translateY(0.5px)' }}>
-              <ScalableIcon icon={IconTool} size={13} />
+              <ScalableIcon icon={IconEye} size={12} />
             </Text>
           </Tooltip>
         )}
@@ -167,8 +163,13 @@ export const ModelItemInDrawer = ({
     >
       <ModelIcon modelId={model.modelId} providerId={providerId} size={20} className="flex-shrink-0" />
 
-      <Text span size="md" className="flex-grow-0 flex-shrink text-left overflow-hidden break-words !text-inherit">
-        {model.nickname || model.modelId}
+      <Text
+        span
+        size="md"
+        className="flex-grow-0 flex-shrink text-left overflow-hidden break-words !text-inherit"
+        title={model.modelId}
+      >
+        {formatModelDisplayName(model.modelId, model.nickname)}
       </Text>
       {providerName && (
         <Text span size="xs" c="chatbox-tertiary" className="flex-shrink-0">
@@ -183,22 +184,15 @@ export const ModelItemInDrawer = ({
 
       {model.capabilities?.includes('reasoning') && (
         <Tooltip label={t('Reasoning')} events={{ hover: true, focus: true, touch: true }}>
-          <Text span c="chatbox-warning" className="flex items-center" style={{ opacity: 0.7 }}>
+          <Text span c="chatbox-warning" className="flex items-center" style={{ opacity: 0.55 }}>
             <ScalableIcon icon={IconBulb} size={14} />
           </Text>
         </Tooltip>
       )}
       {model.capabilities?.includes('vision') && (
         <Tooltip label={t('Vision')} events={{ hover: true, focus: true, touch: true }}>
-          <Text span c="chatbox-brand" className="flex items-center" style={{ opacity: 0.7 }}>
+          <Text span c="chatbox-brand" className="flex items-center" style={{ opacity: 0.55 }}>
             <ScalableIcon icon={IconEye} size={14} />
-          </Text>
-        </Tooltip>
-      )}
-      {model.capabilities?.includes('tool_use') && (
-        <Tooltip label={t('Tool Use')} events={{ hover: true, focus: true, touch: true }}>
-          <Text span c="chatbox-success" className="flex items-center" style={{ opacity: 0.7 }}>
-            <ScalableIcon icon={IconTool} size={14} />
           </Text>
         </Tooltip>
       )}

@@ -1,26 +1,25 @@
 /**
- * SessionStatusBar — Claude Code / Codex style dock statusline.
- * Summarizes session totals under the composer; not per-message chrome.
- * Token segment opens context/compress menu (composer chip removed).
+ * SessionStatusBar — quiet product footer under the composer.
+ * Model on the left; memory + context on the right. No CLI chrome.
  */
 
 import { Flex, Text, Tooltip } from '@mantine/core'
 import type { Message } from '@shared/types'
 import type { MemoryEntry } from '@shared/types/memory'
 import { formatNumber } from '@shared/utils'
+import { IconBrain, IconFileZip } from '@tabler/icons-react'
 import { useAtomValue } from 'jotai'
 import { type FC, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MemoryDockPopover } from '@/components/chat/MemoryDockPopover'
-import { ProviderUsagePopover } from '@/components/usage'
 import TokenCountMenu from '@/components/InputBox/TokenCountMenu'
-import { aggregateSessionCosts, formatCost } from '@/packages/cost-tracking'
+import { ProviderUsagePopover } from '@/components/usage'
+import { aggregateSessionCosts } from '@/packages/cost-tracking'
 import { getMemoryInjectStats } from '@/packages/memory/inject'
 import { useProviderUsageStatus, useUsageBudgetState } from '@/packages/usage-tracking'
 import { composerTokenMenuAtom } from '@/stores/atoms/uiAtoms'
 import * as chatStore from '@/stores/chatStore'
 import { ensureMemoryStoreInit, useMemoryStore } from '@/stores/memoryStore'
-import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
 export type SessionStatusBarProps = {
   messages: Message[]
@@ -29,15 +28,15 @@ export type SessionStatusBarProps = {
   providerId?: string
   sessionId?: string
   /**
-   * Session settings.memoryAutoSave. When false, statusline shows auto-save off
+   * Session settings.memoryAutoSave. When false, status shows auto-save off
    * while Memory inject may still be on.
    */
   memoryAutoSave?: boolean
-  /** Quiet bar for empty threads (model only, no msg/tok noise) */
+  /** Quiet bar for empty threads (model only, no usage noise) */
   empty?: boolean
   /**
    * Floating Quick Chat density: model + live/ready only.
-   * Hides mem / msg / tok / cost (available in full app).
+   * Hides memory / tokens / cost (available in full app).
    */
   compact?: boolean
   onInsertMemory?: (entry: MemoryEntry) => void
@@ -52,6 +51,19 @@ function lastAssistantModel(messages: Message[]): string | undefined {
     }
   }
   return undefined
+}
+
+/** Prefer human model name; avoid "xAI · xAI Grok…" style duplication. */
+function formatModelTitle(model: string, providerId?: string): string {
+  if (!providerId || providerId === '—') return model
+  const modelLower = model.toLowerCase()
+  const providerLower = providerId.toLowerCase()
+  if (modelLower.includes(providerLower)) return model
+  // Common case: provider "xAI" + model "Grok 4.5" → keep "Grok 4.5" only (provider is in picker)
+  if (providerLower === 'xai' || providerLower === 'openai' || providerLower === 'anthropic') {
+    return model
+  }
+  return `${providerId} · ${model}`
 }
 
 const SessionStatusBar: FC<SessionStatusBarProps> = ({
@@ -104,7 +116,7 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
       agentBank: null,
     })
     if (!stats.enabled) {
-      return { label: t('Memory off'), title: t('Open Memory settings'), factCount: 0, on: false }
+      return { label: t('Off'), title: t('Open Memory settings'), factCount: 0, on: false }
     }
     const baseTitle =
       stats.factCount > 0
@@ -117,9 +129,14 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
       ? t('Auto-save is off for this chat. Manual Save to memory still works.')
       : ''
     return {
+      // Short label for the chip value (icon carries meaning)
       label: sessionAutoSaveOff
-        ? t('Memory on · {{count}} facts · auto-save off', { count: stats.factCount })
-        : t('Memory on · {{count}} facts', { count: stats.factCount }),
+        ? stats.factCount > 0
+          ? t('{{count}} · auto-save off', { count: stats.factCount })
+          : t('Auto-save off')
+        : stats.factCount > 0
+          ? String(stats.factCount)
+          : '—',
       title: autoSaveNote ? `${baseTitle} ${autoSaveNote}` : baseTitle,
       factCount: stats.factCount,
       on: true,
@@ -133,58 +150,86 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
   const totalTokens = metrics ? metrics.totalInputTokens + metrics.totalOutputTokens : 0
   const hasUsage = Boolean(metrics && metrics.messagesWithUsage > 0)
 
-  const providerShort = providerId ? String(providerId) : undefined
-  const modelTitle = providerShort ? `${providerShort} · ${model}` : model
+  const modelTitle = useMemo(() => formatModelTitle(model, providerId), [model, providerId])
 
   const { status: providerUsage } = useProviderUsageStatus(compact ? undefined : providerId, '30d')
   const budgetState = useUsageBudgetState(compact ? undefined : providerId)
 
+  /**
+   * Plan chip only when the user should care: exhausted, warning, or high usage.
+   * Idle "SuperGrok" labels stay out of the bar.
+   */
   const planSegment = useMemo(() => {
     if (compact || !providerUsage) return null
     const exhausted = providerUsage.quota.state === 'exhausted'
-    const hasPlan = Boolean(providerUsage.plan)
     const budgetWarn = budgetState.level === 'warn' || budgetState.level === 'critical'
-    if (!exhausted && !hasPlan && !budgetWarn) return null
-
-    let label = 'plan'
-    if (exhausted) {
-      label = 'plan · exhausted'
-    } else if (
+    const quotaKnown =
       providerUsage.quota.state === 'known' &&
       providerUsage.quota.limit != null &&
       providerUsage.quota.limit > 0
-    ) {
-      const used = providerUsage.quota.used ?? 0
-      const pct = Math.min(100, Math.round((used / providerUsage.quota.limit) * 100))
-      label = `plan ${pct}%`
-    } else if (providerUsage.plan) {
-      const short = providerUsage.plan.label.replace(/^ChatGPT\s+/i, '').replace(/^Antigravity\s+/i, '')
-      label = `plan ${short}`
+    const used = providerUsage.quota.used ?? 0
+    const pct = quotaKnown ? Math.min(100, Math.round((used / (providerUsage.quota.limit as number)) * 100)) : null
+
+    const highUsage = pct != null && pct >= 70
+    if (!exhausted && !budgetWarn && !highUsage) return null
+
+    let label = t('Plan')
+    if (exhausted) {
+      label = t('Plan exhausted')
+    } else if (pct != null) {
+      const planName = providerUsage.plan?.label
+        ?.replace(/^ChatGPT\s+/i, '')
+        .replace(/^Antigravity\s+/i, '')
+        .replace(/^SuperGrok\s*/i, 'SuperGrok')
+      label = planName ? `${planName} ${pct}%` : `${pct}%`
     } else if (budgetWarn) {
-      label = budgetState.level === 'critical' ? 'plan · budget' : 'plan · warn'
+      label = budgetState.level === 'critical' ? t('Budget critical') : t('Budget warning')
     }
 
-    const tone = exhausted || budgetState.level === 'critical' ? 'is-critical' : budgetWarn ? 'is-warn' : ''
+    const tone = exhausted || budgetState.level === 'critical' ? 'is-critical' : budgetWarn || highUsage ? 'is-warn' : ''
     return { label, tone, status: providerUsage }
-  }, [compact, providerUsage, budgetState])
+  }, [compact, providerUsage, budgetState, t])
 
   const menuForSession = !compact && tokenMenu && sessionId && tokenMenu.sessionId === sessionId ? tokenMenu : null
 
-  const tokSegment = (
-    <button type="button" className="session-statusline-tok" aria-label={t('Estimated Token Usage')}>
-      <span className="session-statusline-key">tok</span>
-      <span className="session-statusline-val">
-        {hasUsage && metrics
-          ? formatNumber(totalTokens)
-          : menuForSession
-            ? formatNumber(menuForSession.totalTokens)
-            : '—'}
-        {hasUsage && metrics && (
-          <span className="session-statusline-muted">
-            {' '}
-            ↑{formatNumber(metrics.totalInputTokens)} ↓{formatNumber(metrics.totalOutputTokens)}
-          </span>
-        )}
+  const tokenCount =
+    hasUsage && metrics ? totalTokens : menuForSession ? menuForSession.totalTokens : null
+
+  /** Prefer context-window fill when known; else raw token count. */
+  const contextLabel = useMemo(() => {
+    if (menuForSession?.isCompacting) return t('…')
+    const window = menuForSession?.contextWindow
+    const used = menuForSession?.contextTokens
+    if (window && window > 0 && used != null && used > 0) {
+      const pct = Math.min(99, Math.round((used / window) * 100))
+      return `${pct}%`
+    }
+    if (tokenCount != null && tokenCount > 0) return formatNumber(tokenCount)
+    return null
+  }, [menuForSession, tokenCount, t])
+
+  const memoryTrigger = memoryChip ? (
+    <button
+      type="button"
+      className={`session-statusline-action${memoryChip.on ? '' : ' is-muted'}${memoryChip.autoSaveOff ? ' is-warn' : ''}`}
+      aria-label={t('Memory')}
+      title={memoryChip.title}
+    >
+      <IconBrain size={14} stroke={1.7} aria-hidden />
+      <span className="session-statusline-action-val">{memoryChip.label}</span>
+    </button>
+  ) : null
+
+  const contextTrigger = (
+    <button
+      type="button"
+      className={`session-statusline-action${menuForSession?.isCompacting ? ' is-busy' : ''}`}
+      aria-label={t('Context')}
+      title={t('Context & compact')}
+    >
+      <IconFileZip size={13} stroke={1.7} aria-hidden />
+      <span className="session-statusline-action-val">
+        {contextLabel ?? t('Context')}
       </span>
     </button>
   )
@@ -202,69 +247,44 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
         gap="sm"
         wrap={compact ? 'nowrap' : 'wrap'}
       >
-        <Flex align="center" gap={10} miw={0} className="min-w-0 flex-1">
+        <Flex align="center" gap={7} miw={0} className="min-w-0 flex-1">
           <span className={`session-statusline-dot ${generating ? 'is-live' : ''}`} aria-hidden />
-          <Text className="session-statusline-seg min-w-0" lineClamp={1} title={modelTitle}>
-            <span className="session-statusline-key">{t('model')}</span>
-            <span className="session-statusline-val">{modelTitle}</span>
+          <Text className="session-statusline-model min-w-0" lineClamp={1} title={modelTitle}>
+            {modelTitle}
           </Text>
           {generating && (
             <Text className="session-statusline-live shrink-0" size="xs">
-              {t('generating')}
-            </Text>
-          )}
-          {!generating && empty && (
-            <Text className="session-statusline-muted-label shrink-0" size="xs">
-              {t('Ready')}
+              {t('Generating…')}
             </Text>
           )}
         </Flex>
 
         {!compact && !empty && (
-          <Flex align="center" gap={12} className="shrink-0">
+          <Flex align="center" gap={2} className="session-statusline-meta shrink-0">
             {planSegment && (
               <ProviderUsagePopover status={planSegment.status}>
-                <Text
-                  className={`session-statusline-seg session-statusline-plan ${planSegment.tone}`}
+                <button
+                  type="button"
+                  className={`session-statusline-action session-statusline-plan ${planSegment.tone}`}
                   title={t('Provider plan & usage')}
                 >
-                  <span className="session-statusline-key">plan</span>
-                  <span className="session-statusline-val">
-                    {planSegment.label.replace(/^plan\s*/, '') || '—'}
-                  </span>
-                </Text>
+                  <span className="session-statusline-action-val">{planSegment.label}</span>
+                </button>
               </ProviderUsagePopover>
             )}
 
-            {memoryChip && (
+            {memoryChip && memoryTrigger && (
               <MemoryDockPopover
-                className="session-statusline-seg shrink-0"
-                label={
-                  memoryChip.on
-                    ? memoryChip.autoSaveOff
-                      ? memoryChip.factCount > 0
-                        ? t('on · {{count}} · auto-save off', { count: memoryChip.factCount })
-                        : t('on · 0 · auto-save off')
-                      : memoryChip.factCount > 0
-                        ? t('on · {{count}}', { count: memoryChip.factCount })
-                        : t('on · 0')
-                    : t('off')
-                }
+                label={memoryChip.label}
                 on={memoryChip.on}
                 title={memoryChip.title}
+                trigger={memoryTrigger}
                 onInsertMemory={onInsertMemory}
                 getMemorySaveContent={getMemorySaveContent}
                 memoryAutoSave={memoryAutoSave}
                 onMemoryAutoSaveChange={sessionId ? handleMemoryAutoSaveChange : undefined}
               />
             )}
-
-            <Tooltip label={t('Messages in this thread')} withArrow openDelay={400}>
-              <Text className="session-statusline-seg">
-                <span className="session-statusline-key">msg</span>
-                <span className="session-statusline-val">{messages.length}</span>
-              </Text>
-            </Tooltip>
 
             {menuForSession ? (
               <TokenCountMenu
@@ -283,40 +303,26 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
                 contextWindowKnown={menuForSession.contextWindowKnown}
                 onAutoCompactionChange={menuForSession.onAutoCompactionChange}
               >
-                {tokSegment}
+                {contextTrigger}
               </TokenCountMenu>
             ) : (
-              <Tooltip
-                label={
-                  hasUsage && metrics
-                    ? `${t('Input')}: ${formatNumber(metrics.totalInputTokens)} · ${t('Output')}: ${formatNumber(metrics.totalOutputTokens)}`
-                    : t('No token usage yet')
-                }
-                withArrow
-                openDelay={400}
-              >
-                <Text className="session-statusline-seg">{tokSegment}</Text>
-              </Tooltip>
-            )}
-
-            {CHATBOX_BUILD_PLATFORM !== 'android' && metrics && hasUsage && metrics.actualCost > 0 && (
-              <Tooltip label={t('Session cost estimate')} withArrow openDelay={400}>
-                <Text className="session-statusline-seg">
-                  <span className="session-statusline-key">$</span>
-                  <span className="session-statusline-val">{formatCost(metrics.actualCost)}</span>
-                </Text>
+              <Tooltip label={t('No token usage yet')} withArrow openDelay={400}>
+                <span className="session-statusline-action is-muted" aria-hidden>
+                  <IconFileZip size={13} stroke={1.7} />
+                  <span className="session-statusline-action-val">—</span>
+                </span>
               </Tooltip>
             )}
           </Flex>
         )}
 
-        {/* Show memory chip even on empty threads (full session only) */}
-        {!compact && empty && memoryChip && (
+        {/* Empty threads: only memory dock if available */}
+        {!compact && empty && memoryChip && memoryTrigger && (
           <MemoryDockPopover
-            className="session-statusline-seg shrink-0"
             label={memoryChip.label}
             on={memoryChip.on}
             title={memoryChip.title}
+            trigger={memoryTrigger}
             onInsertMemory={onInsertMemory}
             getMemorySaveContent={getMemorySaveContent}
             memoryAutoSave={memoryAutoSave}

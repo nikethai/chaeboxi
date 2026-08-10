@@ -16,7 +16,12 @@ const EmptyThreadState: FC<EmptyThreadStateProps> = ({ sessionName, compact = fa
   const { t } = useTranslation()
 
   const hasName = Boolean(sessionName && sessionName !== 'Untitled')
-  const title = hasName ? sessionName! : t('What can I help with?')
+  // Compact (Quick Chat): short invite. Full session: session name or default greeting.
+  const title = compact
+    ? t('Ask anything')
+    : hasName
+      ? sessionName!
+      : t('What can I help with?')
 
   return (
     <div

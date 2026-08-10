@@ -51,11 +51,13 @@ import * as chatStore from '../chatStore'
 import { settingsStore } from '../settingsStore'
 import { uiStore } from '../uiStore'
 import { createNewFork, findMessageLocation } from './forks'
+import { clearGenerationCancel, registerGenerationCancel } from './generation-cancel'
 import { messageQueueStore } from './messageQueue'
 import { insertMessageAfter, modifyMessage, submitNewUserMessage } from './messages'
 import { getSessionWebBrowsing } from './session-web-browsing'
 
 export { getSessionWebBrowsing }
+export { cancelSessionGeneration, clearGenerationCancel } from './generation-cancel'
 
 import {
   COMFYUI_AGENT_DEFAULT_NORMALIZATION_PROMPT,
@@ -459,6 +461,34 @@ export function createLoadingPictures(n: number): MessagePicture[] {
   return ret
 }
 
+/** Drain send-queue after a generation settles (or early-exits that still free the session). */
+async function processSessionMessageQueue(sessionId: string, shouldProcess: boolean) {
+  if (!shouldProcess) {
+    return
+  }
+  // Run full compaction check in background after response is shown to user.
+  runCompactionWithUIState(sessionId).catch((err) => {
+    console.warn('[generate] Post-response compaction failed:', err)
+  })
+
+  while (messageQueueStore.getState().getQueuedCount(sessionId) > 0) {
+    const nextQueuedMessage = messageQueueStore.getState().dequeueMessage(sessionId)
+    if (!nextQueuedMessage) {
+      break
+    }
+
+    await submitNewUserMessage(sessionId, {
+      newUserMsg: nextQueuedMessage.message,
+      needGenerating: nextQueuedMessage.needGenerating,
+      userAlreadyInserted: nextQueuedMessage.userAlreadyInserted,
+    })
+
+    if (nextQueuedMessage.needGenerating) {
+      break
+    }
+  }
+}
+
 /**
  * Execute message generation, will modify message state
  * @param sessionId
@@ -498,7 +528,9 @@ export async function generate(
     skipQueuedMessages?: boolean
   }
 ) {
-  let shouldProcessQueuedMessages = false
+  // Process the send-queue unless multi-agent intermediate turns opt out, or plan mode
+  // is waiting for user approval. Use finally so early exits still drain.
+  let shouldProcessQueuedMessages = !options?.skipQueuedMessages
   let activeExecutionPlan: MessagePlanPart | undefined
   let managesPlanPhase = false
   // Get dependent data — use pre-fetched values when available to avoid redundant async lookups
@@ -548,6 +580,8 @@ export async function generate(
           status: [],
         }
         await modifyMessage(sessionId, targetMsg, true)
+        // Drain any messages the user sent while this pause path ran
+        await processSessionMessageQueue(sessionId, shouldProcessQueuedMessages)
         return
       }
     }
@@ -575,9 +609,13 @@ export async function generate(
   }
 
   await modifyMessage(sessionId, targetMsg)
-  // setTimeout(() => {
-  //   scrollActions.scrollToMessage(targetMsg.id, 'end')
-  // }, 50) // Wait for message render to complete before scrolling to bottom
+  // Pin to latest so multi-turn replies stay visible (followOutput alone can detach).
+  try {
+    const scrollActions = await import('../scrollActions')
+    scrollActions.scrollToBottom('auto')
+  } catch {
+    // non-fatal
+  }
 
   // Re-fetch session after insert/modify so multi-agent turns always see the new message.
   // Using the pre-modify snapshot can miss just-inserted assistant rows (silent empty turns).
@@ -602,7 +640,71 @@ export async function generate(
         error: 'Failed to locate assistant message in session',
       }
       await modifyMessage(sessionId, targetMsg, true)
+      await processSessionMessageQueue(sessionId, shouldProcessQueuedMessages)
       return
+    }
+  }
+
+  // Shared stream UI coalescing — visible to catch so error path can cancel pending writes.
+  // Keep stream paints snappy — higher latency made the dock feel "done" before text appeared.
+  const STREAM_UI_MIN_MS = 16
+  const persistInterval = 2000
+  let lastPersistTimestamp = Date.now()
+  let lastStreamUiWriteAt = 0
+  let streamUiTimer: ReturnType<typeof setTimeout> | null = null
+  let streamWriteChain: Promise<void> = Promise.resolve()
+  let pendingStreamMsg: Message | null = null
+  const writePendingStreamMsg = async () => {
+    const msg = pendingStreamMsg
+    if (!msg) return
+    pendingStreamMsg = null
+    lastStreamUiWriteAt = Date.now()
+    const shouldPersist = Date.now() - lastPersistTimestamp >= persistInterval
+    await modifyMessage(sessionId, msg, false, !shouldPersist)
+    if (shouldPersist) {
+      lastPersistTimestamp = Date.now()
+    }
+  }
+  const flushStreamUi = (msg: Message) => {
+    pendingStreamMsg = msg
+    const now = Date.now()
+    if (now - lastStreamUiWriteAt < STREAM_UI_MIN_MS) {
+      if (streamUiTimer == null) {
+        streamUiTimer = setTimeout(() => {
+          streamUiTimer = null
+          streamWriteChain = streamWriteChain.then(() => writePendingStreamMsg())
+        }, STREAM_UI_MIN_MS)
+      }
+      return streamWriteChain
+    }
+    if (streamUiTimer != null) {
+      clearTimeout(streamUiTimer)
+      streamUiTimer = null
+    }
+    streamWriteChain = streamWriteChain.then(() => writePendingStreamMsg())
+    return streamWriteChain
+  }
+  const settleStreamUi = async (msg: Message) => {
+    // Flush any coalesced patch first so we never paint "finished + empty" then pop content.
+    if (streamUiTimer != null) {
+      clearTimeout(streamUiTimer)
+      streamUiTimer = null
+    }
+    if (pendingStreamMsg) {
+      streamWriteChain = streamWriteChain.then(() => writePendingStreamMsg())
+    }
+    await streamWriteChain
+    pendingStreamMsg = null
+    await modifyMessage(sessionId, msg, true)
+    // Pin to latest after final layout so the user doesn't sit on the previous turn
+    try {
+      const scrollActions = await import('../scrollActions')
+      scrollActions.scrollToBottom('auto')
+      requestAnimationFrame(() => {
+        scrollActions.scrollToBottom('auto')
+      })
+    } catch {
+      // non-fatal
     }
   }
 
@@ -627,10 +729,12 @@ export async function generate(
       globalSettings.extension.webSearch.useGoogleGroundingForGemini !== false
     // Multi-agent room discussion: no tool loops (v1)
     const roomMulti = Boolean(options?.roomMulti)
+    // Always cap tool steps. Undefined used to become Number.MAX_SAFE_INTEGER in the model
+    // layer — models with tools (memory, MCP, web) could loop forever ("Using tools…" hang).
     const maxSteps =
       !roomMulti && isAgentEnabled && session.agentMode
         ? (copilotOverrides?.maxSteps ?? COPILOT_MAX_STEPS_DEFAULT)
-        : undefined
+        : COPILOT_MAX_STEPS_DEFAULT
     switch (session.type) {
       // Chat message generation
       case 'chat':
@@ -638,8 +742,6 @@ export async function generate(
         const startTime = Date.now()
         let firstTokenLatency: number | undefined
         let lastTokenSpeed: number | undefined
-        const persistInterval = 2000
-        let lastPersistTimestamp = Date.now()
         let promptMsgs = await genMessageContext(
           effectiveSettings,
           messages.slice(0, targetMsgIx),
@@ -801,6 +903,10 @@ export async function generate(
           if (updated.tokenSpeed !== undefined) {
             lastTokenSpeed = updated.tokenSpeed
           }
+          // Register abort in module Map — cancel fn is stripped on JSON persist / cross-window.
+          if (updated.cancel) {
+            registerGenerationCancel(sessionId, targetMsg.id, updated.cancel)
+          }
           // Direct field merge instead of pickBy(updated, identity) + spread.
           // pickBy with identity drops falsy values (0, false, '') which is a silent bug;
           // explicit assignment is both faster and more correct.
@@ -814,12 +920,8 @@ export async function generate(
             firstTokenLatency,
             tokenSpeed: lastTokenSpeed,
           }
-          // update cache on each chunk and persist to storage periodically
-          const shouldPersist = Date.now() - lastPersistTimestamp >= persistInterval
-          await modifyMessage(sessionId, targetMsg, false, !shouldPersist)
-          if (shouldPersist) {
-            lastPersistTimestamp = Date.now()
-          }
+          // Throttled UI/cache writes; storage still flushes on interval inside flushStreamUi
+          await flushStreamUi(targetMsg)
         }
 
         // 2-phase execution: if planMode and not yet approved, generate plan first
@@ -912,6 +1014,28 @@ export async function generate(
         const commandContext = buildCommandContextBlocks(commandActivations, commandById)
         if (commandContext) {
           promptMsgs.unshift(createMessage('system', commandContext))
+        }
+
+        // Connected accounts: labels/ids only — never secrets (message chips > session sticky)
+        try {
+          const { ensureIntegrationsStoreInit, integrationsStore } = await import('@/stores/integrationsStore')
+          const { buildIntegrationsContextBlock } = await import('@shared/integrations')
+          await ensureIntegrationsStoreInit()
+          const catalog = integrationsStore.getState().catalog
+          const turnCredentialIds =
+            priorUserMsg?.credentialIds?.length
+              ? priorUserMsg.credentialIds
+              : session.credentialIds?.length
+                ? session.credentialIds
+                : undefined
+          const integrationsContext = buildIntegrationsContextBlock(catalog, {
+            credentialIds: turnCredentialIds,
+          })
+          if (integrationsContext) {
+            promptMsgs.unshift(createMessage('system', integrationsContext))
+          }
+        } catch {
+          // non-fatal — tools may still resolve defaults
         }
 
         // Show skill/command chips on normal replies, team answer, or work deliverable
@@ -1047,13 +1171,9 @@ export async function generate(
         if (finalPlanPart) {
           finalContentParts.push(finalPlanPart)
         }
-        if (executionAgentImageFlowInstructions) {
-          const fallbackGenerateImagePart = await maybeAutoStartAgentImageFlow(finalContentParts)
-          if (fallbackGenerateImagePart) {
-            finalContentParts.push(fallbackGenerateImagePart)
-          }
-        }
 
+        // Paint answer + generating=false first — never block the "done" state on image-flow I/O.
+        clearGenerationCancel(sessionId, targetMsg.id)
         targetMsg = {
           ...targetMsg,
           generating: false,
@@ -1071,7 +1191,24 @@ export async function generate(
           searchProvider: result.searchProvider ?? targetMsg.searchProvider,
           groundingMetadata: result.groundingMetadata ?? targetMsg.groundingMetadata,
         }
-        await modifyMessage(sessionId, targetMsg, true)
+        await settleStreamUi(targetMsg)
+
+        // Optional image-flow append after the reply is already visible
+        if (executionAgentImageFlowInstructions) {
+          try {
+            const fallbackGenerateImagePart = await maybeAutoStartAgentImageFlow(finalContentParts)
+            if (fallbackGenerateImagePart) {
+              targetMsg = {
+                ...targetMsg,
+                contentParts: [...(targetMsg.contentParts || []), fallbackGenerateImagePart],
+              }
+              await modifyMessage(sessionId, targetMsg, true)
+            }
+          } catch {
+            // non-fatal
+          }
+        }
+
         await flushSessionTasks(sessionId)
 
         // Provider usage status: local rollup + clear exhausted on success
@@ -1146,7 +1283,8 @@ export async function generate(
         if (isPlanMode && !isExecutionPhase && !isPendingPlan) {
           // Planning phase just completed with pending plan - wait for user approval
           await chatStore.updateSession(sessionId, { planPhase: 'awaiting_approval' })
-          return
+          shouldProcessQueuedMessages = false
+          break
         }
 
         shouldProcessQueuedMessages = !options?.skipQueuedMessages
@@ -1179,6 +1317,7 @@ export async function generate(
             await insertImage({ type: 'image', storageKey })
           }
         )
+        clearGenerationCancel(sessionId, targetMsg.id)
         targetMsg = {
           ...targetMsg,
           generating: false,
@@ -1223,6 +1362,7 @@ export async function generate(
     }
     const ocrError = error instanceof OCRError ? error : undefined
     const causeError = ocrError?.cause
+    clearGenerationCancel(sessionId, targetMsg.id)
     targetMsg = {
       ...targetMsg,
       contentParts: withPlanPart(targetMsg.contentParts, activeExecutionPlan),
@@ -1243,7 +1383,8 @@ export async function generate(
       },
       status: [],
     }
-    await modifyMessage(sessionId, targetMsg, true)
+    // Drop any in-flight stream patch so it cannot overwrite the error state
+    await settleStreamUi(targetMsg)
 
     // Mark provider plan exhausted on quota errors (best-effort)
     try {
@@ -1270,32 +1411,10 @@ export async function generate(
     if (managesPlanPhase) {
       await chatStore.updateSession(sessionId, { planPhase: undefined })
     }
-    shouldProcessQueuedMessages = true
+    shouldProcessQueuedMessages = !options?.skipQueuedMessages
   }
 
-  if (shouldProcessQueuedMessages) {
-    // Run full compaction check in background after response is shown to user.
-    // This handles modal prompts and summarization without blocking the send path.
-    runCompactionWithUIState(sessionId).catch((err) => {
-      console.warn('[generate] Post-response compaction failed:', err)
-    })
-
-    while (messageQueueStore.getState().getQueuedCount(sessionId) > 0) {
-      const nextQueuedMessage = messageQueueStore.getState().dequeueMessage(sessionId)
-      if (!nextQueuedMessage) {
-        break
-      }
-
-      await submitNewUserMessage(sessionId, {
-        newUserMsg: nextQueuedMessage.message,
-        needGenerating: nextQueuedMessage.needGenerating,
-      })
-
-      if (nextQueuedMessage.needGenerating) {
-        break
-      }
-    }
-  }
+  await processSessionMessageQueue(sessionId, shouldProcessQueuedMessages)
 }
 
 /**

@@ -64,6 +64,27 @@ export default function QueuedMessageList({ sessionId }: QueuedMessageListProps)
     messageQueueStore.getState().clearSessionQueue(sessionId)
   }
 
+  // User turns are already in the thread when userAlreadyInserted; show a compact
+  // status so we do not duplicate the same bubble under the composer.
+  const allInThread = queuedMessages.every((e) => e.userAlreadyInserted)
+  if (allInThread) {
+    return (
+      <div className="flex items-center justify-between gap-2 px-3 pb-2">
+        <Text size="xs" c="chatbox-tertiary" className="opacity-90">
+          {t('Waiting for current reply ({{count}} queued)', { count: queuedMessages.length })}
+        </Text>
+        <Text
+          size="xs"
+          c="chatbox-error"
+          className="cursor-pointer hover:underline shrink-0"
+          onClick={handleClearAll}
+        >
+          {t('Clear queue')}
+        </Text>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-1 px-2 pb-2">
       <div className="flex items-center justify-between px-1">

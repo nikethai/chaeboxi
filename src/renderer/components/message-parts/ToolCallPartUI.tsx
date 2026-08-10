@@ -103,10 +103,14 @@ const ToolCallHeader: FC<{
   toolName: string
   state: MessageToolCallPart['state']
   summary?: string
+  /** Optional product badge e.g. "via Work Jira" — never tokens */
+  badge?: string
+  /** Consecutive identical runs collapsed into one row */
+  runCount?: number
   expanded: boolean
   onClick: () => void
   trailing?: ReactNode
-}> = ({ toolName, state, summary, expanded, onClick, trailing }) => {
+}> = ({ toolName, state, summary, badge, runCount, expanded, onClick, trailing }) => {
   const isSmallScreen = useIsSmallScreen()
   const Icon = toolIconFor(toolName)
 
@@ -118,27 +122,33 @@ const ToolCallHeader: FC<{
       aria-expanded={expanded}
     >
       <span className="tool-step-icon" aria-hidden>
-        <ScalableIcon icon={Icon} size={15} />
+        <ScalableIcon icon={Icon} size={13} />
       </span>
       <span className="tool-step-main min-w-0 flex-1">
         <span className="tool-step-title">{getToolName(toolName)}</span>
+        {runCount && runCount > 1 ? <span className="tool-step-count">×{runCount}</span> : null}
+        {badge ? (
+          <span className="tool-step-badge" title={badge}>
+            {badge}
+          </span>
+        ) : null}
         {summary && !expanded && <span className="tool-step-summary">{summary}</span>}
       </span>
       <span className="tool-step-meta shrink-0">
         {state === 'call' ? (
-          <ScalableIcon icon={IconLoader} size={14} className="animate-spin" color="var(--chatbox-tint-brand)" />
+          <ScalableIcon icon={IconLoader} size={13} className="animate-spin" color="var(--chatbox-tint-brand)" />
         ) : state === 'error' ? (
-          <ScalableIcon icon={IconCircleXFilled} size={14} color="var(--chatbox-tint-error)" />
+          <ScalableIcon icon={IconCircleXFilled} size={13} color="var(--chatbox-tint-error)" />
         ) : (
           <ScalableIcon
             icon={IconCircleCheckFilled}
-            size={14}
-            className="opacity-85"
+            size={13}
+            className="opacity-80"
             color="var(--chatbox-tint-success)"
           />
         )}
         {trailing}
-        <ScalableIcon icon={IconChevronRight} size={14} className={clsx('tool-step-chevron', expanded && 'is-open')} />
+        <ScalableIcon icon={IconChevronRight} size={13} className={clsx('tool-step-chevron', expanded && 'is-open')} />
       </span>
     </button>
   )
@@ -210,7 +220,8 @@ type WebBrowsingToolCallPart = MessageToolCallPart<
   { query: string; searchResults: SearchResultItem[] }
 >
 
-const SearchResultCard: FC<{ index: number; result: SearchResultItem }> = ({ index, result }) => {
+/** Compact strip card (collapsed rail) */
+const SearchResultChip: FC<{ index: number; result: SearchResultItem }> = ({ index, result }) => {
   const href = getSafeExternalHref(result.link)
   const host = hostnameOf(result.link)
   const inner = (
@@ -223,14 +234,8 @@ const SearchResultCard: FC<{ index: number; result: SearchResultItem }> = ({ ind
       <Text size="sm" fw={500} lineClamp={2} m={0} className="tool-search-card-title">
         {result.title}
       </Text>
-      {result.snippet && (
-        <Text size="xs" c="chatbox-tertiary" lineClamp={2} m={0} mt={4}>
-          {result.snippet}
-        </Text>
-      )}
     </div>
   )
-
   if (!href) return inner
   return (
     <a href={href} target="_blank" rel="noopener noreferrer" className="tool-search-card-link">
@@ -239,15 +244,53 @@ const SearchResultCard: FC<{ index: number; result: SearchResultItem }> = ({ ind
   )
 }
 
-const WebSearchToolCallUI: FC<{ part: WebBrowsingToolCallPart }> = ({ part }) => {
+/** Full-width result row (expanded body) */
+const SearchResultRow: FC<{ index: number; result: SearchResultItem }> = ({ index, result }) => {
+  const href = getSafeExternalHref(result.link)
+  const host = hostnameOf(result.link)
+  const inner = (
+    <div className="tool-search-row">
+      <span className="tool-search-row-index tabular-nums">{index + 1}</span>
+      <div className="tool-search-row-main min-w-0">
+        <div className="tool-search-row-host-line">
+          <span className="tool-search-row-host">{host || tFallbackHost(result.link)}</span>
+          {href ? <ScalableIcon icon={IconExternalLink} size={12} className="tool-search-card-ext" /> : null}
+        </div>
+        <p className="tool-search-row-title">{result.title || host}</p>
+        {result.snippet ? <p className="tool-search-row-snippet">{previewText(result.snippet, 180)}</p> : null}
+      </div>
+    </div>
+  )
+  if (!href) return inner
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="tool-search-row-link">
+      {inner}
+    </a>
+  )
+}
+
+function tFallbackHost(link: string): string {
+  return link ? previewText(link, 40) : '—'
+}
+
+const WebSearchToolCallUI: FC<{ part: WebBrowsingToolCallPart; runCount?: number }> = ({ part, runCount }) => {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
-  const count = part.result?.searchResults?.length ?? 0
-  const summary = part.args.query
-    ? count > 0
-      ? `“${previewText(part.args.query, 48)}” · ${count}`
-      : `“${previewText(part.args.query, 64)}”`
-    : undefined
+  const results = part.result?.searchResults ?? []
+  const count = results.length
+  const query = part.args?.query?.trim() || part.result?.query?.trim() || ''
+
+  const summary = useMemo(() => {
+    if (part.state === 'call') return t('Searching…')
+    if (part.state === 'error') return t('Failed')
+    if (count > 0) {
+      const q = query ? previewText(query, 36) : ''
+      return q
+        ? t('{{count}} results · “{{query}}”', { count, query: q })
+        : t('{{count}} results', { count })
+    }
+    return query ? t('No results · “{{query}}”', { query: previewText(query, 40) }) : t('No results')
+  }, [part.state, count, query, t])
 
   return (
     <div className="tool-step">
@@ -255,37 +298,64 @@ const WebSearchToolCallUI: FC<{ part: WebBrowsingToolCallPart }> = ({ part }) =>
         toolName={part.toolName}
         state={part.state}
         summary={summary}
+        runCount={runCount}
         expanded={expanded}
         onClick={() => setExpanded((v) => !v)}
       />
-      {/* Collapsed: horizontal result strip when available */}
-      {!expanded && part.result && count > 0 && (
+      {/* Collapsed: horizontal peek strip */}
+      {!expanded && count > 0 && (
         <div className="tool-search-strip">
-          {part.result.searchResults.map((result, index) => (
-            <SearchResultCard key={result.link} index={index} result={result} />
+          {results.slice(0, 6).map((result, index) => (
+            <SearchResultChip key={`${result.link}-${index}`} index={index} result={result} />
           ))}
         </div>
       )}
       <Collapse in={expanded}>
         <ToolStepBody>
           <Stack gap="sm">
-            <div>
-              <FieldLabel>{t('Search query')}</FieldLabel>
-              <Text size="sm" fw={500} mt={4} m={0} className="tool-step-query">
-                {part.args.query}
-              </Text>
+            <div className="tool-search-meta">
+              <div className="tool-search-meta-top">
+                <span className="tool-search-meta-badge">{t('Web')}</span>
+                <span className="tool-search-meta-stat tabular-nums">
+                  {part.state === 'call'
+                    ? t('Searching…')
+                    : count === 0
+                      ? t('0 results')
+                      : count === 1
+                        ? t('1 result')
+                        : t('{{count}} results', { count })}
+                </span>
+              </div>
+              {query ? (
+                <p className="tool-search-query-text">
+                  <span className="tool-search-query-mark">“</span>
+                  {query}
+                  <span className="tool-search-query-mark">”</span>
+                </p>
+              ) : null}
             </div>
-            {part.result && count > 0 ? (
-              <div className="tool-search-grid">
-                {part.result.searchResults.map((result, index) => (
-                  <SearchResultCard key={result.link} index={index} result={result} />
+
+            {count > 0 ? (
+              <div className="tool-search-list">
+                {results.map((result, index) => (
+                  <SearchResultRow key={`${result.link}-${index}`} index={index} result={result} />
                 ))}
               </div>
-            ) : part.state !== 'call' ? (
-              <Text size="sm" c="chatbox-tertiary" m={0}>
-                {t('No results')}
+            ) : part.state === 'call' ? (
+              <Text size="sm" c="chatbox-secondary" m={0}>
+                {t('Looking up sources…')}
               </Text>
-            ) : null}
+            ) : (
+              <div className="tool-search-empty">
+                <Text size="sm" fw={500} m={0}>
+                  {t('No web results for this query')}
+                </Text>
+                <Text size="xs" c="chatbox-tertiary" m={0} className="text-pretty">
+                  {t('Try simpler keywords, or the model may rely on video captions / other tools instead.')}
+                </Text>
+              </div>
+            )}
+
             <TechnicalDetails args={part.args} result={part.result} />
           </Stack>
         </ToolStepBody>
@@ -304,7 +374,7 @@ const ParseLinkResultSchema = z.object({
   truncated: z.boolean().optional(),
 })
 
-const ParseLinkToolCallUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
+const ParseLinkToolCallUI: FC<{ part: MessageToolCallPart; runCount?: number }> = ({ part, runCount }) => {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const args = (part.args ?? {}) as { url?: string }
@@ -322,6 +392,7 @@ const ParseLinkToolCallUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
         toolName={part.toolName}
         state={part.state}
         summary={summary}
+        runCount={runCount}
         expanded={expanded}
         onClick={() => setExpanded((v) => !v)}
       />
@@ -445,11 +516,19 @@ function readVideoSummary(
   const times = frames.map((f) => f.timestampSec)
   const minT = Math.min(...times)
   const maxT = Math.max(...times)
+  const duration =
+    typeof result?.durationSec === 'number' ? formatDurationForDisplay(result.durationSec) : null
   if (frames.length === 1) {
-    return t('{{count}} frame · {{time}}', {
-      count: 1,
-      time: formatDurationForDisplay(minT),
-    })
+    return duration
+      ? t('{{count}} frame · {{time}} · {{duration}}', {
+          count: 1,
+          time: formatDurationForDisplay(minT),
+          duration,
+        })
+      : t('{{count}} frame · {{time}}', {
+          count: 1,
+          time: formatDurationForDisplay(minT),
+        })
   }
   return t('{{count}} frames · {{start}}–{{end}}', {
     count: frames.length,
@@ -458,12 +537,14 @@ function readVideoSummary(
   })
 }
 
-const ReadVideoToolCallUI: FC<{ part: ReadVideoToolCallPart }> = ({ part }) => {
+const ReadVideoToolCallUI: FC<{ part: ReadVideoToolCallPart; runCount?: number }> = ({ part, runCount }) => {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
   const summary = useMemo(() => readVideoSummary(part, t), [part, t])
   const frames = part.result?.frames ?? []
   const remainingBudget = part.result?.remainingBudget
+  const durationSec = part.result?.durationSec
+  const mode = part.args?.mode
 
   return (
     <div className="tool-step">
@@ -471,6 +552,7 @@ const ReadVideoToolCallUI: FC<{ part: ReadVideoToolCallPart }> = ({ part }) => {
         toolName={part.toolName}
         state={part.state}
         summary={summary}
+        runCount={runCount}
         expanded={expanded}
         onClick={() => setExpanded((v) => !v)}
       />
@@ -482,8 +564,26 @@ const ReadVideoToolCallUI: FC<{ part: ReadVideoToolCallPart }> = ({ part }) => {
                 {previewText(part.result?.error || part.result) || t('Failed')}
               </Text>
             ) : frames.length > 0 ? (
-              <div>
-                <FieldLabel>{t('Frames')}</FieldLabel>
+              <>
+                <div className="tool-video-meta">
+                  <div className="tool-video-meta-top">
+                    <span className="tool-video-platform">{t('Local video')}</span>
+                    {typeof durationSec === 'number' ? (
+                      <span className="tool-video-meta-stat tabular-nums">
+                        {formatDurationForDisplay(durationSec)}
+                      </span>
+                    ) : null}
+                    <span className="tool-video-meta-stat tabular-nums">
+                      {frames.length === 1
+                        ? t('1 frame')
+                        : t('{{count}} frames', { count: frames.length })}
+                    </span>
+                    {mode ? <span className="tool-video-meta-stat">{mode}</span> : null}
+                  </div>
+                  <Text size="xs" c="chatbox-tertiary" m={0}>
+                    {t('Sampled frames sent to the model for vision.')}
+                  </Text>
+                </div>
                 <div className="tool-video-filmstrip" role="list">
                   {frames.map((frame, index) => (
                     <div
@@ -502,14 +602,14 @@ const ReadVideoToolCallUI: FC<{ part: ReadVideoToolCallPart }> = ({ part }) => {
                   ))}
                 </div>
                 {remainingBudget !== undefined && (
-                  <Text size="xs" c="chatbox-tertiary" mt={6} className="font-mono tabular-nums" m={0}>
-                    {t('Remaining frame budget: {{count}}', { count: remainingBudget })}
+                  <Text size="xs" c="chatbox-tertiary" className="tabular-nums" m={0}>
+                    {t('{{count}} frames left in budget this turn', { count: remainingBudget })}
                   </Text>
                 )}
-              </div>
+              </>
             ) : part.state === 'result' ? (
-              <Text size="sm" c="chatbox-tertiary" m={0}>
-                {t('No frames')}
+              <Text size="sm" c="chatbox-secondary" m={0}>
+                {t('No frames were sampled from this video.')}
               </Text>
             ) : null}
             <TechnicalDetails args={part.args} result={part.result} />
@@ -579,6 +679,7 @@ type ReadVideoUrlToolCallPart = MessageToolCallPart<
     title?: string
     author?: string
     durationSec?: number
+    description?: string
     transcript?: { source?: string; language?: string; text?: string } | null
     warnings?: string[]
     partial?: boolean
@@ -588,33 +689,57 @@ type ReadVideoUrlToolCallPart = MessageToolCallPart<
   }
 >
 
+function platformLabel(platform?: string): string {
+  if (!platform) return ''
+  const p = platform.toLowerCase()
+  if (p.includes('youtube')) return 'YouTube'
+  if (p.includes('vimeo')) return 'Vimeo'
+  if (p.includes('tiktok')) return 'TikTok'
+  if (p.includes('facebook') || p === 'fb') return 'Facebook'
+  return platform
+}
+
 function readVideoUrlSummary(
   part: ReadVideoUrlToolCallPart,
   t: (key: string, opts?: Record<string, unknown>) => string
 ): string | undefined {
-  if (part.state === 'call') return t('Reading video URL…')
+  if (part.state === 'call') return t('Reading video…')
   if (part.state === 'error') return t('Failed')
   const result = part.result
   if (result?.errorCode && !result.transcript?.text && !result.title) {
     return previewText(result.errorMessage || result.errorCode, 72)
   }
-  const platform = result?.platform ? String(result.platform) : ''
-  const title = result?.title || part.args?.url || ''
-  const source = result?.transcript?.source
-  const parts = [platform, title].filter(Boolean)
-  let line = parts.join(' · ') || t('Video URL')
-  if (source) line = `${line} · ${source}`
+  const platform = platformLabel(result?.platform)
+  const title = result?.title ? previewText(result.title, 42) : ''
+  const hasCaptions = Boolean(result?.transcript?.text)
+  const bits = [platform, title].filter(Boolean)
+  let line = bits.join(' · ') || t('Video link')
+  if (hasCaptions) {
+    line = `${line} · ${t('captions')}`
+  } else if (result?.description) {
+    line = `${line} · ${t('description')}`
+  } else if (result?.partial) {
+    line = `${line} · ${t('partial')}`
+  }
   if (result?.truncated) line = `${line} · ${t('truncated')}`
-  if (result?.partial && !result.transcript?.text) line = `${line} · ${t('partial')}`
   return previewText(line, 96)
 }
 
-const ReadVideoUrlToolCallUI: FC<{ part: ReadVideoUrlToolCallPart }> = ({ part }) => {
+const ReadVideoUrlToolCallUI: FC<{ part: ReadVideoUrlToolCallPart; runCount?: number }> = ({ part, runCount }) => {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
+  const [showFullTranscript, setShowFullTranscript] = useState(false)
   const summary = useMemo(() => readVideoUrlSummary(part, t), [part, t])
   const result = part.result
-  const transcriptPreview = result?.transcript?.text ? previewText(result.transcript.text, 800) : undefined
+  const href = getSafeExternalHref(result?.url || part.args?.url || '')
+  const fullTranscript = result?.transcript?.text?.trim() || ''
+  const transcriptPreview = fullTranscript
+    ? previewText(fullTranscript, showFullTranscript ? 4000 : 420)
+    : undefined
+  const canExpandTranscript = fullTranscript.length > 420
+  const descriptionPreview = result?.description ? previewText(result.description, 280) : undefined
+  const platform = platformLabel(result?.platform)
+  const captionSource = result?.transcript?.source
 
   return (
     <div className="tool-step">
@@ -622,58 +747,225 @@ const ReadVideoUrlToolCallUI: FC<{ part: ReadVideoUrlToolCallPart }> = ({ part }
         toolName={part.toolName}
         state={part.state}
         summary={summary}
+        runCount={runCount}
         expanded={expanded}
         onClick={() => setExpanded((v) => !v)}
       />
       <Collapse in={expanded}>
         <ToolStepBody>
           <Stack gap="sm">
-            {result?.errorCode && !result.transcript?.text ? (
+            {result?.errorCode && !result.transcript?.text && !result.title ? (
               <Text size="sm" c="var(--chatbox-tint-error)" m={0}>
                 {previewText(result.errorMessage || result.errorCode) || t('Failed')}
               </Text>
             ) : null}
-            {result?.title || result?.author || result?.platform ? (
-              <div className="tool-kv">
-                {result.platform ? (
-                  <div className="tool-kv-row">
-                    <span className="tool-kv-key">{t('Platform')}</span>
-                    <span className="tool-kv-val">{result.platform}</span>
-                  </div>
+
+            {(result?.title || result?.author || platform || href) && (
+              <div className="tool-video-meta">
+                <div className="tool-video-meta-top">
+                  {platform ? <span className="tool-video-platform">{platform}</span> : null}
+                  {typeof result?.durationSec === 'number' ? (
+                    <span className="tool-video-meta-stat tabular-nums">
+                      {formatDurationForDisplay(result.durationSec)}
+                    </span>
+                  ) : null}
+                  {captionSource ? (
+                    <span className="tool-video-meta-stat">{captionSource}</span>
+                  ) : null}
+                  {result?.partial ? (
+                    <span className="tool-video-meta-stat is-warn">{t('Partial')}</span>
+                  ) : null}
+                </div>
+                {result?.title ? <p className="tool-video-title">{result.title}</p> : null}
+                {result?.author ? (
+                  <p className="tool-video-author">
+                    {t('by {{name}}', { name: result.author })}
+                  </p>
                 ) : null}
-                {result.title ? (
-                  <div className="tool-kv-row">
-                    <span className="tool-kv-key">{t('Title')}</span>
-                    <span className="tool-kv-val">{previewText(result.title, 200)}</span>
-                  </div>
-                ) : null}
-                {result.author ? (
-                  <div className="tool-kv-row">
-                    <span className="tool-kv-key">{t('Author')}</span>
-                    <span className="tool-kv-val">{previewText(result.author, 120)}</span>
-                  </div>
-                ) : null}
-                {result.transcript?.source ? (
-                  <div className="tool-kv-row">
-                    <span className="tool-kv-key">{t('Source')}</span>
-                    <span className="tool-kv-val">{result.transcript.source}</span>
-                  </div>
+                {href ? (
+                  <a
+                    className="tool-step-url tool-video-open"
+                    href={href}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <ScalableIcon icon={IconExternalLink} size={13} />
+                    <span>{hostnameOf(href)}</span>
+                  </a>
                 ) : null}
               </div>
-            ) : null}
+            )}
+
             {transcriptPreview ? (
-              <div>
-                <FieldLabel>{t('Transcript')}</FieldLabel>
-                <div className="tool-step-content-preview">{transcriptPreview}</div>
+              <div className="tool-video-transcript">
+                <div className="tool-video-transcript-head">
+                  <FieldLabel>{t('Captions')}</FieldLabel>
+                  {result?.transcript?.language ? (
+                    <span className="tool-video-meta-stat">{result.transcript.language}</span>
+                  ) : null}
+                </div>
+                <div className="tool-step-content-preview tool-video-transcript-body">{transcriptPreview}</div>
+                {canExpandTranscript ? (
+                  <UnstyledButton
+                    type="button"
+                    className="tool-video-more"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowFullTranscript((v) => !v)
+                    }}
+                  >
+                    {showFullTranscript ? t('Show less') : t('Show more')}
+                  </UnstyledButton>
+                ) : null}
+              </div>
+            ) : descriptionPreview ? (
+              <div className="tool-video-transcript">
+                <FieldLabel>{t('Description')}</FieldLabel>
+                <div className="tool-step-content-preview">{descriptionPreview}</div>
+                <Text size="xs" c="chatbox-tertiary" m={0}>
+                  {t('No captions available — using video description instead.')}
+                </Text>
               </div>
             ) : part.state === 'result' && !result?.errorCode ? (
-              <Text size="sm" c="chatbox-tertiary" m={0}>
-                {t('No transcript')}
+              <Text size="sm" c="chatbox-secondary" m={0}>
+                {t('No captions or description were available for this video.')}
               </Text>
             ) : null}
+
             {result?.warnings && result.warnings.length > 0 ? (
-              <Text size="xs" c="chatbox-tertiary" m={0}>
-                {result.warnings.join(' · ')}
+              <div className="tool-video-warnings">
+                {result.warnings.map((w) => (
+                  <span key={w} className="tool-video-warning-chip">
+                    {previewText(w, 80)}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+
+            <TechnicalDetails args={part.args} result={part.result} />
+          </Stack>
+        </ToolStepBody>
+      </Collapse>
+    </div>
+  )
+}
+
+// ── Memory tools ─────────────────────────────────────────────────────────
+
+type MemoryMatch = {
+  id?: string
+  scope?: string
+  content?: string
+  score?: number
+  tags?: string[]
+  pinned?: boolean
+}
+
+function parseMemoryResult(result: unknown): {
+  matchCount: number
+  matches: MemoryMatch[]
+  note?: string
+} {
+  if (!result || typeof result !== 'object') {
+    return { matchCount: 0, matches: [] }
+  }
+  const r = result as Record<string, unknown>
+  const rawMatches = Array.isArray(r.matches) ? r.matches : Array.isArray(r.entries) ? r.entries : []
+  const matches: MemoryMatch[] = rawMatches
+    .filter((m): m is Record<string, unknown> => Boolean(m) && typeof m === 'object')
+    .map((m) => ({
+      id: typeof m.id === 'string' ? m.id : undefined,
+      scope: typeof m.scope === 'string' ? m.scope : undefined,
+      content: typeof m.content === 'string' ? m.content : typeof m.text === 'string' ? m.text : undefined,
+      score: typeof m.score === 'number' ? m.score : undefined,
+      tags: Array.isArray(m.tags) ? m.tags.filter((t): t is string => typeof t === 'string') : undefined,
+      pinned: typeof m.pinned === 'boolean' ? m.pinned : undefined,
+    }))
+    .filter((m) => m.content)
+  const matchCount =
+    typeof r.matchCount === 'number' ? r.matchCount : typeof r.count === 'number' ? r.count : matches.length
+  const note = typeof r.note === 'string' ? r.note : typeof r.message === 'string' ? r.message : undefined
+  return { matchCount, matches, note }
+}
+
+function memorySummary(part: MessageToolCallPart, t: (k: string, o?: Record<string, unknown>) => string): string {
+  if (part.state === 'call') return t('Searching…')
+  if (part.state === 'error') return t('Failed')
+  const { matchCount, matches } = parseMemoryResult(part.result)
+  const n = matchCount || matches.length
+  if (n <= 0) return t('No matches')
+  return n === 1 ? t('1 match') : t('{{count}} matches', { count: n })
+}
+
+const MemoryToolCallUI: FC<{ part: MessageToolCallPart; runCount?: number }> = ({ part, runCount }) => {
+  const { t } = useTranslation()
+  const [expanded, setExpanded] = useState(false)
+  const summary = useMemo(() => memorySummary(part, t), [part, t])
+  const { matchCount, matches, note } = useMemo(() => parseMemoryResult(part.result), [part.result])
+  const shown = matches.slice(0, 8)
+  const extra = Math.max(0, (matchCount || matches.length) - shown.length)
+
+  return (
+    <div className="tool-step">
+      <ToolCallHeader
+        toolName={part.toolName}
+        state={part.state}
+        summary={summary}
+        runCount={runCount}
+        expanded={expanded}
+        onClick={() => setExpanded((v) => !v)}
+      />
+      <Collapse in={expanded}>
+        <ToolStepBody>
+          <Stack gap="sm">
+            {part.state === 'error' ? (
+              <Text size="sm" c="var(--chatbox-tint-error)" m={0}>
+                {previewText(part.result) || t('Failed')}
+              </Text>
+            ) : shown.length === 0 ? (
+              <Text size="sm" c="chatbox-secondary" m={0}>
+                {note || t('No matching memories for this message.')}
+              </Text>
+            ) : (
+              <div className="tool-memory-list">
+                {shown.map((m, i) => (
+                  <div key={m.id || `mem-${i}`} className="tool-memory-card">
+                    <div className="tool-memory-card-meta">
+                      {m.scope ? (
+                        <span className="tool-memory-scope">
+                          {m.scope === 'agent' ? t('Agent') : t('Global')}
+                        </span>
+                      ) : null}
+                      {m.pinned ? <span className="tool-memory-scope is-pinned">{t('Pinned')}</span> : null}
+                      {typeof m.score === 'number' ? (
+                        <span className="tool-memory-score tabular-nums">{Math.round(m.score * 100)}%</span>
+                      ) : null}
+                    </div>
+                    <p className="tool-memory-content">{previewText(m.content, 280)}</p>
+                    {m.tags && m.tags.length > 0 ? (
+                      <div className="tool-memory-tags">
+                        {m.tags.slice(0, 4).map((tag) => (
+                          <span key={tag} className="tool-memory-tag">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ))}
+                {extra > 0 ? (
+                  <Text size="xs" c="chatbox-tertiary" m={0}>
+                    {t('+{{count}} more', { count: extra })}
+                  </Text>
+                ) : null}
+              </div>
+            )}
+            {note && shown.length > 0 ? (
+              <Text size="xs" c="chatbox-tertiary" m={0} className="text-pretty">
+                {note.includes('Host keyword')
+                  ? t('Checked before other tools. Matches are also available to the model.')
+                  : note}
               </Text>
             ) : null}
             <TechnicalDetails args={part.args} result={part.result} />
@@ -686,25 +978,79 @@ const ReadVideoUrlToolCallUI: FC<{ part: ReadVideoUrlToolCallPart }> = ({ part }
 
 // ── Generic tools ────────────────────────────────────────────────────────
 
-const GeneralToolCallUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
+function summarizeToolArgs(part: MessageToolCallPart, t: (k: string) => string): string | undefined {
+  if (part.state === 'call') return t('Running…')
+  if (part.state === 'error') return t('Failed')
+  const args = part.args as Record<string, unknown> | undefined
+
+  for (const key of ['query', 'path', 'file', 'name', 'command', 'url', 'id', 'credential_id']) {
+    if (args?.[key] != null) {
+      const v = previewText(args[key], 72)
+      // Avoid full user messages / URLs as the only summary for long queries
+      if (v.length >= 70 || /https?:\/\//i.test(v)) continue
+      return v
+    }
+  }
+  if (part.result != null && typeof part.result === 'object') {
+    const r = part.result as Record<string, unknown>
+    if (typeof r.message === 'string') return previewText(r.message, 72)
+    if (typeof r.status === 'string') return previewText(r.status, 72)
+  }
+  if (part.result != null && typeof part.result !== 'object') {
+    return previewText(part.result, 72)
+  }
+  return undefined
+}
+
+/** Optional account label for transparency (labels only — never tokens). */
+function accountBadgeFromPart(part: MessageToolCallPart): string | undefined {
+  const args = part.args as Record<string, unknown> | undefined
+  const result = part.result as Record<string, unknown> | undefined
+  const label =
+    (typeof result?.usedAccountLabel === 'string' && result.usedAccountLabel) ||
+    (typeof result?.accountLabel === 'string' && result.accountLabel) ||
+    (typeof args?.accountLabel === 'string' && args.accountLabel)
+  if (!label) return undefined
+  return `via ${label}`
+}
+
+/** Prefer human fields over raw JSON dump for expanded generic tools. */
+function humanResultLines(result: unknown): string[] {
+  if (result == null) return []
+  if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') {
+    return [String(result)]
+  }
+  if (typeof result !== 'object') return []
+  const r = result as Record<string, unknown>
+  const lines: string[] = []
+  for (const key of ['message', 'summary', 'text', 'content', 'output', 'stdout', 'error', 'status']) {
+    if (typeof r[key] === 'string' && r[key].trim()) {
+      lines.push(previewText(r[key], 400))
+    }
+  }
+  return lines
+}
+
+const GeneralToolCallUI: FC<{ part: MessageToolCallPart; runCount?: number }> = ({ part, runCount }) => {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
 
-  const summary = useMemo(() => {
-    if (part.state === 'call') return t('Running…')
-    if (part.state === 'error') return t('Failed')
-    // Prefer a short human line from common arg/result keys
-    const args = part.args as Record<string, unknown> | undefined
-    for (const key of ['query', 'path', 'file', 'name', 'command', 'url', 'id']) {
-      if (args?.[key] != null) return previewText(args[key], 72)
-    }
-    if (part.result != null) return previewText(part.result, 72)
-    return undefined
-  }, [part, t])
+  const summary = useMemo(() => summarizeToolArgs(part, t), [part, t])
+  const badge = useMemo(() => accountBadgeFromPart(part), [part])
+  const humanLines = useMemo(() => humanResultLines(part.result), [part.result])
 
   const argEntries = useMemo(() => {
     if (!part.args || typeof part.args !== 'object') return []
-    return Object.entries(part.args as Record<string, unknown>).slice(0, 8)
+    // Hide noisy full-query args that duplicate the user message
+    return Object.entries(part.args as Record<string, unknown>)
+      .filter(([key, value]) => {
+        if (key === 'query' || key === 'text' || key === 'content') {
+          const s = typeof value === 'string' ? value : ''
+          if (s.length > 80 || /https?:\/\//i.test(s)) return false
+        }
+        return true
+      })
+      .slice(0, 6)
   }, [part.args])
 
   return (
@@ -713,6 +1059,8 @@ const GeneralToolCallUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
         toolName={part.toolName}
         state={part.state}
         summary={summary}
+        badge={badge}
+        runCount={runCount}
         expanded={expanded}
         onClick={() => setExpanded((v) => !v)}
       />
@@ -724,21 +1072,32 @@ const GeneralToolCallUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
                 {argEntries.map(([key, value]) => (
                   <div key={key} className="tool-kv-row">
                     <span className="tool-kv-key">{key}</span>
-                    <span className="tool-kv-val">{previewText(value, 200)}</span>
+                    <span className="tool-kv-val">{previewText(value, 160)}</span>
                   </div>
                 ))}
-              </div>
-            )}
-            {part.result != null && part.state !== 'error' && (
-              <div>
-                <FieldLabel>{t('Result')}</FieldLabel>
-                <div className="tool-step-content-preview">{previewText(part.result, 600)}</div>
               </div>
             )}
             {part.state === 'error' && (
               <Text size="sm" c="var(--chatbox-tint-error)" m={0}>
                 {previewText(part.result) || t('Failed')}
               </Text>
+            )}
+            {part.result != null && part.state !== 'error' && (
+              <div>
+                {humanLines.length > 0 ? (
+                  <div className="tool-step-content-preview">
+                    {humanLines.map((line, i) => (
+                      <p key={i} className="tool-human-line">
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <Text size="sm" c="chatbox-secondary" m={0}>
+                    {t('Completed. Open technical details for raw output.')}
+                  </Text>
+                )}
+              </div>
             )}
             <TechnicalDetails args={part.args} result={part.result} />
           </Stack>
@@ -750,31 +1109,34 @@ const GeneralToolCallUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
 
 // ── Router ───────────────────────────────────────────────────────────────
 
-export const ToolCallPartUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
+export const ToolCallPartUI: FC<{ part: MessageToolCallPart; runCount?: number }> = ({ part, runCount }) => {
   // Task tools render as TodoAppCard (coalesced) — hide raw steps to avoid noise.
   if (isTaskTrackingTool(part.toolName)) {
     return null
   }
+  if (part.toolName.startsWith('memory_')) {
+    return <MemoryToolCallUI part={part} runCount={runCount} />
+  }
   if (part.toolName === 'web_search') {
     const parsedPart = WebBrowsingToolCallPartSchema.safeParse(part)
     if (parsedPart.success) {
-      return <WebSearchToolCallUI part={parsedPart.data as WebBrowsingToolCallPart} />
+      return <WebSearchToolCallUI part={parsedPart.data as WebBrowsingToolCallPart} runCount={runCount} />
     }
   }
   if (part.toolName === 'parse_link') {
-    return <ParseLinkToolCallUI part={part} />
+    return <ParseLinkToolCallUI part={part} runCount={runCount} />
   }
   if (part.toolName === 'read_video') {
     const parsedPart = ReadVideoToolCallPartSchema.safeParse(part)
     if (parsedPart.success) {
-      return <ReadVideoToolCallUI part={parsedPart.data as ReadVideoToolCallPart} />
+      return <ReadVideoToolCallUI part={parsedPart.data as ReadVideoToolCallPart} runCount={runCount} />
     }
   }
   if (part.toolName === 'read_video_url') {
     const parsedPart = ReadVideoUrlToolCallPartSchema.safeParse(part)
     if (parsedPart.success) {
-      return <ReadVideoUrlToolCallUI part={parsedPart.data as ReadVideoUrlToolCallPart} />
+      return <ReadVideoUrlToolCallUI part={parsedPart.data as ReadVideoUrlToolCallPart} runCount={runCount} />
     }
   }
-  return <GeneralToolCallUI part={part} />
+  return <GeneralToolCallUI part={part} runCount={runCount} />
 }

@@ -535,7 +535,8 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     const result = streamText({
       model,
       messages: coreMessages,
-      stopWhen: stepCountIs(options.maxSteps || Number.MAX_SAFE_INTEGER),
+      // Cap multi-step tool loops. Unbounded MAX_SAFE_INTEGER left chats stuck on "Using tools…".
+      stopWhen: stepCountIs(options.maxSteps && options.maxSteps > 0 ? options.maxSteps : 5),
       tools: options.tools,
       abortSignal: options.signal,
       ...callSettings,

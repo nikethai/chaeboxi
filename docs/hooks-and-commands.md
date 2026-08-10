@@ -89,7 +89,7 @@ Hooks **do not** tag in chat. They run automatically on lifecycle events when en
 | `PreToolUse` | Before every tool `execute` (exit 2 / block = block; model sees error) |
 | `PostToolUse` | After every tool `execute` (success or throw) |
 
-Tool hooks wrap the final tool set in `stream-text` (MCP, files, terminal, web, tasks, etc.) after approval gates.
+Tool hooks wrap the final tool set in `stream-text` (MCP, files, terminal, web, tasks, **video URL** / local video, etc.) after approval gates. Video URL tool: [video-url-reader.md](./video-url-reader.md).
 
 ### Import sources
 

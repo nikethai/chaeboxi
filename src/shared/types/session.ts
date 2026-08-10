@@ -174,6 +174,8 @@ export const MessageLinkSchema = z.object({
   tokenCalculatedAt: TokenCalculatedAtSchema,
   lineCount: z.number().optional(),
   byteLength: z.number().optional(),
+  /** OG / video thumbnail stored as blob key for UI preview */
+  imageStorageKey: z.string().optional(),
 })
 
 export const MessagePictureSchema = z.object({

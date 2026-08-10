@@ -78,6 +78,7 @@ const toolIconFor = (toolName: string) => {
     case 'parse_link':
       return IconLink
     case 'read_video':
+    case 'read_video_url':
       return IconMovie
     case 'file_search':
     case 'code_search':
@@ -519,6 +520,170 @@ const ReadVideoToolCallUI: FC<{ part: ReadVideoToolCallPart }> = ({ part }) => {
   )
 }
 
+// ── Read video URL ───────────────────────────────────────────────────────
+
+const ReadVideoUrlToolCallPartSchema = MessageToolCallPartSchema.extend({
+  toolName: z.literal('read_video_url'),
+  args: z
+    .object({
+      url: z.string().optional(),
+      mode: z.string().optional(),
+      language: z.string().optional(),
+      maxChars: z.number().optional(),
+      startSec: z.number().optional(),
+      endSec: z.number().optional(),
+      maxFrames: z.number().optional(),
+      includeTimestamps: z.boolean().optional(),
+    })
+    .passthrough()
+    .optional(),
+  result: z
+    .object({
+      platform: z.string().optional(),
+      url: z.string().optional(),
+      title: z.string().optional(),
+      author: z.string().optional(),
+      durationSec: z.number().optional(),
+      description: z.string().optional(),
+      transcript: z
+        .object({
+          source: z.string().optional(),
+          language: z.string().optional(),
+          text: z.string().optional(),
+        })
+        .passthrough()
+        .nullable()
+        .optional(),
+      warnings: z.array(z.string()).optional(),
+      partial: z.boolean().optional(),
+      truncated: z.boolean().optional(),
+      errorCode: z.string().optional(),
+      errorMessage: z.string().optional(),
+    })
+    .passthrough()
+    .optional(),
+})
+
+type ReadVideoUrlToolCallPart = MessageToolCallPart<
+  {
+    url?: string
+    mode?: string
+    language?: string
+    maxChars?: number
+    startSec?: number
+    endSec?: number
+  },
+  {
+    platform?: string
+    url?: string
+    title?: string
+    author?: string
+    durationSec?: number
+    transcript?: { source?: string; language?: string; text?: string } | null
+    warnings?: string[]
+    partial?: boolean
+    truncated?: boolean
+    errorCode?: string
+    errorMessage?: string
+  }
+>
+
+function readVideoUrlSummary(
+  part: ReadVideoUrlToolCallPart,
+  t: (key: string, opts?: Record<string, unknown>) => string
+): string | undefined {
+  if (part.state === 'call') return t('Reading video URL…')
+  if (part.state === 'error') return t('Failed')
+  const result = part.result
+  if (result?.errorCode && !result.transcript?.text && !result.title) {
+    return previewText(result.errorMessage || result.errorCode, 72)
+  }
+  const platform = result?.platform ? String(result.platform) : ''
+  const title = result?.title || part.args?.url || ''
+  const source = result?.transcript?.source
+  const parts = [platform, title].filter(Boolean)
+  let line = parts.join(' · ') || t('Video URL')
+  if (source) line = `${line} · ${source}`
+  if (result?.truncated) line = `${line} · ${t('truncated')}`
+  if (result?.partial && !result.transcript?.text) line = `${line} · ${t('partial')}`
+  return previewText(line, 96)
+}
+
+const ReadVideoUrlToolCallUI: FC<{ part: ReadVideoUrlToolCallPart }> = ({ part }) => {
+  const { t } = useTranslation()
+  const [expanded, setExpanded] = useState(false)
+  const summary = useMemo(() => readVideoUrlSummary(part, t), [part, t])
+  const result = part.result
+  const transcriptPreview = result?.transcript?.text ? previewText(result.transcript.text, 800) : undefined
+
+  return (
+    <div className="tool-step">
+      <ToolCallHeader
+        toolName={part.toolName}
+        state={part.state}
+        summary={summary}
+        expanded={expanded}
+        onClick={() => setExpanded((v) => !v)}
+      />
+      <Collapse in={expanded}>
+        <ToolStepBody>
+          <Stack gap="sm">
+            {result?.errorCode && !result.transcript?.text ? (
+              <Text size="sm" c="var(--chatbox-tint-error)" m={0}>
+                {previewText(result.errorMessage || result.errorCode) || t('Failed')}
+              </Text>
+            ) : null}
+            {result?.title || result?.author || result?.platform ? (
+              <div className="tool-kv">
+                {result.platform ? (
+                  <div className="tool-kv-row">
+                    <span className="tool-kv-key">{t('Platform')}</span>
+                    <span className="tool-kv-val">{result.platform}</span>
+                  </div>
+                ) : null}
+                {result.title ? (
+                  <div className="tool-kv-row">
+                    <span className="tool-kv-key">{t('Title')}</span>
+                    <span className="tool-kv-val">{previewText(result.title, 200)}</span>
+                  </div>
+                ) : null}
+                {result.author ? (
+                  <div className="tool-kv-row">
+                    <span className="tool-kv-key">{t('Author')}</span>
+                    <span className="tool-kv-val">{previewText(result.author, 120)}</span>
+                  </div>
+                ) : null}
+                {result.transcript?.source ? (
+                  <div className="tool-kv-row">
+                    <span className="tool-kv-key">{t('Source')}</span>
+                    <span className="tool-kv-val">{result.transcript.source}</span>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+            {transcriptPreview ? (
+              <div>
+                <FieldLabel>{t('Transcript')}</FieldLabel>
+                <div className="tool-step-content-preview">{transcriptPreview}</div>
+              </div>
+            ) : part.state === 'result' && !result?.errorCode ? (
+              <Text size="sm" c="chatbox-tertiary" m={0}>
+                {t('No transcript')}
+              </Text>
+            ) : null}
+            {result?.warnings && result.warnings.length > 0 ? (
+              <Text size="xs" c="chatbox-tertiary" m={0}>
+                {result.warnings.join(' · ')}
+              </Text>
+            ) : null}
+            <TechnicalDetails args={part.args} result={part.result} />
+          </Stack>
+        </ToolStepBody>
+      </Collapse>
+    </div>
+  )
+}
+
 // ── Generic tools ────────────────────────────────────────────────────────
 
 const GeneralToolCallUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
@@ -603,6 +768,12 @@ export const ToolCallPartUI: FC<{ part: MessageToolCallPart }> = ({ part }) => {
     const parsedPart = ReadVideoToolCallPartSchema.safeParse(part)
     if (parsedPart.success) {
       return <ReadVideoToolCallUI part={parsedPart.data as ReadVideoToolCallPart} />
+    }
+  }
+  if (part.toolName === 'read_video_url') {
+    const parsedPart = ReadVideoUrlToolCallPartSchema.safeParse(part)
+    if (parsedPart.success) {
+      return <ReadVideoUrlToolCallUI part={parsedPart.data as ReadVideoUrlToolCallPart} />
     }
   }
   return <GeneralToolCallUI part={part} />

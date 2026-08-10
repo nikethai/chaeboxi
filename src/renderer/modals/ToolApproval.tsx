@@ -63,19 +63,27 @@ const ToolApprovalModal = NiceModal.create((props: ToolApprovalModalProps) => {
   }
 
   return (
-    <AdaptiveModal opened={modal.visible} onClose={() => onClose()} centered title={t('Tool approval required')}>
+    <AdaptiveModal
+      opened={modal.visible}
+      onClose={() => onClose()}
+      centered
+      size="lg"
+      title={t('Tool approval required')}
+    >
       <Stack gap="md">
         <Stack gap="xs">
-          <Group justify="space-between" align="flex-start">
-            <Stack gap={2}>
-              <Text fw={600}>{props.toolName}</Text>
+          <Group justify="space-between" align="flex-start" wrap="nowrap" gap="sm">
+            <Stack gap={2} className="min-w-0 flex-1">
+              <Text fw={600} className="break-all">
+                {props.toolName}
+              </Text>
               {props.description && (
-                <Text size="sm" c="chatbox-secondary">
+                <Text size="sm" c="chatbox-secondary" className="text-pretty">
                   {props.description}
                 </Text>
               )}
             </Stack>
-            <Badge color={color} variant="light">
+            <Badge color={color} variant="light" className="shrink-0">
               {riskLabel}
             </Badge>
           </Group>
@@ -96,19 +104,20 @@ const ToolApprovalModal = NiceModal.create((props: ToolApprovalModalProps) => {
             </Code>
           </Box>
         </Stack>
-      </Stack>
 
-      <AdaptiveModal.Actions>
-        <Button variant="default" onClick={() => onClose('deny')}>
-          {t('Deny')}
-        </Button>
-        {props.riskTier !== 'high' && props.riskTier !== 'critical' && (
-          <Button variant="light" onClick={() => onClose('session')}>
-            {t('Allow for this session')}
+        {/* Keep actions inside modal body so long labels never clip at the edge */}
+        <Group justify="flex-end" gap="sm" wrap="wrap" mt="xs">
+          <Button variant="default" onClick={() => onClose('deny')}>
+            {t('Deny')}
           </Button>
-        )}
-        <Button onClick={() => onClose('once')}>{t('Allow once')}</Button>
-      </AdaptiveModal.Actions>
+          {props.riskTier !== 'high' && props.riskTier !== 'critical' && (
+            <Button variant="light" onClick={() => onClose('session')}>
+              {t('Allow for this session')}
+            </Button>
+          )}
+          <Button onClick={() => onClose('once')}>{t('Allow once')}</Button>
+        </Group>
+      </Stack>
     </AdaptiveModal>
   )
 })

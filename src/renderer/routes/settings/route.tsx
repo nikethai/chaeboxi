@@ -15,6 +15,7 @@ import {
   IconMessages,
   IconSparkles,
   IconTerminal2,
+  IconMovie,
   IconWorldWww,
 } from '@tabler/icons-react'
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
@@ -53,6 +54,11 @@ const ITEMS = [
     key: 'web-search',
     label: 'Web Search',
     icon: <IconWorldWww className="w-full h-full" />,
+  },
+  {
+    key: 'video-url',
+    label: 'Video URL',
+    icon: <IconMovie className="w-full h-full" />,
   },
   ...(featureFlags.mcp
     ? [

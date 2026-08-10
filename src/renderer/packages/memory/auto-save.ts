@@ -10,6 +10,7 @@ import {
 } from './extract'
 import { getMemoryMessageText } from './message-text'
 import { recordAutosave } from './metrics'
+import { isSessionMemoryAutoSaveAllowed } from './session-policy'
 
 const log = getLogger('memory-auto-save')
 
@@ -27,7 +28,8 @@ export async function maybeAutoSaveMemory(options: {
   await ensureMemoryStoreInit()
   const store = memoryStore.getState()
   const settings = store.settings
-  if (!settings.enabled || !settings.autoSave) return
+  // Policy before turn bump so re-enabling session auto-save does not skip a cadence tick
+  if (!isSessionMemoryAutoSaveAllowed(settings, sessionSettings)) return
   if (inFlight.has(sessionId)) return
 
   const every = Math.max(1, settings.retainEveryNTurns || 3)

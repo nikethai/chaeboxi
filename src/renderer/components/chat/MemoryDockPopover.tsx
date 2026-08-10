@@ -1,4 +1,4 @@
-import { Button, Divider, Flex, Popover, Stack, Text, Textarea, TextInput, UnstyledButton } from '@mantine/core'
+import { Button, Divider, Flex, Popover, Stack, Switch, Text, Textarea, TextInput, UnstyledButton } from '@mantine/core'
 import type { MemoryEntry } from '@shared/types/memory'
 import { IconBrain, IconPlus, IconSearch, IconSettings } from '@tabler/icons-react'
 import { type FC, type ReactNode, useEffect, useMemo, useState } from 'react'
@@ -20,6 +20,14 @@ export type MemoryDockPopoverProps = {
   trigger?: ReactNode
   onInsertMemory?: (entry: MemoryEntry) => void
   getMemorySaveContent?: () => string
+  /**
+   * Session-level memory auto-save. undefined/true = on (inherit), false = off.
+   * When onMemoryAutoSaveChange is provided, a prominent toggle is shown.
+   */
+  memoryAutoSave?: boolean
+  onMemoryAutoSaveChange?: (enabled: boolean) => void
+  /** Disable toggle while session is not ready (e.g. new unsaved chat). */
+  memoryAutoSaveDisabled?: boolean
 }
 
 export const MemoryDockPopover: FC<MemoryDockPopoverProps> = ({
@@ -30,12 +38,18 @@ export const MemoryDockPopover: FC<MemoryDockPopoverProps> = ({
   trigger,
   onInsertMemory,
   getMemorySaveContent,
+  memoryAutoSave,
+  onMemoryAutoSaveChange,
+  memoryAutoSaveDisabled = false,
 }) => {
   const { t } = useTranslation()
   const ready = useMemoryStore((state) => state.ready)
   const globalBank = useMemoryStore((state) => state.globalBank)
+  const globalMemoryEnabled = useMemoryStore((state) => state.settings.enabled)
+  const globalAutoSave = useMemoryStore((state) => state.settings.autoSave)
   const maxEntryChars = useMemoryStore((state) => state.settings.maxEntryChars ?? 500)
   const retain = useMemoryStore((state) => state.retain)
+  const sessionAutoSaveOn = memoryAutoSave !== false
   const [opened, setOpened] = useState(false)
   const [query, setQuery] = useState('')
   const [activeTag, setActiveTag] = useState<string | null>(null)
@@ -164,6 +178,37 @@ export const MemoryDockPopover: FC<MemoryDockPopoverProps> = ({
               {t('Manage')}
             </Button>
           </Flex>
+
+          {onMemoryAutoSaveChange && (
+            <Stack
+              gap={4}
+              className="rounded-md border border-solid border-chatbox-border-primary bg-[var(--chatbox-background-secondary)] px-2.5 py-2"
+            >
+              <Flex justify="space-between" align="center" gap="sm">
+                <Stack gap={0} className="min-w-0">
+                  <Text size="sm" fw={600}>
+                    {t('Auto-save this chat')}
+                  </Text>
+                  <Text size="xs" c="dimmed" lineClamp={2}>
+                    {!globalMemoryEnabled
+                      ? t('Memory is off globally in Settings.')
+                      : !sessionAutoSaveOn
+                        ? t('Off — no auto-extract or model retain. Manual save still works.')
+                        : !globalAutoSave
+                          ? t('On for this chat, but global Auto-save is off in Settings.')
+                          : t('On — durable facts may be saved from this chat.')}
+                  </Text>
+                </Stack>
+                <Switch
+                  size="sm"
+                  checked={sessionAutoSaveOn}
+                  disabled={memoryAutoSaveDisabled || !globalMemoryEnabled}
+                  onChange={(e) => onMemoryAutoSaveChange(e.currentTarget.checked)}
+                  aria-label={t('Auto-save memories from this chat')}
+                />
+              </Flex>
+            </Stack>
+          )}
 
           {showSaveForm ? (
             <>

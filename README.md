@@ -11,6 +11,10 @@ Built with **Tauri 2 + React 18 + TypeScript**.
 | **Default language** | English |
 | **Cloud upsell** | None — BYOK only |
 
+
+<img width="1793" height="1036" alt="Screenshot 2026-08-10 at 21 06 15" src="https://github.com/user-attachments/assets/f99113c0-b171-4772-9dba-b6ff34bf6e5a" />
+
+
 ## Download
 
 Desktop builds: [GitHub Releases](https://github.com/nikethai/chaeboxi/releases).

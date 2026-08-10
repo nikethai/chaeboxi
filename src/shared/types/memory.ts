@@ -25,6 +25,10 @@ export const MemoryEntrySchema = z.object({
    * Set when soft-archive prune demotes an entry instead of hard-deleting.
    */
   archived: z.boolean().optional(),
+  /** Monotonic per-entry sync revision; bumped on every mutation. */
+  revision: z.number().optional(),
+  /** Tombstone flag: entry kept on disk for sync but hidden from recall. */
+  deleted: z.boolean().optional(),
 })
 export type MemoryEntry = z.infer<typeof MemoryEntrySchema>
 
@@ -48,6 +52,8 @@ export const MemoryBankSchema = z.object({
   profileUpdatedAt: z.number().optional(),
   profileSlots: MemoryProfileSlotsSchema.optional(),
   version: z.number().default(1),
+  /** Monotonic bank-level sync revision; bumped on every mutation. */
+  revision: z.number().optional(),
 })
 export type MemoryBank = z.infer<typeof MemoryBankSchema>
 

@@ -128,7 +128,13 @@ src/renderer/modals/SessionSettings.tsx  # per-chat auto-save switch
 
 ## Privacy
 
-- Local-only (no cloud sync in this edition)
+- Local by default; **optional self-hosted encrypted sync** — snapshots of memory
+  settings plus global/agent banks can be pushed/pulled through your own
+  self-hosted sync server (see `scripts/history-sync-server/README.md`). The
+  server never sees plaintext: snapshots are encrypted client-side with a sync
+  passphrase (PBKDF2-HMAC-SHA-256 + AES-GCM) before upload. There is **no
+  passphrase recovery** — losing the passphrase makes remote memory
+  unrecoverable.
 - Secret redaction on write
 - Master disable + clear bank
 - Soft-archive keeps data local until hard clear / hard forget

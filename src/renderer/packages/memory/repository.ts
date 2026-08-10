@@ -7,6 +7,8 @@
 import type { MemoryBank } from '@shared/types/memory'
 import { emptyMemoryBank } from '@shared/types/memory'
 import {
+  listAgentBankIds as listAgentBankIdsJson,
+  loadAllAgentBanks as loadAllAgentBanksJson,
   loadAgentBank as loadAgentBankJson,
   loadGlobalBank as loadGlobalBankJson,
   loadMemorySettings,
@@ -27,6 +29,10 @@ export interface MemoryRepository {
   saveGlobal(bank: MemoryBank, options?: CoalesceOptions): Promise<void>
   loadAgent(agentId: string): Promise<MemoryBank>
   saveAgent(agentId: string, bank: MemoryBank, options?: CoalesceOptions): Promise<void>
+  /** Enumerate every agent id with a persisted bank, including inactive agents. */
+  listAgentBankIds(): Promise<string[]>
+  /** Load every persisted agent bank for snapshot building. */
+  loadAllAgentBanks(): Promise<Array<{ agentId: string; bank: MemoryBank }>>
   getGlobalIndex(): MemoryQueryIndex
   getAgentIndex(agentId: string): MemoryQueryIndex
   getSemanticVectors(scope: 'global' | 'agent', agentId?: string): SemanticVectors
@@ -80,6 +86,14 @@ export class LocalFtsMemoryRepository implements MemoryRepository {
   async saveAgent(agentId: string, bank: MemoryBank, options?: CoalesceOptions) {
     this.rebuildIndexes('agent', bank, agentId)
     await saveAgentBankJson(agentId, bank, options)
+  }
+
+  async listAgentBankIds() {
+    return listAgentBankIdsJson()
+  }
+
+  async loadAllAgentBanks() {
+    return loadAllAgentBanksJson()
   }
 
   getGlobalIndex() {

@@ -273,6 +273,14 @@ const HistorySyncConfigSchema = z.object({
   intervalSeconds: z.number().min(15).max(3600).default(60),
 })
 
+export const MemorySyncConfigSchema = z.object({
+  enabled: z.boolean().default(false),
+  endpoint: z.string().default(''),
+  token: z.string().default(''),
+  autoSync: z.boolean().default(false),
+  intervalSeconds: z.number().default(60),
+})
+
 const ExtensionSettingsSchema = z.object({
   webSearch: z.object({
     provider: z.enum(['build-in', 'bing', 'duckduckgo', 'serper', 'google', 'tavily', 'exa']),
@@ -311,6 +319,7 @@ const ExtensionSettingsSchema = z.object({
   // Document parser configuration for global default
   documentParser: DocumentParserConfigSchema.optional(),
   historySync: HistorySyncConfigSchema.optional().catch(undefined),
+  memorySync: MemorySyncConfigSchema.optional().catch(undefined),
 })
 
 const MCPTransportConfigSchema = z.discriminatedUnion('type', [
@@ -560,6 +569,7 @@ export type ShortcutName = keyof ShortcutSetting
 export type ShortcutSetting = z.infer<typeof ShortcutSettingSchema>
 export type ExtensionSettings = z.infer<typeof ExtensionSettingsSchema>
 export type HistorySyncConfig = z.infer<typeof HistorySyncConfigSchema>
+export type MemorySyncConfig = z.infer<typeof MemorySyncConfigSchema>
 export type MCPTransportConfig = z.infer<typeof MCPTransportConfigSchema>
 export type MCPServerConfig = z.infer<typeof MCPServerConfigSchema>
 export type MCPSettings = z.infer<typeof MCPSettingsSchema>

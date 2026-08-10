@@ -16,6 +16,7 @@ import {
   IconUser,
 } from '@tabler/icons-react'
 import { useNavigate } from '@tanstack/react-router'
+import { getDefaultStore } from 'jotai'
 import clsx from 'clsx'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -35,10 +36,11 @@ import {
 } from './hooks/useScreenChange'
 import useVersion from './hooks/useVersion'
 import { navigateToSettings } from './modals/Settings'
-import { trackingEvent } from './packages/event'
-import appIcon from './static/icon.png'
+import { currentSessionIdAtom } from './stores/atoms'
 import { useLanguage, useSettingsStore } from './stores/settingsStore'
 import { useUIStore } from './stores/uiStore'
+import appIcon from './static/icon.png'
+import { trackingEvent } from './packages/event'
 import { CHATBOX_BUILD_PLATFORM } from './variables'
 
 export default function Sidebar() {
@@ -99,6 +101,7 @@ export default function Sidebar() {
   }, [versionHook.version])
 
   const handleCreateNewSession = useCallback(() => {
+    getDefaultStore().set(currentSessionIdAtom, null)
     navigate({ to: `/` })
 
     if (isSmallScreen) {

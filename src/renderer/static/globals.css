@@ -1222,7 +1222,7 @@
 
   /* mock turn spacing */
   .msg-block {
-    padding-block: 0 !important;
+    padding-top: 0 !important;
   }
 
   .msg-turn {
@@ -2559,6 +2559,72 @@
 
   .blank-home-dock {
     width: 100%;
+  }
+
+  .blank-starters {
+    border: 1px solid var(--chatbox-border-primary);
+    border-radius: 0.6875rem;
+    background: var(--chatbox-background-secondary);
+    overflow: hidden;
+  }
+
+  .blank-starters-head {
+    display: flex;
+    align-items: center;
+    padding: 0.65rem 0.85rem;
+    border-bottom: 1px solid var(--chatbox-border-primary);
+    font-family: var(--chatbox-font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--chatbox-tint-tertiary);
+  }
+
+  .blank-starter {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.8rem;
+    text-align: left;
+    padding: 0.85rem;
+    border: none;
+    border-bottom: 1px solid var(--chatbox-border-primary);
+    background: transparent;
+    color: var(--chatbox-tint-secondary);
+    cursor: pointer;
+    font: inherit;
+    transition:
+      background-color 140ms var(--chatbox-ease),
+      color 140ms var(--chatbox-ease);
+  }
+
+  .blank-starter:last-child {
+    border-bottom: none;
+  }
+
+  .blank-starter:hover {
+    background: var(--chatbox-background-tertiary);
+    color: var(--chatbox-tint-primary);
+  }
+
+  .blank-starter:hover .blank-starter-n {
+    color: var(--chatbox-background-brand-primary-hover);
+  }
+
+  .blank-starter-n {
+    font-family: var(--chatbox-font-mono);
+    font-size: 0.75rem;
+    color: var(--chatbox-tint-tertiary);
+    padding-top: 0.15rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .blank-starter-t {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 500;
+    letter-spacing: -0.015em;
+    line-height: 1.35;
   }
 
   .blank-title {

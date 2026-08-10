@@ -6,7 +6,7 @@ import { subscribeWithSelector } from 'zustand/middleware'
 import {
   clearBank,
   createEntry,
-  deleteEntry,
+  markEntryDeleted,
   retainEntry,
   updateEntry,
 } from '@/packages/memory/bank-ops'
@@ -252,13 +252,13 @@ export const memoryStore = createStore<MemoryStore>()(
       if (scope === 'agent') {
         if (!agentId) throw new Error('agentId required')
         let bank = get().agentBanks[agentId] ?? (await get().ensureAgentBank(agentId))
-        bank = plainClone(rebuildProfileLocal(deleteEntry(plainClone(bank), id)))
+        bank = plainClone(rebuildProfileLocal(markEntryDeleted(plainClone(bank), id)))
         set((s) => ({
           agentBanks: { ...s.agentBanks, [agentId]: bank },
         }))
         await repo.saveAgent(agentId, bank)
       } else {
-        const bank = plainClone(rebuildProfileLocal(deleteEntry(plainClone(get().globalBank), id)))
+        const bank = plainClone(rebuildProfileLocal(markEntryDeleted(plainClone(get().globalBank), id)))
         set({ globalBank: bank })
         await repo.saveGlobal(bank)
       }

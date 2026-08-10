@@ -61,6 +61,8 @@ Enablement: `extension.videoUrl.enabled` (default **on**) and model must support
 | `desktopExtractorEnabled` | `false` | Desktop only; user-installed yt-dlp |
 | `desktopExtractorPath` | empty | Optional binary path |
 
+**yt-dlp install UX (desktop settings):** Settings → Video URL → Desktop extractor can **detect** yt-dlp (badge: Installed + version / Not installed), **install** via Homebrew (Mac), winget (Windows), or pipx (Linux) with progress, and re-**check** after install. If the package manager is missing (e.g. no Homebrew), the UI links to install it or the full yt-dlp guide. Does not bundle the binary.
+
 ### Custom HTTP contract
 
 `POST` endpoint with `{ "url", "language?", "mode?" }`  

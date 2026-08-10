@@ -147,6 +147,21 @@ export function formatQuoteAttachment(quote: MessageQuoteAttachment | undefined)
   return `Quoted ${kind} (${role}):\n${quoted}`
 }
 
+/**
+ * Gemini (and some OpenAI-compat gateways) reject turns with empty `content`.
+ * Tool-only assistant rows historically convert to [] because tool-call parts are
+ * not re-emitted as model tool history — inject a short summary instead.
+ */
+function assistantToolActivitySummary(contentParts: MessageContentParts): string | null {
+  const toolNames = contentParts
+    .filter((part): part is Extract<MessageContentParts[number], { type: 'tool-call' }> => part.type === 'tool-call')
+    .map((part) => part.toolName)
+    .filter(Boolean)
+  if (toolNames.length === 0) return null
+  const unique = [...new Set(toolNames)]
+  return `(Completed tools: ${unique.join(', ')})`
+}
+
 export async function convertToModelMessages(
   messages: Message[],
   options?: {
@@ -159,31 +174,49 @@ export async function convertToModelMessages(
   const results = await Promise.all(
     messages.map(async (m): Promise<ModelMessage | null> => {
       switch (m.role) {
-        case 'system':
+        case 'system': {
+          const text = replaceCopilotTemplateVars(getMessageText(m)).trim()
+          if (!text) return null
           return {
             role: 'system' as const,
-            content: replaceCopilotTemplateVars(getMessageText(m)),
+            content: text,
           }
+        }
         case 'user': {
           const contentParts = await convertUserContentParts(m.contentParts || [], dependencies, options)
           const quoteContext = formatQuoteAttachment(m.quoteAttachment)
           const memoryContext = formatMemoryAttachments(m.memoryAttachments)
+          const content = [
+            ...(quoteContext ? [{ type: 'text' as const, text: quoteContext }] : []),
+            ...contentParts,
+            ...(memoryContext ? [{ type: 'text' as const, text: memoryContext }] : []),
+          ]
+          // Drop empty user turns (Gemini INVALID_ARGUMENT: empty content)
+          if (content.length === 0) {
+            const fallback = getMessageText(m, true, true).trim()
+            if (!fallback) return null
+            return { role: 'user' as const, content: [{ type: 'text' as const, text: fallback }] }
+          }
           return {
             role: 'user' as const,
-            content: [
-              ...(quoteContext ? [{ type: 'text' as const, text: quoteContext }] : []),
-              ...contentParts,
-              ...(memoryContext ? [{ type: 'text' as const, text: memoryContext }] : []),
-            ],
+            content,
           }
         }
         case 'assistant': {
           const contentParts = m.contentParts || []
+          let content = await convertAssistantContentParts(contentParts, dependencies, {
+            includeReasoning: options?.includeAssistantReasoning,
+          })
+          if (content.length === 0) {
+            const summary = assistantToolActivitySummary(contentParts)
+            const fallback = getMessageText(m, true, true).trim()
+            const text = fallback || summary
+            if (!text) return null
+            content = [{ type: 'text' as const, text }]
+          }
           return {
             role: 'assistant' as const,
-            content: await convertAssistantContentParts(contentParts, dependencies, {
-              includeReasoning: options?.includeAssistantReasoning,
-            }),
+            content,
           }
         }
         case 'tool':

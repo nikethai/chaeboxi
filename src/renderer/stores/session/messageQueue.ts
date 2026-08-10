@@ -5,11 +5,21 @@ export type QueuedMessageEntry = {
   message: Message
   needGenerating: boolean
   queuedAt: number
+  /**
+   * User bubble already lives in session.messages (optimistic insert while a
+   * prior turn was still generating). Drain must not insert again.
+   */
+  userAlreadyInserted?: boolean
 }
 
 type MessageQueueState = {
   messageQueue: Map<string, QueuedMessageEntry[]>
-  enqueueMessage: (sessionId: string, message: Message, needGenerating: boolean) => number
+  enqueueMessage: (
+    sessionId: string,
+    message: Message,
+    needGenerating: boolean,
+    options?: { userAlreadyInserted?: boolean }
+  ) => number
   dequeueMessage: (sessionId: string) => QueuedMessageEntry | undefined
   getQueuedCount: (sessionId: string) => number
   clearSessionQueue: (sessionId: string) => void
@@ -17,13 +27,14 @@ type MessageQueueState = {
 
 export const messageQueueStore = createStore<MessageQueueState>((set, get) => ({
   messageQueue: new Map(),
-  enqueueMessage: (sessionId, message, needGenerating) => {
+  enqueueMessage: (sessionId, message, needGenerating, options) => {
     const nextQueue = new Map(get().messageQueue)
     const entries = [...(nextQueue.get(sessionId) || [])]
     entries.push({
       message,
       needGenerating,
       queuedAt: Date.now(),
+      userAlreadyInserted: options?.userAlreadyInserted,
     })
     nextQueue.set(sessionId, entries)
     set({ messageQueue: nextQueue })

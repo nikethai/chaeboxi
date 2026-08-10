@@ -50,3 +50,5 @@ webbrowser = "1"
 arboard = "3"
 image = { version = "0.25", default-features = false, features = ["png"] }
 tauri-plugin-global-shortcut = "2"
+# OS keychain / Credential Manager / secret-service for Integrations secrets
+keyring = "3"

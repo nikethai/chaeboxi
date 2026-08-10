@@ -421,6 +421,8 @@ export const MessageSchema = z.object({
   agentId: z.string().optional().catch(undefined),
   /** Agent persona ids @-mentioned on this user message */
   mentionedAgentIds: z.array(z.string()).optional().catch(undefined),
+  /** Connected-account ids selected via # chips on this user message (labels only in context). */
+  credentialIds: z.array(z.string()).optional().catch(undefined),
   /**
    * Multi-agent room turn kind.
    * - turn: short discussion message
@@ -506,6 +508,12 @@ export const SessionSchema = z.object({
   pinnedSkillIds: z.array(z.string()).optional().catch(undefined),
   /** When true/undefined, host may auto-select skills for a turn */
   autoSkills: z.boolean().optional().catch(undefined),
+  /**
+   * Session-sticky connected accounts for this chat.
+   * Combined with message.credentialIds (message wins for that turn).
+   * Never stores secrets — ids only.
+   */
+  credentialIds: z.array(z.string()).optional().catch(undefined),
 })
 
 export const SessionMetaSchema = SessionSchema.pick({

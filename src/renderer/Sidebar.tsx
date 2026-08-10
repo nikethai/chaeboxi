@@ -1,19 +1,15 @@
 import { ActionIcon, Box, Button, Flex, Image, Menu, Stack, TextInput, Tooltip, UnstyledButton } from '@mantine/core'
 import SwipeableDrawer from '@mui/material/SwipeableDrawer'
 import {
-  IconArchive,
   IconChevronUp,
   IconCode,
   IconEdit,
-  IconFolderPlus,
   IconInfoCircle,
   IconLayoutSidebarLeftCollapse,
   IconLayoutSidebarLeftExpand,
-  IconLogout,
   IconPhotoPlus,
   IconSearch,
   IconSettings,
-  IconUser,
 } from '@tabler/icons-react'
 import { useNavigate } from '@tanstack/react-router'
 import { getDefaultStore } from 'jotai'
@@ -89,16 +85,11 @@ export default function Sidebar() {
   }, [isSmallScreen, setShowSidebar])
 
   const displayName = useMemo(() => {
-    // Local-first CE — no account system; product name as workspace identity
+    // Local-first CE — no cloud account; product name as workspace identity
     return 'Chaeboxi'
   }, [])
 
-  const displaySubtitle = useMemo(() => {
-    if (/\d/.test(versionHook.version)) {
-      return `local · v${versionHook.version}`
-    }
-    return 'local · free'
-  }, [versionHook.version])
+  const displaySubtitle = useMemo(() => t('On this device'), [t])
 
   const handleCreateNewSession = useCallback(() => {
     getDefaultStore().set(currentSessionIdAtom, null)
@@ -314,7 +305,11 @@ export default function Sidebar() {
                   <IconSearch size={18} stroke={1.5} aria-hidden />
                   <span>{t('Search')}</span>
                 </button>
-                <button type="button" className="rail-nav-item" onClick={handleCreateNewSession}>
+                <button
+                  type="button"
+                  className="rail-nav-item rail-nav-item--primary"
+                  onClick={handleCreateNewSession}
+                >
                   <IconEdit size={18} stroke={1.5} aria-hidden />
                   <span>{t('New Chat')}</span>
                   {!isSmallScreen && <kbd className="rail-nav-kbd">⌘N</kbd>}
@@ -328,45 +323,14 @@ export default function Sidebar() {
           </nav>
 
           {!isIconRail && (
-            <>
-              <Flex px="sm" pb={6} pt={2} gap={4} align="center" className="rail-tools">
-                <Tooltip label={t('New Project')} withArrow>
-                  <ActionIcon
-                    size={28}
-                    radius="md"
-                    variant="subtle"
-                    color="chatbox-tertiary"
-                    onClick={() => setFolderModalOpened(true)}
-                    aria-label={t('New Project')}
-                    className="active:scale-[0.96] transition-transform"
-                  >
-                    <IconFolderPlus size={16} stroke={1.5} />
-                  </ActionIcon>
-                </Tooltip>
-                <Tooltip label={showArchived ? t('Show Active Chats') : t('Show Archived Chats')} withArrow>
-                  <ActionIcon
-                    size={28}
-                    radius="md"
-                    variant={showArchived ? 'light' : 'subtle'}
-                    color={showArchived ? 'chatbox-brand' : 'chatbox-tertiary'}
-                    onClick={() => setShowArchived((value) => !value)}
-                    aria-label={showArchived ? t('Show Active Chats') : t('Show Archived Chats')}
-                    aria-pressed={showArchived}
-                    className="active:scale-[0.96] transition-transform"
-                  >
-                    <IconArchive size={16} stroke={1.5} />
-                  </ActionIcon>
-                </Tooltip>
-              </Flex>
-
-              <Box className="flex-1 min-h-0 flex flex-col overflow-hidden">
-                <SessionList
-                  sessionListViewportRef={sessionListViewportRef}
-                  showArchived={showArchived}
-                  onCreateProject={() => setFolderModalOpened(true)}
-                />
-              </Box>
-            </>
+            <Box className="flex-1 min-h-0 flex flex-col overflow-hidden rail-session-list">
+              <SessionList
+                sessionListViewportRef={sessionListViewportRef}
+                showArchived={showArchived}
+                onShowArchivedChange={setShowArchived}
+                onCreateProject={() => setFolderModalOpened(true)}
+              />
+            </Box>
           )}
 
           {isIconRail && <Box className="flex-1 min-h-0" />}
@@ -441,24 +405,21 @@ export default function Sidebar() {
               </Menu.Target>
 
               <Menu.Dropdown>
-                <Menu.Label>{t('Workspace')}</Menu.Label>
-                {!isSmallScreen && (
-                  <Menu.Item
-                    leftSection={
-                      isIconRail ? (
-                        <IconLayoutSidebarLeftExpand size={15} stroke={1.5} />
-                      ) : (
-                        <IconLayoutSidebarLeftCollapse size={15} stroke={1.5} />
-                      )
-                    }
-                    onClick={isIconRail ? handleExpandSidebar : handleCollapseSidebar}
-                  >
-                    {isIconRail ? t('Expand sidebar') : t('Collapse to icons')}
-                  </Menu.Item>
-                )}
+                <div className="user-menu-identity">
+                  <span className="user-menu-identity-avatar" aria-hidden>
+                    <UserAvatar size={36} avatarKey={userAvatarKey} />
+                  </span>
+                  <span className="user-menu-identity-meta">
+                    <strong>{displayName}</strong>
+                    <span>{displaySubtitle}</span>
+                  </span>
+                </div>
+
+                <Menu.Divider />
+
                 <Menu.Item
                   leftSection={<IconPhotoPlus size={15} stroke={1.5} />}
-                  rightSection={<em className="user-menu-badge">beta</em>}
+                  rightSection={<em className="user-menu-badge">{t('Beta')}</em>}
                   onClick={() => {
                     handleCreateNewPictureSession()
                     closeSidebarIfMobile()
@@ -466,20 +427,6 @@ export default function Sidebar() {
                 >
                   {t('Image studio')}
                 </Menu.Item>
-                {FORCE_ENABLE_DEV_PAGES && (
-                  <Menu.Item
-                    leftSection={<IconCode size={15} stroke={1.5} />}
-                    onClick={() => {
-                      navigate({ to: '/dev' })
-                      closeSidebarIfMobile()
-                    }}
-                  >
-                    Dev Tools
-                  </Menu.Item>
-                )}
-
-                <Menu.Divider />
-                <Menu.Label>{t('Account')}</Menu.Label>
                 <Menu.Item
                   leftSection={<IconSettings size={15} stroke={1.5} />}
                   rightSection={<em className="user-menu-kbd">⌘,</em>}
@@ -489,15 +436,6 @@ export default function Sidebar() {
                   }}
                 >
                   {t('Settings')}
-                </Menu.Item>
-                <Menu.Item
-                  leftSection={<IconUser size={15} stroke={1.5} />}
-                  onClick={() => {
-                    navigateToSettings('/chat')
-                    closeSidebarIfMobile()
-                  }}
-                >
-                  {t('Profile')}
                 </Menu.Item>
                 <Menu.Item
                   leftSection={<IconInfoCircle size={15} stroke={1.5} />}
@@ -518,17 +456,38 @@ export default function Sidebar() {
                   {t('About')}
                 </Menu.Item>
 
-                <Menu.Divider />
-                <Menu.Item
-                  className="user-menu-item-danger"
-                  leftSection={<IconLogout size={15} stroke={1.5} />}
-                  onClick={() => {
-                    navigate({ to: '/about' })
-                    closeSidebarIfMobile()
-                  }}
-                >
-                  {t('Sign out')}
-                </Menu.Item>
+                {!isSmallScreen && (
+                  <>
+                    <Menu.Divider />
+                    <Menu.Item
+                      leftSection={
+                        isIconRail ? (
+                          <IconLayoutSidebarLeftExpand size={15} stroke={1.5} />
+                        ) : (
+                          <IconLayoutSidebarLeftCollapse size={15} stroke={1.5} />
+                        )
+                      }
+                      onClick={isIconRail ? handleExpandSidebar : handleCollapseSidebar}
+                    >
+                      {isIconRail ? t('Expand sidebar') : t('Collapse to icons')}
+                    </Menu.Item>
+                  </>
+                )}
+
+                {FORCE_ENABLE_DEV_PAGES && (
+                  <>
+                    <Menu.Divider />
+                    <Menu.Item
+                      leftSection={<IconCode size={15} stroke={1.5} />}
+                      onClick={() => {
+                        navigate({ to: '/dev' })
+                        closeSidebarIfMobile()
+                      }}
+                    >
+                      {t('Dev Tools')}
+                    </Menu.Item>
+                  </>
+                )}
               </Menu.Dropdown>
             </Menu>
           </div>

@@ -272,6 +272,12 @@ export async function updateSessionCache(sessionId: string, updater: Updater<Ses
       return { ...old, ...updater }
     }
   })
+  // Keep UpdateQueue memory aligned with stream/cache-only patches so a later
+  // insert/persist does not wipe fresher assistant content from React Query.
+  const patched = queryClient.getQueryData<Session>(QueryKeys.ChatSession(sessionId))
+  if (patched) {
+    sessionUpdateQueues[sessionId]?.syncState(patched)
+  }
 }
 
 export async function deleteSession(id: string) {

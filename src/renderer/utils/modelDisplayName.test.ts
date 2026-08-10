@@ -1,6 +1,32 @@
 import { describe, expect, it } from 'vitest'
 import type { ProviderInfo } from '@shared/types'
-import { getModelDisplayName } from './modelDisplayName'
+import { formatModelDisplayName, getModelDisplayName, isNonChatComposerModel } from './modelDisplayName'
+
+describe('formatModelDisplayName', () => {
+  it('prefers nickname', () => {
+    expect(formatModelDisplayName('grok-4.5', 'Grok 4.5')).toBe('Grok 4.5')
+  })
+
+  it('humanizes xAI-style ids', () => {
+    expect(formatModelDisplayName('grok-4.20-0309-non-reasoning')).toBe('Grok 4.20')
+    expect(formatModelDisplayName('grok-4.20-0309-reasoning')).toBe('Grok 4.20 Reasoning')
+    expect(formatModelDisplayName('grok-4.5')).toBe('Grok 4.5')
+    expect(formatModelDisplayName('grok-imagine-image')).toBe('Grok Imagine Image')
+  })
+})
+
+describe('isNonChatComposerModel', () => {
+  it('keeps chat models', () => {
+    expect(isNonChatComposerModel({ modelId: 'grok-4.5' })).toBe(false)
+    expect(isNonChatComposerModel({ modelId: 'grok-4.20-reasoning', type: 'chat' })).toBe(false)
+  })
+
+  it('excludes image and video models', () => {
+    expect(isNonChatComposerModel({ modelId: 'grok-imagine-image' })).toBe(true)
+    expect(isNonChatComposerModel({ modelId: 'grok-imagine-video-1.5' })).toBe(true)
+    expect(isNonChatComposerModel({ modelId: 'dall-e-3' })).toBe(true)
+  })
+})
 
 const provider = {
   id: 'gemini',
@@ -43,7 +69,7 @@ describe('getModelDisplayName', () => {
     ).toBe('Gemini 3.6 Flash Medium')
   })
 
-  it('keeps a distinct variant ID when it has no nickname', () => {
+  it('humanizes a distinct variant ID when it has no nickname', () => {
     const providerWithBareVariant = {
       id: 'gemini',
       name: 'Gemini',
@@ -55,10 +81,10 @@ describe('getModelDisplayName', () => {
     } as unknown as ProviderInfo
     expect(
       getModelDisplayName([providerWithBareVariant], { provider: 'gemini', modelId: 'gemini-3.6-flash-medium' })
-    ).toBe('gemini-3.6-flash-medium')
+    ).toBe('Gemini 3.6 Flash Medium')
   })
 
-  it('falls back to the model ID when no nickname is configured', () => {
-    expect(getModelDisplayName([], { provider: 'gemini', modelId: 'gemini-3.6-flash' })).toBe('gemini-3.6-flash')
+  it('humanizes the model ID when no nickname is configured', () => {
+    expect(getModelDisplayName([], { provider: 'gemini', modelId: 'gemini-3.6-flash' })).toBe('Gemini 3.6 Flash')
   })
 })

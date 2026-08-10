@@ -1,6 +1,6 @@
 import NiceModal from '@ebay/nice-modal-react'
 import { ActionIcon, Flex, Stack, Text } from '@mantine/core'
-import { ModelProviderEnum, type Session, type SessionThreadBrief } from '@shared/types'
+import type { Session, SessionThreadBrief } from '@shared/types'
 import {
   IconAlignRight,
   IconChevronLeft,
@@ -102,12 +102,10 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
     () => currentSession && getCurrentThreadHistoryHash(currentSession),
     [currentSession]
   )
+  // System prompts are config (Session options), not conversation turns.
+  // Never render them as bubbles — product threads only show user/assistant/tool.
   const currentMessageList = useMemo(() => {
-    const messages = getAllMessageList(currentSession)
-    if (currentSession.settings?.provider !== ModelProviderEnum.OpenClaw) {
-      return messages
-    }
-    return messages.filter((message) => message.role !== 'system')
+    return getAllMessageList(currentSession).filter((message) => message.role !== 'system')
   }, [currentSession])
 
   const latestSummaryMessageId = useMemo(() => {
@@ -192,9 +190,11 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
               )}
               data={currentMessageList}
               ref={virtuoso}
-              // Keep pinned to latest while user is at bottom; room orchestrator also
-              // forces scroll so multi-agent turns don't leave the viewport mid-list.
-              followOutput={(isAtBottom) => (isAtBottom ? 'smooth' : false)}
+              // Identity by message id so append/stream does not recycle the wrong row.
+              computeItemKey={(_index, msg) => msg.id}
+              // Keep pinned to latest while user is at bottom. Use 'auto' (not 'smooth'):
+              // smooth restarts every height change during streaming and feels jerky.
+              followOutput={(isAtBottom) => (isAtBottom ? 'auto' : false)}
               alignToBottom={alignToBottom}
               {...(sessionScrollPositionCache.has(currentSession.id) && !alignToBottom
                 ? {
@@ -205,7 +205,8 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
                 : {
                     initialTopMostItemIndex: Math.max(0, currentMessageList.length - 1),
                   })}
-              increaseViewportBy={{ top: 2000, bottom: 2000 }}
+              // Large overscan forces expensive Markdown layout offscreen during stream.
+              increaseViewportBy={{ top: 600, bottom: 800 }}
               itemContent={(index, msg) => {
                 const prevMsg = index > 0 ? currentMessageList[index - 1] : undefined
                 const nextMsg = currentMessageList[index + 1]

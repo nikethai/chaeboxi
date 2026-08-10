@@ -203,7 +203,7 @@ export const DesktopModelSelector = forwardRef<HTMLDivElement, DesktopModelSelec
       if (!provider.models?.length) return null
 
       return (
-        <div key={provider.id}>
+        <div key={provider.id} className="model-picker-group">
           <ProviderHeader
             provider={provider}
             modelCount={provider.models?.length || 0}
@@ -211,7 +211,7 @@ export const DesktopModelSelector = forwardRef<HTMLDivElement, DesktopModelSelec
             onClick={() => toggleProviderCollapse(provider.id)}
           />
           <Collapse in={!isCollapsed}>
-            <div className="model-picker-models pb-1">{options}</div>
+            <div className="model-picker-models pb-1 relative z-0">{options}</div>
           </Collapse>
         </div>
       )

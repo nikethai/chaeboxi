@@ -30,6 +30,41 @@ describe('auto skill routing', () => {
     expect(acts).toHaveLength(0)
   })
 
+  it('does not auto-activate a generic "help" skill from Help me…', () => {
+    const helpSkill = {
+      id: 'user:help',
+      name: 'help',
+      description: 'General help skill. Use when user needs help.',
+      instructions: 'Be helpful.',
+      enabled: true,
+      source: 'user' as const,
+    }
+    const acts = resolveSkillActivations({
+      skills: [...skills, helpSkill],
+      userText: 'Help me summarize this video: https://www.youtube.com/watch?v=abc',
+      autoSkills: true,
+    })
+    expect(acts.some((a) => a.name === 'help')).toBe(false)
+  })
+
+  it('still activates help when user tags $help', () => {
+    const helpSkill = {
+      id: 'user:help',
+      name: 'help',
+      description: 'General help skill.',
+      instructions: 'Be helpful.',
+      enabled: true,
+      source: 'user' as const,
+    }
+    const acts = resolveSkillActivations({
+      skills: [...skills, helpSkill],
+      explicitSkillIds: ['user:help'],
+      userText: 'Help me summarize this video',
+      autoSkills: true,
+    })
+    expect(acts.some((a) => a.name === 'help' && a.mode === 'explicit')).toBe(true)
+  })
+
   it('detects $ at start of empty draft', () => {
     expect(getActiveSkillDollarQuery('$')).toBe('')
     expect(getActiveSkillDollarQuery('')).toBe(null)

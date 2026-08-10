@@ -6,11 +6,29 @@ import { navigateToSettings } from '@/modals/Settings'
 import { fuzzyScoreAgent } from '@/packages/agents'
 import ComposerPickerPanel from './ComposerPickerPanel'
 
+/** Short product blurb — never dump the full system prompt. */
+export function agentPickerBlurb(agent: AgentDetail): string {
+  if (agent.demoQuestion?.trim()) {
+    return agent.demoQuestion.trim().replace(/\s+/g, ' ').slice(0, 90)
+  }
+  let p = (agent.prompt || '').trim().replace(/\s+/g, ' ')
+  if (!p) return ''
+  p = p
+    .replace(/^you are [^,.\n]{1,80}[,.]?\s*/i, '')
+    .replace(/^i want you to act as (an?|the)\s+[^,.\n]{1,80}[,.]?\s*/i, '')
+    .replace(/^please (acknowledge|respond)[^.!?\n]{0,120}[.!?]?\s*/i, '')
+  if (!p) return ''
+  if (p.length <= 72) return p
+  const cut = p.slice(0, 72)
+  const sp = cut.lastIndexOf(' ')
+  return `${sp > 36 ? cut.slice(0, sp) : cut}…`
+}
+
 export function filterAgents(agents: AgentDetail[], query: string) {
   const normalizedQuery = query.trim().toLowerCase()
   return agents
     .map((agent) => {
-      const haystack = [agent.name, agent.prompt?.slice(0, 120) || ''].join(' ')
+      const haystack = [agent.name, agentPickerBlurb(agent)].join(' ')
       return {
         agent,
         score: fuzzyScoreAgent(haystack, normalizedQuery),
@@ -61,30 +79,31 @@ function AgentPicker({
     <ComposerPickerPanel
       anchorRef={anchorRef}
       open
-      aria-label={t('Agents')}
+      aria-label={t('Assistants')}
       header={
-        <Text size="xs" c="chatbox-tertiary">
-          {t('Agents')} · @
+        <Text size="xs" fw={600} c="chatbox-secondary">
+          {t('Assistants')}
         </Text>
       }
       isEmpty={isEmpty}
       empty={
         catalogEmpty
           ? {
-              title: t('No agents yet'),
-              description: t('Create an agent to mention with @ in the composer.'),
+              title: t('No assistants yet'),
+              description: t('Create a persona with its own style and tools, then mention it with @.'),
               action: {
-                label: t('Create agent'),
+                label: t('Create assistant'),
                 onClick: () => navigateToSettings('/agents'),
               },
             }
           : {
-              title: t('No agents found'),
+              title: t('No match'),
             }
       }
     >
       {filtered.map((agent, index) => {
         const selected = index === highlightedIndex
+        const blurb = agentPickerBlurb(agent)
         return (
           <Box
             key={agent.id}
@@ -99,17 +118,17 @@ function AgentPicker({
               onSelect(agent)
             }}
           >
-            <div className="flex items-start gap-1">
-              <Text size="sm" className="mr-2 shrink-0">
+            <div className="flex items-start gap-2.5">
+              <Text size="sm" className="shrink-0 leading-none mt-0.5" aria-hidden>
                 {agent.emojiAvatar || '🤖'}
               </Text>
               <div className="min-w-0">
-                <Text size="sm" fw={500} className="truncate">
+                <Text size="sm" fw={600} className="truncate" c={selected ? 'chatbox-brand' : 'chatbox-primary'}>
                   {agent.name}
                 </Text>
-                {agent.prompt ? (
-                  <Text size="xs" c="chatbox-tertiary" className="truncate">
-                    {agent.prompt.slice(0, 80)}
+                {blurb ? (
+                  <Text size="xs" c="chatbox-tertiary" lineClamp={1} className="mt-0.5">
+                    {blurb}
                   </Text>
                 ) : null}
               </div>

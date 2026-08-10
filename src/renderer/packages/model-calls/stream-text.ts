@@ -210,6 +210,28 @@ function createToolDeniedResult(toolName: string, riskTier: ToolRiskTier) {
   }
 }
 
+/** Bound hung tool executes so generation cannot sit on "Using tools…" forever. */
+const TOOL_EXECUTE_TIMEOUT_MS = 90_000
+const TOOL_APPROVAL_TIMEOUT_MS = 120_000
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`))
+    }, ms)
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (err) => {
+        clearTimeout(timer)
+        reject(err)
+      }
+    )
+  })
+}
+
 function wrapMCPToolsWithApproval(sessionId: string | undefined, tools: ToolSet): ToolSet {
   if (!sessionId) {
     return tools
@@ -224,72 +246,81 @@ function wrapMCPToolsWithApproval(sessionId: string | undefined, tools: ToolSet)
         {
           ...definition,
           execute: async (args: unknown, context) => {
-            const existingApproval = getToolApproval(sessionId, toolName)
-            // Built-in read-only tools (web_search, read_video_url, …) are LOW and
-            // should not interrupt the user with an approval modal.
-            const canAutoApprove =
-              riskTier === ToolRiskTier.LOW ||
-              (existingApproval?.scope === 'session' &&
-                existingApproval.riskTier === riskTier &&
-                riskTier !== ToolRiskTier.HIGH)
+            const runExecute = async () => {
+              const existingApproval = getToolApproval(sessionId, toolName)
+              // Built-in read-only tools (web_search, read_video_url, …) are LOW and
+              // should not interrupt the user with an approval modal.
+              const canAutoApprove =
+                riskTier === ToolRiskTier.LOW ||
+                (existingApproval?.scope === 'session' &&
+                  existingApproval.riskTier === riskTier &&
+                  riskTier !== ToolRiskTier.HIGH)
 
-            if (canAutoApprove) {
+              if (canAutoApprove) {
+                toolApprovalStore.getState().addAuditEntry({
+                  sessionId,
+                  toolName,
+                  riskTier,
+                  scope: existingApproval?.scope || 'session',
+                  decision: 'auto-approve',
+                  timestamp: Date.now(),
+                  args,
+                })
+                return definition.execute?.(args, context)
+              }
+
+              // Approval modal can hang if UI never resolves — time-box to deny
+              const decision = (await withTimeout(
+                NiceModal.show('tool-approval', {
+                  toolName,
+                  description: definition?.description,
+                  riskTier,
+                  parameters: args,
+                }) as Promise<ToolApprovalModalResult | undefined>,
+                TOOL_APPROVAL_TIMEOUT_MS,
+                `Tool approval for ${toolName}`
+              ).catch(() => 'deny' as const)) as ToolApprovalModalResult | undefined
+
+              if (!decision || decision === 'deny') {
+                toolApprovalStore.getState().addAuditEntry({
+                  sessionId,
+                  toolName,
+                  riskTier,
+                  scope: 'none',
+                  decision: 'deny',
+                  timestamp: Date.now(),
+                  args,
+                })
+                return createToolDeniedResult(toolName, riskTier)
+              }
+
+              const approval = {
+                toolName,
+                riskTier,
+                scope: decision,
+                timestamp: Date.now(),
+              }
+              toolApprovalStore.getState().addApproval(sessionId, approval)
               toolApprovalStore.getState().addAuditEntry({
                 sessionId,
                 toolName,
                 riskTier,
-                scope: existingApproval?.scope || 'session',
-                decision: 'auto-approve',
-                timestamp: Date.now(),
+                scope: decision,
+                decision: 'allow',
+                timestamp: approval.timestamp,
                 args,
               })
-              return definition.execute?.(args, context)
-            }
 
-            const decision = (await NiceModal.show('tool-approval', {
-              toolName,
-              description: definition?.description,
-              riskTier,
-              parameters: args,
-            })) as ToolApprovalModalResult | undefined
-
-            if (!decision || decision === 'deny') {
-              toolApprovalStore.getState().addAuditEntry({
-                sessionId,
-                toolName,
-                riskTier,
-                scope: 'none',
-                decision: 'deny',
-                timestamp: Date.now(),
-                args,
-              })
-              return createToolDeniedResult(toolName, riskTier)
-            }
-
-            const approval = {
-              toolName,
-              riskTier,
-              scope: decision,
-              timestamp: Date.now(),
-            }
-            toolApprovalStore.getState().addApproval(sessionId, approval)
-            toolApprovalStore.getState().addAuditEntry({
-              sessionId,
-              toolName,
-              riskTier,
-              scope: decision,
-              decision: 'allow',
-              timestamp: approval.timestamp,
-              args,
-            })
-
-            try {
-              return await definition.execute?.(args, context)
-            } finally {
-              if (decision === 'once') {
-                toolApprovalStore.getState().removeApproval(sessionId, toolName)
+              try {
+                return await definition.execute?.(args, context)
+              } finally {
+                if (decision === 'once') {
+                  toolApprovalStore.getState().removeApproval(sessionId, toolName)
+                }
               }
             }
+
+            return withTimeout(runExecute(), TOOL_EXECUTE_TIMEOUT_MS, `Tool ${toolName}`)
           },
         },
       ]

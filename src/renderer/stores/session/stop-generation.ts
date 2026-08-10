@@ -1,0 +1,84 @@
+/**
+ * Stop in-flight generation for a session: abort stream + clear UI generating flag.
+ * Prefer registry cancel over Message.cancel (functions are lost after JSON persist).
+ */
+
+import type { Message, MessageContentParts } from '@shared/types'
+import * as chatStore from '../chatStore'
+import { cancelSessionGeneration, getActiveGenerationMessageId } from './generation-cancel'
+import { modifyMessage } from './messages'
+
+function markRunningToolsCancelled(parts: MessageContentParts | undefined): MessageContentParts | undefined {
+  if (!parts?.length) return parts
+  let changed = false
+  const next = parts.map((part) => {
+    if (part.type === 'tool-call' && part.state === 'call') {
+      changed = true
+      return {
+        ...part,
+        state: 'error' as const,
+        result: { message: 'Stopped by user', cancelled: true },
+      }
+    }
+    return part
+  })
+  return changed ? next : parts
+}
+
+/**
+ * Abort generation and mark the assistant message done.
+ * Returns true when a generating message was found / cancel was attempted.
+ */
+export async function stopSessionGeneration(
+  sessionId: string,
+  lastGeneratingMessage?: Message | null
+): Promise<boolean> {
+  const registryMsgId = getActiveGenerationMessageId(sessionId)
+  const hasLive = Boolean(lastGeneratingMessage?.generating) || Boolean(registryMsgId)
+  if (!hasLive) {
+    return false
+  }
+
+  // 1) Abort stream (registry first — survives cancel fn strip)
+  const aborted = cancelSessionGeneration(sessionId)
+  if (!aborted && typeof lastGeneratingMessage?.cancel === 'function') {
+    try {
+      lastGeneratingMessage.cancel()
+    } catch {
+      // ignore
+    }
+  }
+
+  // 2) Clear UI generating flag + stuck tool rows (never wipe contentParts)
+  if (lastGeneratingMessage?.generating) {
+    const contentParts = markRunningToolsCancelled(lastGeneratingMessage.contentParts)
+    await modifyMessage(
+      sessionId,
+      {
+        ...lastGeneratingMessage,
+        generating: false,
+        cancel: undefined,
+        status: [],
+        ...(contentParts ? { contentParts } : {}),
+      },
+      true
+    )
+    return true
+  }
+
+  const messageId = registryMsgId
+  if (messageId) {
+    await chatStore.updateMessage(sessionId, messageId, (m) => {
+      if (!m) return m as unknown as Message
+      return {
+        ...m,
+        generating: false,
+        cancel: undefined,
+        status: [],
+        contentParts: markRunningToolsCancelled(m.contentParts) ?? m.contentParts,
+      }
+    })
+  }
+
+  return true
+}

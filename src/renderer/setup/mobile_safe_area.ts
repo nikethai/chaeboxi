@@ -1,7 +1,7 @@
-// 这个库解决了移动端异形屏的显示安全区域的问题，比如iPhoneX，iPhone11等
-// 这个库引入后，将设置全局的css变量 --mobile-safe-area-inset-top, --mobile-safe-area-inset-bottom, --mobile-safe-area-inset-left, --mobile-safe-area-inset-right
-// 通过这些变量，可以在css中设置安全区域的padding，margin等，来规避异形屏的显示问题
-// 为了达到最好的效果，在 html 的 meta 标签中设置 viewport-fit=cover
+// (legacy comment)
+// ，css --mobile-safe-area-inset-top, --mobile-safe-area-inset-bottom, --mobile-safe-area-inset-left, --mobile-safe-area-inset-right
+// (legacy comment)
+// ， html meta viewport-fit=cover
 
 import { SafeArea } from 'capacitor-plugin-safe-area'
 import { Keyboard } from '@capacitor/keyboard'

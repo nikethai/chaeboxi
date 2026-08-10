@@ -33,7 +33,7 @@ import type {
 } from '../types'
 import type { ModelDependencies } from '../types/adapters'
 import { annotateTextWithGrounding, groundingMetadataToCitations } from '../utils/search'
-import { ApiError, ChatboxAIAPIError } from './errors'
+import { ApiError, ProviderAPIError } from './errors'
 import type { CallChatCompletionOptions, ModelInterface } from './types'
 
 const RETRY_CONFIG = {
@@ -61,7 +61,7 @@ function is5xxError(error: unknown): boolean {
   return false
 }
 
-// ai sdk CallSettings类型的子集
+// ai sdk CallSettings
 export interface CallSettings {
   temperature?: number
   topP?: number
@@ -133,18 +133,18 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     try {
       return await this._callChatCompletion(messages, options)
     } catch (e) {
-      if (e instanceof ChatboxAIAPIError) {
+      if (e instanceof ProviderAPIError) {
         throw e
       }
-      // 如果当前模型不支持图片输入，抛出对应的错误
+      // (legacy comment removed)
       if (
         e instanceof ApiError &&
         e.message.includes('Invalid content type. image_url is only supported by certain models.')
       ) {
-        throw ChatboxAIAPIError.fromCodeName('model_not_support_image', 'model_not_support_image_2')
+        throw ProviderAPIError.fromCodeName('model_not_support_image', 'model_not_support_image_2')
       }
 
-      // 添加请求信息到 Sentry
+      // (legacy comment)
       this.dependencies.sentry.withScope((scope) => {
         scope.setTag('provider_name', this.name)
         scope.setExtra('messages', JSON.stringify(messages))
@@ -173,7 +173,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     const result = await generateImage({
       model: imageModel,
       prompt: params.prompt,
-      // images 暂时不支持
+      // images
       n: params.num,
       abortSignal: signal,
     })
@@ -441,7 +441,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     if (error instanceof ApiError) {
       throw error
     }
-    if (error instanceof ChatboxAIAPIError) {
+    if (error instanceof ProviderAPIError) {
       throw error
     }
     throw new ApiError(`Error from ${this.name}${context}: ${error}`)

@@ -10,7 +10,7 @@ export const router = createRouter({
     const navigate = useNavigate()
 
     useEffect(() => {
-      navigate({ to: '/', replace: true }) // 重定向到首页
+      navigate({ to: '/', replace: true }) // (legacy)
     }, [navigate])
 
     return null

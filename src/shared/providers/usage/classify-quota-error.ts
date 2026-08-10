@@ -47,7 +47,7 @@ export function classifyQuotaError(input: {
   const text = [input.message, input.responseBody].filter(Boolean).join('\n')
   const lower = text.toLowerCase()
 
-  // ChatboxAI / shared error codes
+  // legacy provider / shared error codes
   if (input.errorCode === 10004) {
     return { kind: 'exhausted', confidence: 'high', detail: 'token_quota_exhausted' }
   }

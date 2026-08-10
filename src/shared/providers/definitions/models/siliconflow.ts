@@ -30,7 +30,7 @@ export default class SiliconFlow extends OpenAICompatible {
   }
 
   isSupportToolUse(scope?: ToolUseScope) {
-    // v3和r1模型的function能力较差，v3.1可以开启
+    // (legacy comment)
     if (
       scope &&
       ['web-browsing', 'read-file'].includes(scope) &&

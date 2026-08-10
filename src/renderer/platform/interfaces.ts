@@ -23,7 +23,7 @@ export interface Platform extends Storage {
 
   exporter: Exporter
 
-  // 系统相关
+  // (legacy comment removed)
 
   getVersion(): Promise<string>
   getPlatform(): Promise<string>
@@ -42,31 +42,31 @@ export interface Platform extends Storage {
   ensureProxyConfig(config: { proxy?: string }): Promise<void>
   relaunch(): Promise<void>
 
-  // 数据配置
+  // (legacy comment removed)
 
   getConfig(): Promise<Config>
   getSettings(): Promise<Settings>
 
-  // Blob 存储
+  // Blob
 
   getStoreBlob(key: string): Promise<string | null>
   setStoreBlob(key: string, value: string): Promise<void>
   delStoreBlob(key: string): Promise<void>
   listStoreBlobKeys(): Promise<string[]>
 
-  // 追踪
+  // (legacy comment removed)
 
   initTracking(): void
   trackingEvent(name: string, params: { [key: string]: string }): void
 
-  // 通知
+  // (legacy comment removed)
   shouldShowAboutDialogWhenStartUp(): Promise<boolean>
 
   appLog(level: string, message: string): Promise<void>
 
-  // 日志导出与管理
-  exportLogs(): Promise<string> // 返回日志内容
-  clearLogs(): Promise<void> // 清空日志
+  // (legacy comment removed)
+  exportLogs(): Promise<string> // (legacy)
+  clearLogs(): Promise<void> // (legacy)
 
   ensureAutoLaunch(enable: boolean): Promise<void>
 

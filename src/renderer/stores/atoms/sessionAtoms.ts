@@ -6,5 +6,5 @@ import type { Session } from '../../../shared/types'
 export const currentSessionIdAtom = atomWithStorage<string | null>('_currentSessionIdCachedAtom', null)
 
 // Related UI state
-export const sessionCleanDialogAtom = atom<Session | null>(null) // 清空会话的弹窗
-export const showThreadHistoryDrawerAtom = atom<boolean | string>(false) // 显示会话历史主题的抽屉
+export const sessionCleanDialogAtom = atom<Session | null>(null) // (legacy)
+export const showThreadHistoryDrawerAtom = atom<boolean | string>(false) // (legacy)

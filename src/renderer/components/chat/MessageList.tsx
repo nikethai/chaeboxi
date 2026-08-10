@@ -135,20 +135,20 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
     [setPrefillText]
   )
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 仅执行一次
+  // biome-ignore lint/correctness/useExhaustiveDependencies:
   useEffect(() => {
     setMessageScrolling(virtuoso)
-    const currentVirtuoso = virtuoso.current // 清理时 virtuoso.current 已经为 null
+    const currentVirtuoso = virtuoso.current // virtuoso.current null
     return () => {
       currentVirtuoso?.getState((state) => {
         if (state.ranges.length > 0) {
-          // useEffect 可能执行两次，这里根据 ranges 判断是否为第一次 useEffect 严格测试导致的执行
+          // (legacy comment)
           setScrollPosition(currentSession.id, state)
         }
       })
     }
   }, [])
-  // biome-ignore lint/correctness/useExhaustiveDependencies: 仅执行一次
+  // biome-ignore lint/correctness/useExhaustiveDependencies:
   useEffect(() => {
     setMessageListElement(messageListRef)
   }, [])
@@ -188,7 +188,7 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
               {...(sessionScrollPositionCache.has(currentSession.id) && !alignToBottom
                 ? {
                     restoreStateFrom: sessionScrollPositionCache.get(currentSession.id),
-                    // 需要额外设置 initialScrollTop，否则恢复位置后 scrollTop 为 0。这时如果用户没有滚动，那么下次保存时 scrollTop 将记为 0，导致下一次恢复时位置始终为顶部。
+                    // (legacy comment)
                     initialScrollTop: sessionScrollPositionCache.get(currentSession.id)?.scrollTop,
                   }
                 : {

@@ -1,4 +1,4 @@
-// stdio transport 只能在桌面端后端层使用，这里通过 IPC 代理该 transport
+// stdio transport ， IPC transport
 
 import type { StdioServerParameters } from '@modelcontextprotocol/sdk/client/stdio.js'
 import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js'

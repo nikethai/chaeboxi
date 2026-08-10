@@ -120,7 +120,7 @@ describe.concurrent('Model Provider Integration Tests', () => {
     switch (providerName) {
       case ModelProviderEnum.ChatboxAI: {
         const apiKey = process.env.CHATBOX_LICENSE_KEY
-        describe.runIf(apiKey).todo('Provider ChatboxAI', () => {
+        describe.runIf(apiKey).todo('Provider legacy-cloud (disabled)', () => {
           it('should have correct provider name', () => {
             expect(aiProviderNameHash[providerName]).toBe(aiProviderNameHash[providerName])
           })

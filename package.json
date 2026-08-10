@@ -1,13 +1,13 @@
 {
-  "name": "xyz.chatboxapp.ce",
-  "productName": "xyz.chatboxapp.ce",
+  "name": "chaeboxi",
+  "productName": "Chaeboxi",
   "version": "1.6.0",
   "engines": {
     "node": ">=20.0.0 <23.0.0",
     "pnpm": ">=10.0.0"
   },
   "private": true,
-  "description": "A desktop client for multiple cutting-edge AI models",
+  "description": "Chaeboxi — multi-platform AI copilot (GPLv3, BYOK multi-provider client)",
   "scripts": {
     "build": "pnpm tauri:build",
     "build:renderer": "vite build --config vite.renderer.config.ts",
@@ -51,13 +51,24 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/chatboxai/chatbox.git"
+    "url": "https://github.com/nikethai/chaeboxi.git"
   },
-  "keywords": [],
+  "homepage": "https://github.com/nikethai/chaeboxi",
+  "bugs": {
+    "url": "https://github.com/nikethai/chaeboxi/issues"
+  },
+  "keywords": [
+    "chaeboxi",
+    "ai",
+    "llm",
+    "tauri",
+    "desktop"
+  ],
   "author": {
-    "name": "bennhuang",
-    "email": "tohuangbin@gmail.com"
+    "name": "Chaeboxi Contributors",
+    "url": "https://github.com/nikethai/chaeboxi"
   },
+  "license": "GPL-3.0-only",
   "devDependencies": {
     "@ai-sdk/anthropic": "^3.0.6",
     "@ai-sdk/azure": "^3.0.4",

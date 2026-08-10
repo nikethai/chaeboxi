@@ -1,6 +1,6 @@
 /**
- * 跨平台 Sentry 适配器接口
- * 允许在不同环境中使用统一的错误上报 API
+ * (legacy comment)
+ * (legacy comment)
  */
 export interface SentryAdapter {
   captureException(error: any): void

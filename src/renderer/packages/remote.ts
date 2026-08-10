@@ -5,6 +5,7 @@ import { USE_BETA_API, USE_BETA_CHATBOX, USE_LOCAL_API, USE_LOCAL_CHATBOX } from
 import { ofetch } from 'ofetch'
 import { z } from 'zod'
 import * as cache from 'src/shared/utils/cache'
+import { CHATBOX_CLOUD_ENABLED, PRODUCT } from '../../shared/product'
 import * as chatboxaiAPI from '../../shared/request/chatboxai_pool'
 import { createAfetch, createAuthenticatedAfetch, uploadFile } from '../../shared/request/request'
 import {
@@ -19,6 +20,23 @@ import {
 import { getOS } from './navigator'
 
 const log = getLogger('remote-api')
+
+/** Chaeboxi hosted cloud off by default; local API env still works for dev. */
+function isChatboxCloudAllowed() {
+  return (
+    CHATBOX_CLOUD_ENABLED ||
+    Boolean(USE_LOCAL_API) ||
+    Boolean(USE_LOCAL_CHATBOX) ||
+    Boolean(USE_BETA_API) ||
+    Boolean(USE_BETA_CHATBOX)
+  )
+}
+
+function cloudDisabledError(feature: string): Error {
+  return new Error(
+    `${feature} requires Chaeboxi hosted services, which are disabled in ${PRODUCT.name}. Use your own provider API keys.`,
+  )
+}
 
 let _afetch: ReturnType<typeof createAfetch> | null = null
 let afetchPromise: Promise<ReturnType<typeof createAfetch>> | null = null
@@ -46,7 +64,7 @@ async function getAfetch() {
   return _afetch
 }
 
-// ========== Authenticated Afetch (带 token 自动刷新) ==========
+// ========== Authenticated Afetch (with automatic token refresh) ==========
 
 let _authenticatedAfetch: ReturnType<typeof createAuthenticatedAfetch> | null = null
 let authenticatedAfetchPromise: Promise<ReturnType<typeof createAuthenticatedAfetch>> | null = null
@@ -88,25 +106,28 @@ async function getAuthenticatedAfetch() {
   return _authenticatedAfetch
 }
 
-// ========== API ORIGIN 根据可用性维护 ==========
+// ========== API origin maintained by availability ==========
 
 // const RELEASE_ORIGIN = 'https://releases.chatboxai.app'
 function getAPIOrigin() {
   if (USE_LOCAL_API) {
     return 'http://localhost:8002'
-  } else {
-    return chatboxaiAPI.getChatboxAPIOrigin()
   }
+  return chatboxaiAPI.getChatboxAPIOrigin()
 }
 
 export function getChatboxOrigin() {
   if (USE_LOCAL_CHATBOX) {
     return 'http://localhost:3002'
-  } else if (USE_BETA_CHATBOX) {
+  }
+  if (USE_BETA_CHATBOX) {
     return 'https://beta.chatboxai.app'
-  } else {
+  }
+  // Site origin only when cloud is explicitly enabled; otherwise product homepage.
+  if (CHATBOX_CLOUD_ENABLED) {
     return 'https://chatboxai.app'
   }
+  return PRODUCT.homepage
 }
 
 const getChatboxHeaders = async () => {
@@ -118,9 +139,13 @@ const getChatboxHeaders = async () => {
   }
 }
 
-// ========== 各个接口方法 ==========
+// ========== API methods ==========
 
 export async function checkNeedUpdate(version: string, os: string, config: Config, settings: Settings) {
+  if (!isChatboxCloudAllowed()) {
+    // Chaeboxi: no Chaeboxi update probe; use GitHub Releases via About.
+    return false
+  }
   type Response = {
     need_update?: boolean
   }
@@ -160,6 +185,9 @@ export async function checkNeedUpdate(version: string, os: string, config: Confi
 // }
 
 export async function listCopilots(lang: string) {
+  if (!isChatboxCloudAllowed()) {
+    return [] as CopilotDetail[]
+  }
   type Response = {
     data: CopilotDetail[]
   }
@@ -172,6 +200,9 @@ export async function listCopilots(lang: string) {
 }
 
 export async function recordCopilotShare(detail: CopilotDetail) {
+  if (!isChatboxCloudAllowed()) {
+    return
+  }
   await ofetch(`${getAPIOrigin()}/api/copilots/share-record`, {
     method: 'POST',
     body: {
@@ -181,6 +212,9 @@ export async function recordCopilotShare(detail: CopilotDetail) {
 }
 
 export async function getPremiumPrice() {
+  if (!isChatboxCloudAllowed()) {
+    throw cloudDisabledError('Premium pricing')
+  }
   type Response = {
     data: {
       price: number
@@ -195,6 +229,9 @@ export async function getPremiumPrice() {
 }
 
 export async function getRemoteConfig(config: keyof RemoteConfig) {
+  if (!isChatboxCloudAllowed()) {
+    return {} as Pick<RemoteConfig, typeof config>
+  }
   type Response = {
     data: Pick<RemoteConfig, typeof config>
   }
@@ -211,6 +248,9 @@ export interface DialogConfig {
 }
 
 export async function getDialogConfig(params: { uuid: string; language: string; version: string }) {
+  if (!isChatboxCloudAllowed()) {
+    return null
+  }
   type Response = {
     data: null | DialogConfig
   }
@@ -224,6 +264,9 @@ export async function getDialogConfig(params: { uuid: string; language: string; 
 }
 
 export async function getLicenseDetail(params: { licenseKey: string }) {
+  if (!isChatboxCloudAllowed()) {
+    return null
+  }
   type Response = {
     data: ChatboxAILicenseDetail | null
   }
@@ -250,11 +293,14 @@ export interface LicenseDetailResponse {
 }
 
 export async function getLicenseDetailRealtime(params: { licenseKey: string }): Promise<LicenseDetailResponse> {
+  if (!isChatboxCloudAllowed()) {
+    return { data: null }
+  }
   type Response = {
     data: ChatboxAILicenseDetail | null
     error?: LicenseDetailError
   }
-  // 用于捕获错误响应体
+  // Capture error response body
   let capturedError: LicenseDetailError | undefined
   try {
     const res = await ofetch<Response>(`${getAPIOrigin()}/api/license/detail/realtime`, {
@@ -264,7 +310,7 @@ export async function getLicenseDetailRealtime(params: { licenseKey: string }): 
         ...(await getChatboxHeaders()),
       },
       onResponseError({ response }) {
-        // 在错误响应时捕获 error 对象
+        // Capture error object on error responses
         const body = response._data as { error?: LicenseDetailError } | undefined
         if (body?.error) {
           capturedError = body.error
@@ -273,16 +319,19 @@ export async function getLicenseDetailRealtime(params: { licenseKey: string }): 
     })
     return { data: res.data || null, error: res.error }
   } catch (e: any) {
-    // 如果捕获到了错误响应体，返回它
+    // (legacy comment removed)
     if (capturedError) {
       return { data: null, error: capturedError }
     }
-    // 重新抛出原始错误
+    // Re-throw original error
     throw e
   }
 }
 
 export async function generateUploadUrl(params: { licenseKey: string; filename: string }) {
+  if (!isChatboxCloudAllowed()) {
+    throw cloudDisabledError('File upload')
+  }
   type Response = {
     data: {
       url: string
@@ -313,6 +362,9 @@ export async function createUserFile<T extends boolean>(params: {
   filetype: string
   returnContent: T
 }) {
+  if (!isChatboxCloudAllowed()) {
+    throw cloudDisabledError('File create')
+  }
   type Response = {
     data: {
       uuid: string
@@ -359,6 +411,9 @@ export async function uploadAndCreateUserFile(licenseKey: string, file: File) {
 }
 
 export async function parseUserLinkPro(params: { licenseKey: string; url: string }) {
+  if (!isChatboxCloudAllowed()) {
+    throw cloudDisabledError('Link parsing (pro)')
+  }
   type Response = {
     data: {
       uuid: string
@@ -399,6 +454,9 @@ export async function parseUserLinkPro(params: { licenseKey: string; url: string
 }
 
 export async function parseUserLinkFree(params: { url: string }) {
+  if (!isChatboxCloudAllowed()) {
+    throw cloudDisabledError('Link parsing')
+  }
   type Response = {
     title: string
     text: string
@@ -424,6 +482,9 @@ export async function parseUserLinkFree(params: { url: string }) {
 }
 
 export async function webBrowsing(params: { licenseKey: string; query: string }) {
+  if (!isChatboxCloudAllowed()) {
+    throw cloudDisabledError('Web browsing tool')
+  }
   type Response = {
     data: {
       uuid?: string
@@ -457,6 +518,9 @@ export async function webBrowsing(params: { licenseKey: string; query: string })
 }
 
 export async function activateLicense(params: { licenseKey: string; instanceName: string }) {
+  if (!isChatboxCloudAllowed()) {
+    throw cloudDisabledError('License activation')
+  }
   type Response = {
     data: {
       valid: boolean
@@ -485,6 +549,9 @@ export async function activateLicense(params: { licenseKey: string; instanceName
 }
 
 export async function deactivateLicense(params: { licenseKey: string; instanceId: string }) {
+  if (!isChatboxCloudAllowed()) {
+    return
+  }
   const afetch = await getAfetch()
   await afetch(
     `${getAPIOrigin()}/api/license/deactivate`,
@@ -503,6 +570,9 @@ export async function deactivateLicense(params: { licenseKey: string; instanceId
 }
 
 export async function validateLicense(params: { licenseKey: string; instanceId: string }) {
+  if (!isChatboxCloudAllowed()) {
+    return { valid: false }
+  }
   type Response = {
     data: {
       valid: boolean
@@ -547,6 +617,9 @@ const ModelManifestResponseSchema = z.object({
 })
 
 export async function getModelManifest(params: { aiProvider: ModelProvider; licenseKey?: string; language?: string }) {
+  if (!isChatboxCloudAllowed()) {
+    throw cloudDisabledError('Model manifest')
+  }
   const afetch = await getAfetch()
   const res = await afetch(
     `${getAPIOrigin()}/api/model_manifest`,
@@ -576,6 +649,10 @@ export async function getModelManifest(params: { aiProvider: ModelProvider; lice
 }
 
 export async function reportContent(params: { id: string; type: string; details: string }) {
+  if (!isChatboxCloudAllowed()) {
+    log.info('reportContent skipped (Chaeboxi cloud disabled)', params.id)
+    return
+  }
   const afetch = await getAfetch()
   await afetch(`${getAPIOrigin()}/api/report_content`, {
     method: 'POST',
@@ -593,6 +670,9 @@ const ProviderInfoResponseSchema = z.object({
 })
 
 export async function getProviderModelsInfo(params: { modelIds: string[] }) {
+  if (!isChatboxCloudAllowed()) {
+    return {} as Record<string, z.infer<typeof ProviderModelInfoSchema> | null>
+  }
   const afetch = await getAfetch()
   const res = await afetch(
     `${getAPIOrigin()}/api/provider_models_info`,
@@ -614,6 +694,9 @@ export async function getProviderModelsInfo(params: { modelIds: string[] }) {
 }
 
 export async function requestLoginTicketId() {
+  if (!isChatboxCloudAllowed()) {
+    throw cloudDisabledError('Chaeboxi account login')
+  }
   type Response = {
     data: {
       ticket_id: string
@@ -628,13 +711,12 @@ export async function requestLoginTicketId() {
     const os = getOS()
     deviceType = os
   } else {
-    // web 或其他
+    // web other
     deviceType = platform.type
   }
   const appVersion = await platform.getVersion()
   const deviceName = await platform.getDeviceName()
 
-  console.log('getChatboxOrigin()', getChatboxOrigin())
   const res = await afetch(
     `${getChatboxOrigin()}/api/auth/request_login_ticket`,
     {
@@ -659,6 +741,9 @@ export async function requestLoginTicketId() {
 }
 
 export async function checkLoginStatus(ticketId: string) {
+  if (!isChatboxCloudAllowed()) {
+    return { status: 'rejected' as const, accessToken: null, refreshToken: null }
+  }
   type Response = {
     data: {
       status?: 'success' | 'rejected' | 'pending'
@@ -703,6 +788,9 @@ export async function checkLoginStatus(ticketId: string) {
 }
 
 export async function refreshAccessToken(params: { refreshToken: string }) {
+  if (!isChatboxCloudAllowed()) {
+    throw cloudDisabledError('Token refresh')
+  }
   type Response = {
     data: {
       result: string
@@ -744,6 +832,9 @@ export async function refreshAccessToken(params: { refreshToken: string }) {
 }
 
 export async function getUserProfile() {
+  if (!isChatboxCloudAllowed()) {
+    throw cloudDisabledError('User profile')
+  }
   type Response = {
     data: {
       email: string
@@ -794,6 +885,9 @@ export interface UserLicense {
 }
 
 export async function listLicensesByUser(): Promise<UserLicense[]> {
+  if (!isChatboxCloudAllowed()) {
+    return []
+  }
   type Response = {
     data: UserLicense[]
   }

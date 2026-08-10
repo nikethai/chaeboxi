@@ -1,6 +1,6 @@
 import NiceModal, { useModal } from '@ebay/nice-modal-react'
 import { Alert, Stack, Text } from '@mantine/core'
-import { ChatboxAIAPIError } from '@shared/models/errors'
+import { ProviderAPIError } from '@shared/models/errors'
 import { IconAlertCircle } from '@tabler/icons-react'
 import { Trans, useTranslation } from 'react-i18next'
 import { AdaptiveModal } from '@/components/common/AdaptiveModal'
@@ -21,13 +21,13 @@ const FileParseError = NiceModal.create(({ errorCode, fileName }: FileParseError
     modal.hide()
   }
 
-  // 根据错误码获取错误详情
-  const errorDetail = ChatboxAIAPIError.codeNameMap[errorCode]
+  // (legacy comment removed)
+  const errorDetail = ProviderAPIError.codeNameMap[errorCode]
 
-  // 错误提示内容
+  // (legacy comment removed)
   const renderErrorTips = () => {
     if (!errorDetail) {
-      // 未知错误
+      // (legacy comment removed)
       return <Text>{t('Failed to parse file. Please try again or use a different file format.')}</Text>
     }
 

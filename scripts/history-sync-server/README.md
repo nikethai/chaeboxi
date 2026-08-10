@@ -1,4 +1,4 @@
-# Chatbox History Sync Server
+# Chaeboxi History Sync Server
 
 Small self-hosted sync service for cross-machine chat history sync.
 
@@ -115,7 +115,7 @@ curl \
   http://127.0.0.1:8788/api/history-sync
 ```
 
-## Chatbox app settings
+## Chaeboxi app settings
 
 In **Settings -> General -> Self-hosted History Sync**:
 

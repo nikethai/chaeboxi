@@ -166,7 +166,7 @@ export class FileConversationTestContext {
 // ============ 测试运行器 ============
 
 export interface TestRunnerOptions {
-  /** License key for ChatboxAI */
+  /** License key for disabled legacy cloud provider */
   licenseKey: string
   /** 输出目录 */
   outputDir: string
@@ -453,7 +453,7 @@ export class FileConversationTestRunner {
    */
   private buildSessionSettings(overrides?: Partial<SessionSettings>): SessionSettings {
     return {
-      provider: 'ChatboxAI',
+      provider: 'chatbox-ai',
       modelId: 'gpt-4o-mini',
       temperature: 0.7,
       topP: 1,

@@ -8,7 +8,7 @@ import { normalizeAzureEndpoint } from '../../../utils/llm_utils'
 interface Options {
   azureEndpoint: string
   model: ProviderModelInfo
-  azureDalleDeploymentName: string // dall-e-3 的部署名称
+  azureDalleDeploymentName: string // DALL-E-3 deployment name
   azureApikey: string
   azureApiVersion: string
 
@@ -18,7 +18,7 @@ interface Options {
   maxOutputTokens?: number
 
   dalleStyle: 'vivid' | 'natural'
-  imageGenerateNum: number // 生成图片的数量
+  imageGenerateNum: number // (legacy)
 
   injectDefaultMetadata: boolean
   stream?: boolean

@@ -136,8 +136,8 @@ export default class DesktopPlatform implements Platform {
   }
 
   public async setStoreValue(key: string, value: any) {
-    // 为什么序列化成 JSON？
-    // 因为 IndexedDB 作为底层驱动时，可以直接存储对象，但是如果对象中包含函数或引用，将会直接报错
+    // (legacy comment)
+    // (legacy comment)
     let valueJson: string
     try {
       valueJson = JSON.stringify(value)
@@ -225,7 +225,7 @@ export default class DesktopPlatform implements Platform {
   public initTracking(): void {
     setTimeout(() => {
       this.trackingEvent('user_engagement', {})
-    }, 4000) // 怀疑应用初始化后需要一段时间才能正常工作
+    }, 4000) // (legacy)
   }
   public trackingEvent(name: string, params: { [key: string]: string }) {
     const dataJson = JSON.stringify({ name, params })
@@ -257,7 +257,7 @@ export default class DesktopPlatform implements Platform {
   async parseFileLocally(file: File): Promise<{ key?: string; isSupported: boolean }> {
     let result: { text: string; isSupported: boolean }
     if (!file.path) {
-      // 复制长文本粘贴的文件是没有 path 的
+      // (legacy comment)
       result = await parseTextFileLocally(file)
     } else {
       const resultJSON = await this.ipc.invoke('parseFileLocally', JSON.stringify({ filePath: file.path }))

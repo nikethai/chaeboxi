@@ -49,7 +49,8 @@ describe('getTokenizerType', () => {
 })
 
 describe('estimateDeepSeekTokens', () => {
-  it('estimates Chinese characters at ~0.6 tokens each', () => {
+  it('estimates CJK characters at ~0.6 tokens each', () => {
+    // CJK sample for tokenizer density (not product UI copy)
     const text = '你好世界'
     const tokens = estimateDeepSeekTokens(text)
     expect(tokens).toBe(3)
@@ -83,7 +84,7 @@ describe('estimateDeepSeekTokens', () => {
   })
 
   it('handles mixed content', () => {
-    const text = 'Hello 你好 123'
+    const text = 'Hello world 123'
     const tokens = estimateDeepSeekTokens(text)
     expect(tokens).toBeGreaterThan(0)
   })
@@ -116,7 +117,7 @@ describe('estimateTokens', () => {
     })
 
     it('estimates tokens for Chinese text', () => {
-      const text = '你好世界'
+      const text = 'Hello world'
       const tokens = estimateTokens(text)
       expect(tokens).toBeGreaterThan(0)
       expect(tokens).toBeLessThan(20)
@@ -153,7 +154,7 @@ describe('estimateTokens', () => {
       expect(tokensDeepSeek).toBeGreaterThan(0)
     })
 
-    it('handles Chinese text with DeepSeek tokenizer', () => {
+    it('handles CJK text with DeepSeek tokenizer', () => {
       const text = '你好世界'
       const tokens = estimateTokens(text, deepSeekModel)
       expect(tokens).toBe(3)
@@ -181,7 +182,7 @@ describe('estimateTokens', () => {
     })
 
     it('uses DeepSeek tokenizer for DeepSeek models', () => {
-      const text = '你好世界'
+      const text = 'Hello world'
       const tokensDeepSeek = estimateTokens(text, deepSeekModel)
       const tokensDefault = estimateTokens(text)
       expect(tokensDeepSeek).not.toBe(tokensDefault)

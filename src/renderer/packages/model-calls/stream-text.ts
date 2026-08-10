@@ -1,7 +1,7 @@
 import { google } from '@ai-sdk/google'
 import NiceModal from '@ebay/nice-modal-react'
 import { getModel } from '@shared/models'
-import { ChatboxAIAPIError, OCRError } from '@shared/models/errors'
+import { ProviderAPIError, OCRError } from '@shared/models/errors'
 import type { ModelDependencies } from '@shared/types/adapters'
 import { ToolRiskTier } from '@shared/types/mcp'
 import { sequenceMessages } from '@shared/utils/message'
@@ -111,7 +111,7 @@ function withSearchMetadata(result: StreamTextResult): StreamTextResult {
 }
 
 /**
- * 处理搜索结果并返回模型响应的通用函数
+ * (legacy comment removed)
  */
 async function handleSearchResult(
   result: { query: string; searchResults: any[]; type?: 'knowledge_base' | 'web' | 'none' },
@@ -183,12 +183,12 @@ async function ocrMessages(messages: Message[], dependencies: ModelDependencies)
 
   if (!hasUserOcrModel) {
     // OCR now only uses user-configured models in this build.
-    throw ChatboxAIAPIError.fromCodeName('model_not_support_image_2', 'model_not_support_image_2')
+    throw ProviderAPIError.fromCodeName('model_not_support_image_2', 'model_not_support_image_2')
   }
 
   const ocrModelSetting = settings.ocrModel
   if (!ocrModelSetting) {
-    throw ChatboxAIAPIError.fromCodeName('model_not_support_image_2', 'model_not_support_image_2')
+    throw ProviderAPIError.fromCodeName('model_not_support_image_2', 'model_not_support_image_2')
   }
   const ocrProviderName = ocrModelSetting.provider
   try {
@@ -331,7 +331,7 @@ function filterToolsByAccess(tools: ToolSet, toolAccess?: CopilotToolAccess): To
 }
 
 /**
- * 这里是供UI层调用，集中处理了模型的联网搜索、工具调用、系统消息等逻辑
+ * (legacy comment removed)
  */
 export async function streamText(
   model: ModelInterface,
@@ -424,7 +424,7 @@ export async function streamText(
 
   // 1. inject system prompt for tool use
   let toolSetInstructions = ''
-  // 预加载知识库工具集（异步获取文件列表）
+  // (legacy comment removed)
   let kbToolSet = null
   if (knowledgeBase) {
     try {
@@ -567,7 +567,7 @@ Do not open with repeated web searches when personal memory may apply.
   params.messages = injectModelSystemPrompt(
     model.modelId,
     params.messages,
-    // 在系统提示中添加知识库名称，方便模型理解
+    // (legacy comment removed)
     toolSetInstructions,
     model.isSupportSystemMessage() ? 'system' : 'user',
     {
@@ -585,7 +585,7 @@ Do not open with repeated web searches when personal memory may apply.
   /** Prefix parts shown before model stream (info + host memory_lookup tool card) */
   const prefixParts: MessageContentParts = []
   try {
-    params.onResultChangeWithCancel({ cancel }) // 这里先传递 cancel 方法
+    params.onResultChangeWithCancel({ cancel }) // cancel
     const onResultChange: OnResultChange = (data) => {
       if (data.contentParts) {
         result = { ...result, ...data, contentParts: [...prefixParts, ...data.contentParts] }
@@ -678,7 +678,7 @@ Do not open with repeated web searches when personal memory may apply.
 
     // 3. handle model not support tool use scenarios
     if (kbNotSupported || webNotSupported) {
-      // 当两个功能都启用且都不支持工具调用时，使用组合搜索
+      // (legacy comment removed)
       if (kbNotSupported && webNotSupported) {
         // infoParts.push({
         //   type: 'info',
@@ -709,7 +709,7 @@ Do not open with repeated web searches when personal memory may apply.
           dependencies
         )
       }
-      // 只有知识库不支持工具调用
+      // (legacy comment removed)
       else if (kbNotSupported) {
         // infoParts.push({
         //   type: 'info',
@@ -732,7 +732,7 @@ Do not open with repeated web searches when personal memory may apply.
           dependencies
         )
       }
-      // 只有网络搜索不支持工具调用
+      // (legacy comment removed)
       else if (webNotSupported) {
         // infoParts.push({
         //   type: 'info',

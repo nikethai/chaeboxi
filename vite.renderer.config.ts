@@ -103,11 +103,12 @@ function injectBaseTag(): Plugin {
   }
 }
 
+/** Plausible domain rewrite disabled — Chaeboxi ships without third-party analytics until owned accounts exist. */
 function replacePlausibleDomain(): Plugin {
   return {
     name: 'replace-plausible-domain',
     transformIndexHtml(html) {
-      return html.replace('data-domain="app.chatboxai.app"', 'data-domain="web.chatboxai.app"')
+      return html
     },
   }
 }
@@ -161,12 +162,13 @@ export default defineConfig(({ mode }) => {
       dvhToVh(),
       isWeb ? injectBaseTag() : undefined,
       isWeb ? replacePlausibleDomain() : undefined,
-      process.env.SENTRY_AUTH_TOKEN
+      // Telemetry disabled until Chaeboxi-owned Sentry project exists (require both token + explicit opt-in).
+      process.env.SENTRY_AUTH_TOKEN && process.env.CHAEBOXI_SENTRY_ENABLED === '1'
         ? sentryVitePlugin({
             authToken: process.env.SENTRY_AUTH_TOKEN,
-            org: 'sentry',
-            project: 'chatbox',
-            url: 'https://sentry.midway.run/',
+            org: process.env.SENTRY_ORG || 'sentry',
+            project: process.env.SENTRY_PROJECT || 'chaeboxi',
+            url: process.env.SENTRY_URL || 'https://sentry.io/',
             release: {
               name: inferredRelease,
               ...(inferredDist ? { dist: inferredDist } : {}),

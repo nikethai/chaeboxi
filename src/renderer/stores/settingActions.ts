@@ -14,7 +14,7 @@ export function needEditSetting() {
     if (keys.filter((key) => hasProviderCredentials(providers[key])).length > 0) {
       return false
     }
-    // Ollama / LMStudio/ custom provider 配置了至少一个模型
+    // Ollama / LMStudio/ custom provider
     if (
       keys.filter(
         (key) =>

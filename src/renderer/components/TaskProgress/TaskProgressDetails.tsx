@@ -51,13 +51,15 @@ export default function TaskProgressDetails({
   const { t } = useTranslation()
   const activeTasks = useMemo(() => tasks.filter((task) => task.status !== 'done'), [tasks])
   const completedTasks = useMemo(() => tasks.filter((task) => task.status === 'done'), [tasks])
-  const collapseDoneGroup = completedTasks.length > 3
+  // Collapse completed sooner — long Done walls are hard to scan
+  const collapseDoneGroup = completedTasks.length > 2
+  const allComplete = tasks.length > 0 && activeTasks.length === 0
 
   return (
     <Stack gap="xs" p="sm" className={`todo-dock-body ${mobileSheet ? 'is-mobile-sheet' : ''}`}>
       <Progress
         value={overallProgress}
-        color={failedCount > 0 ? 'orange' : 'chatbox-brand'}
+        color={failedCount > 0 ? 'orange' : allComplete ? 'teal' : 'chatbox-brand'}
         size="sm"
         radius="sm"
         animated={inProgressCount > 0}
@@ -67,6 +69,12 @@ export default function TaskProgressDetails({
         <Button size="xs" variant="light" onClick={onContinue}>
           {t('Continue remaining work')}
         </Button>
+      ) : null}
+
+      {allComplete && !showCompleted && collapseDoneGroup ? (
+        <button type="button" className="todo-dock-completed-toggle is-summary" onClick={() => onShowCompletedChange(true)}>
+          {t('All done · {{count}} tasks', { count: completedTasks.length })}
+        </button>
       ) : null}
 
       <div className="todo-dock-list">
@@ -90,31 +98,30 @@ export default function TaskProgressDetails({
                   {task.progress}%
                 </Text>
               ) : null}
-              <Badge size="xs" variant="dot" color={config.color}>
-                {t(config.label)}
-              </Badge>
+              {task.status !== 'pending' ? (
+                <Badge size="xs" variant="dot" color={config.color}>
+                  {t(config.label)}
+                </Badge>
+              ) : null}
             </Group>
           )
         })}
 
-        {completedTasks.length > 0 && collapseDoneGroup && !showCompleted ? (
+        {completedTasks.length > 0 && collapseDoneGroup && !showCompleted && !allComplete ? (
           <button type="button" className="todo-dock-completed-toggle" onClick={() => onShowCompletedChange(true)}>
-            {t('Completed ({{count}})', { count: completedTasks.length })}
+            {t('Show {{count}} completed', { count: completedTasks.length })}
           </button>
         ) : null}
 
         {(showCompleted || !collapseDoneGroup) &&
           completedTasks.map((task) => (
-            <Group key={task.id} gap="xs" wrap="nowrap" className="todo-dock-row">
+            <Group key={task.id} gap="xs" wrap="nowrap" className="todo-dock-row is-complete">
               <StatusIcon status={task.status} />
               <Tooltip label={task.title} multiline maw={300} openDelay={500}>
-                <Text size="xs" lineClamp={1} className="flex-1" c="dimmed" td="line-through">
+                <Text size="xs" lineClamp={1} className="flex-1 todo-dock-title-done">
                   {task.title}
                 </Text>
               </Tooltip>
-              <Badge size="xs" variant="dot" color="green">
-                {t('Done')}
-              </Badge>
             </Group>
           ))}
 

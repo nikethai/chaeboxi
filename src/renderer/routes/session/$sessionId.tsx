@@ -176,10 +176,9 @@ function RouteComponent() {
     if (!currentSession) {
       return false
     }
-    if (lastGeneratingMessage?.generating) {
-      lastGeneratingMessage?.cancel?.()
-      void modifyMessage(currentSession.id, { ...lastGeneratingMessage, generating: false }, true)
-    }
+    void import('@/stores/session/stop-generation').then(({ stopSessionGeneration }) =>
+      stopSessionGeneration(currentSession.id, lastGeneratingMessage)
+    )
     return true
   }, [currentSession, lastGeneratingMessage])
 

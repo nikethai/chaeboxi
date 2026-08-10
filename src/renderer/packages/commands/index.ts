@@ -26,3 +26,10 @@ export {
   getActiveCommandSlashQuery,
   stripCommandSlashTokens,
 } from './slash-tokens'
+export {
+  filterSystemCommands,
+  matchSystemSlashCommand,
+  SYSTEM_COMMANDS,
+  type SystemCommand,
+  type SystemCommandId,
+} from './system-commands'

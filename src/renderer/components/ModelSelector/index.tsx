@@ -4,6 +4,7 @@ import { useRouterState } from '@tanstack/react-router'
 import { forwardRef, type PropsWithChildren, useMemo, useState } from 'react'
 import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { formatModelDisplayName, isNonChatComposerModel } from '@/utils/modelDisplayName'
 import { DesktopModelSelector } from './DesktopModelSelector'
 import { MobileModelSelector } from './MobileModelSelector'
 
@@ -45,16 +46,23 @@ export const ModelSelector = forwardRef<HTMLDivElement, ModelSelectorProps>(
     const [search, setSearch] = useState('')
 
     const filteredProviders = useMemo(() => {
+      const q = search.toLowerCase().trim()
       const filtered = providers.map((provider) => {
-        const models = provider.models?.filter(
-          (model) =>
-            (!model.type || model.type === 'chat') &&
-            (provider.id.toLowerCase().includes(search.toLowerCase()) ||
-              provider.name.toLowerCase().includes(search.toLowerCase()) ||
-              model.nickname?.toLowerCase().includes(search.toLowerCase()) ||
-              model.modelId?.toLowerCase().includes(search.toLowerCase())) &&
-            (!modelFilter || modelFilter(model))
-        )
+        const models = provider.models?.filter((model) => {
+          if (model.type && model.type !== 'chat') return false
+          // Chat picker only — keep image/video/paint out of the main model list
+          if (!modelFilter && isNonChatComposerModel(model)) return false
+          if (modelFilter && !modelFilter(model)) return false
+          if (!q) return true
+          const label = formatModelDisplayName(model.modelId, model.nickname).toLowerCase()
+          return (
+            provider.id.toLowerCase().includes(q) ||
+            provider.name.toLowerCase().includes(q) ||
+            label.includes(q) ||
+            model.nickname?.toLowerCase().includes(q) ||
+            model.modelId?.toLowerCase().includes(q)
+          )
+        })
         return {
           ...provider,
           models,

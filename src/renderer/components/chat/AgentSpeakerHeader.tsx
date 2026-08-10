@@ -2,10 +2,11 @@
  * Speaker chrome for agent-attributed assistant messages: avatar + name (+ role badge).
  */
 
-import { Avatar, Flex, Loader, Text } from '@mantine/core'
+import { Avatar, Flex, Text } from '@mantine/core'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { agentAccentColor, resolveAgentMeta } from '@/packages/agents'
+import { PendingDots } from './AssistantPending'
 
 export interface AgentSpeakerHeaderProps {
   agentId?: string
@@ -113,7 +114,7 @@ function AgentSpeakerHeader({
               {badge}
             </Text>
           ) : null}
-          {generating ? <Loader size={12} classNames={{ root: "after:content-[''] after:border-[2px]" }} /> : null}
+          {generating ? <PendingDots className="assistant-pending-dots--sm ml-0.5" /> : null}
         </div>
       </Flex>
     </div>

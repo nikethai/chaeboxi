@@ -22,12 +22,28 @@ export const focusMessageInput = () => {
 
 // (legacy comment removed)
 export function setMessageInputCursorToEnd() {
-  const dom = document.getElementById(messageInputID) as HTMLTextAreaElement
-  if (!dom) {
+  const el = document.getElementById(messageInputID)
+  if (!el) return
+
+  // Contenteditable rich composer
+  if (el.isContentEditable || el.getAttribute('contenteditable') === 'true') {
+    const range = document.createRange()
+    range.selectNodeContents(el)
+    range.collapse(false)
+    const sel = window.getSelection()
+    sel?.removeAllRanges()
+    sel?.addRange(range)
+    setTimeout(() => {
+      el.scrollTop = el.scrollHeight
+    }, 20)
     return
   }
-  dom.selectionStart = dom.selectionEnd = dom.value.length
-  setTimeout(() => {
-    dom.scrollTop = dom.scrollHeight
-  }, 20) // React
+
+  const textarea = el as HTMLTextAreaElement
+  if (typeof textarea.selectionStart === 'number') {
+    textarea.selectionStart = textarea.selectionEnd = textarea.value.length
+    setTimeout(() => {
+      textarea.scrollTop = textarea.scrollHeight
+    }, 20) // React
+  }
 }

@@ -1,8 +1,30 @@
 import { CapacitorSQLite, SQLiteConnection, type SQLiteDBConnection } from '@capacitor-community/sqlite'
 import localforage from 'localforage'
 import { StorageKey } from '@/storage'
-import platform from '.'
-import type { Storage } from './interfaces'
+import { CHATBOX_BUILD_PLATFORM } from '@/variables'
+import type { PlatformType, Storage } from './interfaces'
+import { isTauriRuntime } from './tauri_ipc_adapter'
+
+/**
+ * Resolve platform type without importing `./index` (breaks circular:
+ * index → web_platform → storages → index).
+ * Mirrors platform/index initPlatform() detection for legacy migration only.
+ */
+function detectPlatformTypeForLegacyStorage(): PlatformType {
+  if (process.env.NODE_ENV === 'test') {
+    return 'desktop'
+  }
+  if (typeof window !== 'undefined') {
+    if (window.desktopAPI || isTauriRuntime()) {
+      // Tauri Android uses desktop IPC + file storage (same as DesktopPlatform)
+      return 'desktop'
+    }
+  }
+  if (CHATBOX_BUILD_PLATFORM === 'android' || CHATBOX_BUILD_PLATFORM === 'ios') {
+    return 'mobile'
+  }
+  return 'web'
+}
 
 export class DesktopFileStorage implements Storage {
   public ipc = window.desktopAPI
@@ -333,10 +355,13 @@ export class IndexedDBStorage implements Storage {
 // Storage selection keys off platform.type (not formFactor) because it must match
 // the actual storage backend. Tauri Android uses DesktopPlatform with Tauri IPC
 // file-based storage, so it correctly follows the 'desktop' path here.
-export function getOldVersionStorages(): Storage[] {
-  if (platform.type === 'desktop') {
+// Optional platformType avoids importing platform/index (circular dependency).
+export function getOldVersionStorages(platformType?: PlatformType): Storage[] {
+  const type = platformType ?? detectPlatformTypeForLegacyStorage()
+  if (type === 'desktop') {
     return [new DesktopFileStorage()]
-  } else if (platform.type === 'mobile') {
+  }
+  if (type === 'mobile') {
     return [new IndexedDBStorage(), new MobileSQLiteStorage(), new LocalStorage()]
   }
   return [new LocalStorage()]

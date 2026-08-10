@@ -29,6 +29,24 @@ export function stripSkillDollarTokens(text: string): string {
 }
 
 /**
+ * Replace active $partial with completed $name, keeping the token in the draft.
+ * Adds a trailing space when the caret is at end so the user can keep typing.
+ */
+export function replaceActiveSkillDollarWithToken(text: string, skillName: string, caret?: number): string {
+  const token = skillName.toLowerCase().replace(/[^a-z0-9-]/g, '')
+  if (!token || /^[0-9]/.test(token)) return text
+  const pos = caret ?? text.length
+  const before = text.slice(0, pos)
+  const after = text.slice(pos)
+  const replaced = before.replace(/(?:^|[\s([{])\$[a-z0-9-]*$/i, (m) => {
+    const boundary = m.length > 0 && /[\s([{]/.test(m[0]) ? m[0] : ''
+    return `${boundary}$${token}`
+  })
+  const needsSpace = after.length === 0 || !/^\s/.test(after)
+  return replaced + (needsSpace ? ' ' : '') + after
+}
+
+/**
  * Detect active $ partial at end of text or around caret for picker.
  * Returns query without leading $ (may be empty string if just "$").
  */

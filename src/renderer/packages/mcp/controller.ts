@@ -158,7 +158,10 @@ export class MCPServer extends Emittery<{ status: MCPServerStatus }> {
 
 // (legacy comment)
 export const mcpController = {
-  servers: new Map<string, { instance: MCPServer; config: MCPServerConfig }>(),
+  servers: new Map<
+    string,
+    { instance: MCPServer; config: MCPServerConfig; usedAccountLabel?: string }
+  >(),
   _statusSubscribers: new Map<string, Set<(status: MCPServerStatus) => void>>(),
 
   bootstrap(serverConfigs: MCPServerConfig[]) {
@@ -173,8 +176,32 @@ export const mcpController = {
     if (!serverConfig.enabled) {
       return
     }
-    const server = new MCPServer(serverConfig.transport)
-    this.servers.set(serverConfig.id, { instance: server, config: serverConfig })
+    // Runtime vault inject — never writes tokens back into persisted MCP settings
+    let effectiveConfig = serverConfig
+    let usedAccountLabel: string | undefined
+    try {
+      const { applyIntegrationInjectToServerConfig } = await import('@/packages/integrations/mcp-inject')
+      const injected = await applyIntegrationInjectToServerConfig(serverConfig)
+      if (injected.error) {
+        console.warn(`mcp:integrations inject for ${serverConfig.name}: ${injected.error}`)
+      }
+      if (injected.usedAccount) {
+        usedAccountLabel = injected.usedAccount.label
+        effectiveConfig = { ...serverConfig, transport: injected.transport }
+        console.info(
+          `mcp: using connected account “${injected.usedAccount.label}” for ${serverConfig.name}`
+        )
+      }
+    } catch (err) {
+      console.warn('mcp:integrations inject skipped', err)
+    }
+
+    const server = new MCPServer(effectiveConfig.transport)
+    this.servers.set(serverConfig.id, {
+      instance: server,
+      config: serverConfig,
+      usedAccountLabel,
+    })
 
     // (legacy comment removed)
     const subscribers = this._statusSubscribers.get(serverConfig.id)

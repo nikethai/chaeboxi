@@ -67,10 +67,18 @@ export function useMessageInput(initialMessage = '', _options: Partial<Options> 
   }, [draftStorageKey, _debouncedStoreDraft])
 
   useEffect(() => {
-    if (options.saveDraft) {
-      restoreDraft()
+    if (!options.saveDraft) {
+      return
     }
-  }, [restoreDraft, options.saveDraft])
+    // Blank-home starters remount InputBox with initialMessage + localStorage write.
+    // Prefer explicit initial fill so a stale/empty draft cannot wipe the starter text.
+    if (initialMessage) {
+      _setMessageInput(initialMessage)
+      draftRef.current = initialMessage
+      return
+    }
+    restoreDraft()
+  }, [restoreDraft, options.saveDraft, initialMessage])
 
   return {
     messageInput,

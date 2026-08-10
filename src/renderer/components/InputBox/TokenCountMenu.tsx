@@ -170,15 +170,16 @@ const TokenCountMenu: FC<Props> = ({
           </>
         )}
 
-        {onCompressClick && contextTokens > 0 && (
+        {onCompressClick && (
           <>
             <Menu.Divider />
             <Menu.Item
               leftSection={<ScalableIcon icon={IconFileZip} size={16} />}
               onClick={onCompressClick}
               color="chatbox-brand"
+              disabled={isCompacting}
             >
-              {t('Compress Conversation')}
+              {isCompacting ? t('Compacting...') : t('Compact')}
             </Menu.Item>
           </>
         )}

@@ -6,14 +6,47 @@ import {
   type SkillPackage,
 } from '@shared/types'
 
-/** Minimum score for a skill to auto-activate (explicit tags ignore this). */
-export const SKILL_AUTO_MIN_SCORE = 6
+/**
+ * Minimum score for a skill to auto-activate (explicit tags ignore this).
+ * Raised so weak bag-of-words hits cannot light up the Skills bar alone.
+ */
+export const SKILL_AUTO_MIN_SCORE = 8
 
 /**
  * Second auto skill only if score >= this fraction of the top skill's score
  * and still above SKILL_AUTO_MIN_SCORE.
  */
 export const SKILL_AUTO_SECOND_RATIO = 0.85
+
+/**
+ * Short / everyday names that must not auto-activate just because the user
+ * wrote "help me…", "use this…", etc. Explicit `$help` still works.
+ */
+const GENERIC_SKILL_NAMES = new Set([
+  'help',
+  'guide',
+  'info',
+  'ask',
+  'chat',
+  'general',
+  'default',
+  'basic',
+  'utils',
+  'util',
+  'tools',
+  'tool',
+  'misc',
+  'other',
+  'test',
+  'demo',
+  'sample',
+  'example',
+  'main',
+  'app',
+  'agent',
+  'skill',
+  'skills',
+])
 
 export interface ResolveSkillActivationsInput {
   /** Skill package ids from $ chips / message.skillIds */
@@ -77,7 +110,10 @@ export function resolveSkillActivations(input: ResolveSkillActivationsInput): Sk
 
   const autoOn = input.autoSkills !== false
   if (autoOn && input.userText?.trim()) {
-    const ranked = scoreSkillsForText(input.userText, enabled).filter((s) => s.score >= SKILL_AUTO_MIN_SCORE)
+    // Auto requires a strong signal (name/trigger), not description overlap alone
+    const ranked = scoreSkillsForText(input.userText, enabled).filter(
+      (s) => s.strong && s.score >= SKILL_AUTO_MIN_SCORE
+    )
     if (ranked.length > 0) {
       const top = ranked[0]
       tryPush(top.skill.id, 'auto')
@@ -94,14 +130,24 @@ export function resolveSkillActivations(input: ResolveSkillActivationsInput): Sk
   return result
 }
 
+function isGenericSkillName(name: string): boolean {
+  const n = name.toLowerCase().trim()
+  if (!n) return true
+  if (GENERIC_SKILL_NAMES.has(n)) return true
+  // Single very short token names are too ambiguous for auto
+  if (!n.includes('-') && n.length <= 4) return true
+  return false
+}
+
 /**
  * Intent-weighted skill scoring.
  * Prefers dedicated trigger keywords over generic description bag-of-words.
+ * Generic skill names (help, guide, …) never auto-win from casual English alone.
  */
 export function scoreSkillsForText(
   text: string,
   skills: SkillPackage[]
-): Array<{ skill: SkillPackage; score: number }> {
+): Array<{ skill: SkillPackage; score: number; strong: boolean }> {
   const lower = text.toLowerCase()
   const tokens = tokenize(text)
   if (tokens.size === 0) return []
@@ -109,21 +155,45 @@ export function scoreSkillsForText(
   return skills
     .map((skill) => {
       let score = 0
+      let strong = false
+      const nameLower = skill.name.toLowerCase()
+      const nameSpaced = nameLower.replace(/-/g, ' ')
+      const generic = isGenericSkillName(skill.name)
 
-      // Strong: explicit skill name mention
-      const nameSpaced = skill.name.replace(/-/g, ' ')
-      if (lower.includes(skill.name) || lower.includes(nameSpaced)) {
-        score += 12
-      }
-
-      // Strong: intent triggers for this skill
-      for (const phrase of getSkillIntentPhrases(skill)) {
-        if (lower.includes(phrase)) {
-          score += phrase.includes(' ') ? 8 : 5
+      // Strong: distinctive skill name mentioned as a term (not "help me…")
+      if (!generic) {
+        const nameRe = new RegExp(`(?:^|[^a-z0-9$])(?:\\$)?${escapeRegExp(nameLower)}(?:$|[^a-z0-9-])`, 'i')
+        const spacedRe = new RegExp(`(?:^|[^a-z0-9])${escapeRegExp(nameSpaced)}(?:$|[^a-z0-9])`, 'i')
+        if (nameRe.test(lower) || spacedRe.test(lower)) {
+          score += 12
+          strong = true
+        }
+      } else {
+        // Generic names: only intentional forms ($help, "use help skill")
+        if (new RegExp(`\\$${escapeRegExp(nameLower)}\\b`, 'i').test(lower)) {
+          score += 12
+          strong = true
+        } else if (
+          new RegExp(`\\b(?:use|run|apply|with)\\s+(?:the\\s+)?${escapeRegExp(nameLower)}\\s+skill\\b`, 'i').test(
+            lower
+          )
+        ) {
+          score += 12
+          strong = true
         }
       }
 
-      // Weak: token overlap with description (capped so it cannot force activation alone)
+      // Strong: intent triggers for this skill (skip ultra-generic single tokens for generic names)
+      for (const phrase of getSkillIntentPhrases(skill)) {
+        if (phrase.length < 4) continue
+        if (generic && !phrase.includes(' ') && phrase === nameLower) continue
+        if (lower.includes(phrase)) {
+          score += phrase.includes(' ') ? 8 : 5
+          strong = true
+        }
+      }
+
+      // Weak: token overlap with description (capped — cannot force auto alone)
       const hay = tokenize(`${skill.name.replace(/-/g, ' ')} ${skill.description}`)
       let overlap = 0
       for (const t of tokens) {
@@ -132,12 +202,16 @@ export function scoreSkillsForText(
           overlap += t.length >= 5 ? 1.5 : 1
         }
       }
-      score += Math.min(overlap, 4)
+      score += Math.min(overlap, 3)
 
-      return { skill, score }
+      return { skill, score, strong }
     })
     .filter((s) => s.score > 0)
     .sort((a, b) => b.score - a.score || a.skill.name.localeCompare(b.skill.name))
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 /** High-signal phrases that should drive auto selection. */

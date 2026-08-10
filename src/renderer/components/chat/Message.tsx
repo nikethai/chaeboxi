@@ -4,7 +4,6 @@ import {
   type ActionIconProps,
   Flex,
   Image as Img,
-  Loader,
   Text,
   Textarea,
   Tooltip as Tooltip1,
@@ -25,8 +24,6 @@ import { getMessageText } from '@shared/utils/message'
 import {
   IconArrowDown,
   IconBrain,
-  IconBug,
-  IconCode,
   IconCopy,
   IconDotsVertical,
   IconInfoCircle,
@@ -37,7 +34,6 @@ import {
   type IconProps,
   IconQuoteFilled,
   IconReload,
-  IconSettings,
   IconThumbDown,
   IconThumbDownFilled,
   IconThumbUp,
@@ -67,6 +63,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { Gallery, Item as GalleryItem } from 'react-photoswipe-gallery'
 import AgentSpeakerHeader from '@/components/chat/AgentSpeakerHeader'
+import InlineMentionsText from '@/components/chat/InlineMentionsText'
 import SkillActivationsBar from '@/components/chat/SkillActivationsBar'
 import Markdown from '@/components/Markdown'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
@@ -81,7 +78,6 @@ import {
 import { countWord } from '@/packages/word-count'
 import platform from '@/platform'
 import storage from '@/storage'
-import { getSession } from '@/stores/chatStore'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
 import '../../static/Block.css'
@@ -105,8 +101,8 @@ import {
   isContainRenderableCode,
 } from '../Artifact'
 import { ScalableIcon } from '../common/ScalableIcon'
-import Loading from '../icons/Loading'
 import { ReasoningContentUI } from '../message-parts/ReasoningContentUI'
+import AssistantPending from './AssistantPending'
 
 // Tool/thinking renderers are agent-only — lazy-load them and skip on Android.
 // CHATBOX_BUILD_PLATFORM is a Vite-defined compile-time constant so the
@@ -181,7 +177,6 @@ const _Message: FC<Props> = (props) => {
 
   // Inline expand is manual; autoPreview opens the side workspace instead (Artifacts-style)
   const [previewArtifact, setPreviewArtifact] = useState(false)
-  const [shouldThrowError, setShouldThrowError] = useState(false)
   const [selectionToolbar, setSelectionToolbar] = useState<{ text: string; x: number; y: number } | null>(null)
   const [feedbackText, setFeedbackText] = useState(msg.feedback?.text ?? '')
 
@@ -335,15 +330,6 @@ const _Message: FC<Props> = (props) => {
     toastActions.add(t('Failed to save memory'))
   }, [msg, sessionId, t])
 
-  // for testing: manual trigger error
-  const onTriggerError = useCallback(() => {
-    setShouldThrowError(true)
-  }, [])
-
-  const onViewMessageJson = useCallback(async () => {
-    await NiceModal.show('json-viewer', { title: t('Message Raw JSON'), data: msg })
-  }, [msg, t])
-
   const clearSelectionToolbar = useCallback(() => {
     setSelectionToolbar(null)
   }, [])
@@ -484,10 +470,6 @@ const _Message: FC<Props> = (props) => {
     })
   }, [clearSelectionToolbar, msg.role])
 
-  if (shouldThrowError) {
-    throw new Error('Manual error triggered from Message component for testing ErrorBoundary')
-  }
-
   // Per-message token/model chrome removed — session totals live in SessionStatusBar (dock statusline).
   // Keep only critical finish-reason signals under the message.
   const tips: string[] = []
@@ -531,48 +513,123 @@ const _Message: FC<Props> = (props) => {
 
   const contentParts = msg.contentParts || []
 
-  // Group consecutive reasoning + tool-call parts into thinking groups
+  /**
+   * Product layout for assistant turns:
+   * - One work strip (all tools + reasoning + mid-turn monologue)
+   * - Final answer = only content after the last tool/reasoning
+   * User / system messages keep a flat part list.
+   */
   const groupedParts = useMemo(() => {
     if (contentParts.length === 0) return []
 
     type GroupItem =
-      | { type: 'thinking-group'; parts: typeof contentParts; startIndex: number }
+      | {
+          type: 'thinking-group'
+          parts: typeof contentParts
+          monologueTexts: string[]
+          startIndex: number
+          workActive: boolean
+        }
       | { type: 'single'; part: (typeof contentParts)[number]; index: number }
 
-    const groups: GroupItem[] = []
-    let currentGroup: typeof contentParts = []
-    let groupStartIndex = 0
+    // Host chrome (memory_lookup) is not model "work" — counting it as last work
+    // can hide the real answer in the collapsed strip or leave an empty bubble.
+    const isHostChromeTool = (part: (typeof contentParts)[number]) =>
+      part.type === 'tool-call' && part.toolName === 'memory_lookup'
 
-    const flushThinkingGroup = () => {
-      if (currentGroup.length === 0) return
-      if (currentGroup.length > 1) {
-        groups.push({ type: 'thinking-group', parts: [...currentGroup], startIndex: groupStartIndex })
-      } else {
-        groups.push({ type: 'single', part: currentGroup[0], index: groupStartIndex })
-      }
-      currentGroup = []
+    const isWorkPart = (part: (typeof contentParts)[number]) => {
+      // Empty reasoning rows shouldn't become lastWork and swallow the answer
+      if (part.type === 'reasoning') return Boolean(part.text?.trim())
+      return part.type === 'tool-call' && !isTaskTrackingTool(part.toolName) && !isHostChromeTool(part)
     }
 
+    // Non-assistant: no work coalescing
+    if (msg.role !== 'assistant') {
+      return contentParts.map((part, index) => ({ type: 'single' as const, part, index }))
+    }
+
+    let lastWorkIdx = -1
     for (let i = 0; i < contentParts.length; i++) {
-      const part = contentParts[i]
-      // Task tools are coalesced into TodoAppCard — keep them out of thinking groups
-      const isTaskTool = part.type === 'tool-call' && isTaskTrackingTool(part.toolName)
-      if ((part.type === 'reasoning' || part.type === 'tool-call') && !isTaskTool) {
-        if (currentGroup.length === 0) {
-          groupStartIndex = i
-        }
-        currentGroup.push(part)
-      } else {
-        flushThinkingGroup()
-        groups.push({ type: 'single', part, index: i })
+      if (isWorkPart(contentParts[i])) {
+        lastWorkIdx = i
       }
     }
-    flushThinkingGroup()
+
+    // Pure prose / host-only chrome — render text (and non-host parts) as singles
+    if (lastWorkIdx === -1) {
+      return contentParts
+        .map((part, index) => ({ type: 'single' as const, part, index }))
+        .filter((item) => !isHostChromeTool(item.part))
+    }
+
+    const workParts: typeof contentParts = []
+    const monologueTexts: string[] = []
+    const earlySingles: GroupItem[] = []
+
+    for (let i = 0; i <= lastWorkIdx; i++) {
+      const part = contentParts[i]
+      if (isHostChromeTool(part)) {
+        // Host pre-search is injected for the model; don't surface as a dead "Worked · 1 tool" row
+        continue
+      }
+      if (isWorkPart(part)) {
+        workParts.push(part)
+        continue
+      }
+      if (part.type === 'text') {
+        const trimmed = part.text?.trim()
+        if (trimmed) {
+          monologueTexts.push(trimmed)
+        }
+        continue
+      }
+      // Task tools / images / plan early in the turn — keep as singles before the work strip
+      earlySingles.push({ type: 'single', part, index: i })
+    }
+
+    const lastPart = contentParts[contentParts.length - 1]
+    const workActive = Boolean(msg.generating && lastPart && isWorkPart(lastPart))
+
+    const afterWork: GroupItem[] = []
+    for (let i = lastWorkIdx + 1; i < contentParts.length; i++) {
+      afterWork.push({ type: 'single', part: contentParts[i], index: i })
+    }
+
+    // Surface mid-turn prose as the answer whenever nothing trails the last work part.
+    // Do this *while generating too* — waiting until generating=false made the UI look
+    // "finished" (action bar / idle composer) before the answer popped in.
+    const hasTrailingAnswer = afterWork.some(
+      (g) => g.type === 'single' && g.part.type === 'text' && Boolean(g.part.text?.trim())
+    )
+    let thinkingMonologue = monologueTexts
+    if (monologueTexts.length > 0 && !hasTrailingAnswer) {
+      for (let m = 0; m < monologueTexts.length; m++) {
+        afterWork.push({
+          type: 'single',
+          part: { type: 'text', text: monologueTexts[m] },
+          index: lastWorkIdx + 1 + m,
+        })
+      }
+      thinkingMonologue = []
+    }
+
+    const groups: GroupItem[] = [...earlySingles]
+    if (workParts.length > 0) {
+      groups.push({
+        type: 'thinking-group',
+        parts: workParts,
+        monologueTexts: thinkingMonologue,
+        startIndex: 0,
+        workActive,
+      })
+    }
+
+    groups.push(...afterWork)
 
     return groups
     // eslint-disable-next-line react-hooks/exhaustive-deps -- contentParts may be mutated in place during streaming;
     // include length and generating flag so the memo recomputes when parts are pushed or generation ends
-  }, [contentParts, contentParts.length, msg.generating])
+  }, [contentParts, contentParts.length, msg.generating, msg.role])
 
   const messageTaskSnapshot = useMemo(
     () => (contentPartsHaveTaskTools(contentParts) ? snapshotTasksFromContentParts(contentParts) : []),
@@ -593,12 +650,6 @@ const _Message: FC<Props> = (props) => {
       [{isCollapsed ? t('Expand') : t('Collapse')}]
     </span>
   )
-
-  const onClickAssistantAvatar = async () => {
-    await NiceModal.show('session-settings', {
-      session: await getSession(props.sessionId),
-    })
-  }
 
   const actionMenuItems = useMemo<ActionMenuItemProps[]>(
     () => [
@@ -660,21 +711,6 @@ const _Message: FC<Props> = (props) => {
             },
           ]
         : []),
-      // (legacy comment removed)
-      ...(process.env.NODE_ENV === 'development'
-        ? [
-            // {
-            //   text: 'Trigger Error (Test)',
-            //   icon: IconBug,
-            //   onClick: onTriggerError,
-            // },
-            {
-              text: t('View Message JSON'),
-              icon: IconCode,
-              onClick: onViewMessageJson,
-            },
-          ]
-        : []),
       {
         doubleCheck: true,
         text: t('Delete'),
@@ -689,7 +725,6 @@ const _Message: FC<Props> = (props) => {
       onReport,
       quoteMsg,
       onDelMsg,
-      onViewMessageJson,
       isSamllScreen,
       handleRefresh,
       msg.generating,
@@ -722,18 +757,11 @@ const _Message: FC<Props> = (props) => {
         'w-full'
       )}
     >
-      {/* Grok DNA: system gear mark above card; no You/Chaeboxi labels. */}
-      {isSystem && (
-        <button
-          type="button"
-          className="msg-system-mark"
-          onClick={onClickAssistantAvatar}
-          aria-label={t('System')}
-          title={t('System')}
-        >
-          <IconSettings size={15} stroke={1.5} />
-        </button>
-      )}
+      {/*
+        System prompt: no floating gear — Session options live in the header ⋯
+        menu (and composer · Session options). A second gear looked like a
+        duplicate settings control when the system bubble was empty/collapsed.
+      */}
       {isAssistant && (msg.agentId || msg.name) && (
         <AgentSpeakerHeader
           agentId={msg.agentId}
@@ -743,14 +771,6 @@ const _Message: FC<Props> = (props) => {
           roomRound={msg.roomRound}
           discussionGroupStart={discussionGroupStart}
         />
-      )}
-      {isAssistant && msg.generating && !(msg.agentId || msg.name) && (
-        <Flex className="mb-1.5" align="center" gap={6}>
-          <Loader size={14} classNames={{ root: "after:content-[''] after:border-[2px]" }} />
-          <Text size="xs" c="chatbox-tertiary">
-            …
-          </Text>
-        </Flex>
       )}
       <div className={cn('w-full', isUser && 'flex flex-col items-end')}>
         <MessageStatuses statuses={msg.status} />
@@ -785,7 +805,8 @@ const _Message: FC<Props> = (props) => {
                           <ThinkingGroupUI
                             message={msg}
                             parts={group.parts}
-                            isLastGroup={groupIndex === groupedParts.length - 1}
+                            monologueTexts={group.monologueTexts}
+                            isLastGroup={group.workActive}
                           />
                         </Suspense>
                       </div>
@@ -800,7 +821,18 @@ const _Message: FC<Props> = (props) => {
                     </div>
                   ) : group.part.type === 'text' ? (
                     <div key={`text-${msg.id}-${group.index}`}>
-                      {enableMarkdownRendering && !isCollapsed ? (
+                      {msg.role === 'user' ? (
+                        <div className="break-words whitespace-pre-wrap">
+                          <InlineMentionsText
+                            text={
+                              needCollapse && isCollapsed
+                                ? `${group.part.text.slice(0, collapseThreshold)}...`
+                                : group.part.text || ''
+                            }
+                          />
+                          {needCollapse && isCollapsed && CollapseButton}
+                        </div>
+                      ) : enableMarkdownRendering && !isCollapsed ? (
                         <Markdown
                           uniqueId={`${msg.id}-${group.index}`}
                           enableLaTeXRendering={enableLaTeXRendering}
@@ -934,7 +966,27 @@ const _Message: FC<Props> = (props) => {
           <MessageErrTips msg={msg} />
           {needCollapse && !isCollapsed && CollapseButton}
 
-          {msg.generating && msg.contentParts.length === 0 && <Loading />}
+          {/*
+            Waiting chrome while generating with nothing the user can read yet.
+            Host-only tools (e.g. memory_lookup) fill contentParts but are hidden from the
+            bubble — without this check the dock looks dead (“no Thinking…”) until first token.
+          */}
+          {isAssistant &&
+            msg.generating &&
+            !msg.status?.length &&
+            !contentParts.some((p) => {
+              if (p.type === 'text' && p.text?.trim()) return true
+              if (p.type === 'image') return true
+              if (p.type === 'reasoning' && p.text?.trim()) return true
+              if (p.type === 'plan') return true
+              if (p.type === 'info' && p.text?.trim()) return true
+              if (p.type === 'tool-call') {
+                // Host chrome is invisible; task tools render TodoAppCard
+                if (p.toolName === 'memory_lookup') return false
+                return true
+              }
+              return false
+            }) && <AssistantPending className="mt-0.5" />}
 
           {!msg.generating && tips.length > 0 && (
             <Text size="xs" c="chatbox-tertiary" className="mt-1 opacity-80">
@@ -957,8 +1009,20 @@ const _Message: FC<Props> = (props) => {
           <SkillActivationsBar activations={msg.skillActivations} className="mt-2.5" />
         )}
 
-        {/* actions — hover-only, GPU-safe opacity/transform */}
-        {buttonGroup !== 'none' && !msg.generating && (
+        {/* actions — hover-only; never on empty/finished shells (looks "done" before text paints) */}
+        {buttonGroup !== 'none' &&
+          !msg.generating &&
+          !(
+            isAssistant &&
+            !msg.error &&
+            !contentParts.some((p) => {
+              if (p.type === 'text' && p.text?.trim()) return true
+              if (p.type === 'image') return true
+              if (p.type === 'plan') return true
+              if (p.type === 'tool-call' && p.toolName !== 'memory_lookup') return true
+              return false
+            })
+          ) && (
           <Flex
             gap={0}
             mt={4}

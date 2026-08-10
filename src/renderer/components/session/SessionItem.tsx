@@ -191,9 +191,10 @@ function SessionItem(props: Props) {
           selected && 'studio-rail-row-active'
         )}
         mx={6}
-        px={10}
-        py={7}
-        gap={8}
+        pl={selected ? 12 : 10}
+        pr={6}
+        py={6}
+        gap={6}
         onClick={onClick}
       >
         <Text
@@ -201,10 +202,10 @@ function SessionItem(props: Props) {
           flex={1}
           lineClamp={1}
           size="sm"
-          fw={selected ? 500 : 400}
+          fw={selected ? 600 : 450}
           c={selected ? 'chatbox-primary' : 'chatbox-secondary'}
-          className="tracking-tight min-w-0"
-          style={{ fontSize: '0.875rem', letterSpacing: '-0.01em' }}
+          className="tracking-tight min-w-0 rail-session-title"
+          style={{ fontSize: '0.8125rem', letterSpacing: '-0.01em' }}
         >
           {session.name}
         </Text>
@@ -213,9 +214,9 @@ function SessionItem(props: Props) {
           <Text
             span
             size="xs"
-            c="chatbox-tertiary"
+            c={selected ? 'chatbox-secondary' : 'chatbox-tertiary'}
             className="tabular-nums shrink-0 rail-session-time"
-            style={{ fontSize: '0.6875rem', fontFamily: 'var(--chatbox-font-mono)' }}
+            style={{ fontSize: '0.625rem', fontFamily: 'var(--chatbox-font-mono)' }}
           >
             {timeLabel}
           </Text>
@@ -230,7 +231,7 @@ function SessionItem(props: Props) {
         >
           <ActionIcon
             variant="transparent"
-            size={28}
+            size={24}
             color={session.starred ? 'chatbox-brand' : 'chatbox-tertiary'}
             className={clsx(
               'active:scale-[0.96] transition-transform shrink-0',
@@ -242,9 +243,9 @@ function SessionItem(props: Props) {
             }}
           >
             {session.starred ? (
-              <ScalableIcon icon={IconStarFilled} className="text-inherit" size={14} />
+              <ScalableIcon icon={IconStarFilled} className="text-inherit" size={13} />
             ) : (
-              <ScalableIcon icon={IconDots} className="text-inherit" size={14} />
+              <ScalableIcon icon={IconDots} className="text-inherit" size={13} />
             )}
           </ActionIcon>
         </ActionMenu>

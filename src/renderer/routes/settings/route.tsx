@@ -16,6 +16,7 @@ import {
   IconSparkles,
   IconTerminal2,
   IconMovie,
+  IconPlugConnected,
   IconWorldWww,
 } from '@tabler/icons-react'
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
@@ -59,6 +60,11 @@ const ITEMS = [
     key: 'video-url',
     label: 'Video URL',
     icon: <IconMovie className="w-full h-full" />,
+  },
+  {
+    key: 'integrations',
+    label: 'Integrations',
+    icon: <IconPlugConnected className="w-full h-full" />,
   },
   ...(featureFlags.mcp
     ? [

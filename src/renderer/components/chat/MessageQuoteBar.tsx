@@ -1,9 +1,8 @@
-import { HoverCard, Popover, Text } from '@mantine/core'
+import { Popover, Text } from '@mantine/core'
 import type { MessageQuoteAttachment } from '@shared/types'
 import { IconQuote } from '@tabler/icons-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import { QuoteDetailPanel, quotePreviewText, quoteRoleLabel } from './QuoteDetailPanel'
 
@@ -12,11 +11,10 @@ export type MessageQuoteBarProps = {
   className?: string
 }
 
-/** Compact reply-style quote bar on a sent user message. */
+/** Compact reply-style quote bar on a sent user message (click to expand full quote). */
 export function MessageQuoteBar({ quote, className }: MessageQuoteBarProps) {
   const { t } = useTranslation()
-  const isSmallScreen = useIsSmallScreen()
-  const [mobileOpen, setMobileOpen] = useState(false)
+  const [open, setOpen] = useState(false)
 
   const roleLabel = quoteRoleLabel(quote.sourceRole, t)
   const preview = quotePreviewText(quote.text, 72)
@@ -26,7 +24,7 @@ export function MessageQuoteBar({ quote, className }: MessageQuoteBarProps) {
     <button
       type="button"
       className={cn(
-        'group flex w-full max-w-full items-start gap-2 rounded-lg border border-solid border-[var(--chatbox-border-primary)]',
+        'group flex w-full max-w-md items-start gap-2 rounded-lg border border-solid border-[var(--chatbox-border-primary)]',
         'bg-[var(--chatbox-background-secondary)] px-2.5 py-1.5 text-left',
         'border-l-[3px] border-l-[var(--chatbox-tint-brand)]',
         'transition-colors hover:bg-[var(--chatbox-background-tertiary)]',
@@ -34,7 +32,8 @@ export function MessageQuoteBar({ quote, className }: MessageQuoteBarProps) {
         className
       )}
       aria-label={`${title}: ${preview}`}
-      onClick={isSmallScreen ? () => setMobileOpen((open) => !open) : undefined}
+      aria-expanded={open}
+      onClick={() => setOpen((v) => !v)}
     >
       <IconQuote size={14} stroke={1.8} className="mt-0.5 shrink-0 text-[var(--chatbox-tint-brand)]" aria-hidden />
       <div className="min-w-0 flex-1">
@@ -53,32 +52,14 @@ export function MessageQuoteBar({ quote, className }: MessageQuoteBarProps) {
     </button>
   )
 
-  if (isSmallScreen) {
-    return (
-      <Popover
-        opened={mobileOpen}
-        onChange={setMobileOpen}
-        position="bottom-start"
-        withArrow
-        shadow="md"
-        withinPortal
-        radius="md"
-      >
-        <Popover.Target>{bar}</Popover.Target>
-        <Popover.Dropdown p={0} className="border-0 bg-transparent shadow-none">
-          <QuoteDetailPanel quote={quote} />
-        </Popover.Dropdown>
-      </Popover>
-    )
-  }
-
+  // Click popover on all sizes — HoverCard was leaving a huge quote panel stuck over the thread.
   return (
-    <HoverCard openDelay={200} closeDelay={100} position="top-start" shadow="md" withinPortal>
-      <HoverCard.Target>{bar}</HoverCard.Target>
-      <HoverCard.Dropdown p={0} className="border-0 bg-transparent shadow-none">
+    <Popover opened={open} onChange={setOpen} position="bottom-start" withArrow shadow="md" withinPortal radius="md">
+      <Popover.Target>{bar}</Popover.Target>
+      <Popover.Dropdown p={0} className="border-0 bg-transparent shadow-none">
         <QuoteDetailPanel quote={quote} />
-      </HoverCard.Dropdown>
-    </HoverCard>
+      </Popover.Dropdown>
+    </Popover>
   )
 }
 

@@ -30,6 +30,11 @@ export enum StorageKey {
   UsageQuotaCache = 'usage-quota-cache',
   /** Soft budget one-shot notify state */
   UsageBudgetNotify = 'usage-budget-notify',
+  /**
+   * Connected accounts metadata (Integrations). Secrets are NOT stored here —
+   * see integration-secret:* / OS keychain via secret-store.
+   */
+  Integrations = 'integrations',
 }
 
 export const StorageKeyGenerator = {
@@ -70,6 +75,7 @@ export default class StoreStorage extends BaseStorage {
     StorageKey.MemorySettings,
     StorageKey.MemoryBankGlobal,
     StorageKey.UsageBudgetNotify,
+    StorageKey.Integrations,
   ])
 
   public async getItem<T>(key: string, initialValue: T): Promise<T> {

@@ -2167,6 +2167,85 @@ async fn ipc_invoke(
             cancel_oauth_callback(&*state);
             Ok(Value::Null)
         }
+        // Integrations secret vault (desktop OS keychain). args[0] = { service, account, secret? }
+        "secrets:set" => {
+            #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+            {
+                let opts = get_arg(&args, 0)?;
+                let service = opts
+                    .get("service")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| "secrets:set missing service".to_string())?;
+                let account = opts
+                    .get("account")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| "secrets:set missing account".to_string())?;
+                let secret = opts
+                    .get("secret")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| "secrets:set missing secret".to_string())?;
+                let entry = keyring::Entry::new(service, account)
+                    .map_err(|err| format!("keyring entry failed: {err}"))?;
+                entry
+                    .set_password(secret)
+                    .map_err(|err| format!("keyring set failed: {err}"))?;
+                Ok(Value::Null)
+            }
+            #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+            {
+                Err("OS keychain secrets are only available on desktop".to_string())
+            }
+        }
+        "secrets:get" => {
+            #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+            {
+                let opts = get_arg(&args, 0)?;
+                let service = opts
+                    .get("service")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| "secrets:get missing service".to_string())?;
+                let account = opts
+                    .get("account")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| "secrets:get missing account".to_string())?;
+                let entry = keyring::Entry::new(service, account)
+                    .map_err(|err| format!("keyring entry failed: {err}"))?;
+                match entry.get_password() {
+                    Ok(secret) => Ok(json!({ "secret": secret })),
+                    Err(keyring::Error::NoEntry) => Ok(json!({ "secret": Value::Null })),
+                    Err(err) => Err(format!("keyring get failed: {err}")),
+                }
+            }
+            #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+            {
+                Err("OS keychain secrets are only available on desktop".to_string())
+            }
+        }
+        "secrets:delete" => {
+            #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+            {
+                let opts = get_arg(&args, 0)?;
+                let service = opts
+                    .get("service")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| "secrets:delete missing service".to_string())?;
+                let account = opts
+                    .get("account")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| "secrets:delete missing account".to_string())?;
+                let entry = keyring::Entry::new(service, account)
+                    .map_err(|err| format!("keyring entry failed: {err}"))?;
+                match entry.delete_credential() {
+                    Ok(()) => Ok(Value::Null),
+                    Err(keyring::Error::NoEntry) => Ok(Value::Null),
+                    Err(err) => Err(format!("keyring delete failed: {err}")),
+                }
+            }
+            #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+            {
+                Err("OS keychain secrets are only available on desktop".to_string())
+            }
+        }
         "http:request" => {
             let request = serde_json::from_value::<HttpRequestPayload>(get_arg(&args, 0)?.clone())
                 .map_err(|err| format!("invalid http request payload: {err}"))?;

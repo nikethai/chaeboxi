@@ -6,6 +6,19 @@ import { navigateToSettings } from '@/modals/Settings'
 import { fuzzyScoreSkill } from '@/packages/skills'
 import ComposerPickerPanel from './ComposerPickerPanel'
 
+function skillDisplayName(name: string): string {
+  return name.replace(/^\$+/, '').trim() || name
+}
+
+function skillBlurb(description: string): string {
+  const d = description.trim().replace(/\s+/g, ' ')
+  if (!d) return ''
+  if (d.length <= 88) return d
+  const cut = d.slice(0, 88)
+  const sp = cut.lastIndexOf(' ')
+  return `${sp > 40 ? cut.slice(0, sp) : cut}…`
+}
+
 export function filterSkills(skills: SkillPackage[], query: string) {
   const normalizedQuery = query.trim().toLowerCase()
   return skills
@@ -64,8 +77,8 @@ function SkillPicker({
       open
       aria-label={t('Skills')}
       header={
-        <Text size="xs" c="chatbox-tertiary">
-          {t('Skills')} · $
+        <Text size="xs" fw={600} c="chatbox-secondary">
+          {t('Skills')}
         </Text>
       }
       isEmpty={isEmpty}
@@ -73,19 +86,20 @@ function SkillPicker({
         catalogEmpty
           ? {
               title: t('No skills yet'),
-              description: t('Add or enable skills, then insert them with $ in the composer.'),
+              description: t('Skills are reusable workflows you can drop into a chat with $.'),
               action: {
                 label: t('Manage skills'),
                 onClick: () => navigateToSettings('/skills'),
               },
             }
           : {
-              title: t('No skill found'),
+              title: t('No match'),
             }
       }
     >
       {filtered.map((skill, index) => {
         const selected = index === highlightedIndex
+        const blurb = skillBlurb(skill.description || '')
         return (
           <Box
             key={skill.id}
@@ -100,12 +114,14 @@ function SkillPicker({
               onSelect(skill)
             }}
           >
-            <Text size="sm" fw={600} c={selected ? 'chatbox-brand' : 'chatbox-primary'}>
-              ${skill.name}
+            <Text size="sm" fw={600} c={selected ? 'chatbox-brand' : 'chatbox-primary'} className="truncate">
+              {skillDisplayName(skill.name)}
             </Text>
-            <Text size="xs" c="chatbox-secondary" lineClamp={1}>
-              {skill.description}
-            </Text>
+            {blurb ? (
+              <Text size="xs" c="chatbox-tertiary" lineClamp={1} className="mt-0.5">
+                {blurb}
+              </Text>
+            ) : null}
           </Box>
         )
       })}

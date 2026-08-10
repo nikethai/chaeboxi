@@ -2290,6 +2290,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       url={link.url}
                       status={status}
                       staggerIndex={attachOffset + linkIndex}
+                      title={preprocessedLink?.title}
+                      imageStorageKey={preprocessedLink?.imageStorageKey}
                       errorMessage={preprocessedLink?.error}
                       onErrorClick={() => {
                         if (preprocessedLink?.error) {

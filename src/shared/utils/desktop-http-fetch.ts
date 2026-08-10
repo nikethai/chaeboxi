@@ -75,6 +75,36 @@ export function hasDesktopHttpTransport(): boolean {
   }
 }
 
+function createAbortError(message = 'The operation was aborted.'): Error {
+  const err = new Error(message)
+  err.name = 'AbortError'
+  return err
+}
+
+/**
+ * Race a promise against AbortSignal. Desktop IPC cannot cancel in-flight reqwest,
+ * but we must still reject so callers (timeouts, tool cancel) can finish.
+ */
+export function raceWithAbortSignal<T>(promise: Promise<T>, signal?: AbortSignal | null): Promise<T> {
+  if (!signal) return promise
+  if (signal.aborted) return Promise.reject(createAbortError())
+
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(createAbortError())
+    signal.addEventListener('abort', onAbort, { once: true })
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort)
+        resolve(value)
+      },
+      (err) => {
+        signal.removeEventListener('abort', onAbort)
+        reject(err)
+      }
+    )
+  })
+}
+
 async function requestViaDesktop(url: string, init?: RequestInit): Promise<Response> {
   const payload: DesktopHttpRequestPayload = {
     url,
@@ -97,6 +127,8 @@ async function requestViaDesktop(url: string, init?: RequestInit): Promise<Respo
 /**
  * Fetch that uses Tauri native HTTP when available (no CORS),
  * otherwise global fetch (web / tests).
+ *
+ * AbortSignal is honored via Promise race (desktop IPC is not cancelable mid-flight).
  */
 export function createDesktopAwareFetch(): typeof fetch {
   const desktopFetch: typeof fetch = async (input, init) => {
@@ -104,8 +136,9 @@ export function createDesktopAwareFetch(): typeof fetch {
 
     if (hasDesktopHttpTransport()) {
       try {
-        return await requestViaDesktop(url, init)
+        return await raceWithAbortSignal(requestViaDesktop(url, init), init?.signal)
       } catch (err) {
+        if (err instanceof Error && err.name === 'AbortError') throw err
         const msg = err instanceof Error ? err.message : String(err)
         throw new TypeError(`Desktop HTTP request failed: ${msg}`)
       }

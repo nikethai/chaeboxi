@@ -16,6 +16,7 @@ export function getToolName(toolName: string): string {
     delete_file: t('Delete File'),
     parse_link: t('Parse Link'),
     read_video: t('Read Video'),
+    read_video_url: t('Read Video URL'),
     generate_image: t('Generate Image'),
     create_task: t('Create Task'),
     update_task: t('Update Task'),

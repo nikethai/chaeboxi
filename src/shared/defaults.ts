@@ -163,6 +163,19 @@ export function settings(): Settings {
       // Desktop: 'local', Mobile/Web: 'none'
       // See settingsStore.ts for the platform-aware initialization logic
       documentParser: undefined,
+      videoUrl: {
+        enabled: true,
+        provider: 'none',
+        apiKey: '',
+        customEndpoint: '',
+        sttProvider: 'none',
+        sttApiKey: '',
+        preferCaptions: true,
+        maxTranscriptChars: 12_000,
+        maxSttDurationSec: 1800,
+        desktopExtractorEnabled: false,
+        desktopExtractorPath: '',
+      },
     },
     mcp: {
       servers: [],

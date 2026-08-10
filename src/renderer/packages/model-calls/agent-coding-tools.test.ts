@@ -57,8 +57,8 @@ vi.mock('@/adapters', () => ({
 vi.mock('@/stores/settingsStore', () => ({
   settingsStore: {
     getState: () => ({
-      extension: { webSearch: { provider: 'bing' } },
-      getSettings: () => ({ extension: { webSearch: { provider: 'bing' } } }),
+      extension: { webSearch: { provider: 'bing' }, videoUrl: { enabled: false } },
+      getSettings: () => ({ extension: { webSearch: { provider: 'bing' }, videoUrl: { enabled: false } } }),
     }),
   },
 }))
@@ -142,6 +142,15 @@ vi.mock('./toolsets/video', () => ({
   default: { description: '', tools: {} },
   initVideoToolBudget: vi.fn(),
   resetVideoToolBudget: vi.fn(),
+}))
+
+vi.mock('./toolsets/video-url', () => ({
+  default: {
+    description: '',
+    tools: {
+      read_video_url: { description: 'read_video_url', execute: vi.fn() },
+    },
+  },
 }))
 
 const googleSearchProviderToolMock = vi.hoisted(() =>

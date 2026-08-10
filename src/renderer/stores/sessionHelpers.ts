@@ -27,6 +27,13 @@ import {
   loadVideoMetadata,
   readAsDataUrl,
 } from '@/packages/video'
+import {
+  formatVideoUrlAttachmentContent,
+  isSupportedVideoUrl,
+  readVideoUrl,
+  storeRemoteThumbnail,
+  videoUrlAttachmentTitle,
+} from '@/packages/video-url'
 import platform from '@/platform'
 import storage from '@/storage'
 import { StorageKey, StorageKeyGenerator } from '@/storage/StoreStorage'
@@ -341,6 +348,12 @@ export async function preprocessLink(
   try {
     const uniqKey = StorageKeyGenerator.linkUniqKey(url)
 
+    // Video platform URLs: use video-url reader (not generic page parse).
+    // Never hard-fail the chip — users attach YT/TT/FB links expecting summarize flow.
+    if (isSupportedVideoUrl(url)) {
+      return await preprocessVideoPlatformLink(url, uniqKey)
+    }
+
     // (legacy comment removed)
     const existingContent = await storage.getBlob(uniqKey).catch(() => null)
     if (existingContent) {
@@ -402,6 +415,24 @@ export async function preprocessLink(
       byteLength,
     }
   } catch (error) {
+    // Last-chance soft success for video URLs so send is never blocked
+    if (isSupportedVideoUrl(url)) {
+      const uniqKey = StorageKeyGenerator.linkUniqKey(url)
+      const content = [
+        '<title>Video URL</title>',
+        `URL: ${url}`,
+        '',
+        'Could not prefetch video content.',
+        'The agent should call read_video_url on this URL.',
+      ].join('\n')
+      await storage.setBlob(uniqKey, content).catch(() => {})
+      return {
+        url,
+        title: url.replace(/^https?:\/\//, ''),
+        content,
+        storageKey: uniqKey,
+      }
+    }
     return {
       url,
       title: url.replace(/^https?:\/\//, ''),
@@ -409,6 +440,99 @@ export async function preprocessLink(
       storageKey: '',
       error: error instanceof Error ? error.message : 'Unknown error',
     }
+  }
+}
+
+/**
+ * Prefetch public video platform links via packages/video-url.
+ * Always returns a non-error attachment so InputBox submit is not blocked.
+ */
+async function preprocessVideoPlatformLink(
+  url: string,
+  uniqKey: string
+): Promise<{
+  url: string
+  title: string
+  content: string
+  storageKey: string
+  tokenCountMap?: Record<string, number>
+  lineCount?: number
+  byteLength?: number
+  imageStorageKey?: string
+  thumbnailUrl?: string
+}> {
+  const thumbMetaKey = `${uniqKey}_thumbKey`
+
+  // Prefer cache when we already have video-formatted content
+  const existingContent = await storage.getBlob(uniqKey).catch(() => null)
+  if (existingContent?.includes('Platform:') || existingContent?.includes('Transcript')) {
+    const titleMatch = existingContent.match(/^(?:Title: |<title>)(.+?)(?:<\/title>)?$/m)
+    const title = titleMatch?.[1]?.trim() || url.replace(/^https?:\/\//, '')
+    const tokenizerType = getCurrentTokenizerType()
+    const existingTokenMap: Record<string, number> = (await storage.getItem(`${uniqKey}_tokenMap`, {})) as Record<
+      string,
+      number
+    >
+    const { lineCount, byteLength, tokenCountMap } = computePreviewMetadata(
+      existingContent,
+      tokenizerType,
+      existingTokenMap
+    )
+    await storage.setItem(`${uniqKey}_tokenMap`, tokenCountMap)
+    const cachedThumb = (await storage.getItem(thumbMetaKey, '')) as string
+    return {
+      url,
+      title,
+      content: existingContent,
+      storageKey: uniqKey,
+      tokenCountMap,
+      lineCount,
+      byteLength,
+      imageStorageKey: cachedThumb || undefined,
+    }
+  }
+
+  let content: string
+  let title: string
+  let thumbnailUrl: string | undefined
+  try {
+    const result = await readVideoUrl({ url, mode: 'auto' })
+    content = formatVideoUrlAttachmentContent(result)
+    title = videoUrlAttachmentTitle(result, url)
+    thumbnailUrl = result.thumbnailUrl
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    content = [
+      '<title>Video URL</title>',
+      `URL: ${url}`,
+      '',
+      `Prefetch note: ${message}`,
+      'The agent should call the read_video_url tool on this URL.',
+    ].join('\n')
+    title = url.replace(/^https?:\/\//, '')
+  }
+
+  await storage.setBlob(uniqKey, content)
+
+  const imageStorageKey = await storeRemoteThumbnail(thumbnailUrl)
+  if (imageStorageKey) {
+    await storage.setItem(thumbMetaKey, imageStorageKey)
+  }
+
+  const tokenizerType = getCurrentTokenizerType()
+  const { lineCount, byteLength, tokenCountMap } = computePreviewMetadata(content, tokenizerType)
+  await storage.setItem(`${uniqKey}_tokenMap`, tokenCountMap)
+
+  return {
+    url,
+    title,
+    content,
+    storageKey: uniqKey,
+    tokenCountMap,
+    lineCount,
+    byteLength,
+    imageStorageKey,
+    thumbnailUrl,
   }
 }
 
@@ -436,9 +560,7 @@ export async function preprocessVideo(
 
   try {
     if (file.size > limits.maxFileBytes) {
-      throw new Error(
-        `video_too_large:${formatBytesForDisplay(limits.maxFileBytes)}`
-      )
+      throw new Error(`video_too_large:${formatBytesForDisplay(limits.maxFileBytes)}`)
     }
 
     const metadata = await loadVideoMetadata(file, options?.signal)
@@ -615,6 +737,7 @@ export function constructUserMessage(
     tokenCountMap?: Record<string, number>
     lineCount?: number
     byteLength?: number
+    imageStorageKey?: string
   }> = []
 ): Message {
   // (legacy comment removed)
@@ -656,6 +779,7 @@ export function constructUserMessage(
       tokenCountMap: l.tokenCountMap,
       lineCount: l.lineCount,
       byteLength: l.byteLength,
+      imageStorageKey: l.imageStorageKey,
     }))
   }
 

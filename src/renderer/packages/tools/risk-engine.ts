@@ -150,7 +150,34 @@ export type RiskSignal = {
  * Returns the **highest** tier detected across all three signal sources
  * plus a list of the individual signals that contributed.
  */
+/**
+ * Built-in read-only tools that only call public HTTP APIs / local storage.
+ * Force LOW so they don't trip MEDIUM network-intent patterns (fetch/url).
+ */
+const BUILTIN_LOW_RISK_TOOLS = new Set([
+  'web_search',
+  'parse_link',
+  'read_video_url',
+  'read_video',
+  'query_knowledge_base',
+  'get_files_meta',
+  'list_files',
+  'list_tasks',
+  'memory_lookup',
+  'memory_recall',
+  'memory_list',
+  'memory_reflect',
+])
+
 export function classifyToolRisk(toolName: string, description?: string, args?: unknown): RiskClassification {
+  const baseName = toolName.split(/[:/]|__/).at(-1) || toolName
+  if (BUILTIN_LOW_RISK_TOOLS.has(baseName) || BUILTIN_LOW_RISK_TOOLS.has(toolName)) {
+    return {
+      tier: ToolRiskTier.LOW,
+      signals: [{ source: 'intent', tier: ToolRiskTier.LOW, matched: baseName }],
+    }
+  }
+
   const signals: RiskSignal[] = []
 
   const intentText = `${toolName} ${description ?? ''}`.toLowerCase()

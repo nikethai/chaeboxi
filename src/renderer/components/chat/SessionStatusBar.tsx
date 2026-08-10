@@ -4,17 +4,18 @@
  * Token segment opens context/compress menu (composer chip removed).
  */
 
-import { Flex, Text, Tooltip, UnstyledButton } from '@mantine/core'
+import { Flex, Text, Tooltip } from '@mantine/core'
 import type { Message } from '@shared/types'
+import type { MemoryEntry } from '@shared/types/memory'
 import { formatNumber } from '@shared/utils'
 import { useAtomValue } from 'jotai'
 import { type FC, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { MemoryDockPopover } from '@/components/chat/MemoryDockPopover'
 import TokenCountMenu from '@/components/InputBox/TokenCountMenu'
-import { getMemoryInjectStats } from '@/packages/memory/inject'
 import { aggregateSessionCosts, formatCost } from '@/packages/cost-tracking'
+import { getMemoryInjectStats } from '@/packages/memory/inject'
 import { composerTokenMenuAtom } from '@/stores/atoms/uiAtoms'
-import { navigateToSettings } from '@/modals/Settings'
 import { ensureMemoryStoreInit, useMemoryStore } from '@/stores/memoryStore'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
@@ -26,6 +27,8 @@ export type SessionStatusBarProps = {
   sessionId?: string
   /** Quiet bar for empty threads (model only, no msg/tok noise) */
   empty?: boolean
+  onInsertMemory?: (entry: MemoryEntry) => void
+  getMemorySaveContent?: () => string
 }
 
 function lastAssistantModel(messages: Message[]): string | undefined {
@@ -45,11 +48,12 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
   providerId,
   sessionId,
   empty = false,
+  onInsertMemory,
+  getMemorySaveContent,
 }) => {
   const { t } = useTranslation()
   const tokenMenu = useAtomValue(composerTokenMenuAtom)
   const memoryReady = useMemoryStore((s) => s.ready)
-  const memoryEnabled = useMemoryStore((s) => s.settings.enabled)
   const globalBank = useMemoryStore((s) => s.globalBank)
   const memorySettings = useMemoryStore((s) => s.settings)
 
@@ -79,7 +83,7 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
       factCount: stats.factCount,
       on: true,
     }
-  }, [memoryReady, memoryEnabled, globalBank, memorySettings, t])
+  }, [memoryReady, globalBank, memorySettings, t])
 
   const metrics = useMemo(() => aggregateSessionCosts(messages), [messages])
   const model = modelLabel || lastAssistantModel(messages) || '—'
@@ -108,7 +112,7 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
 
   return (
     <div className={`session-statusline${empty ? ' is-empty' : ''}`} role="status" aria-live="polite">
-      <Flex className="session-statusline-inner" align="center" justify="space-between" gap="sm">
+      <Flex className="session-statusline-inner" align="center" justify="space-between" gap="sm" wrap="wrap">
         <Flex align="center" gap={10} miw={0} className="min-w-0">
           <span className={`session-statusline-dot ${generating ? 'is-live' : ''}`} aria-hidden />
           <Text className="session-statusline-seg" lineClamp={1} title={model}>
@@ -129,6 +133,23 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
 
         {!empty && (
           <Flex align="center" gap={12} className="shrink-0">
+            {memoryChip && (
+              <MemoryDockPopover
+                className="session-statusline-seg shrink-0"
+                label={
+                  memoryChip.on
+                    ? memoryChip.factCount > 0
+                      ? t('on · {{count}}', { count: memoryChip.factCount })
+                      : t('on · 0')
+                    : t('off')
+                }
+                on={memoryChip.on}
+                title={memoryChip.title}
+                onInsertMemory={onInsertMemory}
+                getMemorySaveContent={getMemorySaveContent}
+              />
+            )}
+
             <Tooltip label={t('Messages in this thread')} withArrow openDelay={400}>
               <Text className="session-statusline-seg">
                 <span className="session-statusline-key">msg</span>
@@ -177,49 +198,19 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
                 </Text>
               </Tooltip>
             )}
-
-            {memoryChip && (
-              <Tooltip label={memoryChip.title} withArrow openDelay={300}>
-                <UnstyledButton
-                  type="button"
-                  className="session-statusline-seg"
-                  onClick={() => navigateToSettings('memory')}
-                  aria-label={memoryChip.label}
-                >
-                  <span className="session-statusline-key">mem</span>
-                  <span
-                    className="session-statusline-val"
-                    style={{ opacity: memoryChip.on ? 1 : 0.55 }}
-                  >
-                    {memoryChip.on
-                      ? memoryChip.factCount > 0
-                        ? t('on · {{count}}', { count: memoryChip.factCount })
-                        : t('on · 0')
-                      : t('off')}
-                  </span>
-                </UnstyledButton>
-              </Tooltip>
-            )}
           </Flex>
         )}
 
         {/* Show memory chip even on empty threads */}
         {empty && memoryChip && (
-          <Tooltip label={memoryChip.title} withArrow openDelay={300}>
-            <UnstyledButton
-              type="button"
-              className="session-statusline-seg shrink-0"
-              onClick={() => navigateToSettings('memory')}
-              aria-label={memoryChip.label}
-            >
-              <span className="session-statusline-key">mem</span>
-              <span className="session-statusline-val" style={{ opacity: memoryChip.on ? 1 : 0.55 }}>
-                {memoryChip.on
-                  ? t('Memory on · {{count}} facts', { count: memoryChip.factCount })
-                  : t('Memory off')}
-              </span>
-            </UnstyledButton>
-          </Tooltip>
+          <MemoryDockPopover
+            className="session-statusline-seg shrink-0"
+            label={memoryChip.label}
+            on={memoryChip.on}
+            title={memoryChip.title}
+            onInsertMemory={onInsertMemory}
+            getMemorySaveContent={getMemorySaveContent}
+          />
         )}
       </Flex>
     </div>

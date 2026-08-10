@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import MessageList, { type MessageListRef } from '@/components/chat/MessageList'
 import SessionStatusBar from '@/components/chat/SessionStatusBar'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
-import InputBox from '@/components/InputBox/InputBox'
+import InputBox, { type InputBoxRef } from '@/components/InputBox/InputBox'
 import Header from '@/components/layout/Header'
 import ThreadHistoryDrawer from '@/components/session/ThreadHistoryDrawer'
 import WorkspacePanel, { useWorkspaceChromeActive } from '@/components/workspace/WorkspacePanel'
@@ -20,8 +20,8 @@ import { getAllMessageList } from '@/stores/sessionHelpers'
 import { taskStore } from '@/stores/taskStore'
 import { useUIStore } from '@/stores/uiStore'
 import { isThreadVisuallyEmpty } from '@/utils/chat-starters'
-import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 import { getSessionRouteState } from '@/utils/sessionRouteState'
+import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
 // Agent-mode panels are not used on Android. Use compile-time conditional
 // dynamic imports so the modules (and their @mantine/openclaw deps) are
@@ -56,6 +56,7 @@ function RouteComponent() {
   )
 
   const messageListRef = useRef<MessageListRef>(null)
+  const inputBoxRef = useRef<InputBoxRef>(null)
 
   const goHome = useCallback(() => {
     navigate({ to: '/', replace: true })
@@ -216,7 +217,13 @@ function RouteComponent() {
   }
 
   if (sessionRouteState === 'error') {
-    return <SessionState message={t('Could not load conversation')} actionLabel={t('Retry')} onAction={() => void refetch()} />
+    return (
+      <SessionState
+        message={t('Could not load conversation')}
+        actionLabel={t('Retry')}
+        onAction={() => void refetch()}
+      />
+    )
   }
 
   if (sessionRouteState === 'not-found') {
@@ -291,6 +298,7 @@ function RouteComponent() {
               <ErrorBoundary name="session-inputbox">
                 <InputBox
                   key={`input-box${currentSession.id}`}
+                  ref={inputBoxRef}
                   sessionId={currentSession.id}
                   sessionType={currentSession.type}
                   model={model}
@@ -319,6 +327,8 @@ function RouteComponent() {
               generating={!!lastGeneratingMessage}
               sessionId={currentSession.id}
               empty={threadEmpty}
+              onInsertMemory={(content) => inputBoxRef.current?.insertMemory(content)}
+              getMemorySaveContent={() => inputBoxRef.current?.getMemorySaveContent() ?? ''}
             />
           </div>
         </div>

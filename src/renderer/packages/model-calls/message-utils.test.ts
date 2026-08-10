@@ -43,6 +43,39 @@ const dependencies: ModelDependencies = {
 }
 
 describe('convertToModelMessages', () => {
+  it('adds selected memory to the model payload without changing visible user text', async () => {
+    const result = await convertToModelMessages(
+      [
+        {
+          id: 'user-1',
+          role: 'user',
+          contentParts: [{ type: 'text', text: 'Help me plan this project' }],
+          memoryAttachments: [
+            {
+              id: 'memory-1',
+              content: 'The project uses TypeScript and React.',
+              tags: ['project', 'stack'],
+            },
+          ],
+        },
+      ],
+      { modelSupportVision: true, dependencies }
+    )
+
+    expect(result).toEqual([
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: 'Help me plan this project' },
+          {
+            type: 'text',
+            text: 'User-selected memory for this turn:\n- The project uses TypeScript and React. [tags: project, stack]',
+          },
+        ],
+      },
+    ])
+  })
+
   it('keeps assistant reasoning parts out of resend payloads by default', async () => {
     const result = await convertToModelMessages(
       [

@@ -313,6 +313,7 @@ function RouteComponent() {
               providerId={model?.provider}
               generating={!!lastGeneratingMessage}
               sessionId={currentSession.id}
+              memoryAutoSave={currentSession.settings?.memoryAutoSave}
               empty={threadEmpty}
               onInsertMemory={(content) => inputBoxRef.current?.insertMemory(content)}
               getMemorySaveContent={() => inputBoxRef.current?.getMemorySaveContent() ?? ''}

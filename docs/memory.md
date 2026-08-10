@@ -58,12 +58,28 @@ Legacy **User Personal Info** is migrated into the global bank; `/settings/user-
   - Type **`@mem`** or **`@memory`** in the composer to search memories from the keyboard; add a search phrase after a space, then use arrow keys plus Enter or Tab to attach the highlighted result.
   - **Save memory from draft** uses selected composer text first (otherwise the draft), requires review + optional tags, and saves unpinned by default
   - **Manage** opens Settings → Memory for full editing, archive, export, and advanced controls
+- **Per-chat auto-save** (default **on**, inherits global Memory auto-save)
+  - **Primary UI**: Memory dock (composer **brain** button or statusline **mem** chip) → **Auto-save this chat** switch at the top
+  - Also in Session options → **Auto-save memories from this chat**
+  - **Off** (`session.settings.memoryAutoSave === false`): no post-turn auto-extract and no model `memory_retain` for this chat
+  - **Inject / host pre-search / recall tools** stay on when global Memory is enabled
+  - **Manual Save to memory** (toolbar / composer) still works — explicit user intent
+  - Statusline shows `on · N · auto-save off` when Memory inject is on but this chat opted out
 - **Save to memory**: message action toolbar (brain icon), next to edit / more
 - **Settings → Memory** tabs: **Global** | **Agents** | **Advanced**
   - Header: master **Enabled** / **Auto-save** + status strip (`On · N facts · ~T tokens`)
   - Bank workspace: profile card, search, primary **Add memory**, ⋯ menu (export / import / rebuild / clear)
   - Soft-archived / disabled: toggle **Show archived**
   - **Advanced**: retrieval mode, core vs full budgets, host pre-search, auto-save N turns, fallback pin, soft-archive, semantic boost, inject preview
+
+## Write policy (global × session)
+
+| Source | Global Memory off | Session auto-save off | Normal (both on) |
+|--------|-------------------|------------------------|------------------|
+| Auto-extract after N turns | blocked | blocked | allowed if global Auto-save on |
+| Model `memory_retain` | blocked | blocked | allowed when tools available |
+| Manual Save to memory | blocked | **allowed** | allowed |
+| Inject / pre-search / recall | off | **on** | on |
 
 ## Troubleshooting empty bank
 
@@ -74,6 +90,7 @@ Legacy **User Personal Info** is migrated into the global bank; `/settings/user-
 5. In hybrid, **pin** facts that must always appear; unpinned facts need search / pre-search.
 6. Auto-save needs chat generation to finish; toast shows update count or “no durable facts”.
 7. Auto-save does **not** pin raw chat by default (enable **Fallback-pin** in Advanced if you want that).
+8. If this chat has **Auto-save memories from this chat** off, auto-extract and model retain will not write — that is expected; inject can still show facts from other chats.
 
 ## Storage
 
@@ -93,6 +110,7 @@ Built in `packages/memory/inject.ts`, applied via `injectModelSystemPrompt` for 
 
 ```
 src/shared/types/memory.ts
+src/shared/types/settings.ts          # SessionSettings.memoryAutoSave
 src/renderer/packages/memory/
   bank-ops.ts       # retain / prune / soft-archive / near-dup
   recall.ts         # unified scored recall
@@ -100,10 +118,12 @@ src/renderer/packages/memory/
   semantic.ts       # local token-vector fusion
   repository.ts     # MemoryRepository (LocalFtsMemoryRepository)
   metrics.ts        # S0 diagnostics
+  session-policy.ts # per-chat auto-save / tool-retain gates
   inject.ts / tools.ts / auto-save.ts / persistence.ts
 src/renderer/stores/memoryStore.ts
 src/renderer/routes/settings/memory.tsx
 src/renderer/components/settings/memory/
+src/renderer/modals/SessionSettings.tsx  # per-chat auto-save switch
 ```
 
 ## Privacy

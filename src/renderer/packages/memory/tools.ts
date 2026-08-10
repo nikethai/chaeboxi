@@ -24,6 +24,11 @@ export interface MemoryToolContext {
   agentName?: string
   sessionId?: string
   scheduleConsolidate?: (scope: 'global' | 'agent') => void
+  /**
+   * When false, omit memory_retain (session auto-save off).
+   * Default true when omitted.
+   */
+  allowRetain?: boolean
 }
 
 export const MEMORY_TOOL_NAMES = [
@@ -36,6 +41,7 @@ export const MEMORY_TOOL_NAMES = [
 ] as const
 
 export function getMemoryToolSet(ctx: MemoryToolContext) {
+  const allowRetain = ctx.allowRetain !== false
   const mode = ctx.settings.retrievalMode ?? 'hybrid'
   const retrievalHint =
     mode === 'always'
@@ -44,6 +50,7 @@ export function getMemoryToolSet(ctx: MemoryToolContext) {
         ? 'A host Memory lookup already ran for this user message (see system Memory section). Only profile + pinned facts are always injected. If lookup has no match but the question may involve the user\'s projects/stack/prefs, call memory_recall ONCE with keywords from the user message BEFORE any web search.'
         : 'A host Memory lookup already ran for this user message. Full memory is not injected. Call memory_recall ONCE before web search when personal/project context may matter.'
 
+  const retainBullet = allowRetain ? '- memory_retain — store a short durable fact\n' : ''
   const description = `
 # Long-term memory (priority over web search for personal/project context)
 
@@ -56,63 +63,68 @@ Tool order for research questions that might involve the user's work:
 2. memory_recall if you need more from the bank
 3. Then web search for external public docs (SDKs, APIs, blogs)
 
-- memory_retain — store a short durable fact
-- memory_recall — keyword search (prefer before web search when personal/project context is possible)
+${retainBullet}- memory_recall — keyword search (prefer before web search when personal/project context is possible)
 - memory_list — recent/pinned entries
 - memory_forget — disable or hard-delete by id
 - memory_update — edit by id
 - memory_reflect — answer a question from memories only
-
+${allowRetain ? '' : '\nMemory retain is disabled for this chat; do not invent a store tool.\n'}
 Do not store secrets, passwords, API keys, or ephemeral task noise.
 `
 
+  const memoryRetainTool = tool({
+    description: 'Store a durable fact in long-term memory. Returns memory id.',
+    inputSchema: z.object({
+      content: z.string().describe('Short durable fact'),
+      scope: z.enum(['global', 'agent']).optional(),
+      tags: z.array(z.string()).optional(),
+    }),
+    execute: async (input: { content: string; scope?: 'global' | 'agent'; tags?: string[] }) => {
+      if (!allowRetain) {
+        return { ok: false, error: 'Memory auto-save is off for this chat' }
+      }
+
+      const scope =
+        input.scope === 'agent' && ctx.agentId
+          ? 'agent'
+          : input.scope === 'global'
+            ? 'global'
+            : ctx.agentId
+              ? 'agent'
+              : 'global'
+
+      if (scope === 'agent' && !ctx.agentId) {
+        return { ok: false, error: 'No agent active for agent-scoped memory' }
+      }
+
+      const entry = createEntry({
+        content: input.content,
+        tags: input.tags,
+        scope,
+        agentId: scope === 'agent' ? ctx.agentId : undefined,
+        source: 'tool',
+        sourceSessionId: ctx.sessionId,
+        maxEntryChars: ctx.settings.maxEntryChars,
+      })
+      if (!entry) return { ok: false, error: 'Content empty or fully redacted' }
+
+      if (scope === 'agent' && ctx.agentId) {
+        const bank = ctx.getAgentBank() ?? emptyMemoryBank('agent', ctx.agentId)
+        const next = retainEntry(bank, entry, ctx.settings)
+        await ctx.setAgentBank(next)
+        ctx.scheduleConsolidate?.('agent')
+      } else {
+        const next = retainEntry(ctx.getGlobalBank(), entry, ctx.settings)
+        await ctx.setGlobalBank(next)
+        ctx.scheduleConsolidate?.('global')
+      }
+
+      return { ok: true, id: entry.id, scope, content: entry.content }
+    },
+  } as any)
+
   const tools = {
-    memory_retain: tool({
-      description: 'Store a durable fact in long-term memory. Returns memory id.',
-      inputSchema: z.object({
-        content: z.string().describe('Short durable fact'),
-        scope: z.enum(['global', 'agent']).optional(),
-        tags: z.array(z.string()).optional(),
-      }),
-      execute: async (input: { content: string; scope?: 'global' | 'agent'; tags?: string[] }) => {
-        const scope =
-          input.scope === 'agent' && ctx.agentId
-            ? 'agent'
-            : input.scope === 'global'
-              ? 'global'
-              : ctx.agentId
-                ? 'agent'
-                : 'global'
-
-        if (scope === 'agent' && !ctx.agentId) {
-          return { ok: false, error: 'No agent active for agent-scoped memory' }
-        }
-
-        const entry = createEntry({
-          content: input.content,
-          tags: input.tags,
-          scope,
-          agentId: scope === 'agent' ? ctx.agentId : undefined,
-          source: 'tool',
-          sourceSessionId: ctx.sessionId,
-          maxEntryChars: ctx.settings.maxEntryChars,
-        })
-        if (!entry) return { ok: false, error: 'Content empty or fully redacted' }
-
-        if (scope === 'agent' && ctx.agentId) {
-          const bank = ctx.getAgentBank() ?? emptyMemoryBank('agent', ctx.agentId)
-          const next = retainEntry(bank, entry, ctx.settings)
-          await ctx.setAgentBank(next)
-          ctx.scheduleConsolidate?.('agent')
-        } else {
-          const next = retainEntry(ctx.getGlobalBank(), entry, ctx.settings)
-          await ctx.setGlobalBank(next)
-          ctx.scheduleConsolidate?.('global')
-        }
-
-        return { ok: true, id: entry.id, scope, content: entry.content }
-      },
-    } as any),
+    ...(allowRetain ? { memory_retain: memoryRetainTool } : {}),
 
     memory_recall: tool({
       description:

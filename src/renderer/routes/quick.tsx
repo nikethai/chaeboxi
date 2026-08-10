@@ -383,6 +383,7 @@ function QuickChatPage() {
           providerId={model?.provider}
           generating={Boolean(lastGenerating?.generating)}
           sessionId={session.id}
+          memoryAutoSave={session.settings?.memoryAutoSave}
           empty={threadEmpty}
           compact
           onInsertMemory={(content) => inputBoxRef.current?.insertMemory(content)}

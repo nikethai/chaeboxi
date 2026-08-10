@@ -261,6 +261,41 @@ const SessionSettingsModal = NiceModal.create(
               </Stack>
             )}
 
+            {isChatSession(session) && (
+              <Stack gap={4} className="session-settings-memory-autosave">
+                <Flex align="center" justify="space-between" gap="sm">
+                  <Text size="sm" fw={600}>
+                    {t('Auto-save memories from this chat')}
+                  </Text>
+                  <Switch
+                    checked={editingData.settings?.memoryAutoSave !== false}
+                    onChange={(e) =>
+                      setEditingData((_data) => {
+                        if (!_data) return null
+                        return {
+                          ..._data,
+                          settings: {
+                            ..._data.settings,
+                            // undefined = inherit global; false = session opt-out
+                            memoryAutoSave: e.currentTarget.checked ? undefined : false,
+                          },
+                        }
+                      })
+                    }
+                  />
+                </Flex>
+                <Text size="xs" c="dimmed">
+                  {editingData.settings?.memoryAutoSave === false
+                    ? t(
+                        'Auto-extract and model retain are off for this chat. You can still save facts manually.'
+                      )
+                    : t(
+                        'When on, durable facts may be auto-extracted and model-retained (if Memory auto-save is enabled globally).'
+                      )}
+                </Text>
+              </Stack>
+            )}
+
             {/* Advanced model settings — collapsed by default */}
             <Stack gap={0} className="border border-solid border-chatbox-border-primary rounded-lg overflow-hidden session-settings-advanced">
               <UnstyledButton

@@ -9,13 +9,14 @@ import type { Message } from '@shared/types'
 import type { MemoryEntry } from '@shared/types/memory'
 import { formatNumber } from '@shared/utils'
 import { useAtomValue } from 'jotai'
-import { type FC, useEffect, useMemo } from 'react'
+import { type FC, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { MemoryDockPopover } from '@/components/chat/MemoryDockPopover'
 import TokenCountMenu from '@/components/InputBox/TokenCountMenu'
 import { aggregateSessionCosts, formatCost } from '@/packages/cost-tracking'
 import { getMemoryInjectStats } from '@/packages/memory/inject'
 import { composerTokenMenuAtom } from '@/stores/atoms/uiAtoms'
+import * as chatStore from '@/stores/chatStore'
 import { ensureMemoryStoreInit, useMemoryStore } from '@/stores/memoryStore'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 
@@ -25,6 +26,11 @@ export type SessionStatusBarProps = {
   generating?: boolean
   providerId?: string
   sessionId?: string
+  /**
+   * Session settings.memoryAutoSave. When false, statusline shows auto-save off
+   * while Memory inject may still be on.
+   */
+  memoryAutoSave?: boolean
   /** Quiet bar for empty threads (model only, no msg/tok noise) */
   empty?: boolean
   /**
@@ -52,6 +58,7 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
   generating,
   providerId,
   sessionId,
+  memoryAutoSave,
   empty = false,
   compact = false,
   onInsertMemory,
@@ -62,6 +69,25 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
   const memoryReady = useMemoryStore((s) => s.ready)
   const globalBank = useMemoryStore((s) => s.globalBank)
   const memorySettings = useMemoryStore((s) => s.settings)
+  const sessionAutoSaveOff = memoryAutoSave === false
+
+  const handleMemoryAutoSaveChange = useCallback(
+    (enabled: boolean) => {
+      if (!sessionId) return
+      void chatStore.updateSession(sessionId, (session) => {
+        if (!session) throw new Error('Session not found')
+        return {
+          ...session,
+          settings: {
+            ...session.settings,
+            // undefined = inherit global; false = session opt-out
+            memoryAutoSave: enabled ? undefined : false,
+          },
+        }
+      })
+    },
+    [sessionId]
+  )
 
   useEffect(() => {
     if (compact) return
@@ -78,19 +104,26 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
     if (!stats.enabled) {
       return { label: t('Memory off'), title: t('Open Memory settings'), factCount: 0, on: false }
     }
+    const baseTitle =
+      stats.factCount > 0
+        ? t('{{count}} enabled facts will inject into model prompts (~{{tokens}} tokens)', {
+            count: stats.factCount,
+            tokens: stats.injectTokens,
+          })
+        : t('Memory enabled but empty — add facts in Settings')
+    const autoSaveNote = sessionAutoSaveOff
+      ? t('Auto-save is off for this chat. Manual Save to memory still works.')
+      : ''
     return {
-      label: t('Memory on · {{count}} facts', { count: stats.factCount }),
-      title:
-        stats.factCount > 0
-          ? t('{{count}} enabled facts will inject into model prompts (~{{tokens}} tokens)', {
-              count: stats.factCount,
-              tokens: stats.injectTokens,
-            })
-          : t('Memory enabled but empty — add facts in Settings'),
+      label: sessionAutoSaveOff
+        ? t('Memory on · {{count}} facts · auto-save off', { count: stats.factCount })
+        : t('Memory on · {{count}} facts', { count: stats.factCount }),
+      title: autoSaveNote ? `${baseTitle} ${autoSaveNote}` : baseTitle,
       factCount: stats.factCount,
       on: true,
+      autoSaveOff: sessionAutoSaveOff,
     }
-  }, [compact, memoryReady, globalBank, memorySettings, t])
+  }, [compact, memoryReady, globalBank, memorySettings, sessionAutoSaveOff, t])
 
   const metrics = useMemo(() => (compact ? null : aggregateSessionCosts(messages)), [compact, messages])
   const model = modelLabel || lastAssistantModel(messages) || '—'
@@ -160,15 +193,21 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
                 className="session-statusline-seg shrink-0"
                 label={
                   memoryChip.on
-                    ? memoryChip.factCount > 0
-                      ? t('on · {{count}}', { count: memoryChip.factCount })
-                      : t('on · 0')
+                    ? memoryChip.autoSaveOff
+                      ? memoryChip.factCount > 0
+                        ? t('on · {{count}} · auto-save off', { count: memoryChip.factCount })
+                        : t('on · 0 · auto-save off')
+                      : memoryChip.factCount > 0
+                        ? t('on · {{count}}', { count: memoryChip.factCount })
+                        : t('on · 0')
                     : t('off')
                 }
                 on={memoryChip.on}
                 title={memoryChip.title}
                 onInsertMemory={onInsertMemory}
                 getMemorySaveContent={getMemorySaveContent}
+                memoryAutoSave={memoryAutoSave}
+                onMemoryAutoSaveChange={sessionId ? handleMemoryAutoSaveChange : undefined}
               />
             )}
 
@@ -232,6 +271,8 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
             title={memoryChip.title}
             onInsertMemory={onInsertMemory}
             getMemorySaveContent={getMemorySaveContent}
+            memoryAutoSave={memoryAutoSave}
+            onMemoryAutoSaveChange={sessionId ? handleMemoryAutoSaveChange : undefined}
           />
         )}
       </Flex>

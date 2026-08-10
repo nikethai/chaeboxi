@@ -32,6 +32,22 @@ describe('resolveSettingsExitTarget', () => {
     })
   })
 
+  it('treats the transient new-chat route as home', () => {
+    expect(resolveSettingsExitTarget('new')).toEqual({ to: '/' })
+  })
+
+  it('falls back to home when the cached session no longer exists', () => {
+    expect(resolveSettingsExitTarget('deleted-session', false)).toEqual({ to: '/' })
+    expect(resolveSettingsExitTarget('new', false)).toEqual({ to: '/' })
+  })
+
+  it('keeps the cached session when storage confirms it exists', () => {
+    expect(resolveSettingsExitTarget('sess-1', true)).toEqual({
+      to: '/session/$sessionId',
+      params: { sessionId: 'sess-1' },
+    })
+  })
+
   it('falls back to home without a session', () => {
     expect(resolveSettingsExitTarget(null)).toEqual({ to: '/' })
     expect(resolveSettingsExitTarget(undefined)).toEqual({ to: '/' })

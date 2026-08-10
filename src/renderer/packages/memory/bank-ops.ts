@@ -78,12 +78,22 @@ export function createEntry(input: RetainInput): MemoryEntry | null {
 
 function findDedupeIndex(entries: MemoryEntry[], content: string): number {
   const fp = contentFingerprint(content)
-  const exact = entries.findIndex((e) => contentFingerprint(e.content) === fp)
+  let exact = -1
+  for (let i = 0; i < entries.length; i++) {
+    // A sync tombstone must never absorb a new retain and be resurrected into
+    // active memory; treat it as absent (pre-tombstone hard-delete behavior).
+    if (entries[i].deleted) continue
+    if (contentFingerprint(entries[i].content) === fp) {
+      exact = i
+      break
+    }
+  }
   if (exact >= 0) return exact
 
   let bestIdx = -1
   let bestScore = 0
   for (let i = 0; i < entries.length; i++) {
+    if (entries[i].deleted) continue
     const j = contentTokenJaccard(entries[i].content, content)
     if (j >= NEAR_DUP_THRESHOLD && j > bestScore) {
       bestScore = j
@@ -240,6 +250,51 @@ export function deleteEntry(bank: MemoryBank, id: string): MemoryBank {
 export function forgetEntry(bank: MemoryBank, id: string, hard = false): MemoryBank {
   if (hard) return deleteEntry(bank, id)
   return updateEntry(bank, id, { enabled: false, archived: true })
+}
+
+/** Default retention window for sync tombstones before they are hard-purged. */
+export const DEFAULT_TOMBSTONE_TTL_MS = 30 * 24 * 60 * 60 * 1000
+
+/**
+ * Mark an entry as deleted via a sync tombstone instead of removing it.
+ * The entry stays on disk (hidden from recall) so other devices can converge
+ * on the delete, and its revision is bumped to win sync merges.
+ */
+export function markEntryDeleted(bank: MemoryBank, id: string, now = Date.now()): MemoryBank {
+  let changed = false
+  const entries = bank.entries.map((entry) => {
+    if (entry.id !== id) return entry
+    changed = true
+    return {
+      ...entry,
+      deleted: true,
+      enabled: false,
+      updatedAt: now,
+      revision: (entry.revision ?? 0) + 1,
+    }
+  })
+
+  if (!changed) return bank
+  return {
+    ...bank,
+    entries,
+    revision: (bank.revision ?? 0) + 1,
+  }
+}
+
+/**
+ * Hard-remove tombstones older than ttlMs. Tombstones must outlive the sync
+ * pull window so deletes propagate to other devices before being purged.
+ */
+export function purgeExpiredTombstones(
+  bank: MemoryBank,
+  now = Date.now(),
+  ttlMs = DEFAULT_TOMBSTONE_TTL_MS
+): MemoryBank {
+  const cutoff = now - ttlMs
+  const entries = bank.entries.filter((e) => !(e.deleted && (e.updatedAt ?? 0) <= cutoff))
+  if (entries.length === bank.entries.length) return bank
+  return { ...bank, entries }
 }
 
 /**

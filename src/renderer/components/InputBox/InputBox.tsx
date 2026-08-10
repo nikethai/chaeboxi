@@ -69,6 +69,7 @@ import { useSkills } from '@/stores/skillsStore'
 import type { QuoteDraft } from '@/stores/uiStore'
 import { useUIStore } from '@/stores/uiStore'
 import { delay } from '@/utils'
+import { getModelDisplayName } from '@/utils/modelDisplayName'
 import { getModelReadiness } from '@/utils/modelReadiness'
 import { trackEvent } from '@/utils/track'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
@@ -150,6 +151,7 @@ export type InputBoxProps = {
     provider: string
     modelId: string
   }
+  modelDisplayName?: string
   fullWidth?: boolean
   onSelectModel?(provider: string, model: string): void
   onSubmit?(payload: InputBoxPayload): Promise<void>
@@ -179,6 +181,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       sessionType = 'chat',
       generating = false,
       model,
+      modelDisplayName,
       fullWidth = false,
       onSelectModel,
       onSubmit,
@@ -395,17 +398,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     )
 
     const { providers } = useProviders()
-    const modelSelectorDisplayText = useMemo(() => {
-      if (!model) {
-        return t('Select Model')
-      }
-      const providerInfo = providers.find((p) => p.id === model.provider)
-
-      const modelInfo = (providerInfo?.models || providerInfo?.defaultSettings?.models)?.find(
-        (m) => m.modelId === model.modelId
-      )
-      return `${modelInfo?.nickname || model.modelId}`
-    }, [providers, model, t])
+    const resolvedModelDisplayText = useMemo(() => getModelDisplayName(providers, model), [model, providers])
+    const modelSelectorDisplayText = modelDisplayName || resolvedModelDisplayText || t('Select Model')
 
     const hasVideoAttachments = useMemo(() => {
       return (preConstructedMessage.preprocessedFiles || []).some((f) => f.mediaKind === 'video' && !f.error)

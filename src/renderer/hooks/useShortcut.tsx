@@ -53,8 +53,10 @@ export default function useShortcut() {
       return
     }
 
+    // Create a genuinely new conversation; do not let Settings restore the previous session.
     // CmdOrCtrl + N
     if (e.key === 'n' && ctrlKey && !shift) {
+      getDefaultStore().set(currentSessionIdAtom, null)
       router.navigate({
         to: '/',
       })

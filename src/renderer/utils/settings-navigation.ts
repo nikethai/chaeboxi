@@ -15,12 +15,15 @@ export function getSettingsParentPath(pathname: string): string | null {
   return `/${parts.slice(0, -1).join('/')}`
 }
 
-/** Resolve where leave-settings should land given the cached session id. */
-export function resolveSettingsExitTarget(sessionId: string | null | undefined): {
+/** Resolve where leaving settings should land given the cached session and storage validation result. */
+export function resolveSettingsExitTarget(
+  sessionId: string | null | undefined,
+  sessionExists = true
+): {
   to: '/session/$sessionId' | '/'
   params?: { sessionId: string }
 } {
-  if (sessionId) {
+  if (sessionId && sessionId !== 'new' && sessionExists) {
     return { to: '/session/$sessionId', params: { sessionId } }
   }
   return { to: '/' }

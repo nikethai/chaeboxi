@@ -14,6 +14,7 @@ import { uniqueId } from 'lodash'
 import { createModelDependencies } from '@/adapters'
 import type { ToolApprovalModalResult } from '@/modals/ToolApproval'
 import { hostPreSearchMemories } from '@/packages/memory/host-presearch'
+import { isSessionMemoryToolRetainAllowed } from '@/packages/memory/session-policy'
 import { getMemoryToolSet, MEMORY_TOOL_NAMES } from '@/packages/memory/tools'
 import platform from '@/platform'
 import { ensureMemoryStoreInit, memoryStore } from '@/stores/memoryStore'
@@ -518,6 +519,7 @@ ${!workspaceRoot ? '- No session workspace folder is set. Ask the user to set a 
       agentId: memoryContext?.agentId,
       agentName: memoryContext?.agentName,
       sessionId,
+      allowRetain: isSessionMemoryToolRetainAllowed(memorySettings, sessionSettings),
       scheduleConsolidate: (scope) => {
         if (!memorySettings.autoConsolidate) return
         void memoryStore

@@ -560,6 +560,25 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       [currentSessionId, isNewSession]
     )
 
+    const handleMemoryAutoSaveChange = useCallback(
+      async (enabled: boolean) => {
+        if (!currentSessionId || isNewSession) return
+        await chatStore.updateSession(currentSessionId, (session) => {
+          if (!session) {
+            throw new Error('Session not found')
+          }
+          return {
+            ...session,
+            settings: {
+              ...session.settings,
+              memoryAutoSave: enabled ? undefined : false,
+            },
+          }
+        })
+      },
+      [currentSessionId, isNewSession]
+    )
+
     // Publish token menu state to statusline (composer chip removed)
     const setComposerTokenMenu = useSetAtom(composerTokenMenuAtom)
     useEffect(() => {
@@ -2335,22 +2354,36 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 <MemoryDockPopover
                   label={t('Memory')}
                   on
-                  title={t('Search and save memory')}
+                  title={
+                    currentSession?.settings?.memoryAutoSave === false
+                      ? t('Memory · auto-save off for this chat')
+                      : t('Search and save memory')
+                  }
                   trigger={
                     <UnstyledButton
                       className={cn(
                         toolbarButtonClass,
                         'min-h-9 min-w-9 active:scale-[0.96] transition-transform',
-                        isSmallScreen && 'mobile-touch-target'
+                        isSmallScreen && 'mobile-touch-target',
+                        currentSession?.settings?.memoryAutoSave === false && 'opacity-80'
                       )}
                       aria-label={t('Memory')}
-                      title={t('Search and save memory')}
+                      title={
+                        currentSession?.settings?.memoryAutoSave === false
+                          ? t('Memory · auto-save off for this chat')
+                          : t('Search and save memory')
+                      }
                     >
                       <IconBrain size={toolbarIconSize} stroke={1.8} />
                     </UnstyledButton>
                   }
                   onInsertMemory={insertMemory}
                   getMemorySaveContent={getMemorySaveContent}
+                  memoryAutoSave={currentSession?.settings?.memoryAutoSave}
+                  onMemoryAutoSaveChange={
+                    !isNewSession && currentSessionId ? handleMemoryAutoSaveChange : undefined
+                  }
+                  memoryAutoSaveDisabled={isNewSession || !currentSessionId}
                 />
               </Flex>
 

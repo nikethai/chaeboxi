@@ -281,6 +281,14 @@ export const MemorySyncConfigSchema = z.object({
   intervalSeconds: z.number().default(60),
 })
 
+/** Local OS system notifications (not remote push). Default off. */
+export const SystemNotificationsConfigSchema = z.object({
+  enabled: z.boolean().default(false).catch(false),
+  notifyOnGenerationComplete: z.boolean().default(true).catch(true),
+  notifyOnRoomComplete: z.boolean().default(true).catch(true),
+  notifyOnUpdateAvailable: z.boolean().default(true).catch(true),
+})
+
 const ExtensionSettingsSchema = z.object({
   webSearch: z.object({
     provider: z.enum(['build-in', 'bing', 'duckduckgo', 'serper', 'google', 'tavily', 'exa']),
@@ -320,6 +328,8 @@ const ExtensionSettingsSchema = z.object({
   documentParser: DocumentParserConfigSchema.optional(),
   historySync: HistorySyncConfigSchema.optional().catch(undefined),
   memorySync: MemorySyncConfigSchema.optional().catch(undefined),
+  /** Local OS system notifications (desktop/web/mobile; not remote push) */
+  notifications: SystemNotificationsConfigSchema.optional().catch(undefined),
   /** Read public video URLs (YouTube/Vimeo/TikTok/Facebook) in agent tools */
   videoUrl: z
     .object({
@@ -587,6 +597,7 @@ export type ShortcutSetting = z.infer<typeof ShortcutSettingSchema>
 export type ExtensionSettings = z.infer<typeof ExtensionSettingsSchema>
 export type HistorySyncConfig = z.infer<typeof HistorySyncConfigSchema>
 export type MemorySyncConfig = z.infer<typeof MemorySyncConfigSchema>
+export type SystemNotificationsConfig = z.infer<typeof SystemNotificationsConfigSchema>
 export type MCPTransportConfig = z.infer<typeof MCPTransportConfigSchema>
 export type MCPServerConfig = z.infer<typeof MCPServerConfigSchema>
 export type MCPSettings = z.infer<typeof MCPSettingsSchema>

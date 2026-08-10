@@ -1095,6 +1095,23 @@ export async function generate(
           // non-fatal
         }
 
+        // Local OS notification when unfocused (never includes message content)
+        if (!roomMulti) {
+          try {
+            const { notifySystemEvent } = await import('@/packages/notifications')
+            const sessionName =
+              (await chatStore.getSession(sessionId))?.name || session.name || undefined
+            void notifySystemEvent({
+              kind: 'generation_complete',
+              sessionId,
+              messageId: targetMsg.id,
+              sessionName,
+            })
+          } catch {
+            // non-fatal
+          }
+        }
+
         if (isExecutionPhase) {
           await chatStore.updateSession(sessionId, { planPhase: undefined })
         }
@@ -1169,6 +1186,17 @@ export async function generate(
           status: [],
         }
         await modifyMessage(sessionId, targetMsg, true)
+        try {
+          const { notifySystemEvent } = await import('@/packages/notifications')
+          void notifySystemEvent({
+            kind: 'generation_complete',
+            sessionId,
+            messageId: targetMsg.id,
+            sessionName: session.name || undefined,
+          })
+        } catch {
+          // non-fatal
+        }
         shouldProcessQueuedMessages = true
         break
       }

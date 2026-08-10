@@ -5,7 +5,7 @@ import { createTauriIPCAdapter, isTauriRuntime } from './tauri_ipc_adapter'
 import TestPlatform from './test_platform'
 import WebPlatform from './web_platform'
 import type { DesktopIPC } from '../../shared/desktop-ipc-types'
-import { CHATBOX_BUILD_PLATFORM } from '@/variables'
+import { CHATBOX_BUILD_PLATFORM, CHATBOX_BUILD_TARGET } from '@/variables'
 
 function createDesktopPlatformWithFormFactor(api: DesktopIPC): DesktopPlatform {
   const p = new DesktopPlatform(api)
@@ -47,8 +47,14 @@ export default platform
 /**
  * True when running inside a Capacitor mobile shell (not Tauri Android).
  * Use this to guard Capacitor-only APIs (CapacitorHttp, CapacitorSQLite, SplashScreen).
+ *
+ * Detection order:
+ * 1. Build-time mobile_app target (vite define during mobile:ios / mobile:android)
+ * 2. Runtime platform.type === 'mobile' (WebPlatform sets this for mobile_app builds)
+ * Never true under Tauri (including Tauri Android).
  */
-export const isCapacitorMobile = platform.type === 'mobile' && !isTauriRuntime()
+export const isCapacitorMobile =
+  !isTauriRuntime() && (CHATBOX_BUILD_TARGET === 'mobile_app' || platform.type === 'mobile')
 
 /**
  * The effective platform type for API headers / server-side classification.

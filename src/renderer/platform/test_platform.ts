@@ -11,7 +11,16 @@ import * as defaults from '@shared/defaults'
 import type { Config, Language, Settings, ShortcutSetting } from '@shared/types'
 import { v4 as uuidv4 } from 'uuid'
 import { type ImageGenerationStorage, IndexedDBImageGenerationStorage } from '@/storage/ImageGenerationStorage'
-import type { Exporter, Platform, PlatformType, FormFactor, Storage } from './interfaces'
+import type {
+  Exporter,
+  FormFactor,
+  Platform,
+  PlatformType,
+  Storage,
+  SystemNotificationClickPayload,
+  SystemNotificationPayload,
+  SystemNotificationPermission,
+} from './interfaces'
 import type { KnowledgeBaseController } from './knowledge-base/interface'
 
 /**
@@ -120,6 +129,10 @@ export default class TestPlatform implements Platform {
   private files = new Map<string, string>()
   private configs: Config | null = null
   private settings: Settings | null = null
+  /** Recorded system notifications for tests */
+  public systemNotifications: SystemNotificationPayload[] = []
+  public systemNotificationPermission: SystemNotificationPermission = 'granted'
+  private systemNotificationClickHandlers = new Set<(payload: SystemNotificationClickPayload) => void>()
 
   constructor() {
     // (legacy comment removed)
@@ -336,6 +349,36 @@ export default class TestPlatform implements Platform {
       throw new Error(`File not found: ${path}`)
     }
     this.files.delete(path)
+  }
+
+  public async getSystemNotificationPermission(): Promise<SystemNotificationPermission> {
+    return this.systemNotificationPermission
+  }
+
+  public async requestSystemNotificationPermission(): Promise<SystemNotificationPermission> {
+    if (this.systemNotificationPermission === 'unsupported') {
+      return 'unsupported'
+    }
+    this.systemNotificationPermission = 'granted'
+    return 'granted'
+  }
+
+  public async showSystemNotification(payload: SystemNotificationPayload): Promise<void> {
+    this.systemNotifications.push(payload)
+  }
+
+  public onSystemNotificationClick(callback: (payload: SystemNotificationClickPayload) => void): () => void {
+    this.systemNotificationClickHandlers.add(callback)
+    return () => {
+      this.systemNotificationClickHandlers.delete(callback)
+    }
+  }
+
+  /** Test helper: simulate user clicking a system notification */
+  public emitSystemNotificationClick(payload: SystemNotificationClickPayload): void {
+    for (const cb of this.systemNotificationClickHandlers) {
+      cb(payload)
+    }
   }
 
   public async minimize(): Promise<void> {

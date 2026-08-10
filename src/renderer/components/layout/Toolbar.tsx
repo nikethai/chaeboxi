@@ -28,6 +28,9 @@ export default function Toolbar({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     const offUpdateDownloaded = platform.onUpdateDownloaded(() => {
       setShowUpdateNotification(true)
+      void import('@/packages/notifications').then(({ notifySystemEvent }) =>
+        notifySystemEvent({ kind: 'update_available' })
+      )
     })
     return () => {
       offUpdateDownloaded()

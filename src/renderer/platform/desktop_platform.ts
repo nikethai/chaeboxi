@@ -10,7 +10,16 @@ import { v4 as uuidv4 } from 'uuid'
 import { parseLocale } from '@/i18n/parser'
 import { type ImageGenerationStorage, IndexedDBImageGenerationStorage } from '@/storage/ImageGenerationStorage'
 import { getOS } from '../packages/navigator'
-import type { ClipboardCapturePayload, FormFactor, Platform, PlatformType, ScreenshotImagePayload } from './interfaces'
+import type {
+  ClipboardCapturePayload,
+  FormFactor,
+  Platform,
+  PlatformType,
+  ScreenshotImagePayload,
+  SystemNotificationClickPayload,
+  SystemNotificationPayload,
+  SystemNotificationPermission,
+} from './interfaces'
 import DesktopKnowledgeBaseController from './knowledge-base/desktop-controller'
 import WebExporter from './web_exporter'
 import { parseTextFileLocally } from './web_platform_utils'
@@ -373,6 +382,77 @@ export default class DesktopPlatform implements Platform {
     timeoutMs?: number
   ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
     return this.ipc.invoke('execute_command', JSON.stringify({ command, cwd, timeoutMs }))
+  }
+
+  public async getSystemNotificationPermission(): Promise<SystemNotificationPermission> {
+    try {
+      const { isPermissionGranted } = await import('@tauri-apps/plugin-notification')
+      const granted = await isPermissionGranted()
+      return granted ? 'granted' : 'default'
+    } catch {
+      return 'unsupported'
+    }
+  }
+
+  public async requestSystemNotificationPermission(): Promise<SystemNotificationPermission> {
+    try {
+      const { isPermissionGranted, requestPermission } = await import('@tauri-apps/plugin-notification')
+      if (await isPermissionGranted()) {
+        return 'granted'
+      }
+      const result = await requestPermission()
+      if (result === 'granted') return 'granted'
+      if (result === 'denied') return 'denied'
+      return 'default'
+    } catch {
+      return 'unsupported'
+    }
+  }
+
+  public async showSystemNotification(payload: SystemNotificationPayload): Promise<void> {
+    const { sendNotification } = await import('@tauri-apps/plugin-notification')
+    sendNotification({
+      title: payload.title,
+      body: payload.body,
+      extra: {
+        sessionId: payload.data?.sessionId,
+        kind: payload.data?.kind,
+      },
+    })
+  }
+
+  public onSystemNotificationClick(callback: (payload: SystemNotificationClickPayload) => void): () => void {
+    let disposed = false
+    let unregister: (() => void) | null = null
+
+    void import('@tauri-apps/plugin-notification')
+      .then(({ onAction }) =>
+        onAction((notification) => {
+          if (disposed) return
+          const extra = (notification.extra ?? {}) as Record<string, unknown>
+          callback({
+            sessionId: typeof extra.sessionId === 'string' ? extra.sessionId : undefined,
+            kind: typeof extra.kind === 'string' ? extra.kind : undefined,
+          })
+        })
+      )
+      .then((listener) => {
+        if (disposed) {
+          void listener.unregister()
+          return
+        }
+        unregister = () => {
+          void listener.unregister()
+        }
+      })
+      .catch((err) => {
+        console.error('[notifications] onAction listen failed', err)
+      })
+
+    return () => {
+      disposed = true
+      unregister?.()
+    }
   }
 
   public async setKeepInTray(enabled: boolean): Promise<void> {

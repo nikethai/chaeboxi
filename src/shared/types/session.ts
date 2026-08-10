@@ -364,6 +364,12 @@ export const MessageSchema = z.object({
   searchQuery: z.string().optional().catch(undefined),
   searchProvider: z.string().optional().catch(undefined),
   groundingMetadata: GroundingMetadataSchema.optional().catch(undefined),
+  /**
+   * Follow-up suggestion chips generated for this assistant message.
+   * `undefined` — not attempted yet (a model call is still needed).
+   * `[]` — attempted but no usable suggestions (persisted so it is never retried on reload).
+   */
+  followUpSuggestions: z.array(z.string()).optional().catch(undefined),
   tokenCountMap: TokenCountMapSchema.optional(), // estimate token count as input
   tokenCalculatedAt: TokenCalculatedAtSchema,
   updatedAt: z.number().optional(),

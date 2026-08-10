@@ -121,6 +121,7 @@ export interface Platform extends Storage {
   notifyQuickRendererReady?(): Promise<void>
   notifyQuickRendererGone?(): Promise<void>
   getWindowLabel?(): Promise<string>
+  onQuickShown?(callback: () => void): () => void
   onShellNavigate?(callback: (path: string) => void): () => void
   onScreenshotCaptured?(callback: (payload: ScreenshotImagePayload) => void): () => void
   onClipboardCaptured?(callback: (payload: ClipboardCapturePayload) => void): () => void

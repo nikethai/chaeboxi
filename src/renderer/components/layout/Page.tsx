@@ -2,8 +2,10 @@ import { ActionIcon, Box, Flex, Title } from '@mantine/core'
 import { IconMenu2 } from '@tabler/icons-react'
 import clsx from 'clsx'
 import type { FC } from 'react'
+import { useTranslation } from 'react-i18next'
 import useNeedRoomForWinControls from '@/hooks/useNeedRoomForWinControls'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
+import { getSidebarToggleResult } from '@/utils/sidebarToggle'
 import { useUIStore } from '@/stores/uiStore'
 import TitleBarRow from './TitleBarRow'
 import WindowControls from './WindowControls'
@@ -20,18 +22,31 @@ export type PageProps = {
 }
 
 export const Page: FC<PageProps> = ({ children, title, left, right, className, headerClassName }) => {
+  const { t } = useTranslation()
   const showSidebar = useUIStore((s) => s.showSidebar)
   const setShowSidebar = useUIStore((s) => s.setShowSidebar)
+  const sidebarLayout = useUIStore((s) => s.sidebarLayout)
+  const setSidebarLayout = useUIStore((s) => s.setSidebarLayout)
   const isSmallScreen = useIsSmallScreen()
   const { needRoomForMacWindowControls } = useNeedRoomForWinControls()
 
-  // Mobile only — desktop rail expand lives on the sidebar foot
-  const showDefaultToggle = !left && isSmallScreen
+  // Mobile toggles the temporary drawer; the desktop rail hamburger expands it in place.
+  const showDefaultToggle = !left && (isSmallScreen || sidebarLayout === 'rail')
   const macTrafficInset = showDefaultToggle && needRoomForMacWindowControls
 
   const handleSidebarToggle = () => {
-    setShowSidebar(!showSidebar)
+    const next = getSidebarToggleResult({ isSmallScreen, sidebarLayout, showSidebar })
+    setSidebarLayout(next.sidebarLayout)
+    setShowSidebar(next.showSidebar)
   }
+
+  const sidebarToggleLabel =
+    !isSmallScreen && sidebarLayout === 'rail'
+      ? t('Expand sidebar')
+      : showSidebar
+        ? t('Hide sidebar')
+        : t('Show sidebar')
+
 
   return (
     <div className={clsx('flex flex-col h-full min-h-0 bg-[var(--chatbox-background-primary)]', className)}>
@@ -51,7 +66,7 @@ export const Page: FC<PageProps> = ({ children, title, left, right, className, h
                 color={isSmallScreen ? 'chatbox-secondary' : 'chatbox-tertiary'}
                 mr="sm"
                 onClick={handleSidebarToggle}
-                aria-label={showSidebar ? 'Hide sidebar' : 'Show sidebar'}
+                aria-label={sidebarToggleLabel}
               >
                 <IconMenu2 />
               </ActionIcon>

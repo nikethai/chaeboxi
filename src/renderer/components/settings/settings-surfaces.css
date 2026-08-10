@@ -99,59 +99,135 @@
 }
 
 .settings-collapsible-badge {
-  font-size: 0.65rem;
+  font-size: 0.625rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--chatbox-tint-tertiary);
-  padding: 0.15rem 0.4rem;
+  padding: 0.18rem 0.45rem;
   border-radius: 999px;
   background: color-mix(in srgb, var(--chatbox-tint-primary) 6%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.settings-collapsible-badge-active {
+  color: color-mix(in srgb, var(--chatbox-tint-brand) 88%, var(--chatbox-tint-primary));
+  background: color-mix(in srgb, var(--chatbox-tint-brand) 12%, var(--chatbox-background-secondary));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 22%, transparent);
 }
 
 .settings-collapsible-chevron {
   display: inline-flex;
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.35rem;
+  height: 1.35rem;
   align-items: center;
   justify-content: center;
-  font-size: 1.1rem;
   line-height: 1;
   color: var(--chatbox-tint-tertiary);
-  transform: rotate(90deg);
-  transition: transform 140ms cubic-bezier(0.2, 0, 0, 1);
+  border-radius: 6px;
+  transform: rotate(0deg);
+  transition:
+    transform 160ms cubic-bezier(0.2, 0, 0, 1),
+    color 140ms cubic-bezier(0.2, 0, 0, 1),
+    background-color 140ms cubic-bezier(0.2, 0, 0, 1);
 }
 
-.settings-collapsible.is-open .settings-collapsible-chevron {
-  transform: rotate(-90deg);
+.settings-collapsible-head:hover .settings-collapsible-chevron {
+  color: var(--chatbox-tint-secondary);
+  background: color-mix(in srgb, var(--chatbox-tint-primary) 6%, transparent);
+}
+
+.settings-collapsible.is-open .settings-collapsible-chevron,
+.settings-collapsible-chevron[data-open='true'] {
+  transform: rotate(180deg);
 }
 
 .settings-collapsible-body {
   border-radius: 0 0 11px 11px;
   background: var(--chatbox-background-secondary);
   box-shadow: var(--settings-shadow);
-  padding: 0.15rem 0.15rem 0.15rem;
+  padding: 0;
+  /* hairline under head when open */
+  box-shadow:
+    var(--settings-shadow),
+    inset 0 1px 0 color-mix(in srgb, var(--chatbox-tint-primary) 6%, transparent);
 }
 
 .settings-collapsible-body > .settings-card {
   box-shadow: none;
   border-radius: 0 0 10px 10px;
+  background: transparent;
 }
 
 .settings-collapsible-body > .settings-card.settings-card-padded:not(.settings-card-divided) {
-  padding: 0.75rem 0.9rem;
+  padding: 0.7rem 0.95rem 0.85rem;
 }
 
 .settings-collapsible-stack {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding: 0.65rem 0.75rem 0.85rem;
+  gap: 0.85rem;
+  padding: 0.7rem 0.8rem 0.95rem;
 }
 
 .settings-collapsible-stack .settings-section-label {
-  /* nested sections inside collapsible keep hierarchy without huge gaps */
+  margin-top: 0.1rem;
+  font-size: 0.68rem;
+}
+
+.settings-collapsible-stack .settings-section-desc {
+  font-size: 0.75rem;
   margin-top: 0.15rem;
+}
+
+.settings-collapsible-stack .settings-section-head {
+  margin-bottom: 0.4rem;
+}
+
+.settings-collapsible-stack .settings-card {
+  /* Nested cards slightly quieter inside advanced groups */
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent);
+  background: var(--chatbox-background-primary);
+}
+
+.settings-collapsible-stack .settings-card-padded:not(.settings-card-divided) {
+  padding: 0.75rem 0.85rem;
+}
+
+/* Mono proxy / endpoint fields */
+.settings-mono-input,
+.settings-content .settings-mono-input.mantine-Input-input,
+.settings-content .mantine-TextInput-input.settings-mono-input {
+  font-family: var(--chatbox-font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace);
+  font-size: 0.8125rem !important;
+  letter-spacing: -0.01em;
+}
+
+.settings-input-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--chatbox-tint-tertiary);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 120ms cubic-bezier(0.2, 0, 0, 1),
+    color 120ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.settings-input-clear:hover {
+  background: color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent);
+  color: var(--chatbox-tint-secondary);
 }
 
 /* ── Page header ── */
@@ -618,7 +694,7 @@
   color: var(--chatbox-tint-primary);
 }
 
-/* Collapsible advanced trigger */
+/* Collapsible advanced trigger (inline card variant) */
 .settings-collapsible-trigger {
   display: flex;
   width: 100%;
@@ -643,17 +719,6 @@
 .settings-collapsible-trigger:hover {
   background: color-mix(in srgb, var(--chatbox-tint-primary) 4%, transparent);
   color: var(--chatbox-tint-primary);
-}
-
-.settings-collapsible-chevron {
-  display: inline-block;
-  transform: rotate(90deg);
-  transition: transform 140ms cubic-bezier(0.2, 0, 0, 1);
-  opacity: 0.7;
-}
-
-.settings-collapsible-chevron[data-open='true'] {
-  transform: rotate(-90deg);
 }
 
 /* Provider detail measure inside split pane */

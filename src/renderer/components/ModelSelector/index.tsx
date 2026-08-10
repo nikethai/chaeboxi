@@ -1,5 +1,6 @@
 import type { ComboboxProps } from '@mantine/core'
 import type { ModelProvider, ProviderModelInfo } from '@shared/types'
+import { useRouterState } from '@tanstack/react-router'
 import { forwardRef, type PropsWithChildren, useMemo, useState } from 'react'
 import { useProviders } from '@/hooks/useProviders'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
@@ -80,7 +81,12 @@ export const ModelSelector = forwardRef<HTMLDivElement, ModelSelectorProps>(
       }
     }
 
-    const isSmallScreen = useIsSmallScreen()
+    // Quick Chat is ~520px so sm-breakpoint would pick the 85vh mobile drawer — force
+    // the compact desktop combobox for the floating HUD instead.
+    const isQuickChat = useRouterState({
+      select: (s) => s.location.pathname === '/quick',
+    })
+    const isSmallScreen = useIsSmallScreen() && !isQuickChat
 
     return isSmallScreen ? (
       <MobileModelSelector
@@ -114,7 +120,11 @@ export const ModelSelector = forwardRef<HTMLDivElement, ModelSelectorProps>(
         onOptionSubmit={handleOptionSubmit}
         onDropdownOpen={onDropdownOpen}
         modelFilter={modelFilter}
-        comboboxProps={comboboxProps}
+        comboboxProps={
+          isQuickChat
+            ? { width: 320, ...comboboxProps }
+            : comboboxProps
+        }
         searchPosition={searchPosition}
       >
         {children}

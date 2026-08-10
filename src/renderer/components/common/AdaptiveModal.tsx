@@ -6,6 +6,14 @@ import { Drawer } from 'vaul'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { Modal } from '../layout/Overlay'
 
+/** Quick Chat is ~520px (under sm) but is a desktop floating HUD — use centered modal, not mobile sheet. */
+function useAdaptiveMobileLayout() {
+  const isSmallScreen = useIsSmallScreen()
+  const isQuickChat =
+    typeof document !== 'undefined' && document.documentElement.dataset.quickChat === '1'
+  return isSmallScreen && !isQuickChat
+}
+
 type AdaptiveModalSemanticProps =
   | {
       title: string
@@ -41,9 +49,9 @@ export function AdaptiveModal({
   description,
   ...props
 }: AdaptiveModalProps) {
-  const isSmallScreen = useIsSmallScreen()
+  const isMobileLayout = useAdaptiveMobileLayout()
 
-  if (isSmallScreen) {
+  if (isMobileLayout) {
     const hasVisibleStringTitle = typeof title === 'string' && title.length > 0
     const hasVisibleTitleNode = title !== undefined && typeof title !== 'string'
     const hasDescription = description !== undefined && description !== null && description !== ''
@@ -89,9 +97,9 @@ export function AdaptiveModal({
 }
 
 function AdaptiveModalActions({ children }: { children: ReactNode }) {
-  const isSmallScreen = useIsSmallScreen()
+  const isMobileLayout = useAdaptiveMobileLayout()
 
-  if (isSmallScreen) {
+  if (isMobileLayout) {
     return (
       <Stack gap="xs" mt="lg" pt="sm" className="flex-col-reverse">
         {children}
@@ -109,9 +117,9 @@ function AdaptiveModalActions({ children }: { children: ReactNode }) {
 AdaptiveModal.Actions = AdaptiveModalActions
 
 function AdaptiveModalCloseButton(props: ButtonProps & HTMLAttributes<HTMLButtonElement>) {
-  const isSmallScreen = useIsSmallScreen()
+  const isMobileLayout = useAdaptiveMobileLayout()
   const { t } = useTranslation()
-  if (isSmallScreen) {
+  if (isMobileLayout) {
     return null
   }
 

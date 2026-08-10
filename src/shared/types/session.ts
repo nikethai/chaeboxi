@@ -334,6 +334,15 @@ export const MemoryAttachmentSchema = z.object({
   tags: z.array(z.string()).default([]),
 })
 
+/** Composer/history quote of another message (full or selection). */
+export const MessageQuoteAttachmentSchema = z.object({
+  sourceMessageId: z.string().optional(),
+  sourceRole: z.enum(['system', 'user', 'assistant', 'tool']).optional(),
+  text: z.string(),
+  isPartial: z.boolean().default(false),
+  createdAt: z.number().optional(),
+})
+
 export const MessageSchema = z.object({
   id: z.string(),
   role: z.nativeEnum(MessageRoleEnum),
@@ -372,6 +381,8 @@ export const MessageSchema = z.object({
   artifacts: z.array(MessageArtifactSchema).optional().catch(undefined),
   /** Memories explicitly attached to this user turn from the composer. */
   memoryAttachments: z.array(MemoryAttachmentSchema).optional().catch(undefined),
+  /** Quoted message (full or selection) attached to this user turn. */
+  quoteAttachment: MessageQuoteAttachmentSchema.optional().catch(undefined),
   /** Explicit skill package ids selected via $ tags / chips on this user message */
   skillIds: z.array(z.string()).optional().catch(undefined),
   /** Skills that were actually activated for this turn (assistant message) */
@@ -536,6 +547,7 @@ export type MessageStatus = z.infer<typeof MessageStatusSchema>
 export type MessageFeedback = z.infer<typeof MessageFeedbackSchema>
 export type MessageArtifact = z.infer<typeof MessageArtifactSchema>
 export type MemoryAttachment = z.infer<typeof MemoryAttachmentSchema>
+export type MessageQuoteAttachment = z.infer<typeof MessageQuoteAttachmentSchema>
 export type Message = z.infer<typeof MessageSchema>
 export type SessionType = z.infer<typeof SessionTypeSchema>
 export type CompactionPoint = z.infer<typeof CompactionPointSchema>

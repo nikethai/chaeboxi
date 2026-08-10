@@ -76,6 +76,38 @@ describe('convertToModelMessages', () => {
     ])
   })
 
+  it('prepends structured quote attachment as markdown blockquote context', async () => {
+    const result = await convertToModelMessages(
+      [
+        {
+          id: 'user-2',
+          role: 'user',
+          contentParts: [{ type: 'text', text: 'Can you expand on this?' }],
+          quoteAttachment: {
+            sourceMessageId: 'assistant-1',
+            sourceRole: 'assistant',
+            text: 'Line one\nLine two',
+            isPartial: true,
+          },
+        },
+      ],
+      { modelSupportVision: true, dependencies }
+    )
+
+    expect(result).toEqual([
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: 'Quoted partial selection (assistant):\n> Line one\n> Line two',
+          },
+          { type: 'text', text: 'Can you expand on this?' },
+        ],
+      },
+    ])
+  })
+
   it('keeps assistant reasoning parts out of resend payloads by default', async () => {
     const result = await convertToModelMessages(
       [

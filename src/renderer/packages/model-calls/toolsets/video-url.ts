@@ -86,11 +86,40 @@ export const readVideoUrlTool = tool({
       }
     }
 
-    const result = await readVideoUrl({
-      ...input,
-      abortSignal,
-    })
-    return stripSecrets(result)
+    // Tool-level deadline: even if an HTTP call ignores abort, this guarantees the agent unblocks.
+    // Slightly above orchestrator DEFAULT_READ_TIMEOUT_MS (60s).
+    const toolDeadlineMs = 70_000
+    const deadline = new AbortController()
+    const timer = setTimeout(() => deadline.abort(), toolDeadlineMs)
+    const onParentAbort = () => deadline.abort()
+    if (abortSignal) {
+      if (abortSignal.aborted) deadline.abort()
+      else abortSignal.addEventListener('abort', onParentAbort, { once: true })
+    }
+    try {
+      const result = await readVideoUrl({
+        ...input,
+        abortSignal: deadline.signal,
+      })
+      return stripSecrets(result)
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      const timedOut = deadline.signal.aborted || /abort|timeout/i.test(message)
+      return {
+        platform: 'unknown',
+        url: input.url,
+        warnings: [],
+        partial: true,
+        transcript: null,
+        errorCode: timedOut ? 'TIMEOUT' : 'NETWORK_ERROR',
+        errorMessage: timedOut
+          ? 'Video URL read timed out. Try again, or configure a BYOK provider under Settings → Video URL.'
+          : message,
+      }
+    } finally {
+      clearTimeout(timer)
+      abortSignal?.removeEventListener('abort', onParentAbort)
+    }
   },
   toModelOutput: ({ output }: { output: NormalizedVideoRead }) => {
     const lines: string[] = [

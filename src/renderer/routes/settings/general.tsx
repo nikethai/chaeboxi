@@ -170,6 +170,15 @@ export function RouteComponent() {
       </SettingsCollapsible>
 
       <SettingsSection
+        title={t('System Notifications')}
+        description={t(
+          'Local OS alerts when a reply finishes while the app is in the background. Never includes message content. Not remote push.'
+        )}
+      >
+        <SystemNotificationsSection />
+      </SettingsSection>
+
+      <SettingsSection
         title={t('Error Reporting')}
         description={t(
           'Chaeboxi respects your privacy and only uploads anonymous error data and events when necessary. You can change your preferences at any time in the settings.'
@@ -245,6 +254,131 @@ export function RouteComponent() {
         </SettingsSection>
       )}
     </SettingsPage>
+  )
+}
+
+function SystemNotificationsSection() {
+  const { t } = useTranslation()
+  const setSettings = useSettingsStore((state) => state.setSettings)
+  const notifications = useSettingsStore((state) => state.extension.notifications)
+  const enabled = notifications?.enabled === true
+  const notifyOnGenerationComplete = notifications?.notifyOnGenerationComplete !== false
+  const notifyOnRoomComplete = notifications?.notifyOnRoomComplete !== false
+  const notifyOnUpdateAvailable = notifications?.notifyOnUpdateAvailable !== false
+  const [permission, setPermission] = useState<string>('default')
+  const [permissionBusy, setPermissionBusy] = useState(false)
+
+  useEffect(() => {
+    void platform.getSystemNotificationPermission().then(setPermission).catch(() => setPermission('unsupported'))
+  }, [])
+
+  const patchNotifications = (patch: {
+    enabled?: boolean
+    notifyOnGenerationComplete?: boolean
+    notifyOnRoomComplete?: boolean
+    notifyOnUpdateAvailable?: boolean
+  }) => {
+    setSettings((state) => {
+      const current = state.extension.notifications ?? {
+        enabled: false,
+        notifyOnGenerationComplete: true,
+        notifyOnRoomComplete: true,
+        notifyOnUpdateAvailable: true,
+      }
+      state.extension.notifications = { ...current, ...patch }
+    })
+  }
+
+  const onToggleEnabled = async (next: boolean) => {
+    if (next) {
+      setPermissionBusy(true)
+      try {
+        const result = await platform.requestSystemNotificationPermission()
+        setPermission(result)
+        if (result === 'granted') {
+          patchNotifications({ enabled: true })
+        } else if (result === 'unsupported') {
+          patchNotifications({ enabled: false })
+        } else {
+          // Keep enabled false until granted
+          patchNotifications({ enabled: false })
+        }
+      } finally {
+        setPermissionBusy(false)
+      }
+      return
+    }
+    patchNotifications({ enabled: false })
+  }
+
+  const permissionLabel =
+    permission === 'granted'
+      ? t('Permission granted')
+      : permission === 'denied'
+        ? t('Permission denied')
+        : permission === 'unsupported'
+          ? t('Not supported on this platform')
+          : t('Permission not requested')
+
+  return (
+    <SettingsCard divided>
+      <SettingsPrefRow
+        title={t('Enable system notifications')}
+        description={t('Show an OS notification when generation finishes while Chaeboxi is unfocused.')}
+        control={
+          <Switch
+            checked={enabled}
+            disabled={permissionBusy || permission === 'unsupported'}
+            onChange={(e) => void onToggleEnabled(e.currentTarget.checked)}
+          />
+        }
+      />
+      <SettingsPrefRow
+        title={t('Permission')}
+        description={permissionLabel}
+        control={
+          <Button
+            size="xs"
+            variant="light"
+            disabled={permission === 'unsupported' || permission === 'granted' || permissionBusy}
+            loading={permissionBusy}
+            onClick={() => void onToggleEnabled(true)}
+          >
+            {t('Request permission')}
+          </Button>
+        }
+      />
+      <SettingsPrefRow
+        title={t('When reply is ready')}
+        control={
+          <Switch
+            checked={notifyOnGenerationComplete}
+            disabled={!enabled}
+            onChange={(e) => patchNotifications({ notifyOnGenerationComplete: e.currentTarget.checked })}
+          />
+        }
+      />
+      <SettingsPrefRow
+        title={t('When team room finishes')}
+        control={
+          <Switch
+            checked={notifyOnRoomComplete}
+            disabled={!enabled}
+            onChange={(e) => patchNotifications({ notifyOnRoomComplete: e.currentTarget.checked })}
+          />
+        }
+      />
+      <SettingsPrefRow
+        title={t('When an update is ready')}
+        control={
+          <Switch
+            checked={notifyOnUpdateAvailable}
+            disabled={!enabled}
+            onChange={(e) => patchNotifications({ notifyOnUpdateAvailable: e.currentTarget.checked })}
+          />
+        }
+      />
+    </SettingsCard>
   )
 }
 

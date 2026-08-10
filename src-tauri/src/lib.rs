@@ -3628,7 +3628,9 @@ pub fn run() {
         let _ = fix_path_env::fix();
     }
 
-    let mut builder = tauri::Builder::default().plugin(tauri_plugin_opener::init());
+    let mut builder = tauri::Builder::default()
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_notification::init());
 
     #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
     {

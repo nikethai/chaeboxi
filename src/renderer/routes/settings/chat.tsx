@@ -13,6 +13,7 @@ import {
 } from '@mantine/core'
 import { chatSessionSettings, getDefaultPrompt } from '@shared/defaults'
 import type { PromptPreset } from '@shared/types'
+import { applyOpenAIReasoningEffort, getReasoningDropdownValue } from '@shared/utils'
 import { IconEdit, IconInfoCircle, IconPlus, IconTrash } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
 import { useMemo, useState } from 'react'
@@ -205,6 +206,36 @@ export function RouteComponent() {
                 </Tooltip>
               </Flex>
               <SliderWithInput value={settings?.topP} onChange={(v) => setSettings({ topP: v })} max={1} />
+            </div>
+            <div className="settings-field">
+              <Flex align="center" gap="xs">
+                <span className="settings-field-label">{t('Default Thinking Effort')}</span>
+                <Tooltip
+                  label={t('Used to seed new chat sessions. Only applies to supported OpenAI/OpenAI-compatible reasoning models.')}
+                  withArrow
+                  maw={320}
+                  className="!whitespace-normal"
+                  zIndex={3000}
+                  events={{ hover: true, focus: true, touch: true }}
+                >
+                  <ScalableIcon icon={IconInfoCircle} size={18} className="text-chatbox-tint-tertiary" />
+                </Tooltip>
+              </Flex>
+              <AdaptiveSelect
+                value={getReasoningDropdownValue(settings)}
+                onChange={(value) => {
+                  if (!value) return
+                  setSettings({
+                    providerOptions: applyOpenAIReasoningEffort(settings, value as 'null' | 'low' | 'medium' | 'high'),
+                  })
+                }}
+                data={[
+                  { label: t('Disabled'), value: 'null' },
+                  { label: t('Low'), value: 'low' },
+                  { label: t('Medium'), value: 'medium' },
+                  { label: t('High'), value: 'high' },
+                ]}
+              />
             </div>
 
             <SettingsPrefRow

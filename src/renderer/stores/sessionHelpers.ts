@@ -812,11 +812,12 @@ export function mergeSettings(
   sessionSetting?: SessionSettings,
   sessionType?: 'picture' | 'chat'
 ): SessionSettings {
+  const globalSessionDefaults = SessionSettingsSchema.parse(globalSettings)
   if (!sessionSetting) {
-    return SessionSettingsSchema.parse(globalSettings)
+    return globalSessionDefaults
   }
   return SessionSettingsSchema.parse({
-    ...globalSettings,
+    ...globalSessionDefaults,
     ...(sessionType === 'picture'
       ? {
           imageGenerateNum: defaults.pictureSessionSettings().imageGenerateNum,
@@ -832,6 +833,7 @@ export function mergeSettings(
 export function initEmptyChatSession(): Omit<Session, 'id'> {
   const settings = settingsStore.getState().getSettings()
   const { chat: lastUsedChatModel } = lastUsedModelStore.getState()
+  const globalSessionDefaults = SessionSettingsSchema.parse(settings)
   const newSession: Omit<Session, 'id'> = {
     name: 'Untitled',
     type: 'chat',
@@ -840,6 +842,7 @@ export function initEmptyChatSession(): Omit<Session, 'id'> {
       maxContextMessageCount: settings.maxContextMessageCount ?? Number.MAX_SAFE_INTEGER,
       temperature: settings.temperature || undefined,
       topP: settings.topP || undefined,
+      providerOptions: globalSessionDefaults.providerOptions,
       ...(settings.defaultChatModel
         ? {
             provider: settings.defaultChatModel.provider,

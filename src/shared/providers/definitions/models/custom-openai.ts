@@ -34,12 +34,13 @@ export default class CustomOpenAI extends AbstractAISDKModel {
     this.options = { ...options, apiHost, apiPath }
   }
 
-  protected getCallSettings() {
+  protected getCallSettings(options: CallChatCompletionOptions) {
     return {
       temperature: this.options.temperature,
       topP: this.options.topP,
       maxOutputTokens: this.options.maxOutputTokens,
       stream: this.options.stream,
+      providerOptions: this.options.model.capabilities?.includes('reasoning') ? { openai: options.providerOptions?.openai || {} } : undefined,
     }
   }
 

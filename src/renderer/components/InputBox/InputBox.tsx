@@ -116,6 +116,8 @@ import {
   COMMAND_EXPLICIT_MAX,
   MAX_ROOM_AGENTS,
   ModelProviderEnum,
+  type Session,
+  type SessionSettings,
   SKILL_EXPLICIT_MAX,
 } from '../../../shared/types'
 import type { MemoryEntry } from '../../../shared/types/memory'
@@ -125,6 +127,7 @@ import * as toastActions from '../../stores/toastActions'
 import AgentRoomStrip from '../chat/AgentRoomStrip'
 import { CompactionStatus } from '../chat/CompactionStatus'
 import { MemoryDockPopover } from '../chat/MemoryDockPopover'
+import ReasoningEffortSelect from '../chat/ReasoningEffortSelect'
 import ComposerRichInput, { type ComposerRichInputHandle } from './ComposerRichInput'
 import type { ComposerChipData } from './composer-chip-dom'
 import {
@@ -210,6 +213,8 @@ export type InputBoxProps = {
   onDraftAgentIdsChange?(ids: string[]): void
   draftRoomMode?: 'discuss' | 'work' | 'swarm'
   onDraftRoomModeChange?(mode: 'discuss' | 'work' | 'swarm'): void
+  draftSettings?: Session['settings']
+  onDraftSettingsChange?(next: Pick<SessionSettings, 'providerOptions'>): void
 }
 
 const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
@@ -240,6 +245,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       onDraftAgentIdsChange,
       draftRoomMode,
       onDraftRoomModeChange,
+      draftSettings,
+      onDraftSettingsChange,
     },
     ref
   ) => {
@@ -3038,6 +3045,34 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     </UnstyledButton>
                   </ModelSelector>
                 </Tooltip>
+
+                {((!isNewSession && currentSessionId && currentSession) || (isNewSession && draftSettings)) ? (
+                  <ReasoningEffortSelect
+                    model={model}
+                    settings={isNewSession ? draftSettings : currentSession?.settings}
+                    sessionId={isNewSession ? undefined : currentSessionId}
+                    compact={isSmallScreen}
+                    onSettingsChange={(next) => {
+                      if (isNewSession) {
+                        onDraftSettingsChange?.(next)
+                        return
+                      }
+                      if (!currentSessionId) return
+                      void chatStore.updateSession(currentSessionId, (session) => {
+                        if (!session) {
+                          throw new Error('Session not found')
+                        }
+                        return {
+                          ...session,
+                          settings: {
+                            ...session.settings,
+                            ...next,
+                          },
+                        }
+                      })
+                    }}
+                  />
+                ) : null}
 
                 <Tooltip label={t('Sampling video frames…')} disabled={!isSamplingVideoFrames} withArrow position="top">
                   <ActionIcon

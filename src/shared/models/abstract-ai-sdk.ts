@@ -76,6 +76,41 @@ interface ToolExecutionResult {
 }
 
 type FinalResultMetadata = Pick<StreamTextResult, 'citations' | 'searchProvider' | 'searchQuery' | 'groundingMetadata'>
+type UsageWithDetails = LanguageModelUsage & {
+  reasoningTokens?: number
+  cachedInputTokens?: number
+  inputTokensDetails?: {
+    cachedTokens?: number
+  }
+  input_tokens_details?: {
+    cached_tokens?: number
+  }
+  outputTokensDetails?: {
+    reasoningTokens?: number
+  }
+  output_tokens_details?: {
+    reasoning_tokens?: number
+  }
+}
+
+function normalizeUsage(usage?: LanguageModelUsage): LanguageModelUsage | undefined {
+  if (!usage) return undefined
+  const detailedUsage = usage as UsageWithDetails
+  const cachedInputTokens =
+    detailedUsage.cachedInputTokens ??
+    detailedUsage.inputTokensDetails?.cachedTokens ??
+    detailedUsage.input_tokens_details?.cached_tokens
+  const reasoningTokens =
+    detailedUsage.reasoningTokens ??
+    detailedUsage.outputTokensDetails?.reasoningTokens ??
+    detailedUsage.output_tokens_details?.reasoning_tokens
+
+  return {
+    ...usage,
+    ...(cachedInputTokens !== undefined ? { cachedInputTokens } : {}),
+    ...(reasoningTokens !== undefined ? { reasoningTokens } : {}),
+  }
+}
 
 export default abstract class AbstractAISDKModel implements ModelInterface {
   public name = 'AI SDK Model'
@@ -475,19 +510,21 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       }
     }
 
+    const normalizedUsage = normalizeUsage(result.usage)
+
     options.onResultChange?.({
       contentParts,
       citations: finalResultMetadata.citations,
       searchProvider: finalResultMetadata.searchProvider,
       searchQuery: finalResultMetadata.searchQuery,
       groundingMetadata: finalResultMetadata.groundingMetadata,
-      tokenCount: result.usage?.outputTokens,
-      tokensUsed: result.usage?.totalTokens,
+      tokenCount: normalizedUsage?.outputTokens,
+      tokensUsed: normalizedUsage?.totalTokens,
       tokenSpeed: result.tokenSpeed,
     })
     return {
       contentParts,
-      usage: result.usage,
+      usage: normalizedUsage,
       finishReason: result.finishReason,
       citations: finalResultMetadata.citations,
       searchProvider: finalResultMetadata.searchProvider,

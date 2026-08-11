@@ -320,6 +320,16 @@ function Index() {
                 draftRoomMode={
                   session.roomMode === 'work' || session.roomMode === 'swarm' ? session.roomMode : 'discuss'
                 }
+                draftSettings={session.settings}
+                onDraftSettingsChange={(next) =>
+                  setSession((old) => ({
+                    ...old,
+                    settings: {
+                      ...(old.settings || {}),
+                      ...next,
+                    },
+                  }))
+                }
                 onDraftRoomModeChange={(mode) => setSession((old) => ({ ...old, roomMode: mode }))}
                 onSelectModel={onSelectModel}
                 onToggleAgentMode={(agentMode) => setSession((old) => ({ ...old, agentMode }))}

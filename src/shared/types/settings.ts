@@ -148,8 +148,11 @@ const ClaudeParamsSchema = z.object({
   }),
 })
 
+export const OpenAIReasoningEffortSchema = z.enum(['low', 'medium', 'high'])
+export type OpenAIReasoningEffort = z.infer<typeof OpenAIReasoningEffortSchema>
+
 const OpenAIParamsSchema = z.object({
-  reasoningEffort: z.enum(['low', 'medium', 'high']).optional().catch(undefined),
+  reasoningEffort: OpenAIReasoningEffortSchema.optional().catch(undefined),
 })
 
 const GoogleParamsSchema = z.object({
@@ -172,6 +175,7 @@ export const GlobalSessionSettingsSchema = z.object({
   topP: z.number().optional().catch(undefined),
   maxTokens: z.number().optional().catch(undefined),
   stream: z.boolean().optional().catch(true),
+  providerOptions: ProviderOptionsSchema.optional().catch(undefined),
 })
 
 export const SessionSettingsSchema = GlobalSessionSettingsSchema.extend({
@@ -180,7 +184,6 @@ export const SessionSettingsSchema = GlobalSessionSettingsSchema.extend({
   dalleStyle: z.enum(['vivid', 'natural']).optional().catch('vivid'),
   imageGenerateNum: z.number().optional().catch(1),
   preserveReasoningInContext: z.boolean().optional().catch(true),
-  providerOptions: ProviderOptionsSchema.optional().catch(undefined),
   autoCompaction: z.boolean().optional().catch(undefined),
   planMode: z.boolean().optional().catch(undefined),
   openclawAgentId: z.string().optional().catch(undefined),

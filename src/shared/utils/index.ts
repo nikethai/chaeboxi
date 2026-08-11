@@ -2,6 +2,7 @@ export * from './json_utils'
 export * from './llm_utils'
 export * from './network_utils'
 export * from './word_count'
+export * from './reasoning-settings'
 
 // Format numbers with K/M suffixes (for tokens, file sizes, etc.)
 export function formatNumber(num: number, unit = ''): string {

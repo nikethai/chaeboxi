@@ -5,10 +5,12 @@ import { IconMessage, IconShield } from '@tabler/icons-react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import BrowserAgentPanel from '@/components/BrowserAgent/BrowserAgentPanel'
 import ChatDockStack from '@/components/chat/ChatDockStack'
 import MessageList, { type MessageListRef } from '@/components/chat/MessageList'
 import SessionStatusBar from '@/components/chat/SessionStatusBar'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
+import ComputerUseHud from '@/components/ComputerUse/ComputerUseHud'
 import InputBox, { type InputBoxRef } from '@/components/InputBox/InputBox'
 import Header from '@/components/layout/Header'
 import ThreadHistoryDrawer from '@/components/session/ThreadHistoryDrawer'
@@ -284,6 +286,12 @@ function RouteComponent() {
           <div className="session-dock">
             <div className="session-dock-pad">
 <ChatDockStack key={currentSession.id} sessionId={currentSession.id} onContinueTasks={onContinueTasks}>
+  <BrowserAgentPanel
+    sessionId={currentSession.id}
+    armed={Boolean(currentSession.browserArmed)}
+    generating={!!lastGeneratingMessage}
+  />
+  <ComputerUseHud sessionId={currentSession.id} armed={Boolean(currentSession.computerArmed)} />
   <ErrorBoundary name="session-inputbox">
     <InputBox
       key={`input-box${currentSession.id}`}
@@ -302,6 +310,14 @@ function RouteComponent() {
       }}
       onWorkspaceRootChange={(workspaceRoot) => {
         void updateSessionStore(currentSession.id, { workspaceRoot })
+      }}
+      browserArmed={currentSession.browserArmed ?? false}
+      onBrowserArmedChange={(browserArmed) => {
+        void updateSessionStore(currentSession.id, { browserArmed })
+      }}
+      computerArmed={currentSession.computerArmed ?? false}
+      onComputerArmedChange={(computerArmed) => {
+        void updateSessionStore(currentSession.id, { computerArmed })
       }}
       onClickSessionSettings={onClickSessionSettings}
       generating={!!lastGeneratingMessage}

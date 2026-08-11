@@ -16,6 +16,8 @@ import {
   IconSparkles,
   IconTerminal2,
   IconMovie,
+  IconBrowser,
+  IconDeviceDesktop,
   IconPlugConnected,
   IconWorldWww,
 } from '@tabler/icons-react'
@@ -60,6 +62,16 @@ const ITEMS = [
     key: 'video-url',
     label: 'Video URL',
     icon: <IconMovie className="w-full h-full" />,
+  },
+  {
+    key: 'browser-agent',
+    label: 'Browser Agent',
+    icon: <IconBrowser className="w-full h-full" />,
+  },
+  {
+    key: 'computer-use',
+    label: 'Computer Use',
+    icon: <IconDeviceDesktop className="w-full h-full" />,
   },
   {
     key: 'integrations',

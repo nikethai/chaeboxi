@@ -55,6 +55,18 @@ import { attachmentFileToolSet, createWorkspaceFileToolSet } from './toolsets/fi
 import generateImageToolSet, { generateImageTool } from './toolsets/generate-image'
 import { getToolSet } from './toolsets/knowledge-base'
 import taskTrackingToolSet from './toolsets/task-tracking'
+import { createBrowserToolSet } from './toolsets/browser'
+import {
+  createComputerToolSet,
+  getLastActEmbeddedScreenshot,
+  getLastComputerTool,
+  resetComputerScreenshotBudget,
+} from './toolsets/computer'
+import { pruneOldImageParts, shouldForceComputerScreenshot } from './toolsets/computer-harness'
+import {
+  computerUiSpaceLockInstructions,
+  filterToolsForComputerUiSpace,
+} from './toolsets/computer-ui-lock'
 import { createTerminalToolSet } from './toolsets/terminal'
 import videoToolSet, { initVideoToolBudget, resetVideoToolBudget } from './toolsets/video'
 import videoUrlToolSet from './toolsets/video-url'
@@ -66,6 +78,24 @@ export type AgentCodingOptions = {
   enabled: boolean
   /** Absolute workspace root; required for write/terminal tools. */
   workspaceRoot?: string
+}
+
+/** Desktop browser agent tools (isolated Chromium). */
+export type BrowserAgentOptions = {
+  armed: boolean
+  sessionId: string
+  workspaceRoot?: string
+  runId?: string
+  /** Discuss/non-lead rooms force false at generation layer */
+  roomAllowed?: boolean
+}
+
+/** Desktop computer use tools. */
+export type ComputerUseOptions = {
+  armed: boolean
+  sessionId: string
+  allowAct?: boolean
+  roomAllowed?: boolean
 }
 
 const TASK_TRACKING_TOOL_NAMES = ['create_task', 'update_task', 'list_tasks'] as const
@@ -232,7 +262,8 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   })
 }
 
-function wrapMCPToolsWithApproval(sessionId: string | undefined, tools: ToolSet): ToolSet {
+/** Shared approval wrapper for MCP + first-party tools (D16). Never auto-approves CRITICAL (D8). */
+export function wrapToolsWithApproval(sessionId: string | undefined, tools: ToolSet): ToolSet {
   if (!sessionId) {
     return tools
   }
@@ -250,11 +281,13 @@ function wrapMCPToolsWithApproval(sessionId: string | undefined, tools: ToolSet)
               const existingApproval = getToolApproval(sessionId, toolName)
               // Built-in read-only tools (web_search, read_video_url, …) are LOW and
               // should not interrupt the user with an approval modal.
+              // CRITICAL must never session-auto (D8) — computer act + destructive tools.
               const canAutoApprove =
                 riskTier === ToolRiskTier.LOW ||
                 (existingApproval?.scope === 'session' &&
                   existingApproval.riskTier === riskTier &&
-                  riskTier !== ToolRiskTier.HIGH)
+                  riskTier !== ToolRiskTier.HIGH &&
+                  riskTier !== ToolRiskTier.CRITICAL)
 
               if (canAutoApprove) {
                 toolApprovalStore.getState().addAuditEntry({
@@ -383,6 +416,8 @@ export async function streamText(
     agentImageFlowInstructions?: string
     /** Desktop agent coding: workspace file write + terminal (not gated on attachments). */
     agentCoding?: AgentCodingOptions
+    browserAgent?: BrowserAgentOptions
+    computerUse?: ComputerUseOptions
     tools?: ToolSet
     maxSteps?: number
     toolAccess?: CopilotToolAccess
@@ -407,6 +442,8 @@ export async function streamText(
     allowedTools,
     agentImageFlowInstructions,
     agentCoding,
+    browserAgent,
+    computerUse,
     tools: customTools,
     memory: memoryContext,
   } = params
@@ -445,6 +482,56 @@ export async function streamText(
   const workspaceFileToolSet = needWorkspaceCodingTools ? createWorkspaceFileToolSet(workspaceRoot) : null
   const terminalToolSet = needWorkspaceCodingTools ? createTerminalToolSet(workspaceRoot) : null
 
+  // Browser agent (desktop + master enabled + session armed + tool use + room allowed)
+  const browserExt = globalSettings.extension?.browserAgent
+  const needBrowserTools =
+    Boolean(browserAgent?.armed) &&
+    browserAgent?.roomAllowed !== false &&
+    Boolean(browserExt?.enabled) &&
+    platform.type === 'desktop' &&
+    model.isSupportToolUse() &&
+    Boolean(browserAgent?.sessionId || sessionId)
+  const browserSessionId = browserAgent?.sessionId || sessionId || ''
+  const browserToolSet = needBrowserTools
+    ? createBrowserToolSet({
+        sessionId: browserSessionId,
+        runId: browserAgent?.runId,
+        workspaceRoot: browserAgent?.workspaceRoot || workspaceRoot,
+      })
+    : null
+
+  // Computer use (observe / act)
+  const computerExt = globalSettings.extension?.computerUse
+  const needComputerTools =
+    Boolean(computerUse?.armed) &&
+    computerUse?.roomAllowed !== false &&
+    Boolean(computerExt?.enabled) &&
+    platform.type === 'desktop' &&
+    model.isSupportToolUse() &&
+    Boolean(computerUse?.sessionId || sessionId)
+  const computerSessionId = computerUse?.sessionId || sessionId || ''
+  if (needComputerTools && computerSessionId) {
+    resetComputerScreenshotBudget(computerSessionId)
+  }
+  let computerUserText = ''
+  if (needComputerTools) {
+    for (let i = params.messages.length - 1; i >= 0; i--) {
+      const m = params.messages[i]
+      if (m.role === 'user') {
+        computerUserText = getMessageText(m, false, false).trim()
+        if (computerUserText) break
+      }
+    }
+  }
+  const computerToolSet = needComputerTools
+    ? createComputerToolSet({
+        sessionId: computerSessionId,
+        allowAct: Boolean(computerUse?.allowAct),
+        visionSupported: model.isSupportVision(),
+        userText: computerUserText,
+      })
+    : null
+
   // Seed video frame budget with auto-sampled frames already attached
   if (needVideoToolSet) {
     const preUsed = new Map<string, number>()
@@ -471,7 +558,7 @@ export async function streamText(
       console.error('Failed to load knowledge base toolset:', err)
     }
   }
-  const mcpTools = wrapMCPToolsWithApproval(sessionId, mcpController.getAvailableTools())
+  const mcpTools = wrapToolsWithApproval(sessionId, mcpController.getAvailableTools())
   // Task tools must be decided before grounding: Gemini forbids mixing provider tools
   // (google.tools.googleSearch) with function tools. Counting tasks too late caused
   // grounding + create_task together → INVALID_ARGUMENT / hung tool loops.
@@ -504,6 +591,8 @@ export async function streamText(
     Boolean(needWorkspaceCodingTools) ||
     Boolean(needVideoToolSet) ||
     Boolean(needVideoUrlToolSet) ||
+    Boolean(browserToolSet) ||
+    Boolean(computerToolSet) ||
     taskToolsAvailable ||
     memoryToolsAvailable ||
     needGenerateImageTool
@@ -525,6 +614,20 @@ export async function streamText(
   }
   if (terminalToolSet) {
     toolSetInstructions += terminalToolSet.description
+  }
+  if (browserToolSet) {
+    toolSetInstructions += browserToolSet.description
+  }
+  if (computerToolSet) {
+    toolSetInstructions += computerToolSet.description
+    // Hard lock into desktop UI space so "find contact" does not route to workspace/Finder.
+    toolSetInstructions += `
+
+${computerUiSpaceLockInstructions({
+      sessionId: computerSessionId,
+      agentCodingEnabled: Boolean(agentCoding?.enabled && needWorkspaceCodingTools),
+    })}
+`
   }
   if (agentCoding?.enabled && !needWorkspaceCodingTools) {
     toolSetInstructions += `
@@ -819,7 +922,7 @@ Do not open with repeated web searches when personal memory may apply.
       }
 
       if (needAttachmentFileToolSet) {
-        const wrappedAttachmentTools = wrapMCPToolsWithApproval(sessionId, attachmentFileToolSet.tools)
+        const wrappedAttachmentTools = wrapToolsWithApproval(sessionId, attachmentFileToolSet.tools)
         tools = {
           ...tools,
           ...wrappedAttachmentTools,
@@ -827,7 +930,7 @@ Do not open with repeated web searches when personal memory may apply.
       }
 
       if (workspaceFileToolSet) {
-        const wrappedWorkspaceTools = wrapMCPToolsWithApproval(sessionId, workspaceFileToolSet.tools)
+        const wrappedWorkspaceTools = wrapToolsWithApproval(sessionId, workspaceFileToolSet.tools)
         tools = {
           ...tools,
           ...wrappedWorkspaceTools,
@@ -835,7 +938,7 @@ Do not open with repeated web searches when personal memory may apply.
       }
 
       if (terminalToolSet) {
-        const wrappedTerminalTools = wrapMCPToolsWithApproval(sessionId, terminalToolSet.tools)
+        const wrappedTerminalTools = wrapToolsWithApproval(sessionId, terminalToolSet.tools)
         tools = {
           ...tools,
           ...wrappedTerminalTools,
@@ -843,7 +946,7 @@ Do not open with repeated web searches when personal memory may apply.
       }
 
       if (needVideoToolSet) {
-        const wrappedVideoTools = wrapMCPToolsWithApproval(sessionId, videoToolSet.tools as ToolSet)
+        const wrappedVideoTools = wrapToolsWithApproval(sessionId, videoToolSet.tools as ToolSet)
         tools = {
           ...tools,
           ...wrappedVideoTools,
@@ -851,7 +954,7 @@ Do not open with repeated web searches when personal memory may apply.
       }
 
       if (needVideoUrlToolSet) {
-        const wrappedVideoUrlTools = wrapMCPToolsWithApproval(sessionId, videoUrlToolSet.tools as ToolSet)
+        const wrappedVideoUrlTools = wrapToolsWithApproval(sessionId, videoUrlToolSet.tools as ToolSet)
         tools = {
           ...tools,
           ...wrappedVideoUrlTools,
@@ -859,12 +962,28 @@ Do not open with repeated web searches when personal memory may apply.
       }
 
       if (needGenerateImageTool) {
-        const generateImageTools = wrapMCPToolsWithApproval(sessionId, {
+        const generateImageTools = wrapToolsWithApproval(sessionId, {
           generate_image: generateImageTool,
         })
         tools = {
           ...tools,
           ...generateImageTools,
+        }
+      }
+
+      if (browserToolSet) {
+        const wrappedBrowserTools = wrapToolsWithApproval(sessionId, browserToolSet.tools)
+        tools = {
+          ...tools,
+          ...wrappedBrowserTools,
+        }
+      }
+
+      if (computerToolSet) {
+        const wrappedComputerTools = wrapToolsWithApproval(sessionId, computerToolSet.tools)
+        tools = {
+          ...tools,
+          ...wrappedComputerTools,
         }
       }
 
@@ -892,6 +1011,14 @@ Do not open with repeated web searches when personal memory may apply.
       tools = Object.fromEntries(Object.entries(tools).filter(([name]) => allowedSet.has(name)))
     }
 
+    // Computer UI space lock: strip tools that collide with "find" / leave the desktop app.
+    if (computerToolSet) {
+      tools = filterToolsForComputerUiSpace(tools, {
+        agentCodingEnabled: Boolean(agentCoding?.enabled && needWorkspaceCodingTools),
+        sessionId: computerSessionId,
+      })
+    }
+
     // Global PreToolUse / PostToolUse around every tool execute (after approval + access filters)
     const toolHookWorkspace = workspaceRoot || agentCoding?.workspaceRoot || null
     try {
@@ -908,6 +1035,7 @@ Do not open with repeated web searches when personal memory may apply.
 
     console.debug('tools', tools)
 
+    const computerSessionForPrepare = needComputerTools ? computerSessionId : ''
     result = withSearchMetadata(
       await model.chat(coreMessages, {
         sessionId,
@@ -917,6 +1045,23 @@ Do not open with repeated web searches when personal memory may apply.
         providerOptions: params.providerOptions,
         tools,
         maxSteps: params.maxSteps,
+        // Computer Use harness: force screenshot after open/act if host did not embed one;
+        // prune older screenshots so multi-step loops stay within context.
+        prepareStep: computerSessionForPrepare
+          ? ({ messages, stepNumber }) => {
+              const pruned = pruneOldImageParts(messages as Array<{ content?: unknown }>, { keepN: 3 })
+              const lastTool = getLastComputerTool(computerSessionForPrepare)
+              const embedded = getLastActEmbeddedScreenshot(computerSessionForPrepare)
+              const forceShot = stepNumber > 0 && shouldForceComputerScreenshot(lastTool, embedded)
+              if (forceShot && tools.computer_screenshot) {
+                return {
+                  messages: pruned as typeof messages,
+                  toolChoice: { type: 'tool', toolName: 'computer_screenshot' },
+                }
+              }
+              return { messages: pruned as typeof messages }
+            }
+          : undefined,
       })
     )
 

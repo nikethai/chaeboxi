@@ -324,6 +324,10 @@ function Index() {
                 onSelectModel={onSelectModel}
                 onToggleAgentMode={(agentMode) => setSession((old) => ({ ...old, agentMode }))}
                 onWorkspaceRootChange={(workspaceRoot) => setSession((old) => ({ ...old, workspaceRoot }))}
+                browserArmed={session.browserArmed ?? false}
+                onBrowserArmedChange={(browserArmed) => setSession((old) => ({ ...old, browserArmed }))}
+                computerArmed={session.computerArmed ?? false}
+                onComputerArmedChange={(computerArmed) => setSession((old) => ({ ...old, computerArmed }))}
                 onClickSessionSettings={onClickSessionSettings}
                 onSubmit={handleSubmit}
               />

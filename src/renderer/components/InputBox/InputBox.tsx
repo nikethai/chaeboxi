@@ -195,6 +195,10 @@ export type InputBoxProps = {
   onToggleAgentMode?(enabled: boolean): void
   workspaceRoot?: string
   onWorkspaceRootChange?(workspaceRoot: string | undefined): void
+  browserArmed?: boolean
+  onBrowserArmedChange?(armed: boolean): void
+  computerArmed?: boolean
+  onComputerArmedChange?(armed: boolean): void
   /** Prefill composer (e.g. empty-state starters). Remount with a new key when changing. */
   initialMessage?: string
   /**
@@ -227,6 +231,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       onToggleAgentMode,
       workspaceRoot: controlledWorkspaceRoot,
       onWorkspaceRootChange,
+      browserArmed: controlledBrowserArmed,
+      onBrowserArmedChange,
+      computerArmed: controlledComputerArmed,
+      onComputerArmedChange,
       initialMessage = '',
       draftAgentIds,
       onDraftAgentIdsChange,
@@ -256,6 +264,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const setSessionWebBrowsing = useUIStore((s) => s.setSessionWebBrowsing)
     const updateCurrentWebBrowsingDisplay = useUIStore((s) => s.updateCurrentWebBrowsingDisplay)
     const extensionWebSearch = useSettingsStore((s) => s.extension.webSearch)
+    const browserMasterEnabled = Boolean(useSettingsStore((s) => s.extension?.browserAgent?.enabled))
+    const computerMasterEnabled = Boolean(useSettingsStore((s) => s.extension?.computerUse?.enabled))
     const webSearchConfigured = useMemo(() => isWebSearchConfigured(extensionWebSearch), [extensionWebSearch])
     const webBrowsingMode = useMemo(() => {
       const sessionValue = sessionWebBrowsingMap[currentSessionId || 'new']
@@ -2906,6 +2916,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   onToggleAgentMode={toggleAgentMode}
                   workspaceRoot={workspaceRoot}
                   onWorkspaceRootChange={onWorkspaceRootChange}
+                  browserArmed={controlledBrowserArmed ?? currentSession?.browserArmed}
+                  onBrowserArmedChange={onBrowserArmedChange}
+                  browserMasterEnabled={browserMasterEnabled}
+                  computerArmed={controlledComputerArmed ?? currentSession?.computerArmed}
+                  onComputerArmedChange={onComputerArmedChange}
+                  computerMasterEnabled={computerMasterEnabled}
                   knowledgeBaseId={knowledgeBase?.id}
                   onSelectKnowledgeBase={handleKnowledgeBaseSelect}
                   showRollbackThreadButton={showRollbackThreadButton}

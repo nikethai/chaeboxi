@@ -1,0 +1,14 @@
+{
+  "name": "chaeboxi-browser-host",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Chaeboxi isolated browser host (Playwright JSON-RPC over stdio)",
+  "main": "index.mjs",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "playwright": "^1.52.0"
+  }
+}

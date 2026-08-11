@@ -497,6 +497,10 @@ export const SessionSchema = z.object({
   agentMode: z.boolean().optional(),
   /** Absolute path to the session workspace root for agent file/terminal tools (desktop). */
   workspaceRoot: z.string().optional(),
+  /** Arm Chaeboxi isolated browser tools for this chat (desktop). */
+  browserArmed: z.boolean().optional().catch(undefined),
+  /** Arm computer use (observe/act) for this chat (desktop). */
+  computerArmed: z.boolean().optional().catch(undefined),
   planMode: z.boolean().optional(),
   planPhase: PlanPhaseEnum.optional(),
   settings: SessionSettingsSchema.optional(),

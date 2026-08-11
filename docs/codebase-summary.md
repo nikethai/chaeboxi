@@ -136,6 +136,8 @@ See [testing.md](./testing.md).
 | [rag.md](./rag.md) | Knowledge base / RAG |
 | [storage.md](./storage.md) | Storage backends & migration |
 | [video-url-reader.md](./video-url-reader.md) | Video URL tool |
+| [browser-agent.md](./browser-agent.md) | Desktop browser agent tools |
+| [computer-use.md](./computer-use.md) | Desktop computer use |
 | [integrations.md](./integrations.md) | Connectors |
 | [openclaw-remote-setup.md](./openclaw-remote-setup.md) | OpenClaw remote |
 | [system-notifications.md](./system-notifications.md) | Notifications |

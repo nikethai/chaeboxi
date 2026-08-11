@@ -8,7 +8,9 @@ import type { KnowledgeBase } from '@shared/types'
 import {
   IconAdjustmentsHorizontal,
   IconArrowBackUp,
+  IconBrowser,
   IconCheck,
+  IconDeviceDesktop,
   IconFile,
   IconFilePencil,
   IconFolder,
@@ -47,6 +49,12 @@ export type ComposerToolsMenuProps = {
   /** Absolute workspace path for agent file/terminal tools (desktop). */
   workspaceRoot?: string
   onWorkspaceRootChange?: (workspaceRoot: string | undefined) => void
+  browserArmed?: boolean
+  onBrowserArmedChange?: (armed: boolean) => void
+  browserMasterEnabled?: boolean
+  computerArmed?: boolean
+  onComputerArmedChange?: (armed: boolean) => void
+  computerMasterEnabled?: boolean
   knowledgeBaseId?: number
   onSelectKnowledgeBase?: (kb: KnowledgeBase | null) => void
   showRollbackThreadButton: boolean
@@ -70,6 +78,12 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
   onToggleAgentMode,
   workspaceRoot,
   onWorkspaceRootChange,
+  browserArmed,
+  onBrowserArmedChange,
+  browserMasterEnabled,
+  computerArmed,
+  onComputerArmedChange,
+  computerMasterEnabled,
   knowledgeBaseId,
   onSelectKnowledgeBase,
   showRollbackThreadButton,
@@ -101,6 +115,10 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
   // Desktop Tauri builds use CHATBOX_BUILD_PLATFORM=unknown; web/android cannot write FS.
   const showWorkspace =
     showAgent && Boolean(onWorkspaceRootChange)
+  const showBrowserArm =
+    platformCapabilities.supportsDesktopOnlySettings && Boolean(onBrowserArmedChange)
+  const showComputerArm =
+    platformCapabilities.supportsDesktopOnlySettings && Boolean(onComputerArmedChange)
 
   useEffect(() => {
     if (workspaceModalOpen) {
@@ -113,10 +131,22 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
       (!webBrowsingMode && webSearchConfigured) ||
       agentMode ||
       Boolean(workspaceRoot) ||
+      Boolean(browserArmed) ||
+      Boolean(computerArmed) ||
       Boolean(knowledgeBaseId) ||
       (showMcp && mcpEnabledCount > 0)
     )
-  }, [webBrowsingMode, webSearchConfigured, agentMode, workspaceRoot, knowledgeBaseId, showMcp, mcpEnabledCount])
+  }, [
+    webBrowsingMode,
+    webSearchConfigured,
+    agentMode,
+    workspaceRoot,
+    browserArmed,
+    computerArmed,
+    knowledgeBaseId,
+    showMcp,
+    mcpEnabledCount,
+  ])
 
   const workspaceLabel = useMemo(() => {
     if (!workspaceRoot) return null
@@ -227,6 +257,64 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
                     {t('Configure in Settings')}
                   </Text>
                 )}
+              </Flex>
+            </Menu.Item>
+          )}
+
+          {showBrowserArm && (
+            <Menu.Item
+              leftSection={<IconBrowser size={16} stroke={1.5} />}
+              closeMenuOnClick={false}
+              disabled={!browserMasterEnabled}
+              rightSection={
+                <Switch
+                  size="xs"
+                  checked={Boolean(browserArmed)}
+                  disabled={!browserMasterEnabled}
+                  onChange={(e) => onBrowserArmedChange?.(e.currentTarget.checked)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              }
+              onClick={() => {
+                if (browserMasterEnabled) onBrowserArmedChange?.(!browserArmed)
+              }}
+            >
+              <Flex direction="column" gap={2}>
+                <Text size="sm">{t('Chaeboxi Browser')}</Text>
+                <Text size="xs" c="dimmed">
+                  {browserMasterEnabled
+                    ? t('Isolated browser (not your personal Chrome)')
+                    : t('Enable in Settings → Browser Agent')}
+                </Text>
+              </Flex>
+            </Menu.Item>
+          )}
+
+          {showComputerArm && (
+            <Menu.Item
+              leftSection={<IconDeviceDesktop size={16} stroke={1.5} />}
+              closeMenuOnClick={false}
+              disabled={!computerMasterEnabled}
+              rightSection={
+                <Switch
+                  size="xs"
+                  checked={Boolean(computerArmed)}
+                  disabled={!computerMasterEnabled}
+                  onChange={(e) => onComputerArmedChange?.(e.currentTarget.checked)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              }
+              onClick={() => {
+                if (computerMasterEnabled) onComputerArmedChange?.(!computerArmed)
+              }}
+            >
+              <Flex direction="column" gap={2}>
+                <Text size="sm">{t('Computer Use')}</Text>
+                <Text size="xs" c="dimmed">
+                  {computerMasterEnabled
+                    ? t('Screen observe / act with approvals')
+                    : t('Enable in Settings → Computer Use')}
+                </Text>
               </Flex>
             </Menu.Item>
           )}

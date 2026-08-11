@@ -49,6 +49,35 @@ export interface CallChatCompletionOptions<Tools extends ToolSet = ToolSet> {
   tools?: Tools
   providerOptions?: ProviderOptions
   maxSteps?: number
+  /**
+   * AI SDK prepareStep hook — per-step toolChoice / message overrides.
+   * Used by Computer Use harness to force screenshot after open and prune old images.
+   */
+  prepareStep?: (options: {
+    steps: unknown[]
+    stepNumber: number
+    model: unknown
+    messages: unknown[]
+    experimental_context: unknown
+  }) =>
+    | PromiseLike<
+        | {
+            toolChoice?: unknown
+            messages?: unknown[]
+            activeTools?: string[]
+            system?: unknown
+          }
+        | undefined
+        | void
+      >
+    | {
+        toolChoice?: unknown
+        messages?: unknown[]
+        activeTools?: string[]
+        system?: unknown
+      }
+    | undefined
+    | void
 }
 
 export interface ResultChange {

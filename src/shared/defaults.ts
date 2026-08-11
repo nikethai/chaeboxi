@@ -182,6 +182,19 @@ export function settings(): Settings {
         desktopExtractorEnabled: false,
         desktopExtractorPath: '',
       },
+      browserAgent: {
+        enabled: false,
+        headless: false,
+        maxStepsPerTurn: 12,
+        allowlist: [],
+      },
+      computerUse: {
+        enabled: false,
+        maxScreenshotsPerTurn: 10,
+        abortHotkey: '',
+        appAllowlist: [],
+        debugTrajectory: false,
+      },
     },
     mcp: {
       servers: [],

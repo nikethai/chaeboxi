@@ -10,6 +10,16 @@ describe('risk-engine', () => {
       expect(getToolRiskTier('list_items', 'List all items')).toBe(ToolRiskTier.LOW)
       expect(getToolRiskTier('get_status', 'Get current status')).toBe(ToolRiskTier.LOW)
       expect(getToolRiskTier('inspect_element')).toBe(ToolRiskTier.LOW)
+      expect(getToolRiskTier('browser_snapshot')).toBe(ToolRiskTier.LOW)
+    })
+
+    it('classifies browser and computer agent tools', () => {
+      expect(getToolRiskTier('browser_navigate')).toBe(ToolRiskTier.HIGH)
+      expect(getToolRiskTier('browser_click')).toBe(ToolRiskTier.HIGH)
+      expect(getToolRiskTier('browser_type')).toBe(ToolRiskTier.HIGH)
+      expect(getToolRiskTier('computer_screenshot')).toBe(ToolRiskTier.MEDIUM)
+      expect(getToolRiskTier('computer_click')).toBe(ToolRiskTier.CRITICAL)
+      expect(getToolRiskTier('computer_type')).toBe(ToolRiskTier.CRITICAL)
     })
 
     it('returns MEDIUM for network/file access tools', () => {

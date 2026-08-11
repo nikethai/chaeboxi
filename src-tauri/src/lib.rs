@@ -45,6 +45,10 @@ use uuid::Uuid;
 
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 mod desktop_shell;
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+mod browser_manager;
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+mod computer_manager;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "type")]
@@ -333,7 +337,7 @@ fn load_all_kb_chunks_from_disk(app: &AppHandle) -> HashMap<i64, Vec<String>> {
             let kb_path = entry.path();
             if kb_path.is_dir() {
                 if let Some(kb_id_str) = kb_path.file_name().and_then(|n| n.to_str()) {
-                    if let Ok(_kb_id) = kb_id_str.parse::<i64>() {
+                    if let Ok(kb_id) = kb_id_str.parse::<i64>() {
                         if let Ok(file_entries) = fs::read_dir(&kb_path) {
                             for file_entry in file_entries.flatten() {
                                 let file_path = file_entry.path();
@@ -342,14 +346,10 @@ fn load_all_kb_chunks_from_disk(app: &AppHandle) -> HashMap<i64, Vec<String>> {
                                         file_path.file_stem().and_then(|n| n.to_str())
                                     {
                                         if let Ok(file_id) = file_id_str.parse::<i64>() {
-                                            if let Ok(content) =
-                                                fs::read_to_string(&file_path)
+                                            if let Some(chunks) =
+                                                load_chunks_from_disk(app, kb_id, file_id)
                                             {
-                                                if let Ok(chunks) =
-                                                    serde_json::from_str::<Vec<String>>(&content)
-                                                {
-                                                    all_chunks.insert(file_id, chunks);
-                                                }
+                                                all_chunks.insert(file_id, chunks);
                                             }
                                         }
                                     }
@@ -1965,6 +1965,18 @@ async fn ipc_invoke(
         return result;
     }
 
+    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    {
+        let browser = app.state::<browser_manager::BrowserManager>();
+        if let Some(result) = browser.handle(&app, &channel, &args).await {
+            return result;
+        }
+        let computer = app.state::<computer_manager::ComputerManager>();
+        if let Some(result) = computer.handle(&app, &channel, &args).await {
+            return result;
+        }
+    }
+
     match channel.as_str() {
         "getStoreValue" => {
             let key = get_arg_string(&args, 0)?;
@@ -2117,9 +2129,37 @@ async fn ipc_invoke(
         }
         "openLink" => {
             let url = get_arg_string(&args, 0)?;
-            #[cfg(not(target_os = "android"))]
+            // System preference / settings deep links often fail via webbrowser crate.
+            // Prefer OS openers: macOS `open`, Windows `cmd start`, then plugin/webbrowser.
+            #[cfg(target_os = "macos")]
             {
-                webbrowser::open(&url).map_err(|err| format!("open link failed: {err}"))?;
+                let status = std::process::Command::new("/usr/bin/open")
+                    .arg(&url)
+                    .status()
+                    .map_err(|err| format!("open link failed: {err}"))?;
+                if !status.success() {
+                    // Fall back for normal http(s)
+                    webbrowser::open(&url).map_err(|err| format!("open link failed: {err}"))?;
+                }
+            }
+            #[cfg(target_os = "windows")]
+            {
+                let status = std::process::Command::new("cmd")
+                    .args(["/C", "start", "", &url])
+                    .status();
+                match status {
+                    Ok(s) if s.success() => {}
+                    _ => {
+                        webbrowser::open(&url).map_err(|err| format!("open link failed: {err}"))?;
+                    }
+                }
+            }
+            #[cfg(all(not(target_os = "android"), not(target_os = "macos"), not(target_os = "windows")))]
+            {
+                use tauri_plugin_opener::OpenerExt;
+                if let Err(err) = app.opener().open_url(&url, None::<&str>) {
+                    webbrowser::open(&url).map_err(|e| format!("open link failed: {err}; {e}"))?;
+                }
             }
             #[cfg(target_os = "android")]
             {
@@ -3715,7 +3755,9 @@ pub fn run() {
     {
         builder = builder
             .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-            .manage(desktop_shell::ShellState::default());
+            .manage(desktop_shell::ShellState::default())
+            .manage(browser_manager::BrowserManager::default())
+            .manage(computer_manager::ComputerManager::default());
     }
 
     builder
@@ -3760,6 +3802,14 @@ pub fn run() {
                             let _ = window.app_handle().emit("shell:hidden-to-tray", json!({}));
                         }
                         return;
+                    }
+                    // App quitting: best-effort kill browser hosts (async fire-and-forget).
+                    if window.label() == "main" {
+                        let app = window.app_handle().clone();
+                        tauri::async_runtime::spawn(async move {
+                            let browser = app.state::<browser_manager::BrowserManager>();
+                            browser.stop_all().await;
+                        });
                     }
                 }
                 let _ = api;

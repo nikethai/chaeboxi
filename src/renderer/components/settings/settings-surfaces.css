@@ -383,6 +383,16 @@
   min-width: 9.5rem;
 }
 
+/* Compact number/text fields in pref rows (avoid forced 9.5rem min on steppers) */
+.settings-pref-row-control .mantine-NumberInput-root .mantine-Input-wrapper,
+.settings-pref-row-control .mantine-NumberInput-root .mantine-InputBase-root {
+  min-width: 0;
+}
+
+.settings-pref-row-control .mantine-NumberInput-root {
+  max-width: 6.5rem;
+}
+
 .settings-pref-row-control .mantine-Switch-root {
   --switch-width: 2.4rem;
 }

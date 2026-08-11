@@ -543,4 +543,110 @@ export default class DesktopPlatform implements Platform {
   public onHiddenToTray(callback: () => void): () => void {
     return listenShellEvent('shell:hidden-to-tray', () => callback())
   }
+
+  // --- Agent browser (isolated Chromium) ---
+
+  public async browserSessionStart(opts: import('./interfaces').BrowserSessionStartPayload) {
+    return this.ipc.invoke('browser:session:start', opts)
+  }
+
+  public async browserSessionStop(sessionId: string) {
+    return this.ipc.invoke('browser:session:stop', { sessionId })
+  }
+
+  public async browserSessionStatus(sessionId: string) {
+    return this.ipc.invoke('browser:session:status', { sessionId })
+  }
+
+  public async browserSessionWipe(sessionId: string) {
+    return this.ipc.invoke('browser:session:wipe', { sessionId })
+  }
+
+  public async browserNavigate(sessionId: string, url: string) {
+    return this.ipc.invoke('browser:navigate', { sessionId, url })
+  }
+
+  public async browserSnapshot(sessionId: string, opts?: { interestingOnly?: boolean }) {
+    return this.ipc.invoke('browser:snapshot', { sessionId, ...opts })
+  }
+
+  public async browserAct(sessionId: string, action: import('./interfaces').BrowserActPayload) {
+    return this.ipc.invoke('browser:act', { sessionId, ...action })
+  }
+
+  public async browserTabs(sessionId: string, op: import('./interfaces').BrowserTabsPayload) {
+    return this.ipc.invoke('browser:tabs', { sessionId, ...op })
+  }
+
+  public async browserScreenshot(sessionId: string) {
+    return this.ipc.invoke('browser:screenshot', { sessionId })
+  }
+
+  // --- Computer use ---
+
+  public async computerListDisplays() {
+    return this.ipc.invoke('computer:list-displays')
+  }
+
+  public async computerPermissionStatus() {
+    return this.ipc.invoke('computer:permission-status')
+  }
+
+  public async computerPermissionRequest() {
+    return this.ipc.invoke('computer:permission-request')
+  }
+
+  public async computerRevealExecutable() {
+    return this.ipc.invoke('computer:reveal-executable')
+  }
+
+  public async computerCaptureDisplay(opts?: { displayId?: string; maxWidth?: number }) {
+    return this.ipc.invoke('computer:capture-display', opts || {})
+  }
+
+  public async computerOpenApp(opts: { name: string }) {
+    return this.ipc.invoke('computer:open-app', opts)
+  }
+
+  public async computerOpenUri(opts: { uri: string }) {
+    return this.ipc.invoke('computer:open-uri', opts)
+  }
+
+  public async computerFrontmost() {
+    return this.ipc.invoke('computer:frontmost')
+  }
+
+  public async computerClick(opts: { x: number; y: number; button?: string }) {
+    return this.ipc.invoke('computer:click', opts)
+  }
+
+  public async computerType(opts: { text: string }) {
+    return this.ipc.invoke('computer:type', opts)
+  }
+
+  public async computerKey(opts: { key: string }) {
+    return this.ipc.invoke('computer:key', opts)
+  }
+
+  public async computerScroll(opts: {
+    x?: number
+    y?: number
+    deltaY?: number
+    direction?: string
+    amount?: number
+  }) {
+    return this.ipc.invoke('computer:scroll', opts)
+  }
+
+  public async computerMouseMove(opts: { x: number; y: number }) {
+    return this.ipc.invoke('computer:mouse-move', opts)
+  }
+
+  public async computerAbort() {
+    return this.ipc.invoke('computer:abort')
+  }
+
+  public async computerClearAbort() {
+    return this.ipc.invoke('computer:clear-abort')
+  }
 }

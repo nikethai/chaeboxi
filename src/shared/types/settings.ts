@@ -347,6 +347,30 @@ const ExtensionSettingsSchema = z.object({
     })
     .optional()
     .catch(undefined),
+  /** Desktop agent browser (isolated Chromium) — master switch off by default */
+  browserAgent: z
+    .object({
+      enabled: z.boolean().default(false).catch(false),
+      headless: z.boolean().default(false).catch(false),
+      maxStepsPerTurn: z.number().int().min(1).max(50).default(12).catch(12),
+      /** Optional domain allowlist; empty = off (D15) */
+      allowlist: z.array(z.string()).default([]).catch([]),
+    })
+    .optional()
+    .catch(undefined),
+  /** Desktop computer use — master off by default (D7) */
+  computerUse: z
+    .object({
+      enabled: z.boolean().default(false).catch(false),
+      maxScreenshotsPerTurn: z.number().int().min(1).max(20).default(10).catch(10),
+      abortHotkey: z.string().optional().catch(undefined),
+      /** Empty = all apps; non-empty = only these names may be opened via computer_open_app */
+      appAllowlist: z.array(z.string()).default([]).catch([]),
+      /** Record last N computer tool steps for export (no image dump by default) */
+      debugTrajectory: z.boolean().default(false).catch(false),
+    })
+    .optional()
+    .catch(undefined),
 })
 
 const MCPTransportConfigSchema = z.discriminatedUnion('type', [

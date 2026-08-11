@@ -23,8 +23,10 @@ const CRITICAL_INTENT_PATTERNS = [
   /(?:^|[\s_-])(secret|credential|password|token|api[_-]?key|private[_-]?key)(?:$|[\s_-])/,
   // Environment mutation
   /(?:^|[\s_-])(set[_-]?env|putenv|export[_-]?env|env[_-]?var)(?:$|[\s_-])/,
-  // Process / service lifecycle
-  /(?:^|[\s_-])(kill|pkill|shutdown|reboot|restart[_-]?service|systemctl|launchctl)(?:$|[\s_-])/,
+  // Process / service lifecycle / app launch
+  /(?:^|[\s_-])(kill|pkill|shutdown|reboot|restart[_-]?service|systemctl|launchctl|open[_-]?app|launch[_-]?app)(?:$|[\s_-])/,
+  // Computer use actuation (full user-equivalent control)
+  /\bcomputer_(click|type|key|scroll|mouse_move|open_app|open_uri)\b/,
 ]
 
 const HIGH_INTENT_PATTERNS = [
@@ -38,6 +40,8 @@ const HIGH_INTENT_PATTERNS = [
   /(?:^|[\s_-])(write|save|create|update|edit|modify|patch|put|post)(?:$|[\s_-])/,
   // Package / dependency management
   /(?:^|[\s_-])(install|uninstall|npm|pip|brew|apt|yum)(?:$|[\s_-])/,
+  // Browser act (click/type/scroll/navigate can submit forms or change origin)
+  /\bbrowser_(click|type|scroll|navigate)\b/,
 ]
 
 const MEDIUM_INTENT_PATTERNS = [
@@ -47,10 +51,15 @@ const MEDIUM_INTENT_PATTERNS = [
   /(?:^|[\s_-])(file|filesystem|directory|folder|read[_-]?file|readdir|stat|glob)(?:$|[\s_-])/,
   // Database operations
   /(?:^|[\s_-])(database|sql|query[_-]?db|mongo|redis|insert|drop[_-]?table)(?:$|[\s_-])/,
+  // Browser secondary + screen observe (may show secrets)
+  /\bbrowser_(tabs|screenshot)\b/,
+  /\bcomputer_screenshot\b/,
+  /\bcomputer_wait\b/,
 ]
 
 const LOW_INTENT_PATTERNS = [
   /(?:^|[\s_-])(search|query|find|lookup|list|get|inspect|read|describe|show|view|count|check|status|info|help|version)(?:$|[\s_-])/,
+  /\bbrowser_snapshot\b/,
 ]
 
 // ---------------------------------------------------------------------------

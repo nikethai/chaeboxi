@@ -39,6 +39,16 @@ export function cancelSessionGeneration(sessionId: string): boolean {
   const cur = bySession.get(sessionId)
   if (!cur) return false
   cur.cancel()
+  // Best-effort: stop isolated browser + computer act for this session (kill switch)
+  void import('@/packages/model-calls/toolsets/browser')
+    .then(({ stopBrowserSession }) => stopBrowserSession(sessionId))
+    .catch(() => {})
+  void import('@/platform')
+    .then((m) => m.default.computerAbort?.())
+    .catch(() => {})
+  void import('@/packages/browser/lock')
+    .then(({ releaseBrowserLock }) => releaseBrowserLock(sessionId))
+    .catch(() => {})
   return true
 }
 

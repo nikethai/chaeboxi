@@ -731,10 +731,16 @@ export async function generate(
     const roomMulti = Boolean(options?.roomMulti)
     // Always cap tool steps. Undefined used to become Number.MAX_SAFE_INTEGER in the model
     // layer — models with tools (memory, MCP, web) could loop forever ("Using tools…" hang).
-    const maxSteps =
+    // Default maxSteps is only 5 — too small for computer use (open + screenshot + click + verify).
+    // When computer is armed, raise the floor so the agent can finish multi-step desktop tasks.
+    const COMPUTER_USE_MIN_STEPS = 16
+    let maxSteps =
       !roomMulti && isAgentEnabled && session.agentMode
         ? (copilotOverrides?.maxSteps ?? COPILOT_MAX_STEPS_DEFAULT)
         : COPILOT_MAX_STEPS_DEFAULT
+    if (session.computerArmed && !roomMulti) {
+      maxSteps = Math.max(maxSteps ?? COPILOT_MAX_STEPS_DEFAULT, COMPUTER_USE_MIN_STEPS)
+    }
     switch (session.type) {
       // Chat message generation
       case 'chat':
@@ -1099,6 +1105,39 @@ export async function generate(
             enabled: isAgentExecuteTurn,
             workspaceRoot: session.workspaceRoot,
           },
+          // Browser / computer: desktop + master settings + session arm; Discuss/non-lead off (D10)
+          browserAgent: (() => {
+            const roomMode = options?.roomMode ?? session.roomMode
+            const roomMultiLocal = Boolean(session.agentIds && session.agentIds.length > 1)
+            const discussOff = roomMultiLocal && roomMode === 'discuss'
+            const leadOnlyOk =
+              !roomMultiLocal ||
+              (roomToolsAllowed && (options?.roomRole === 'lead' || roomRoleForTools === 'lead'))
+            const roomAllowed = !discussOff && leadOnlyOk && !roomBlocksExternalTools
+            return {
+              armed: Boolean(session.browserArmed) && roomAllowed,
+              sessionId,
+              workspaceRoot: session.workspaceRoot,
+              runId: targetMsg.id,
+              roomAllowed,
+            }
+          })(),
+          computerUse: (() => {
+            const roomMode = options?.roomMode ?? session.roomMode
+            const roomMultiLocal = Boolean(session.agentIds && session.agentIds.length > 1)
+            const discussOff = roomMultiLocal && roomMode === 'discuss'
+            const leadOnlyOk =
+              !roomMultiLocal ||
+              (roomToolsAllowed && (options?.roomRole === 'lead' || roomRoleForTools === 'lead'))
+            const roomAllowed = !discussOff && leadOnlyOk && !roomBlocksExternalTools
+            return {
+              armed: Boolean(session.computerArmed) && roomAllowed,
+              sessionId,
+              // Act tools only when computerArmed (observe+act share arm; master setting gates tools)
+              allowAct: Boolean(session.computerArmed),
+              roomAllowed,
+            }
+          })(),
           maxSteps: roomMaxSteps,
           tools: toolsToUse,
           toolAccess: copilotOverrides?.toolAccess,

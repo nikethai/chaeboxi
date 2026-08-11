@@ -135,6 +135,56 @@ export interface Platform extends Storage {
     timeoutMs?: number
   ): Promise<{ exitCode: number; stdout: string; stderr: string }>
 
+  // Agent browser (Desktop only) — isolated Chromium via Playwright host
+  browserSessionStart?(opts: BrowserSessionStartPayload): Promise<unknown>
+  browserSessionStop?(sessionId: string): Promise<unknown>
+  browserSessionStatus?(sessionId: string): Promise<BrowserStatusPayload>
+  browserSessionWipe?(sessionId: string): Promise<unknown>
+  browserNavigate?(sessionId: string, url: string): Promise<unknown>
+  browserSnapshot?(sessionId: string, opts?: { interestingOnly?: boolean }): Promise<BrowserSnapshotPayload>
+  browserAct?(sessionId: string, action: BrowserActPayload): Promise<unknown>
+  browserTabs?(sessionId: string, op: BrowserTabsPayload): Promise<unknown>
+  browserScreenshot?(sessionId: string): Promise<BrowserScreenshotPayload>
+
+  // Computer use (Desktop only)
+  computerListDisplays?(): Promise<{ displays: Array<{ id: string; name: string; isPrimary?: boolean }> }>
+  computerPermissionStatus?(): Promise<ComputerPermissionStatus>
+  /** macOS: may show Screen Recording system prompt; returns updated status. */
+  computerPermissionRequest?(): Promise<ComputerPermissionStatus>
+  /** Reveal the running binary in Finder/Explorer (needed for + in Privacy lists in dev). */
+  computerRevealExecutable?(): Promise<{ ok: boolean; executablePath?: string }>
+  computerOpenApp?(opts: { name: string }): Promise<{
+    ok?: boolean
+    name?: string
+    backend?: string
+    activated?: boolean
+    frontmost?: string
+    note?: string
+  }>
+  /** Open URI scheme / URL (whatsapp://, https://, sms:). Desktop only. */
+  computerOpenUri?(opts: { uri: string }): Promise<{
+    ok?: boolean
+    uri?: string
+    scheme?: string
+    frontmost?: string
+    backend?: string
+    note?: string
+    error?: string
+  }>
+  /** Best-effort frontmost process name (macOS). */
+  computerFrontmost?(): Promise<{ ok?: boolean; frontmost?: string; note?: string; error?: string }>
+  computerCaptureDisplay?(opts?: {
+    displayId?: string
+    maxWidth?: number
+  }): Promise<ComputerCapturePayload>
+  computerClick?(opts: { x: number; y: number; button?: string }): Promise<unknown>
+  computerType?(opts: { text: string }): Promise<unknown>
+  computerKey?(opts: { key: string }): Promise<unknown>
+  computerScroll?(opts: { x?: number; y?: number; deltaY?: number; direction?: string; amount?: number }): Promise<unknown>
+  computerMouseMove?(opts: { x: number; y: number }): Promise<unknown>
+  computerAbort?(): Promise<unknown>
+  computerClearAbort?(): Promise<unknown>
+
   // Local OS system notifications (not remote push)
   getSystemNotificationPermission(): Promise<SystemNotificationPermission>
   requestSystemNotificationPermission(): Promise<SystemNotificationPermission>
@@ -166,6 +216,93 @@ export type ScreenshotImagePayload = {
   fileName: string
 }
 export type ClipboardCapturePayload = { type: 'text'; text: string } | ({ type: 'image' } & ScreenshotImagePayload)
+
+export type BrowserSessionStartPayload = {
+  sessionId: string
+  headless?: boolean
+  downloadsEnabled?: boolean
+  downloadDir?: string
+  allowlist?: string[]
+  channel?: 'chrome' | 'msedge'
+  viewport?: { width: number; height: number }
+}
+
+export type BrowserStatusPayload = {
+  running: boolean
+  activePageId?: string | null
+  tabCount?: number
+  url?: string | null
+  headless?: boolean
+  downloadsEnabled?: boolean
+}
+
+export type BrowserSnapshotPayload = {
+  url: string
+  title: string
+  snapshot: string
+  truncated?: boolean
+  refCount?: number
+}
+
+export type BrowserActPayload = {
+  action: 'click' | 'type' | 'scroll'
+  ref?: string
+  text?: string
+  button?: 'left' | 'right'
+  submit?: boolean
+  direction?: 'up' | 'down'
+  amount?: number
+}
+
+export type BrowserTabsPayload = {
+  op?: 'list' | 'select' | 'new' | 'close'
+  action?: 'list' | 'select' | 'new' | 'close'
+  tabId?: string
+  url?: string
+}
+
+export type BrowserScreenshotPayload = {
+  mimeType: string
+  base64: string
+  url?: string
+}
+
+export type ComputerPermissionStatus = {
+  screenRecording: string
+  accessibility: string
+  platform?: string
+  experimental?: boolean
+  /** Probe method used by backend (e.g. tcc-process). */
+  probe?: string
+  /** Absolute path of the running process (dev: target/debug/chaeboxi). */
+  executablePath?: string
+  processName?: string
+  isDevBinary?: boolean
+  requested?: boolean
+  requestGranted?: boolean
+  /** CGPreflightScreenCaptureAccess result (may lag until restart after grant). */
+  preflight?: boolean
+  /** Real capture probe for this process. */
+  captureProbe?: boolean
+}
+
+export type ComputerCapturePayload = {
+  mimeType: string
+  base64: string
+  width?: number
+  height?: number
+  /** Native capture size before model downscale. */
+  sourceWidth?: number
+  sourceHeight?: number
+  /** Actuator coordinate space (macOS points / native pixels). */
+  actWidth?: number
+  actHeight?: number
+  scale?: number
+  displayId?: string
+  fileName?: string
+  /** Encoded payload size after resize/JPEG (not base64 string length). */
+  byteLength?: number
+}
 
 export interface Exporter {
   exportBlob: (filename: string, blob: Blob, encoding?: 'utf8' | 'ascii' | 'utf16') => Promise<void>

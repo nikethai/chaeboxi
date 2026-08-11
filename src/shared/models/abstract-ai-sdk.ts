@@ -532,6 +532,9 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     options: CallChatCompletionOptions<T>,
     callSettings: CallSettings
   ): Promise<StreamTextResult> {
+    // Computer Use harness (and others) may force toolChoice / prune screenshots per step.
+    // Cast through unknown: CallChatCompletionOptions.prepareStep is intentionally loose.
+    const prepareStep = options.prepareStep as never
     const result = streamText({
       model,
       messages: coreMessages,
@@ -539,6 +542,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       stopWhen: stepCountIs(options.maxSteps && options.maxSteps > 0 ? options.maxSteps : 5),
       tools: options.tools,
       abortSignal: options.signal,
+      ...(prepareStep ? { prepareStep } : {}),
       ...callSettings,
     })
 

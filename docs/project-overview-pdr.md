@@ -50,6 +50,8 @@ It is an independent GPLv3 product (derived from an earlier open-source client; 
 | **Memory** | Personal / session memory | [memory.md](./memory.md) |
 | **Knowledge base / RAG** | Local document KB; desktop Rust path uses in-memory indexes + JSON chunk files + keyword search (not SQLite in Rust) | [rag.md](./rag.md) |
 | **Video URL reader** | Public video URL tool (YouTube/Vimeo/TikTok/Facebook) — `read_video_url` | [video-url-reader.md](./video-url-reader.md) |
+| **Browser agent** | Desktop isolated browser tools (`browser_*`) | [browser-agent.md](./browser-agent.md) |
+| **Computer use** | Desktop screen observe/act (`computer_*`) | [computer-use.md](./computer-use.md) |
 | **Web search** | Web search integration for agents/tools | (packages under `src/renderer/packages/web-search*`) |
 | **OpenClaw** | Remote OpenClaw agent runtime over WebSocket | [openclaw-remote-setup.md](./openclaw-remote-setup.md) |
 | **Integrations** | Connectors (e.g. Jira, Asana, Google Workspace, GitHub); secrets in OS keychain on desktop | [integrations.md](./integrations.md) |

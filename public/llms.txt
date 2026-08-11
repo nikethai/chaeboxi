@@ -1,0 +1,31 @@
+# Chaeboxi
+
+> Local-first multi-platform AI copilot (Tauri 2 + React 18 + TypeScript). BYOK only, GPLv3. Desktop, web, and mobile targets.
+
+## Documentation
+
+- [Adding a New Provider (Registry Architecture)](adding-new-provider.md): This guide documents how to add a new AI provider to Chaeboxi using the **registry-based architecture**.
+- [Adding a New Provider to Chaeboxi](adding-provider.md): This guide documents all the steps and files that need to be modified when adding a new AI provider to the Chaeboxi application.
+- [Agents & multi-agent team rooms](agents-multi-agent-rooms.md): **Agents** (formerly Copilots) are persona packages: prompt, avatar, model overrides, tools, and hooks.
+- [Code Standards](code-standards.md): | | | | --- | --- | | **Product** | Chaeboxi 1.6.0 | | **Last updated** | 2026-08-11 |
+- [Codebase Summary](codebase-summary.md): | | | | --- | --- | | **Product** | Chaeboxi 1.6.0 | | **Last updated** | 2026-08-11 |
+- [Chaeboxi Design Guidelines](design-guidelines.md): **Status:** Active design contract for the UI redesign **Visual source of truth:** `plans/2026-08-05-ui-ux-redesign/mock-dark-shell.html` **Last...
+- [Commands and Hooks](hooks-and-commands.md): Chaeboxi extensibility beyond Skills. Clear separation of triggers and behavior.
+- [Integrations (Connected Accounts)](integrations.md): Product identity layer for third-party services. AI tools use the **right account** without pasting tokens into every MCP env field or into the...
+- [Long-term Memory](memory.md): Cross-session, cross-model memory for Chaeboxi (community edition).
+- [New Session Mechanism](new-session-mechanism.md): How new chats / sessions are created and initialized.
+- [OpenClaw Remote Access via Cloudflare Tunnel](openclaw-remote-setup.md): Expose your local OpenClaw gateway to the internet securely using Cloudflare Tunnel and CF Access, then connect from Chaeboxi on any network.
+- [Chaeboxi — Project Overview & Product Development Requirements](project-overview-pdr.md): | | | | --- | --- | | **Product** | Chaeboxi | | **Version** | 1.6.0 | | **License** | [GNU GPLv3](../LICENSE) | | **Repo** |...
+- [Provider Usage Status](provider-usage-status.md): Track **provider subscription / plan usage** and **in-app usage** for BYOK and OAuth providers.
+- [RAG / Knowledge Base](rag.md): Retrieval-augmented generation for private documents.
+- [Session Module Split Plan](session-module-split-plan.md): **Purpose**: Document the dependency analysis and proposed module split for `src/renderer/stores/sessionActions.ts` (1799 lines) to enable safe...
+- [Skills](skills.md): Agent Skills give Chaeboxi modular, on-demand procedures (like Claude/Cursor skills) without bloating every system prompt.
+- [Storage Architecture](storage.md): Cross-platform storage and version migration for Chaeboxi (cross-platform storage patterns).
+- [Personal Memory Sync Implementation Plan](superpowers/plans/2026-08-09-memory-sync.md): **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement...
+- [Three-Hotkey Overlay Design](superpowers/specs/2026-08-07-three-hotkey-overlay-design.md): **Date:** 2026-08-07 **Status:** Approved for implementation
+- [Personal Memory Sync Design](superpowers/specs/2026-08-08-personal-memory-sync-design.md): Date: 2026-08-09 Status: Draft, updated after latest codebase audit on rebased `main` including `origin/main` Scope: Sync for the upstream...
+- [System Architecture](system-architecture.md): | | | | --- | --- | | **Product** | Chaeboxi 1.6.0 | | **Last updated** | 2026-08-11 |
+- [System Notifications](system-notifications.md): Local OS notifications when Chaeboxi finishes work while the app is unfocused or in the tray. This is **not** remote push (no FCM/APNs server, no...
+- [Testing Strategy and Implementation](testing.md): ```typescript // vitest.config.ts export default defineConfig({ test: { globals: true, environment: 'node', env: { NODE_ENV: 'test', }, include:...
+- [Token Estimation](token-estimation.md): How Chaeboxi estimates tokens for context management and budget UI.
+- [Video URL Reader (Agent Tool)](video-url-reader.md): **Date:** 2026-08-10 **Tool name:** `read_video_url` **Settings:** Settings → Video URL (`/settings/video-url`) **Status:** Shipped (RC). Desktop...

@@ -72,6 +72,19 @@ pnpm lint
 
 More detail for contributors: [AGENTS.md](./AGENTS.md).
 
+## Documentation
+
+| Doc | Description |
+| --- | --- |
+| [Project overview / PDR](./docs/project-overview-pdr.md) | Vision, non-goals, feature inventory, success criteria |
+| [System architecture](./docs/system-architecture.md) | Layers, init flow, IPC, MCP, storage, security |
+| [Codebase summary](./docs/codebase-summary.md) | Repo layout, packages, scale, feature doc map |
+| [Code standards](./docs/code-standards.md) | Style, layering, testing, commits, security |
+| [Design guidelines](./docs/design-guidelines.md) | UI design system |
+| [AGENTS.md](./AGENTS.md) | Contributor architecture entry |
+
+Feature docs (agents, skills, memory, RAG, storage, integrations, OpenClaw, video URL, etc.) live under [`docs/`](./docs/).
+
 ## Attribution (license)
 
 Chaeboxi is an independent project. Parts of the codebase are derived from an earlier open-source GPLv3 desktop client ([upstream source](https://github.com/chatboxai/chatbox)).

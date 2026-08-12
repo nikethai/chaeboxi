@@ -616,7 +616,7 @@ export default class DesktopPlatform implements Platform {
     return this.ipc.invoke('computer:frontmost')
   }
 
-  public async computerClick(opts: { x: number; y: number; button?: string }) {
+  public async computerClick(opts: { x: number; y: number; button?: string; frameId?: string }) {
     return this.ipc.invoke('computer:click', opts)
   }
 
@@ -638,7 +638,7 @@ export default class DesktopPlatform implements Platform {
     return this.ipc.invoke('computer:scroll', opts)
   }
 
-  public async computerMouseMove(opts: { x: number; y: number }) {
+  public async computerMouseMove(opts: { x: number; y: number; frameId?: string }) {
     return this.ipc.invoke('computer:mouse-move', opts)
   }
 

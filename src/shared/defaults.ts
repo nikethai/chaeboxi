@@ -195,7 +195,8 @@ export function settings(): Settings {
       },
       computerUse: {
         enabled: false,
-        maxScreenshotsPerTurn: 10,
+        // Align with COMPUTER_USE_MIN_STEPS (16) so auto-verify shots do not starve mid-task.
+        maxScreenshotsPerTurn: 16,
         abortHotkey: '',
         appAllowlist: [],
         debugTrajectory: false,

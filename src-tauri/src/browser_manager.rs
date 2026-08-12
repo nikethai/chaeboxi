@@ -325,7 +325,20 @@ impl BrowserManager {
         let host = hosts
             .get_mut(session_id)
             .ok_or_else(|| "SESSION_NOT_FOUND: browser session not started".to_string())?;
-        host.rpc(method, params).await
+        let result = host.rpc(method, params).await;
+        // Evict dead hosts so the next start/status can relaunch cleanly.
+        if let Err(ref e) = result {
+            let lower = e.to_lowercase();
+            if lower.contains("write to browser host failed")
+                || lower.contains("browser host closed")
+                || lower.contains("broken pipe")
+            {
+                if let Some(mut dead) = hosts.remove(session_id) {
+                    let _ = dead.child.kill().await;
+                }
+            }
+        }
+        result
     }
 }
 

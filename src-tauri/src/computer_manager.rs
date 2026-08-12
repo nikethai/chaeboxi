@@ -19,6 +19,8 @@ pub struct ComputerManager {
 #[allow(dead_code)] // display_id/scale reserved for multi-monitor mapping / diagnostics
 struct CaptureMeta {
     display_id: String,
+    /// Opaque id for this capture — clicks may pin coordinates to this frame.
+    frame_id: String,
     /// Size of the image the model saw (after resize/JPEG).
     screenshot_width: u32,
     screenshot_height: u32,
@@ -75,7 +77,7 @@ impl ComputerManager {
                     .get("maxWidth")
                     .and_then(|v| v.as_u64())
                     .unwrap_or(1440) as u32;
-                let result = capture_display(display_id.as_deref(), max_width).await?;
+                let mut result = capture_display(display_id.as_deref(), max_width).await?;
                 if let (Some(w), Some(h)) = (
                     result.get("width").and_then(|v| v.as_u64()),
                     result.get("height").and_then(|v| v.as_u64()),
@@ -94,6 +96,17 @@ impl ComputerManager {
                         .and_then(|v| v.as_f64())
                         .filter(|v| *v > 0.0)
                         .unwrap_or(h as f64);
+                    let frame_id = format!(
+                        "f{}-{}",
+                        std::time::SystemTime::now()
+                            .duration_since(std::time::UNIX_EPOCH)
+                            .map(|d| d.as_millis())
+                            .unwrap_or(0),
+                        w.wrapping_mul(31).wrapping_add(h)
+                    );
+                    if let Some(obj) = result.as_object_mut() {
+                        obj.insert("frameId".into(), json!(frame_id.clone()));
+                    }
                     let mut meta = self
                         .last_capture_meta
                         .lock()
@@ -104,6 +117,7 @@ impl ComputerManager {
                             .and_then(|v| v.as_str())
                             .unwrap_or("primary")
                             .to_string(),
+                        frame_id,
                         screenshot_width: w as u32,
                         screenshot_height: h as u32,
                         act_width,
@@ -221,6 +235,15 @@ fn map_coords(mgr: &ComputerManager, params: &Value) -> Result<(f64, f64), Strin
         .lock()
         .map_err(|_| "meta lock poisoned".to_string())?;
     if let Some(ref m) = *meta {
+        // Optional frame pin: reject clicks that target an older verification image.
+        if let Some(fid) = params.get("frameId").and_then(|v| v.as_str()) {
+            if !fid.is_empty() && fid != m.frame_id {
+                return Err(format!(
+                    "STALE_FRAME: coordinates belong to frame {fid}, latest is {}. Call computer_screenshot and click using the new frameId.",
+                    m.frame_id
+                ));
+            }
+        }
         if m.screenshot_width > 0 && m.screenshot_height > 0 && m.act_width > 0.0 && m.act_height > 0.0 {
             let sx = m.act_width / m.screenshot_width as f64;
             let sy = m.act_height / m.screenshot_height as f64;

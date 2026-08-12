@@ -177,11 +177,11 @@ export interface Platform extends Storage {
     displayId?: string
     maxWidth?: number
   }): Promise<ComputerCapturePayload>
-  computerClick?(opts: { x: number; y: number; button?: string }): Promise<unknown>
+  computerClick?(opts: { x: number; y: number; button?: string; frameId?: string }): Promise<unknown>
   computerType?(opts: { text: string }): Promise<unknown>
   computerKey?(opts: { key: string }): Promise<unknown>
   computerScroll?(opts: { x?: number; y?: number; deltaY?: number; direction?: string; amount?: number }): Promise<unknown>
-  computerMouseMove?(opts: { x: number; y: number }): Promise<unknown>
+  computerMouseMove?(opts: { x: number; y: number; frameId?: string }): Promise<unknown>
   computerAbort?(): Promise<unknown>
   computerClearAbort?(): Promise<unknown>
 
@@ -299,6 +299,8 @@ export type ComputerCapturePayload = {
   actHeight?: number
   scale?: number
   displayId?: string
+  /** Opaque capture id — pin click/move coords to this frame. */
+  frameId?: string
   fileName?: string
   /** Encoded payload size after resize/JPEG (not base64 string length). */
   byteLength?: number

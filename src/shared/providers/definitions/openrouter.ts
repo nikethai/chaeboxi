@@ -30,7 +30,7 @@ export const openRouterProvider = defineProvider({
         modelId: 'google/gemini-2.5-flash-image-preview',
         type: 'chat',
         nickname: 'Google: Gemini 2.5 Flash Image Preview',
-        capabilities: ['tool_use', 'vision'],
+        capabilities: ['tool_use', 'vision', 'image_generation', 'image_edit'],
         contextWindow: 32768,
       },
       {

@@ -33,6 +33,11 @@ export const xaiProvider = defineProvider({
         contextWindow: 1_000_000,
         capabilities: ['tool_use'],
       },
+      {
+        modelId: 'grok-imagine-image',
+        nickname: 'Grok Imagine',
+        capabilities: ['image_generation', 'image_edit'],
+      },
     ],
   },
   createModel: (config) => {

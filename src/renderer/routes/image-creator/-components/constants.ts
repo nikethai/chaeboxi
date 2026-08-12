@@ -12,6 +12,12 @@ export const IMAGE_MODEL_FALLBACK_NAMES: Record<string, string> = {
   'gemini-3.1-flash-image-preview': 'Nano Banana 2',
   'gemini-3.1-flash-image': 'Nano Banana 2',
   'comfyui-txt2img': 'txt2img',
+  'grok-imagine-image': 'Grok Imagine',
+  'grok-imagine-image-quality': 'Grok Imagine Quality',
+  'grok-imagine-image-pro': 'Grok Imagine Pro',
+  'grok-imagine-image-2.0': 'Grok Imagine 2.0',
+  'grok-2-image': 'Grok 2 Image',
+  'grok-2-image-generation': 'Grok 2 Image',
 }
 
 export const CHATBOXAI_IMAGE_MODEL_IDS = [

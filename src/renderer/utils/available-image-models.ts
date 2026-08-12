@@ -1,9 +1,14 @@
 /**
  * Discover image-generation models from configured providers.
- * Aligns with Imagine studio / ImageModelSelect lists + xAI Grok Imagine.
+ * Prefers explicit image_generation / image_edit capabilities, with ID heuristics as fallback.
  */
 
-import { ModelProviderEnum, ModelProviderType, type ProviderInfo } from '@shared/types'
+import { ModelProviderEnum, ModelProviderType, type ProviderInfo, type ProviderModelInfo } from '@shared/types'
+import {
+  hasImageCapability,
+  isImageEditModel,
+  isImageGenerationModel,
+} from '@shared/utils/image-model-capabilities'
 import {
   COMFYUI_IMAGE_MODEL_IDS,
   GEMINI_IMAGE_MODEL_IDS,
@@ -18,6 +23,7 @@ export type AvailableImageModel = {
   displayName: string
   /** Combobox value: providerId:modelId */
   value: string
+  supportsEdit: boolean
 }
 
 const XAI_IMAGE_MODEL_IDS = ['grok-imagine-image', 'grok-imagine-image-quality', 'grok-imagine-image-pro']
@@ -25,7 +31,7 @@ const XAI_IMAGE_MODEL_IDS = ['grok-imagine-image', 'grok-imagine-image-quality',
 function modelsForProvider(
   provider: ProviderInfo,
   imageModelIds: string[]
-): { modelId: string; displayName: string }[] {
+): { modelId: string; displayName: string; supportsEdit: boolean }[] {
   const providerModels = provider.models || provider.defaultSettings?.models || []
   const defaultModels = provider.defaultSettings?.models || []
   return imageModelIds
@@ -36,13 +42,25 @@ function modelsForProvider(
       return {
         modelId,
         displayName: model.nickname || IMAGE_MODEL_FALLBACK_NAMES[modelId] || modelId,
+        supportsEdit: isImageEditModel(model),
       }
     })
-    .filter((m): m is { modelId: string; displayName: string } => m !== null)
+    .filter((m): m is { modelId: string; displayName: string; supportsEdit: boolean } => m !== null)
+}
+
+function capabilityImageModels(provider: ProviderInfo): { modelId: string; displayName: string; supportsEdit: boolean }[] {
+  const providerModels = provider.models || provider.defaultSettings?.models || []
+  return providerModels
+    .filter((m) => isImageGenerationModel(m) || hasImageCapability(m, 'image_edit'))
+    .map((m) => ({
+      modelId: m.modelId,
+      displayName: m.nickname || IMAGE_MODEL_FALLBACK_NAMES[m.modelId] || m.modelId,
+      supportsEdit: isImageEditModel(m),
+    }))
 }
 
 /** Any listed model whose id looks like an image generator. */
-function heuristicImageModels(provider: ProviderInfo): { modelId: string; displayName: string }[] {
+function heuristicImageModels(provider: ProviderInfo): { modelId: string; displayName: string; supportsEdit: boolean }[] {
   const providerModels = provider.models || provider.defaultSettings?.models || []
   const known = new Set([
     ...OPENAI_IMAGE_MODEL_IDS,
@@ -53,18 +71,14 @@ function heuristicImageModels(provider: ProviderInfo): { modelId: string; displa
   return providerModels
     .filter((m) => {
       if (known.has(m.modelId)) return false
-      const id = m.modelId.toLowerCase()
-      if (id.includes('gpt-image') || id.includes('dall-e') || id.includes('dalle')) return true
-      if ((id.includes('gemini') || id.includes('imagen')) && id.includes('image')) return true
-      if (id.includes('flash-image') || id.includes('pro-image')) return true
-      // xAI Grok Imagine family (and similar)
-      if (id.includes('imagine-image') || id.includes('grok-imagine') || id.includes('aurora')) return true
-      if (id.includes('flux') && !id.includes('chat')) return true
-      return false
+      // Prefer explicit capabilities when present
+      if (m.capabilities?.includes('image_generation') || m.capabilities?.includes('image_edit')) return true
+      return isImageGenerationModel(m as ProviderModelInfo)
     })
     .map((m) => ({
       modelId: m.modelId,
       displayName: m.nickname || IMAGE_MODEL_FALLBACK_NAMES[m.modelId] || m.modelId,
+      supportsEdit: isImageEditModel(m),
     }))
 }
 
@@ -75,7 +89,10 @@ export function listAvailableImageModels(providers: ProviderInfo[]): AvailableIm
   const out: AvailableImageModel[] = []
   const seen = new Set<string>()
 
-  const push = (provider: ProviderInfo, models: { modelId: string; displayName: string }[]) => {
+  const push = (
+    provider: ProviderInfo,
+    models: { modelId: string; displayName: string; supportsEdit: boolean }[]
+  ) => {
     for (const m of models) {
       const value = `${provider.id}:${m.modelId}`
       if (seen.has(value)) continue
@@ -86,13 +103,21 @@ export function listAvailableImageModels(providers: ProviderInfo[]): AvailableIm
         modelId: m.modelId,
         displayName: m.displayName,
         value,
+        supportsEdit: m.supportsEdit,
       })
     }
   }
 
   for (const provider of providers) {
+    // Capability-first discovery for every provider
+    const byCapability = capabilityImageModels(provider)
+
     if (provider.id === ModelProviderEnum.Gemini || (provider.isCustom && provider.type === ModelProviderType.Gemini)) {
-      push(provider, [...modelsForProvider(provider, GEMINI_IMAGE_MODEL_IDS), ...heuristicImageModels(provider)])
+      push(provider, [
+        ...modelsForProvider(provider, GEMINI_IMAGE_MODEL_IDS),
+        ...byCapability,
+        ...heuristicImageModels(provider),
+      ])
       continue
     }
     if (
@@ -100,21 +125,34 @@ export function listAvailableImageModels(providers: ProviderInfo[]): AvailableIm
       provider.id === ModelProviderEnum.Azure ||
       provider.id === ModelProviderEnum.OpenAIResponses
     ) {
-      push(provider, [...modelsForProvider(provider, OPENAI_IMAGE_MODEL_IDS), ...heuristicImageModels(provider)])
+      // OpenAIResponses has no paint adapter today — still list only capability-backed models for OpenAI/Azure.
+      if (provider.id === ModelProviderEnum.OpenAIResponses) {
+        push(provider, byCapability)
+        continue
+      }
+      push(provider, [
+        ...modelsForProvider(provider, OPENAI_IMAGE_MODEL_IDS),
+        ...byCapability,
+        ...heuristicImageModels(provider),
+      ])
       continue
     }
     if (provider.id === ModelProviderEnum.XAI) {
-      push(provider, [...modelsForProvider(provider, XAI_IMAGE_MODEL_IDS), ...heuristicImageModels(provider)])
+      push(provider, [
+        ...modelsForProvider(provider, XAI_IMAGE_MODEL_IDS),
+        ...byCapability,
+        ...heuristicImageModels(provider),
+      ])
       continue
     }
     if (provider.id === ModelProviderEnum.ComfyUI) {
-      push(provider, modelsForProvider(provider, COMFYUI_IMAGE_MODEL_IDS))
+      push(provider, [...modelsForProvider(provider, COMFYUI_IMAGE_MODEL_IDS), ...byCapability])
       continue
     }
     // OpenRouter / other customs that list image model ids
-    const heuristic = heuristicImageModels(provider)
-    if (heuristic.length > 0) {
-      push(provider, heuristic)
+    const rest = [...byCapability, ...heuristicImageModels(provider)]
+    if (rest.length > 0) {
+      push(provider, rest)
     }
   }
 

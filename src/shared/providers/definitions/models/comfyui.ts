@@ -50,7 +50,7 @@ export default class ComfyUI implements ModelInterface {
       comfyuiParams?: ComfyUIGenerationParams
     },
     signal?: AbortSignal,
-    callback?: (picBase64: string) => void,
+    callback?: (picBase64: string) => void | Promise<void>,
     onProviderJobUpdate?: (data: { providerJobId?: string; queueNumber?: number }) => void
   ): Promise<string[]> {
     const ps = this.providerSettings
@@ -100,6 +100,11 @@ export default class ComfyUI implements ModelInterface {
     }
 
     const results: string[] = []
+    let referenceImageName: string | undefined
+    const firstReference = params.images?.find((image) => Boolean(image.imageUrl))?.imageUrl
+    if (firstReference) {
+      referenceImageName = await this.client.uploadImage(firstReference, `chaeboxi-ref-${Date.now()}.png`)
+    }
 
     for (let i = 0; i < params.num; i++) {
       if (signal?.aborted) {
@@ -109,6 +114,8 @@ export default class ComfyUI implements ModelInterface {
       const workflow = buildComfyUIWorkflow({
         ...genParams,
         seed: Math.floor(Math.random() * 2 ** 32),
+        referenceImageName,
+        denoise: referenceImageName ? 0.65 : undefined,
       })
 
       const { prompt_id, number } = await this.client.queuePrompt(workflow)
@@ -126,7 +133,7 @@ export default class ComfyUI implements ModelInterface {
       for (const img of outputNode.images) {
         const dataUrl = await this.client.getImage(img.filename, img.subfolder, img.type)
         results.push(dataUrl)
-        callback?.(dataUrl)
+        await callback?.(dataUrl)
       }
     }
 

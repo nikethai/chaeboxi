@@ -10,7 +10,12 @@ import { humanizeOAuthNetworkError, XAI_API_BASE, XaiOAuthError } from './xai-oa
 /** Known capability seeds for popular Grok model id patterns */
 const CAPABILITY_HINTS: Array<{ match: RegExp; capabilities: NonNullable<ProviderModelInfo['capabilities']> }> = [
   { match: /reason/i, capabilities: ['reasoning', 'tool_use'] },
-  { match: /vision|image/i, capabilities: ['vision'] },
+  { match: /vision/i, capabilities: ['vision'] },
+  // Image generation models (Grok Imagine family)
+  {
+    match: /imagine-image|grok-imagine|grok-2-image|image-generation/i,
+    capabilities: ['image_generation', 'image_edit', 'vision'],
+  },
   { match: /build|code/i, capabilities: ['tool_use'] },
 ]
 

@@ -1,5 +1,6 @@
 import { Alert, Button, Flex, Loader, SegmentedControl, Stack, Text } from '@mantine/core'
 import {
+  ensureOpenAICodexBearer,
   fetchOpenAICodexModels,
   humanizeOpenAICodexOAuthNetworkError,
   mergeOpenAICodexModels,
@@ -13,8 +14,9 @@ import {
   startOpenAICodexDeviceAuth,
   tokensFromCodexAuthJson,
 } from '@shared/providers/oauth'
+import { withInferredImageCapabilitiesList } from '@shared/utils/image-model-capabilities'
 import type { ProviderSettings } from '@shared/types'
-import { IconCopy, IconExternalLink, IconFileImport, IconLogout } from '@tabler/icons-react'
+import { IconCopy, IconExternalLink, IconFileImport, IconLogout, IconRefresh } from '@tabler/icons-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
@@ -152,6 +154,48 @@ export function OpenAICodexAuthSection({ providerSettings, setProviderSettings }
     addToast(t('Signed out of ChatGPT'))
   }
 
+  const [refreshingModels, setRefreshingModels] = useState(false)
+  const handleRefreshModels = async () => {
+    if (!providerSettings?.oauth?.accessToken && !providerSettings?.oauth?.refreshToken) {
+      addToast(t('Sign in first to refresh models'))
+      return
+    }
+    setRefreshingModels(true)
+    try {
+      // Refresh expired ChatGPT tokens before catalog fetch (stored accessToken alone often 401s).
+      const { bearer, accountId, settingsPatch } = await ensureOpenAICodexBearer(providerSettings)
+      if (settingsPatch) {
+        setProviderSettings(settingsPatch)
+      }
+      const remoteModels = await fetchOpenAICodexModels(bearer, {
+        accountId: accountId || providerSettings?.oauth?.accountId,
+      })
+      if (remoteModels.length > 0) {
+        const nextModels = withInferredImageCapabilitiesList(
+          mergeOpenAICodexModels(providerSettings?.models, remoteModels, { replaceAll: true })
+        )
+        setProviderSettings({
+          ...(settingsPatch || {}),
+          models: nextModels,
+        })
+        addToast(t('Refreshed {{count}} models', { count: nextModels.length }))
+      } else {
+        addToast(t('No models returned'))
+      }
+    } catch (err) {
+      console.warn('[OpenAI Codex] manual model refresh failed', err)
+      const message =
+        err instanceof OpenAICodexOAuthError
+          ? err.message
+          : err instanceof Error
+            ? humanizeOpenAICodexOAuthNetworkError(err)
+            : t('Failed to refresh models')
+      addToast(message)
+    } finally {
+      setRefreshingModels(false)
+    }
+  }
+
   /** Import tokens from local Codex CLI (~/.codex/auth.json) after `codex login`. */
   const handleImportCodexAuth = async () => {
     cancelSignIn()
@@ -253,6 +297,15 @@ export function OpenAICodexAuthSection({ providerSettings, setProviderSettings }
                     </Button>
                     <Button variant="subtle" size="compact-sm" onClick={() => void handleSignIn()}>
                       {t('Re-authenticate')}
+                    </Button>
+                    <Button
+                      variant="subtle"
+                      size="compact-sm"
+                      loading={refreshingModels}
+                      leftSection={<ScalableIcon icon={IconRefresh} size={14} />}
+                      onClick={() => void handleRefreshModels()}
+                    >
+                      {t('Refresh models')}
                     </Button>
                   </>
                 ) : (

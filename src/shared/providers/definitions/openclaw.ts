@@ -1,4 +1,4 @@
-import { ModelProviderEnum, ModelProviderType } from '../../types'
+import { ModelProviderEnum, ModelProviderType, type ProviderModelInfo } from '../../types'
 import { defineProvider } from '../registry'
 import OpenClawModel from '../../models/openclaw'
 import { OpenClawGatewayClient } from '../../openclaw/gateway'
@@ -33,7 +33,7 @@ export const openClawProvider = defineProvider({
       return response.agents.map((agent) => ({
         modelId: agent.id,
         nickname: agent.name,
-        capabilities: agent.capabilities as ('vision' | 'reasoning' | 'tool_use' | 'web_search')[],
+        capabilities: agent.capabilities as ProviderModelInfo['capabilities'],
       }))
     } catch (error) {
       console.warn('[OpenClaw] Failed to list agents:', error)

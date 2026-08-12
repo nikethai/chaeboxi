@@ -66,6 +66,27 @@ describe('listAvailableImageModels', () => {
     expect(list.map((m) => m.modelId)).not.toContain('grok-4-1-fast-reasoning')
   })
 
+  test('includes capability-tagged image models from provider fetch', () => {
+    const providers = [
+      {
+        id: ModelProviderEnum.XAI,
+        name: 'xAI',
+        models: [
+          {
+            modelId: 'grok-imagine-image-pro',
+            nickname: 'Grok Imagine Pro',
+            capabilities: ['image_generation', 'image_edit'],
+          },
+          { modelId: 'grok-4-1-fast-reasoning', capabilities: ['vision', 'tool_use'] },
+        ],
+      },
+    ] as ProviderInfo[]
+
+    const list = listAvailableImageModels(providers)
+    expect(list.some((m) => m.modelId === 'grok-imagine-image-pro' && m.supportsEdit)).toBe(true)
+    expect(list.some((m) => m.modelId === 'grok-4-1-fast-reasoning')).toBe(false)
+  })
+
   test('custom gemini type providers are included', () => {
     const providers = [
       {

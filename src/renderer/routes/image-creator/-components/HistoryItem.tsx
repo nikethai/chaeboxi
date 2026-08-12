@@ -7,6 +7,29 @@ import { useTranslation } from 'react-i18next'
 import storage from '@/storage'
 import { blobToDataUrl, IMAGE_MODEL_FALLBACK_NAMES } from './constants'
 
+function formatHistoryModelName(modelId?: string): string {
+  if (!modelId) return 'Unknown'
+  if (IMAGE_MODEL_FALLBACK_NAMES[modelId]) return IMAGE_MODEL_FALLBACK_NAMES[modelId]
+
+  // Prefer short, human labels for long provider IDs that would otherwise wrap mid-token.
+  const id = modelId.toLowerCase()
+  if (id.includes('grok-imagine-image-quality')) return 'Grok Imagine Quality'
+  if (id.includes('grok-imagine-image-pro')) return 'Grok Imagine Pro'
+  if (id.includes('grok-imagine-image') || id.includes('grok-2-image')) return 'Grok Imagine'
+  if (id.includes('gpt-image-1.5')) return 'GPT Image 1.5'
+  if (id.includes('gpt-image')) return 'GPT Image'
+  if (id.includes('gemini') && id.includes('image')) {
+    if (id.includes('3.1') || id.includes('3-1')) return 'Nano Banana 2'
+    if (id.includes('3-pro') || id.includes('3.pro')) return 'Nano Banana Pro'
+    return 'Nano Banana'
+  }
+  if (id.includes('comfyui')) return 'txt2img'
+
+  // Last resort: strip common provider prefixes and keep the leaf id readable.
+  const leaf = modelId.split('/').pop() || modelId
+  return leaf
+}
+
 export interface HistoryItemProps {
   record: ImageGeneration
   isActive: boolean
@@ -36,7 +59,7 @@ export function HistoryItem({
   const [hovered, setHovered] = useState(false)
   const [deletePopoverOpened, setDeletePopoverOpened] = useState(false)
   const firstImage = record.generatedImages[0]
-  const modelName = IMAGE_MODEL_FALLBACK_NAMES[record.model.modelId] || record.model.modelId || 'Unknown'
+  const modelName = formatHistoryModelName(record.model.modelId)
   const isQueued = record.status === 'queued'
   const showActions = hovered || deletePopoverOpened || !!isMobile
 
@@ -135,24 +158,37 @@ export function HistoryItem({
           )}
         </div>
 
-        <Stack gap={2} flex={1} style={{ overflow: 'hidden' }}>
-          <Text size="xs" lineClamp={2} fw={isActive ? 500 : 400} lh={1.3}>
+        <Stack gap={2} flex={1} miw={0} style={{ overflow: 'hidden' }}>
+          <Text
+            size="xs"
+            lineClamp={2}
+            fw={isActive ? 500 : 400}
+            lh={1.3}
+            title={record.prompt}
+            style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+          >
             {record.prompt}
           </Text>
-          <Flex align="center" gap={4}>
-            <Text size="xs" c="dimmed">
+          <Flex align="center" gap={4} wrap="nowrap" miw={0} className="min-w-0">
+            <Text size="xs" c="dimmed" className="shrink-0">
               {statusLabel}
             </Text>
-            <Text size="xs" c="dimmed" className="opacity-40">
+            <Text size="xs" c="dimmed" className="opacity-40 shrink-0">
               ·
             </Text>
-            <Text size="xs" c="dimmed">
+            <Text size="xs" c="dimmed" className="shrink-0 tabular-nums">
               {new Date(record.createdAt).toLocaleDateString()}
             </Text>
-            <Text size="xs" c="dimmed" className="opacity-40">
+            <Text size="xs" c="dimmed" className="opacity-40 shrink-0">
               ·
             </Text>
-            <Text size="xs" c="dimmed">
+            <Text
+              size="xs"
+              c="dimmed"
+              title={modelName}
+              className="min-w-0 flex-1 truncate"
+              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
               {modelName}
             </Text>
           </Flex>

@@ -64,7 +64,7 @@ export default class XAI extends OpenAICompatible {
       aspectRatio?: string
     },
     signal?: AbortSignal,
-    callback?: (picBase64: string) => void,
+    callback?: (picBase64: string) => void | Promise<void>,
     _onProviderJobUpdate?: (data: { providerJobId?: string; queueNumber?: number }) => void
   ): Promise<string[]> {
     const modelId = this.options.model.modelId
@@ -76,6 +76,9 @@ export default class XAI extends OpenAICompatible {
     }
 
     const n = Math.min(Math.max(1, params.num || 1), 10)
+    const referenceImages = (params.images || [])
+      .map((image) => image.imageUrl)
+      .filter((url): url is string => Boolean(url))
     const body: Record<string, unknown> = {
       model: modelId,
       prompt: params.prompt,
@@ -85,6 +88,13 @@ export default class XAI extends OpenAICompatible {
     }
     if (params.aspectRatio && params.aspectRatio !== 'auto') {
       body.aspect_ratio = params.aspectRatio
+    }
+    // Grok Imagine image-to-image: pass reference image URLs/data URLs when editing.
+    if (referenceImages.length > 0) {
+      body.image = referenceImages[0]
+      if (referenceImages.length > 1) {
+        body.images = referenceImages
+      }
     }
 
     const res = await this.dependencies.request.apiRequest({
@@ -139,7 +149,7 @@ export default class XAI extends OpenAICompatible {
       }
       if (dataUrl) {
         results.push(dataUrl)
-        callback?.(dataUrl)
+        await callback?.(dataUrl)
       }
     }
 

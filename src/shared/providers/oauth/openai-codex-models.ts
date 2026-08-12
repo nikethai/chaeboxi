@@ -10,6 +10,13 @@ import {
   OpenAICodexOAuthError,
 } from './openai-codex-oauth'
 
+/**
+ * WHAM `/models?client_version=` requires a dotted semver-like value.
+ * Free-form strings (e.g. "chaeboxi") return: Invalid client_version format.
+ * Prefer package version when available; fall back to a stable Codex-compatible default.
+ */
+export const OPENAI_CODEX_CLIENT_VERSION = '1.6.0'
+
 /** Seed models when remote list fails or before first sign-in */
 export const OPENAI_CODEX_DEFAULT_MODELS: ProviderModelInfo[] = [
   {
@@ -52,7 +59,11 @@ export const OPENAI_CODEX_DEFAULT_MODELS: ProviderModelInfo[] = [
 
 const CAPABILITY_HINTS: Array<{ match: RegExp; capabilities: NonNullable<ProviderModelInfo['capabilities']> }> = [
   { match: /reason|sol|terra|luna|codex|o\d/i, capabilities: ['reasoning', 'tool_use'] },
-  { match: /vision|image/i, capabilities: ['vision'] },
+  { match: /vision/i, capabilities: ['vision'] },
+  {
+    match: /gpt-image|dall-e|dalle|image-preview/i,
+    capabilities: ['image_generation', 'image_edit', 'vision'],
+  },
 ]
 
 function inferCapabilities(modelId: string): ProviderModelInfo['capabilities'] {
@@ -96,7 +107,9 @@ export async function fetchOpenAICodexModels(
 
   const fetchImpl = options.fetchImpl || defaultOAuthFetch()
   const base = (options.apiBase || OPENAI_CODEX_WHAM_API_BASE).replace(/\/+$/, '')
-  const version = options.clientVersion || 'chaeboxi'
+  // WHAM rejects free-form strings (e.g. "chaeboxi") with: Invalid client_version format.
+  // Use dotted semver (app version or a stable Codex-compatible fallback).
+  const version = options.clientVersion || OPENAI_CODEX_CLIENT_VERSION
   const url = `${base}/models?client_version=${encodeURIComponent(version)}`
 
   const headers: Record<string, string> = {

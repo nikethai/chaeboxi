@@ -27,7 +27,7 @@ describe('openClawProvider.listModels', () => {
           Array<{
             modelId: string
             nickname?: string
-            capabilities: ('vision' | 'reasoning' | 'tool_use' | 'web_search')[]
+            capabilities?: ('vision' | 'reasoning' | 'tool_use' | 'web_search' | 'image_generation' | 'image_edit')[]
           }>
         >
       }

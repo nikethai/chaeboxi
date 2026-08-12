@@ -1,6 +1,7 @@
 import { Alert, Button, Checkbox, Flex, Loader, SegmentedControl, Stack, Text, Textarea } from '@mantine/core'
 import {
   enrichGeminiAntigravitySession,
+  ensureGeminiAntigravityBearer,
   exchangeAuthorizationCode,
   fetchGeminiAntigravityModels,
   GEMINI_ANTIGRAVITY_DEFAULT_MODELS,
@@ -16,8 +17,9 @@ import {
   type GeminiAntigravityPkceSession,
   type GeminiAuthMode,
 } from '@shared/providers/oauth'
+import { withInferredImageCapabilitiesList } from '@shared/utils/image-model-capabilities'
 import type { ProviderModelInfo, ProviderSettings } from '@shared/types'
-import { IconExternalLink, IconLogout } from '@tabler/icons-react'
+import { IconExternalLink, IconLogout, IconRefresh } from '@tabler/icons-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
@@ -279,6 +281,51 @@ export function GeminiAntigravityAuthSection({
     addToast(t('Signed out of Google'))
   }
 
+  const [refreshingModels, setRefreshingModels] = useState(false)
+  const handleRefreshModels = async () => {
+    if (!providerSettings?.oauth?.accessToken && !providerSettings?.oauth?.refreshToken) {
+      addToast(t('Sign in first to refresh models'))
+      return
+    }
+    setRefreshingModels(true)
+    try {
+      // Refresh expired Google tokens before catalog fetch.
+      const { bearer, projectId: ensuredProjectId, settingsPatch } =
+        await ensureGeminiAntigravityBearer(providerSettings)
+      if (settingsPatch) {
+        setProviderSettings(settingsPatch)
+      }
+      const projectId = ensuredProjectId || providerSettings?.oauth?.projectId
+      let remoteModels: ProviderModelInfo[] | undefined
+      if (projectId) {
+        remoteModels = await fetchGeminiAntigravityModels(bearer, projectId)
+      }
+      const nextModels = withInferredImageCapabilitiesList(
+        resolveModelsAfterAntigravityLogin(remoteModels, providerSettings?.models)
+      )
+      setProviderSettings({
+        ...(settingsPatch || {}),
+        models: nextModels,
+      })
+      addToast(
+        remoteModels && remoteModels.length > 0
+          ? t('Refreshed {{count}} models', { count: nextModels.length })
+          : t('Using Antigravity model list')
+      )
+    } catch (err) {
+      console.warn('[Gemini Antigravity] manual model refresh failed', err)
+      const message =
+        err instanceof GeminiAntigravityOAuthError
+          ? err.message
+          : err instanceof Error
+            ? humanizeGeminiAntigravityOAuthNetworkError(err)
+            : t('Failed to refresh models')
+      addToast(message)
+    } finally {
+      setRefreshingModels(false)
+    }
+  }
+
   const handleOpenAgain = () => {
     if (pkceRef.current?.authUrl) {
       void platform.openLink(pkceRef.current.authUrl)
@@ -377,6 +424,15 @@ export function GeminiAntigravityAuthSection({
                     </Button>
                     <Button variant="subtle" size="compact-sm" onClick={() => void handleStartSignIn()}>
                       {t('Re-authenticate')}
+                    </Button>
+                    <Button
+                      variant="subtle"
+                      size="compact-sm"
+                      loading={refreshingModels}
+                      leftSection={<ScalableIcon icon={IconRefresh} size={14} />}
+                      onClick={() => void handleRefreshModels()}
+                    >
+                      {t('Refresh models')}
                     </Button>
                   </>
                 ) : (

@@ -279,6 +279,52 @@ export class ComfyUIClient {
     return `data:${mimeType};base64,${base64}`
   }
 
+  /**
+   * Upload a reference image (data URL or remote URL) to ComfyUI /upload/image.
+   * Returns the server-side filename for LoadImage nodes.
+   */
+  async uploadImage(imageUrl: string, filenameHint = 'chaeboxi-ref.png'): Promise<string> {
+    let blob: Blob
+    if (imageUrl.startsWith('data:')) {
+      const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/)
+      if (!match) {
+        throw new ApiError('Invalid data URL for ComfyUI image upload')
+      }
+      const mime = match[1] || 'image/png'
+      const binary = atob(match[2])
+      const bytes = new Uint8Array(binary.length)
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i)
+      blob = new Blob([bytes], { type: mime })
+    } else {
+      const response = await fetch(imageUrl)
+      if (!response.ok) {
+        throw new ApiError(`Failed to download reference image for ComfyUI: ${response.status}`)
+      }
+      blob = await response.blob()
+    }
+
+    const form = new FormData()
+    const safeName = filenameHint.replace(/[^a-zA-Z0-9._-]/g, '_') || 'chaeboxi-ref.png'
+    form.append('image', blob, safeName)
+    form.append('overwrite', 'true')
+
+    const response = await this.fetchWithFallback('/upload/image', {
+      method: 'POST',
+      body: form,
+    })
+    if (!response.ok) {
+      const text = await response.text().catch(() => '')
+      throw new ApiError(`ComfyUI image upload failed (${response.status}): ${text.slice(0, 300)}`)
+    }
+
+    const json = (await response.json().catch(() => null)) as { name?: string; filename?: string } | null
+    const name = json?.name || json?.filename
+    if (!name) {
+      throw new ApiError('ComfyUI image upload returned no filename')
+    }
+    return name
+  }
+
   async getObjectInfo(): Promise<ComfyUIObjectInfo> {
     const response = await this.fetchWithFallback('/object_info')
     if (!response.ok) {

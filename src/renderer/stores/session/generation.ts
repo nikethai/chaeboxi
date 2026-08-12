@@ -1112,6 +1112,9 @@ export async function generate(
           nativeWebSearch:
             roomBlocksExternalTools ? undefined : useGeminiGrounding ? 'gemini-grounding' : undefined,
           agentImageFlowInstructions: executionAgentImageFlowInstructions,
+          // Default chat image generate/edit (provider-neutral) when tools are available.
+          enableImageGenerationTool: !roomBlocksExternalTools && model.isSupportToolUse(),
+          imageGenerationMessageId: targetMsg.id,
           agentCoding: {
             enabled: isAgentExecuteTurn,
             workspaceRoot: session.workspaceRoot,

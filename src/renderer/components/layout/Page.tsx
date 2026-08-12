@@ -47,7 +47,6 @@ export const Page: FC<PageProps> = ({ children, title, left, right, className, h
         ? t('Hide sidebar')
         : t('Show sidebar')
 
-
   return (
     <div className={clsx('flex flex-col h-full min-h-0 bg-[var(--chatbox-background-primary)]', className)}>
       <TitleBarRow
@@ -62,13 +61,13 @@ export const Page: FC<PageProps> = ({ children, title, left, right, className, h
               <ActionIcon
                 className="controls active:scale-[0.96] transition-transform"
                 variant="subtle"
-                size={isSmallScreen ? 24 : 28}
+                size={isSmallScreen ? 40 : 28}
                 color={isSmallScreen ? 'chatbox-secondary' : 'chatbox-tertiary'}
                 mr="sm"
                 onClick={handleSidebarToggle}
                 aria-label={sidebarToggleLabel}
               >
-                <IconMenu2 />
+                <IconMenu2 size={isSmallScreen ? 20 : 18} />
               </ActionIcon>
             </Flex>
           ))}

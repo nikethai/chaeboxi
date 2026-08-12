@@ -53,6 +53,8 @@ type Props = {
   sessionListViewportRef: MutableRefObject<HTMLDivElement | null>
   showArchived?: boolean
   onShowArchivedChange?(show: boolean): void
+  /** Mobile collapses Projects empty promo and prioritizes Recents. */
+  density?: 'desktop' | 'mobile'
 }
 
 type FolderGroup = {
@@ -162,21 +164,9 @@ function useCollapsibleSection(initialOpen = true) {
   }
 }
 
-function AnimRow({
-  phase,
-  children,
-}: {
-  phase?: CollapsiblePhase | 'idle'
-  children: ReactNode
-}) {
+function AnimRow({ phase, children }: { phase?: CollapsiblePhase | 'idle'; children: ReactNode }) {
   return (
-    <div
-      className={clsx(
-        'rail-row-anim',
-        phase === 'entering' && 'is-entering',
-        phase === 'exiting' && 'is-exiting'
-      )}
-    >
+    <div className={clsx('rail-row-anim', phase === 'entering' && 'is-entering', phase === 'exiting' && 'is-exiting')}>
       {children}
     </div>
   )
@@ -212,9 +202,11 @@ export default function SessionList({
   showArchived = false,
   onShowArchivedChange,
   onCreateProject,
+  density = 'desktop',
 }: Props) {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
+  const isMobileDensity = density === 'mobile' || isSmallScreen
   const { sessionMetaList: sortedSessions, refetch } = useSessionList()
   const { folders, removeFolder, updateFolder } = useFolders()
   const { copilots: myCopilots } = useMyCopilots()
@@ -224,7 +216,8 @@ export default function SessionList({
   /** Per-folder enter/exit animation phase (only while toggling). */
   const [folderPhase, setFolderPhase] = useState<Record<string, CollapsiblePhase>>({})
   const folderPhaseTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
-  const projectsSection = useCollapsibleSection(true)
+  // Mobile: Projects collapsed by default so Recents own the first screen.
+  const projectsSection = useCollapsibleSection(!isMobileDensity)
   const recentsSection = useCollapsibleSection(true)
   const [editingFolder, setEditingFolder] = useState<Folder | null>(null)
   const [folderName, setFolderName] = useState('')
@@ -353,12 +346,15 @@ export default function SessionList({
 
     if (projectsSection.contentVisible) {
       if (projectGroups.length === 0) {
-        rows.push({
-          type: 'empty',
-          key: 'projects-empty',
-          message: t('No projects yet'),
-          animPhase: projectsPhase,
-        })
+        // Desktop keeps the empty coaching card; mobile only shows the section header +
+        if (!isMobileDensity) {
+          rows.push({
+            type: 'empty',
+            key: 'projects-empty',
+            message: t('No projects yet'),
+            animPhase: projectsPhase,
+          })
+        }
       } else {
         for (const group of projectGroups) {
           const folderOpen = expandedFolders[group.key] ?? true
@@ -372,9 +368,7 @@ export default function SessionList({
           if (folderContentVisible) {
             // Prefer folder-level anim; section collapse still drives exit for nested chats.
             const sessionPhase: CollapsiblePhase =
-              projectsPhase === 'exiting' || projectsPhase === 'entering'
-                ? projectsPhase
-                : thisFolderPhase
+              projectsPhase === 'exiting' || projectsPhase === 'entering' ? projectsPhase : thisFolderPhase
             for (const session of group.sessions) {
               rows.push({
                 type: 'session',
@@ -398,13 +392,13 @@ export default function SessionList({
       onToggle: recentsSection.toggle,
       droppableId: showArchived ? undefined : RECENTS_DROP_ID,
       trailing: (
-        <span className="rail-section-trail" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+        <span
+          className="rail-section-trail"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
           {onShowArchivedChange ? (
-            <Tooltip
-              label={showArchived ? t('Show Active Chats') : t('Show Archived Chats')}
-              openDelay={400}
-              withArrow
-            >
+            <Tooltip label={showArchived ? t('Show Active Chats') : t('Show Archived Chats')} openDelay={400} withArrow>
               <ActionIcon
                 variant={showArchived ? 'light' : 'subtle'}
                 color={showArchived ? 'chatbox-brand' : 'chatbox-tertiary'}
@@ -501,6 +495,7 @@ export default function SessionList({
     expandedFolders,
     folderPhase,
     historySessions,
+    isMobileDensity,
     isSmallScreen,
     onCreateProject,
     projectGroups,

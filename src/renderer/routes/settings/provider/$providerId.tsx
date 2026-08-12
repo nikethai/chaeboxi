@@ -374,22 +374,44 @@ function ProviderSettings({ providerId }: { providerId: string }) {
     try {
       setFetchedModels(undefined)
       setFetchingModels(true)
-      const modelConfig = getModelSettingUtil(baseInfo!.id, baseInfo!.isCustom ? baseInfo!.type : undefined)
-      const modelList = await modelConfig.getMergeOptionGroups({
-        ...baseInfo?.defaultSettings,
-        ...providerSettings,
+      // Refresh OAuth tokens before catalog fetch when needed
+      try {
+        const { refreshXaiAuthIfNeeded } = await import('@/utils/xai-auth-refresh')
+        const { refreshOpenAICodexAuthIfNeeded } = await import('@/utils/openai-codex-auth-refresh')
+        const { refreshGeminiAntigravityAuthIfNeeded } = await import('@/utils/gemini-antigravity-auth-refresh')
+        let refreshed = settings as any
+        refreshed = await refreshXaiAuthIfNeeded(refreshed, baseInfo!.id)
+        refreshed = await refreshOpenAICodexAuthIfNeeded(refreshed, baseInfo!.id)
+        refreshed = await refreshGeminiAntigravityAuthIfNeeded(refreshed, baseInfo!.id)
+      } catch (authErr) {
+        console.warn('OAuth refresh before model fetch failed', authErr)
+      }
+
+      const { refreshProviderModels } = await import('@/utils/provider-model-refresh')
+      const result = await refreshProviderModels({
+        providerId: baseInfo!.id,
+        providerSettings: {
+          ...baseInfo?.defaultSettings,
+          ...providerSettings,
+        },
+        isCustom: baseInfo!.isCustom,
+        customProviderType: baseInfo!.isCustom ? baseInfo!.type : undefined,
       })
 
-      if (modelList.length) {
-        setFetchedModels(modelList)
+      if (result.ok && result.models.length) {
+        setFetchedModels(result.models)
+      } else if (result.models.length) {
+        setFetchedModels(result.models)
+        addToast(t('Model refresh used fallback list') + (result.ok ? '' : `: ${'error' in result ? result.error : ''}`))
       } else {
-        addToast(t('Failed to fetch models'))
+        addToast(t('Failed to fetch models') + ('error' in result && result.error ? `: ${result.error}` : ''))
       }
       setFetchingModels(false)
     } catch (error) {
       console.error('Failed to fetch models', error)
       setFetchedModels(undefined)
       setFetchingModels(false)
+      addToast(t('Failed to fetch models'))
     }
   }
   const [selectedTestModel, setSelectedTestModel] = useState<string>()

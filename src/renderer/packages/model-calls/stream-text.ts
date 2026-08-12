@@ -52,7 +52,12 @@ import {
   searchByPromptEngineering,
 } from './tools'
 import { attachmentFileToolSet, createWorkspaceFileToolSet } from './toolsets/file'
-import generateImageToolSet, { generateImageTool } from './toolsets/generate-image'
+import generateImageToolSet, {
+  buildChatImageCatalog,
+  createGenerateImageTool,
+  formatImageCatalogInstructions,
+  type ChatImageHandle,
+} from './toolsets/generate-image'
 import { getToolSet } from './toolsets/knowledge-base'
 import taskTrackingToolSet from './toolsets/task-tracking'
 import { createBrowserToolSet } from './toolsets/browser'
@@ -414,6 +419,12 @@ export async function streamText(
     webBrowsing?: boolean
     nativeWebSearch?: 'gemini-grounding'
     agentImageFlowInstructions?: string
+    /** When true, expose generate_image for ordinary default chat (not only ComfyUI agent flow). */
+    enableImageGenerationTool?: boolean
+    /** Assistant message id used to attach generated images back into chat. */
+    imageGenerationMessageId?: string
+    /** Prebuilt image handles for editing; if omitted, derived from messages. */
+    imageCatalog?: ChatImageHandle[]
     /** Desktop agent coding: workspace file write + terminal (not gated on attachments). */
     agentCoding?: AgentCodingOptions
     browserAgent?: BrowserAgentOptions
@@ -441,6 +452,9 @@ export async function streamText(
     toolAccess,
     allowedTools,
     agentImageFlowInstructions,
+    enableImageGenerationTool,
+    imageGenerationMessageId,
+    imageCatalog: providedImageCatalog,
     agentCoding,
     browserAgent,
     computerUse,
@@ -583,7 +597,13 @@ export async function streamText(
     model.isSupportToolUse() &&
     !customTools &&
     (!allowedTools || allowedTools.length === 0 || MEMORY_TOOL_NAMES.some((name) => allowedTools.includes(name)))
-  const needGenerateImageTool = Boolean(agentImageFlowInstructions) && model.isSupportToolUse()
+  const imageCatalog =
+    providedImageCatalog ||
+    (enableImageGenerationTool || agentImageFlowInstructions
+      ? buildChatImageCatalog(params.messages)
+      : [])
+  const needGenerateImageTool =
+    model.isSupportToolUse() && (Boolean(agentImageFlowInstructions) || Boolean(enableImageGenerationTool))
   const hasFunctionTools =
     Object.keys(mcpTools).length > 0 ||
     Boolean(kbToolSet) ||
@@ -703,7 +723,10 @@ Do not open with repeated web searches when personal memory may apply.
   }
   if (needGenerateImageTool) {
     toolSetInstructions += generateImageToolSet.description
-    toolSetInstructions += `\n\n${agentImageFlowInstructions}`
+    toolSetInstructions += `\n\n${formatImageCatalogInstructions(imageCatalog)}`
+    if (agentImageFlowInstructions) {
+      toolSetInstructions += `\n\n${agentImageFlowInstructions}`
+    }
   }
 
   const memoryForceHybridFallback =
@@ -963,7 +986,14 @@ Do not open with repeated web searches when personal memory may apply.
 
       if (needGenerateImageTool) {
         const generateImageTools = wrapToolsWithApproval(sessionId, {
-          generate_image: generateImageTool,
+          generate_image: createGenerateImageTool({
+            sessionId,
+            messageId: imageGenerationMessageId,
+            imageCatalog,
+            waitForCompletion: true,
+            // Specialized ComfyUI research→tags flow still forces ComfyUI when agent instructions are present.
+            comfyuiAgentMode: Boolean(agentImageFlowInstructions),
+          }),
         })
         tools = {
           ...tools,

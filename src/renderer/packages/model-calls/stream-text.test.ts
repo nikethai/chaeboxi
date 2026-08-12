@@ -63,6 +63,18 @@ vi.mock('@/router', () => ({
 
 vi.mock('@/stores/imageGenerationActions', () => ({
   createAndGenerate: createAndGenerateMock,
+  createAndGenerateAndWait: vi.fn(async (params: unknown) => {
+    const recordId = await createAndGenerateMock(params)
+    return {
+      id: recordId || 'record-1',
+      status: 'done',
+      generatedImages: ['img-1'],
+      prompt: '',
+      referenceImages: [],
+      createdAt: Date.now(),
+      model: { provider: 'comfyui', modelId: 'comfyui-txt2img' },
+    }
+  }),
 }))
 
 vi.mock('@/adapters', () => ({
@@ -282,7 +294,6 @@ describe('streamText agent image flow', () => {
         recordId: 'record-1',
         provider: ModelProviderEnum.ComfyUI,
         modelId: 'comfyui-txt2img',
-        status: 'started',
       })
 
       return { contentParts: [], text: 'done' } as StreamTextResult
@@ -315,7 +326,8 @@ describe('streamText agent image flow', () => {
         aspectRatio: 'horizontal',
       })
     )
-    expect(navigateMock).toHaveBeenCalledWith({ to: '/image-creator' })
+    // Chat image generation stays inline; no forced navigation to Image Creator.
+    expect(navigateMock).not.toHaveBeenCalled()
   })
 
   it('does not generate when search returns no results', async () => {

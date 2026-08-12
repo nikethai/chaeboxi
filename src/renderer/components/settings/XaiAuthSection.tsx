@@ -1,5 +1,6 @@
 import { Alert, Button, Flex, Loader, SegmentedControl, Stack, Text } from '@mantine/core'
 import {
+  ensureXaiBearer,
   fetchXaiModels,
   humanizeOAuthNetworkError,
   mergeXaiModels,
@@ -11,8 +12,9 @@ import {
   XaiOAuthError,
   type XaiAuthMode,
 } from '@shared/providers/oauth'
+import { withInferredImageCapabilitiesList } from '@shared/utils/image-model-capabilities'
 import type { ProviderSettings } from '@shared/types'
-import { IconCopy, IconExternalLink, IconLogout } from '@tabler/icons-react'
+import { IconCopy, IconExternalLink, IconLogout, IconRefresh } from '@tabler/icons-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ScalableIcon } from '@/components/common/ScalableIcon'
@@ -134,6 +136,46 @@ export function XaiAuthSection({ providerSettings, setProviderSettings }: XaiAut
     addToast(t('Signed out of xAI'))
   }
 
+  const [refreshingModels, setRefreshingModels] = useState(false)
+  const handleRefreshModels = async () => {
+    if (!providerSettings?.oauth?.accessToken && !providerSettings?.oauth?.refreshToken) {
+      addToast(t('Sign in first to refresh models'))
+      return
+    }
+    setRefreshingModels(true)
+    try {
+      // Refresh expired SuperGrok tokens before catalog fetch.
+      const { bearer, settingsPatch } = await ensureXaiBearer(providerSettings)
+      if (settingsPatch) {
+        setProviderSettings(settingsPatch)
+      }
+      const remoteModels = await fetchXaiModels(bearer)
+      if (remoteModels.length > 0) {
+        const nextModels = withInferredImageCapabilitiesList(
+          mergeXaiModels(providerSettings?.models, remoteModels, { replaceAll: true })
+        )
+        setProviderSettings({
+          ...(settingsPatch || {}),
+          models: nextModels,
+        })
+        addToast(t('Refreshed {{count}} models', { count: nextModels.length }))
+      } else {
+        addToast(t('No models returned'))
+      }
+    } catch (err) {
+      console.warn('[xAI] manual model refresh failed', err)
+      const message =
+        err instanceof XaiOAuthError
+          ? err.message
+          : err instanceof Error
+            ? humanizeOAuthNetworkError(err)
+            : t('Failed to refresh models')
+      addToast(message)
+    } finally {
+      setRefreshingModels(false)
+    }
+  }
+
   const handleCopyCode = async () => {
     if (!userCode) return
     try {
@@ -196,6 +238,15 @@ export function XaiAuthSection({ providerSettings, setProviderSettings }: XaiAut
                     </Button>
                     <Button variant="subtle" size="compact-sm" onClick={() => void handleSignIn()}>
                       {t('Re-authenticate')}
+                    </Button>
+                    <Button
+                      variant="subtle"
+                      size="compact-sm"
+                      loading={refreshingModels}
+                      leftSection={<ScalableIcon icon={IconRefresh} size={14} />}
+                      onClick={() => void handleRefreshModels()}
+                    >
+                      {t('Refresh models')}
                     </Button>
                   </>
                 ) : (

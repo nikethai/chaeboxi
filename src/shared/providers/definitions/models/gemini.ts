@@ -109,7 +109,7 @@ export default class Gemini extends AbstractAISDKModel {
       aspectRatio?: string
     },
     signal?: AbortSignal,
-    callback?: (picBase64: string) => void,
+    callback?: (picBase64: string) => void | Promise<void>,
     _onProviderJobUpdate?: (data: { providerJobId?: string; queueNumber?: number }) => void
   ): Promise<string[]> {
     if (!GEMINI_IMAGE_MODELS.includes(this.options.model.modelId)) {
@@ -118,6 +118,13 @@ export default class Gemini extends AbstractAISDKModel {
 
     const provider = this.getProvider()
     const model = provider.chat(this.options.model.modelId)
+    const content: Array<{ type: 'text'; text: string } | { type: 'image'; image: string }> = [
+      { type: 'text', text: params.prompt },
+      ...(params.images || [])
+        .map((image) => image.imageUrl)
+        .filter((url): url is string => Boolean(url))
+        .map((imageUrl) => ({ type: 'image' as const, image: imageUrl })),
+    ]
 
     const results: string[] = []
     for (let i = 0; i < params.num; i++) {
@@ -130,7 +137,7 @@ export default class Gemini extends AbstractAISDKModel {
 
       const result = await generateText({
         model,
-        messages: [{ role: 'user', content: params.prompt }],
+        messages: [{ role: 'user', content }],
         abortSignal: signal,
         providerOptions: {
           google: providerOptions,
@@ -141,7 +148,7 @@ export default class Gemini extends AbstractAISDKModel {
         if (file.mediaType?.startsWith('image/') && file.base64) {
           const dataUrl = `data:${file.mediaType};base64,${file.base64}`
           results.push(dataUrl)
-          callback?.(dataUrl)
+          await callback?.(dataUrl)
         }
       }
     }

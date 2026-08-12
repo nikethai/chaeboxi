@@ -22,6 +22,7 @@ export const comfyuiProvider = defineProvider({
       {
         modelId: 'comfyui-txt2img',
         nickname: 'txt2img',
+        capabilities: ['image_generation', 'image_edit'],
       },
     ],
     comfyuiCheckpoint: '',

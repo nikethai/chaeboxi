@@ -132,12 +132,45 @@ vi.mock('@/stores/settingsStore', () => ({
           imagePromptPositiveTagsPrepend: 'masterpiece, best quality',
         },
       },
+      getSettings: () => ({
+        providers: {
+          openai: {
+            imagePromptCharacterPrepend: '1girl, blue eyes',
+            imagePromptPositiveTagsPrepend: 'masterpiece, best quality',
+          },
+          comfyui: {
+            apiHost: 'http://127.0.0.1:8188',
+            imagePromptCharacterPrepend: '1girl, blue eyes',
+            imagePromptPositiveTagsPrepend: 'masterpiece, best quality',
+          },
+        },
+      }),
     }),
   },
 }))
 
 vi.mock('@/utils/track', () => ({
   trackEvent: trackEventMock,
+}))
+
+vi.mock('@/utils/xai-auth-refresh', () => ({
+  refreshXaiAuthIfNeeded: vi.fn(async (settings: unknown) => settings),
+}))
+
+vi.mock('@/utils/openai-codex-auth-refresh', () => ({
+  refreshOpenAICodexAuthIfNeeded: vi.fn(async (settings: unknown) => settings),
+}))
+
+vi.mock('@/utils/gemini-antigravity-auth-refresh', () => ({
+  refreshGeminiAntigravityAuthIfNeeded: vi.fn(async (settings: unknown) => settings),
+}))
+
+vi.mock('@/stores/chatStore', () => ({
+  getSession: vi.fn(async () => null),
+}))
+
+vi.mock('@/stores/session/messages', () => ({
+  modifyMessage: vi.fn(async () => {}),
 }))
 
 function seedRecord(record: any) {
@@ -283,12 +316,20 @@ describe('imageGenerationActions', () => {
     const paintMock = vi
       .fn()
       .mockImplementationOnce(
-        () =>
-          new Promise<string[]>((resolve) => {
-            resolveFirstRun = () => resolve([])
+        async (_params: unknown, _signal: AbortSignal | undefined, callback?: (dataUrl: string) => Promise<void>) => {
+          await new Promise<void>((resolve) => {
+            resolveFirstRun = () => resolve()
           })
+          await callback?.('data:image/png;base64,first')
+          return ['data:image/png;base64,first']
+        }
       )
-      .mockResolvedValueOnce([])
+      .mockImplementationOnce(
+        async (_params: unknown, _signal: AbortSignal | undefined, callback?: (dataUrl: string) => Promise<void>) => {
+          await callback?.('data:image/png;base64,second')
+          return ['data:image/png;base64,second']
+        }
+      )
 
     createRecordMock.mockResolvedValueOnce(record1).mockResolvedValueOnce(record2)
     getModelMock.mockReturnValue({ paint: paintMock })
@@ -395,12 +436,19 @@ describe('imageGenerationActions', () => {
     }
     seedRecord(record)
 
+    let paintSettled = false
     const paintMock = vi.fn(
       (_params: unknown, signal?: AbortSignal) =>
         new Promise<string[]>((_resolve, reject) => {
-          signal?.addEventListener('abort', () => reject(new DOMException('Generation was cancelled', 'AbortError')), {
-            once: true,
-          })
+          const abort = () => {
+            paintSettled = true
+            reject(new DOMException('Generation was cancelled', 'AbortError'))
+          }
+          if (signal?.aborted) {
+            abort()
+            return
+          }
+          signal?.addEventListener('abort', abort, { once: true })
         })
     )
 
@@ -428,11 +476,15 @@ describe('imageGenerationActions', () => {
     await vi.waitFor(() => {
       expect(recordMap.get('record-1').status).toBe('cancelled')
     })
+    await vi.waitFor(() => {
+      expect(paintSettled).toBe(true)
+    })
   })
 
   it('persists ComfyUI provider job metadata from the paint callback', async () => {
+    // Use a unique id so earlier cancel tests cannot leak controller/queue state onto this record.
     const record = {
-      id: 'record-1',
+      id: 'record-meta-1',
       prompt: 'neon alley at night',
       referenceImages: [],
       generatedImages: [],
@@ -472,9 +524,69 @@ describe('imageGenerationActions', () => {
     })
 
     await vi.waitFor(() => {
-      expect(recordMap.get('record-1').providerJobId).toBe('prompt-123')
-      expect(recordMap.get('record-1').queueNumber).toBe(7)
-      expect(recordMap.get('record-1').status).toBe('done')
+      expect(recordMap.get('record-meta-1').providerJobId).toBe('prompt-123')
+      expect(recordMap.get('record-meta-1').queueNumber).toBe(7)
+      expect(recordMap.get('record-meta-1').status).toBe('done')
+    })
+  })
+
+  it('marks empty paint results as error', async () => {
+    const record = {
+      id: 'record-empty',
+      prompt: 'empty',
+      referenceImages: [],
+      generatedImages: [],
+      createdAt: Date.now(),
+      model: { provider: 'openai', modelId: 'gpt-image-1' },
+      status: 'queued' as const,
+    }
+    seedRecord(record)
+    createRecordMock.mockResolvedValue(record)
+    getModelMock.mockReturnValue({
+      paint: vi.fn(async () => []),
+    })
+
+    const { createAndGenerate } = await import('./imageGenerationActions.js')
+    await createAndGenerate({
+      prompt: record.prompt,
+      referenceImages: [],
+      model: record.model,
+      imageGenerateNum: 1,
+    })
+
+    await vi.waitFor(() => {
+      expect(recordMap.get('record-empty').status).toBe('error')
+      expect(recordMap.get('record-empty').error).toMatch(/no images/i)
+    })
+  })
+
+  it('marks empty paint results as error', async () => {
+    const record = {
+      id: 'record-empty',
+      prompt: 'empty',
+      referenceImages: [],
+      generatedImages: [],
+      createdAt: Date.now(),
+      model: { provider: 'openai', modelId: 'gpt-image-1' },
+      status: 'queued' as const,
+    }
+    seedRecord(record)
+    createRecordMock.mockResolvedValue(record)
+    getModelMock.mockReturnValue({
+      paint: vi.fn(async () => []),
+    })
+
+    const { createAndGenerate } = await import('./imageGenerationActions.js')
+    await createAndGenerate({
+      prompt: record.prompt,
+      referenceImages: [],
+      model: record.model,
+      imageGenerateNum: 1,
+    })
+
+    await vi.waitFor(() => {
+      expect(recordMap.get('record-empty').status).toBe('error')
+      expect(recordMap.get('record-empty').error).toMatch(/no images/i)
     })
   })
 
@@ -494,7 +606,12 @@ describe('imageGenerationActions', () => {
     }
     seedRecord(record)
 
-    const paintMock = vi.fn(async () => [])
+    const paintMock = vi.fn(
+      async (_params: unknown, _signal: AbortSignal | undefined, callback?: (dataUrl: string) => Promise<void>) => {
+        await callback?.('data:image/png;base64,retry')
+        return ['data:image/png;base64,retry']
+      }
+    )
     getModelMock.mockReturnValue({ paint: paintMock })
 
     const { retryGeneration } = await import('./imageGenerationActions.js')
@@ -503,7 +620,7 @@ describe('imageGenerationActions', () => {
 
     expect(generationState.currentRecordId).toBe('record-1')
     await vi.waitFor(() => {
-      expect(recordMap.get('record-1').generatedImages).toEqual([])
+      expect(recordMap.get('record-1').generatedImages.length).toBeGreaterThan(0)
       expect(recordMap.get('record-1').status).toBe('done')
     })
   })

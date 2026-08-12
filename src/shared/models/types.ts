@@ -28,7 +28,8 @@ export interface ModelInterface {
       comfyuiParams?: ComfyUIGenerationParams
     },
     signal?: AbortSignal,
-    callback?: (picBase64: string) => void,
+    /** May be async — callers must await returned promises before treating outputs as persisted. */
+    callback?: (picBase64: string) => void | Promise<void>,
     onProviderJobUpdate?: (data: { providerJobId?: string; queueNumber?: number }) => void
   ) => Promise<string[]>
 }

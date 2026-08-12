@@ -736,13 +736,22 @@ export async function generate(
     const roomMulti = Boolean(options?.roomMulti)
     // Always cap tool steps. Undefined used to become Number.MAX_SAFE_INTEGER in the model
     // layer — models with tools (memory, MCP, web) could loop forever ("Using tools…" hang).
-    // Default maxSteps is only 5 — too small for computer use (open + screenshot + click + verify).
-    // When computer is armed, raise the floor so the agent can finish multi-step desktop tasks.
+    // Default maxSteps is only 5 — too small for browser/computer multi-step loops.
+    // When browser/computer is armed, raise the floor from settings (or product minimums).
     const COMPUTER_USE_MIN_STEPS = 16
+    const BROWSER_USE_MIN_STEPS = 12
     let maxSteps =
       !roomMulti && isAgentEnabled && session.agentMode
         ? (copilotOverrides?.maxSteps ?? COPILOT_MAX_STEPS_DEFAULT)
         : COPILOT_MAX_STEPS_DEFAULT
+    if (session.browserArmed && !roomMulti) {
+      const configuredBrowserSteps = globalSettings.extension?.browserAgent?.maxStepsPerTurn
+      const browserFloor =
+        typeof configuredBrowserSteps === 'number' && configuredBrowserSteps > 0
+          ? configuredBrowserSteps
+          : BROWSER_USE_MIN_STEPS
+      maxSteps = Math.max(maxSteps ?? COPILOT_MAX_STEPS_DEFAULT, browserFloor, BROWSER_USE_MIN_STEPS)
+    }
     if (session.computerArmed && !roomMulti) {
       maxSteps = Math.max(maxSteps ?? COPILOT_MAX_STEPS_DEFAULT, COMPUTER_USE_MIN_STEPS)
     }
@@ -1228,6 +1237,10 @@ export async function generate(
         // Paint answer + generating=false first — never block the "done" state on image-flow I/O.
         clearGenerationCancel(sessionId, targetMsg.id)
         clearSessionGenerationLive(sessionId, targetMsg.id)
+        // Release browser run mutex so the next turn can use tools (keep host/process warm).
+        void import('@/packages/browser/lock')
+          .then(({ releaseBrowserLock }) => releaseBrowserLock(sessionId, targetMsg.id))
+          .catch(() => {})
         targetMsg = {
           ...targetMsg,
           generating: false,
@@ -1419,6 +1432,9 @@ export async function generate(
     const causeError = ocrError?.cause
     clearGenerationCancel(sessionId, targetMsg.id)
     clearSessionGenerationLive(sessionId, targetMsg.id)
+    void import('@/packages/browser/lock')
+      .then(({ releaseBrowserLock }) => releaseBrowserLock(sessionId, targetMsg.id))
+      .catch(() => {})
     targetMsg = {
       ...targetMsg,
       contentParts: withPlanPart(targetMsg.contentParts, activeExecutionPlan),

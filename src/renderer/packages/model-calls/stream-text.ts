@@ -60,7 +60,13 @@ import generateImageToolSet, {
 } from './toolsets/generate-image'
 import { getToolSet } from './toolsets/knowledge-base'
 import taskTrackingToolSet from './toolsets/task-tracking'
-import { createBrowserToolSet } from './toolsets/browser'
+import {
+  createBrowserToolSet,
+  getLastBrowserObservationEmbedded,
+  getLastBrowserTool,
+  resetBrowserTurnState,
+  shouldForceBrowserSnapshot,
+} from './toolsets/browser'
 import {
   createComputerToolSet,
   getLastActEmbeddedScreenshot,
@@ -69,6 +75,7 @@ import {
 } from './toolsets/computer'
 import { pruneOldImageParts, shouldForceComputerScreenshot } from './toolsets/computer-harness'
 import {
+  clearComputerUiTargetApp,
   computerUiSpaceLockInstructions,
   filterToolsForComputerUiSpace,
 } from './toolsets/computer-ui-lock'
@@ -247,6 +254,7 @@ function createToolDeniedResult(toolName: string, riskTier: ToolRiskTier) {
 
 /** Bound hung tool executes so generation cannot sit on "Using tools…" forever. */
 const TOOL_EXECUTE_TIMEOUT_MS = 90_000
+/** Approval is separate from execute — must not share the 90s tool budget. */
 const TOOL_APPROVAL_TIMEOUT_MS = 120_000
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
@@ -282,33 +290,32 @@ export function wrapToolsWithApproval(sessionId: string | undefined, tools: Tool
         {
           ...definition,
           execute: async (args: unknown, context) => {
-            const runExecute = async () => {
-              const existingApproval = getToolApproval(sessionId, toolName)
-              // Built-in read-only tools (web_search, read_video_url, …) are LOW and
-              // should not interrupt the user with an approval modal.
-              // CRITICAL must never session-auto (D8) — computer act + destructive tools.
-              const canAutoApprove =
-                riskTier === ToolRiskTier.LOW ||
-                (existingApproval?.scope === 'session' &&
-                  existingApproval.riskTier === riskTier &&
-                  riskTier !== ToolRiskTier.HIGH &&
-                  riskTier !== ToolRiskTier.CRITICAL)
+            const existingApproval = getToolApproval(sessionId, toolName)
+            // Built-in read-only tools (web_search, read_video_url, …) are LOW and
+            // should not interrupt the user with an approval modal.
+            // CRITICAL must never session-auto (D8). HIGH may session-auto after user "Allow for session".
+            const canAutoApprove =
+              riskTier === ToolRiskTier.LOW ||
+              (existingApproval?.scope === 'session' &&
+                existingApproval.riskTier === riskTier &&
+                riskTier !== ToolRiskTier.CRITICAL)
 
-              if (canAutoApprove) {
-                toolApprovalStore.getState().addAuditEntry({
-                  sessionId,
-                  toolName,
-                  riskTier,
-                  scope: existingApproval?.scope || 'session',
-                  decision: 'auto-approve',
-                  timestamp: Date.now(),
-                  args,
-                })
-                return definition.execute?.(args, context)
-              }
+            // 'auto' = skipped modal; otherwise once|session from user choice
+            let approvedScope: 'auto' | 'once' | 'session' = 'auto'
 
-              // Approval modal can hang if UI never resolves — time-box to deny
-              const decision = (await withTimeout(
+            if (canAutoApprove) {
+              toolApprovalStore.getState().addAuditEntry({
+                sessionId,
+                toolName,
+                riskTier,
+                scope: existingApproval?.scope || 'session',
+                decision: 'auto-approve',
+                timestamp: Date.now(),
+                args,
+              })
+            } else {
+              // Approval modal can hang if UI never resolves — time-box to deny (separate from execute budget)
+              const modalResult = (await withTimeout(
                 NiceModal.show('tool-approval', {
                   toolName,
                   description: definition?.description,
@@ -319,7 +326,7 @@ export function wrapToolsWithApproval(sessionId: string | undefined, tools: Tool
                 `Tool approval for ${toolName}`
               ).catch(() => 'deny' as const)) as ToolApprovalModalResult | undefined
 
-              if (!decision || decision === 'deny') {
+              if (!modalResult || modalResult === 'deny') {
                 toolApprovalStore.getState().addAuditEntry({
                   sessionId,
                   toolName,
@@ -332,10 +339,11 @@ export function wrapToolsWithApproval(sessionId: string | undefined, tools: Tool
                 return createToolDeniedResult(toolName, riskTier)
               }
 
+              approvedScope = modalResult
               const approval = {
                 toolName,
                 riskTier,
-                scope: decision,
+                scope: modalResult,
                 timestamp: Date.now(),
               }
               toolApprovalStore.getState().addApproval(sessionId, approval)
@@ -343,22 +351,25 @@ export function wrapToolsWithApproval(sessionId: string | undefined, tools: Tool
                 sessionId,
                 toolName,
                 riskTier,
-                scope: decision,
+                scope: modalResult,
                 decision: 'allow',
                 timestamp: approval.timestamp,
                 args,
               })
-
-              try {
-                return await definition.execute?.(args, context)
-              } finally {
-                if (decision === 'once') {
-                  toolApprovalStore.getState().removeApproval(sessionId, toolName)
-                }
-              }
             }
 
-            return withTimeout(runExecute(), TOOL_EXECUTE_TIMEOUT_MS, `Tool ${toolName}`)
+            try {
+              // Only the underlying tool is bound by execute timeout — not the approval wait.
+              return await withTimeout(
+                Promise.resolve(definition.execute?.(args, context)),
+                TOOL_EXECUTE_TIMEOUT_MS,
+                `Tool ${toolName}`
+              )
+            } finally {
+              if (approvedScope === 'once') {
+                toolApprovalStore.getState().removeApproval(sessionId, toolName)
+              }
+            }
           },
         },
       ]
@@ -496,9 +507,22 @@ export async function streamText(
   const workspaceFileToolSet = needWorkspaceCodingTools ? createWorkspaceFileToolSet(workspaceRoot) : null
   const terminalToolSet = needWorkspaceCodingTools ? createTerminalToolSet(workspaceRoot) : null
 
-  // Browser agent (desktop + master enabled + session armed + tool use + room allowed)
+  // Computer use (observe / act) — preferred exclusive lease over browser when both armed
+  const computerExt = globalSettings.extension?.computerUse
+  const needComputerTools =
+    Boolean(computerUse?.armed) &&
+    computerUse?.roomAllowed !== false &&
+    Boolean(computerExt?.enabled) &&
+    platform.type === 'desktop' &&
+    model.isSupportToolUse() &&
+    Boolean(computerUse?.sessionId || sessionId)
+  const computerSessionId = computerUse?.sessionId || sessionId || ''
+
+  // Browser agent (desktop + master enabled + session armed + tool use + room allowed).
+  // Skip when Computer Use owns the turn (exclusive interaction space).
   const browserExt = globalSettings.extension?.browserAgent
   const needBrowserTools =
+    !needComputerTools &&
     Boolean(browserAgent?.armed) &&
     browserAgent?.roomAllowed !== false &&
     Boolean(browserExt?.enabled) &&
@@ -514,18 +538,11 @@ export async function streamText(
       })
     : null
 
-  // Computer use (observe / act)
-  const computerExt = globalSettings.extension?.computerUse
-  const needComputerTools =
-    Boolean(computerUse?.armed) &&
-    computerUse?.roomAllowed !== false &&
-    Boolean(computerExt?.enabled) &&
-    platform.type === 'desktop' &&
-    model.isSupportToolUse() &&
-    Boolean(computerUse?.sessionId || sessionId)
-  const computerSessionId = computerUse?.sessionId || sessionId || ''
   if (needComputerTools && computerSessionId) {
     resetComputerScreenshotBudget(computerSessionId)
+  }
+  if (needBrowserTools && browserSessionId) {
+    resetBrowserTurnState(browserSessionId)
   }
   let computerUserText = ''
   if (needComputerTools) {
@@ -1066,6 +1083,8 @@ Do not open with repeated web searches when personal memory may apply.
     console.debug('tools', tools)
 
     const computerSessionForPrepare = needComputerTools ? computerSessionId : ''
+    const browserSessionForPrepare = needBrowserTools && !needComputerTools ? browserSessionId : ''
+    const needsInteractionPrepare = Boolean(computerSessionForPrepare || browserSessionForPrepare)
     result = withSearchMetadata(
       await model.chat(coreMessages, {
         sessionId,
@@ -1075,18 +1094,29 @@ Do not open with repeated web searches when personal memory may apply.
         providerOptions: params.providerOptions,
         tools,
         maxSteps: params.maxSteps,
-        // Computer Use harness: force screenshot after open/act if host did not embed one;
-        // prune older screenshots so multi-step loops stay within context.
-        prepareStep: computerSessionForPrepare
+        // Interaction harness: prune old images; force re-observe after blind acts.
+        prepareStep: needsInteractionPrepare
           ? ({ messages, stepNumber }) => {
               const pruned = pruneOldImageParts(messages as Array<{ content?: unknown }>, { keepN: 3 })
-              const lastTool = getLastComputerTool(computerSessionForPrepare)
-              const embedded = getLastActEmbeddedScreenshot(computerSessionForPrepare)
-              const forceShot = stepNumber > 0 && shouldForceComputerScreenshot(lastTool, embedded)
-              if (forceShot && tools.computer_screenshot) {
-                return {
-                  messages: pruned as typeof messages,
-                  toolChoice: { type: 'tool', toolName: 'computer_screenshot' },
+              if (computerSessionForPrepare) {
+                const lastTool = getLastComputerTool(computerSessionForPrepare)
+                const embedded = getLastActEmbeddedScreenshot(computerSessionForPrepare)
+                const forceShot = stepNumber > 0 && shouldForceComputerScreenshot(lastTool, embedded)
+                if (forceShot && tools.computer_screenshot) {
+                  return {
+                    messages: pruned as typeof messages,
+                    toolChoice: { type: 'tool', toolName: 'computer_screenshot' },
+                  }
+                }
+              } else if (browserSessionForPrepare) {
+                const lastTool = getLastBrowserTool(browserSessionForPrepare)
+                const embedded = getLastBrowserObservationEmbedded(browserSessionForPrepare)
+                const forceSnap = stepNumber > 0 && shouldForceBrowserSnapshot(lastTool, embedded)
+                if (forceSnap && tools.browser_snapshot) {
+                  return {
+                    messages: pruned as typeof messages,
+                    toolChoice: { type: 'tool', toolName: 'browser_snapshot' },
+                  }
                 }
               }
               return { messages: pruned as typeof messages }
@@ -1105,5 +1135,8 @@ Do not open with repeated web searches when personal memory may apply.
     throw err
   } finally {
     resetVideoToolBudget()
+    if (computerSessionId) {
+      clearComputerUiTargetApp(computerSessionId)
+    }
   }
 }

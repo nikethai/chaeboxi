@@ -11,6 +11,12 @@ import type { ToolSet } from 'ai'
 /** Always strip while computer space is locked — name collides with "find". */
 export const COMPUTER_UI_ALWAYS_STRIP = new Set(['search_file_content'])
 
+/**
+ * Browser tools share the turn with Computer Use → model thrash between DOM refs and pixels.
+ * Exclusive lease: desktop computer owns the interaction space when armed.
+ */
+export const COMPUTER_UI_BROWSER_STRIP_PREFIX = 'browser_'
+
 /** Strip unless agent coding is enabled for this turn. */
 export const COMPUTER_UI_CODING_ONLY = new Set([
   'create_file',
@@ -49,6 +55,7 @@ export function filterToolsForComputerUiSpace(tools: ToolSet, opts: ComputerUiLo
   return Object.fromEntries(
     Object.entries(tools).filter(([name]) => {
       if (COMPUTER_UI_ALWAYS_STRIP.has(name)) return false
+      if (name.startsWith(COMPUTER_UI_BROWSER_STRIP_PREFIX)) return false
       if (!coding && COMPUTER_UI_CODING_ONLY.has(name)) return false
       return true
     })
@@ -74,7 +81,8 @@ ${targetLine}
 ## Allowed for desktop goals
 - computer_screenshot, computer_wait, computer_frontmost, computer_open_app, computer_open_uri, computer_click, computer_type, computer_key, computer_scroll, computer_mouse_move
 
-## FORBIDDEN for "find contact / person / chat / message someone"
+## FORBIDDEN while Computer Use owns this turn
+- Do NOT use browser_* tools (stripped). Prefer computer_* for desktop apps; use a Browser-only arm for pure web.
 - Do NOT use search_file_content, workspace files, terminal, or web_search to find people.
 - Do NOT open **Finder**.
 - Do NOT use Spotlight (\`cmd+space\` / \`command+space\`) to find people or chats.

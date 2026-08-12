@@ -216,12 +216,28 @@ function getActivePage() {
   return pages.get(activePageId)
 }
 
+const REF_MARK_ATTR = 'data-chaeboxi-ref'
+
+async function settlePage(page, ms = 150) {
+  await page.waitForLoadState('domcontentloaded', { timeout: ACTION_TIMEOUT_MS }).catch(() => {})
+  if (ms > 0) {
+    await page.waitForTimeout(ms).catch(() => {})
+  }
+}
+
 async function navigate(params) {
   const url = assertHttpUrl(params.url)
   const page = getActivePage()
   clearRefs()
   await page.goto(url, { waitUntil: 'domcontentloaded', timeout: ACTION_TIMEOUT_MS })
-  return { url: page.url(), title: await page.title() }
+  await settlePage(page, 200)
+  const shot = await snapshot({ interestingOnly: true })
+  return {
+    url: page.url(),
+    title: await page.title(),
+    ...shot,
+    nextAction: 'Use refs from the attached snapshot for click/type. Snapshot was auto-attached after navigate.',
+  }
 }
 
 function truncate(text, max = SNAPSHOT_MAX_CHARS) {
@@ -237,118 +253,117 @@ async function snapshot(params) {
   clearRefs()
   const interestingOnly = params?.interestingOnly !== false
 
-  // Build a compact a11y-like tree with stable refs.
-  const tree = await page.evaluate((interesting) => {
-    const INTERESTING = new Set([
-      'a',
-      'button',
-      'input',
-      'textarea',
-      'select',
-      'option',
-      'summary',
-      'label',
-      'h1',
-      'h2',
-      'h3',
-      'h4',
-      'h5',
-      'h6',
-      'img',
-      'nav',
-      'main',
-      'form',
-      'table',
-      'th',
-      'td',
-      'li',
-      'role',
-    ])
+  // Single-pass: mark each included element in the DOM, then resolve handles by mark.
+  // Avoids dual-traversal ref/handle mismatch (previous bug).
+  await page.evaluate((attr) => {
+    document.querySelectorAll(`[${attr}]`).forEach((el) => el.removeAttribute(attr))
+  }, REF_MARK_ATTR)
 
-    function isVisible(el) {
-      const style = window.getComputedStyle(el)
-      if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false
-      const rect = el.getBoundingClientRect()
-      return rect.width > 0 && rect.height > 0
-    }
+  const tree = await page.evaluate(
+    ({ interesting, attr, maxWalk }) => {
+      const INTERESTING = new Set([
+        'a',
+        'button',
+        'input',
+        'textarea',
+        'select',
+        'summary',
+        'label',
+        'h1',
+        'h2',
+        'h3',
+        'h4',
+        'h5',
+        'h6',
+        'img',
+        'nav',
+        'main',
+        'form',
+        'table',
+        'th',
+        'td',
+        'li',
+      ])
 
-    function roleOf(el) {
-      return el.getAttribute('role') || el.tagName.toLowerCase()
-    }
-
-    function nameOf(el) {
-      const aria = el.getAttribute('aria-label')
-      if (aria) return aria.slice(0, 120)
-      if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-        return (el.getAttribute('placeholder') || el.getAttribute('name') || el.getAttribute('type') || '').slice(
-          0,
-          120
-        )
+      function isVisible(el) {
+        const style = window.getComputedStyle(el)
+        if (style.display === 'none' || style.visibility === 'hidden' || style.opacity === '0') return false
+        const rect = el.getBoundingClientRect()
+        return rect.width > 0 && rect.height > 0
       }
-      const text = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim()
-      return text.slice(0, 120)
-    }
 
-    const nodes = []
-    const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_ELEMENT)
-    let node = walker.currentNode
-    let i = 0
-    while (node && i < 800) {
-      const el = /** @type {Element} */ (node)
-      const tag = el.tagName.toLowerCase()
-      const role = roleOf(el)
-      const interestingTag = INTERESTING.has(tag) || el.hasAttribute('role') || el.hasAttribute('contenteditable')
-      if ((!interesting || interestingTag) && isVisible(el)) {
-        const type = el.getAttribute('type') || undefined
-        const isPassword = type === 'password'
-        nodes.push({
-          index: nodes.length,
-          tag,
-          role,
-          name: isPassword ? '[password]' : nameOf(el),
-          href: tag === 'a' ? el.getAttribute('href') || undefined : undefined,
-          type: isPassword ? 'password' : type,
-          value: isPassword ? undefined : tag === 'input' ? String(/** @type {HTMLInputElement} */ (el).value || '').slice(0, 80) : undefined,
-        })
+      function roleOf(el) {
+        return el.getAttribute('role') || el.tagName.toLowerCase()
       }
-      node = walker.nextNode()
-      i += 1
-    }
-    return {
-      url: location.href,
-      title: document.title,
-      nodes,
-    }
-  }, interestingOnly)
 
-  // Map refs to live handles via CSS nth-of-type is fragile; use evaluate handle by index path.
-  // Instead: re-query with same filter and assign refs sequentially.
-  const handles = await page.$$(
-    'a,button,input,textarea,select,summary,label,h1,h2,h3,h4,h5,h6,img,nav,main,form,table,th,td,li,[role],[contenteditable]'
+      function nameOf(el) {
+        const aria = el.getAttribute('aria-label')
+        if (aria) return aria.slice(0, 120)
+        if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+          return (el.getAttribute('placeholder') || el.getAttribute('name') || el.getAttribute('type') || '').slice(
+            0,
+            120
+          )
+        }
+        const text = (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim()
+        return text.slice(0, 120)
+      }
+
+      const nodes = []
+      const root = document.body || document.documentElement
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT)
+      let node = walker.currentNode
+      let walked = 0
+      while (node && walked < maxWalk && nodes.length < 400) {
+        const el = /** @type {Element} */ (node)
+        const tag = el.tagName.toLowerCase()
+        const role = roleOf(el)
+        const interestingTag =
+          INTERESTING.has(tag) || el.hasAttribute('role') || el.hasAttribute('contenteditable')
+        if ((!interesting || interestingTag) && isVisible(el)) {
+          const markId = String(nodes.length)
+          el.setAttribute(attr, markId)
+          const type = el.getAttribute('type') || undefined
+          const isPassword = type === 'password'
+          nodes.push({
+            markId,
+            tag,
+            role,
+            name: isPassword ? '[password]' : nameOf(el),
+            href: tag === 'a' ? el.getAttribute('href') || undefined : undefined,
+            type: isPassword ? 'password' : type,
+            value: isPassword
+              ? undefined
+              : tag === 'input'
+                ? String(/** @type {HTMLInputElement} */ (el).value || '').slice(0, 80)
+                : undefined,
+          })
+        }
+        node = walker.nextNode()
+        walked += 1
+      }
+      return {
+        url: location.href,
+        title: document.title,
+        nodes,
+        walked,
+      }
+    },
+    { interesting: interestingOnly, attr: REF_MARK_ATTR, maxWalk: 2500 }
   )
+
   const lines = [`url: ${tree.url}`, `title: ${tree.title}`, '']
-  let handleIdx = 0
   for (const n of tree.nodes) {
+    const handle = await page.$(`[${REF_MARK_ATTR}="${n.markId}"]`).catch(() => null)
+    if (!handle) continue
     const ref = nextRef()
-    // Best-effort: bind first matching visible handle in order
-    while (handleIdx < handles.length) {
-      const h = handles[handleIdx]
-      handleIdx += 1
-      const visible = await h.isVisible().catch(() => false)
-      if (!visible) continue
-      refs.set(ref, h)
-      break
-    }
+    refs.set(ref, handle)
     const bits = [`[${ref}]`, n.role || n.tag]
     if (n.name) bits.push(`"${n.name}"`)
     if (n.href) bits.push(`href=${n.href}`)
     if (n.type) bits.push(`type=${n.type}`)
     if (n.value) bits.push(`value=${n.value}`)
     lines.push(bits.join(' '))
-  }
-  // dispose unused handles
-  for (let i = handleIdx; i < handles.length; i++) {
-    handles[i].dispose().catch(() => {})
   }
 
   const raw = lines.join('\n')
@@ -359,6 +374,29 @@ async function snapshot(params) {
     snapshot: text,
     truncated,
     refCount: refs.size,
+    snapshotEpoch: refCounter,
+  }
+}
+
+async function withPostActionSnapshot(result) {
+  const page = getActivePage()
+  await settlePage(page, 180)
+  const shot = await snapshot({ interestingOnly: true })
+  return {
+    ...result,
+    ...shot,
+    nextAction:
+      'Fresh snapshot auto-attached. Use only the new refs for the next click/type. Previous refs are invalid.',
+  }
+}
+
+async function staleRefResult(ref) {
+  const shot = await snapshot({ interestingOnly: true }).catch(() => ({}))
+  return {
+    error: 'REF_INVALID',
+    message: `Invalid or stale ref: ${ref}. Fresh snapshot attached — pick a new ref.`,
+    ...shot,
+    nextAction: 'Do not reuse the old ref. Choose a ref from this snapshot and retry the action.',
   }
 }
 
@@ -369,17 +407,17 @@ async function act(params) {
     const ref = params.ref
     const handle = refs.get(ref)
     if (!handle) {
-      throw Object.assign(new Error(`Invalid or stale ref: ${ref}`), { code: 'REF_INVALID' })
+      return staleRefResult(ref)
     }
     await handle.click({ button: params.button || 'left', timeout: ACTION_TIMEOUT_MS })
-    return { ok: true, action: 'click', ref }
+    return withPostActionSnapshot({ ok: true, action: 'click', ref })
   }
   if (action === 'type') {
     const text = String(params.text ?? '')
     if (params.ref) {
       const handle = refs.get(params.ref)
       if (!handle) {
-        throw Object.assign(new Error(`Invalid or stale ref: ${params.ref}`), { code: 'REF_INVALID' })
+        return staleRefResult(params.ref)
       }
       await handle.click({ timeout: ACTION_TIMEOUT_MS })
       await handle.fill(text).catch(async () => {
@@ -391,7 +429,7 @@ async function act(params) {
     if (params.submit) {
       await page.keyboard.press('Enter')
     }
-    return { ok: true, action: 'type', ref: params.ref || null }
+    return withPostActionSnapshot({ ok: true, action: 'type', ref: params.ref || null })
   }
   if (action === 'scroll') {
     const amount = Number(params.amount) || 600
@@ -399,7 +437,7 @@ async function act(params) {
     if (params.ref) {
       const handle = refs.get(params.ref)
       if (!handle) {
-        throw Object.assign(new Error(`Invalid or stale ref: ${params.ref}`), { code: 'REF_INVALID' })
+        return staleRefResult(params.ref)
       }
       await handle.evaluate((el, delta) => {
         el.scrollBy(0, delta)
@@ -407,7 +445,7 @@ async function act(params) {
     } else {
       await page.mouse.wheel(0, direction * amount)
     }
-    return { ok: true, action: 'scroll' }
+    return withPostActionSnapshot({ ok: true, action: 'scroll' })
   }
   throw Object.assign(new Error(`Unknown action: ${action}`), { code: 'INVALID_ARGS' })
 }
@@ -470,9 +508,10 @@ async function tabs(params) {
 
 async function screenshot() {
   const page = getActivePage()
-  const buffer = await page.screenshot({ type: 'png', fullPage: false })
+  // JPEG keeps multimodal context smaller on long browser loops.
+  const buffer = await page.screenshot({ type: 'jpeg', quality: 72, fullPage: false })
   return {
-    mimeType: 'image/png',
+    mimeType: 'image/jpeg',
     base64: buffer.toString('base64'),
     url: page.url(),
   }

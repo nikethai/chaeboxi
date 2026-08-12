@@ -374,7 +374,7 @@ const ExtensionSettingsSchema = z.object({
   computerUse: z
     .object({
       enabled: z.boolean().default(false).catch(false),
-      maxScreenshotsPerTurn: z.number().int().min(1).max(20).default(10).catch(10),
+      maxScreenshotsPerTurn: z.number().int().min(1).max(30).default(16).catch(16),
       abortHotkey: z.string().optional().catch(undefined),
       /** Empty = all apps; non-empty = only these names may be opened via computer_open_app */
       appAllowlist: z.array(z.string()).default([]).catch([]),

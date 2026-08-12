@@ -55,3 +55,8 @@ export function cancelSessionGeneration(sessionId: string): boolean {
 export function getActiveGenerationMessageId(sessionId: string): string | undefined {
   return bySession.get(sessionId)?.messageId
 }
+
+/** True while an abort handle is registered for this session (stream in flight). */
+export function isSessionGenerationActive(sessionId: string): boolean {
+  return bySession.has(sessionId)
+}

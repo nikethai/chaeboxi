@@ -85,6 +85,16 @@ export const openaiProvider = defineProvider({
         maxOutput: 100_000,
       },
       {
+        modelId: 'gpt-image-1',
+        nickname: 'GPT Image 1',
+        capabilities: ['image_generation', 'image_edit'],
+      },
+      {
+        modelId: 'gpt-image-1.5',
+        nickname: 'GPT Image 1.5',
+        capabilities: ['image_generation', 'image_edit'],
+      },
+      {
         modelId: 'text-embedding-3-small',
         type: 'embedding',
       },

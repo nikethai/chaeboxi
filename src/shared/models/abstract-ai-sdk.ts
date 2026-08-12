@@ -205,23 +205,39 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       aspectRatio?: string
     },
     signal?: AbortSignal,
-    callback?: (picBase64: string) => void,
+    callback?: (picBase64: string) => void | Promise<void>,
     _onProviderJobUpdate?: (data: { providerJobId?: string; queueNumber?: number }) => void
   ): Promise<string[]> {
     const imageModel = this.getImageModel()
     if (!imageModel) {
       throw new ApiError('Provider doesnt support image generation')
     }
+
+    const referenceImages = (params.images || [])
+      .map((image) => image.imageUrl)
+      .filter((url): url is string => Boolean(url))
+
+    const prompt =
+      referenceImages.length > 0
+        ? {
+            text: params.prompt,
+            images: referenceImages,
+          }
+        : params.prompt
+
     const result = await generateImage({
       model: imageModel,
-      prompt: params.prompt,
-      // images
+      prompt,
       n: params.num,
+      aspectRatio:
+        params.aspectRatio && params.aspectRatio !== 'auto'
+          ? (params.aspectRatio as `${number}:${number}`)
+          : undefined,
       abortSignal: signal,
     })
     const dataUrls = result.images.map((image) => `data:${image.mediaType};base64,${image.base64}`)
     for (const dataUrl of dataUrls) {
-      callback?.(dataUrl)
+      await callback?.(dataUrl)
     }
     return dataUrls
   }

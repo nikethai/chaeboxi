@@ -56,6 +56,14 @@ export const ImageGenerationSchema = z.object({
   providerJobId: z.string().optional(),
   queueNumber: z.number().optional(),
   parentIds: z.array(z.string()).optional(), // for tracking iteration DAG (multiple parents possible)
+  /** Optional chat origin so completed images can attach back to the assistant message. */
+  origin: z
+    .object({
+      sessionId: z.string(),
+      messageId: z.string(),
+    })
+    .optional()
+    .catch(undefined),
   error: z.string().optional(),
   errorCode: z.number().optional(), // legacy provider API error code
 })

@@ -453,7 +453,7 @@ export default class GeminiAntigravity extends AbstractAISDKModel {
       aspectRatio?: string
     },
     signal?: AbortSignal,
-    callback?: (picBase64: string) => void,
+    callback?: (picBase64: string) => void | Promise<void>,
     _onProviderJobUpdate?: (data: { providerJobId?: string; queueNumber?: number }) => void
   ): Promise<string[]> {
     const rawId = this.options.model.modelId
@@ -465,6 +465,13 @@ export default class GeminiAntigravity extends AbstractAISDKModel {
     // Empty options — paint does not need chat tools/provider option overrides
     const provider = this.getProvider({} as CallChatCompletionOptions)
     const model = provider.chat(chatId)
+    const content: Array<{ type: 'text'; text: string } | { type: 'image'; image: string }> = [
+      { type: 'text', text: params.prompt },
+      ...(params.images || [])
+        .map((image) => image.imageUrl)
+        .filter((url): url is string => Boolean(url))
+        .map((imageUrl) => ({ type: 'image' as const, image: imageUrl })),
+    ]
 
     const results: string[] = []
     for (let i = 0; i < Math.max(1, params.num || 1); i++) {
@@ -477,7 +484,7 @@ export default class GeminiAntigravity extends AbstractAISDKModel {
 
       const result = await generateText({
         model,
-        messages: [{ role: 'user', content: params.prompt }],
+        messages: [{ role: 'user', content }],
         abortSignal: signal,
         providerOptions: {
           google: providerOptions,
@@ -490,13 +497,8 @@ export default class GeminiAntigravity extends AbstractAISDKModel {
         if (b64 && mediaType.startsWith('image/')) {
           const dataUrl = b64.startsWith('data:') ? b64 : `data:${mediaType};base64,${b64}`
           results.push(dataUrl)
-          callback?.(dataUrl)
+          await callback?.(dataUrl)
         }
-      }
-
-      // Some gateways put images only in steps/content — dig as fallback
-      if (results.length === 0 && Array.isArray((result as { steps?: unknown[] }).steps)) {
-        // no-op reserved; AI SDK files is the primary channel
       }
     }
 

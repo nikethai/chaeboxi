@@ -1,50 +1,8 @@
 import { Combobox, type ComboboxProps, Divider, Text, useCombobox } from '@mantine/core'
-import { type ModelProvider, ModelProviderEnum, ModelProviderType, type ProviderInfo } from '@shared/types'
+import type { ModelProvider } from '@shared/types'
 import { forwardRef, type PropsWithChildren, useMemo } from 'react'
 import { useProviders } from '@/hooks/useProviders'
-
-interface ImageModel {
-  modelId: string
-  displayName: string
-}
-
-const OPENAI_IMAGE_MODEL_IDS = ['gpt-image-1', 'gpt-image-1.5']
-const GEMINI_IMAGE_MODEL_IDS = [
-  'gemini-2.5-flash-image',
-  'gemini-3-pro-image-preview',
-  'gemini-3-pro-image',
-  'gemini-3.1-flash-image-preview',
-  'gemini-3.1-flash-image',
-]
-const COMFYUI_IMAGE_MODEL_IDS = ['comfyui-txt2img']
-
-const IMAGE_MODEL_FALLBACK_NAMES: Record<string, string> = {
-  'gpt-image-1': 'GPT Image 1',
-  'gpt-image-1.5': 'GPT Image 1.5',
-  'gemini-2.5-flash-image': 'Nano Banana',
-  'gemini-3-pro-image-preview': 'Nano Banana Pro',
-  'gemini-3-pro-image': 'Nano Banana Pro',
-  'gemini-3.1-flash-image-preview': 'Nano Banana 2',
-  'gemini-3.1-flash-image': 'Nano Banana 2',
-  'comfyui-txt2img': 'txt2img',
-}
-
-function getAvailableImageModels(provider: ProviderInfo, imageModelIds: string[]): ImageModel[] {
-  const providerModels = provider.models || provider.defaultSettings?.models || []
-  const defaultModels = provider.defaultSettings?.models || []
-  return imageModelIds
-    .map((modelId) => {
-      // Prefer user models for custom nicknames, but fall back to provider defaults for newly added IDs.
-      const model =
-        providerModels.find((m) => m.modelId === modelId) || defaultModels.find((m) => m.modelId === modelId)
-      if (!model) return null
-      return {
-        modelId,
-        displayName: model.nickname || IMAGE_MODEL_FALLBACK_NAMES[modelId] || modelId,
-      }
-    })
-    .filter((m): m is ImageModel => m !== null)
-}
+import { listAvailableImageModels } from '@/utils/available-image-models'
 
 export type ImageModelSelectProps = PropsWithChildren<
   {
@@ -52,42 +10,29 @@ export type ImageModelSelectProps = PropsWithChildren<
   } & ComboboxProps
 >
 
+/**
+ * Desktop Image Creator model picker.
+ * Built from provider settings (including models fetched after login / Fetch),
+ * not a hardcoded static catalog.
+ */
 export const ImageModelSelect = forwardRef<HTMLButtonElement, ImageModelSelectProps>(
   ({ onSelect, children, ...comboboxProps }, ref) => {
     const { providers } = useProviders()
 
-    const geminiProvider = useMemo(() => {
-      const provider = providers.find((p) => p.id === ModelProviderEnum.Gemini)
-      if (!provider) return null
-      const imageModels = getAvailableImageModels(provider, GEMINI_IMAGE_MODEL_IDS)
-      return imageModels.length > 0 ? { provider, imageModels } : null
-    }, [providers])
-
-    const openaiProviders = useMemo(() => {
-      return providers
-        .filter((p) => [ModelProviderEnum.OpenAI, ModelProviderEnum.Azure].includes(p.id as ModelProviderEnum))
-        .map((provider) => ({
-          provider,
-          imageModels: getAvailableImageModels(provider, OPENAI_IMAGE_MODEL_IDS),
-        }))
-        .filter((item) => item.imageModels.length > 0)
-    }, [providers])
-
-    const customGeminiProviders = useMemo(() => {
-      return providers
-        .filter((p) => p.isCustom && p.type === ModelProviderType.Gemini)
-        .map((provider) => ({
-          provider,
-          imageModels: getAvailableImageModels(provider, GEMINI_IMAGE_MODEL_IDS),
-        }))
-        .filter((item) => item.imageModels.length > 0)
-    }, [providers])
-
-    const comfyuiProvider = useMemo(() => {
-      const provider = providers.find((p) => p.id === ModelProviderEnum.ComfyUI)
-      if (!provider) return null
-      const imageModels = getAvailableImageModels(provider, COMFYUI_IMAGE_MODEL_IDS)
-      return imageModels.length > 0 ? { provider, imageModels } : null
+    const modelGroups = useMemo(() => {
+      const flat = listAvailableImageModels(providers)
+      const groups: { label: string; providerId: string; models: { modelId: string; displayName: string }[] }[] = []
+      for (const item of flat) {
+        let group = groups.find((g) => g.providerId === item.providerId)
+        if (!group) {
+          group = { label: item.providerName, providerId: item.providerId, models: [] }
+          groups.push(group)
+        }
+        if (!group.models.some((m) => m.modelId === item.modelId)) {
+          group.models.push({ modelId: item.modelId, displayName: item.displayName })
+        }
+      }
+      return groups
     }, [providers])
 
     const combobox = useCombobox({
@@ -98,7 +43,10 @@ export const ImageModelSelect = forwardRef<HTMLButtonElement, ImageModelSelectPr
     })
 
     const handleOptionSubmit = (val: string) => {
-      const [provider, modelId] = val.split(':')
+      const sep = val.indexOf(':')
+      if (sep <= 0) return
+      const provider = val.slice(0, sep)
+      const modelId = val.slice(sep + 1)
       onSelect?.(provider as ModelProvider, modelId)
       combobox.closeDropdown()
     }
@@ -120,81 +68,30 @@ export const ImageModelSelect = forwardRef<HTMLButtonElement, ImageModelSelectPr
 
         <Combobox.Dropdown className="!rounded-2xl !border-[var(--chatbox-border-primary)] !shadow-lg overflow-hidden">
           <Combobox.Options mah={400} style={{ overflowY: 'auto' }} className="p-1">
-            {geminiProvider && (
-              <Combobox.Group
-                label="Google Gemini"
-                classNames={{ groupLabel: '!text-xs !font-semibold !uppercase tracking-wide' }}
-              >
-                {geminiProvider.imageModels.map((model) => (
-                  <Combobox.Option
-                    key={`${ModelProviderEnum.Gemini}:${model.modelId}`}
-                    value={`${ModelProviderEnum.Gemini}:${model.modelId}`}
-                    className="!rounded-lg"
+            {modelGroups.length === 0 ? (
+              <Text size="sm" c="dimmed" px="sm" py="xs">
+                No image models available. Sign in or fetch models in Settings → Providers.
+              </Text>
+            ) : (
+              modelGroups.map((group, groupIndex) => (
+                <div key={group.providerId}>
+                  {groupIndex > 0 && <Divider my="xs" />}
+                  <Combobox.Group
+                    label={group.label}
+                    classNames={{ groupLabel: '!text-xs !font-semibold !uppercase tracking-wide' }}
                   >
-                    <Text size="sm">{model.displayName}</Text>
-                  </Combobox.Option>
-                ))}
-              </Combobox.Group>
-            )}
-
-            {customGeminiProviders.map(({ provider, imageModels }) => (
-              <div key={provider.id}>
-                <Divider my="xs" />
-                <Combobox.Group
-                  label={provider.name}
-                  classNames={{ groupLabel: '!text-xs !font-semibold !uppercase tracking-wide' }}
-                >
-                  {imageModels.map((model) => (
-                    <Combobox.Option
-                      key={`${provider.id}:${model.modelId}`}
-                      value={`${provider.id}:${model.modelId}`}
-                      className="!rounded-lg"
-                    >
-                      <Text size="sm">{model.displayName}</Text>
-                    </Combobox.Option>
-                  ))}
-                </Combobox.Group>
-              </div>
-            ))}
-
-            {openaiProviders.map(({ provider, imageModels }) => (
-              <div key={provider.id}>
-                <Divider my="xs" />
-                <Combobox.Group
-                  label={provider.name}
-                  classNames={{ groupLabel: '!text-xs !font-semibold !uppercase tracking-wide' }}
-                >
-                  {imageModels.map((model) => (
-                    <Combobox.Option
-                      key={`${provider.id}:${model.modelId}`}
-                      value={`${provider.id}:${model.modelId}`}
-                      className="!rounded-lg"
-                    >
-                      <Text size="sm">{model.displayName}</Text>
-                    </Combobox.Option>
-                  ))}
-                </Combobox.Group>
-              </div>
-            ))}
-
-            {comfyuiProvider && (
-              <>
-                <Divider my="xs" />
-                <Combobox.Group
-                  label="ComfyUI"
-                  classNames={{ groupLabel: '!text-xs !font-semibold !uppercase tracking-wide' }}
-                >
-                  {comfyuiProvider.imageModels.map((model) => (
-                    <Combobox.Option
-                      key={`${ModelProviderEnum.ComfyUI}:${model.modelId}`}
-                      value={`${ModelProviderEnum.ComfyUI}:${model.modelId}`}
-                      className="!rounded-lg"
-                    >
-                      <Text size="sm">{model.displayName}</Text>
-                    </Combobox.Option>
-                  ))}
-                </Combobox.Group>
-              </>
+                    {group.models.map((model) => (
+                      <Combobox.Option
+                        key={`${group.providerId}:${model.modelId}`}
+                        value={`${group.providerId}:${model.modelId}`}
+                        className="!rounded-lg"
+                      >
+                        <Text size="sm">{model.displayName}</Text>
+                      </Combobox.Option>
+                    ))}
+                  </Combobox.Group>
+                </div>
+              ))
             )}
           </Combobox.Options>
         </Combobox.Dropdown>

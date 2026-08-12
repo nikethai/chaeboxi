@@ -32,7 +32,7 @@ export const geminiProvider = defineProvider({
       },
       {
         modelId: 'gemini-3-pro-image-preview',
-        capabilities: ['vision'],
+        capabilities: ['vision', 'image_generation', 'image_edit'],
         contextWindow: 32_768,
         maxOutput: 8_192,
       },
@@ -50,13 +50,13 @@ export const geminiProvider = defineProvider({
       },
       {
         modelId: 'gemini-2.5-flash-image',
-        capabilities: ['vision'],
+        capabilities: ['vision', 'image_generation', 'image_edit'],
         contextWindow: 32_768,
         maxOutput: 8_192,
       },
       {
         modelId: 'gemini-3.1-flash-image-preview',
-        capabilities: ['vision'],
+        capabilities: ['vision', 'image_generation', 'image_edit'],
         contextWindow: 32_768,
         maxOutput: 8_192,
       },

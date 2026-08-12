@@ -145,8 +145,11 @@ const WORKFLOW_TEMPLATE: ComfyUIWorkflow = {
 
 /**
  * Build a ComfyUI API-format workflow by patching the template with generation parameters.
+ * When `referenceImageName` is set, uses LoadImage + VAEEncode img2img instead of EmptyLatentImage.
  */
-export function buildComfyUIWorkflow(params: ComfyUIGenerationParams & { prompt: string }): ComfyUIWorkflow {
+export function buildComfyUIWorkflow(
+  params: ComfyUIGenerationParams & { prompt: string; referenceImageName?: string; denoise?: number }
+): ComfyUIWorkflow {
   const workflow = structuredClone(WORKFLOW_TEMPLATE)
   const loras = normalizeComfyUILoras(params)
 
@@ -201,11 +204,32 @@ export function buildComfyUIWorkflow(params: ComfyUIGenerationParams & { prompt:
   if (params.samplerName) workflow['3'].inputs.sampler_name = params.samplerName
   if (params.scheduler) workflow['3'].inputs.scheduler = params.scheduler
 
-  // Orientation: switch which EmptyLatentImage is connected to KSampler
-  if (params.orientation === 'horizontal') {
+  if (params.referenceImageName) {
+    // img2img: LoadImage → VAEEncode → KSampler
+    workflow['100'] = {
+      inputs: {
+        image: params.referenceImageName,
+      },
+      class_type: 'LoadImage',
+    }
+    workflow['101'] = {
+      inputs: {
+        pixels: ['100', 0],
+        vae: ['4', 2],
+      },
+      class_type: 'VAEEncode',
+    }
+    workflow['3'].inputs.latent_image = ['101', 0]
+    workflow['3'].inputs.denoise = params.denoise ?? 0.65
+    delete workflow['5']
+    delete workflow['13']
+  } else if (params.orientation === 'horizontal') {
+    // Orientation: switch which EmptyLatentImage is connected to KSampler
     workflow['3'].inputs.latent_image = ['13', 0]
+    delete workflow['5']
   } else {
     workflow['3'].inputs.latent_image = ['5', 0]
+    delete workflow['13']
   }
 
   // Upscale toggle
@@ -218,13 +242,6 @@ export function buildComfyUIWorkflow(params: ComfyUIGenerationParams & { prompt:
     // Remove upscale nodes to keep workflow clean
     delete workflow['10']
     delete workflow['12']
-  }
-
-  // Remove unused latent node to keep workflow clean
-  if (params.orientation === 'horizontal') {
-    delete workflow['5']
-  } else {
-    delete workflow['13']
   }
 
   return workflow

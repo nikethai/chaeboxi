@@ -13,7 +13,7 @@ import {
 } from '@mantine/core'
 import type { ComfyUIGenerationParams } from '@shared/providers/definitions/models/comfyui-types'
 import type { ImageGeneration } from '@shared/types'
-import { ModelProviderEnum, ModelProviderType } from '@shared/types'
+import { ModelProviderEnum } from '@shared/types'
 import {
   IconArrowUp,
   IconAspectRatio,
@@ -54,15 +54,14 @@ import {
 } from '@/stores/imageGenerationStore'
 import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 import { queryClient } from '@/stores/queryClient'
+import { listAvailableImageModels } from '@/utils/available-image-models'
 import {
   blobToDataUrl,
   COMFYUI_IMAGE_MODEL_IDS,
-  GEMINI_IMAGE_MODEL_IDS,
   getRatioOptionsForModel,
   HISTORY_PANEL_WIDTH,
   IMAGE_MODEL_FALLBACK_NAMES,
   MAX_REFERENCE_IMAGES,
-  OPENAI_IMAGE_MODEL_IDS,
 } from './-components/constants'
 import { ComfyUIControls } from './-components/ComfyUIControls'
 import { EmptyState } from './-components/EmptyState'
@@ -451,66 +450,21 @@ function ImageCreatorPage() {
     }
   }, [])
 
-  const getAvailableImageModels = useCallback(
-    (providerModels: { modelId: string; nickname?: string }[], imageModelIds: string[]) => {
-      return imageModelIds
-        .map((modelId) => {
-          const model = providerModels.find((m) => m.modelId === modelId)
-          if (!model) return null
-          return {
-            modelId,
-            displayName: model.nickname || IMAGE_MODEL_FALLBACK_NAMES[modelId] || modelId,
-          }
-        })
-        .filter((m): m is { modelId: string; displayName: string } => m !== null)
-    },
-    []
-  )
-
   const imageModelGroups = useMemo(() => {
+    const flat = listAvailableImageModels(providers)
     const groups: { label: string; providerId: string; models: { modelId: string; displayName: string }[] }[] = []
-
-    const geminiProvider = providers.find((p) => p.id === ModelProviderEnum.Gemini)
-    if (geminiProvider) {
-      const providerModels = geminiProvider.models || geminiProvider.defaultSettings?.models || []
-      const models = getAvailableImageModels(providerModels, GEMINI_IMAGE_MODEL_IDS)
-      if (models.length > 0) {
-        groups.push({ label: 'Google Gemini', providerId: ModelProviderEnum.Gemini, models })
+    for (const item of flat) {
+      let group = groups.find((g) => g.providerId === item.providerId)
+      if (!group) {
+        group = { label: item.providerName, providerId: item.providerId, models: [] }
+        groups.push(group)
+      }
+      if (!group.models.some((m) => m.modelId === item.modelId)) {
+        group.models.push({ modelId: item.modelId, displayName: item.displayName })
       }
     }
-
-    providers
-      .filter((p) => p.isCustom && p.type === ModelProviderType.Gemini)
-      .forEach((provider) => {
-        const providerModels = provider.models || provider.defaultSettings?.models || []
-        const models = getAvailableImageModels(providerModels, GEMINI_IMAGE_MODEL_IDS)
-        if (models.length > 0) {
-          groups.push({ label: provider.name, providerId: provider.id, models })
-        }
-      })
-
-    providers
-      .filter((p) => [ModelProviderEnum.OpenAI, ModelProviderEnum.Azure].includes(p.id as ModelProviderEnum))
-      .forEach((provider) => {
-        const providerModels = provider.models || provider.defaultSettings?.models || []
-        const models = getAvailableImageModels(providerModels, OPENAI_IMAGE_MODEL_IDS)
-        if (models.length > 0) {
-          groups.push({ label: provider.name, providerId: provider.id, models })
-        }
-      })
-
-    // ComfyUI
-    const comfyuiProvider = providers.find((p) => p.id === ModelProviderEnum.ComfyUI)
-    if (comfyuiProvider) {
-      const providerModels = comfyuiProvider.models || comfyuiProvider.defaultSettings?.models || []
-      const models = getAvailableImageModels(providerModels, COMFYUI_IMAGE_MODEL_IDS)
-      if (models.length > 0) {
-        groups.push({ label: 'ComfyUI', providerId: ModelProviderEnum.ComfyUI, models })
-      }
-    }
-
     return groups
-  }, [providers, getAvailableImageModels])
+  }, [providers])
 
   useEffect(() => {
     if (imageModelGroups.length === 0) {

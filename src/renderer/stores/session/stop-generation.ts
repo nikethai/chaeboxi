@@ -7,6 +7,7 @@ import type { Message, MessageContentParts } from '@shared/types'
 import * as chatStore from '../chatStore'
 import { cancelSessionGeneration, getActiveGenerationMessageId } from './generation-cancel'
 import { modifyMessage } from './messages'
+import { clearSessionGenerationLive } from './session-live-generation'
 
 function markRunningToolsCancelled(parts: MessageContentParts | undefined): MessageContentParts | undefined {
   if (!parts?.length) return parts
@@ -48,6 +49,9 @@ export async function stopSessionGeneration(
       // ignore
     }
   }
+
+  // Drop session live-lock so Stop → Send immediately after user abort.
+  clearSessionGenerationLive(sessionId, lastGeneratingMessage?.id ?? registryMsgId)
 
   // 2) Clear UI generating flag + stuck tool rows (never wipe contentParts)
   if (lastGeneratingMessage?.generating) {

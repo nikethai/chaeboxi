@@ -32,6 +32,11 @@ import {
   startNewThread,
   submitNewUserMessage,
 } from '@/stores/sessionActions'
+import { isSessionGenerationActive } from '@/stores/session/generation-cancel'
+import {
+  isSessionGenerationLive,
+  subscribeSessionGenerationLive,
+} from '@/stores/session/session-live-generation'
 import { continueActiveSessionTasks } from '@/stores/session/messages'
 import { getAllMessageList, initEmptyChatSession } from '@/stores/sessionHelpers'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -149,6 +154,25 @@ function QuickChatPage() {
   const modelDisplayName = useMemo(() => getModelDisplayName(providers, model), [model, providers])
 
   const lastGenerating = useMemo(() => currentMessageList.find((m: Message) => m.generating), [currentMessageList])
+  const [liveGen, setLiveGen] = useState(() =>
+    session?.id ? isSessionGenerationLive(session.id) || isSessionGenerationActive(session.id) : false
+  )
+  useEffect(() => {
+    if (!session?.id) {
+      setLiveGen(false)
+      return
+    }
+    const sid = session.id
+    const sync = () => setLiveGen(isSessionGenerationLive(sid) || isSessionGenerationActive(sid))
+    sync()
+    const unsub = subscribeSessionGenerationLive(sync)
+    const id = window.setInterval(sync, 150)
+    return () => {
+      unsub()
+      window.clearInterval(id)
+    }
+  }, [session?.id, lastGenerating?.id, lastGenerating?.generating])
+  const isGenerating = Boolean(lastGenerating?.generating || liveGen)
 
   const onSelectModel = useCallback(
     (provider: ModelProvider | string, modelId: string) => {
@@ -291,7 +315,14 @@ function QuickChatPage() {
 
       <div className="session-dock">
         <div className="session-dock-pad">
-          <ChatDockStack key={session.id} sessionId={session.id} onContinueTasks={onContinueTasks} taskDetailsMode="sheet">
+          <ChatDockStack
+            key={session.id}
+            sessionId={session.id}
+            onContinueTasks={onContinueTasks}
+            taskDetailsMode="sheet"
+            generating={isGenerating}
+            liveMessage={lastGenerating}
+          >
             <ErrorBoundary name="quick-inputbox">
               <InputBox
                 key={`quick-input-${session.id}`}
@@ -302,7 +333,7 @@ function QuickChatPage() {
                 modelDisplayName={modelDisplayName}
                 agentMode={session.agentMode ?? false}
                 workspaceRoot={session.workspaceRoot}
-                generating={Boolean(lastGenerating?.generating)}
+                generating={isGenerating}
                 onSelectModel={onSelectModel}
                 onSubmit={onSubmit}
                 onStopGenerating={onStopGenerating}
@@ -323,7 +354,7 @@ function QuickChatPage() {
             model={model}
             settings={session.settings}
             providerId={model?.provider}
-            generating={Boolean(lastGenerating?.generating)}
+            generating={isGenerating}
             sessionId={session.id}
             memoryAutoSave={session.settings?.memoryAutoSave}
             compact={true}

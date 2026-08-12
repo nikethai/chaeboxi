@@ -76,6 +76,11 @@ import {
   snapshotTasksFromContentParts,
 } from '@/packages/tools/task-tools'
 import { countWord } from '@/packages/word-count'
+import {
+  contentPartsRevision,
+  groupAssistantContentParts,
+  shouldShowAssistantPending,
+} from '@/utils/message-stream-ui'
 import platform from '@/platform'
 import storage from '@/storage'
 import { useSettingsStore } from '@/stores/settingsStore'
@@ -512,6 +517,8 @@ const _Message: FC<Props> = (props) => {
   }, [messageText, msg.role])
 
   const contentParts = msg.contentParts || []
+  // contentParts may be mutated in place during streaming — length alone is insufficient.
+  const partsRevision = contentPartsRevision(contentParts)
 
   /**
    * Product layout for assistant turns:
@@ -522,114 +529,14 @@ const _Message: FC<Props> = (props) => {
   const groupedParts = useMemo(() => {
     if (contentParts.length === 0) return []
 
-    type GroupItem =
-      | {
-          type: 'thinking-group'
-          parts: typeof contentParts
-          monologueTexts: string[]
-          startIndex: number
-          workActive: boolean
-        }
-      | { type: 'single'; part: (typeof contentParts)[number]; index: number }
-
-    // Host chrome (memory_lookup) is not model "work" — counting it as last work
-    // can hide the real answer in the collapsed strip or leave an empty bubble.
-    const isHostChromeTool = (part: (typeof contentParts)[number]) =>
-      part.type === 'tool-call' && part.toolName === 'memory_lookup'
-
-    const isWorkPart = (part: (typeof contentParts)[number]) => {
-      // Empty reasoning rows shouldn't become lastWork and swallow the answer
-      if (part.type === 'reasoning') return Boolean(part.text?.trim())
-      return part.type === 'tool-call' && !isTaskTrackingTool(part.toolName) && !isHostChromeTool(part)
-    }
-
     // Non-assistant: no work coalescing
     if (msg.role !== 'assistant') {
       return contentParts.map((part, index) => ({ type: 'single' as const, part, index }))
     }
 
-    let lastWorkIdx = -1
-    for (let i = 0; i < contentParts.length; i++) {
-      if (isWorkPart(contentParts[i])) {
-        lastWorkIdx = i
-      }
-    }
-
-    // Pure prose / host-only chrome — render text (and non-host parts) as singles
-    if (lastWorkIdx === -1) {
-      return contentParts
-        .map((part, index) => ({ type: 'single' as const, part, index }))
-        .filter((item) => !isHostChromeTool(item.part))
-    }
-
-    const workParts: typeof contentParts = []
-    const monologueTexts: string[] = []
-    const earlySingles: GroupItem[] = []
-
-    for (let i = 0; i <= lastWorkIdx; i++) {
-      const part = contentParts[i]
-      if (isHostChromeTool(part)) {
-        // Host pre-search is injected for the model; don't surface as a dead "Worked · 1 tool" row
-        continue
-      }
-      if (isWorkPart(part)) {
-        workParts.push(part)
-        continue
-      }
-      if (part.type === 'text') {
-        const trimmed = part.text?.trim()
-        if (trimmed) {
-          monologueTexts.push(trimmed)
-        }
-        continue
-      }
-      // Task tools / images / plan early in the turn — keep as singles before the work strip
-      earlySingles.push({ type: 'single', part, index: i })
-    }
-
-    const lastPart = contentParts[contentParts.length - 1]
-    const workActive = Boolean(msg.generating && lastPart && isWorkPart(lastPart))
-
-    const afterWork: GroupItem[] = []
-    for (let i = lastWorkIdx + 1; i < contentParts.length; i++) {
-      afterWork.push({ type: 'single', part: contentParts[i], index: i })
-    }
-
-    // Surface mid-turn prose as the answer whenever nothing trails the last work part.
-    // Do this *while generating too* — waiting until generating=false made the UI look
-    // "finished" (action bar / idle composer) before the answer popped in.
-    const hasTrailingAnswer = afterWork.some(
-      (g) => g.type === 'single' && g.part.type === 'text' && Boolean(g.part.text?.trim())
-    )
-    let thinkingMonologue = monologueTexts
-    if (monologueTexts.length > 0 && !hasTrailingAnswer) {
-      for (let m = 0; m < monologueTexts.length; m++) {
-        afterWork.push({
-          type: 'single',
-          part: { type: 'text', text: monologueTexts[m] },
-          index: lastWorkIdx + 1 + m,
-        })
-      }
-      thinkingMonologue = []
-    }
-
-    const groups: GroupItem[] = [...earlySingles]
-    if (workParts.length > 0) {
-      groups.push({
-        type: 'thinking-group',
-        parts: workParts,
-        monologueTexts: thinkingMonologue,
-        startIndex: 0,
-        workActive,
-      })
-    }
-
-    groups.push(...afterWork)
-
-    return groups
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- contentParts may be mutated in place during streaming;
-    // include length and generating flag so the memo recomputes when parts are pushed or generation ends
-  }, [contentParts, contentParts.length, msg.generating, msg.role])
+    return groupAssistantContentParts(contentParts, msg.generating)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- partsRevision captures in-place stream mutations
+  }, [contentParts, partsRevision, msg.generating, msg.role])
 
   const messageTaskSnapshot = useMemo(
     () => (contentPartsHaveTaskTools(contentParts) ? snapshotTasksFromContentParts(contentParts) : []),
@@ -800,19 +707,35 @@ const _Message: FC<Props> = (props) => {
                 {groupedParts.map((group, groupIndex) =>
                   group.type === 'thinking-group' ? (
                     ThinkingGroupUI ? (
-                      <div key={`thinking-group-${msg.id}-${group.startIndex}`}>
-                        <Suspense fallback={null}>
+                      <div
+                        key={`thinking-group-${msg.id}-${group.startIndex}`}
+                        className="msg-thinking-slot"
+                      >
+                        <Suspense
+                          fallback={
+                            // Quiet Grok line only — dock owns activity chrome.
+                            group.workActive || msg.generating ? (
+                              <div className="msg-worked is-live is-settled" aria-hidden>
+                                <div className="msg-worked-row">
+                                  <span className="msg-worked-toggle">
+                                    <span className="msg-worked-label">{t('Thinking…')}</span>
+                                  </span>
+                                </div>
+                              </div>
+                            ) : null
+                          }
+                        >
                           <ThinkingGroupUI
                             message={msg}
                             parts={group.parts}
                             monologueTexts={group.monologueTexts}
-                            isLastGroup={group.workActive}
+                            isLastGroup={group.workActive || Boolean(msg.generating)}
                           />
                         </Suspense>
                       </div>
                     ) : null
                   ) : group.part.type === 'reasoning' ? (
-                    <div key={`reasoning-${msg.id}-${group.index}`}>
+                    <div key={`reasoning-${msg.id}-${group.index}`} className="msg-thinking-slot">
                       <ReasoningContentUI
                         message={msg}
                         part={group.part}
@@ -820,7 +743,10 @@ const _Message: FC<Props> = (props) => {
                       />
                     </div>
                   ) : group.part.type === 'text' ? (
-                    <div key={`text-${msg.id}-${group.index}`}>
+                    <div
+                      key={`text-${msg.id}-${group.index}`}
+                      className={cn(msg.role === 'assistant' && 'msg-answer-slot')}
+                    >
                       {msg.role === 'user' ? (
                         <div className="break-words whitespace-pre-wrap">
                           <InlineMentionsText
@@ -968,25 +894,14 @@ const _Message: FC<Props> = (props) => {
 
           {/*
             Waiting chrome while generating with nothing the user can read yet.
-            Host-only tools (e.g. memory_lookup) fill contentParts but are hidden from the
-            bubble — without this check the dock looks dead (“no Thinking…”) until first token.
+            One live indicator only: active work strip OR pending — never blank after
+            reasoning ends and before the first readable answer token.
           */}
-          {isAssistant &&
-            msg.generating &&
-            !msg.status?.length &&
-            !contentParts.some((p) => {
-              if (p.type === 'text' && p.text?.trim()) return true
-              if (p.type === 'image') return true
-              if (p.type === 'reasoning' && p.text?.trim()) return true
-              if (p.type === 'plan') return true
-              if (p.type === 'info' && p.text?.trim()) return true
-              if (p.type === 'tool-call') {
-                // Host chrome is invisible; task tools render TodoAppCard
-                if (p.toolName === 'memory_lookup') return false
-                return true
-              }
-              return false
-            }) && <AssistantPending className="mt-0.5" />}
+          {shouldShowAssistantPending({
+            message: msg,
+            contentParts,
+            workStripAvailable: Boolean(ThinkingGroupUI),
+          }) && <AssistantPending className="mt-0.5" />}
 
           {!msg.generating && tips.length > 0 && (
             <Text size="xs" c="chatbox-tertiary" className="mt-1 opacity-80">

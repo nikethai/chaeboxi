@@ -52,6 +52,7 @@ import { settingsStore } from '../settingsStore'
 import { uiStore } from '../uiStore'
 import { createNewFork, findMessageLocation } from './forks'
 import { clearGenerationCancel, registerGenerationCancel } from './generation-cancel'
+import { clearSessionGenerationLive, markSessionGenerationLive } from './session-live-generation'
 import { messageQueueStore } from './messageQueue'
 import { insertMessageAfter, modifyMessage, submitNewUserMessage } from './messages'
 import { getSessionWebBrowsing } from './session-web-browsing'
@@ -572,6 +573,7 @@ export async function generate(
         providerId: pid || undefined,
       })
       if (evalResult.level === 'critical') {
+        clearSessionGenerationLive(sessionId, targetMsg.id)
         targetMsg = {
           ...targetMsg,
           generating: false,
@@ -608,8 +610,10 @@ export async function generate(
     isStreamingMode: effectiveSettings.stream !== false,
   }
 
+  // UI live-lock: Stop/statusline stay continuous for whole multi-step turn.
+  markSessionGenerationLive(sessionId, targetMsg.id)
   await modifyMessage(sessionId, targetMsg)
-  // Pin to latest so multi-turn replies stay visible (followOutput alone can detach).
+  // Pin once at stream start only (not every stream paint).
   try {
     const scrollActions = await import('../scrollActions')
     scrollActions.scrollToBottom('auto')
@@ -633,6 +637,7 @@ export async function generate(
       }
     }
     if (targetMsgIx < 0) {
+      clearSessionGenerationLive(sessionId, targetMsg.id)
       targetMsg = {
         ...targetMsg,
         generating: false,
@@ -646,8 +651,9 @@ export async function generate(
   }
 
   // Shared stream UI coalescing — visible to catch so error path can cancel pending writes.
-  // Keep stream paints snappy — higher latency made the dock feel "done" before text appeared.
-  const STREAM_UI_MIN_MS = 16
+  // ~50ms is still smooth for text growth but halves React Query / Virtuoso remeasure thrash
+  // vs 16ms (was fighting scrollbar + Send/Stop stability during multi-step tools).
+  const STREAM_UI_MIN_MS = 50
   const persistInterval = 2000
   let lastPersistTimestamp = Date.now()
   let lastStreamUiWriteAt = 0
@@ -696,15 +702,14 @@ export async function generate(
     await streamWriteChain
     pendingStreamMsg = null
     await modifyMessage(sessionId, msg, true)
-    // Pin to latest after final layout so the user doesn't sit on the previous turn
-    try {
-      const scrollActions = await import('../scrollActions')
-      scrollActions.scrollToBottom('auto')
-      requestAnimationFrame(() => {
+    // Final pin only when generation finished (not mid-stream settle of partials).
+    if (!msg.generating) {
+      try {
+        const scrollActions = await import('../scrollActions')
         scrollActions.scrollToBottom('auto')
-      })
-    } catch {
-      // non-fatal
+      } catch {
+        // non-fatal
+      }
     }
   }
 
@@ -902,10 +907,6 @@ export async function generate(
         }
 
         const modifyMessageCache: OnResultChangeWithCancel = async (updated) => {
-          const textLength = getMessageText(targetMsg, true, true).length
-          if (!firstTokenLatency && textLength > 0) {
-            firstTokenLatency = Date.now() - startTime
-          }
           if (updated.tokenSpeed !== undefined) {
             lastTokenSpeed = updated.tokenSpeed
           }
@@ -913,14 +914,24 @@ export async function generate(
           if (updated.cancel) {
             registerGenerationCancel(sessionId, targetMsg.id, updated.cancel)
           }
+          // Merge first, then measure — textLength from pre-merge targetMsg lagged by one callback
+          // and delayed status clear / firstTokenLatency after the first readable content.
+          const nextContentParts = updated.contentParts
+            ? withPlanPart(updated.contentParts, activeExecutionPlan)
+            : targetMsg.contentParts
+          const mergedPreview = { ...targetMsg, contentParts: nextContentParts }
+          const textLength = getMessageText(mergedPreview, true, true).length
+          if (!firstTokenLatency && textLength > 0) {
+            firstTokenLatency = Date.now() - startTime
+          }
           // Direct field merge instead of pickBy(updated, identity) + spread.
           // pickBy with identity drops falsy values (0, false, '') which is a silent bug;
           // explicit assignment is both faster and more correct.
           targetMsg = {
             ...targetMsg,
-            contentParts: updated.contentParts
-              ? withPlanPart(updated.contentParts, activeExecutionPlan)
-              : targetMsg.contentParts,
+            // Hard-keep generating true on every stream paint — cache merges must never flash idle.
+            generating: true,
+            contentParts: nextContentParts,
             cancel: updated.cancel ?? targetMsg.cancel,
             status: textLength > 0 ? [] : targetMsg.status,
             firstTokenLatency,
@@ -1213,6 +1224,7 @@ export async function generate(
 
         // Paint answer + generating=false first — never block the "done" state on image-flow I/O.
         clearGenerationCancel(sessionId, targetMsg.id)
+        clearSessionGenerationLive(sessionId, targetMsg.id)
         targetMsg = {
           ...targetMsg,
           generating: false,
@@ -1357,6 +1369,7 @@ export async function generate(
           }
         )
         clearGenerationCancel(sessionId, targetMsg.id)
+        clearSessionGenerationLive(sessionId, targetMsg.id)
         targetMsg = {
           ...targetMsg,
           generating: false,
@@ -1402,6 +1415,7 @@ export async function generate(
     const ocrError = error instanceof OCRError ? error : undefined
     const causeError = ocrError?.cause
     clearGenerationCancel(sessionId, targetMsg.id)
+    clearSessionGenerationLive(sessionId, targetMsg.id)
     targetMsg = {
       ...targetMsg,
       contentParts: withPlanPart(targetMsg.contentParts, activeExecutionPlan),

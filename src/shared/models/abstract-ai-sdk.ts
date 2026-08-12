@@ -34,6 +34,13 @@ import type {
 import type { ModelDependencies } from '../types/adapters'
 import { annotateTextWithGrounding, groundingMetadataToCitations } from '../utils/search'
 import { ApiError, ProviderAPIError } from './errors'
+import {
+  applyReasoningDelta,
+  applyTextDelta,
+  finalizeReasoningDuration,
+  flushPendingStreamText,
+  type StreamContentCursor,
+} from './stream-content-parts'
 import type { CallChatCompletionOptions, ModelInterface } from './types'
 
 const RETRY_CONFIG = {
@@ -338,53 +345,6 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     }
   }
 
-  private createOrUpdateContentPart<T extends MessageTextPart | MessageReasoningPart>(
-    textDelta: string,
-    contentParts: MessageContentParts,
-    currentPart: T | undefined,
-    type: T['type']
-  ): T {
-    if (!currentPart) {
-      currentPart = { type, text: '' } as T
-      contentParts.push(currentPart)
-    }
-    currentPart.text += textDelta
-    return currentPart
-  }
-
-  private createOrUpdateTextPart(
-    textDelta: string,
-    contentParts: MessageContentParts,
-    currentTextPart: MessageTextPart | undefined
-  ): MessageTextPart {
-    return this.createOrUpdateContentPart(textDelta, contentParts, currentTextPart, 'text')
-  }
-
-  /**
-   * Creates or updates a reasoning part with timing information for streaming responses
-   * @param textDelta - New text to append to the reasoning content
-   * @param contentParts - Array of message content parts
-   * @param currentReasoningPart - Existing reasoning part to update, if any
-   * @returns The updated or newly created reasoning part
-   */
-  private createOrUpdateReasoningPart(
-    textDelta: string,
-    contentParts: MessageContentParts,
-    currentReasoningPart: MessageReasoningPart | undefined
-  ): MessageReasoningPart {
-    if (!currentReasoningPart) {
-      // Create new reasoning part with start time for timer tracking in streaming mode
-      currentReasoningPart = {
-        type: 'reasoning',
-        text: '',
-        startTime: Date.now(), // Capture when thinking begins
-      }
-      contentParts.push(currentReasoningPart)
-    }
-    currentReasoningPart.text += textDelta
-    return currentReasoningPart
-  }
-
   private async processImageFile(
     mimeType: string,
     base64: string,
@@ -397,76 +357,70 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
 
   private async processStreamChunk<T extends ToolSet>(
     chunk: TextStreamPart<T>,
-    contentParts: MessageContentParts,
-    currentTextPart: MessageTextPart | undefined,
-    currentReasoningPart: MessageReasoningPart | undefined,
+    cursor: StreamContentCursor,
     _options: CallChatCompletionOptions
-  ): Promise<{
-    currentTextPart: MessageTextPart | undefined
-    currentReasoningPart: MessageReasoningPart | undefined
-  }> {
-    // Finalize reasoning duration when transitioning to other content types
-    const finalizeReasoningDuration = () => {
-      if (currentReasoningPart?.startTime && !currentReasoningPart.duration) {
-        currentReasoningPart.duration = Date.now() - currentReasoningPart.startTime
-      }
-    }
+  ): Promise<StreamContentCursor> {
+    const { contentParts } = cursor
 
     switch (chunk.type) {
       case 'text-delta':
-        finalizeReasoningDuration()
-        // clear current reasoning part
-        return {
-          currentTextPart: this.createOrUpdateTextPart(chunk.text, contentParts, currentTextPart),
-          currentReasoningPart: undefined,
-        }
+        // Whitespace-only deltas do not end reasoning; leading whitespace is buffered.
+        return applyTextDelta(cursor, chunk.text)
 
       case 'reasoning-delta':
         // Some providers may emit empty reasoning chunks; ignore only truly empty deltas.
         // Keep whitespace-only chunks (e.g. '\n') so formatting is preserved in the UI.
-        if (chunk.text.length > 0) {
-          return {
-            currentTextPart: undefined,
-            currentReasoningPart: this.createOrUpdateReasoningPart(chunk.text, contentParts, currentReasoningPart),
-          }
-        }
-        break
+        return applyReasoningDelta(cursor, chunk.text)
 
-      case 'tool-call':
-        finalizeReasoningDuration()
-        this.processToolCalls([chunk], contentParts, _options)
+      case 'tool-call': {
+        // Any pending answer whitespace is flushed before tool work so it is not lost.
+        const next = flushPendingStreamText(cursor)
+        finalizeReasoningDuration(next.currentReasoningPart)
+        this.processToolCalls([chunk], next.contentParts, _options)
         return {
+          contentParts: next.contentParts,
           currentTextPart: undefined,
           currentReasoningPart: undefined,
+          pendingTextWhitespace: '',
         }
+      }
 
       case 'tool-result':
         this.processToolResults([chunk], contentParts, _options)
-        break
-      case 'tool-error':
-        finalizeReasoningDuration()
-        this.processToolErrors([chunk], contentParts, _options)
-        break
+        return cursor
+      case 'tool-error': {
+        const next = flushPendingStreamText(cursor)
+        finalizeReasoningDuration(next.currentReasoningPart)
+        this.processToolErrors([chunk], next.contentParts, _options)
+        return {
+          contentParts: next.contentParts,
+          currentTextPart: undefined,
+          currentReasoningPart: undefined,
+          pendingTextWhitespace: '',
+        }
+      }
 
       case 'file':
         if (chunk.file.mediaType?.startsWith('image/') && chunk.file.base64) {
-          await this.processImageFile(chunk.file.mediaType, chunk.file.base64, contentParts)
+          const next = flushPendingStreamText(cursor)
+          finalizeReasoningDuration(next.currentReasoningPart)
+          await this.processImageFile(chunk.file.mediaType, chunk.file.base64, next.contentParts)
           return {
+            contentParts: next.contentParts,
             currentTextPart: undefined,
             currentReasoningPart: undefined,
+            pendingTextWhitespace: '',
           }
         }
-        break
+        return cursor
       case 'error':
         this.handleError(chunk.error)
-        break
+        return cursor
       case 'finish':
-        break
+        return cursor
       default:
-        break
+        return cursor
     }
-
-    return { currentTextPart, currentReasoningPart }
   }
 
   private handleError(error: unknown, context: string = ''): never {
@@ -583,9 +537,12 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       ...callSettings,
     })
 
-    const contentParts: MessageContentParts = []
-    let currentTextPart: MessageTextPart | undefined
-    let currentReasoningPart: MessageReasoningPart | undefined
+    let streamCursor: StreamContentCursor = {
+      contentParts: [],
+      currentTextPart: undefined,
+      currentReasoningPart: undefined,
+      pendingTextWhitespace: '',
+    }
 
     // Token speed tracking — use character count (O(1) per chunk) instead of regex word splitting
     let streamStartTime: number | undefined
@@ -613,12 +570,18 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
           pendingUpdate = false
           rafId = undefined
           lastEmittedSpeed = computeSpeed()
-          options.onResultChange?.({ contentParts, tokenSpeed: lastEmittedSpeed })
+          options.onResultChange?.({
+            contentParts: streamCursor.contentParts,
+            tokenSpeed: lastEmittedSpeed,
+          })
         })
       } else {
         // Fallback for non-browser environments (Node/tests)
         lastEmittedSpeed = computeSpeed()
-        options.onResultChange?.({ contentParts, tokenSpeed: lastEmittedSpeed })
+        options.onResultChange?.({
+          contentParts: streamCursor.contentParts,
+          tokenSpeed: lastEmittedSpeed,
+        })
         pendingUpdate = false
       }
     }
@@ -630,7 +593,10 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       }
       pendingUpdate = false
       lastEmittedSpeed = computeSpeed()
-      options.onResultChange?.({ contentParts, tokenSpeed: lastEmittedSpeed })
+      options.onResultChange?.({
+        contentParts: streamCursor.contentParts,
+        tokenSpeed: lastEmittedSpeed,
+      })
     }
 
     try {
@@ -648,35 +614,26 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
           outputCharCount += chunk.text.length
         }
 
-        const chunkResult = await this.processStreamChunk(
-          chunk,
-          contentParts,
-          currentTextPart,
-          currentReasoningPart,
-          options
-        )
-        currentTextPart = chunkResult.currentTextPart
-        currentReasoningPart = chunkResult.currentReasoningPart
+        streamCursor = await this.processStreamChunk(chunk, streamCursor, options)
 
         // Tool-related chunks flush immediately so users see tool execution feedback right away
-        if (chunk.type === 'tool-call' || chunk.type === 'tool-result') {
+        if (chunk.type === 'tool-call' || chunk.type === 'tool-result' || chunk.type === 'tool-error') {
           flushUpdate()
         } else {
           scheduleUpdate()
         }
       }
     } catch (error) {
-      // Ensure reasoning parts get their duration set even if streaming is interrupted
-      if (currentReasoningPart?.startTime && !currentReasoningPart.duration) {
-        currentReasoningPart.duration = Date.now() - currentReasoningPart.startTime
-      }
-      // Final flush to emit whatever we have before re-throwing
+      // Flush buffered whitespace + finalize reasoning on interrupt
+      streamCursor = flushPendingStreamText(streamCursor)
       flushUpdate()
       throw error
     }
 
-    // Final flush to ensure last chunk is emitted
+    // Final flush: surface any buffered leading whitespace and emit last paint
+    streamCursor = flushPendingStreamText(streamCursor)
     flushUpdate()
+    const contentParts = streamCursor.contentParts
 
     // Compute final token speed for persistence
     const finalTokenSpeed = computeSpeed()

@@ -439,6 +439,34 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [isSamplingVideoFrames, setIsSamplingVideoFrames] = useState(false)
     const [visionBannerDismissed, setVisionBannerDismissed] = useState(false)
+    // Sticky Stop bridges submit → first generating=true, AND any brief false flicker mid-stream.
+    // Only clear after generating stays false for a short settle window (not on first true).
+    const [stickyStop, setStickyStop] = useState(false)
+    const stickyStopClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    useEffect(() => {
+      if (generating) {
+        setStickyStop(true)
+        if (stickyStopClearTimer.current) {
+          clearTimeout(stickyStopClearTimer.current)
+          stickyStopClearTimer.current = null
+        }
+        return
+      }
+      // generating false — delay drop so mid-stream false frames cannot flash Send.
+      if (!stickyStop) return
+      if (stickyStopClearTimer.current) clearTimeout(stickyStopClearTimer.current)
+      stickyStopClearTimer.current = setTimeout(() => {
+        stickyStopClearTimer.current = null
+        setStickyStop(false)
+      }, 220)
+      return () => {
+        if (stickyStopClearTimer.current) {
+          clearTimeout(stickyStopClearTimer.current)
+          stickyStopClearTimer.current = null
+        }
+      }
+    }, [generating, stickyStop])
 
     useEffect(() => {
       const constructedMessage = sessionHelpers.constructUserMessage(
@@ -607,10 +635,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     }, [compactionUIStateMap, currentSessionId, isNewSession])
 
     const isModelReadinessBlocking = platformCapabilities.isMobileLayout && modelReadiness.status !== 'ready'
-    const sendDisabled = generating
-      ? disableSubmit
-        ? false
-        : isModelReadinessBlocking || isPreprocessing || isSubmitting || isSamplingVideoFrames || isCompactionRunning
+    // While generating (or sticky race window), button is always Stop and always clickable.
+    // Never key Stop on empty-draft (old: generating && disableSubmit) — that flipped Send mid-turn.
+    const showStop = Boolean(generating || stickyStop)
+    const sendDisabled = showStop
+      ? false
       : isModelReadinessBlocking ||
         disableSubmit ||
         isPreprocessing ||
@@ -1427,10 +1456,18 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       }
 
       setIsSubmitting(true)
+      setStickyStop(true)
+      if (stickyStopClearTimer.current) clearTimeout(stickyStopClearTimer.current)
+      // Safety: if generation never starts (error / needGenerating false), drop sticky Stop.
+      stickyStopClearTimer.current = setTimeout(() => {
+        stickyStopClearTimer.current = null
+        setStickyStop(false)
+      }, 4000)
       try {
         // Use the already constructed message
         if (!preConstructedMessage.message) {
           console.error('No constructed message available')
+          setStickyStop(false)
           return
         }
 
@@ -1637,6 +1674,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       } catch (e) {
         console.error('Error submitting message:', e)
         toastActions.add((e as Error)?.message || t('An error occurred while sending the message.'))
+        setStickyStop(false)
+        if (stickyStopClearTimer.current) {
+          clearTimeout(stickyStopClearTimer.current)
+          stickyStopClearTimer.current = null
+        }
       } finally {
         setIsSubmitting(false)
       }
@@ -3078,18 +3120,22 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   <ActionIcon
                     disabled={sendDisabled}
                     variant="filled"
-                    color={generating && disableSubmit ? 'dark' : 'chatbox-brand'}
-                    className={cn('composer-send shadow-none', isSmallScreen && 'mobile-touch-target')}
+                    color={showStop ? 'dark' : 'chatbox-brand'}
+                    className={cn(
+                      'composer-send shadow-none',
+                      showStop && 'is-stop',
+                      isSmallScreen && 'mobile-touch-target'
+                    )}
                     aria-label={
                       isSamplingVideoFrames
                         ? t('Sampling video frames…')
-                        : generating && disableSubmit
+                        : showStop
                           ? t('Stop')
                           : t('Send')
                     }
-                    onClick={generating && disableSubmit ? onStopGenerating : () => handleSubmit()}
+                    onClick={showStop ? onStopGenerating : () => handleSubmit()}
                     style={
-                      !(generating && disableSubmit) && sendDisabled
+                      !showStop && sendDisabled
                         ? {
                             backgroundColor: 'var(--chatbox-background-tertiary)',
                             color: 'var(--chatbox-tint-tertiary)',
@@ -3098,13 +3144,16 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                         : undefined
                     }
                   >
-                    {generating && disableSubmit ? (
-                      <ScalableIcon icon={IconPlayerStopFilled} size={14} />
-                    ) : isSamplingVideoFrames ? (
-                      <IconLoader2 size={14} className="animate-spin" stroke={1.75} />
-                    ) : (
-                      <ScalableIcon icon={IconArrowUp} size={14} />
-                    )}
+                    {/* Fixed slot avoids icon swap layout pop between Send / Stop */}
+                    <span className="composer-send-icon-slot" aria-hidden>
+                      {showStop ? (
+                        <ScalableIcon icon={IconPlayerStopFilled} size={14} />
+                      ) : isSamplingVideoFrames ? (
+                        <IconLoader2 size={14} className="animate-spin" stroke={1.75} />
+                      ) : (
+                        <ScalableIcon icon={IconArrowUp} size={14} />
+                      )}
+                    </span>
                   </ActionIcon>
                 </Tooltip>
               </Flex>

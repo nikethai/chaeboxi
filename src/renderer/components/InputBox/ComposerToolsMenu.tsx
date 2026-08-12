@@ -24,7 +24,7 @@ import {
   IconX,
 } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
-import { type FC, useEffect, useMemo, useState } from 'react'
+import { type FC, type ReactNode, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useKnowledgeBases } from '@/hooks/knowledge-base'
 import { useMCPServerStatus, useToggleMCPServer } from '@/hooks/mcp'
@@ -66,6 +66,8 @@ export type ComposerToolsMenuProps = {
   onAttachLink: () => void
   toolbarButtonClass: string
   toolbarIconSize: number
+  /** Optional mobile-only row (e.g. Memory) rendered inside the overflow menu. */
+  memorySlot?: ReactNode
 }
 
 const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
@@ -95,6 +97,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
   onAttachLink,
   toolbarButtonClass,
   toolbarIconSize,
+  memorySlot,
 }) => {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
@@ -105,20 +108,22 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
   const onMcpEnabledChange = useToggleMCPServer()
   const { data: knowledgeBases } = useKnowledgeBases()
 
-  const mcpServers = mcp.servers.filter((server) => platformCapabilities.supportsMcpStdio || server.transport.type !== 'stdio')
+  const mcpServers = mcp.servers.filter(
+    (server) => platformCapabilities.supportsMcpStdio || server.transport.type !== 'stdio'
+  )
   const mcpEnabledCount = mcpServers.filter((server) => server.enabled).length + mcp.enabledBuiltinServers.length
   const showMcp = featureFlags.mcp && !isOpenClawModel
   const showKb = featureFlags.knowledgeBase && !isOpenClawModel
   const showWeb = !isOpenClawModel
   const showAgent =
-    sessionType === 'chat' && !isOpenClawModel && platformCapabilities.supportsDesktopOnlySettings && Boolean(onToggleAgentMode)
+    sessionType === 'chat' &&
+    !isOpenClawModel &&
+    platformCapabilities.supportsDesktopOnlySettings &&
+    Boolean(onToggleAgentMode)
   // Desktop Tauri builds use CHATBOX_BUILD_PLATFORM=unknown; web/android cannot write FS.
-  const showWorkspace =
-    showAgent && Boolean(onWorkspaceRootChange)
-  const showBrowserArm =
-    platformCapabilities.supportsDesktopOnlySettings && Boolean(onBrowserArmedChange)
-  const showComputerArm =
-    platformCapabilities.supportsDesktopOnlySettings && Boolean(onComputerArmedChange)
+  const showWorkspace = showAgent && Boolean(onWorkspaceRootChange)
+  const showBrowserArm = platformCapabilities.supportsDesktopOnlySettings && Boolean(onBrowserArmedChange)
+  const showComputerArm = platformCapabilities.supportsDesktopOnlySettings && Boolean(onComputerArmedChange)
 
   useEffect(() => {
     if (workspaceModalOpen) {
@@ -175,7 +180,11 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
       >
         <Menu.Target>
           <UnstyledButton
-            className={cn(toolbarButtonClass, 'relative min-w-9 min-h-9 active:scale-[0.96] transition-transform', isSmallScreen && 'mobile-touch-target')}
+            className={cn(
+              toolbarButtonClass,
+              'relative min-w-9 min-h-9 active:scale-[0.96] transition-transform',
+              isSmallScreen && 'mobile-touch-target'
+            )}
             aria-label={t('Tools and attachments')}
             aria-expanded={opened}
           >
@@ -222,6 +231,16 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
           >
             {t('Link')}
           </Menu.Item>
+
+          {memorySlot ? (
+            <>
+              <Menu.Divider />
+              <Menu.Label fw={600}>{t('Memory')}</Menu.Label>
+              <div className="px-1 pb-1" onClick={() => setOpened(false)} onKeyDown={() => undefined}>
+                {memorySlot}
+              </div>
+            </>
+          ) : null}
 
           {(showWeb || showMcp || showKb) && (
             <>

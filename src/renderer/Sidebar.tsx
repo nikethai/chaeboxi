@@ -1,4 +1,16 @@
-import { ActionIcon, Box, Button, Flex, Image, Menu, Stack, TextInput, Tooltip, UnstyledButton } from '@mantine/core'
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Flex,
+  Image,
+  Menu,
+  Stack,
+  Text,
+  TextInput,
+  Tooltip,
+  UnstyledButton,
+} from '@mantine/core'
 import SwipeableDrawer from '@mui/material/SwipeableDrawer'
 import {
   IconChevronUp,
@@ -10,6 +22,7 @@ import {
   IconPhotoPlus,
   IconSearch,
   IconSettings,
+  IconX,
 } from '@tabler/icons-react'
 import { useNavigate } from '@tanstack/react-router'
 import { getDefaultStore } from 'jotai'
@@ -176,7 +189,12 @@ export default function Sidebar() {
 
   // Desktop drawer stays open (rail or expanded); mobile uses temporary open/close.
   const drawerOpen = isSmallScreen ? showSidebar : true
-  const drawerWidth = isSmallScreen ? '75vw' : isIconRail ? SIDEBAR_ICON_RAIL_WIDTH : effectiveSidebarWidth
+  // Mobile: near-full intentional Chats panel (not a squeezed 75% desktop rail).
+  const drawerWidth = isSmallScreen
+    ? 'min(100vw - 1.25rem, 22.5rem)'
+    : isIconRail
+      ? SIDEBAR_ICON_RAIL_WIDTH
+      : effectiveSidebarWidth
 
   return (
     <>
@@ -195,7 +213,7 @@ export default function Sidebar() {
             backgroundColor: 'var(--chatbox-background-rail)',
             boxSizing: 'border-box',
             width: drawerWidth,
-            maxWidth: isSmallScreen ? '75vw' : undefined,
+            maxWidth: isSmallScreen ? 'min(100vw - 1.25rem, 22.5rem)' : undefined,
             // Soft studio edge (no hard double border with .studio-rail)
             borderRight: 'none',
             boxShadow: 'var(--chatbox-rail-edge-shadow)',
@@ -229,12 +247,12 @@ export default function Sidebar() {
           pb="var(--mobile-safe-area-inset-bottom, 0px)"
           className={clsx('relative studio-rail', isIconRail && 'studio-rail--icon')}
         >
-          {/* Brand */}
+          {/* Brand / mobile Chats header */}
           <TitleBarRow
             heightMode="desktop"
             macTrafficInset={false}
             justify={isIconRail ? 'center' : 'flex-start'}
-            className="rail-head"
+            className={clsx('rail-head', isSmallScreen && 'rail-head--mobile')}
           >
             {isIconRail ? (
               <Tooltip label="Chaeboxi" position="right" withArrow openDelay={300}>
@@ -246,6 +264,23 @@ export default function Sidebar() {
                   className="rounded-[6px] active:scale-[0.96] transition-transform"
                 />
               </Tooltip>
+            ) : isSmallScreen ? (
+              <Flex align="center" gap={8} miw={0} justify="space-between" className="controls min-w-0 w-full">
+                <Text component="span" className="rail-mobile-title">
+                  {t('Chats')}
+                </Text>
+                <ActionIcon
+                  variant="subtle"
+                  color="chatbox-secondary"
+                  size={40}
+                  radius="md"
+                  className="active:scale-[0.96] transition-transform"
+                  aria-label={t('Hide sidebar')}
+                  onClick={() => setShowSidebar(false)}
+                >
+                  <IconX size={18} stroke={1.75} />
+                </ActionIcon>
+              </Flex>
             ) : (
               <Flex align="center" gap={8} miw={0} justify="flex-start" className="controls min-w-0 w-full">
                 <ChaeboxiWordmark size="rail" />
@@ -255,7 +290,10 @@ export default function Sidebar() {
           </TitleBarRow>
 
           {/* Nav — labels when expanded; icon-only tooltips in rail */}
-          <nav className={clsx('rail-nav', isIconRail && 'rail-nav--icon')} aria-label={t('Navigation')}>
+          <nav
+            className={clsx('rail-nav', isIconRail && 'rail-nav--icon', isSmallScreen && 'rail-nav--mobile')}
+            aria-label={t('Navigation')}
+          >
             {isIconRail ? (
               <>
                 <Tooltip label={t('Search')} position="right" withArrow openDelay={300}>
@@ -305,11 +343,7 @@ export default function Sidebar() {
                   <IconSearch size={18} stroke={1.5} aria-hidden />
                   <span>{t('Search')}</span>
                 </button>
-                <button
-                  type="button"
-                  className="rail-nav-item rail-nav-item--primary"
-                  onClick={handleCreateNewSession}
-                >
+                <button type="button" className="rail-nav-item rail-nav-item--primary" onClick={handleCreateNewSession}>
                   <IconEdit size={18} stroke={1.5} aria-hidden />
                   <span>{t('New Chat')}</span>
                   {!isSmallScreen && <kbd className="rail-nav-kbd">⌘N</kbd>}
@@ -329,6 +363,7 @@ export default function Sidebar() {
                 showArchived={showArchived}
                 onShowArchivedChange={setShowArchived}
                 onCreateProject={() => setFolderModalOpened(true)}
+                density={isSmallScreen ? 'mobile' : 'desktop'}
               />
             </Box>
           )}

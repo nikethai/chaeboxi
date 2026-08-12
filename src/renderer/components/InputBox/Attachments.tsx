@@ -3,7 +3,7 @@ import Tooltip from '@mui/material/Tooltip'
 import Typography from '@mui/material/Typography'
 import { ProviderAPIError } from '@shared/models/errors'
 import { useQuery } from '@tanstack/react-query'
-import { AlertCircle, CheckCircle, Eye, Film, Link, Link2, Loader2, Trash2 } from 'lucide-react'
+import { AlertCircle, CheckCircle, Eye, Film, Link, Link2, Loader2, X } from 'lucide-react'
 import { type CSSProperties, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
@@ -28,8 +28,9 @@ function getTranslatedErrorMessage(errorCode: string | undefined, t: (key: strin
 const chipSurfaceClass =
   'composer-attach-chip relative m-1 inline-flex size-[88px] items-center justify-center overflow-hidden rounded-[11px] bg-[var(--chatbox-background-tertiary)] group'
 
+/** Quiet product remove control — dark pill + X (not a loud red trash glyph). */
 const deleteButtonClass =
-  'composer-attach-delete absolute top-0.5 right-0.5 z-10 flex size-8 min-h-10 min-w-10 items-center justify-center rounded-full bg-[var(--chatbox-background-secondary)]/95 text-red-500 opacity-0 shadow-[0_0_0_1px_rgba(0,0,0,0.06)] transition-[opacity,transform] duration-150 ease-[cubic-bezier(0.2,0,0,1)] group-hover:opacity-100 group-focus-within:opacity-100 active:scale-[0.96] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.1)]'
+  'composer-attach-delete absolute top-1 right-1 z-10 flex size-6 items-center justify-center rounded-full bg-black/55 text-white/95 opacity-0 shadow-[0_1px_2px_rgba(0,0,0,0.28)] backdrop-blur-[2px] transition-[opacity,transform,background-color] duration-150 ease-[cubic-bezier(0.2,0,0,1)] group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-black/70 active:scale-[0.96] dark:bg-black/60 dark:hover:bg-black/75'
 
 function chipStaggerStyle(staggerIndex?: number): CSSProperties | undefined {
   if (staggerIndex === undefined || staggerIndex <= 0) return undefined
@@ -102,14 +103,14 @@ export function ImageMiniCard(props: { storageKey: string; onDelete: () => void;
       {onDelete && (
         <button
           type="button"
-          className={cn(deleteButtonClass, isSmallScreen && 'opacity-90')}
+          className={cn(deleteButtonClass, isSmallScreen && 'is-touch-visible')}
           onClick={(e) => {
             e.stopPropagation()
             onDelete()
           }}
           aria-label="Remove image"
         >
-          <Trash2 size={16} strokeWidth={1.8} />
+          <X size={13} strokeWidth={2.25} />
         </button>
       )}
     </div>
@@ -276,14 +277,14 @@ export function FileMiniCard(props: {
       {onDelete && (
         <button
           type="button"
-          className={cn(deleteButtonClass, isSmallScreen && 'opacity-90')}
+          className={cn(deleteButtonClass, isSmallScreen && 'is-touch-visible')}
           onClick={(e) => {
             e.stopPropagation()
             onDelete()
           }}
           aria-label={`Remove ${name}`}
         >
-          <Trash2 size={16} strokeWidth={1.8} />
+          <X size={13} strokeWidth={2.25} />
         </button>
       )}
     </div>
@@ -515,14 +516,14 @@ export function LinkMiniCard(props: {
       {onDelete && (
         <button
           type="button"
-          className={cn(deleteButtonClass, isSmallScreen && 'opacity-90')}
+          className={cn(deleteButtonClass, isSmallScreen && 'is-touch-visible')}
           onClick={(e) => {
             e.stopPropagation()
             onDelete()
           }}
           aria-label="Remove link"
         >
-          <Trash2 size={16} strokeWidth={1.8} />
+          <X size={13} strokeWidth={2.25} />
         </button>
       )}
     </div>

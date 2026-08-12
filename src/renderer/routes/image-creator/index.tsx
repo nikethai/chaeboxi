@@ -26,7 +26,7 @@ import {
 import { zodValidator } from '@tanstack/zod-adapter'
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { type ClipboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ImageModelSelect } from '@/components/ImageModelSelect'
 import Page from '@/components/layout/Page'
@@ -55,6 +55,7 @@ import {
 import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 import { queryClient } from '@/stores/queryClient'
 import { listAvailableImageModels } from '@/utils/available-image-models'
+import { extractClipboardImages } from '@/utils/clipboardImages'
 import {
   blobToDataUrl,
   COMFYUI_IMAGE_MODEL_IDS,
@@ -289,28 +290,67 @@ function ImageCreatorPage() {
     setSelectedRatio((prev) => (newRatioOptions.includes(prev) ? prev : 'auto'))
   }, [])
 
-  const handleImageUpload = useCallback((files: FileList | null) => {
-    if (!files || files.length === 0) return
+  const referenceCountRef = useRef(0)
+  useEffect(() => {
+    referenceCountRef.current = referenceImages.length
+  }, [referenceImages.length])
 
-    for (const file of Array.from(files)) {
-      if (!file.type.startsWith('image/')) continue
+  const handleImageUpload = useCallback((files: FileList | File[] | null) => {
+    if (!files) return
+    const list = Array.isArray(files) ? files : Array.from(files)
+    if (list.length === 0) return
 
-      const reader = new FileReader()
-      reader.onload = async (e) => {
-        const dataUrl = e.target?.result as string
+    const readAsDataUrl = (file: File) =>
+      new Promise<string>((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(String(reader.result || ''))
+        reader.onerror = () => reject(reader.error || new Error('read failed'))
+        reader.readAsDataURL(file)
+      })
+
+    void (async () => {
+      for (const file of list) {
+        if (!file.type.startsWith('image/') && !/\.(png|jpe?g|webp|gif)$/i.test(file.name)) continue
+        if (referenceCountRef.current >= MAX_REFERENCE_IMAGES) {
+          log.info('Reference image limit reached, skipping:', file.name)
+          break
+        }
+
+        let dataUrl = ''
+        try {
+          dataUrl = await readAsDataUrl(file)
+        } catch {
+          log.error('Failed to read image file:', file.name)
+          continue
+        }
+        if (!dataUrl) continue
+
         const storageKey = StorageKeyGenerator.picture('image-creator-ref')
-        await storage.setBlob(storageKey, dataUrl)
-        setReferenceImages((prev) => {
-          if (prev.length >= MAX_REFERENCE_IMAGES) return prev
-          return [...prev, { storageKey, dataUrl }]
-        })
+        try {
+          await storage.setBlob(storageKey, dataUrl)
+          setReferenceImages((prev) => {
+            if (prev.length >= MAX_REFERENCE_IMAGES) return prev
+            if (prev.some((img) => img.dataUrl === dataUrl)) return prev
+            const next = [...prev, { storageKey, dataUrl }]
+            referenceCountRef.current = next.length
+            return next
+          })
+        } catch (err) {
+          log.error('Failed to store reference image:', file.name, err)
+        }
       }
-      reader.onerror = () => {
-        log.error('Failed to read image file:', file.name)
-      }
-      reader.readAsDataURL(file)
-    }
+    })()
   }, [])
+
+  const handlePromptPaste = useCallback(
+    (event: ClipboardEvent<HTMLTextAreaElement>) => {
+      const images = extractClipboardImages(event.clipboardData)
+      if (images.length === 0) return
+      // Attach images; keep default text paste for any caption.
+      handleImageUpload(images)
+    },
+    [handleImageUpload]
+  )
 
   const handleRemoveReferenceImage = useCallback((storageKey: string) => {
     setReferenceImages((prev) => prev.filter((img) => img.storageKey !== storageKey))
@@ -672,6 +712,7 @@ function ImageCreatorPage() {
                           '&:focus': { border: 'none', boxShadow: 'none' },
                         },
                       }}
+                      onPaste={handlePromptPaste}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault()

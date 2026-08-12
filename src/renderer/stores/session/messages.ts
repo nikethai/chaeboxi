@@ -74,8 +74,15 @@ export async function modifyMessage(
     updated.tokenCountMap = undefined
   }
 
-  // (legacy comment removed)
-  updated.timestamp = Date.now()
+  // Cache-only stream paints must not rewrite timestamp every frame — that churns
+  // React Query identity + Virtuoso remeasure and makes the scrollbar flicker.
+  // Persist / final settle still bump timestamp for recency ordering.
+  if (!updateOnlyCache) {
+    updated.timestamp = Date.now()
+  } else if (updated.timestamp == null) {
+    // Preserve existing timestamp when stream patches omit it (identity-stable).
+    // Leave as-is if already set on the patch object.
+  }
   if (updateOnlyCache) {
     await chatStore.updateMessageCache(sessionId, updated.id, updated)
   } else {
@@ -193,6 +200,9 @@ export async function submitNewUserMessage(
   let earlyAssistantInserted = false
   if (needGenerating) {
     newAssistantMsg.generating = true
+    // Live-lock ASAP so Stop never flashes Send before generate() marks the target.
+    const { markSessionGenerationLive } = await import('./session-live-generation')
+    markSessionGenerationLive(sessionId, newAssistantMsg.id)
     await insertMessage(sessionId, newAssistantMsg)
     earlyAssistantInserted = true
     try {
@@ -212,6 +222,8 @@ export async function submitNewUserMessage(
   if (isMultiAgentRoom) {
     // Room discussion owns assistant turns — drop the solo placeholder
     if (earlyAssistantInserted) {
+      const { clearSessionGenerationLive } = await import('./session-live-generation')
+      clearSessionGenerationLive(sessionId, newAssistantMsg.id)
       await removeMessage(sessionId, newAssistantMsg.id)
       earlyAssistantInserted = false
     }

@@ -294,7 +294,7 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
           </Text>
           {generating && (
             <Text className="session-statusline-live shrink-0" size="xs">
-              {t('Generating…')}
+              {t('Thinking…')}
             </Text>
           )}
         </Flex>

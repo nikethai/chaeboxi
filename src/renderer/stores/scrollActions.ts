@@ -39,17 +39,36 @@ export function scrollToTop(behavior: 'auto' | 'smooth' = 'auto') {
   return scrollToIndex(0, 'start', behavior)
 }
 
+let lastScrollToBottomAt = 0
+let pendingScrollToBottomRaf: number | null = null
+
+/**
+ * Pin to latest message. Throttled for 'auto' so multi-step tool streams
+ * don't thrash the scrollbar (triple scrollTo was fighting Virtuoso followOutput).
+ */
 export function scrollToBottom(behavior: 'auto' | 'smooth' = 'auto') {
   clearAutoScroll()
+  const now = Date.now()
+  // Coalesce rapid auto pins (stream inserts, tool rounds, settle).
+  if (behavior === 'auto' && now - lastScrollToBottomAt < 160) {
+    if (pendingScrollToBottomRaf == null && typeof requestAnimationFrame === 'function') {
+      pendingScrollToBottomRaf = requestAnimationFrame(() => {
+        pendingScrollToBottomRaf = null
+        lastScrollToBottomAt = Date.now()
+        const virtuoso = uiStore.getState().messageScrolling
+        virtuoso?.current?.scrollToIndex({ index: 'LAST', align: 'end', behavior: 'auto' })
+      })
+    }
+    return
+  }
+  lastScrollToBottomAt = now
+  if (pendingScrollToBottomRaf != null && typeof cancelAnimationFrame === 'function') {
+    cancelAnimationFrame(pendingScrollToBottomRaf)
+    pendingScrollToBottomRaf = null
+  }
   const virtuoso = uiStore.getState().messageScrolling
-  // Prefer scrollTo Infinity so newly inserted room turns pin even before Virtuoso
-  // has fully measured the last index (multi-agent discuss used to stall mid-list).
-  virtuoso?.current?.scrollTo({ top: Number.MAX_SAFE_INTEGER, behavior })
-  // Second pass after layout so tall streamed messages stay in view
-  requestAnimationFrame(() => {
-    virtuoso?.current?.scrollToIndex({ index: 'LAST', align: 'end', behavior })
-  })
-  return scrollToIndex('LAST', 'end', behavior)
+  // One scroll only. Dual rAF pins fought Virtuoso followOutput and made the bar thrash.
+  virtuoso?.current?.scrollToIndex({ index: 'LAST', align: 'end', behavior })
 }
 
 let autoScrollTask: {

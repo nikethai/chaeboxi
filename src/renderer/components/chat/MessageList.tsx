@@ -97,6 +97,13 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
   const isSmallScreen = useIsSmallScreen()
 
   const { currentSession, alignToBottom = false } = props
+  // Streaming turns still grow (answer text). Keep a light follow when at bottom so
+  // the thread feels stuck to the latest token — work strip stays collapsed so this
+  // no longer thrashes like the old auto-expand tool UI.
+  const isStreaming = useMemo(
+    () => currentSession.messages?.some((m) => m.generating) === true,
+    [currentSession.messages]
+  )
 
   const currentThreadHash = useMemo(
     () => currentSession && getCurrentThreadHistoryHash(currentSession),
@@ -192,8 +199,8 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
               ref={virtuoso}
               // Identity by message id so append/stream does not recycle the wrong row.
               computeItemKey={(_index, msg) => msg.id}
-              // Keep pinned to latest while user is at bottom. Use 'auto' (not 'smooth'):
-              // smooth restarts every height change during streaming and feels jerky.
+              // Stick to bottom while user is already there. Prefer 'auto' always — 'smooth'
+              // restarts every paint and feels cheap. Fixed work-strip height keeps deltas small.
               followOutput={(isAtBottom) => (isAtBottom ? 'auto' : false)}
               alignToBottom={alignToBottom}
               {...(sessionScrollPositionCache.has(currentSession.id) && !alignToBottom
@@ -205,8 +212,11 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
                 : {
                     initialTopMostItemIndex: Math.max(0, currentMessageList.length - 1),
                   })}
-              // Large overscan forces expensive Markdown layout offscreen during stream.
-              increaseViewportBy={{ top: 600, bottom: 800 }}
+              // Streaming: smaller overscan = less offscreen Markdown remeasure thrash.
+              increaseViewportBy={isStreaming ? { top: 120, bottom: 180 } : { top: 280, bottom: 360 }}
+              defaultItemHeight={isStreaming ? 88 : 112}
+              // Skip animation on data changes during stream (Virtuoso internal)
+              skipAnimationFrameInResizeObserver={isStreaming}
               itemContent={(index, msg) => {
                 const prevMsg = index > 0 ? currentMessageList[index - 1] : undefined
                 const nextMsg = currentMessageList[index + 1]

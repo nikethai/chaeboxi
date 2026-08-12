@@ -355,6 +355,163 @@
     margin-top: 0.5rem;
   }
 
+  /*
+   * Live generation dock — JOINS composer like todo-dock (one product surface).
+   * Not a floating badge. Quiet meta row on the same card family as composer.
+   * Composer radius is 1.15rem; live-gen is the top cap of that joined stack.
+   */
+  .live-gen-dock {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .live-gen-dock.is-exiting {
+    animation: live-gen-dock-out 140ms cubic-bezier(0.2, 0, 0, 1) both;
+  }
+
+  .live-gen-dock:not(.is-exiting) {
+    animation: live-gen-dock-in 180ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes live-gen-dock-in {
+    from {
+      opacity: 0;
+      transform: translateY(2px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes live-gen-dock-out {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(1px);
+    }
+  }
+
+  .live-gen-dock-inner {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2rem;
+    padding: 0.35rem 0.85rem 0.4rem 0.75rem;
+    /* Top of joined dock: outer radius matches composer (1.15rem) */
+    border-radius: 1.15rem 1.15rem 0 0;
+    border: none;
+    background: var(--chatbox-composer-bg, var(--chatbox-background-secondary));
+    /* Share composer shadow family — no second floating card */
+    box-shadow: var(--chatbox-composer-shadow);
+  }
+
+  /* Join seam: composer tucks under live-gen by 1px, square top corners */
+  .chat-dock-stack:has(> .live-gen-dock) .chat-dock-composer {
+    position: relative;
+    z-index: 2;
+    margin-top: -1px;
+  }
+
+  .chat-dock-stack:has(> .live-gen-dock) .composer-card {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
+  /* Hairline between live row and composer body (inside shared surface) */
+  .chat-dock-stack:has(> .live-gen-dock) .composer-card {
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, var(--chatbox-tint-primary) 7%, transparent),
+      var(--chatbox-composer-shadow);
+  }
+
+  .live-gen-dock-dots {
+    flex-shrink: 0;
+    /* Optical: dots sit with text cap-height */
+    transform: translateY(0.5px);
+  }
+
+  .live-gen-dock-dots.assistant-pending-dots > i,
+  .live-gen-dock-dots > i {
+    background: var(--chatbox-tint-secondary);
+    opacity: 0.5;
+  }
+
+  .live-gen-dock-title {
+    flex-shrink: 0;
+    font-size: 0.8125rem;
+    font-weight: 550;
+    letter-spacing: -0.014em;
+    line-height: 1.2;
+    color: var(--chatbox-tint-secondary);
+  }
+
+  .live-gen-dock-sep {
+    flex-shrink: 0;
+    color: color-mix(in srgb, var(--chatbox-tint-tertiary) 70%, transparent);
+    font-size: 0.75rem;
+    line-height: 1;
+    opacity: 0.7;
+  }
+
+  .live-gen-dock-detail {
+    min-width: 0;
+    flex: 1 1 auto;
+    font-size: 0.75rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    color: var(--chatbox-tint-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .live-gen-dock-time {
+    flex-shrink: 0;
+    margin-left: auto;
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+    letter-spacing: -0.01em;
+    color: var(--chatbox-tint-tertiary);
+    opacity: 0.85;
+    min-width: 2rem;
+    text-align: right;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .live-gen-dock:not(.is-exiting),
+    .live-gen-dock.is-exiting {
+      animation: none;
+    }
+  }
+
+  .quick-chat-shell .live-gen-dock-inner {
+    min-height: 1.65rem;
+    padding: 0.28rem 0.65rem 0.3rem 0.55rem;
+    border-radius: 0.85rem 0.85rem 0 0;
+  }
+
+  .quick-chat-shell .chat-dock-stack:has(> .live-gen-dock) .composer-card {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+  }
+
+  .quick-chat-shell .live-gen-dock-title {
+    font-size: 0.75rem;
+  }
+
+  .quick-chat-shell .live-gen-dock-detail,
+  .quick-chat-shell .live-gen-dock-time {
+    font-size: 0.6875rem;
+  }
+
   /* Floating quick chat — compact HUD density of full session DNA */
   .quick-chat-shell {
     min-width: 0;
@@ -1799,20 +1956,50 @@
 
   /*
    * Grok thinking — plain text control, no card shell.
-   * Collapsed: “Worked for 3s ›”
-   * Expanded / live: optional bulb status line + soft body (no hard border).
+   * Layout rule: fixed live stack height so timer/status/label swaps never jump the thread.
+   * Collapsed finished: “Worked for 3s ›”
    */
   .msg-worked {
     width: 100%;
-    margin: 0.05rem 0 0.55rem;
+    /* Fixed rhythm under assistant prose — answer sits on a stable baseline */
+    margin: 0.1rem 0 0.7rem;
+    /* Reserve one preview line while live so status appearing does not shove answer down */
+    min-height: 1.75rem;
+  }
+
+  .msg-worked.is-live {
+    /* Single Grok line while live — detail lives on composer dock */
+    min-height: 1.5rem;
+    animation: msg-worked-in 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-fill-mode: both;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* After first paint, disable re-trigger if React remounts with same visual state */
+  .msg-worked.is-live.is-settled {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  @keyframes msg-worked-in {
+    from {
+      opacity: 0;
+      transform: translateY(2px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .msg-worked-row {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.4rem;
     width: 100%;
     min-width: 0;
+    min-height: 1.5rem; /* lock header row */
     padding: 0;
     border: none;
     border-radius: 0;
@@ -1820,36 +2007,57 @@
     box-sizing: border-box;
   }
 
+  /* Live activity dots — fixed slot so Thinking never remounts chrome */
+  .msg-worked-activity {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 1.35rem;
+    height: 1.1rem;
+  }
+
+  .msg-worked.is-live .msg-worked-activity .assistant-pending-dots > i {
+    background: var(--chatbox-tint-secondary);
+    opacity: 0.55;
+  }
+
   .msg-worked-toggle {
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
+    gap: 0.4rem;
     flex: 0 1 auto;
     min-width: 0;
     max-width: 100%;
-    min-height: 28px;
-    padding: 0.1rem 0;
+    min-height: 1.5rem;
+    padding: 0;
     margin: 0;
     border: none;
     background: none;
     cursor: pointer;
     font-size: 0.875rem;
     font-weight: 400;
-    line-height: 1.4;
-    letter-spacing: -0.01em;
+    line-height: 1.35;
+    letter-spacing: -0.012em;
     color: var(--chatbox-tint-tertiary);
     text-align: left;
     transition-property: color;
-    transition-duration: 120ms;
-    transition-timing-function: var(--chatbox-ease);
+    transition-duration: 180ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .msg-worked-toggle:hover {
     color: var(--chatbox-tint-secondary);
   }
 
+  .msg-worked-toggle:disabled {
+    cursor: default;
+  }
+
   .msg-worked-label {
-    min-width: 0;
+    display: inline-block;
+    min-width: 6.5rem; /* Thinking… / Using tools… / Worked for Ns — less reflow */
+    transition: color 180ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .msg-worked-bulb {
@@ -1861,8 +2069,14 @@
   }
 
   .msg-worked-live {
+    display: inline-block;
     font-variant-numeric: tabular-nums;
-    opacity: 0.8;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    opacity: 0.68;
+    letter-spacing: -0.01em;
+    min-width: 2.25rem; /* 1s … 59s … 1m 23s */
+    text-align: left;
   }
 
   .msg-worked-chevron {
@@ -1870,15 +2084,15 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    width: 1rem;
-    height: 1rem;
+    width: 0.9rem;
+    height: 0.9rem;
     font-size: 0.95rem;
     line-height: 1;
     color: var(--chatbox-tint-tertiary);
-    opacity: 0.85;
+    opacity: 0.75;
     transition-property: transform, color, opacity;
-    transition-duration: 140ms;
-    transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+    transition-duration: 180ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .msg-worked-chevron.is-open {
@@ -1890,10 +2104,10 @@
   .msg-worked-copy {
     opacity: 0;
     flex-shrink: 0;
-    margin-left: 0.15rem;
+    margin-left: 0.1rem;
     transition-property: opacity;
-    transition-duration: 120ms;
-    transition-timing-function: var(--chatbox-ease);
+    transition-duration: 140ms;
+    transition-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .msg-worked:hover .msg-worked-copy,
@@ -1901,31 +2115,116 @@
     opacity: 1;
   }
 
-  /* Grok status line under header (bulb + short summary) */
+  /* Fixed-height status slot: always on while live so users see the model working */
   .msg-worked-status {
     display: flex;
-    align-items: flex-start;
-    gap: 0.4rem;
-    margin-top: 0.35rem;
+    align-items: center;
+    gap: 0.45rem;
+    height: 1.2rem;
+    margin-top: 0.2rem;
+    margin-left: 0.05rem;
     padding: 0;
     color: var(--chatbox-tint-tertiary);
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
     font-weight: 400;
-    line-height: 1.45;
+    line-height: 1.2rem;
     letter-spacing: -0.01em;
+    max-width: 34rem;
+    opacity: 0;
+    transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .msg-worked-status.is-visible {
+    opacity: 1;
+  }
+
+  /* Soft pulse rail — continuous “alive” cue without layout thrash */
+  .msg-worked-status-rail {
+    flex-shrink: 0;
+    width: 1.35rem;
+    height: 2px;
+    border-radius: 99px;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      color-mix(in srgb, var(--chatbox-tint-brand) 55%, var(--chatbox-tint-secondary)) 45%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    opacity: 0.75;
+    animation: msg-worked-rail 1.8s ease-in-out infinite;
+  }
+
+  @keyframes msg-worked-rail {
+    0% {
+      background-position: 100% 0;
+      opacity: 0.4;
+    }
+    50% {
+      opacity: 0.9;
+    }
+    100% {
+      background-position: -100% 0;
+      opacity: 0.4;
+    }
   }
 
   .msg-worked-status-text {
     min-width: 0;
+    flex: 1 1 auto;
+    color: color-mix(in srgb, var(--chatbox-tint-secondary) 78%, var(--chatbox-tint-tertiary));
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .msg-worked.is-live .msg-worked-label {
+    color: var(--chatbox-tint-secondary);
+    font-weight: 500;
+  }
+
+  .msg-worked.is-live .msg-worked-live {
+    opacity: 0.8;
     color: var(--chatbox-tint-tertiary);
+  }
+
+  /* Thinking slot + answer slot — stable vertical rhythm */
+  .msg-thinking-slot {
+    width: 100%;
+  }
+
+  .msg-answer-slot {
+    width: 100%;
+    /* Soft answer enter when first text paints after work strip */
+    animation: msg-answer-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes msg-answer-in {
+    from {
+      opacity: 0.35;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .msg-answer-slot {
+      animation: none;
+    }
+  }
+
+  .msg-worked + *,
+  .msg-thinking-slot + .msg-answer-slot {
+    margin-top: 0.2rem;
   }
 
   .msg-worked-body {
     display: flex;
     flex-direction: column;
     gap: 0.05rem;
-    margin-top: 0.35rem;
-    padding: 0 0 0 0.1rem;
+    margin-top: 0.3rem;
+    padding: 0;
     border: none;
     border-radius: 0;
     background: transparent;
@@ -3341,6 +3640,32 @@
     min-width: 36px !important;
     min-height: 32px !important;
     border-radius: 0.4375rem !important; /* r 7px */
+    transition:
+      background-color 160ms var(--chatbox-ease, ease),
+      color 160ms var(--chatbox-ease, ease),
+      transform 120ms var(--chatbox-ease, ease),
+      box-shadow 160ms var(--chatbox-ease, ease) !important;
+  }
+
+  .composer-send:active:not(:disabled) {
+    transform: scale(0.96);
+  }
+
+  .composer-send-icon-slot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+  }
+
+  .composer-send svg {
+    transition: opacity 120ms var(--chatbox-ease, ease), transform 160ms var(--chatbox-ease, ease);
+  }
+
+  .composer-send.is-stop {
+    /* Slightly quieter stop surface — product studio, not alarm red */
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 10%, transparent);
   }
 
   /* Mobile primary controls use a consistent, comfortable 44px target. */
@@ -3645,27 +3970,53 @@ div[data-vaul-drawer] {
   z-index: 2000;
 }
 
-/* Shimmer animation for active thinking state — solid color shift, not brand gradient wash */
+/* Shimmer — very soft product pulse (not karaoke neon) */
 .shimmer-text {
   background: linear-gradient(
-    90deg,
-    var(--chatbox-tint-secondary) 25%,
-    var(--chatbox-tint-primary) 50%,
-    var(--chatbox-tint-secondary) 75%
+    100deg,
+    var(--chatbox-tint-tertiary) 20%,
+    var(--chatbox-tint-secondary) 45%,
+    color-mix(in srgb, var(--chatbox-tint-primary) 88%, var(--chatbox-tint-secondary)) 50%,
+    var(--chatbox-tint-secondary) 55%,
+    var(--chatbox-tint-tertiary) 80%
   );
-  background-size: 200% 100%;
+  background-size: 240% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: shimmer-sweep 1.6s ease-in-out infinite;
+  animation: shimmer-sweep 3.2s cubic-bezier(0.45, 0, 0.55, 1) infinite;
 }
 
 @keyframes shimmer-sweep {
   0% {
-    background-position: 100% 0;
+    background-position: 110% 0;
   }
   100% {
-    background-position: -100% 0;
+    background-position: -110% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-text {
+    animation: none;
+    background: none;
+    -webkit-text-fill-color: unset;
+    color: var(--chatbox-tint-secondary);
+  }
+
+  .msg-worked.is-live {
+    animation: none;
+  }
+
+  .msg-worked-status {
+    transition: none;
+  }
+
+  .msg-worked-status-rail {
+    animation: none;
+    opacity: 0.55;
+    background: color-mix(in srgb, var(--chatbox-tint-brand) 40%, var(--chatbox-tint-tertiary));
+    background-size: 100% 100%;
   }
 }
 
@@ -3673,18 +4024,18 @@ div[data-vaul-drawer] {
 .assistant-pending {
   display: inline-flex;
   align-items: center;
-  gap: 0.55rem;
-  min-height: 1.75rem;
-  padding: 0.15rem 0;
+  gap: 0.5rem;
+  /* Match .msg-worked.is-live min-height so pending → strip handoff does not jump */
+  min-height: 2.85rem;
+  padding: 0.1rem 0 0.2rem;
   color: var(--chatbox-tint-tertiary);
-  /* Enter softly so the post-send wait never feels like a blank hole */
-  animation: assistant-pending-in 180ms var(--chatbox-ease, ease) both;
+  animation: assistant-pending-in 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes assistant-pending-in {
   from {
     opacity: 0;
-    transform: translateY(4px);
+    transform: translateY(2px);
   }
   to {
     opacity: 1;
@@ -6069,19 +6420,36 @@ html[data-quick-chat] .composer-tools-menu .mantine-Menu-item .mantine-Flex-root
 }
 
 .session-statusline-dot.is-live {
-  background: var(--chatbox-tint-success, #4fb286);
+  background: var(--chatbox-tint-brand);
   opacity: 1;
-  box-shadow: 0 0 0 2px rgba(79, 178, 134, 0.18);
-  animation: statusline-pulse 1.2s ease-in-out infinite;
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--chatbox-tint-brand) 35%, transparent);
+  animation: statusline-pulse 1.8s cubic-bezier(0.2, 0, 0, 1) infinite;
+  will-change: transform, opacity;
 }
 
 @keyframes statusline-pulse {
-  0%,
-  100% {
+  0% {
+    transform: scale(0.92);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--chatbox-tint-brand) 35%, transparent);
     opacity: 1;
   }
-  50% {
-    opacity: 0.45;
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--chatbox-tint-brand) 0%, transparent);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0.92);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--chatbox-tint-brand) 0%, transparent);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .session-statusline-dot.is-live {
+    animation: none;
+    will-change: auto;
+    box-shadow: none;
   }
 }
 
@@ -6201,9 +6569,11 @@ button.session-statusline-tok:hover {
 }
 
 .session-statusline-live {
-  color: var(--chatbox-tint-tertiary) !important;
+  color: var(--chatbox-tint-secondary) !important;
   font-size: 0.7rem !important;
-  font-weight: 500 !important;
+  font-weight: 550 !important;
+  letter-spacing: -0.012em;
+  -webkit-font-smoothing: antialiased;
 }
 
 .session-statusline-ready {
@@ -6213,13 +6583,6 @@ button.session-statusline-tok:hover {
 }
 
 /* Generating pulse label — calm, not neon */
-.session-statusline-live {
-  color: var(--chatbox-tint-tertiary) !important;
-  font-size: 0.7rem !important;
-  font-weight: 500 !important;
-  letter-spacing: -0.01em;
-}
-
 button.session-statusline-plan:hover {
   color: var(--chatbox-tint-secondary);
   background: color-mix(in srgb, var(--chatbox-background-tertiary) 80%, transparent);

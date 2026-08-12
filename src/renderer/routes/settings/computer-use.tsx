@@ -45,7 +45,7 @@ function RouteComponent() {
   const computerUse = useMemo(
     () => ({
       enabled: false,
-      maxScreenshotsPerTurn: 10,
+      maxScreenshotsPerTurn: 16,
       abortHotkey: '',
       appAllowlist: [] as string[],
       debugTrajectory: false,
@@ -255,7 +255,7 @@ function RouteComponent() {
                 clampBehavior="strict"
                 value={computerUse.maxScreenshotsPerTurn}
                 disabled={!desktop || !computerUse.enabled}
-                onChange={(v) => patch({ maxScreenshotsPerTurn: typeof v === 'number' ? v : 10 })}
+                onChange={(v) => patch({ maxScreenshotsPerTurn: typeof v === 'number' ? v : 16 })}
                 w={88}
                 styles={{ input: { textAlign: 'center', fontVariantNumeric: 'tabular-nums' } }}
                 aria-label={t('Max screenshots per turn')}

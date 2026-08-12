@@ -61,7 +61,9 @@ Mitigations in this repo:
 | `computer_scroll` | CRITICAL |
 | `computer_mouse_move` | HIGH (intent) / CRITICAL patterns may apply |
 
-Coordinates are in the **last screenshot / verification image pixel space** returned to the model.
+Coordinates are in the **last screenshot / verification image pixel space** returned to the model. Each capture includes a **`frameId`**; click/move may pin to that id — stale frames are rejected with `STALE_FRAME`.
+
+When Computer Use is armed, **`browser_*` tools are stripped** for the turn so the model does not thrash between DOM refs and pixels.
 
 ## Coordinate mapping
 
@@ -102,7 +104,7 @@ Computer tasks need many tool steps (open → screenshot → click → screensho
 
 - Default chat `maxSteps` is **5** (copilot default).
 - When **Computer Use is armed** for the session, generation raises the floor to **16** steps so the model does not die after open/screenshot.
-- Screenshot budget default is **10** per turn (`extension.computerUse.maxScreenshotsPerTurn`).
+- Screenshot budget default is **16** per turn (`extension.computerUse.maxScreenshotsPerTurn`) — aligned with the 16-step floor so auto-verify shots do not starve mid-task.
 - Tool results include a `nextAction` nudge: after open/click/type/key, the model is instructed to screenshot again.
 
 If the agent still stops early: check the model is vision-capable, approvals are not blocking the next tool, and `maxSteps` is not overridden lower by a copilot profile.

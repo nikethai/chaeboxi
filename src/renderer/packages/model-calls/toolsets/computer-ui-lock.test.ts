@@ -19,11 +19,17 @@ describe('filterToolsForComputerUiSpace', () => {
     terminal: {} as never,
     web_search: {} as never,
     memory_search: {} as never,
+    browser_navigate: {} as never,
+    browser_click: {} as never,
+    browser_snapshot: {} as never,
   }
 
-  it('always strips search_file_content', () => {
+  it('always strips search_file_content and browser_* tools', () => {
     const out = filterToolsForComputerUiSpace(base, { agentCodingEnabled: true })
     expect(out.search_file_content).toBeUndefined()
+    expect(out.browser_navigate).toBeUndefined()
+    expect(out.browser_click).toBeUndefined()
+    expect(out.browser_snapshot).toBeUndefined()
     expect(out.computer_screenshot).toBeDefined()
     expect(out.create_file).toBeDefined()
     expect(out.web_search).toBeDefined()

@@ -24,10 +24,10 @@ related:
 | Phase | Code status |
 |-------|-------------|
 | 1 Measure | Template only — **user must run live demos** (`reports/measure-template.md`) |
-| 2 Fix-by-class | Guards already in harness; further fixes after measure |
+| 2 Fix-by-class | **Harness hardened 2026-08-12** — exclusive browser strip, frameId, step/screenshot budgets, prepareStep prune (see `plans/2026-08-12-browser-computer-reliability/`) |
 | 3 Playbooks + deep links | **Implemented** — `computer-playbooks.ts`, `computer_open_uri`, phone extract |
-| 4 Coord audit | Documented + existing aspect resize; live verify on device |
-| 5 AX hybrid | **Thin only** — `computer_frontmost`; full AX deferred |
+| 4 Coord audit | **frameId + map_coords stale reject** in `computer_manager.rs`; live verify on device still recommended |
+| 5 AX hybrid | **Thin only** — `computer_frontmost`; full AX deferred (product decision) |
 | 6 Ship UX | Settings binary warning + allowlist/trajectory section; **release binary still manual** |
 | 7 Trajectory + allowlist | **Implemented** — settings + `trajectory.ts` |
 
@@ -51,7 +51,7 @@ This plan covers **everything left** from measure → ship → polish. It is the
 | prepareStep force screenshot + prune | `stream-text.ts`, `abstract-ai-sdk.ts` |
 | UI space lock (strip search_file_content) | `computer-ui-lock.ts` |
 | Block Finder open / Spotlight keys | `computer-harness.ts` + computer tools |
-| min steps 16 / screenshot budget 10 | `generation.ts`, settings |
+| min steps 16 / screenshot budget 16 | `generation.ts`, settings |
 | Industry research | `docs/research/2026-08-11-computer-use-industry-parity.md` |
 
 ## Success criteria (product)

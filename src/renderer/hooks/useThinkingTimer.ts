@@ -16,18 +16,16 @@ export function useThinkingTimer(startTime: number | undefined, isActive: boolea
       return
     }
 
-    // Update immediately to avoid delay
+    // Whole-second ticks only — 100ms updates made live labels jittery (not product-grade).
     const updateElapsed = () => {
-      setElapsedTime(Date.now() - startTime)
+      const ms = Date.now() - startTime
+      // Floor to 250ms buckets so React only re-renders a few times per second.
+      setElapsedTime(Math.floor(ms / 250) * 250)
     }
 
     updateElapsed()
+    const interval = setInterval(updateElapsed, 250)
 
-    // Set up interval to update every 100ms for smooth real-time updates
-    // This provides responsive feedback while being performant
-    const interval = setInterval(updateElapsed, 100)
-
-    // Cleanup interval on unmount or when dependencies change
     return () => clearInterval(interval)
   }, [startTime, isActive])
 

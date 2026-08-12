@@ -1,12 +1,12 @@
 import { ActionIcon, Box, Collapse, Group, Text } from '@mantine/core'
 import type { Message, MessageContentParts, MessageReasoningPart, MessageToolCallPart } from '@shared/types'
-import { IconCircleXFilled, IconCopy, IconLoader } from '@tabler/icons-react'
+import { IconCircleXFilled, IconCopy } from '@tabler/icons-react'
 import clsx from 'clsx'
-import { type FC, useCallback, useEffect, useMemo, useState } from 'react'
+import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Markdown from '@/components/Markdown'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import { formatElapsedTime, formatWorkedDuration, useThinkingTimer } from '@/hooks/useThinkingTimer'
+import { formatWorkedDuration, useThinkingTimer } from '@/hooks/useThinkingTimer'
 import { copyToClipboard } from '@/packages/navigator'
 import { isTaskTrackingTool } from '@/packages/tools/task-tools'
 import * as toastActions from '@/stores/toastActions'
@@ -64,22 +64,32 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({
       { failed: 0, running: 0, succeeded: 0 }
     )
   }, [visibleToolCallParts])
-  const hasAttentionToolState = toolStatusCounts.failed > 0 || toolStatusCounts.running > 0
-  // isLastGroup = work still active (generating and last part is tool/reasoning)
-  const isThinking = Boolean(isLastGroup && message.generating)
+  // Live while parent says work is active OR any tool is still running OR generation
+  // has not finished yet with this work strip present. Never flash "Worked" mid-turn.
+  const isThinking = Boolean(
+    message.generating && (isLastGroup || toolStatusCounts.running > 0)
+  )
 
+  // Product default: always collapsed during live generation (header-only).
+  // Expanding tools mid-stream is the main scrollbar thrash source — only open on user click
+  // or after the turn finishes with failures.
   const [isExpanded, setIsExpanded] = useState(false)
+  const userToggledRef = useRef(false)
 
-  // Live: open when tools need attention. Done + ok: force closed (product default).
   useEffect(() => {
-    if (hasAttentionToolState || (isThinking && toolStatusCounts.running > 0)) {
-      setIsExpanded(true)
+    if (message.generating) {
+      // Force collapsed while streaming unless the user explicitly opened the strip.
+      if (!userToggledRef.current && isExpanded) setIsExpanded(false)
       return
     }
-    if (!message.generating && !hasAttentionToolState) {
+    // Generation ended: collapse successful work; leave open if tools failed.
+    userToggledRef.current = false
+    if (toolStatusCounts.failed === 0) {
       setIsExpanded(false)
+    } else {
+      setIsExpanded(true)
     }
-  }, [hasAttentionToolState, isThinking, message.generating, toolStatusCounts.running])
+  }, [message.generating, toolStatusCounts.failed, isExpanded])
 
   const totalDuration = useMemo(() => {
     return reasoningParts.reduce((sum, p) => sum + (p.duration || 0), 0)
@@ -97,6 +107,7 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({
   }, [reasoningParts, monologueTexts])
 
   const toggleExpanded = useCallback(() => {
+    userToggledRef.current = true
     setIsExpanded((prev) => !prev)
   }, [])
 
@@ -111,41 +122,62 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({
     [allReasoningText, t]
   )
 
+  // Grok DNA: one calm phrase. Avoid "Using tools… / Thinking…" thrash + busy badges.
   const headerLabel = useMemo(() => {
-    // Only say "Using tools…" while a tool is actually in-flight.
-    // Completed tools + still streaming next tokens → "Thinking…" (not a stuck tools row).
-    if (toolStatusCounts.running > 0) {
-      return toolCount === 1 ? t('Using tools…') : t('Using {{count}} tools…', { count: toolCount })
-    }
-    if (isThinking) {
+    if (message.generating) {
+      if (toolStatusCounts.running > 0) {
+        return toolCount > 1 ? t('Using tools…') : t('Using tools…')
+      }
+      // After tools finish but before answer — still live, never "Worked".
       return t('Thinking…')
     }
 
     const hasDuration = shouldShowTimer && displayTime > 0
     const compact = hasDuration ? formatWorkedDuration(displayTime) : null
 
-    if (toolCount > 0 && compact) {
-      return toolCount === 1
-        ? t('Worked · 1 tool · {{duration}}', { duration: compact })
-        : t('Worked · {{count}} tools · {{duration}}', { count: toolCount, duration: compact })
+    // Finished: "Worked for 3s" (design contract). Tools are detail, not the headline.
+    if (compact) {
+      return t('Worked for {{duration}}', { duration: compact })
     }
-
     if (toolCount > 0) {
       return toolCount === 1 ? t('Worked · 1 tool') : t('Worked · {{count}} tools', { count: toolCount })
     }
-
-    if (compact) {
-      return t('Worked · {{duration}}', { duration: compact })
-    }
-
     return t('Worked')
-  }, [isThinking, toolStatusCounts.running, shouldShowTimer, displayTime, toolCount, t])
+  }, [message.generating, toolStatusCounts.running, shouldShowTimer, displayTime, toolCount, t])
 
   const hasExpandableBody = toolCount > 0 || allReasoningText.length > 0
+  // Always reserve timer width while live so 0s→1s does not shove chevron/layout.
+  const showLiveTimer = Boolean(message.generating && shouldShowTimer)
+  const liveSeconds =
+    displayTime >= 1000
+      ? formatWorkedDuration(displayTime)
+      : elapsedTime >= 1000
+        ? formatWorkedDuration(elapsedTime)
+        : '0s'
+
+  // One-shot enter animation — do not re-fire when label/timer updates mid-turn.
+  const [enterSettled, setEnterSettled] = useState(false)
+  useEffect(() => {
+    if (!message.generating) {
+      setEnterSettled(false)
+      return
+    }
+    if (enterSettled) return
+    const t = window.setTimeout(() => setEnterSettled(true), 260)
+    return () => window.clearTimeout(t)
+  }, [message.generating, enterSettled])
 
   return (
-    <div className={clsx('msg-worked', isSmallScreen && 'mx-0.5')}>
+    <div
+      className={clsx(
+        'msg-worked',
+        message.generating && 'is-live',
+        message.generating && enterSettled && 'is-settled',
+        isSmallScreen && 'mx-0.5'
+      )}
+    >
       <div className="msg-worked-row">
+        {/* Live activity lives on the composer dock; thread strip stays Grok-plain text. */}
         <button
           type="button"
           className="msg-worked-toggle"
@@ -156,38 +188,21 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({
           <span
             className={clsx(
               'msg-worked-label',
-              (isThinking || toolStatusCounts.running > 0) && 'animate-shimmer shimmer-text'
+              message.generating && 'animate-shimmer shimmer-text'
             )}
           >
             {headerLabel}
           </span>
-          {toolCount > 0 && hasAttentionToolState && (
-            <Group gap={6} ml={4} wrap="nowrap" className="shrink-0">
-              {toolStatusCounts.failed > 0 && (
-                <Group gap={3} wrap="nowrap">
-                  <ScalableIcon icon={IconCircleXFilled} size={12} color="var(--chatbox-tint-error)" />
-                  <Text size="xs" fw={500} className="tabular-nums" style={{ color: 'var(--chatbox-tint-error)' }}>
-                    {toolStatusCounts.failed}
-                  </Text>
-                </Group>
-              )}
-              {toolStatusCounts.running > 0 && (
-                <Group gap={3} wrap="nowrap">
-                  <ScalableIcon
-                    icon={IconLoader}
-                    size={12}
-                    className="animate-spin"
-                    color="var(--chatbox-tint-brand)"
-                  />
-                  <Text size="xs" fw={500} className="tabular-nums" style={{ color: 'var(--chatbox-tint-brand)' }}>
-                    {toolStatusCounts.running}
-                  </Text>
-                </Group>
-              )}
-            </Group>
+          {showLiveTimer && (
+            <span className="msg-worked-live tabular-nums">{liveSeconds}</span>
           )}
-          {(isThinking || toolStatusCounts.running > 0) && elapsedTime > 0 && shouldShowTimer && (
-            <span className="msg-worked-live tabular-nums">({formatElapsedTime(elapsedTime)})</span>
+          {toolStatusCounts.failed > 0 && !message.generating && (
+            <Group gap={3} ml={4} wrap="nowrap" className="shrink-0">
+              <ScalableIcon icon={IconCircleXFilled} size={12} color="var(--chatbox-tint-error)" />
+              <Text size="xs" fw={500} className="tabular-nums" style={{ color: 'var(--chatbox-tint-error)' }}>
+                {toolStatusCounts.failed}
+              </Text>
+            </Group>
           )}
           {hasExpandableBody && (
             <span className={clsx('msg-worked-chevron', isExpanded && 'is-open')} aria-hidden>
@@ -195,7 +210,7 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({
             </span>
           )}
         </button>
-        {allReasoningText.length > 0 && (
+        {allReasoningText.length > 0 && !message.generating && (
           <ActionIcon
             variant="subtle"
             color="chatbox-secondary"
@@ -209,6 +224,7 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({
         )}
       </div>
 
+      {/* Expanded body only — live detail is on the composer dock (no dual chrome). */}
       <Collapse in={isExpanded && hasExpandableBody}>
         <div className="msg-worked-body">
           {(() => {

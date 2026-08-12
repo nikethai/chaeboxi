@@ -24,6 +24,11 @@ import {
   startNewThread,
   submitNewUserMessage,
 } from '@/stores/sessionActions'
+import { isSessionGenerationActive } from '@/stores/session/generation-cancel'
+import {
+  isSessionGenerationLive,
+  subscribeSessionGenerationLive,
+} from '@/stores/session/session-live-generation'
 import { continueActiveSessionTasks } from '@/stores/session/messages'
 import { getAllMessageList } from '@/stores/sessionHelpers'
 import { useUIStore } from '@/stores/uiStore'
@@ -61,6 +66,22 @@ function RouteComponent() {
     () => currentMessageList.find((m: Message) => m.generating),
     [currentMessageList]
   )
+  // Live-lock + abort registry + message.generating. Never rely on cache alone.
+  const [liveGen, setLiveGen] = useState(
+    () => isSessionGenerationLive(currentSessionId) || isSessionGenerationActive(currentSessionId)
+  )
+  useEffect(() => {
+    const sync = () =>
+      setLiveGen(isSessionGenerationLive(currentSessionId) || isSessionGenerationActive(currentSessionId))
+    sync()
+    const unsub = subscribeSessionGenerationLive(sync)
+    const id = window.setInterval(sync, 150)
+    return () => {
+      unsub()
+      window.clearInterval(id)
+    }
+  }, [currentSessionId, lastGeneratingMessage?.id, lastGeneratingMessage?.generating])
+  const isGenerating = Boolean(lastGeneratingMessage || liveGen)
 
   const messageListRef = useRef<MessageListRef>(null)
   const inputBoxRef = useRef<InputBoxRef>(null)
@@ -285,11 +306,17 @@ function RouteComponent() {
 
           <div className="session-dock">
             <div className="session-dock-pad">
-<ChatDockStack key={currentSession.id} sessionId={currentSession.id} onContinueTasks={onContinueTasks}>
+<ChatDockStack
+  key={currentSession.id}
+  sessionId={currentSession.id}
+  onContinueTasks={onContinueTasks}
+  generating={isGenerating}
+  liveMessage={lastGeneratingMessage}
+>
   <BrowserAgentPanel
     sessionId={currentSession.id}
     armed={Boolean(currentSession.browserArmed)}
-    generating={!!lastGeneratingMessage}
+    generating={isGenerating}
   />
   <ComputerUseHud sessionId={currentSession.id} armed={Boolean(currentSession.computerArmed)} />
   <ErrorBoundary name="session-inputbox">
@@ -320,7 +347,7 @@ function RouteComponent() {
         void updateSessionStore(currentSession.id, { computerArmed })
       }}
       onClickSessionSettings={onClickSessionSettings}
-      generating={!!lastGeneratingMessage}
+      generating={isGenerating}
       onSubmit={onSubmit}
       onStopGenerating={onStopGenerating}
     />
@@ -333,7 +360,7 @@ function RouteComponent() {
               model={model}
               settings={currentSession.settings}
               providerId={model?.provider}
-              generating={!!lastGeneratingMessage}
+              generating={isGenerating}
               sessionId={currentSession.id}
               memoryAutoSave={currentSession.settings?.memoryAutoSave}
               empty={threadEmpty}

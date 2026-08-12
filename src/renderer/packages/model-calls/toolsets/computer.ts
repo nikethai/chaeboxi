@@ -32,7 +32,7 @@ function computerSettings() {
   const ext = settingsStore.getState().getSettings()?.extension?.computerUse
   return {
     enabled: Boolean(ext?.enabled),
-    maxScreenshotsPerTurn: ext?.maxScreenshotsPerTurn ?? 10,
+    maxScreenshotsPerTurn: ext?.maxScreenshotsPerTurn ?? 16,
     appAllowlist: (ext?.appAllowlist as string[] | undefined) || [],
     debugTrajectory: Boolean(ext?.debugTrajectory),
   }
@@ -62,12 +62,25 @@ const lastActEmbeddedShotBySession = new Map<string, boolean>()
 
 /** Last known frontmost process from open_app (for re-activate decisions). */
 const lastFrontmostBySession = new Map<string, string>()
+/** Latest capture frameId per session — pin click/move coords to this frame. */
+const lastFrameIdBySession = new Map<string, string>()
 
 export function resetComputerScreenshotBudget(sessionId: string) {
   screenshotCounts.delete(sessionId)
   lastComputerToolBySession.delete(sessionId)
   lastActEmbeddedShotBySession.delete(sessionId)
   lastFrontmostBySession.delete(sessionId)
+  lastFrameIdBySession.delete(sessionId)
+}
+
+function rememberFrameId(sessionId: string, frameId: unknown) {
+  if (typeof frameId === 'string' && frameId.trim()) {
+    lastFrameIdBySession.set(sessionId, frameId.trim())
+  }
+}
+
+function currentFrameId(sessionId: string): string | undefined {
+  return lastFrameIdBySession.get(sessionId)
 }
 
 export function getLastComputerTool(sessionId: string): string | undefined {
@@ -89,6 +102,7 @@ type CaptureOk = {
   width?: number
   height?: number
   displayId?: string
+  frameId?: string
   byteLength?: number
   note: string
   nextAction?: string
@@ -140,16 +154,19 @@ async function captureForModel(
           'Empty capture payload. On macOS: System Settings → Privacy & Security → Screen Recording → enable Chaeboxi, then fully quit and relaunch the app.',
       }
     }
+    const frameId = typeof result?.frameId === 'string' ? result.frameId : undefined
+    rememberFrameId(opts.sessionId, frameId)
     return {
       mimeType: result?.mimeType || 'image/jpeg',
       base64,
       width: result?.width,
       height: result?.height,
       displayId: result?.displayId,
+      frameId,
       byteLength: typeof result?.byteLength === 'number' ? result.byteLength : undefined,
-      note: 'Click/move coordinates use this image width×height; backend maps to display points.',
+      note: 'Click/move coordinates use this image width×height and frameId; backend maps to display points and rejects stale frames.',
       nextAction:
-        'Look at this image. If the user goal is not done, call the next single act tool (click/type/key) using these coordinates. Verification screenshots may already be attached after acts — continue the goal, do not stop with only text advice.',
+        'Look at this image. If the user goal is not done, call the next single act tool (click/type/key) using these coordinates and frameId. Verification screenshots may already be attached after acts — continue the goal, do not stop with only text advice.',
     }
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
@@ -183,6 +200,7 @@ function screenshotToModelOutput(output: ScreenshotToolResult) {
     output.note,
     output.nextAction || '',
     output.displayId ? `displayId=${output.displayId}` : '',
+    'frameId' in output && output.frameId ? `frameId=${output.frameId}` : '',
     output.autoAttached ? 'autoAttached=true (host verification after act)' : '',
   ]
     .filter(Boolean)
@@ -245,10 +263,12 @@ function actResultToModelOutput(output: Record<string, unknown>) {
 
   if (verification && 'base64' in verification && verification.base64) {
     const mediaType = verification.mimeType || 'image/jpeg'
+    const frameHint =
+      'frameId' in verification && verification.frameId ? ` frameId=${verification.frameId}.` : ''
     const meta = [
       textBits,
-      `Verification screenshot ${verification.width || '?'}×${verification.height || '?'} (auto-attached).`,
-      'Coordinates for next click use this image size. Continue the user goal; do not stop after open alone.',
+      `Verification screenshot ${verification.width || '?'}×${verification.height || '?'} (auto-attached).${frameHint}`,
+      'Coordinates for next click use this image size + frameId. Continue the user goal; do not stop after open alone.',
     ]
       .filter(Boolean)
       .join('\n')
@@ -521,23 +541,26 @@ export function createComputerToolSet(opts: ComputerToolOptions): { description:
 
     tools.computer_click = tool({
       description:
-        'Click at screenshot coordinates (x,y matching last computer_screenshot / verification image size). Host attaches verification after click. CRITICAL risk — requires approval every time.',
+        'Click at screenshot coordinates (x,y matching last computer_screenshot / verification image size). Pass frameId from that image when available. Host attaches verification after click. CRITICAL risk — requires approval every time.',
       inputSchema: z.object({
         x: z.number(),
         y: z.number(),
         button: z.enum(['left', 'right']).optional(),
+        frameId: z.string().optional().describe('frameId from the screenshot/verification image being clicked'),
       }),
-      execute: async (input: { x: number; y: number; button?: 'left' | 'right' }) => {
+      execute: async (input: { x: number; y: number; button?: 'left' | 'right'; frameId?: string }) => {
         if (!platform.computerClick) {
           return { error: 'UNSUPPORTED_PLATFORM' }
         }
         try {
           computerUseUiStore.getState().setActive(opts.sessionId, true)
           const focus = await ensureTargetFrontmost(opts.sessionId)
+          const frameId = input.frameId || currentFrameId(opts.sessionId)
           const result = (await platform.computerClick({
             x: input.x,
             y: input.y,
             button: input.button,
+            ...(frameId ? { frameId } : {}),
           })) as Record<string, unknown>
           const { verification, embedded } = await maybeAutoScreenshot(opts, 200)
           recordComputerToolUse(opts.sessionId, 'computer_click', embedded)
@@ -650,12 +673,21 @@ export function createComputerToolSet(opts: ComputerToolOptions): { description:
     })
 
     tools.computer_mouse_move = tool({
-      description: 'Move mouse to screenshot coordinates without clicking. HIGH risk. No auto-screenshot.',
-      inputSchema: z.object({ x: z.number(), y: z.number() }),
-      execute: async (input: { x: number; y: number }) => {
+      description: 'Move mouse to screenshot coordinates without clicking. Pass frameId when available. HIGH risk. No auto-screenshot.',
+      inputSchema: z.object({
+        x: z.number(),
+        y: z.number(),
+        frameId: z.string().optional(),
+      }),
+      execute: async (input: { x: number; y: number; frameId?: string }) => {
         if (!platform.computerMouseMove) return { error: 'UNSUPPORTED_PLATFORM' }
         try {
-          const result = (await platform.computerMouseMove(input)) as Record<string, unknown>
+          const frameId = input.frameId || currentFrameId(opts.sessionId)
+          const result = (await platform.computerMouseMove({
+            x: input.x,
+            y: input.y,
+            ...(frameId ? { frameId } : {}),
+          })) as Record<string, unknown>
           recordComputerToolUse(opts.sessionId, 'computer_mouse_move', false)
           return {
             ...result,

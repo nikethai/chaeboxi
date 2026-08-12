@@ -67,16 +67,24 @@ describe('CRITICAL approval policy (D8)', () => {
     expect(canAutoApprove).toBe(true)
   })
 
-  it('HIGH never session-auto', () => {
+  it('HIGH can session-auto after explicit allow-session (CRITICAL still never)', () => {
     const riskTier = ToolRiskTier.HIGH
     const existingApproval = { scope: 'session' as const, riskTier: ToolRiskTier.HIGH }
     const canAutoApprove =
       riskTier === ToolRiskTier.LOW ||
       (existingApproval?.scope === 'session' &&
         existingApproval.riskTier === riskTier &&
-        riskTier !== ToolRiskTier.HIGH &&
         riskTier !== ToolRiskTier.CRITICAL)
-    expect(canAutoApprove).toBe(false)
+    expect(canAutoApprove).toBe(true)
+
+    const critical = ToolRiskTier.CRITICAL
+    const criticalApproval = { scope: 'session' as const, riskTier: ToolRiskTier.CRITICAL }
+    const criticalAuto =
+      critical === ToolRiskTier.LOW ||
+      (criticalApproval?.scope === 'session' &&
+        criticalApproval.riskTier === critical &&
+        critical !== ToolRiskTier.CRITICAL)
+    expect(criticalAuto).toBe(false)
   })
 
   it('LOW always auto', () => {

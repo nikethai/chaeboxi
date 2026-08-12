@@ -9,6 +9,49 @@ import { browserAgentUiStore } from '@/stores/browserAgentUiStore'
 
 const SNAPSHOT_MAX = 180_000
 
+/** Last browser tool name per session — used by prepareStep force-snapshot. */
+const lastBrowserToolBySession = new Map<string, string>()
+/** Whether last mutation/observation already embedded a text snapshot. */
+const lastBrowserObsEmbeddedBySession = new Map<string, boolean>()
+
+export function recordBrowserToolUse(sessionId: string, toolName: string, embeddedObservation: boolean) {
+  if (!sessionId) return
+  lastBrowserToolBySession.set(sessionId, toolName)
+  lastBrowserObsEmbeddedBySession.set(sessionId, embeddedObservation)
+}
+
+export function getLastBrowserTool(sessionId: string): string | undefined {
+  return lastBrowserToolBySession.get(sessionId)
+}
+
+export function getLastBrowserObservationEmbedded(sessionId: string): boolean {
+  return Boolean(lastBrowserObsEmbeddedBySession.get(sessionId))
+}
+
+export function resetBrowserTurnState(sessionId: string) {
+  lastBrowserToolBySession.delete(sessionId)
+  lastBrowserObsEmbeddedBySession.delete(sessionId)
+}
+
+const BROWSER_MUTATION_TOOLS = new Set([
+  'browser_navigate',
+  'browser_click',
+  'browser_type',
+  'browser_scroll',
+  'browser_tabs',
+])
+
+/** After a mutation without embedded snapshot, force browser_snapshot next. */
+export function shouldForceBrowserSnapshot(lastToolName: string | undefined, hasEmbeddedObservation: boolean): boolean {
+  if (hasEmbeddedObservation) return false
+  if (!lastToolName) return false
+  return BROWSER_MUTATION_TOOLS.has(lastToolName)
+}
+
+function hasEmbeddedSnapshot(result: Record<string, unknown>): boolean {
+  return typeof result.snapshot === 'string' && result.snapshot.trim().length > 0
+}
+
 export type BrowserAgentToolOptions = {
   sessionId: string
   runId?: string
@@ -51,30 +94,55 @@ async function ensureSession(opts: BrowserAgentToolOptions) {
 
   const downloadDir = workspaceBrowserDownloadsDir(opts.workspaceRoot)
   const downloadsEnabled = Boolean(downloadDir)
+  const startParams = {
+    sessionId: opts.sessionId,
+    headless: opts.headless ?? settings.headless,
+    downloadsEnabled,
+    downloadDir: downloadDir || undefined,
+    allowlist: opts.allowlist ?? settings.allowlist,
+  }
+
+  const markRunning = () => {
+    browserAgentUiStore.getState().setStatus(opts.sessionId, {
+      running: true,
+      url: null,
+      lastTool: 'session:start',
+      error: null,
+    })
+  }
 
   try {
-    const status = await platform.browserSessionStatus?.(opts.sessionId)
-    if (!status?.running) {
-      await platform.browserSessionStart({
-        sessionId: opts.sessionId,
-        headless: opts.headless ?? settings.headless,
-        downloadsEnabled,
-        downloadDir: downloadDir || undefined,
-        allowlist: opts.allowlist ?? settings.allowlist,
-      })
-      browserAgentUiStore.getState().setStatus(opts.sessionId, {
-        running: true,
-        url: null,
-        lastTool: 'session:start',
-        error: null,
-      })
+    let running = false
+    try {
+      const status = await platform.browserSessionStatus?.(opts.sessionId)
+      running = Boolean(status?.running)
+    } catch {
+      // Dead host / RPC fail — evict and restart once
+      running = false
+      try {
+        await platform.browserSessionStop?.(opts.sessionId)
+      } catch {
+        /* ignore */
+      }
+    }
+    if (!running) {
+      await platform.browserSessionStart(startParams)
+      markRunning()
     }
     return { ok: true as const, downloadsEnabled, downloadDir }
   } catch (err) {
-    releaseBrowserLock(opts.sessionId, runId)
-    return {
-      error: 'LAUNCH_FAILED',
-      message: err instanceof Error ? err.message : String(err),
+    // One recovery attempt: stop stale host then start fresh
+    try {
+      await platform.browserSessionStop?.(opts.sessionId)
+      await platform.browserSessionStart(startParams)
+      markRunning()
+      return { ok: true as const, downloadsEnabled, downloadDir }
+    } catch (err2) {
+      releaseBrowserLock(opts.sessionId, runId)
+      return {
+        error: 'LAUNCH_FAILED',
+        message: err2 instanceof Error ? err2.message : err instanceof Error ? err.message : String(err2),
+      }
     }
   }
 }
@@ -87,6 +155,41 @@ function setUi(sessionId: string, patch: { lastTool?: string; url?: string | nul
   }
 }
 
+function trimSnapshotFields<T extends Record<string, unknown>>(result: T): T {
+  const snapshot = typeof result.snapshot === 'string' ? result.snapshot : undefined
+  if (!snapshot || snapshot.length <= SNAPSHOT_MAX) return result
+  return {
+    ...result,
+    snapshot: `${snapshot.slice(0, SNAPSHOT_MAX)}\n… [snapshot truncated]`,
+    truncated: true,
+  }
+}
+
+/** When host did not attach a snapshot (older binary / error path), fetch one. */
+async function ensureSnapshotAttached(
+  sessionId: string,
+  result: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+  if (typeof result.snapshot === 'string' && result.snapshot.trim()) {
+    return trimSnapshotFields(result)
+  }
+  try {
+    const shot = (await platform.browserSnapshot?.(sessionId, { interestingOnly: true })) as
+      | Record<string, unknown>
+      | undefined
+    if (!shot) return trimSnapshotFields(result)
+    return trimSnapshotFields({
+      ...result,
+      ...shot,
+      nextAction:
+        (typeof result.nextAction === 'string' && result.nextAction) ||
+        'Fresh snapshot attached. Use only these refs for the next action.',
+    })
+  } catch {
+    return trimSnapshotFields(result)
+  }
+}
+
 export function browserToolSetDescription(): string {
   return `
 # Chaeboxi Browser (isolated)
@@ -96,19 +199,19 @@ Use these tools to drive a **Chaeboxi-managed isolated browser** (not the user's
 ## When to use
 1. Prefer \`web_search\` / \`parse_link\` for simple Q&A.
 2. Use browser for multi-step interactive web (forms, docs navigation, UI flows).
-3. Always \`browser_snapshot\` before click/type so refs are fresh.
+3. Navigate/click/type/scroll **auto-return a fresh snapshot** with new refs — use those refs only.
 4. Stop and ask the user on auth walls, payments, or captchas.
 
 ## Tools
-- browser_navigate { url }
-- browser_snapshot — a11y/ref tree (primary perception)
-- browser_click { ref }
-- browser_type { text, ref?, submit? }
-- browser_scroll { direction, amount?, ref? }
+- browser_navigate { url } — opens URL and returns snapshot + refs
+- browser_snapshot — a11y/ref tree (call if you need a re-read without acting)
+- browser_click { ref } — click + auto snapshot
+- browser_type { text, ref?, submit? } — type + auto snapshot
+- browser_scroll { direction, amount?, ref? } — scroll + auto snapshot
 - browser_tabs { action: list|select|new|close, tabId?, url? }
-- browser_screenshot — secondary; prefer snapshot
+- browser_screenshot — secondary visual; prefer snapshot refs for interaction
 
-Refs invalidate after navigation. Only http(s). Downloads need a session workspace folder.
+Refs invalidate after every mutation/navigation. Only http(s). Downloads need a session workspace folder.
 `
 }
 
@@ -116,7 +219,8 @@ export function createBrowserToolSet(opts: BrowserAgentToolOptions): { descripti
   const allowlist = () => opts.allowlist ?? browserSettings().allowlist
 
   const browser_navigate = tool({
-    description: 'Navigate the isolated Chaeboxi browser to an http(s) URL.',
+    description:
+      'Navigate the isolated Chaeboxi browser to an http(s) URL. Returns a fresh accessibility snapshot with refs.',
     inputSchema: z.object({
       url: z.string().describe('http(s) URL to open'),
     }),
@@ -129,11 +233,18 @@ export function createBrowserToolSet(opts: BrowserAgentToolOptions): { descripti
       const ready = await ensureSession(opts)
       if ('error' in ready && ready.error) return ready
       try {
-        const result = await platform.browserNavigate!(opts.sessionId, check.url)
-        setUi(opts.sessionId, { lastTool: 'browser_navigate', url: check.url, error: null })
-        return result
+        const result = (await platform.browserNavigate!(opts.sessionId, check.url)) as Record<string, unknown>
+        const withShot = await ensureSnapshotAttached(opts.sessionId, result)
+        recordBrowserToolUse(opts.sessionId, 'browser_navigate', hasEmbeddedSnapshot(withShot))
+        setUi(opts.sessionId, {
+          lastTool: 'browser_navigate',
+          url: check.url,
+          error: null,
+        })
+        return withShot
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
+        recordBrowserToolUse(opts.sessionId, 'browser_navigate', false)
         setUi(opts.sessionId, { lastTool: 'browser_navigate', error: message })
         return { error: 'ACTION_ERROR', message }
       }
@@ -141,7 +252,7 @@ export function createBrowserToolSet(opts: BrowserAgentToolOptions): { descripti
   })
 
   const browser_snapshot = tool({
-    description: 'Capture accessibility/ref snapshot of the current page. Call before click/type.',
+    description: 'Capture accessibility/ref snapshot of the current page. Usually unnecessary right after navigate/click/type (those auto-snapshot).',
     inputSchema: z.object({
       interestingOnly: z.boolean().optional().describe('Focus interactive/heading elements. Default true.'),
     }),
@@ -152,16 +263,13 @@ export function createBrowserToolSet(opts: BrowserAgentToolOptions): { descripti
         const result = (await platform.browserSnapshot!(opts.sessionId, {
           interestingOnly: input.interestingOnly,
         })) as { snapshot?: string; url?: string; title?: string; truncated?: boolean }
-        let snapshot = result?.snapshot || ''
-        let truncated = Boolean(result?.truncated)
-        if (snapshot.length > SNAPSHOT_MAX) {
-          snapshot = `${snapshot.slice(0, SNAPSHOT_MAX)}\n… [snapshot truncated]`
-          truncated = true
-        }
+        const trimmed = trimSnapshotFields(result as Record<string, unknown>)
+        recordBrowserToolUse(opts.sessionId, 'browser_snapshot', hasEmbeddedSnapshot(trimmed))
         setUi(opts.sessionId, { lastTool: 'browser_snapshot', url: result?.url ?? null, error: null })
-        return { ...result, snapshot, truncated }
+        return trimmed
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
+        recordBrowserToolUse(opts.sessionId, 'browser_snapshot', false)
         setUi(opts.sessionId, { lastTool: 'browser_snapshot', error: message })
         return { error: 'ACTION_ERROR', message }
       }
@@ -169,32 +277,50 @@ export function createBrowserToolSet(opts: BrowserAgentToolOptions): { descripti
   })
 
   const browser_click = tool({
-    description: 'Click an element by snapshot ref (e.g. e12). Snapshot first. May submit forms.',
+    description:
+      'Click an element by snapshot ref (e.g. e12). Returns a fresh snapshot. On stale ref, returns REF_INVALID + new snapshot.',
     inputSchema: z.object({
-      ref: z.string().describe('Element ref from browser_snapshot'),
+      ref: z.string().describe('Element ref from the latest browser snapshot'),
       button: z.enum(['left', 'right']).optional(),
     }),
     execute: async (input: { ref: string; button?: 'left' | 'right' }) => {
       const ready = await ensureSession(opts)
       if ('error' in ready && ready.error) return ready
       try {
-        const result = await platform.browserAct!(opts.sessionId, {
+        const result = (await platform.browserAct!(opts.sessionId, {
           action: 'click',
           ref: input.ref,
           button: input.button,
+        })) as Record<string, unknown>
+        const withShot = await ensureSnapshotAttached(opts.sessionId, result)
+        const err = typeof withShot.error === 'string' ? String(withShot.error) : null
+        recordBrowserToolUse(opts.sessionId, 'browser_click', hasEmbeddedSnapshot(withShot))
+        setUi(opts.sessionId, {
+          lastTool: `browser_click:${input.ref}`,
+          error: err,
         })
-        setUi(opts.sessionId, { lastTool: `browser_click:${input.ref}`, error: null })
-        return result
+        return withShot
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
+        const isStale = message.includes('REF_INVALID') || message.toLowerCase().includes('stale ref')
         setUi(opts.sessionId, { lastTool: 'browser_click', error: message })
-        return { error: message.includes('REF_INVALID') ? 'REF_INVALID' : 'ACTION_ERROR', message }
+        if (isStale) {
+          const recovered = await ensureSnapshotAttached(opts.sessionId, {
+            error: 'REF_INVALID',
+            message,
+          })
+          recordBrowserToolUse(opts.sessionId, 'browser_click', hasEmbeddedSnapshot(recovered))
+          return recovered
+        }
+        recordBrowserToolUse(opts.sessionId, 'browser_click', false)
+        return { error: 'ACTION_ERROR', message }
       }
     },
   })
 
   const browser_type = tool({
-    description: 'Type text into a ref or focused element. Never log passwords. May submit forms if submit=true.',
+    description:
+      'Type text into a ref or focused element. Returns a fresh snapshot. Never log passwords. May submit forms if submit=true.',
     inputSchema: z.object({
       text: z.string(),
       ref: z.string().optional(),
@@ -204,25 +330,43 @@ export function createBrowserToolSet(opts: BrowserAgentToolOptions): { descripti
       const ready = await ensureSession(opts)
       if ('error' in ready && ready.error) return ready
       try {
-        const result = await platform.browserAct!(opts.sessionId, {
+        const result = (await platform.browserAct!(opts.sessionId, {
           action: 'type',
           text: input.text,
           ref: input.ref,
           submit: input.submit,
+        })) as Record<string, unknown>
+        // Do not echo typed secrets back; keep structural fields + snapshot
+        const { text: _t, ...safe } = result as Record<string, unknown> & { text?: string }
+        const withShot = await ensureSnapshotAttached(opts.sessionId, {
+          ...safe,
+          ok: safe.ok ?? true,
+          ref: input.ref,
+          submitted: Boolean(input.submit),
         })
-        setUi(opts.sessionId, { lastTool: 'browser_type', error: null })
-        // Redact typed text from return if it looks like a password field use
-        return { ok: true, ref: input.ref, submitted: Boolean(input.submit), result }
+        recordBrowserToolUse(opts.sessionId, 'browser_type', hasEmbeddedSnapshot(withShot))
+        setUi(opts.sessionId, {
+          lastTool: 'browser_type',
+          error: typeof withShot.error === 'string' ? String(withShot.error) : null,
+        })
+        return withShot
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
+        const isStale = message.includes('REF_INVALID') || message.toLowerCase().includes('stale ref')
         setUi(opts.sessionId, { lastTool: 'browser_type', error: message })
+        if (isStale) {
+          const recovered = await ensureSnapshotAttached(opts.sessionId, { error: 'REF_INVALID', message })
+          recordBrowserToolUse(opts.sessionId, 'browser_type', hasEmbeddedSnapshot(recovered))
+          return recovered
+        }
+        recordBrowserToolUse(opts.sessionId, 'browser_type', false)
         return { error: 'ACTION_ERROR', message }
       }
     },
   })
 
   const browser_scroll = tool({
-    description: 'Scroll the page or an element.',
+    description: 'Scroll the page or an element. Returns a fresh snapshot with updated refs.',
     inputSchema: z.object({
       direction: z.enum(['up', 'down']),
       amount: z.number().optional(),
@@ -232,16 +376,19 @@ export function createBrowserToolSet(opts: BrowserAgentToolOptions): { descripti
       const ready = await ensureSession(opts)
       if ('error' in ready && ready.error) return ready
       try {
-        const result = await platform.browserAct!(opts.sessionId, {
+        const result = (await platform.browserAct!(opts.sessionId, {
           action: 'scroll',
           direction: input.direction,
           amount: input.amount,
           ref: input.ref,
-        })
+        })) as Record<string, unknown>
+        const withShot = await ensureSnapshotAttached(opts.sessionId, result)
+        recordBrowserToolUse(opts.sessionId, 'browser_scroll', hasEmbeddedSnapshot(withShot))
         setUi(opts.sessionId, { lastTool: 'browser_scroll', error: null })
-        return result
+        return withShot
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
+        recordBrowserToolUse(opts.sessionId, 'browser_scroll', false)
         return { error: 'ACTION_ERROR', message }
       }
     },
@@ -268,6 +415,10 @@ export function createBrowserToolSet(opts: BrowserAgentToolOptions): { descripti
           url: input.url,
         })
         setUi(opts.sessionId, { lastTool: `browser_tabs:${input.action}`, error: null })
+        // Tab switches invalidate refs — attach snapshot when page context changed
+        if (input.action === 'select' || input.action === 'new') {
+          return ensureSnapshotAttached(opts.sessionId, (result as Record<string, unknown>) || {})
+        }
         return result
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
@@ -277,7 +428,7 @@ export function createBrowserToolSet(opts: BrowserAgentToolOptions): { descripti
   })
 
   const browser_screenshot = tool({
-    description: 'Capture a screenshot of the current page (secondary; prefer browser_snapshot).',
+    description: 'Capture a screenshot of the current page (secondary; prefer browser_snapshot refs for interaction).',
     inputSchema: z.object({}),
     execute: async () => {
       const ready = await ensureSession(opts)

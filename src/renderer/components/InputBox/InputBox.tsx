@@ -97,6 +97,7 @@ import { useSkills } from '@/stores/skillsStore'
 import type { QuoteDraft } from '@/stores/uiStore'
 import { useUIStore } from '@/stores/uiStore'
 import { delay } from '@/utils'
+import { decideClipboardPaste, extractClipboardNonImageFiles, imagePayloadFingerprint } from '@/utils/clipboardImages'
 import { getModelDisplayName } from '@/utils/modelDisplayName'
 import { getModelReadiness } from '@/utils/modelReadiness'
 import { trackEvent } from '@/utils/track'
@@ -351,9 +352,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       const slugs = extractAgentSlugsFromText(messageInput)
       const matchables = allAgents.map((a) => ({ id: a.id, name: a.name }))
       const idsInText = new Set(
-        slugs
-          .map((slug) => matchAgentBySlug(matchables, slug)?.id)
-          .filter((id): id is string => Boolean(id))
+        slugs.map((slug) => matchAgentBySlug(matchables, slug)?.id).filter((id): id is string => Boolean(id))
       )
       setSelectedAgents((prev) => {
         if (prev.length === 0) return prev
@@ -495,6 +494,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
     const pictureInputRef = useRef<HTMLInputElement | null>(null)
     const fileInputRef = useRef<HTMLInputElement | null>(null)
+    /** Skip identical resized payloads from double-paste / multi-representation clipboard. */
+    const recentImageFingerprintsRef = useRef<Map<string, number>>(new Map())
+    /** Guard against iOS/WebKit double-firing paste for the same gesture. */
+    const lastPasteAtRef = useRef(0)
     /** Anchor for portaled @ / $ / / pickers (avoids blank-home overflow clip). */
     const composerCardRef = useRef<HTMLDivElement | null>(null)
 
@@ -1157,7 +1160,15 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       setAgentPickerDismissed(false)
       setCommandPickerDismissed(false)
       setMemoryMentionPickerDismissed(false)
-    }, [presetQuery, skillDollarQuery, credentialHashQuery, agentAtQuery, memoryMentionQuery, commandSlashQuery, messageInput])
+    }, [
+      presetQuery,
+      skillDollarQuery,
+      credentialHashQuery,
+      agentAtQuery,
+      memoryMentionQuery,
+      commandSlashQuery,
+      messageInput,
+    ])
 
     const handleAgentSelect = useCallback(
       (agent: AgentDetail) => {
@@ -1243,15 +1254,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           return cleaned
         })
       },
-      [
-        allAgents,
-        isNewSession,
-        onDraftAgentIdsChange,
-        roomAgentIds,
-        selectedAgents,
-        sessionId,
-        setMessageInput,
-      ]
+      [allAgents, isNewSession, onDraftAgentIdsChange, roomAgentIds, selectedAgents, sessionId, setMessageInput]
     )
 
     const handleRoomModeChange = useCallback(
@@ -1560,7 +1563,10 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           }
 
           // Do not strip @ $ # completed mentions — they are part of the user instruction
-          cleanedText = cleanedText.replace(/[ \t]{2,}/g, ' ').replace(/ *\n */g, '\n').trim()
+          cleanedText = cleanedText
+            .replace(/[ \t]{2,}/g, ' ')
+            .replace(/ *\n */g, '\n')
+            .trim()
 
           constructedMessage = {
             ...constructedMessage,
@@ -1585,9 +1591,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
 
           // Session sticky: keep selected credentials after send
           if (credentialIds.length && sessionId && !isNewSession) {
-            void persistSessionCredentials(
-              integrationAccounts.filter((a) => credentialIds.includes(a.id))
-            )
+            void persistSessionCredentials(integrationAccounts.filter((a) => credentialIds.includes(a.id)))
           }
         }
 
@@ -1708,8 +1712,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         const isPlainEnter =
           event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey
         // Tab complete — ignore Ctrl/Cmd+Tab (session switch) and Alt+Tab
-        const isTabComplete =
-          event.key === 'Tab' && !event.ctrlKey && !event.metaKey && !event.altKey
+        const isTabComplete = event.key === 'Tab' && !event.ctrlKey && !event.metaKey && !event.altKey
 
         const consume = () => {
           event.preventDefault()
@@ -1789,8 +1792,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             return true
           }
           if ((isPlainEnter || isTabComplete) && filteredMemoryMentions.length > 0) {
-            const entry =
-              filteredMemoryMentions[pickIndex(memoryMentionHighlightIndex, filteredMemoryMentions.length)]
+            const entry = filteredMemoryMentions[pickIndex(memoryMentionHighlightIndex, filteredMemoryMentions.length)]
             if (entry) {
               consume()
               runOnce(() => handleMemoryMentionSelect(entry))
@@ -1860,8 +1862,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
             return true
           }
           if ((isPlainEnter || isTabComplete) && filteredCredentials.length > 0) {
-            const account =
-              filteredCredentials[pickIndex(credentialHighlightIndex, filteredCredentials.length)]
+            const account = filteredCredentials[pickIndex(credentialHighlightIndex, filteredCredentials.length)]
             if (account) {
               consume()
               runOnce(() => handleCredentialSelect(account))
@@ -2004,8 +2005,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       const onNativeKeyDown = (event: KeyboardEvent) => {
         const target = event.target as HTMLElement | null
         const inputEl =
-          richInputRef.current?.getElement() ||
-          (document.getElementById(dom.messageInputID) as HTMLElement | null)
+          richInputRef.current?.getElement() || (document.getElementById(dom.messageInputID) as HTMLElement | null)
         // Only when focus is the composer (or body after a stolen tab)
         if (target !== inputEl && target !== document.body && !(inputEl && inputEl.contains(target))) {
           // Still handle Tab if a picker is open and focus somehow left the field
@@ -2202,6 +2202,17 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
           }
           try {
             const base64 = await picUtils.getImageBase64AndResize(file)
+            const fingerprint = imagePayloadFingerprint(base64)
+            const now = Date.now()
+            // Drop fingerprints older than 8s so intentional re-paste still works.
+            for (const [fp, ts] of recentImageFingerprintsRef.current) {
+              if (now - ts > 8000) recentImageFingerprintsRef.current.delete(fp)
+            }
+            if (recentImageFingerprintsRef.current.has(fingerprint)) {
+              continue
+            }
+            recentImageFingerprintsRef.current.set(fingerprint, now)
+
             const key = StorageKeyGenerator.picture('input-box')
             await storage.setBlob(key, base64)
             setPreConstructedMessage((prev) => ({
@@ -2453,53 +2464,77 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       // await storage.delBlob(picKey)
     }
 
-    const onPaste = (event: React.ClipboardEvent<HTMLDivElement | HTMLTextAreaElement>) => {
+    const onPaste = (
+      event: React.ClipboardEvent<HTMLDivElement | HTMLTextAreaElement>
+    ): void | { insertPlainText?: string | null } => {
       if (sessionType === 'picture') {
         return
       }
-      if (event.clipboardData?.items) {
-        // (legacy comment)
-        // (legacy comment)
-        // (legacy comment removed)
-        // (legacy comment removed)
-        let hasText = false
-        for (let i = 0; i < event.clipboardData.items.length; i++) {
-          const item = event.clipboardData.items[i]
-          if (item.kind === 'file') {
-            // Insert files and images
-            const file = item.getAsFile()
-            if (file) {
-              insertFiles([file])
-            }
-            continue
-          }
-          hasText = true
-          if (item.kind === 'string' && item.type === 'text/plain') {
-            // (legacy comment removed)
-            item.getAsString((text) => {
-              const raw = text.trim()
-              if (raw.startsWith('http://') || raw.startsWith('https://')) {
-                const urls = raw
-                  .split(/\s+/)
-                  .map((url) => url.trim())
-                  .filter((url) => url.startsWith('http://') || url.startsWith('https://'))
-                insertLinks(urls)
-              }
-              if (pasteLongTextAsAFile && raw.length > 3000) {
-                const file = new File([text], `pasted_text_${attachments?.length || 0}.txt`, {
-                  type: 'text/plain',
-                })
-                insertFiles([file])
-                setMessageInput(messageInput) // (legacy)
-              }
-            })
-          }
+
+      const data = event.clipboardData
+      if (!data) return
+
+      const decision = decideClipboardPaste(data, {
+        pasteLongTextAsAFile,
+        longTextThreshold: 3000,
+      })
+      const nonImageFiles = extractClipboardNonImageFiles(data)
+      const plain = decision.plainText ?? ''
+      const trimmed = plain.trim()
+      const isLongText = pasteLongTextAsAFile && trimmed.length > 3000
+      const isUrlPaste =
+        !decision.hasImages && !isLongText && (trimmed.startsWith('http://') || trimmed.startsWith('https://'))
+
+      if (!decision.shouldPreventDefault && nonImageFiles.length === 0) {
+        return
+      }
+
+      // Own the paste: block native rich HTML / duplicate file insertion.
+      event.preventDefault()
+
+      const now = Date.now()
+      const isRapidReplay = now - lastPasteAtRef.current < 350
+      lastPasteAtRef.current = now
+
+      // Double-fired paste: skip re-attaching the same files.
+      if (isRapidReplay && (decision.hasImages || nonImageFiles.length > 0 || isLongText)) {
+        if (!isLongText && !isUrlPaste && plain && !decision.hasImages) {
+          return { insertPlainText: plain }
         }
-        // (legacy comment removed)
-        if (!hasText) {
-          event.preventDefault()
+        return { insertPlainText: null }
+      }
+
+      const filesToInsert: File[] = [...decision.images, ...nonImageFiles]
+
+      if (isLongText) {
+        filesToInsert.push(
+          new File([plain], `pasted_text_${attachments?.length || 0}.txt`, {
+            type: 'text/plain',
+          })
+        )
+      }
+
+      if (filesToInsert.length > 0) {
+        void insertFiles(filesToInsert)
+      }
+
+      if (isUrlPaste) {
+        const urls = trimmed
+          .split(/\s+/)
+          .map((url) => url.trim())
+          .filter((url) => url.startsWith('http://') || url.startsWith('https://'))
+        if (urls.length > 0) {
+          insertLinks(urls)
         }
       }
+
+      // Caption / normal text: let ComposerRichInput insert once after preventDefault.
+      // Long-text-as-file and pure URL attach paths skip inline insertion.
+      if (!isLongText && !isUrlPaste && plain) {
+        return { insertPlainText: plain }
+      }
+
+      return { insertPlainText: null }
     }
 
     const handleAttachLink = async () => {
@@ -2695,11 +2730,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     sessionId={isNewSession ? undefined : sessionId}
                     embedded
                     onRemove={
-                      isNewSession
-                        ? onDraftAgentIdsChange
-                          ? handleRemoveRoomAgent
-                          : undefined
-                        : handleRemoveRoomAgent
+                      isNewSession ? (onDraftAgentIdsChange ? handleRemoveRoomAgent : undefined) : handleRemoveRoomAgent
                     }
                   />
                 ) : null}
@@ -2950,8 +2981,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 accept={getFileAcceptString()}
               />
 
-              {/* Left Group: single overflow control */}
-              <Flex align="center" gap={0} className="min-w-0 flex-1 flex-wrap">
+              {/* Left Group: single overflow control (+ Memory on desktop only) */}
+              <Flex align="center" gap={0} className="min-w-0 flex-shrink-0 flex-nowrap">
                 <ComposerToolsMenu
                   isOpenClawModel={isOpenClawModel}
                   sessionType={sessionType}
@@ -2988,43 +3019,77 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   onAttachLink={handleAttachLink}
                   toolbarButtonClass={toolbarButtonClass}
                   toolbarIconSize={toolbarIconSize}
-                />
-                <MemoryDockPopover
-                  label={t('Memory')}
-                  on
-                  title={
-                    currentSession?.settings?.memoryAutoSave === false
-                      ? t('Memory · auto-save off for this chat')
-                      : t('Search and save memory')
+                  memorySlot={
+                    isSmallScreen ? (
+                      <MemoryDockPopover
+                        label={t('Memory')}
+                        on
+                        title={
+                          currentSession?.settings?.memoryAutoSave === false
+                            ? t('Memory · auto-save off for this chat')
+                            : t('Search and save memory')
+                        }
+                        trigger={
+                          <UnstyledButton
+                            className={cn(
+                              'flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm',
+                              'hover:bg-[var(--chatbox-background-tertiary)] active:scale-[0.99] transition-transform',
+                              currentSession?.settings?.memoryAutoSave === false && 'opacity-80'
+                            )}
+                            aria-label={t('Memory')}
+                          >
+                            <IconBrain size={16} stroke={1.5} />
+                            <span className="flex-1">{t('Memory')}</span>
+                          </UnstyledButton>
+                        }
+                        onInsertMemory={insertMemory}
+                        getMemorySaveContent={getMemorySaveContent}
+                        memoryAutoSave={currentSession?.settings?.memoryAutoSave}
+                        onMemoryAutoSaveChange={
+                          !isNewSession && currentSessionId ? handleMemoryAutoSaveChange : undefined
+                        }
+                        memoryAutoSaveDisabled={isNewSession || !currentSessionId}
+                      />
+                    ) : undefined
                   }
-                  trigger={
-                    <UnstyledButton
-                      className={cn(
-                        toolbarButtonClass,
-                        'min-h-9 min-w-9 active:scale-[0.96] transition-transform',
-                        isSmallScreen && 'mobile-touch-target',
-                        currentSession?.settings?.memoryAutoSave === false && 'opacity-80'
-                      )}
-                      aria-label={t('Memory')}
-                      title={
-                        currentSession?.settings?.memoryAutoSave === false
-                          ? t('Memory · auto-save off for this chat')
-                          : t('Search and save memory')
-                      }
-                    >
-                      <IconBrain size={toolbarIconSize} stroke={1.8} />
-                    </UnstyledButton>
-                  }
-                  onInsertMemory={insertMemory}
-                  getMemorySaveContent={getMemorySaveContent}
-                  memoryAutoSave={currentSession?.settings?.memoryAutoSave}
-                  onMemoryAutoSaveChange={!isNewSession && currentSessionId ? handleMemoryAutoSaveChange : undefined}
-                  memoryAutoSaveDisabled={isNewSession || !currentSessionId}
                 />
+                {!isSmallScreen && (
+                  <MemoryDockPopover
+                    label={t('Memory')}
+                    on
+                    title={
+                      currentSession?.settings?.memoryAutoSave === false
+                        ? t('Memory · auto-save off for this chat')
+                        : t('Search and save memory')
+                    }
+                    trigger={
+                      <UnstyledButton
+                        className={cn(
+                          toolbarButtonClass,
+                          'min-h-9 min-w-9 active:scale-[0.96] transition-transform',
+                          currentSession?.settings?.memoryAutoSave === false && 'opacity-80'
+                        )}
+                        aria-label={t('Memory')}
+                        title={
+                          currentSession?.settings?.memoryAutoSave === false
+                            ? t('Memory · auto-save off for this chat')
+                            : t('Search and save memory')
+                        }
+                      >
+                        <IconBrain size={toolbarIconSize} stroke={1.8} />
+                      </UnstyledButton>
+                    }
+                    onInsertMemory={insertMemory}
+                    getMemorySaveContent={getMemorySaveContent}
+                    memoryAutoSave={currentSession?.settings?.memoryAutoSave}
+                    onMemoryAutoSaveChange={!isNewSession && currentSessionId ? handleMemoryAutoSaveChange : undefined}
+                    memoryAutoSaveDisabled={isNewSession || !currentSessionId}
+                  />
+                )}
               </Flex>
 
               {/* Right Group: Team mode (multi-agent) + Model + Send */}
-              <Flex align="center" gap={4} className="shrink-0">
+              <Flex align="center" gap={4} className="min-w-0 flex-1 justify-end flex-nowrap">
                 {showRoomModeChip ? (
                   <TeamModeSelect
                     value={roomMode}
@@ -3062,7 +3127,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       className={cn(
                         toolbarButtonClass,
                         'model-picker-trigger',
-                        isSmallScreen && 'px-2.5 mobile-touch-target min-h-11'
+                        isSmallScreen && 'px-2.5 mobile-touch-target min-h-11 min-w-0'
                       )}
                       aria-label={t('Select Model')}
                     >
@@ -3070,8 +3135,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       <Text
                         size="xs"
                         className={cn(
-                          'text-[var(--chatbox-tint-secondary)] truncate',
-                          isSmallScreen ? 'max-w-[108px]' : 'max-w-[148px]'
+                          'text-[var(--chatbox-tint-secondary)] truncate min-w-0',
+                          isSmallScreen ? 'max-w-[7.5rem]' : 'max-w-[148px]'
                         )}
                         style={{ fontSize: '0.75rem', fontWeight: 500, letterSpacing: '-0.015em' }}
                         title={model?.modelId}
@@ -3088,7 +3153,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   </ModelSelector>
                 </Tooltip>
 
-                {((!isNewSession && currentSessionId && currentSession) || (isNewSession && draftSettings)) ? (
+                {(!isNewSession && currentSessionId && currentSession) || (isNewSession && draftSettings) ? (
                   <ReasoningEffortSelect
                     model={model}
                     settings={isNewSession ? draftSettings : currentSession?.settings}
@@ -3126,13 +3191,7 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                       showStop && 'is-stop',
                       isSmallScreen && 'mobile-touch-target'
                     )}
-                    aria-label={
-                      isSamplingVideoFrames
-                        ? t('Sampling video frames…')
-                        : showStop
-                          ? t('Stop')
-                          : t('Send')
-                    }
+                    aria-label={isSamplingVideoFrames ? t('Sampling video frames…') : showStop ? t('Stop') : t('Send')}
                     onClick={showStop ? onStopGenerating : () => handleSubmit()}
                     style={
                       !showStop && sendDisabled

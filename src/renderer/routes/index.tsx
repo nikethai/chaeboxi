@@ -17,7 +17,6 @@ import { createSession as createSessionStore } from '@/stores/chatStore'
 import { submitNewUserMessage, switchCurrentSession } from '@/stores/sessionActions'
 import { initEmptyChatSession } from '@/stores/sessionHelpers'
 import { useUIStore } from '@/stores/uiStore'
-import BlankStateStarters from './-components/BlankStateStarters'
 
 /** Dock center → bottom transition duration (must match CSS). */
 const BLANK_DOCK_MOVE_MS = 420
@@ -50,30 +49,10 @@ function Index() {
     id: 'new',
     ...initEmptyChatSession(),
   })
-  const [composerDraft, setComposerDraft] = useState('')
-  const [composerKey, setComposerKey] = useState(0)
+  const [composerDraft] = useState('')
+  const [composerKey] = useState(0)
   /** Center → bottom dock animation in progress (blocks double-submit). */
   const [isSending, setIsSending] = useState(false)
-
-  const fillComposer = useCallback((text: string) => {
-    // Persist first so remounted useMessageInput restore cannot race with empty draft
-    localStorage.setItem('new-chat', text)
-    setComposerDraft(text)
-    setComposerKey((key) => key + 1)
-    requestAnimationFrame(() => {
-      const el = document.getElementById('message-input') as HTMLElement | null
-      el?.focus()
-      // contenteditable: place caret at end of starter text
-      if (el && typeof window.getSelection === 'function') {
-        const range = document.createRange()
-        range.selectNodeContents(el)
-        range.collapse(false)
-        const sel = window.getSelection()
-        sel?.removeAllRanges()
-        sel?.addRange(range)
-      }
-    })
-  }, [])
 
   const { providers } = useProviders()
 
@@ -174,12 +153,11 @@ function Index() {
 
       // Center → bottom motion runs in parallel with session create + first message.
       // Never delay create/send behind the animation (that was dropping sends).
-      const animDone =
-        prefersReducedMotion()
-          ? Promise.resolve()
-          : new Promise<void>((resolve) => {
-              window.setTimeout(resolve, BLANK_DOCK_MOVE_MS)
-            })
+      const animDone = prefersReducedMotion()
+        ? Promise.resolve()
+        : new Promise<void>((resolve) => {
+            window.setTimeout(resolve, BLANK_DOCK_MOVE_MS)
+          })
 
       try {
         const agentIds = session.agentIds?.length
@@ -299,7 +277,7 @@ function Index() {
               </Button>
             )}
           </div>
-          {providers.length > 0 && <BlankStateStarters onSelect={fillComposer} />}
+          {/* Starters intentionally omitted — design contract: quiet Gemini blank home. */}
 
           <div className="session-dock blank-home-dock">
             <div className="session-dock-pad flex flex-col gap-3">

@@ -1,0 +1,65 @@
+# Fastlane configuration for the Capacitor iOS app (ios/App).
+#
+# Run from anywhere; paths are anchored to this file's directory (ios/fastlane).
+# The CI workflow uses `bundle exec fastlane ios <lane>` from the ios/ dir.
+#
+# Lanes:
+#   simulator_build  – unsigned Debug build for the iOS Simulator. CI smoke gate,
+#                      needs NO signing setup.
+#   beta             – signed Release archive (gym) using the project's automatic
+#                      signing (DEVELOPMENT_TEAM 962WN46SFR). Requires a valid
+#                      signing identity in the runner's login keychain (Apple ID
+#                      signed in to Xcode). Optionally uploads to TestFlight when
+#                      FASTLANE_TESTFLIGHT_UPLOAD=true.
+
+WORKSPACE = File.expand_path('../App/App.xcworkspace', __dir__)
+OUTPUT_DIR = File.expand_path('../build/ios', __dir__)
+DERIVED_DATA = File.join(OUTPUT_DIR, 'DerivedData')
+
+default_platform(:ios)
+
+platform :ios do
+  desc 'Unsigned iOS Simulator build (CI smoke gate, no signing required)'
+  lane :simulator_build do
+    xcodebuild(
+      workspace: WORKSPACE,
+      scheme: 'App',
+      configuration: 'Debug',
+      sdk: 'iphonesimulator',
+      destination: 'generic/platform=iOS Simulator',
+      derivedDataPath: DERIVED_DATA,
+      build_settings: { 'CODE_SIGNING_ALLOWED' => 'NO' }
+    )
+
+    FileUtils.mkdir_p(OUTPUT_DIR)
+    built_app = File.join(DERIVED_DATA, 'Build/Products/Debug-iphonesimulator/App.app')
+    FileUtils.cp_r(built_app, File.join(OUTPUT_DIR, 'Chaeboxi-simulator.app'))
+    UI.success("Simulator build done: #{File.join(OUTPUT_DIR, 'Chaeboxi-simulator.app')}")
+  end
+
+  desc 'Signed Release archive (automatic signing) + optional TestFlight upload'
+  lane :beta do
+    cocoapods(
+      podfile: File.expand_path('../App/Podfile', __dir__),
+      use_bundle_exec: false
+    )
+
+    build_app(
+      workspace: WORKSPACE,
+      scheme: 'App',
+      configuration: 'Release',
+      clean: true,
+      export_method: 'app-store',
+      output_directory: OUTPUT_DIR,
+      output_name: 'Chaeboxi.ipa',
+      include_symbols: true
+    )
+
+    if ENV['FASTLANE_TESTFLIGHT_UPLOAD'] == 'true'
+      pilot(
+        apple_id: ENV['FASTLANE_APPLE_ID'],
+        skip_waiting_for_build_processing: true
+      )
+    end
+  end
+end

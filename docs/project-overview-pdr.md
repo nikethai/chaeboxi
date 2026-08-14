@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | **Product** | Chaeboxi |
-| **Version** | 1.6.0 |
+| **Version** | 1.7.0 |
 | **License** | [GNU GPLv3](../LICENSE) |
 | **Repo** | [github.com/nikethai/chaeboxi](https://github.com/nikethai/chaeboxi) |
 | **Last updated** | 2026-08-11 |

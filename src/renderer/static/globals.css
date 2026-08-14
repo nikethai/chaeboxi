@@ -3823,6 +3823,39 @@
       min-width: 0;
       max-width: min(42vw, 11.5rem);
       flex: 1 1 auto;
+      height: 44px !important;
+      min-height: 44px !important;
+      align-items: center;
+    }
+
+    .composer-bar .composer-reasoning {
+      align-items: center;
+      height: 44px;
+    }
+
+    .composer-bar .composer-reasoning-select,
+    .composer-bar .composer-reasoning-select .mantine-Input-wrapper,
+    .composer-bar .composer-reasoning-select .mantine-Select-wrapper,
+    .composer-bar .composer-reasoning-select .mantine-Input-input {
+      height: 44px !important;
+      min-height: 44px !important;
+    }
+
+    .composer-bar .composer-reasoning-select .mantine-Input-input {
+      display: flex;
+      align-items: center;
+      border-radius: 7px;
+      padding-inline: 10px;
+      font-size: 0.75rem !important;
+      font-weight: 500;
+      background: var(--chatbox-background-primary);
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 12%, transparent);
+      border: none;
+    }
+
+    .composer-bar .composer-reasoning-info {
+      height: 44px;
+      min-width: 28px;
     }
 
     .composer-bar .model-picker-trigger .mantine-Text-root {
@@ -3830,6 +3863,34 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .composer-bar .composer-reasoning-info {
+      display: none;
+    }
+
+    .session-statusline {
+      padding-inline: 0.85rem;
+    }
+
+    .session-statusline-inner {
+      min-height: 32px;
+      padding: 0.28rem 0 0.45rem;
+      flex-wrap: wrap !important;
+      row-gap: 0.15rem;
+    }
+
+    .session-statusline-meta {
+      flex-wrap: wrap !important;
+      max-width: 100%;
+      justify-content: flex-end;
+      column-gap: 0.45rem !important;
+      row-gap: 0.1rem !important;
+    }
+
+    .session-statusline-seg,
+    .session-statusline-action {
+      padding-inline: 0.15rem;
     }
   }
 
@@ -6498,6 +6559,37 @@ html[data-quick-chat] .composer-tools-menu .mantine-Menu-item .mantine-Flex-root
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
+}
+
+.session-statusline-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.session-statusline-key {
+  font-size: 0.65rem;
+  font-weight: 550;
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+  color: var(--chatbox-tint-tertiary);
+  opacity: 0.85;
+}
+
+.composer-tools-menu.mantine-Menu-dropdown {
+  z-index: 400 !important;
+  max-height: min(70vh, 28rem);
+  overflow-y: auto;
+}
+
+.composer-tools-sheet {
+  box-shadow: 0 -12px 40px color-mix(in srgb, var(--chatbox-tint-primary) 12%, transparent);
+}
+
+.composer-tools-sheet .composer-tools-menu .mantine-Menu-item {
+  min-height: 44px;
 }
 
 .session-statusline.is-empty {

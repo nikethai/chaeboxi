@@ -93,7 +93,9 @@ async function doRequest(url: string, options: RequestOptions): Promise<Response
   }
 
   const makeRequest = async () => {
-    if (isCapacitorMobile && useProxy) {
+    // Capacitor WKWebView/WebView fetch is CORS-bound. Chat/OAuth to
+    // chatgpt.com / openai.com must use native HTTP even when useProxy is false.
+    if (isCapacitorMobile && !isLocalHost(url)) {
       return handleMobileRequest(requestUrl, method, headers, body, signal)
     }
 

@@ -25,6 +25,7 @@ import {
 } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
 import { type FC, type ReactNode, useEffect, useMemo, useState } from 'react'
+import { Drawer } from 'vaul'
 import { useTranslation } from 'react-i18next'
 import { useKnowledgeBases } from '@/hooks/knowledge-base'
 import { useMCPServerStatus, useToggleMCPServer } from '@/hooks/mcp'
@@ -166,19 +167,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
     setOpened(false)
   }
 
-  return (
-    <>
-      <Menu
-        opened={opened}
-        onChange={setOpened}
-        trigger="click"
-        position="top-start"
-        shadow="md"
-        width={280}
-        closeOnItemClick={false}
-        transitionProps={{ transition: 'pop', duration: 160 }}
-      >
-        <Menu.Target>
+  const plusButton = (
           <UnstyledButton
             className={cn(
               toolbarButtonClass,
@@ -200,9 +189,25 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
               />
             )}
           </UnstyledButton>
-        </Menu.Target>
+  )
 
-        <Menu.Dropdown className="composer-tools-menu">
+  if (isSmallScreen) {
+    return (
+      <>
+        <Drawer.Root open={opened} onOpenChange={setOpened} noBodyStyles>
+          <Drawer.Trigger asChild>{plusButton}</Drawer.Trigger>
+          <Drawer.Portal>
+            <Drawer.Overlay className="fixed inset-0 bg-chatbox-background-mask-overlay z-[390]" />
+            <Drawer.Content className="composer-tools-sheet flex flex-col fixed bottom-0 left-0 right-0 outline-none bg-chatbox-background-primary rounded-t-2xl max-h-[72dvh] overflow-hidden z-[400]">
+              <Drawer.Handle />
+              <Text c="chatbox-tertiary" size="xs" className="text-center my-xxs" fw={600}>
+                {t('Tools and attachments')}
+              </Text>
+              <Menu opened onChange={() => undefined} closeOnItemClick={false} withinPortal={false}>
+              <Menu.Target>
+                <span className="sr-only" />
+              </Menu.Target>
+              <Menu.Dropdown className="composer-tools-menu !relative !inset-auto !shadow-none !border-0 !w-full !max-h-none overflow-y-auto pb-[max(0.75rem,var(--mobile-safe-area-inset-bottom,env(safe-area-inset-bottom)))]">
           <Menu.Label fw={600}>{t('Attach')}</Menu.Label>
           <Menu.Item
             leftSection={<IconPhoto size={16} stroke={1.5} />}
@@ -523,10 +528,174 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
             {t('Chat settings')}
           </Menu.Item>
 
-          {isSmallScreen && null}
+              </Menu.Dropdown>
+              </Menu>
+            </Drawer.Content>
+          </Drawer.Portal>
+        </Drawer.Root>
+        <Modal
+        opened={workspaceModalOpen}
+        onClose={() => setWorkspaceModalOpen(false)}
+        title={t('Project folder')}
+        centered
+        size="md"
+      >
+        <Flex direction="column" gap="sm">
+          <Text size="sm" c="dimmed">
+            {t(
+              'The AI can only read and edit files inside this folder. Paste the full path (for example /Users/you/projects/my-app).'
+            )}
+          </Text>
+          <TextInput
+            label={t('Folder path')}
+            placeholder="/Users/you/projects/my-app"
+            value={workspaceDraft}
+            onChange={(e) => setWorkspaceDraft(e.currentTarget.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                saveWorkspace()
+              }
+            }}
+            data-autofocus
+          />
+          <Flex justify="flex-end" gap="xs" mt="xs">
+            <Button variant="default" onClick={() => setWorkspaceModalOpen(false)}>
+              {t('Cancel')}
+            </Button>
+            <Button onClick={saveWorkspace}>{t('Save')}</Button>
+          </Flex>
+        </Flex>
+      </Modal>
+    </>
+    )
+  }
+
+  return (
+    <>
+      <Menu
+        opened={opened}
+        onChange={setOpened}
+        trigger="click"
+        position="top-start"
+        shadow="md"
+        width={280}
+        closeOnItemClick={false}
+        withinPortal
+        middlewares={{ flip: true, shift: true, inline: false }}
+        transitionProps={{ transition: 'pop', duration: 160 }}
+      >
+        <Menu.Target>{plusButton}</Menu.Target>
+        <Menu.Dropdown className="composer-tools-menu">
+          <Menu.Label fw={600}>{t('Attach')}</Menu.Label>
+          <Menu.Item
+            leftSection={<IconPhoto size={16} stroke={1.5} />}
+            onClick={() => {
+              onImageUploadClick()
+              setOpened(false)
+            }}
+          >
+            {t('Image')}
+          </Menu.Item>
+          <Menu.Item
+            leftSection={<IconFolder size={16} stroke={1.5} />}
+            onClick={() => {
+              onFileUploadClick()
+              setOpened(false)
+            }}
+          >
+            {t('File')}
+          </Menu.Item>
+          <Menu.Item
+            leftSection={<IconLink size={16} stroke={1.5} />}
+            onClick={() => {
+              onAttachLink()
+              setOpened(false)
+            }}
+          >
+            {t('Link')}
+          </Menu.Item>
+          {memorySlot ? (
+            <>
+              <Menu.Divider />
+              <Menu.Label fw={600}>{t('Memory')}</Menu.Label>
+              <div className="px-1 pb-1" onClick={() => setOpened(false)} onKeyDown={() => undefined}>
+                {memorySlot}
+              </div>
+            </>
+          ) : null}
+          {(showWeb || showMcp || showKb) && (
+            <>
+              <Menu.Divider />
+              <Menu.Label fw={600}>{t('Tools')}</Menu.Label>
+            </>
+          )}
+          {showWeb && (
+            <Menu.Item
+              leftSection={<IconWorldWww size={16} stroke={1.5} />}
+              closeMenuOnClick={false}
+              disabled={!webSearchConfigured && !webBrowsingMode}
+              rightSection={
+                <Switch
+                  size="xs"
+                  checked={webBrowsingMode}
+                  disabled={!webSearchConfigured && !webBrowsingMode}
+                  onChange={(e) => onWebBrowsingChange(e.currentTarget.checked)}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              }
+              onClick={() => {
+                if (webSearchConfigured || webBrowsingMode) {
+                  onWebBrowsingChange(!webBrowsingMode)
+                }
+              }}
+            >
+              <Flex direction="column" gap={2}>
+                <Text size="sm">{t('Web Search')}</Text>
+                {!webSearchConfigured && (
+                  <Text size="xs" c="dimmed">
+                    {t('Configure in Settings')}
+                  </Text>
+                )}
+              </Flex>
+            </Menu.Item>
+          )}
+          <Menu.Divider />
+          <Menu.Label fw={600}>{t('Chat')}</Menu.Label>
+          {showRollbackThreadButton ? (
+            <Menu.Item
+              leftSection={<IconArrowBackUp size={16} stroke={1.5} />}
+              onClick={() => {
+                onRollbackThread?.()
+                setOpened(false)
+              }}
+            >
+              {t('Undo last reply')}
+            </Menu.Item>
+          ) : (
+            <Menu.Item
+              leftSection={<IconFilePencil size={16} stroke={1.5} />}
+              disabled={!onStartNewThread}
+              onClick={() => {
+                onStartNewThread?.()
+                setOpened(false)
+              }}
+            >
+              {t('New Thread')}
+            </Menu.Item>
+          )}
+          <Menu.Item
+            leftSection={<IconAdjustmentsHorizontal size={16} stroke={1.5} />}
+            disabled={!onClickSessionSettings}
+            onClick={() => {
+              onClickSessionSettings?.()
+              setOpened(false)
+            }}
+          >
+            {t('Chat settings')}
+          </Menu.Item>
         </Menu.Dropdown>
       </Menu>
-
       <Modal
         opened={workspaceModalOpen}
         onClose={() => setWorkspaceModalOpen(false)}

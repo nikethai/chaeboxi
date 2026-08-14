@@ -2,6 +2,21 @@ import { CapacitorHttp } from '@capacitor/core'
 import { createNativeReadableStream } from '@/native/stream-http'
 import { ApiError } from '../../shared/models/errors'
 
+function shouldUseNativeStream(url: string, method: string, body?: RequestInit['body']): boolean {
+  if (method.toUpperCase() !== 'POST' || typeof body !== 'string' || body.length === 0) {
+    return false
+  }
+  try {
+    const parsed = JSON.parse(body) as { stream?: unknown }
+    if (parsed.stream === true) return true
+  } catch {
+    // non-JSON POST (form-urlencoded OAuth) is not an SSE chat stream
+    return false
+  }
+  // Codex WHAM / OpenAI Responses: stream flag may be omitted; still SSE.
+  return /chatgpt\.com\/backend-api\/wham|\/responses(?:\?|$)/i.test(url)
+}
+
 export async function handleMobileRequest(
   url: string,
   method: string,
@@ -14,7 +29,7 @@ export async function handleMobileRequest(
   headers.forEach((value, key) => {
     headerObj[key] = value
   })
-  const isStreaming = body && typeof body === 'string' && JSON.parse(body).stream === true
+  const isStreaming = shouldUseNativeStream(url, method, body)
 
   if (isStreaming) {
     try {

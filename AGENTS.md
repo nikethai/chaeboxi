@@ -46,7 +46,7 @@ pnpm check              # TypeScript type-check (tsc --noEmit)
 
 ## Path Aliases
 
-Defined in `tsconfig.json`, mirrored in `vite.renderer.config.ts` and `vitest.config.mts`:
+Defined in `tsconfig.json`, mirrored in `vite.renderer.config.mts` and `vitest.config.mts`:
 - `@/*` → `src/renderer/*`
 - `@shared/*` → `src/shared/*`
 
@@ -115,7 +115,7 @@ Single Rust file with Tauri command handlers. Key responsibilities:
 
 ### Build Variants
 
-Controlled by environment variables defined in `vite.renderer.config.ts`:
+Controlled by environment variables defined in `vite.renderer.config.mts`:
 - `CHATBOX_BUILD_PLATFORM` — `web`, `ios`, `android`, or `unknown` (desktop)
 - `CHATBOX_BUILD_TARGET` — `mobile_app` or `unknown`
 - `USE_LOCAL_API` — connects to local API in development

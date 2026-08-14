@@ -221,7 +221,7 @@ Threat model is **single-user desktop / personal device**, not multi-tenant SaaS
 | --- | --- |
 | SQLite RAG in Rust | **False** — HashMaps + JSON chunks + keyword search |
 | Hosted Chatbox cloud / paid features | **Disabled** in product flags; strip helpers remain for migration stability |
-| GitHub Actions CI | **Not present** in-repo (as of this writing) |
+| GitHub Actions CI | **Present** — quality gate (`ci.yml`) + desktop release (`release.yml`); see [deployment-guide.md](./deployment-guide.md) |
 | Full mobile parity with desktop MCP/stdio | **Not assumed** — desktop is richest shell |
 
 When fixing AGENTS.md or feature docs, align with this architecture document and the source paths above.

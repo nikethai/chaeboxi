@@ -15,7 +15,7 @@
     "delete-sourcemaps": "node ./scripts/delete-source-maps.cjs",
     "postinstall": "node ./scripts/postinstall.cjs",
     "package": "pnpm tauri:build",
-    "release:web": "bash release-web.sh",
+    "release:web": "pnpm build:web",
     "dev": "node ./scripts/tauri-dev-macos.mjs",
     "dev:unsigned": "pnpm tauri:dev",
     "dev:local": "cross-env USE_LOCAL_API=true node ./scripts/tauri-dev-macos.mjs",

@@ -1135,13 +1135,31 @@ async fn inject_click(x: f64, y: f64, button: &str) -> Result<Value, String> {
     }
     #[cfg(target_os = "linux")]
     {
+        let click = match button {
+            "right" => "3",
+            "middle" => "2",
+            _ => "1",
+        };
         let status = Command::new("xdotool")
-            .args(["mousemove", &format!("{}", x as i32), &format!("{}", y as i32), "click", "1"])
+            .args([
+                "mousemove",
+                &format!("{}", x as i32),
+                &format!("{}", y as i32),
+                "click",
+                click,
+            ])
             .status()
             .await;
         match status {
             Ok(s) if s.success() => {
-                return Ok(json!({ "ok": true, "x": x, "y": y, "experimental": true, "backend": "xdotool" }))
+                return Ok(json!({
+                    "ok": true,
+                    "x": x,
+                    "y": y,
+                    "button": button,
+                    "experimental": true,
+                    "backend": "xdotool"
+                }))
             }
             _ => {
                 return Err(
@@ -1492,10 +1510,10 @@ async fn inject_mouse_move(x: f64, y: f64) -> Result<Value, String> {
             .args(["mousemove", &format!("{}", x as i32), &format!("{}", y as i32)])
             .status()
             .await;
-        match status {
+        return match status {
             Ok(s) if s.success() => Ok(json!({ "ok": true, "x": x, "y": y, "experimental": true })),
             _ => Err("UNSUPPORTED: xdotool required".into()),
-        }
+        };
     }
     #[allow(unreachable_code)]
     Err("UNSUPPORTED_PLATFORM".into())

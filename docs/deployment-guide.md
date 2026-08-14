@@ -68,7 +68,7 @@ Manual re-run without a new tag: Actions → **Release** → Run workflow (optio
   `cargo-ndk`, then `pnpm tauri android build`. APK is built for every tag;
   dispatch input selects `apk` / `aab` / `both`. Signing uses the debug
   keystore until a release keystore is configured.
-- **iOS job** runs on the self-hosted runner (`runs-on: [self-hosted, mac, x64]`,
+- **iOS job** runs on the self-hosted runner (`runs-on: [self-hosted, macOS, X64]`,
   Intel Mac). Requirements: macOS + Xcode 16+, internet for RubyGems/npm.
   CocoaPods and fastlane are installed automatically (Ruby 3.3 via
   `ruby/setup-ruby`, `ios/Gemfile`). The job runs `pnpm run mobile:sync:ios`

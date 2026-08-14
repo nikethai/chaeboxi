@@ -4,7 +4,7 @@
 #   - Manual: Actions → Mobile Build → Run workflow
 #   - Push of tag v* (runs alongside the desktop Release workflow)
 #
-# iOS runs ONLY on the self-hosted runner (labels: self-hosted, mac, x64).
+# iOS runs ONLY on the self-hosted runner (labels: self-hosted, macOS, X64).
 # Runner requirements: macOS with Xcode 16+, git + node + pnpm. CocoaPods is
 # installed via RubyGems if missing; fastlane is installed via Bundler from
 # ios/Gemfile, so a preinstalled fastlane on the runner is optional.
@@ -109,7 +109,7 @@ jobs:
 
   ios:
     name: iOS (${{ inputs.ios_mode || 'simulator' }}) — self-hosted
-    runs-on: [self-hosted, mac, x64]
+    runs-on: [self-hosted, macOS, X64]
     timeout-minutes: 120
     # The Intel runner has 6 cores / 16 GB: never run two iOS jobs at once.
     concurrency:

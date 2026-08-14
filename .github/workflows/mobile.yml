@@ -139,6 +139,19 @@ jobs:
           touch "$RUNNER_TOOL_CACHE/.write-test"
           rm "$RUNNER_TOOL_CACHE/.write-test"
 
+      - name: Install Ruby runtime libraries
+        run: |
+          if ! command -v brew >/dev/null 2>&1; then
+            echo "::error::Intel Homebrew is required at /usr/local/bin/brew. Install from https://brew.sh/"
+            exit 1
+          fi
+          if [ "$(brew --prefix)" != "/usr/local" ]; then
+            echo "::error::Expected Intel Homebrew prefix /usr/local, got $(brew --prefix)."
+            exit 1
+          fi
+          HOMEBREW_NO_AUTO_UPDATE=1 brew install gmp libyaml openssl@3
+          test -r /usr/local/opt/gmp/lib/libgmp.10.dylib
+
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
         with:

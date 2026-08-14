@@ -17,7 +17,16 @@ Built with **Tauri 2 + React 18 + TypeScript**.
 
 ## Download
 
-Desktop builds: [GitHub Releases](https://github.com/nikethai/chaeboxi/releases).
+Desktop installers: [GitHub Releases](https://github.com/nikethai/chaeboxi/releases).
+
+| Platform | Package |
+| --- | --- |
+| macOS (Apple Silicon) | `.dmg` |
+| macOS (Intel) | `.dmg` |
+| Windows | NSIS setup `.exe` |
+| Linux | `.AppImage` / `.deb` |
+
+Release process for maintainers: [docs/deployment-guide.md](./docs/deployment-guide.md).
 
 ## Features
 
@@ -81,6 +90,7 @@ More detail for contributors: [AGENTS.md](./AGENTS.md).
 | [Codebase summary](./docs/codebase-summary.md) | Repo layout, packages, scale, feature doc map |
 | [Code standards](./docs/code-standards.md) | Style, layering, testing, commits, security |
 | [Design guidelines](./docs/design-guidelines.md) | UI design system |
+| [Deployment guide](./docs/deployment-guide.md) | CI, tags, GitHub Releases, signing |
 | [AGENTS.md](./AGENTS.md) | Contributor architecture entry |
 
 Feature docs (agents, skills, memory, RAG, storage, integrations, OpenClaw, video URL, etc.) live under [`docs/`](./docs/).

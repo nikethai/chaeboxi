@@ -1,0 +1,47 @@
+# Quality gate — PR and main.
+# Unit tests are required. Biome/tsc currently fail on pre-existing debt on main
+# (hundreds of style findings + a handful of TS errors); they run as report-only
+# until a dedicated cleanup lands. Do not block desktop releases on that debt.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      # Version comes from package.json packageManager (do not also set version:).
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Unit tests
+        run: pnpm test
+
+      # Report-only until main is biome-clean (pnpm check:ci ≈ 400+ errors today).
+      - name: Biome lint (report-only)
+        continue-on-error: true
+        run: pnpm lint
+
+      # Report-only until remaining TS errors on main are fixed.
+      - name: TypeScript (report-only)
+        continue-on-error: true
+        run: pnpm check

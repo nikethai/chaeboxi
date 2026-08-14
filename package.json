@@ -320,8 +320,7 @@
       "esbuild",
       "msw",
       "protobufjs",
-      "sharp",
-      "zipfile"
+      "sharp"
     ],
     "overrides": {
       "@tanstack/router-generator": "1.120.15",

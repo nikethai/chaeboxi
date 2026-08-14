@@ -157,13 +157,16 @@ jobs:
         with:
           ruby-version: '3.3'
 
-      - name: Install CocoaPods (if missing)
+      - name: Install iOS Ruby dependencies (Bundler)
+        working-directory: ios
         run: |
-          if command -v pod >/dev/null 2>&1; then
-            echo "CocoaPods already present: $(pod --version)"
-          else
-            gem install cocoapods --no-document
-          fi
+          echo "ruby: $(command -v ruby)"
+          echo "bundle: $(command -v bundle)"
+          ruby --version
+          bundle --version
+          bundle install --jobs 4 --retry 3
+          bundle exec pod --version
+          bundle exec fastlane --version
 
       - uses: pnpm/action-setup@v4
 
@@ -178,9 +181,6 @@ jobs:
       - name: Sync web assets + install pods (Capacitor)
         run: pnpm run mobile:sync:ios
 
-      - name: Install fastlane (Bundler)
-        working-directory: ios
-        run: bundle install
 
       - name: Simulator smoke build (unsigned)
         if: ${{ (inputs.ios_mode || 'simulator') == 'simulator' }}

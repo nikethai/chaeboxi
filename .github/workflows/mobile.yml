@@ -115,6 +115,15 @@ jobs:
     concurrency:
       group: ios-self-hosted-${{ github.workflow }}
       cancel-in-progress: false
+    env:
+      # Keep every cache inside the workspace. The runner user's HOME
+      # (/Users/runner) may not exist on the Mac (EACCES: mkdir '/Users/runner'),
+      # which breaks Ruby/pnpm/CocoaPods/fastlane default paths. Remove this
+      # block once the runner's home dir exists and is writable.
+      HOME: ${{ github.workspace }}/.home
+      RUNNER_TOOL_CACHE: ${{ github.workspace }}/.toolcache
+      npm_config_store_dir: ${{ github.workspace }}/.pnpm-store
+      CP_HOME_DIR: ${{ github.workspace }}/.cocoapods
     steps:
       - name: Runner diagnostics
         run: |
@@ -125,6 +134,9 @@ jobs:
           echo "ruby: $(ruby --version)"
 
       - uses: actions/checkout@v4
+
+      - name: Prepare workspace-local home dirs
+        run: mkdir -p "$HOME" "$RUNNER_TOOL_CACHE"
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1

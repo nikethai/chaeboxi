@@ -1,6 +1,10 @@
 App/build
 App/Pods
 App/output
+build/
+fastlane/report.xml
+fastlane/README.md
+vendor/bundle/
 App/App/public
 DerivedData
 xcuserdata

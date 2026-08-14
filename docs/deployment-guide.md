@@ -92,6 +92,14 @@ Manual re-run without a new tag: Actions → **Release** → Run workflow (optio
   `HOMEBREW_NO_AUTO_UPDATE=1 brew install gmp libyaml openssl@3`; verify
   `/usr/local/opt/gmp/lib/libgmp.10.dylib` exists. The workflow runs this
   idempotently before Ruby setup and rejects a non-Intel Homebrew prefix.
+- The workflow runs `bundle install` immediately after Ruby setup, before
+  Capacitor sync. Capacitor detects `ios/Gemfile` and therefore invokes
+  `bundle exec pod install`; installing the bundle afterward will fail with
+  `Bundler::GemNotFound` and can mix Homebrew Ruby with the setup Ruby.
+- `epub@1.3.0` has an obsolete optional `zipfile@0.5.12` native accelerator
+  that cannot build on Node 22. It is intentionally excluded from pnpm's
+  `onlyBuiltDependencies`, so `epub` uses its documented pure-JS `adm-zip`
+  fallback instead.
 
 ## Signing (optional, recommended for public macOS)
 

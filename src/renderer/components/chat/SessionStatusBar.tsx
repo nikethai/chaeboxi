@@ -363,7 +363,9 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
               <Tooltip label={cacheSegment.title} withArrow openDelay={400}>
                 <Text className="session-statusline-seg">
                   <span className="session-statusline-key">cache</span>
-                  <span className="session-statusline-val">{cacheSegment.label.replace(/^cache\s*/, '') || '—'}</span>
+                  <span className="session-statusline-val">
+                    {cacheSegment.label.replace(/^cache\s*/i, '') || '—'}
+                  </span>
                 </Text>
               </Tooltip>
             )}
@@ -371,7 +373,6 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
             {CHATBOX_BUILD_PLATFORM !== 'android' && metrics && hasUsage && metrics.actualCost > 0 && (
               <Tooltip label={t('Session cost estimate')} withArrow openDelay={400}>
                 <Text className="session-statusline-seg">
-                  <span className="session-statusline-key">$</span>
                   <span className="session-statusline-val">{formatCost(metrics.actualCost)}</span>
                 </Text>
               </Tooltip>

@@ -319,7 +319,7 @@ export default function FollowUpSuggestions({ sessionId, message, cachedFollowUp
 
   if (loading) {
     return (
-      <Group gap="xs" mt="xs" wrap="wrap">
+      <Group gap="xs" mt="xs" wrap="wrap" align="center">
         <IconSparkles size={14} className="text-[var(--chatbox-tint-brand)] shrink-0" />
         <Loader size={14} color="chatbox-brand" />
       </Group>

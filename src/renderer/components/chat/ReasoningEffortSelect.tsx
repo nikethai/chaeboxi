@@ -44,8 +44,9 @@ export default function ReasoningEffortSelect({
   }, [model, sessionId, supportsReasoning, t])
 
   return (
-    <Flex align="center" gap={compact ? 6 : 8} className="min-w-0">
+    <Flex align="center" gap={compact ? 6 : 8} className="composer-reasoning min-w-0">
       <AdaptiveSelect
+        className="composer-reasoning-select"
         value={getReasoningDropdownValue(settings)}
         onChange={(value) => {
           if (!value || !onSettingsChange) return
@@ -63,12 +64,12 @@ export default function ReasoningEffortSelect({
         aria-label={t('Reasoning level')}
         comboboxProps={{ withinPortal: true }}
         size="xs"
-        styles={{ input: { fontSize: compact ? '0.7rem' : '0.75rem' } }}
-        w={compact ? 96 : 108}
+        styles={{ input: { fontSize: compact ? '0.75rem' : '0.75rem' } }}
+        w={compact ? 108 : 108}
       />
       <Tooltip label={tooltip} withArrow maw={280} className="!whitespace-normal" events={{ hover: true, focus: true, touch: true }}>
-        <span className="inline-flex">
-          <ScalableIcon icon={IconInfoCircle} size={compact ? 14 : 16} className="text-chatbox-tint-tertiary" />
+        <span className="composer-reasoning-info inline-flex items-center justify-center">
+          <ScalableIcon icon={IconInfoCircle} size={compact ? 16 : 16} className="text-chatbox-tint-tertiary" />
         </span>
       </Tooltip>
     </Flex>

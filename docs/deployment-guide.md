@@ -24,7 +24,7 @@ Keep these in sync before tagging:
 
 | Workflow | File | Trigger | Purpose |
 | --- | --- | --- | --- |
-| **CI** | `.github/workflows/ci.yml` | PR + push to `main` | Biome, TypeScript, unit tests |
+| **CI** | `.github/workflows/ci.yml` | PR + push to `main` | **Required:** unit tests. Biome + `tsc` run report-only (pre-existing debt on main) |
 | **Release** | `.github/workflows/release.yml` | Tag `v*` or manual dispatch | Build installers → draft GitHub Release |
 
 ### Artifacts produced

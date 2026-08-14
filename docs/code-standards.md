@@ -35,7 +35,7 @@ pnpm check
 pnpm test
 ```
 
-GitHub Actions runs quality gates on PR/`main` (`.github/workflows/ci.yml`). Local `pnpm lint` / `check` / `test` remain the day-to-day loop. Desktop installers ship via `.github/workflows/release.yml` (see [deployment-guide.md](./deployment-guide.md)).
+GitHub Actions (`.github/workflows/ci.yml`) requires **unit tests** on PR/`main`. Biome and `tsc` currently run **report-only** because main still has pre-existing lint/type debt (`pnpm check:ci` is not green). Local `pnpm lint` / `check` / `test` remain the day-to-day loop. Desktop installers ship via `.github/workflows/release.yml` (see [deployment-guide.md](./deployment-guide.md)).
 
 ## Language policy
 

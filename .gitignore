@@ -172,6 +172,7 @@ dist
 
 
 **/routeTree.gen.ts
+!src/renderer/routeTree.gen.ts
 
 .env.sentry-build-plugin
 .sisyphus/

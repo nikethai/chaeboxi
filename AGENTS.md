@@ -46,7 +46,7 @@ pnpm check              # TypeScript type-check (tsc --noEmit)
 
 ## Path Aliases
 
-Defined in `tsconfig.json`, mirrored in `vite.renderer.config.ts` and `vitest.config.ts`:
+Defined in `tsconfig.json`, mirrored in `vite.renderer.config.ts` and `vitest.config.mts`:
 - `@/*` → `src/renderer/*`
 - `@shared/*` → `src/shared/*`
 
@@ -143,7 +143,7 @@ Controlled by environment variables defined in `vite.renderer.config.ts`:
 - Vitest with Node environment, globals enabled, 10s default timeout
 - Test files: `*.test.ts` / `*.test.tsx` colocated with source or in `test/integration/`
 - Integration tests have 300s timeout; file/model-provider subtests have 120s timeout
-- Path aliases (`@/`, `@shared/`) work in tests via `vitest.config.ts`
+- Path aliases (`@/`, `@shared/`) work in tests via `vitest.config.mts`
 - Console output suppressed in tests (`silent: true`)
 
 ### Mobile

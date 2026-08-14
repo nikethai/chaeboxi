@@ -35,7 +35,7 @@ pnpm check
 pnpm test
 ```
 
-There is **no** GitHub Actions CI workflow in-repo today; local quality gates are the source of truth.
+GitHub Actions runs quality gates on PR/`main` (`.github/workflows/ci.yml`). Local `pnpm lint` / `check` / `test` remain the day-to-day loop. Desktop installers ship via `.github/workflows/release.yml` (see [deployment-guide.md](./deployment-guide.md)).
 
 ## Language policy
 

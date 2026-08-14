@@ -1,0 +1,136 @@
+# Desktop installers → draft GitHub Release.
+# Trigger: tag v* (e.g. v1.6.0) or Actions → Run workflow.
+#
+# Signing (optional secrets — omit for unsigned / ad-hoc builds):
+#   macOS: APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
+#          APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID
+#   Windows: see https://v2.tauri.app/distribute/sign/windows/
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to attach assets to (e.g. v1.6.0). Leave empty to use package version as draft tag name.'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish-tauri:
+    name: ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: macOS Apple Silicon
+            platform: macos-latest
+            rust_target: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin --bundles dmg
+          - label: macOS Intel
+            platform: macos-latest
+            rust_target: x86_64-apple-darwin
+            args: --target x86_64-apple-darwin --bundles dmg
+          - label: Windows x64
+            platform: windows-latest
+            rust_target: ''
+            args: --bundles nsis
+          - label: Linux x64
+            platform: ubuntu-22.04
+            rust_target: ''
+            args: --bundles appimage,deb
+
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux system deps
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            xdg-utils
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      # Pin matches rust-toolchain.toml / Cargo.toml rust-version (1.88).
+      - name: Install Rust (host)
+        if: matrix.rust_target == ''
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.88.0
+
+      - name: Install Rust (cross target)
+        if: matrix.rust_target != ''
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.88.0
+          targets: ${{ matrix.rust_target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+          shared-key: release-${{ matrix.platform }}-${{ matrix.rust_target || 'host' }}
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Ship browser-host script only (see tauri.conf resources).
+      # Do NOT npm-install Playwright here — Chromium must not land in installers.
+
+      - name: Build and upload to GitHub Release
+        uses: tauri-apps/tauri-action@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Optional code signing / notarization (no-op when unset).
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          # Tag push → github.ref_name; dispatch with input → that tag; else v__VERSION__ from app config.
+          tagName: ${{ (github.event_name == 'workflow_dispatch' && inputs.tag) || (github.ref_type == 'tag' && github.ref_name) || 'v__VERSION__' }}
+          releaseName: Chaeboxi ${{ (github.event_name == 'workflow_dispatch' && inputs.tag) || (github.ref_type == 'tag' && github.ref_name) || 'v__VERSION__' }}
+          releaseBody: |
+            Desktop installers for Chaeboxi.
+
+            | Platform | Asset |
+            | --- | --- |
+            | macOS Apple Silicon | `*.dmg` (aarch64) |
+            | macOS Intel | `*.dmg` (x64) |
+            | Windows | `*-setup.exe` (NSIS) |
+            | Linux | `*.AppImage`, `*.deb` |
+
+            **macOS (unsigned / ad-hoc builds):** if Gatekeeper blocks open, run:
+            `xattr -cr /Applications/Chaeboxi.app` then open the app.
+
+            Source: https://github.com/nikethai/chaeboxi
+          releaseDraft: true
+          prerelease: false
+          tauriScript: pnpm tauri
+          args: ${{ matrix.args }}

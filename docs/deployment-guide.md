@@ -87,6 +87,11 @@ Manual re-run without a new tag: Actions → **Release** → Run workflow (optio
   `sudo mkdir -p /Users/runner/hostedtoolcache && sudo chown -R ringo:staff /Users/runner`.
   Verify with `touch /Users/runner/hostedtoolcache/.write-test && rm $_`, then
   re-run the workflow. This does **not** require a macOS user named `runner`.
+- The Intel prebuilt Ruby also requires matching Homebrew runtime libraries.
+  Install once with
+  `HOMEBREW_NO_AUTO_UPDATE=1 brew install gmp libyaml openssl@3`; verify
+  `/usr/local/opt/gmp/lib/libgmp.10.dylib` exists. The workflow runs this
+  idempotently before Ruby setup and rejects a non-Intel Homebrew prefix.
 
 ## Signing (optional, recommended for public macOS)
 

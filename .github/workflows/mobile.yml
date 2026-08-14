@@ -1,0 +1,180 @@
+# Mobile builds — Android (GitHub-hosted Ubuntu) + iOS (self-hosted Intel Mac).
+#
+# Triggers:
+#   - Manual: Actions → Mobile Build → Run workflow
+#   - Push of tag v* (runs alongside the desktop Release workflow)
+#
+# iOS runs ONLY on the self-hosted runner (labels: self-hosted, mac, x64).
+# Runner requirements: macOS with Xcode 16+, git + node + pnpm. CocoaPods is
+# installed via RubyGems if missing; fastlane is installed via Bundler from
+# ios/Gemfile, so a preinstalled fastlane on the runner is optional.
+#
+# Signed (beta) lane additionally needs a signing identity in the runner's
+# login keychain (Apple ID with Xcode automatic signing) and optionally
+# FASTLANE_APPLE_ID / FASTLANE_TEAM_ID repo secrets for TestFlight upload.
+name: Mobile Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      ios_mode:
+        description: 'iOS build: simulator smoke (unsigned) or signed TestFlight archive'
+        required: true
+        default: 'simulator'
+        type: choice
+        options:
+          - simulator
+          - beta
+      android_package:
+        description: 'Android package type'
+        required: true
+        default: 'apk'
+        type: choice
+        options:
+          - apk
+          - aab
+          - both
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Android (${{ inputs.android_package || 'both' }})
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # compileSdk 36 + AGP 8.11 defaults; NDK 26.3 matches Tauri v2's default.
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-36 build-tools;36.0.0 ndk;26.3.11579264'
+
+      - name: Install Rust (Android targets)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.88.0
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+          shared-key: mobile-android
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk --version 3.5.4 --locked
+
+      - name: Build Android
+        run: |
+          PKG="${{ inputs.android_package || 'both' }}"
+          ARGS="--apk"
+          if [ "$PKG" = "aab" ]; then ARGS="--aab"; fi
+          if [ "$PKG" = "both" ]; then ARGS="--apk --aab"; fi
+          pnpm tauri android build $ARGS
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/26.3.11579264
+
+      - name: Upload APK(s)
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          if-no-files-found: warn
+
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-aab
+          path: src-tauri/gen/android/app/build/outputs/bundle/**/*.aab
+          if-no-files-found: warn
+
+  ios:
+    name: iOS (${{ inputs.ios_mode || 'simulator' }}) — self-hosted
+    runs-on: [self-hosted, mac, x64]
+    timeout-minutes: 120
+    # The Intel runner has 6 cores / 16 GB: never run two iOS jobs at once.
+    concurrency:
+      group: ios-self-hosted-${{ github.workflow }}
+      cancel-in-progress: false
+    steps:
+      - name: Runner diagnostics
+        run: |
+          sw_vers
+          xcodebuild -version
+          echo "pod: $(pod --version 2>/dev/null || echo MISSING)"
+          echo "fastlane: $(fastlane --version 2>/dev/null || echo 'MISSING (Bundler installs it)')"
+          echo "ruby: $(ruby --version)"
+
+      - uses: actions/checkout@v4
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Install CocoaPods (if missing)
+        run: |
+          if command -v pod >/dev/null 2>&1; then
+            echo "CocoaPods already present: $(pod --version)"
+          else
+            gem install cocoapods --no-document
+          fi
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Sync web assets + install pods (Capacitor)
+        run: pnpm run mobile:sync:ios
+
+      - name: Install fastlane (Bundler)
+        working-directory: ios
+        run: bundle install
+
+      - name: Simulator smoke build (unsigned)
+        if: ${{ (inputs.ios_mode || 'simulator') == 'simulator' }}
+        working-directory: ios
+        run: bundle exec fastlane ios simulator_build
+
+      - name: Signed TestFlight archive
+        if: inputs.ios_mode == 'beta'
+        working-directory: ios
+        env:
+          FASTLANE_APPLE_ID: ${{ secrets.FASTLANE_APPLE_ID }}
+          FASTLANE_TEAM_ID: ${{ secrets.FASTLANE_TEAM_ID }}
+          FASTLANE_TESTFLIGHT_UPLOAD: ${{ secrets.FASTLANE_TESTFLIGHT_UPLOAD }}
+        run: bundle exec fastlane ios beta
+
+      - name: Upload iOS build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build
+          path: |
+            ios/build/ios/*.app
+            ios/build/ios/*.ipa
+          if-no-files-found: warn

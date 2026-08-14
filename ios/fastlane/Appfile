@@ -1,0 +1,5 @@
+app_identifier('com.chaeboxi.app')
+
+# Optional: override via repo secrets (FASTLANE_APPLE_ID / FASTLANE_TEAM_ID).
+apple_id(ENV['FASTLANE_APPLE_ID']) if ENV['FASTLANE_APPLE_ID']
+team_id(ENV['FASTLANE_TEAM_ID']) if ENV['FASTLANE_TEAM_ID']

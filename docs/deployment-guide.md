@@ -25,7 +25,8 @@ Keep these in sync before tagging:
 | Workflow | File | Trigger | Purpose |
 | --- | --- | --- | --- |
 | **CI** | `.github/workflows/ci.yml` | PR + push to `main` | **Required:** unit tests. Biome + `tsc` run report-only (pre-existing debt on main) |
-| **Release** | `.github/workflows/release.yml` | Tag `v*` or manual dispatch | Build installers → draft GitHub Release |
+| **Release** | `.github/workflows/release.yml` | Tag `v*` or manual dispatch | Build desktop installers → draft GitHub Release |
+| **Mobile Build** | `.github/workflows/mobile.yml` | Tag `v*` or manual dispatch | Android APK/AAB (GitHub-hosted) + iOS build (self-hosted mac) |
 
 ### Artifacts produced
 
@@ -35,6 +36,8 @@ Keep these in sync before tagging:
 | macOS Intel | `.dmg` (`x86_64-apple-darwin`) |
 | Windows x64 | NSIS installer |
 | Linux x64 | `.AppImage` + `.deb` |
+| Android | `.apk` (all ABIs) + `.aab` — job artifact of **Mobile Build** |
+| iOS | `Chaeboxi-simulator.app` (smoke) or `Chaeboxi.ipa` (beta lane) — job artifact of **Mobile Build** |
 
 `bundle.targets` in `tauri.conf.json` is limited to `dmg`, `nsis`, `appimage`, `deb` (not `"all"`).
 
@@ -49,7 +52,7 @@ The browser-host script (`sidecars/browser-host/index.mjs` + `package.json`) is 
    git tag v1.6.0
    git push origin v1.6.0
    ```
-4. Wait for **Release** workflow (all matrix jobs).
+4. Wait for **Release** (desktop installers) and **Mobile Build** (Android APK/AAB + iOS) workflows.
 5. Open the **draft** release on GitHub, download each asset, smoke-test:
    - Install / open app
    - Create a chat (BYOK)
@@ -57,6 +60,26 @@ The browser-host script (`sidecars/browser-host/index.mjs` + `package.json`) is 
 6. Edit release notes if needed → **Publish release**.
 
 Manual re-run without a new tag: Actions → **Release** → Run workflow (optional tag input).
+
+### Mobile Build details
+
+- **Android job** runs on `ubuntu-22.04` (GitHub-hosted): JDK 17, Android SDK
+  platform 36 + build-tools 36 + NDK 26.3, Rust 1.88 Android targets,
+  `cargo-ndk`, then `pnpm tauri android build`. APK is built for every tag;
+  dispatch input selects `apk` / `aab` / `both`. Signing uses the debug
+  keystore until a release keystore is configured.
+- **iOS job** runs on the self-hosted runner (`runs-on: [self-hosted, mac, x64]`,
+  Intel Mac). Requirements: macOS + Xcode 16+, internet for RubyGems/npm.
+  CocoaPods and fastlane are installed automatically (Ruby 3.3 via
+  `ruby/setup-ruby`, `ios/Gemfile`). The job runs `pnpm run mobile:sync:ios`
+  (web assets + Capacitor sync + `pod install`) and then:
+  - `fastlane ios simulator_build` — unsigned simulator smoke build (default),
+  - `fastlane ios beta` — signed `app-store` archive + optional TestFlight
+    upload, only when dispatch input `ios_mode: beta` is selected. Needs a
+    signing identity in the runner's login keychain (Xcode signed in with an
+    Apple ID of team `962WN46SFR`). Optional repo secrets:
+    `FASTLANE_APPLE_ID`, `FASTLANE_TEAM_ID`, `FASTLANE_TESTFLIGHT_UPLOAD=true`.
+- The iOS job is concurrency-limited to one at a time (Intel 6-core / 16 GB box).
 
 ## Signing (optional, recommended for public macOS)
 
@@ -84,7 +107,8 @@ Workflow already forwards these env vars when set; omit them for unsigned CI bui
 ## Out of scope (intentionally)
 
 - Auto-updater (`tauri-plugin-updater` / `latest.json`)
-- App Store / TestFlight / Play Store
+- Automated store submission (App Store / TestFlight / Play Store uploads are
+  manual; `beta` lane can push to TestFlight when `FASTLANE_TESTFLIGHT_UPLOAD=true`)
 - Linux ARM matrix
 - Publishing web build to hosting
 

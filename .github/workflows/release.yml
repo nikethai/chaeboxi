@@ -100,17 +100,13 @@ jobs:
       # Ship browser-host script only (see tauri.conf resources).
       # Do NOT npm-install Playwright here — Chromium must not land in installers.
 
+      # Do NOT export empty APPLE_* secrets: blank APPLE_CERTIFICATE makes Tauri try
+      # `security import` and fail bundling. Re-add these env vars only after real
+      # Developer ID secrets are configured in the repo.
       - name: Build and upload to GitHub Release
         uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Optional code signing / notarization (no-op when unset).
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           # Tag push → github.ref_name; dispatch with input → that tag; else v__VERSION__ from app config.
           tagName: ${{ (github.event_name == 'workflow_dispatch' && inputs.tag) || (github.ref_type == 'tag' && github.ref_name) || 'v__VERSION__' }}

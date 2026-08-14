@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Product** | Chaeboxi 1.6.0 |
+| **Product** | Chaeboxi 1.7.0 |
 | **Last updated** | 2026-08-11 |
 
 High-level map of the monorepo for onboarding and navigation. Prefer feature docs (linked below) for subsystem detail.

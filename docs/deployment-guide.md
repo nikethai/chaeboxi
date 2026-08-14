@@ -80,13 +80,13 @@ Manual re-run without a new tag: Actions → **Release** → Run workflow (optio
     Apple ID of team `962WN46SFR`). Optional repo secrets:
     `FASTLANE_APPLE_ID`, `FASTLANE_TEAM_ID`, `FASTLANE_TESTFLIGHT_UPLOAD=true`.
 - The iOS job is concurrency-limited to one at a time (Intel 6-core / 16 GB box).
-- **Troubleshooting:** if the iOS job fails with
-  `EACCES: permission denied, mkdir '/Users/runner'`, the runner user's home
-  directory is missing on the Mac. One-time fix on the runner:
-  `sudo mkdir -p /Users/runner && sudo chown -R runner:staff /Users/runner`
-  (adjust user/group to the actual runner user), then restart the runner
-  service and re-run. The workflow keeps all caches inside the workspace, so
-  builds work either way.
+- **`ruby/setup-ruby` self-hosted requirement:** its prebuilt macOS Ruby embeds
+  the fixed path `/Users/runner/hostedtoolcache`; changing `HOME` or
+  `RUNNER_TOOL_CACHE` in workflow YAML cannot relocate it. The directory must
+  be writable by the account running Actions. On this runner (`ringo`), run:
+  `sudo mkdir -p /Users/runner/hostedtoolcache && sudo chown -R ringo:staff /Users/runner`.
+  Verify with `touch /Users/runner/hostedtoolcache/.write-test && rm $_`, then
+  re-run the workflow. This does **not** require a macOS user named `runner`.
 
 ## Signing (optional, recommended for public macOS)
 

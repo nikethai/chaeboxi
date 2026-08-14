@@ -1,7 +1,7 @@
 {
   "name": "chaeboxi",
   "productName": "Chaeboxi",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "engines": {
     "node": ">=20.0.0 <23.0.0",
     "pnpm": ">=10.0.0"

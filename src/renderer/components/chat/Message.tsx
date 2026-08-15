@@ -713,7 +713,7 @@ const _Message: FC<Props> = (props) => {
                       >
                         <Suspense
                           fallback={
-                            // Quiet Grok line only — dock owns activity chrome.
+                            // Quiet thread line only — one live cue, no dock chrome.
                             group.workActive || msg.generating ? (
                               <div className="msg-worked is-live is-settled" aria-hidden>
                                 <div className="msg-worked-row">

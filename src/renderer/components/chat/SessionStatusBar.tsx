@@ -292,11 +292,6 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
           <Text className="session-statusline-model min-w-0" lineClamp={1} title={modelTitle}>
             {modelTitle}
           </Text>
-          {generating && (
-            <Text className="session-statusline-live shrink-0" size="xs">
-              {t('Thinking…')}
-            </Text>
-          )}
         </Flex>
 
         {!compact && !empty && (

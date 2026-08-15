@@ -177,7 +177,6 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({
       )}
     >
       <div className="msg-worked-row">
-        {/* Live activity lives on the composer dock; thread strip stays Grok-plain text. */}
         <button
           type="button"
           className="msg-worked-toggle"
@@ -185,12 +184,7 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({
           aria-expanded={isExpanded}
           disabled={!hasExpandableBody}
         >
-          <span
-            className={clsx(
-              'msg-worked-label',
-              message.generating && 'animate-shimmer shimmer-text'
-            )}
-          >
+          <span className="msg-worked-label">
             {headerLabel}
           </span>
           {showLiveTimer && (
@@ -224,7 +218,7 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({
         )}
       </div>
 
-      {/* Expanded body only — live detail is on the composer dock (no dual chrome). */}
+      {/* Expanded body only — live cue is this strip, not the composer. */}
       <Collapse in={isExpanded && hasExpandableBody}>
         <div className="msg-worked-body">
           {(() => {

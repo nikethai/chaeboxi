@@ -310,8 +310,6 @@ function RouteComponent() {
   key={currentSession.id}
   sessionId={currentSession.id}
   onContinueTasks={onContinueTasks}
-  generating={isGenerating}
-  liveMessage={lastGeneratingMessage}
 >
   <BrowserAgentPanel
     sessionId={currentSession.id}

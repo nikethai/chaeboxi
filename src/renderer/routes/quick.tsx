@@ -320,8 +320,6 @@ function QuickChatPage() {
             sessionId={session.id}
             onContinueTasks={onContinueTasks}
             taskDetailsMode="sheet"
-            generating={isGenerating}
-            liveMessage={lastGenerating}
           >
             <ErrorBoundary name="quick-inputbox">
               <InputBox

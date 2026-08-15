@@ -8,6 +8,7 @@ vi.mock('@/storage', () => ({
 }))
 
 import { getHistorySyncState, pullHistoryFromServer, pushHistoryToServer, syncHistoryNow } from './historySync'
+import { encryptHistoryPayload, isEncryptedHistoryEnvelope } from './historySyncCrypto'
 
 class MemoryStore {
   private values = new Map<string, unknown>()
@@ -78,6 +79,7 @@ describe('historySync', () => {
       {
         endpoint: 'http://sync.local',
         token: 'token',
+        passphrase: 'secret',
       },
       {
         store: store as never,
@@ -161,6 +163,7 @@ describe('historySync', () => {
       {
         endpoint: 'http://sync.local',
         token: 'token',
+        passphrase: 'secret',
       },
       {
         store: store as never,
@@ -185,6 +188,9 @@ describe('historySync', () => {
     const secondRequestBody = JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body))
     expect(firstRequestBody.baseRevision).toBe(1)
     expect(secondRequestBody.baseRevision).toBe(2)
+    expect(isEncryptedHistoryEnvelope(firstRequestBody.payload)).toBe(true)
+    expect(isEncryptedHistoryEnvelope(secondRequestBody.payload)).toBe(true)
+    expect(JSON.stringify(firstRequestBody.payload)).not.toContain('chatbox-history-transfer')
 
     const state = await getHistorySyncState({ store: store as never })
     expect(state.revision).toBe(3)
@@ -205,6 +211,7 @@ describe('historySync', () => {
         {
           endpoint: 'http://sync.local',
           token: 'token',
+          passphrase: 'secret',
         },
         {
           store: store as never,
@@ -250,6 +257,7 @@ describe('historySync', () => {
       {
         endpoint: 'http://sync.local',
         token: 'token',
+        passphrase: 'secret',
       },
       {
         store: store as never,
@@ -274,5 +282,74 @@ describe('historySync', () => {
       skipped: 0,
     })
     expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
+  it('fails closed on empty passphrase and does not PUT plaintext', async () => {
+    const store = new MemoryStore({
+      'history-sync-state': { revision: 1 },
+    })
+    const fetchImpl = vi.fn()
+    const exportHistory = vi.fn(async () => ({
+      fileName: 'local.json',
+      content: JSON.stringify(createPayload()),
+      sessionCount: 1,
+    }))
+
+    await expect(
+      pushHistoryToServer(
+        { endpoint: 'http://sync.local', token: 'token', passphrase: '   ' },
+        { store: store as never, fetchImpl: fetchImpl as never, exportHistory: exportHistory as never }
+      )
+    ).rejects.toThrow(/passphrase is required/)
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it('decrypts an encrypted remote snapshot before import', async () => {
+    const store = new MemoryStore({
+      'history-sync-state': { revision: 1 },
+    })
+    const remotePayload = createPayload()
+    const envelope = await encryptHistoryPayload(remotePayload, 'secret')
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({ revision: 2, updatedAt: '2026-02-22T10:00:00.000Z', payload: envelope }, 200)
+    )
+    const importHistory = vi.fn(async () => ({
+      totalIncoming: 1,
+      imported: 1,
+      updated: 0,
+      skipped: 0,
+    }))
+
+    const result = await pullHistoryFromServer(
+      { endpoint: 'http://sync.local', token: 'token', passphrase: 'secret' },
+      { store: store as never, fetchImpl: fetchImpl as never, importHistory: importHistory as never }
+    )
+
+    expect(result.changed).toBe(true)
+    expect(importHistory).toHaveBeenCalledWith(JSON.stringify(remotePayload))
+  })
+
+  it('throws on a wrong passphrase and does not merge', async () => {
+    const store = new MemoryStore({
+      'history-sync-state': { revision: 1 },
+    })
+    const envelope = await encryptHistoryPayload(createPayload(), 'correct')
+    const fetchImpl = vi.fn(async () =>
+      jsonResponse({ revision: 2, updatedAt: '2026-02-22T10:00:00.000Z', payload: envelope }, 200)
+    )
+    const importHistory = vi.fn(async () => ({
+      totalIncoming: 1,
+      imported: 1,
+      updated: 0,
+      skipped: 0,
+    }))
+
+    await expect(
+      pullHistoryFromServer(
+        { endpoint: 'http://sync.local', token: 'token', passphrase: 'wrong' },
+        { store: store as never, fetchImpl: fetchImpl as never, importHistory: importHistory as never }
+      )
+    ).rejects.toThrow(/Wrong passphrase/)
+    expect(importHistory).not.toHaveBeenCalled()
   })
 })

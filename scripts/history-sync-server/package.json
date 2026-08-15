@@ -1,9 +1,9 @@
 {
-  "name": "chatbox-history-sync-server",
+  "name": "chaeboxi-history-sync-server",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Self-hosted history sync server for Chaeboxi cross-machine conversation sync",
+  "description": "Self-hosted encrypted history sync server for Chaeboxi",
   "engines": {
     "node": ">=20"
   },

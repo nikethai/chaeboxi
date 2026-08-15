@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SERVICE_NAME="${SERVICE_NAME:-chatbox-history-sync}"
-INSTALL_DIR="${INSTALL_DIR:-/opt/chatbox-history-sync}"
-DATA_DIR="${DATA_DIR:-/var/lib/chatbox-history-sync}"
-ENV_FILE="${ENV_FILE:-/etc/chatbox-history-sync.env}"
-RUN_USER="${RUN_USER:-chatbox-sync}"
+SERVICE_NAME="${SERVICE_NAME:-chaeboxi-history-sync}"
+INSTALL_DIR="${INSTALL_DIR:-/opt/chaeboxi-history-sync}"
+DATA_DIR="${DATA_DIR:-/var/lib/chaeboxi-history-sync}"
+ENV_FILE="${ENV_FILE:-/etc/chaeboxi-history-sync.env}"
+RUN_USER="${RUN_USER:-chaeboxi-sync}"
 SYNC_HOST="${SYNC_HOST:-0.0.0.0}"
 PORT="${PORT:-8788}"
 SYNC_CORS_ORIGIN="${SYNC_CORS_ORIGIN:-*}"

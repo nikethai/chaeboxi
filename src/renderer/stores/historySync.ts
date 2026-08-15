@@ -3,6 +3,11 @@ import {
   exportHistoryTransferFile,
   importHistoryTransferFile,
 } from './historyTransfer'
+import {
+  decryptHistoryPayload,
+  encryptHistoryPayload,
+  isEncryptedHistoryEnvelope,
+} from './historySyncCrypto'
 
 const HISTORY_SYNC_STATE_KEY = 'history-sync-state'
 
@@ -20,7 +25,7 @@ type SyncHistoryPayload = {
 type RemoteHistorySnapshot = {
   revision: number
   updatedAt: string
-  payload: SyncHistoryPayload
+  payload: unknown
 }
 
 type PutRemoteSnapshotSuccess = {
@@ -54,6 +59,7 @@ type SyncDependencies = {
 export type HistorySyncConfig = {
   endpoint?: string
   token?: string
+  passphrase?: string
 }
 
 export type PullHistoryResult = {
@@ -97,9 +103,10 @@ function normalizeEndpoint(endpoint: string): string {
   return endpoint.trim().replace(/\/+$/, '')
 }
 
-function normalizeConfig(config: HistorySyncConfig): { endpoint: string; token: string } {
+function normalizeConfig(config: HistorySyncConfig): { endpoint: string; token: string; passphrase: string } {
   const endpoint = config.endpoint?.trim()
   const token = config.token?.trim()
+  const passphrase = config.passphrase?.trim()
 
   if (!endpoint) {
     throw new Error('History sync endpoint is required')
@@ -107,10 +114,14 @@ function normalizeConfig(config: HistorySyncConfig): { endpoint: string; token: 
   if (!token) {
     throw new Error('History sync token is required')
   }
+  if (!passphrase) {
+    throw new Error('History sync passphrase is required')
+  }
 
   return {
     endpoint: normalizeEndpoint(endpoint),
     token,
+    passphrase,
   }
 }
 
@@ -144,7 +155,7 @@ function formatHttpError(prefix: string, status: number, body: unknown): Error {
   return new Error(`${prefix} (${status}): ${detail || 'Unknown server error'}`)
 }
 
-function parseRemoteSnapshot(value: unknown): RemoteHistorySnapshot {
+function parseRemoteSnapshot(value: unknown): { revision: number; updatedAt: string; payload: unknown } {
   if (!value || typeof value !== 'object') {
     throw new Error('Invalid sync response: expected object')
   }
@@ -166,8 +177,30 @@ function parseRemoteSnapshot(value: unknown): RemoteHistorySnapshot {
   return {
     revision,
     updatedAt,
-    payload: payload as SyncHistoryPayload,
+    payload,
   }
+}
+
+function assertTransferPayload(value: unknown): SyncHistoryPayload {
+  if (!value || typeof value !== 'object') {
+    throw new Error('Invalid history payload')
+  }
+  const payload = value as SyncHistoryPayload
+  if (payload.__type && payload.__type !== 'chatbox-history-transfer') {
+    throw new Error('Invalid history payload type')
+  }
+  if (!Array.isArray(payload.sessionMetaList) || !Array.isArray(payload.sessions)) {
+    throw new Error('Invalid history payload')
+  }
+  return payload
+}
+
+async function unwrapRemotePayload(payload: unknown, passphrase: string): Promise<SyncHistoryPayload> {
+  if (isEncryptedHistoryEnvelope(payload)) {
+    const plain = await decryptHistoryPayload(payload, passphrase)
+    return assertTransferPayload(plain)
+  }
+  return assertTransferPayload(payload)
 }
 
 function createDeps(deps?: SyncDependencies): Required<SyncDependencies> {
@@ -207,14 +240,15 @@ async function fetchRemoteSnapshot(config: { endpoint: string; token: string }, 
 }
 
 async function putRemoteSnapshot(
-  config: { endpoint: string; token: string },
+  config: { endpoint: string; token: string; passphrase: string },
   request: { baseRevision: number; payload: SyncHistoryPayload },
   deps: Required<SyncDependencies>
 ): Promise<PutRemoteSnapshotResult> {
+  const encrypted = await encryptHistoryPayload(request.payload, config.passphrase)
   const response = await deps.fetchImpl(`${config.endpoint}/api/history-sync`, {
     method: 'PUT',
     headers: buildHeaders(config.token),
-    body: JSON.stringify(request),
+    body: JSON.stringify({ baseRevision: request.baseRevision, payload: encrypted }),
   })
 
   const body = await readResponseBody(response)
@@ -266,7 +300,8 @@ async function pullHistoryFromServerInternal(
     }
   }
 
-  const importResult = await deps.importHistory(JSON.stringify(remoteSnapshot.payload))
+  const remotePayload = await unwrapRemotePayload(remoteSnapshot.payload, normalized.passphrase)
+  const importResult = await deps.importHistory(JSON.stringify(remotePayload))
   await writeSyncState(deps.store, {
     revision: remoteSnapshot.revision,
     lastSyncedAt: new Date().toISOString(),
@@ -339,7 +374,8 @@ async function pushHistoryToServerInternal(
     throw formatHttpError('History push conflict without valid snapshot', firstAttempt.status, firstAttempt.body)
   }
 
-  const conflictImportResult = await deps.importHistory(JSON.stringify(conflictSnapshot.payload))
+  const conflictPayload = await unwrapRemotePayload(conflictSnapshot.payload, normalized.passphrase)
+  const conflictImportResult = await deps.importHistory(JSON.stringify(conflictPayload))
   await writeSyncState(deps.store, {
     revision: conflictSnapshot.revision,
     lastSyncedAt: new Date().toISOString(),

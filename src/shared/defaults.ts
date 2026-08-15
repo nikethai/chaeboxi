@@ -154,6 +154,7 @@ export function settings(): Settings {
         enabled: false,
         endpoint: '',
         token: '',
+        passphrase: '',
         autoSync: false,
         intervalSeconds: 60,
       },

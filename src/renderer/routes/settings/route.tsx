@@ -20,6 +20,7 @@ import {
   IconDeviceDesktop,
   IconPlugConnected,
   IconWorldWww,
+  IconCloudLock,
 } from '@tabler/icons-react'
 import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router'
 import clsx from 'clsx'
@@ -125,6 +126,11 @@ const ITEMS = [
     key: 'memory',
     label: 'Memory',
     icon: <IconBook className="w-full h-full" />,
+  },
+  {
+    key: 'sync',
+    label: 'Sync',
+    icon: <IconCloudLock className="w-full h-full" />,
   },
   ...(platformCapabilities.supportsDesktopOnlySettings && platform.type === 'desktop' && CHATBOX_BUILD_PLATFORM !== 'android'
     ? [

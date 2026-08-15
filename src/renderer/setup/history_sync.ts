@@ -16,6 +16,7 @@ type RuntimeHistorySyncConfig = {
   enabled: boolean
   endpoint: string
   token: string
+  passphrase: string
   autoSync: boolean
   intervalSeconds: number
 }
@@ -37,13 +38,14 @@ function normalizeConfig(): RuntimeHistorySyncConfig {
     enabled: Boolean(config?.enabled),
     endpoint: config?.endpoint?.trim() || '',
     token: config?.token?.trim() || '',
+    passphrase: config?.passphrase?.trim() || '',
     autoSync: Boolean(config?.autoSync),
     intervalSeconds,
   }
 }
 
 function canSync(config: RuntimeHistorySyncConfig): boolean {
-  return config.enabled && Boolean(config.endpoint) && Boolean(config.token)
+  return config.enabled && Boolean(config.endpoint) && Boolean(config.token) && Boolean(config.passphrase)
 }
 
 function clearSyncTimer() {
@@ -69,6 +71,7 @@ async function runSync(reason: string) {
     const result = await syncHistoryNow({
       endpoint: config.endpoint,
       token: config.token,
+      passphrase: config.passphrase,
     })
 
     const recoverFromPull = result.pull.imported > 0 || result.pull.updated > 0

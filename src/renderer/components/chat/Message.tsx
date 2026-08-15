@@ -886,6 +886,7 @@ const _Message: FC<Props> = (props) => {
                 setPreview={setPreviewArtifact}
                 autoOpenWorkspace={autoPreviewArtifacts}
                 generating={!!msg.generating}
+                artifact={currentArtifact}
               />
             </Flex>
           )}

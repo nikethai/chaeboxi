@@ -83,7 +83,7 @@
   "Auto-preview artifacts": "Auto-preview artifacts",
   "Automatic updates": "Automatic updates",
   "Automatically render generated artifacts (e.g., HTML with CSS, JS, Tailwind)": "Automatically render generated artifacts (e.g., HTML with CSS, JS, Tailwind)",
-  "Automatically open finished HTML artifacts in the side workspace (chat stays open)": "Automatically open finished HTML artifacts in the side workspace (chat stays open)",
+  "Automatically open finished HTML artifacts in the side workspace (chat stays open)": "Automatically open finished artifacts in the side workspace (chat stays open)",
   "Automatically summarize and compact conversation history when context size exceeds the threshold, preserving key information while reducing token usage.": "Automatically summarize and compact conversation history when context size exceeds the threshold, preserving key information while reducing token usage.",
   "Awesome, you're all set! You can now start using Chaeboxi.\n\nClick **New Chat** below to start chatting, or **View License Details** to check your subscription info. If you have any questions, feel free to click the Help button in the bottom left corner anytime. Enjoy!": "Awesome, you're all set! You can now start using Chaeboxi.\n\nClick **New Chat** below to start chatting, or **View License Details** to check your subscription info. If you have any questions, feel free to click the Help button in the bottom left corner anytime. Enjoy!",
   "Awesome, you're all set! You can now start using Chaeboxi.\n\nClick **New Chat** below to start chatting, or **View License Details** to check your subscription info. If you have more questions, feel free to click the Help button in the bottom left corner anytime. Enjoy!": "Awesome, you're all set! You can now start using Chaeboxi.\n\nClick **New Chat** below to start chatting, or **View License Details** to check your subscription info. If you have more questions, feel free to click the Help button in the bottom left corner anytime. Enjoy!",
@@ -205,7 +205,6 @@
   "Connection successful!": "Connection successful!",
   "Connection to {{aiProvider}} failed. This typically occurs due to incorrect configuration or {{aiProvider}} account issues. Please <buttonOpenSettings>check your settings</buttonOpenSettings> and verify your {{aiProvider}} account status, or configure another provider with your own API key.": "Connection to {{aiProvider}} failed. This typically occurs due to incorrect configuration or {{aiProvider}} account issues. Please <buttonOpenSettings>check your settings</buttonOpenSettings> and verify your {{aiProvider}} account status, or configure another provider with your own API key.",
   "Content": "Content",
-  "Context": "Context",
   "context length exceeded tips": "Your conversation has exceeded the model's context limit. Try compressing the conversation, starting a new chat, or reducing the number of context messages in settings.",
   "Context Management": "Context Management",
   "Context messages": "Context messages",
@@ -1188,5 +1187,10 @@
   "Loading webpage…": "Loading webpage…",
   "Advanced": "Advanced",
   "Using tools…": "Using tools…",
-  "Using {{count}} tools…": "Using {{count}} tools…"
+  "Using {{count}} tools…": "Using {{count}} tools…",
+  "Automatically open finished artifacts in the side workspace (chat stays open)": "Automatically open finished artifacts in the side workspace (chat stays open)",
+  "Code": "Code",
+  "Previous version": "Previous version",
+  "Next version": "Next version",
+  "v{{version}}": "v{{version}}"
 }

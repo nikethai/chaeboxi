@@ -7654,6 +7654,42 @@ button.session-statusline-plan:focus-visible {
   }
 }
 
+
+.workspace-markdown,
+.workspace-mermaid,
+.artifact-inline-markdown {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 1rem 1.15rem;
+}
+
+.workspace-code {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.workspace-version-pager {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-top: 0.15rem;
+}
+
+.workspace-version-label {
+  font-family: var(--chatbox-font-mono);
+  font-size: 0.6875rem;
+  color: var(--chatbox-tint-tertiary);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.workspace-version-count {
+  opacity: 0.75;
+}
+
 /* Artifact card in chat — studio (no gradient AI slop) */
 .artifact-card {
   display: flex;

@@ -384,7 +384,7 @@ export function RouteComponent() {
           />
           <SettingsPrefRow
             title={t('Auto-preview artifacts')}
-            description={t('Automatically open finished HTML artifacts in the side workspace (chat stays open)')}
+            description={t('Automatically open finished artifacts in the side workspace (chat stays open)')}
             control={
               <Switch
                 checked={settings.autoPreviewArtifacts}

@@ -1,65 +1,88 @@
 import { ActionIcon, Text, Tooltip, UnstyledButton } from '@mantine/core'
-import type { Message, MessageArtifact as MessageArtifactRecord } from '@shared/types/session'
-import { IconCode, IconEye, IconLayoutSidebarRightExpand, IconPlayerStop, IconReload } from '@tabler/icons-react'
-import { debounce } from 'lodash'
+import {
+  type ArtifactKind,
+  artifactKindLabel,
+  collectArtifactVersions,
+  deriveMessageArtifacts,
+  inferArtifactTitle,
+  isContainRenderableCode,
+  isLegacyDefaultTitle,
+  isRenderableCodeLanguage,
+  normalizeArtifactKind,
+} from '@shared/artifacts'
+import type { MessageArtifact as MessageArtifactRecord } from '@shared/types/session'
+import {
+  IconCode,
+  IconEye,
+  IconFileTypeHtml,
+  IconFileTypeSvg,
+  IconFileTypeTxt,
+  IconLayoutSidebarRightExpand,
+  IconPlayerStop,
+  IconReload,
+} from '@tabler/icons-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { v4 as uuidv4 } from 'uuid'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import { getMessageThreadContext } from '@/stores/sessionActions'
-import { useUIStore } from '@/stores/uiStore'
+import { useUIStore, type WorkspaceArtifactVersion, type WorkspacePanelState } from '@/stores/uiStore'
 import { getMessageText } from '../../shared/utils/message'
+import Markdown from './Markdown'
+import { MessageMermaid } from './Mermaid'
+import { HtmlWorkspaceView } from './workspace/HtmlWorkspaceView'
+import { WorkspaceCodeView } from './workspace/WorkspaceCodeView'
 
-const RENDERABLE_CODE_LANGUAGES = ['html'] as const
-export type RenderableCodeLanguage = (typeof RENDERABLE_CODE_LANGUAGES)[number]
+export { deriveMessageArtifacts, isContainRenderableCode, isRenderableCodeLanguage }
 
-const CODE_BLOCK_LANGUAGES = [...RENDERABLE_CODE_LANGUAGES, 'js', 'javascript', 'css'] as const
-export type CodeBlockLanguage = (typeof CODE_BLOCK_LANGUAGES)[number]
+export type RenderableCodeLanguage = 'html'
+export type CodeBlockLanguage = 'html' | 'js' | 'javascript' | 'css'
 
-export function isContainRenderableCode(markdown: string): boolean {
-  if (!markdown) {
-    return false
+function resolvedTitle(artifact: Pick<MessageArtifactRecord, 'title' | 'content' | 'type' | 'language'>): string {
+  const kind = normalizeArtifactKind(artifact.type)
+  if (isLegacyDefaultTitle(artifact.title)) {
+    return inferArtifactTitle(artifact.content, kind, artifact.language)
   }
-  return (
-    RENDERABLE_CODE_LANGUAGES.some((l) => markdown.includes('```' + l + '\n')) ||
-    RENDERABLE_CODE_LANGUAGES.some((l) => markdown.includes('```' + l.toUpperCase() + '\n'))
+  return artifact.title || artifactKindLabel(kind, artifact.language)
+}
+
+function toVersion(artifact: MessageArtifactRecord, messageId?: string): WorkspaceArtifactVersion {
+  const kind = normalizeArtifactKind(artifact.type)
+  return {
+    id: artifact.id,
+    messageId,
+    kind,
+    content: artifact.content,
+    language: artifact.language,
+    title: resolvedTitle(artifact),
+    version: artifact.version,
+  }
+}
+
+export function toWorkspacePanelState(
+  artifact: MessageArtifactRecord,
+  messageId?: string,
+  versions: Array<MessageArtifactRecord & { messageId?: string }> = []
+): WorkspacePanelState {
+  const list: Array<MessageArtifactRecord & { messageId?: string }> = versions.length
+    ? versions
+    : [{ ...artifact, messageId }]
+  const mapped = list.map((item) => toVersion(item, item.messageId ?? messageId))
+  const kind = normalizeArtifactKind(artifact.type)
+  const versionIndex = Math.max(
+    0,
+    mapped.findIndex((item) => item.id === artifact.id)
   )
-}
-
-export function isRenderableCodeLanguage(language: string): boolean {
-  return !!language && RENDERABLE_CODE_LANGUAGES.includes(language.toLowerCase() as RenderableCodeLanguage)
-}
-
-export function deriveMessageArtifacts(
-  messageContent: string,
-  options?: {
-    existingArtifacts?: MessageArtifactRecord[]
-    previousArtifact?: MessageArtifactRecord
+  return {
+    kind,
+    content: artifact.content,
+    language: artifact.language,
+    title: resolvedTitle(artifact),
+    messageId,
+    artifactId: artifact.id,
+    versions: mapped,
+    versionIndex,
   }
-): MessageArtifactRecord[] | undefined {
-  if (!isContainRenderableCode(messageContent)) {
-    return undefined
-  }
-
-  const existingArtifact = options?.existingArtifacts?.[0]
-  if (existingArtifact && existingArtifact.content === messageContent) {
-    return options?.existingArtifacts
-  }
-
-  const previousArtifact = options?.previousArtifact
-  return [
-    {
-      id: existingArtifact?.id ?? uuidv4(),
-      type: 'html',
-      title: 'HTML Artifact',
-      language: 'html',
-      content: messageContent,
-      version: existingArtifact?.version ?? (previousArtifact?.version ?? 0) + 1,
-      previousVersionId: existingArtifact?.previousVersionId ?? previousArtifact?.id,
-      timestamp: Date.now(),
-    },
-  ]
 }
 
 export async function getPreviousArtifactVersion(
@@ -86,6 +109,32 @@ export async function getPreviousArtifactVersion(
   return undefined
 }
 
+async function collectThreadArtifactVersions(
+  sessionId: string,
+  messageId: string,
+  current: MessageArtifactRecord
+): Promise<Array<MessageArtifactRecord & { messageId?: string }>> {
+  const messageList = await getMessageThreadContext(sessionId, messageId)
+  const stored: Array<MessageArtifactRecord & { messageId?: string }> = []
+  for (const message of messageList) {
+    const artifact = message.artifacts?.[0]
+    if (artifact) {
+      stored.push({ ...artifact, messageId: message.id })
+    }
+  }
+  if (!stored.some((item) => item.id === current.id)) {
+    stored.push({ ...current, messageId })
+  }
+  return collectArtifactVersions({ ...current, messageId }, stored)
+}
+
+function ArtifactKindIcon({ kind }: { kind: ArtifactKind }) {
+  if (kind === 'html') return <IconFileTypeHtml size={16} stroke={1.5} />
+  if (kind === 'svg') return <IconFileTypeSvg size={16} stroke={1.5} />
+  if (kind === 'markdown') return <IconFileTypeTxt size={16} stroke={1.5} />
+  return <IconCode size={16} stroke={1.5} />
+}
+
 export function MessageArtifact(props: {
   sessionId: string
   messageId: string
@@ -95,6 +144,7 @@ export function MessageArtifact(props: {
   /** When true, open side workspace once after the artifact is ready (auto-preview setting). */
   autoOpenWorkspace?: boolean
   generating?: boolean
+  artifact?: MessageArtifactRecord
 }) {
   const {
     sessionId,
@@ -104,34 +154,16 @@ export function MessageArtifact(props: {
     setPreview,
     autoOpenWorkspace = false,
     generating = false,
+    artifact,
   } = props
 
-  const [contextMessages, setContextMessages] = useState<Message[]>([])
   const setWorkspacePanel = useUIStore((s) => s.setWorkspacePanel)
   const didAutoOpen = useRef(false)
   const prevGenerating = useRef(generating)
   const pendingAutoOpen = useRef(false)
 
-  useEffect(() => {
-    async function fetchContextMessages(): Promise<Message[]> {
-      if (!sessionId || !messageId) {
-        return []
-      }
-      const messageList = await getMessageThreadContext(sessionId, messageId)
-      const index = messageList.findIndex((m) => m.id === messageId)
+  const derived = useMemo(() => artifact ?? deriveMessageArtifacts(messageContent)?.[0], [artifact, messageContent])
 
-      return messageList.slice(0, index)
-    }
-    void fetchContextMessages().then((msgs) => {
-      setContextMessages(msgs)
-    })
-  }, [messageId, sessionId])
-
-  const htmlCode = useMemo(() => {
-    return generateHtml([...contextMessages.map((m) => getMessageText(m)), messageContent])
-  }, [contextMessages, messageContent])
-
-  // Mark auto-open only when this message finishes generating (not historical loads)
   useEffect(() => {
     const finished = prevGenerating.current && !generating
     prevGenerating.current = generating
@@ -140,22 +172,21 @@ export function MessageArtifact(props: {
     }
   }, [generating, autoOpenWorkspace])
 
-  // Open side workspace once after finish + html is ready (no scroll fight)
   useEffect(() => {
-    if (!pendingAutoOpen.current || didAutoOpen.current || !htmlCode || generating) return
+    if (!pendingAutoOpen.current || didAutoOpen.current || !derived || generating) return
     didAutoOpen.current = true
     pendingAutoOpen.current = false
-    setWorkspacePanel({
-      kind: 'html',
-      htmlCode,
-      title: 'HTML Artifact',
-      messageId,
+    void collectThreadArtifactVersions(sessionId, messageId, derived).then((versions) => {
+      setWorkspacePanel(toWorkspacePanelState(derived, messageId, versions))
     })
-  }, [htmlCode, generating, messageId, setWorkspacePanel])
+  }, [derived, generating, messageId, sessionId, setWorkspacePanel])
+
+  if (!derived) return null
 
   return (
     <ArtifactWithButtons
-      htmlCode={htmlCode}
+      artifact={derived}
+      sessionId={sessionId}
       messageId={messageId}
       preview={preview}
       setPreview={setPreview}
@@ -164,38 +195,44 @@ export function MessageArtifact(props: {
 }
 
 export function ArtifactWithButtons(props: {
-  htmlCode: string
+  artifact: MessageArtifactRecord
+  sessionId?: string
   messageId?: string
   preview: boolean
   setPreview: (preview: boolean) => void
 }) {
-  const { htmlCode, messageId, preview, setPreview } = props
+  const { artifact, sessionId, messageId, preview, setPreview } = props
   const { t } = useTranslation()
   const [reloadSign, setReloadSign] = useState(0)
   const isSmallScreen = useIsSmallScreen()
   const setWorkspacePanel = useUIStore((s) => s.setWorkspacePanel)
+  const theme = useUIStore((s) => s.realTheme)
+  const kind = normalizeArtifactKind(artifact.type)
+  const title = resolvedTitle(artifact)
+  const typeLabel = artifactKindLabel(kind, artifact.language)
 
   const openWorkspace = () => {
-    if (!htmlCode) return
-    setWorkspacePanel({
-      kind: 'html',
-      htmlCode,
-      title: t('Artifact'),
-      messageId,
-    })
+    if (!artifact.content) return
+    const open = (versions?: Array<MessageArtifactRecord & { messageId?: string }>) => {
+      setWorkspacePanel(toWorkspacePanelState(artifact, messageId, versions))
+    }
+    if (sessionId && messageId) {
+      void collectThreadArtifactVersions(sessionId, messageId, artifact).then(open)
+      return
+    }
+    open()
   }
 
   const onReplay = () => {
-    setReloadSign(Math.random())
+    setReloadSign((n) => n + 1)
   }
   const onPreview = () => {
-    // Desktop: open side workspace (Artifacts mental model). Mobile: expand inline.
     if (!isSmallScreen) {
       openWorkspace()
       return
     }
     setPreview(true)
-    setReloadSign(Math.random())
+    setReloadSign((n) => n + 1)
   }
   const onStopPreview = () => {
     setPreview(false)
@@ -206,13 +243,15 @@ export function ArtifactWithButtons(props: {
       <div className="artifact-card">
         <UnstyledButton type="button" className="artifact-card-main" onClick={onPreview}>
           <span className="artifact-card-icon" aria-hidden>
-            <IconCode size={16} stroke={1.5} />
+            <ArtifactKindIcon kind={kind} />
           </span>
           <span className="artifact-card-copy min-w-0">
             <Text size="sm" fw={600} className="artifact-card-title">
-              {t('HTML Artifact')}
+              {title}
             </Text>
             <Text size="xs" className="artifact-card-sub">
+              {typeLabel}
+              {' · '}
               {isSmallScreen ? t('Tap to preview') : t('Open in workspace')}
             </Text>
           </span>
@@ -249,7 +288,7 @@ export function ArtifactWithButtons(props: {
                 onClick={(e) => {
                   e.stopPropagation()
                   setPreview(true)
-                  setReloadSign(Math.random())
+                  setReloadSign((n) => n + 1)
                 }}
               >
                 <IconEye size={16} stroke={1.5} />
@@ -264,7 +303,7 @@ export function ArtifactWithButtons(props: {
   return (
     <div className={cn('artifact-inline', isSmallScreen && 'artifact-inline--stack')}>
       <div className="artifact-inline-frame">
-        <Artifact htmlCode={htmlCode} reloadSign={reloadSign} className="artifact-inline-iframe" />
+        <InlineArtifactPreview artifact={artifact} reloadSign={reloadSign} theme={theme} />
       </div>
       <div className="artifact-inline-tools" role="toolbar" aria-label={t('Artifact controls')}>
         <Tooltip label={t('Refresh')} openDelay={200}>
@@ -311,111 +350,51 @@ export function ArtifactWithButtons(props: {
   )
 }
 
-export function Artifact(props: { htmlCode: string; reloadSign?: number; className?: string }) {
-  const { htmlCode, reloadSign, className } = props
-  const ref = useRef<HTMLIFrameElement>(null)
-  const iframeOrigin = 'https://artifact-preview.chatboxai.app/preview'
-
-  const sendIframeMsg = (type: 'html', code: string) => {
-    if (!ref.current) {
-      return
-    }
-    ref.current.contentWindow?.postMessage({ type, code }, '*')
+function InlineArtifactPreview(props: {
+  artifact: MessageArtifactRecord
+  reloadSign: number
+  theme: 'light' | 'dark'
+}) {
+  const { artifact, reloadSign, theme } = props
+  const kind = normalizeArtifactKind(artifact.type)
+  if (kind === 'html') {
+    return (
+      <HtmlWorkspaceView
+        htmlCode={artifact.content}
+        kind="html"
+        reloadSign={reloadSign}
+        className="artifact-inline-iframe"
+      />
+    )
   }
-  // reloadSign ， iframe
-  useEffect(() => {
-    ;(async () => {
-      sendIframeMsg('html', '')
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      sendIframeMsg('html', htmlCode)
-    })()
-  }, [reloadSign])
-
-  // htmlCode ， iframe
-  const updateIframe = useMemo(
-    () =>
-      debounce(() => {
-        sendIframeMsg('html', htmlCode)
-      }, 300),
-    [htmlCode]
-  )
-  useEffect(() => {
-    updateIframe()
-    return () => updateIframe.cancel()
-  }, [updateIframe])
-
-  return (
-    <iframe
-      className={cn('w-full', 'border-none', 'h-[400px]', className)}
-      sandbox="allow-scripts allow-forms"
-      src={iframeOrigin}
-      ref={ref}
-    />
-  )
+  if (kind === 'svg') {
+    return (
+      <HtmlWorkspaceView
+        htmlCode={artifact.content}
+        kind="svg"
+        reloadSign={reloadSign}
+        className="artifact-inline-iframe"
+      />
+    )
+  }
+  if (kind === 'markdown') {
+    return (
+      <div className="artifact-inline-markdown">
+        <Markdown>{artifact.content}</Markdown>
+      </div>
+    )
+  }
+  if (kind === 'mermaid') {
+    return (
+      <div className="artifact-inline-markdown">
+        <MessageMermaid source={artifact.content} theme={theme} />
+      </div>
+    )
+  }
+  return <WorkspaceCodeView code={artifact.content} language={artifact.language} />
 }
 
-function generateHtml(markdowns: string[]): string {
-  const codeBlocks: Record<CodeBlockLanguage, string[]> = {
-    html: [],
-    js: [],
-    javascript: [],
-    css: [],
-  }
-  const languages = Array.from(Object.keys(codeBlocks)) as (keyof typeof codeBlocks)[]
-  let currentType: keyof typeof codeBlocks | null = null
-  let currentContent = ''
-  for (const markdown of markdowns) {
-    for (let line of markdown.split('\n')) {
-      line = line.trimStart()
-      const lang = languages.find((l) => '```' + l === line)
-      if (lang) {
-        currentType = lang
-        continue
-      }
-      if (line === '```') {
-        if (currentContent && currentType) {
-          codeBlocks[currentType].push(currentContent)
-          currentContent = ''
-          currentType = null
-          continue
-        } else {
-          continue
-        }
-      }
-      if (currentType) {
-        currentContent += line + '\n'
-      }
-    }
-  }
-  // (legacy comment removed)
-  // const htmlWholes = codeBlocks.html.filter(c => c.includes('</html>'))
-  // codeBlocks.html = [
-  //     htmlWholes[htmlWholes.length - 1],
-  //     ...codeBlocks.html.filter(c => !c.includes('</html>'))
-  // ]
-
-  codeBlocks.html = codeBlocks.html.slice(-1)
-  codeBlocks.css = codeBlocks.css.slice(-1)
-  codeBlocks.javascript = codeBlocks.javascript.slice(-1)
-  codeBlocks.js = codeBlocks.js.slice(-1)
-
-  if (codeBlocks.html.length === 0) {
-    return ''
-  }
-
-  const srcDoc = `
-<script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp,container-queries"></script>
-
-${codeBlocks.html.join('\n')}
-
-<style>
-${codeBlocks.css.join('\n')}
-</style>
-
-<script>
-${codeBlocks.js.join('\n\n// ----------- \n\n')}
-${codeBlocks.javascript.join('\n\n// ----------- \n\n')}
-</script>
-    `
-  return srcDoc
+export function Artifact(props: { htmlCode: string; reloadSign?: number; className?: string }) {
+  const { htmlCode, reloadSign, className } = props
+  return <HtmlWorkspaceView htmlCode={htmlCode} reloadSign={reloadSign} className={className} />
 }

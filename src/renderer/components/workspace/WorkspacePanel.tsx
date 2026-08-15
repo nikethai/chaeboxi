@@ -1,50 +1,101 @@
 /**
- * Side workspace pane — HTML artifacts only (Claude Artifacts–style).
- * Mermaid stays in the inline chat card; it does not open this panel.
+ * Side workspace pane — Claude Artifacts–style preview for html/markdown/svg/mermaid/code.
  */
 
 import { ActionIcon, SegmentedControl, Text, Tooltip } from '@mantine/core'
-import { IconCopy, IconReload, IconX } from '@tabler/icons-react'
+import {
+  type ArtifactKind,
+  artifactKindLabel,
+  inferArtifactTitle,
+  isLegacyDefaultTitle,
+  normalizeArtifactKind,
+} from '@shared/artifacts'
+import { IconChevronLeft, IconChevronRight, IconCopy, IconReload, IconX } from '@tabler/icons-react'
 import type React from 'react'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { copyToClipboard } from '@/packages/navigator'
 import * as toastActions from '@/stores/toastActions'
-import { uiStore, useUIStore } from '@/stores/uiStore'
+import { useUIStore, type WorkspaceArtifactVersion, type WorkspacePanelState } from '@/stores/uiStore'
+import Markdown from '../Markdown'
+import { MessageMermaid } from '../Mermaid'
 import { HtmlWorkspaceView } from './HtmlWorkspaceView'
+import { WorkspaceCodeView } from './WorkspaceCodeView'
 
 const EXIT_MS = 260
 const EASE = 'cubic-bezier(0.32, 0.72, 0, 1)'
 
-type WorkspaceContent = NonNullable<ReturnType<typeof uiStore.getState>['workspacePanel']>
+type WorkspaceContent = NonNullable<WorkspacePanelState>
+
+function resolvePanelSource(panel: WorkspaceContent): {
+  kind: ArtifactKind
+  content: string
+  language?: string
+  title: string
+} {
+  const versions = panel.versions ?? []
+  const index = panel.versionIndex ?? Math.max(0, versions.length - 1)
+  const current: WorkspaceArtifactVersion | undefined = versions[index]
+  const kind = normalizeArtifactKind(current?.kind ?? panel.kind)
+  const content = current?.content ?? panel.content ?? panel.htmlCode ?? ''
+  const language = current?.language ?? panel.language
+  const rawTitle = current?.title ?? panel.title
+  const title = isLegacyDefaultTitle(rawTitle) ? inferArtifactTitle(content, kind, language) : rawTitle
+  return { kind, content, language, title: title || artifactKindLabel(kind, language) }
+}
+
+function WorkspacePreview(props: {
+  kind: ArtifactKind
+  content: string
+  language?: string
+  reloadSign: number
+  theme: 'light' | 'dark'
+}) {
+  const { kind, content, language, reloadSign, theme } = props
+  if (kind === 'html') {
+    return <HtmlWorkspaceView htmlCode={content} kind="html" reloadSign={reloadSign} />
+  }
+  if (kind === 'svg') {
+    return <HtmlWorkspaceView htmlCode={content} kind="svg" reloadSign={reloadSign} />
+  }
+  if (kind === 'markdown') {
+    return (
+      <div className="workspace-markdown">
+        <Markdown enableMermaidRendering>{content}</Markdown>
+      </div>
+    )
+  }
+  if (kind === 'mermaid') {
+    return (
+      <div className="workspace-mermaid">
+        <MessageMermaid source={content} theme={theme} />
+      </div>
+    )
+  }
+  return <WorkspaceCodeView code={content} language={language} />
+}
 
 function WorkspacePanel() {
   const { t } = useTranslation()
   const panel = useUIStore((s) => s.workspacePanel)
   const widthPx = useUIStore((s) => s.workspaceWidthPx)
+  const realTheme = useUIStore((s) => s.realTheme)
   const setWorkspacePanel = useUIStore((s) => s.setWorkspacePanel)
   const setWorkspaceWidthPx = useUIStore((s) => s.setWorkspaceWidthPx)
-  const [tab, setTab] = useState<'preview' | 'source'>('preview')
+  const [tab, setTab] = useState<'preview' | 'code'>('preview')
   const [reloadSign, setReloadSign] = useState(0)
   const [display, setDisplay] = useState<WorkspaceContent | null>(null)
   const [open, setOpen] = useState(false)
   const closeTimer = useRef<number | null>(null)
   const panelRef = useRef<HTMLElement>(null)
 
-  // Drop legacy mermaid workspace state if still in memory
-  useEffect(() => {
-    if (panel && panel.kind !== 'html') {
-      setWorkspacePanel(null)
-    }
-  }, [panel, setWorkspacePanel])
-
   useEffect(() => {
     if (closeTimer.current) {
       window.clearTimeout(closeTimer.current)
       closeTimer.current = null
     }
-    if (panel?.kind === 'html') {
+    if (panel) {
       setDisplay(panel)
       requestAnimationFrame(() => {
         requestAnimationFrame(() => setOpen(true))
@@ -64,18 +115,23 @@ function WorkspacePanel() {
     }
   }, [panel])
 
-  const contentKey =
-    display?.kind === 'html' ? `html:${display.messageId ?? ''}:${display.htmlCode.length}` : ''
+  const source = display ? resolvePanelSource(display) : null
+  const versions = display?.versions ?? []
+  const versionIndex = display?.versionIndex ?? Math.max(0, versions.length - 1)
+  const sourceKind = source?.kind
+  const contentKey = display
+    ? `${display.versions?.[0]?.id ?? display.artifactId ?? display.messageId ?? ''}`
+    : ''
 
   useEffect(() => {
-    if (!contentKey) return
-    setTab('preview')
+    if (!contentKey || !sourceKind) return
+    setTab(sourceKind === 'code' ? 'code' : 'preview')
     setReloadSign(0)
-  }, [contentKey])
+  }, [contentKey, sourceKind])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && panel?.kind === 'html') {
+      if (e.key === 'Escape' && panel) {
         e.preventDefault()
         setWorkspacePanel(null)
       }
@@ -85,7 +141,7 @@ function WorkspacePanel() {
   }, [panel, setWorkspacePanel])
 
   useEffect(() => {
-    if (open && panel?.kind === 'html' && panelRef.current) {
+    if (open && panel && panelRef.current) {
       panelRef.current.focus({ preventScroll: true })
     }
   }, [open, panel])
@@ -113,12 +169,30 @@ function WorkspacePanel() {
     [widthPx, setWorkspaceWidthPx]
   )
 
-  if (!display && !open) return null
-  if (!display || display.kind !== 'html') return null
+  const showVersion = (nextIndex: number) => {
+    if (!display || !versions[nextIndex]) return
+    const next = versions[nextIndex]
+    setWorkspacePanel({
+      ...display,
+      kind: next.kind,
+      content: next.content,
+      language: next.language,
+      title: next.title,
+      messageId: next.messageId ?? display.messageId,
+      artifactId: next.id,
+      versions,
+      versionIndex: nextIndex,
+    })
+  }
 
-  const title = display.title || t('Artifact')
-  const sourceText = display.htmlCode
+  if (!display && !open) return null
+  if (!display || !source) return null
+
+  const title = source.title || t('Artifact')
+  const sourceText = source.content
+  const kicker = artifactKindLabel(source.kind, source.language)
   const close = () => setWorkspacePanel(null)
+  const canPage = versions.length > 1
 
   const copySource = () => {
     if (!sourceText) return
@@ -156,20 +230,56 @@ function WorkspacePanel() {
         <div className="workspace-panel-inner">
           <header className="workspace-panel-header">
             <div className="workspace-panel-header-left min-w-0">
-              <span className="workspace-panel-kicker">HTML</span>
+              <span className="workspace-panel-kicker">{kicker}</span>
               <Text size="sm" fw={600} className="workspace-panel-title truncate" title={title}>
                 {title}
               </Text>
+              {canPage ? (
+                <div className="workspace-version-pager">
+                  <Tooltip label={t('Previous version')} openDelay={200}>
+                    <ActionIcon
+                      variant="subtle"
+                      color="gray"
+                      size={24}
+                      radius="xl"
+                      disabled={versionIndex <= 0}
+                      onClick={() => showVersion(versionIndex - 1)}
+                      aria-label={t('Previous version')}
+                    >
+                      <IconChevronLeft size={14} stroke={1.5} />
+                    </ActionIcon>
+                  </Tooltip>
+                  <span className="workspace-version-label tabular-nums">
+                    {t('v{{version}}', { version: versions[versionIndex]?.version ?? versionIndex + 1 })}
+                    <span className="workspace-version-count">
+                      {versionIndex + 1}/{versions.length}
+                    </span>
+                  </span>
+                  <Tooltip label={t('Next version')} openDelay={200}>
+                    <ActionIcon
+                      variant="subtle"
+                      color="gray"
+                      size={24}
+                      radius="xl"
+                      disabled={versionIndex >= versions.length - 1}
+                      onClick={() => showVersion(versionIndex + 1)}
+                      aria-label={t('Next version')}
+                    >
+                      <IconChevronRight size={14} stroke={1.5} />
+                    </ActionIcon>
+                  </Tooltip>
+                </div>
+              ) : null}
             </div>
 
             <div className="workspace-panel-header-actions">
               <SegmentedControl
                 size="xs"
                 value={tab}
-                onChange={(v) => setTab(v as 'preview' | 'source')}
+                onChange={(v) => setTab(v as 'preview' | 'code')}
                 data={[
                   { label: t('Preview'), value: 'preview' },
-                  { label: t('Source'), value: 'source' },
+                  { label: t('Code'), value: 'code' },
                 ]}
                 className="workspace-segmented"
                 classNames={{
@@ -223,11 +333,20 @@ function WorkspacePanel() {
             </div>
           </header>
 
-          <div className="workspace-panel-body" key={`${display.messageId ?? ''}-${tab}-${reloadSign}`}>
-            {tab === 'source' ? (
-              <pre className="workspace-source">{sourceText}</pre>
+          <div
+            className="workspace-panel-body"
+            key={`${display.artifactId ?? display.messageId ?? ''}-${tab}-${reloadSign}-${versionIndex}`}
+          >
+            {tab === 'code' ? (
+              <WorkspaceCodeView code={sourceText} language={source.language || source.kind} />
             ) : (
-              <HtmlWorkspaceView htmlCode={display.htmlCode} reloadSign={reloadSign} />
+              <WorkspacePreview
+                kind={source.kind}
+                content={sourceText}
+                language={source.language}
+                reloadSign={reloadSign}
+                theme={realTheme}
+              />
             )}
           </div>
         </div>
@@ -241,10 +360,10 @@ export default memo(WorkspacePanel)
 /** Whether the workspace chrome is visible or animating (for session shell class). */
 export function useWorkspaceChromeActive(): boolean {
   const panel = useUIStore((s) => s.workspacePanel)
-  const [active, setActive] = useState(Boolean(panel?.kind === 'html'))
+  const [active, setActive] = useState(Boolean(panel))
 
   useEffect(() => {
-    if (panel?.kind === 'html') {
+    if (panel) {
       setActive(true)
       return
     }

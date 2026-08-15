@@ -1,3 +1,4 @@
+import type { ArtifactKind } from '@shared/artifacts'
 import type { KnowledgeBase, MessagePicture, MessageQuoteAttachment, Toast } from '@shared/types'
 import type { RefObject } from 'react'
 import type { VirtuosoHandle } from 'react-virtuoso'
@@ -9,6 +10,29 @@ import { safeStorage } from './safeStorage'
 
 /** Ephemeral composer quote draft (not persisted). */
 export type QuoteDraft = Pick<MessageQuoteAttachment, 'sourceMessageId' | 'sourceRole' | 'text' | 'isPartial'>
+
+export type WorkspaceArtifactVersion = {
+  id: string
+  messageId?: string
+  kind: ArtifactKind
+  content: string
+  language?: string
+  title?: string
+  version?: number
+}
+
+export type WorkspacePanelState = {
+  kind: ArtifactKind
+  content: string
+  language?: string
+  title?: string
+  messageId?: string
+  artifactId?: string
+  versions?: WorkspaceArtifactVersion[]
+  versionIndex?: number
+  /** @deprecated legacy html-only shape; prefer content */
+  htmlCode?: string
+}
 
 // UI store for managing UI-related state
 // immer middleware，RefObject
@@ -50,14 +74,9 @@ export const uiStore = createStore(
         } | null,
         /**
          * Side workspace (Claude Artifacts–style): chat left, preview right.
-         * HTML artifacts only — Mermaid stays inline in the chat card.
+         * html / markdown / svg / mermaid / code are first-class panel kinds.
          */
-        workspacePanel: null as null | {
-          kind: 'html'
-          htmlCode: string
-          title?: string
-          messageId?: string
-        },
+        workspacePanel: null as null | WorkspacePanelState,
         workspaceWidthPx: 520 as number,
         showCopilotsInNewSession: false,
         sidebarWidth: null as number | null, // Custom sidebar width, null means use default

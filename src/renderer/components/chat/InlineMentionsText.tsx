@@ -14,10 +14,9 @@ function InlineMentionsText({ text }: { text: string }) {
 
   const nodes: ReactNode[] = []
   let last = 0
-  let match: RegExpExecArray | null
   let i = 0
   const re = new RegExp(MENTION_TOKEN_RE.source, MENTION_TOKEN_RE.flags)
-  while ((match = re.exec(text)) !== null) {
+  for (let match = re.exec(text); match !== null; match = re.exec(text)) {
     if (match.index > last) {
       nodes.push(<span key={`t-${i++}`}>{text.slice(last, match.index)}</span>)
     }

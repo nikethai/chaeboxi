@@ -9,6 +9,7 @@
       "!src-tauri/**",
       "!release/**",
       "!tmp/**",
+      "!.worktrees/**",
       "biome.json",
       "*.config.js",
       "*.config.ts",
@@ -74,9 +75,9 @@
       "semicolons": "asNeeded",
       "arrowParentheses": "always",
       "bracketSameLine": false,
+      "bracketSpacing": true,
       "quoteStyle": "single",
-      "attributePosition": "auto",
-      "bracketSpacing": true
+      "attributePosition": "auto"
     }
   },
   "assist": {

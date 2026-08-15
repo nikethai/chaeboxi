@@ -151,7 +151,7 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
     [setPrefillText]
   )
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies:
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-once scroll state capture
   useEffect(() => {
     setMessageScrolling(virtuoso)
     const currentVirtuoso = virtuoso.current // virtuoso.current null
@@ -164,7 +164,7 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
       })
     }
   }, [])
-  // biome-ignore lint/correctness/useExhaustiveDependencies:
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-once element registration
   useEffect(() => {
     setMessageListElement(messageListRef)
   }, [])

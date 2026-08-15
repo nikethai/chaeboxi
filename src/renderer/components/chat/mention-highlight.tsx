@@ -1,10 +1,5 @@
 import { type ReactNode } from 'react'
-import {
-  MENTION_TOKEN_RE,
-  mentionClassName,
-  mentionKind,
-  type MentionKind,
-} from './mention-tokens'
+import { MENTION_TOKEN_RE, mentionClassName, mentionKind, type MentionKind } from './mention-tokens'
 
 // Re-export pure helpers so existing `from './mention-highlight'` imports keep working.
 export { MENTION_TOKEN_RE, mentionClassName, mentionKind, type MentionKind }
@@ -22,10 +17,9 @@ export function renderMentionNodes(
   const prefix = options?.keyPrefix ?? 'm'
   const nodes: ReactNode[] = []
   let last = 0
-  let match: RegExpExecArray | null
   let i = 0
   const re = new RegExp(MENTION_TOKEN_RE.source, MENTION_TOKEN_RE.flags)
-  while ((match = re.exec(text)) !== null) {
+  for (let match = re.exec(text); match !== null; match = re.exec(text)) {
     if (match.index > last) {
       nodes.push(<span key={`${prefix}-t-${i++}`}>{text.slice(last, match.index)}</span>)
     }

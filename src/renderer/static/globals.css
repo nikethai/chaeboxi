@@ -121,7 +121,6 @@
 
 /* dark-first studio palette */
 :root[data-mantine-color-scheme="dark"] {
-  --chatbox-background-user-bubble: #2c2c34; /* lift-2 — mock user pill */
   --chatbox-tint-primary: #ececec;
   --chatbox-tint-secondary: #a8a8ae;
   --chatbox-tint-tertiary: #6e6e76;

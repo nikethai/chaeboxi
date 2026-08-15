@@ -78,8 +78,7 @@ export function serializeComposerDom(root: HTMLElement): string {
       return
     }
     // Block containers (contenteditable often inserts <div>)
-    const isBlock =
-      el.tagName === 'DIV' || el.tagName === 'P' || el.tagName === 'LI' || el.tagName === 'SECTION'
+    const isBlock = el.tagName === 'DIV' || el.tagName === 'P' || el.tagName === 'LI' || el.tagName === 'SECTION'
     if (isBlock && parts.length > 0 && !parts[parts.length - 1].endsWith('\n')) {
       // New block → newline before content (except leading empty)
       if (el.previousSibling) parts.push('\n')
@@ -149,8 +148,7 @@ export function renderSerializedToDom(
 
   let last = 0
   const re = new RegExp(MENTION_TOKEN_RE.source, MENTION_TOKEN_RE.flags)
-  let match: RegExpExecArray | null
-  while ((match = re.exec(value)) !== null) {
+  for (let match = re.exec(value); match !== null; match = re.exec(value)) {
     if (match.index > last) {
       appendTextWithBreaks(root, value.slice(last, match.index))
     }

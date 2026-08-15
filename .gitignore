@@ -176,3 +176,4 @@ dist
 
 .env.sentry-build-plugin
 .sisyphus/
+.worktrees/

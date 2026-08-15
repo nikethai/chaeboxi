@@ -1,10 +1,10 @@
 import { Alert, Button, Checkbox, FileButton, Flex, Radio, Stack, Switch, Text, TextInput } from '@mantine/core'
-import { type Language, type ProviderInfo, type Settings, Theme } from '@shared/types'
+import { type Language, type Settings, Theme } from '@shared/types'
 import { formatFileSize } from '@shared/utils'
 import { IconInfoCircle } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
 import dayjs from 'dayjs'
-import { mapValues, uniqBy } from 'lodash'
+import { uniqBy } from 'lodash'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AdaptiveSelect } from '@/components/AdaptiveSelect'
@@ -262,7 +262,10 @@ function SystemNotificationsSection() {
   const [permissionBusy, setPermissionBusy] = useState(false)
 
   useEffect(() => {
-    void platform.getSystemNotificationPermission().then(setPermission).catch(() => setPermission('unsupported'))
+    void platform
+      .getSystemNotificationPermission()
+      .then(setPermission)
+      .catch(() => setPermission('unsupported'))
   }, [])
 
   const patchNotifications = (patch: {
@@ -512,26 +515,23 @@ const ImportExportDataSection = () => {
   const onExport = async () => {
     const data = await storage.getAll()
     delete data[StorageKey.Configs] // uuid
-    ;(data[StorageKey.Settings] as Settings).licenseDetail = undefined // (legacy)
-    ;(data[StorageKey.Settings] as Settings).licenseInstances = undefined // (legacy)
-    if ((data[StorageKey.Settings] as Settings).extension?.historySync) {
-      ;(data[StorageKey.Settings] as Settings).extension.historySync = {
-        ...(data[StorageKey.Settings] as Settings).extension.historySync,
-        passphrase: undefined,
-      }
+    const settings = data[StorageKey.Settings] as Settings
+    settings.licenseDetail = undefined // (legacy)
+    settings.licenseInstances = undefined // (legacy)
+    if (settings.extension?.historySync) {
+      // Strip the sync passphrase from exports; keep the rest of the config.
+      const { passphrase, ...historySync } = settings.extension.historySync
+      settings.extension.historySync = historySync
     }
     if (!exportItems.includes(ExportDataItem.Key)) {
-      delete (data[StorageKey.Settings] as Settings).licenseKey
-      data[StorageKey.Settings].providers = mapValues(
-        (data[StorageKey.Settings] as Settings).providers,
-        (provider: ProviderInfo) => {
+      delete settings.licenseKey
+      if (settings.providers) {
+        for (const provider of Object.values(settings.providers)) {
           delete provider.apiKey
           delete provider.cloudflareClientSecret
-          return provider
         }
-      )
+      }
       // Scrub OpenClaw gateway secrets (token + CF Access credentials)
-      const settings = data[StorageKey.Settings] as Settings
       if (settings.openclaw?.gateways) {
         settings.openclaw.gateways = settings.openclaw.gateways.map((gw) => {
           const { token, cloudflareClientSecret, ...rest } = gw

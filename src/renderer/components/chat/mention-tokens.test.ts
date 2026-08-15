@@ -19,8 +19,7 @@ describe('mention-tokens', () => {
     const text = 'hey @alice use $code-review and #work with @mem:prefs'
     const re = new RegExp(MENTION_TOKEN_RE.source, MENTION_TOKEN_RE.flags)
     const hits: string[] = []
-    let m: RegExpExecArray | null
-    while ((m = re.exec(text)) !== null) {
+    for (let m = re.exec(text); m !== null; m = re.exec(text)) {
       hits.push(m[0])
     }
     expect(hits).toEqual(['@alice', '$code-review', '#work', '@mem:prefs'])

@@ -23,8 +23,7 @@ export function parseSwarmPlanFromText(text: string, maxTasks = MAX_SWARM_TASKS)
 
   const candidates: string[] = []
   const fence = /```(?:json)?\s*([\s\S]*?)```/gi
-  let match: RegExpExecArray | null
-  while ((match = fence.exec(text)) !== null) {
+  for (let match = fence.exec(text); match !== null; match = fence.exec(text)) {
     candidates.push(match[1].trim())
   }
   // Bare array or object somewhere in the message

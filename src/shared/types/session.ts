@@ -318,10 +318,15 @@ export const MessageFeedbackSchema = z.object({
   timestamp: z.number(),
 })
 
+export const MessageArtifactTypeSchema = z.enum(['html', 'mermaid', 'markdown', 'svg', 'code'])
+
 export const MessageArtifactSchema = z.object({
   id: z.string(),
-  /** html = sandboxed preview; mermaid = diagram source (workspace may open either) */
-  type: z.enum(['html', 'mermaid']),
+  /**
+   * html/svg = sandboxed preview; markdown/mermaid = rendered preview; code = highlighted source.
+   * Unknown legacy values fall back so old html/mermaid sessions still load.
+   */
+  type: z.union([MessageArtifactTypeSchema, z.string()]).catch('html'),
   title: z.string().optional(),
   language: z.string().optional(),
   content: z.string(),

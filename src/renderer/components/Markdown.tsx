@@ -20,7 +20,7 @@ import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import * as latex from '../packages/latex'
-import { isRenderableCodeLanguage } from './Artifact'
+import { isRenderableCodeLanguage } from '@shared/artifacts'
 import 'katex/dist/katex.min.css' // `rehype-katex` does not import the CSS for you
 import NiceModal from '@ebay/nice-modal-react'
 import { ActionIcon, Flex, Loader, Text, Tooltip, useComputedColorScheme } from '@mantine/core'

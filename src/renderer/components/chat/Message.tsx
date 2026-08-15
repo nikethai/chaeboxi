@@ -872,12 +872,7 @@ const _Message: FC<Props> = (props) => {
             />
           )}
           {needArtifact && (
-            <Flex direction="column" gap={4} mt="sm">
-              {currentArtifact?.version && (
-                <Text size="xs" c="chatbox-tertiary">
-                  {t('Artifact v{{version}}', { version: currentArtifact.version })}
-                </Text>
-              )}
+            <Flex direction="column" mt="sm">
               <InlineArtifact
                 sessionId={sessionId}
                 messageId={msg.id}
@@ -886,6 +881,7 @@ const _Message: FC<Props> = (props) => {
                 setPreview={setPreviewArtifact}
                 autoOpenWorkspace={autoPreviewArtifacts}
                 generating={!!msg.generating}
+                artifact={currentArtifact}
               />
             </Flex>
           )}

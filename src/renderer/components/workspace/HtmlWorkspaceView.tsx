@@ -1,77 +1,39 @@
 /**
- * HTML artifact preview for the side workspace (same host iframe as inline Artifact).
+ * Sandboxed live preview for HTML/SVG artifacts.
+ * Uses a local srcdoc iframe — never chatboxai.app.
+ * Scripts may run, but the frame is not same-origin with the app.
  */
 
-import { debounce } from 'lodash'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { buildHtmlPreviewDocument, buildSvgPreviewDocument } from '@shared/artifacts'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 
-const IFRAME_ORIGIN = 'https://artifact-preview.chatboxai.app/preview'
-
-export function HtmlWorkspaceView(props: {
-  htmlCode: string
-  /** Bump to force full reload of the preview. */
-  reloadSign?: number
-  className?: string
-}) {
-  const { htmlCode, reloadSign = 0, className } = props
+export function SandboxedPreview(props: { html: string; title?: string; reloadSign?: number; className?: string }) {
+  const { html, title, reloadSign = 0, className } = props
   const { t } = useTranslation()
-  const ref = useRef<HTMLIFrameElement>(null)
-  const [ready, setReady] = useState(false)
-
-  const sendIframeMsg = (type: 'html', code: string) => {
-    ref.current?.contentWindow?.postMessage({ type, code }, '*')
-  }
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      setReady(false)
-      sendIframeMsg('html', '')
-      await new Promise((r) => setTimeout(r, 400))
-      if (cancelled) return
-      sendIframeMsg('html', htmlCode)
-      if (!cancelled) setReady(true)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [reloadSign, htmlCode])
-
-  const updateIframe = useMemo(
-    () =>
-      debounce(() => {
-        sendIframeMsg('html', htmlCode)
-      }, 280),
-    [htmlCode]
-  )
-
-  useEffect(() => {
-    if (reloadSign) return
-    updateIframe()
-    return () => updateIframe.cancel()
-  }, [updateIframe, reloadSign])
+  const srcDoc = useMemo(() => html, [html])
 
   return (
     <div className={cn('workspace-html', className)}>
-      {!ready ? (
-        <div className="workspace-html-loading" aria-live="polite">
-          <span className="workspace-html-loading-dot" />
-          <span>{t('Loading preview…')}</span>
-        </div>
-      ) : null}
       <iframe
-        ref={ref}
-        title={t('Artifact preview')}
+        key={reloadSign}
+        title={title || t('Artifact preview')}
         className="workspace-html-frame"
         sandbox="allow-scripts allow-forms"
-        src={IFRAME_ORIGIN}
-        onLoad={() => {
-          sendIframeMsg('html', htmlCode)
-          setReady(true)
-        }}
+        srcDoc={srcDoc}
       />
     </div>
   )
+}
+
+export function HtmlWorkspaceView(props: {
+  htmlCode: string
+  kind?: 'html' | 'svg'
+  reloadSign?: number
+  className?: string
+}) {
+  const { htmlCode, kind = 'html', reloadSign = 0, className } = props
+  const srcDoc = kind === 'svg' ? buildSvgPreviewDocument(htmlCode) : buildHtmlPreviewDocument(htmlCode)
+  return <SandboxedPreview html={srcDoc} reloadSign={reloadSign} className={className} />
 }

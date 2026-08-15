@@ -271,6 +271,8 @@ export type FileMeta = {
   path: string
   type: string
   size: number
+  /** UTF-8 text when the HTML file picker has no disk path (Tauri webview). */
+  content?: string
 }
 
 export * from './types/image-generation'

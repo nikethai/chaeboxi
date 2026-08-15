@@ -91,6 +91,24 @@ pub fn parse_file(filepath: &str, mime_type: &str) -> Result<String, ParseError>
     })
 }
 
+/// Parse already-loaded UTF-8 text (HTML file picker has no disk path).
+pub fn parse_text(filename: &str, mime_type: &str, text: &str) -> Result<String, ParseError> {
+    if let Some(kind) = looks_like_pdf_or_office(filename, mime_type) {
+        return Err(ParseError::new(format!(
+            "{kind} files are not supported in this version. Upload .txt, .md, .csv, .json, or .log instead."
+        )));
+    }
+    if !is_supported_text(filename, mime_type) {
+        return Err(ParseError::new(format!(
+            "Unsupported file type ({mime_type}). Only text, Markdown, CSV, JSON, and log files can be indexed."
+        )));
+    }
+    if text.trim().is_empty() {
+        return Err(ParseError::new("File parsed as empty text; nothing to index."));
+    }
+    Ok(text.to_string())
+}
+
 /// Split `text` into overlapping character windows.
 /// `overlap` characters from the end of one chunk start the next.
 pub fn chunk_text(text: &str, max_chunk_chars: usize, overlap: usize) -> Vec<String> {
@@ -199,5 +217,11 @@ mod tests {
     fn tiny_text_is_one_chunk() {
         let chunks = chunk_document("hello");
         assert_eq!(chunks, vec!["hello".to_string()]);
+    }
+
+    #[test]
+    fn parse_text_accepts_markdown_without_path() {
+        let text = parse_text("notes.md", "text/markdown", "# hello\nworld").unwrap();
+        assert!(text.contains("hello"));
     }
 }

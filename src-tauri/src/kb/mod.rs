@@ -13,7 +13,7 @@ use embed::{
     passage_prefix, query_prefix, EmbedStatus, ModelKind, EMBED_BATCH_SIZE,
     LOCAL_E5_SMALL,
 };
-use parse::{chunk_document, parse_file};
+use parse::{chunk_document, parse_file, parse_text};
 use persist::{now_ms, FileRecord, Store};
 use search::{hybrid_search, SearchCandidate};
 use serde_json::{json, Value};
@@ -522,7 +522,7 @@ fn handle_inner(
                 .and_then(Value::as_str)
                 .unwrap_or("unknown")
                 .to_string();
-            let filepath = file
+            let mut filepath = file
                 .get("path")
                 .and_then(Value::as_str)
                 .unwrap_or("")
@@ -533,8 +533,23 @@ fn handle_inner(
                 .unwrap_or("application/octet-stream")
                 .to_string();
             let file_size = file.get("size").and_then(Value::as_i64).unwrap_or(0);
+            let inline = file.get("content").and_then(Value::as_str);
 
-            let parsed = parse_file(&filepath, &mime_type);
+            let parsed = if !filepath.trim().is_empty() {
+                parse_file(&filepath, &mime_type)
+            } else if let Some(text) = inline {
+                match parse_text(&filename, &mime_type, text) {
+                    Ok(parsed_text) => {
+                        if let Ok(saved) = save_inbox_copy(runtime, &filename, &parsed_text) {
+                            filepath = saved;
+                        }
+                        Ok(parsed_text)
+                    }
+                    Err(err) => Err(err),
+                }
+            } else {
+                parse_file(&filepath, &mime_type)
+            };
             let mut record = FileRecord {
                 id: 0,
                 kb_id,
@@ -735,6 +750,16 @@ fn handle_inner(
         }
         other => Err(format!("unknown kb channel: {other}")),
     }
+}
+
+fn save_inbox_copy(runtime: &KbRuntime, filename: &str, text: &str) -> Result<String, String> {
+    let root = runtime.models_dir();
+    let inbox = root.parent().unwrap_or(&root).join("kb_inbox");
+    std::fs::create_dir_all(&inbox).map_err(|e| format!("kb inbox: {e}"))?;
+    let safe = filename.replace(['/', '\\'], "_");
+    let path = inbox.join(format!("{}-{safe}", now_ms()));
+    std::fs::write(&path, text).map_err(|e| format!("write inbox: {e}"))?;
+    Ok(path.to_string_lossy().into_owned())
 }
 
 fn file_list_json(file: FileRecord) -> Value {

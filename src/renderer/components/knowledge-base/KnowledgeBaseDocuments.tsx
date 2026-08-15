@@ -196,6 +196,9 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
         for (let i = 0; i < files.length; i++) {
           const file = files[i]
           const correctedFile = correctMimeType(file)
+          if (!correctedFile.path) {
+            correctedFile.content = await file.text()
+          }
           correctedFiles.push(correctedFile)
 
           console.log(`[Upload] File ${i + 1}/${files.length}: ${file.name} (${correctedFile.type})`)

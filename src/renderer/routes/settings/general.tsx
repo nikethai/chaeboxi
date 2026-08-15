@@ -386,6 +386,7 @@ type HistorySyncFormState = {
   enabled: boolean
   endpoint: string
   token: string
+  passphrase: string
   autoSync: boolean
   intervalSeconds: number
 }
@@ -394,6 +395,7 @@ const DEFAULT_HISTORY_SYNC_FORM_STATE: HistorySyncFormState = {
   enabled: false,
   endpoint: '',
   token: '',
+  passphrase: '',
   autoSync: false,
   intervalSeconds: 60,
 }
@@ -410,6 +412,7 @@ function normalizeHistorySyncFormState(config: Partial<HistorySyncFormState> | u
     enabled: Boolean(config?.enabled),
     endpoint: typeof config?.endpoint === 'string' ? config.endpoint : '',
     token: typeof config?.token === 'string' ? config.token : '',
+    passphrase: typeof config?.passphrase === 'string' ? config.passphrase : '',
     autoSync: Boolean(config?.autoSync),
     intervalSeconds: clampHistorySyncIntervalSeconds(
       typeof config?.intervalSeconds === 'number'
@@ -424,6 +427,7 @@ function isSameHistorySyncFormState(a: HistorySyncFormState, b: HistorySyncFormS
     a.enabled === b.enabled &&
     a.endpoint === b.endpoint &&
     a.token === b.token &&
+    a.passphrase === b.passphrase &&
     a.autoSync === b.autoSync &&
     a.intervalSeconds === b.intervalSeconds
   )
@@ -587,6 +591,7 @@ const ImportExportDataSection = () => {
       const snapshot = await testHistorySyncConnection({
         endpoint: historySyncForm.endpoint,
         token: historySyncForm.token,
+        passphrase: historySyncForm.passphrase,
       })
       return {
         tip: t('Connected. Remote revision {{revision}}, updated at {{updatedAt}}', {
@@ -602,6 +607,7 @@ const ImportExportDataSection = () => {
       const result = await pullHistoryFromServer({
         endpoint: historySyncForm.endpoint,
         token: historySyncForm.token,
+        passphrase: historySyncForm.passphrase,
       })
       return {
         tip: t('Pulled revision {{revision}}. Imported {{imported}}, updated {{updated}}, skipped {{skipped}}', {
@@ -620,6 +626,7 @@ const ImportExportDataSection = () => {
       const result = await pushHistoryToServer({
         endpoint: historySyncForm.endpoint,
         token: historySyncForm.token,
+        passphrase: historySyncForm.passphrase,
       })
 
       const conflictSuffix = result.conflictResolved
@@ -645,6 +652,7 @@ const ImportExportDataSection = () => {
       const result = await syncHistoryNow({
         endpoint: historySyncForm.endpoint,
         token: historySyncForm.token,
+        passphrase: historySyncForm.passphrase,
       })
       const recoverFromPull = result.pull.imported > 0 || result.pull.updated > 0
       const recoverFromPushConflict =
@@ -855,7 +863,9 @@ const ImportExportDataSection = () => {
   const storedHistorySyncForm = normalizeHistorySyncFormState(storedHistorySyncConfig)
   const hasUnsavedHistorySyncChanges = !isSameHistorySyncFormState(historySyncForm, storedHistorySyncForm)
   const isHistorySyncPending = historySyncAction !== null
-  const hasHistorySyncCredentials = Boolean(historySyncForm.endpoint.trim() && historySyncForm.token.trim())
+  const hasHistorySyncCredentials = Boolean(
+    historySyncForm.endpoint.trim() && historySyncForm.token.trim() && historySyncForm.passphrase.trim()
+  )
   const canRunSyncAction = historySyncForm.enabled && hasHistorySyncCredentials && !isHistorySyncPending
   const lastSyncedAt = historySyncStatus?.lastSyncedAt
     ? dayjs(historySyncStatus.lastSyncedAt).format('YYYY-MM-DD HH:mm:ss')
@@ -927,6 +937,13 @@ const ImportExportDataSection = () => {
               value={historySyncForm.token}
               onChange={(e) => updateHistorySyncForm({ token: e.currentTarget.value })}
             />
+            <TextInput
+              label={t('Sync passphrase')}
+              type="password"
+              description={t('Encrypts chats on this device. The server never sees it.')}
+              value={historySyncForm.passphrase}
+              onChange={(e) => updateHistorySyncForm({ passphrase: e.currentTarget.value })}
+            />
             <SettingsPrefRow
               title={t('Auto sync in background')}
               control={
@@ -984,7 +1001,7 @@ const ImportExportDataSection = () => {
             )}
             {!hasHistorySyncCredentials && (
               <Text size="sm" c="chatbox-tertiary">
-                {t('Set endpoint and token first, then test/pull/push/sync')}
+                {t('Set endpoint, token, and passphrase first, then test/pull/push/sync')}
               </Text>
             )}
             <div className="settings-actions">

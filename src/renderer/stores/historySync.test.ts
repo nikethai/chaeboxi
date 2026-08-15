@@ -8,6 +8,7 @@ vi.mock('@/storage', () => ({
 }))
 
 import { getHistorySyncState, pullHistoryFromServer, pushHistoryToServer, syncHistoryNow } from './historySync'
+import { isEncryptedHistoryEnvelope } from './historySyncCrypto'
 
 class MemoryStore {
   private values = new Map<string, unknown>()
@@ -78,6 +79,7 @@ describe('historySync', () => {
       {
         endpoint: 'http://sync.local',
         token: 'token',
+        passphrase: 'secret',
       },
       {
         store: store as never,
@@ -161,6 +163,7 @@ describe('historySync', () => {
       {
         endpoint: 'http://sync.local',
         token: 'token',
+        passphrase: 'secret',
       },
       {
         store: store as never,
@@ -185,6 +188,9 @@ describe('historySync', () => {
     const secondRequestBody = JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body))
     expect(firstRequestBody.baseRevision).toBe(1)
     expect(secondRequestBody.baseRevision).toBe(2)
+    expect(isEncryptedHistoryEnvelope(firstRequestBody.payload)).toBe(true)
+    expect(isEncryptedHistoryEnvelope(secondRequestBody.payload)).toBe(true)
+    expect(JSON.stringify(firstRequestBody.payload)).not.toContain('chatbox-history-transfer')
 
     const state = await getHistorySyncState({ store: store as never })
     expect(state.revision).toBe(3)
@@ -205,6 +211,7 @@ describe('historySync', () => {
         {
           endpoint: 'http://sync.local',
           token: 'token',
+          passphrase: 'secret',
         },
         {
           store: store as never,
@@ -250,6 +257,7 @@ describe('historySync', () => {
       {
         endpoint: 'http://sync.local',
         token: 'token',
+        passphrase: 'secret',
       },
       {
         store: store as never,

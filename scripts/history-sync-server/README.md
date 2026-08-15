@@ -14,6 +14,31 @@ Small self-hosted sync service for cross-machine chat history sync.
   - `history_snapshot` table holds the chat history payload
   - `memory_snapshot` table holds the encrypted memory payload and its encryption metadata (`alg`, `kdf`, `salt`, `iv`) separately
 
+## Encryption
+
+The server stores an opaque JSON blob. It never sees plaintext chats.
+
+Clients encrypt the existing `chatbox-history-transfer` JSON with the user's passphrase before PUT:
+
+```json
+{
+  "revision": 12,
+  "payload": {
+    "v": 1,
+    "alg": "AES-GCM",
+    "kdf": "PBKDF2-SHA256",
+    "iter": 210000,
+    "salt": "<base64>",
+    "iv": "<base64>",
+    "ciphertext": "<base64>"
+  }
+}
+```
+
+- Token authenticates the HTTP request. Passphrase never leaves the device.
+- Legacy plaintext transfer payloads are still accepted on GET for migration.
+- New PUTs from Chaeboxi are always encrypted. Wrong passphrase fails closed (no merge).
+
 ## Environment variables
 
 - `SYNC_TOKEN` (required): shared secret used by clients

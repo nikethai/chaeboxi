@@ -281,6 +281,7 @@ const HistorySyncConfigSchema = z.object({
   enabled: z.boolean().default(false),
   endpoint: z.string().optional().catch(undefined),
   token: z.string().optional().catch(undefined),
+  passphrase: z.string().optional().catch(undefined),
   autoSync: z.boolean().default(false),
   intervalSeconds: z.number().min(15).max(3600).default(60),
 })

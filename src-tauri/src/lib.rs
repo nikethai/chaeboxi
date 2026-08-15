@@ -723,6 +723,77 @@ fn get_arg_bool(args: &[Value], idx: usize) -> CommandResult<bool> {
 }
 
 async fn http_request(request: &HttpRequestPayload) -> CommandResult<Value> {
+    let builder = build_reqwest_request(request)?;
+    let response = builder
+        .send()
+        .await
+        .map_err(|err| format!("http request failed: {err}"))?;
+    let status = response.status().as_u16();
+    let headers = response_headers_to_map(&response);
+
+    let body_base64 = STANDARD.encode(
+        response
+            .bytes()
+            .await
+            .map_err(|err| format!("http response read failed: {err}"))?,
+    );
+
+    serde_json::to_value(HttpResponsePayload {
+        status,
+        headers,
+        body_base64,
+    })
+    .map_err(|err| format!("serialize http response failed: {err}"))
+}
+
+/// Streaming variant of `http_request` for SSE/streaming endpoints (chat completions).
+/// Returns the response head (status + headers) immediately and streams the body
+/// through a Tauri IPC channel as base64 chunks. An empty string chunk marks the
+/// end of the body. Dropping the channel on the JS side (abort / window close)
+/// makes `on_chunk.send` fail, which cancels the in-flight request.
+#[tauri::command]
+async fn http_request_stream(
+    request: HttpRequestPayload,
+    on_chunk: tauri::ipc::Channel<String>,
+) -> CommandResult<Value> {
+    let builder = build_reqwest_request(&request)?;
+    let response = builder
+        .send()
+        .await
+        .map_err(|err| format!("http request failed: {err}"))?;
+    let status = response.status().as_u16();
+    let headers = response_headers_to_map(&response);
+
+    let mut body_stream = response.bytes_stream();
+    tauri::async_runtime::spawn(async move {
+        while let Some(chunk) = body_stream.next().await {
+            let data = match chunk {
+                Ok(bytes) => STANDARD.encode(&bytes),
+                Err(_) => {
+                    // Read failure: distinct sentinel so the client errors the
+                    // stream instead of treating a truncated body as clean EOF.
+                    let _ = on_chunk.send("\u{1}".to_string());
+                    return;
+                }
+            };
+            if on_chunk.send(data).is_err() {
+                // Receiver dropped (abort / window closed) — stop draining and
+                // drop the stream so reqwest tears down the connection.
+                return;
+            }
+        }
+        let _ = on_chunk.send(String::new()); // end-of-body sentinel
+    });
+
+    serde_json::to_value(HttpResponsePayload {
+        status,
+        headers,
+        body_base64: String::new(),
+    })
+    .map_err(|err| format!("serialize http response failed: {err}"))
+}
+
+fn build_reqwest_request(request: &HttpRequestPayload) -> CommandResult<reqwest::RequestBuilder> {
     let client = reqwest::Client::new();
     let method = request
         .method
@@ -750,12 +821,10 @@ async fn http_request(request: &HttpRequestPayload) -> CommandResult<Value> {
         builder = builder.body(body);
     }
 
-    let response = builder
-        .send()
-        .await
-        .map_err(|err| format!("http request failed: {err}"))?;
-    let status = response.status().as_u16();
+    Ok(builder)
+}
 
+fn response_headers_to_map(response: &reqwest::Response) -> HashMap<String, String> {
     let mut headers = HashMap::new();
     for (key, value) in response.headers().iter() {
         if let Ok(value_str) = value.to_str() {
@@ -768,20 +837,7 @@ async fn http_request(request: &HttpRequestPayload) -> CommandResult<Value> {
                 .or_insert_with(|| value_str.to_string());
         }
     }
-
-    let body_base64 = STANDARD.encode(
-        response
-            .bytes()
-            .await
-            .map_err(|err| format!("http response read failed: {err}"))?,
-    );
-
-    serde_json::to_value(HttpResponsePayload {
-        status,
-        headers,
-        body_base64,
-    })
-    .map_err(|err| format!("serialize http response failed: {err}"))
+    headers
 }
 
 fn default_settings() -> Value {
@@ -3172,7 +3228,7 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![ipc_invoke])
+        .invoke_handler(tauri::generate_handler![ipc_invoke, http_request_stream])
         .run(tauri::generate_context!())
         .expect("failed to run tauri application")
 }

@@ -192,7 +192,7 @@ describe('desktop-http-fetch', () => {
     vi.unstubAllGlobals()
   })
 
-  it('routes through desktopAPI.invoke when available', async () => {
+  it('routes through the desktop streaming command when available', async () => {
     const body = JSON.stringify({
       device_code: 'dc',
       user_code: 'AB',
@@ -200,12 +200,34 @@ describe('desktop-http-fetch', () => {
       expires_in: 100,
     })
     const bodyBase64 = btoa(body)
-    const invoke = vi.fn().mockResolvedValue({
-      status: 200,
-      headers: { 'content-type': 'application/json' },
-      bodyBase64,
+
+    let nextCallbackId = 1
+    const callbacks: Record<number, (raw: unknown) => void> = {}
+    const invoke = vi.fn().mockImplementation((_cmd: string, args: { request: unknown; onChunk: { id: number } }) => {
+      // Deliver the whole body as one chunk, then the end-of-body sentinel.
+      const channelId = args.onChunk.id
+      callbacks[channelId]?.({ index: 0, message: bodyBase64 })
+      callbacks[channelId]?.({ index: 1, message: '' })
+      return Promise.resolve({
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
     })
     vi.stubGlobal('window', {
+      __TAURI_INTERNALS__: {
+        invoke,
+        transformCallback: (cb: (raw: unknown) => void) => {
+          const id = nextCallbackId++
+          callbacks[id] = cb
+          return id
+        },
+        invokeCallback: (id: number, raw: unknown) => {
+          callbacks[id]?.(raw)
+        },
+        unregisterCallback: (id: number) => {
+          delete callbacks[id]
+        },
+      },
       desktopAPI: { invoke },
     })
 
@@ -217,17 +239,20 @@ describe('desktop-http-fetch', () => {
       body: 'client_id=test',
     })
     expect(invoke).toHaveBeenCalledWith(
-      'http:request',
+      'http_request_stream',
       expect.objectContaining({
-        url: XAI_DEVICE_CODE_URL,
-        method: 'POST',
-      })
+        request: expect.objectContaining({
+          url: XAI_DEVICE_CODE_URL,
+          method: 'POST',
+        }),
+        onChunk: expect.anything(),
+      }),
+      undefined
     )
     expect(res.status).toBe(200)
     expect(await res.json()).toMatchObject({ device_code: 'dc' })
   })
 })
-
 describe('xai-auth dual mode', () => {
   it('resolveXaiAuthMode prefers explicit mode and migrates key-only installs', () => {
     expect(resolveXaiAuthMode({ apiKey: 'k' })).toBe('api_key')

@@ -41,13 +41,16 @@ function resolveLabels(
   return { title: t('Thinking…'), detail: t('Model is working') }
 }
 
-function elapsedFromMessage(message: Message | null | undefined): string {
+export function elapsedFromMessage(
+  message: Message | null | undefined,
+  now: number = Date.now()
+): string {
   if (!message?.timestamp) return '0s'
   const reasoningPart = message.contentParts?.find((p) => p.type === 'reasoning')
   const reasoningStart =
     reasoningPart && reasoningPart.type === 'reasoning' ? reasoningPart.startTime : undefined
   const start = reasoningStart || message.timestamp
-  const ms = Math.max(0, Date.now() - start)
+  const ms = Math.max(0, now - start)
   if (ms < 1000) return '0s'
   return formatWorkedDuration(ms)
 }
@@ -60,6 +63,7 @@ export const LiveGenerationDockHint: FC<LiveGenerationDockHintProps> = ({
   const { t } = useTranslation()
   const [visible, setVisible] = useState(generating)
   const [exiting, setExiting] = useState(false)
+  const [now, setNow] = useState(() => Date.now())
 
   useEffect(() => {
     if (generating) {
@@ -76,6 +80,14 @@ export const LiveGenerationDockHint: FC<LiveGenerationDockHintProps> = ({
     return () => window.clearTimeout(id)
   }, [generating, visible])
 
+  // Re-render every second so the elapsed time keeps ticking even when the
+  // stream is silent (model still loading or thinking — no content chunks).
+  useEffect(() => {
+    if (!visible) return
+    const id = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(id)
+  }, [visible])
+
   const { title, detail } = useMemo(
     () => resolveLabels(liveMessage, t),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -89,7 +101,7 @@ export const LiveGenerationDockHint: FC<LiveGenerationDockHintProps> = ({
     ]
   )
 
-  const elapsed = visible ? elapsedFromMessage(liveMessage) : '0s'
+  const elapsed = visible ? elapsedFromMessage(liveMessage, now) : '0s'
 
   if (!visible) return null
 

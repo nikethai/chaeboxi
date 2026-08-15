@@ -140,7 +140,7 @@ Origin: `https://nikethai.github.io/chaeboxi/`. Do **not** publish `pnpm build:w
 
 Repo setting required once: Settings → Pages → Source = GitHub Actions.
 
-Flip `PRODUCT.homepage` / privacy / terms only after all four routes return 200.
+`PRODUCT.homepage` / privacy / terms / OpenRouter referer point at this origin. Enable Pages (Source = GitHub Actions) or those links 404 until the first deploy.
 
 ## Local package build
 

@@ -1,6 +1,6 @@
 /**
  * Chaeboxi product identity and feature flags.
- * Domain-dependent URLs stay on GitHub until chaeboxi domain is ready.
+ * Marketing + legal URLs live on GitHub Pages until a custom domain exists.
  */
 
 export const PRODUCT = {
@@ -8,15 +8,14 @@ export const PRODUCT = {
   /** Short description for metadata / OpenRouter */
   title: 'Chaeboxi',
   githubRepo: 'https://github.com/nikethai/chaeboxi',
-  homepage: 'https://github.com/nikethai/chaeboxi',
+  homepage: 'https://nikethai.github.io/chaeboxi/',
   releasesUrl: 'https://github.com/nikethai/chaeboxi/releases',
   feedbackUrl: 'https://github.com/nikethai/chaeboxi/issues',
-  /** Placeholder until chaeboxi domain hosts real legal pages */
-  privacyUrl: 'https://github.com/nikethai/chaeboxi#privacy',
-  termsUrl: 'https://github.com/nikethai/chaeboxi#terms',
+  privacyUrl: 'https://nikethai.github.io/chaeboxi/privacy/',
+  termsUrl: 'https://nikethai.github.io/chaeboxi/terms/',
   changelogUrl: 'https://github.com/nikethai/chaeboxi/releases',
   /** OpenRouter / partner app attribution */
-  openRouterReferer: 'https://github.com/nikethai/chaeboxi',
+  openRouterReferer: 'https://nikethai.github.io/chaeboxi/',
   openRouterTitle: 'Chaeboxi',
 } as const
 

@@ -60,7 +60,7 @@ impl Default for KbRuntime {
 impl KbRuntime {
     #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
     pub fn open_desktop(&self, app: &AppHandle) -> CommandResult<()> {
-        let mut dir = app
+        let dir = app
             .path()
             .app_data_dir()
             .unwrap_or_else(|_| PathBuf::from("."));

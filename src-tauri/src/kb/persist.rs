@@ -43,6 +43,7 @@ pub struct FileRecord {
 pub struct ChunkRow {
     pub id: i64,
     pub file_id: i64,
+    #[allow(dead_code)]
     pub kb_id: i64,
     pub chunk_index: i64,
     pub text: String,

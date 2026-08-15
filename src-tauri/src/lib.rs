@@ -23,7 +23,7 @@ use std::{
     io::Write,
     path::PathBuf,
     sync::{
-        atomic::{AtomicI64, AtomicU64, Ordering},
+        atomic::{AtomicU64, Ordering},
         Mutex,
     },
     time::Duration,

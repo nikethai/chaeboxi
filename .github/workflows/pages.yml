@@ -20,15 +20,36 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
     steps:
       - uses: actions/checkout@v4
-      - name: Install, build, and upload site
-        uses: withastro/action@v6
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
         with:
-          path: website
-          node-version: 22
-          package-manager: pnpm@10.15.1
-          build-cmd: pnpm --ignore-workspace build
+          node-version-file: .node-version
+          cache: pnpm
+          cache-dependency-path: website/pnpm-lock.yaml
+
+      # Parent repo is a pnpm workspace. Install must stay inside website/
+      # or Astro lands at the monorepo root and `astro` is missing here.
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-workspace
+
+      - name: Build
+        run: pnpm exec astro build
+
+      - uses: actions/configure-pages@v5
+        with:
+          # Creates the Pages site if Settings → Pages has never been enabled.
+          enablement: true
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/dist
 
   deploy:
     needs: build

@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "astro dev",
-    "build": "astro build",
+    "build": "pnpm exec astro build",
     "preview": "astro preview",
     "test": "node --experimental-strip-types --test src/lib/latest-release.test.ts"
   },

@@ -50,15 +50,7 @@ Use providers you already have (or run Ollama locally).
 - Conversation data is stored on-device (or platform storage you choose)
 - API keys you enter are used only to call the providers you configure
 - First-party analytics/Sentry stay **off** until you configure Chaeboxi-owned accounts
-- Legal pages will move to the Chaeboxi domain when it is ready; until then see [Privacy](#privacy-placeholder) and [Terms](#terms-placeholder) below. Interim site is [`website/`](./website/README.md) on GitHub Pages after Actions deploy.
-
-### Privacy (placeholder)
-
-Chaeboxi is open source under GPLv3. We do not sell your chats. Third-party providers process prompts according to **their** terms when you use your keys.
-
-### Terms (placeholder)
-
-Software is provided under the [GNU GPLv3](./LICENSE). Use at your own risk. You are responsible for compliance with each provider’s API terms.
+- Legal pages: [Privacy](https://nikethai.github.io/chaeboxi/privacy/) and [Terms](https://nikethai.github.io/chaeboxi/terms/) (GitHub Pages until a custom domain exists). Source: [`website/`](./website/README.md).
 
 ## Development
 

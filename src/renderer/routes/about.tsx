@@ -73,7 +73,12 @@ function RouteComponent() {
           </List>
 
           <List>
-            <ListItem icon={<IconHome className="w-full h-full" />} title={t('Homepage')} link={PRODUCT.homepage} />
+            <ListItem
+              icon={<IconHome className="w-full h-full" />}
+              title={t('Homepage')}
+              link={PRODUCT.homepage}
+              value="nikethai.github.io/chaeboxi"
+            />
             <ListItem
               icon={<IconPencil className="w-full h-full" />}
               title={t('Feedback')}

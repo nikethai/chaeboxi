@@ -15,4 +15,4 @@ Live origin (project Pages): `https://nikethai.github.io/chaeboxi/`
 
 Workflow: `.github/workflows/pages.yml` (path-filtered). Repo setting: Pages source = GitHub Actions.
 
-`PRODUCT.*` in the desktop app flips only after all four routes are live.
+`PRODUCT.homepage` / privacy / terms / OpenRouter referer already use this origin. Enable Pages or those in-app links 404 until the first deploy.

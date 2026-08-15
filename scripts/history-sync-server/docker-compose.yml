@@ -1,7 +1,7 @@
 services:
-  chatbox-history-sync:
+  chaeboxi-history-sync:
     build: .
-    container_name: chatbox-history-sync
+    container_name: chaeboxi-history-sync
     restart: unless-stopped
     environment:
       SYNC_TOKEN: change-me

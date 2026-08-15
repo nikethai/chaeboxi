@@ -162,4 +162,38 @@ describe('historyTransfer', () => {
     })
     expect(store.getValue<Session>(getSessionStorageKey(localNewest.id))?.name).toBe('Incoming Newer')
   })
+
+  it('export excludes API keys, passphrase, and knowledge-base data', async () => {
+    const session = createSession('session-a', 'Session A', [100])
+    const store = new MemoryStore({
+      [StorageKey.ChatSessionsList]: [createMeta(session)],
+      [getSessionStorageKey(session.id)]: session,
+      [StorageKey.Settings]: {
+        licenseKey: 'secret-license',
+        providers: { openai: { apiKey: 'sk-secret-key' } },
+        extension: {
+          historySync: { passphrase: 'super-secret-passphrase' },
+          knowledgeBase: { models: { embedding: { modelId: 'emb', providerId: 'p' } } },
+        },
+      },
+      'kb:embeddings:foo': { vectors: [0.1, 0.2, 0.3] },
+    })
+
+    const result = await exportHistoryTransferFile(store as never)
+    const payload = JSON.parse(result.content) as {
+      __type: string
+      sessions: Session[]
+      sessionMetaList: SessionMeta[]
+    }
+
+    expect(payload.__type).toBe('chatbox-history-transfer')
+    expect(payload.sessions.map((item) => item.id)).toEqual(['session-a'])
+    expect(result.content).not.toContain('sk-secret-key')
+    expect(result.content).not.toContain('super-secret-passphrase')
+    expect(result.content).not.toContain('secret-license')
+    expect(result.content).not.toContain('kb:embeddings')
+    expect(result.content).not.toContain('knowledgeBase')
+    expect(payload).not.toHaveProperty('settings')
+    expect(payload).not.toHaveProperty('passphrase')
+  })
 })

@@ -25,6 +25,7 @@ import { Route as SettingsVideoUrlImport } from './routes/settings/video-url'
 import { Route as SettingsUserPersonalInfoImport } from './routes/settings/user-personal-info'
 import { Route as SettingsUsageImport } from './routes/settings/usage'
 import { Route as SettingsSkillsImport } from './routes/settings/skills'
+import { Route as SettingsSyncImport } from './routes/settings/sync'
 import { Route as SettingsMemoryImport } from './routes/settings/memory'
 import { Route as SettingsMcpImport } from './routes/settings/mcp'
 import { Route as SettingsKnowledgeBaseImport } from './routes/settings/knowledge-base'
@@ -132,6 +133,12 @@ const SettingsUsageRoute = SettingsUsageImport.update({
 const SettingsSkillsRoute = SettingsSkillsImport.update({
   id: '/skills',
   path: '/skills',
+  getParentRoute: () => SettingsRouteRoute,
+} as any)
+
+const SettingsSyncRoute = SettingsSyncImport.update({
+  id: '/sync',
+  path: '/sync',
   getParentRoute: () => SettingsRouteRoute,
 } as any)
 
@@ -475,6 +482,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsSkillsImport
       parentRoute: typeof SettingsRouteImport
     }
+    '/settings/sync': {
+      id: '/settings/sync'
+      path: '/sync'
+      fullPath: '/settings/sync'
+      preLoaderRoute: typeof SettingsSyncImport
+      parentRoute: typeof SettingsRouteImport
+    }
     '/settings/usage': {
       id: '/settings/usage'
       path: '/usage'
@@ -596,6 +610,7 @@ interface SettingsRouteRouteChildren {
   SettingsMcpRoute: typeof SettingsMcpRoute
   SettingsMemoryRoute: typeof SettingsMemoryRoute
   SettingsSkillsRoute: typeof SettingsSkillsRoute
+  SettingsSyncRoute: typeof SettingsSyncRoute
   SettingsUsageRoute: typeof SettingsUsageRoute
   SettingsUserPersonalInfoRoute: typeof SettingsUserPersonalInfoRoute
   SettingsVideoUrlRoute: typeof SettingsVideoUrlRoute
@@ -621,6 +636,7 @@ const SettingsRouteRouteChildren: SettingsRouteRouteChildren = {
   SettingsMcpRoute: SettingsMcpRoute,
   SettingsMemoryRoute: SettingsMemoryRoute,
   SettingsSkillsRoute: SettingsSkillsRoute,
+  SettingsSyncRoute: SettingsSyncRoute,
   SettingsUsageRoute: SettingsUsageRoute,
   SettingsUserPersonalInfoRoute: SettingsUserPersonalInfoRoute,
   SettingsVideoUrlRoute: SettingsVideoUrlRoute,
@@ -661,6 +677,7 @@ export interface FileRoutesByFullPath {
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/memory': typeof SettingsMemoryRoute
   '/settings/skills': typeof SettingsSkillsRoute
+  '/settings/sync': typeof SettingsSyncRoute
   '/settings/usage': typeof SettingsUsageRoute
   '/settings/user-personal-info': typeof SettingsUserPersonalInfoRoute
   '/settings/video-url': typeof SettingsVideoUrlRoute
@@ -698,6 +715,7 @@ export interface FileRoutesByTo {
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/memory': typeof SettingsMemoryRoute
   '/settings/skills': typeof SettingsSkillsRoute
+  '/settings/sync': typeof SettingsSyncRoute
   '/settings/usage': typeof SettingsUsageRoute
   '/settings/user-personal-info': typeof SettingsUserPersonalInfoRoute
   '/settings/video-url': typeof SettingsVideoUrlRoute
@@ -739,6 +757,7 @@ export interface FileRoutesById {
   '/settings/mcp': typeof SettingsMcpRoute
   '/settings/memory': typeof SettingsMemoryRoute
   '/settings/skills': typeof SettingsSkillsRoute
+  '/settings/sync': typeof SettingsSyncRoute
   '/settings/usage': typeof SettingsUsageRoute
   '/settings/user-personal-info': typeof SettingsUserPersonalInfoRoute
   '/settings/video-url': typeof SettingsVideoUrlRoute
@@ -781,6 +800,7 @@ export interface FileRouteTypes {
     | '/settings/mcp'
     | '/settings/memory'
     | '/settings/skills'
+    | '/settings/sync'
     | '/settings/usage'
     | '/settings/user-personal-info'
     | '/settings/video-url'
@@ -817,6 +837,7 @@ export interface FileRouteTypes {
     | '/settings/mcp'
     | '/settings/memory'
     | '/settings/skills'
+    | '/settings/sync'
     | '/settings/usage'
     | '/settings/user-personal-info'
     | '/settings/video-url'
@@ -856,6 +877,7 @@ export interface FileRouteTypes {
     | '/settings/mcp'
     | '/settings/memory'
     | '/settings/skills'
+    | '/settings/sync'
     | '/settings/usage'
     | '/settings/user-personal-info'
     | '/settings/video-url'
@@ -943,6 +965,7 @@ export const routeTree = rootRoute
         "/settings/mcp",
         "/settings/memory",
         "/settings/skills",
+        "/settings/sync",
         "/settings/usage",
         "/settings/user-personal-info",
         "/settings/video-url",
@@ -1048,6 +1071,10 @@ export const routeTree = rootRoute
     },
     "/settings/skills": {
       "filePath": "settings/skills.tsx",
+      "parent": "/settings"
+    },
+    "/settings/sync": {
+      "filePath": "settings/sync.tsx",
       "parent": "/settings"
     },
     "/settings/usage": {

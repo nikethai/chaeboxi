@@ -414,12 +414,12 @@ const server = createServer((req, res) => {
 })
 
 server.listen(PORT, HOST, () => {
-  console.log(`[history-sync-server] listening on http://${HOST}:${PORT}`)
-  console.log(`[history-sync-server] sqlite db: ${path.resolve(DB_PATH)}`)
+  console.log(`[chaeboxi-sync] listening on http://${HOST}:${PORT}`)
+  console.log(`[chaeboxi-sync] sqlite db: ${path.resolve(DB_PATH)}`)
 })
 
 async function shutdown(signal) {
-  console.log(`[history-sync-server] shutting down (${signal})`)
+  console.log(`[chaeboxi-sync] shutting down (${signal})`)
   server.close(async () => {
     await db.close()
     process.exit(0)

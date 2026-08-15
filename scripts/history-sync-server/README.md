@@ -71,22 +71,22 @@ cd scripts/history-sync-server
 sudo SYNC_TOKEN='replace-with-strong-token' sh ./setup-openrc.sh
 ```
 
-This creates an OpenRC service named `chatbox-history-sync`.
+This creates an OpenRC service named `chaeboxi-history-sync`.
 
 Useful commands:
 
 ```sh
-sudo rc-service chatbox-history-sync status
-sudo rc-service chatbox-history-sync restart
-sudo tail -f /var/log/chatbox-history-sync.log
+sudo rc-service chaeboxi-history-sync status
+sudo rc-service chaeboxi-history-sync restart
+sudo tail -f /var/log/chaeboxi-history-sync.log
 ```
 
 Optional overrides:
 
 ```sh
-sudo SERVICE_NAME=chatbox-sync \
+sudo SERVICE_NAME=chaeboxi-sync \
   PORT=8899 \
-  DATA_DIR=/srv/chatbox-sync \
+  DATA_DIR=/srv/chaeboxi-sync \
   SYNC_TOKEN='replace-with-strong-token' \
   sh ./setup-openrc.sh
 ```
@@ -102,33 +102,33 @@ cd scripts/history-sync-server
 sudo SYNC_TOKEN='replace-with-strong-token' bash ./setup-systemd.sh
 ```
 
-This installs the server to `/opt/chatbox-history-sync`, stores data in
-`/var/lib/chatbox-history-sync/history-sync.db`, and creates the service
-`chatbox-history-sync.service`.
+This installs the server to `/opt/chaeboxi-history-sync`, stores data in
+`/var/lib/chaeboxi-history-sync/history-sync.db`, and creates the service
+`chaeboxi-history-sync.service`.
 
 Useful commands:
 
 ```bash
-sudo systemctl status chatbox-history-sync --no-pager
-sudo journalctl -u chatbox-history-sync -f
-sudo systemctl restart chatbox-history-sync
+sudo systemctl status chaeboxi-history-sync --no-pager
+sudo journalctl -u chaeboxi-history-sync -f
+sudo systemctl restart chaeboxi-history-sync
 ```
 
 Optional overrides:
 
 ```bash
-sudo SERVICE_NAME=chatbox-sync \
+sudo SERVICE_NAME=chaeboxi-sync \
   PORT=8899 \
-  DATA_DIR=/srv/chatbox-sync \
+  DATA_DIR=/srv/chaeboxi-sync \
   SYNC_TOKEN='replace-with-strong-token' \
   bash ./setup-systemd.sh
 ```
 
-## Docker (optional)
+## Docker (one command)
 
 ```bash
 cd scripts/history-sync-server
-# edit docker-compose.yml and set SYNC_TOKEN first
+# set SYNC_TOKEN in docker-compose.yml first
 docker compose up -d --build
 ```
 
@@ -170,13 +170,14 @@ ciphertext plus its encryption metadata.
 > you lose it, the encrypted memory snapshot on the server cannot be decrypted
 > and is unrecoverable. Choose a strong passphrase and store it somewhere safe.
 
-## Chatbox app settings
+## Chaeboxi app settings
 
-**History sync** — in **Settings -> General -> Self-hosted History Sync**:
+**History sync** — in **Settings -> Sync**:
 
 - Enable server sync
 - Set endpoint: `http://<your-host>:8788`
 - Set token: same `SYNC_TOKEN`
+- Set a **sync passphrase** (client-only; encrypts chats before upload)
 - Optional: enable auto sync + interval
 - Use **Test Connection**, then **Sync Now**
 

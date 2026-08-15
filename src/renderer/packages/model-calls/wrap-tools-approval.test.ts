@@ -33,8 +33,20 @@ vi.mock('i18next', () => ({
   t: (s: string) => s,
 }))
 
-// Import after mocks — stream-text pulls many deps; isolate wrap via dynamic import of module
-// We re-test the policy logic inline to avoid loading full stream-text graph.
+// Mirrors stream-text wrap policy (D8): LOW always auto; session scope may auto
+// MEDIUM/HIGH; CRITICAL must never session-auto. Typed helper keeps enum comparisons valid.
+
+function canSessionAutoApprove(
+  riskTier: ToolRiskTier,
+  existingApproval?: { scope: 'session'; riskTier: ToolRiskTier },
+): boolean {
+  return (
+    riskTier === ToolRiskTier.LOW ||
+    (existingApproval?.scope === 'session' &&
+      existingApproval.riskTier === riskTier &&
+      riskTier !== ToolRiskTier.CRITICAL)
+  )
+}
 
 describe('CRITICAL approval policy (D8)', () => {
   beforeEach(() => {
@@ -44,55 +56,40 @@ describe('CRITICAL approval policy (D8)', () => {
   })
 
   it('session approval must not auto-approve CRITICAL', () => {
-    const riskTier = ToolRiskTier.CRITICAL
-    const existingApproval = { scope: 'session' as const, riskTier: ToolRiskTier.CRITICAL }
-    const canAutoApprove =
-      riskTier === ToolRiskTier.LOW ||
-      (existingApproval?.scope === 'session' &&
-        existingApproval.riskTier === riskTier &&
-        riskTier !== ToolRiskTier.HIGH &&
-        riskTier !== ToolRiskTier.CRITICAL)
-    expect(canAutoApprove).toBe(false)
+    expect(
+      canSessionAutoApprove(ToolRiskTier.CRITICAL, {
+        scope: 'session',
+        riskTier: ToolRiskTier.CRITICAL,
+      }),
+    ).toBe(false)
   })
 
   it('session approval can auto-approve MEDIUM', () => {
-    const riskTier = ToolRiskTier.MEDIUM
-    const existingApproval = { scope: 'session' as const, riskTier: ToolRiskTier.MEDIUM }
-    const canAutoApprove =
-      riskTier === ToolRiskTier.LOW ||
-      (existingApproval?.scope === 'session' &&
-        existingApproval.riskTier === riskTier &&
-        riskTier !== ToolRiskTier.HIGH &&
-        riskTier !== ToolRiskTier.CRITICAL)
-    expect(canAutoApprove).toBe(true)
+    expect(
+      canSessionAutoApprove(ToolRiskTier.MEDIUM, {
+        scope: 'session',
+        riskTier: ToolRiskTier.MEDIUM,
+      }),
+    ).toBe(true)
   })
 
   it('HIGH can session-auto after explicit allow-session (CRITICAL still never)', () => {
-    const riskTier = ToolRiskTier.HIGH
-    const existingApproval = { scope: 'session' as const, riskTier: ToolRiskTier.HIGH }
-    const canAutoApprove =
-      riskTier === ToolRiskTier.LOW ||
-      (existingApproval?.scope === 'session' &&
-        existingApproval.riskTier === riskTier &&
-        riskTier !== ToolRiskTier.CRITICAL)
-    expect(canAutoApprove).toBe(true)
-
-    const critical = ToolRiskTier.CRITICAL
-    const criticalApproval = { scope: 'session' as const, riskTier: ToolRiskTier.CRITICAL }
-    const criticalAuto =
-      critical === ToolRiskTier.LOW ||
-      (criticalApproval?.scope === 'session' &&
-        criticalApproval.riskTier === critical &&
-        critical !== ToolRiskTier.CRITICAL)
-    expect(criticalAuto).toBe(false)
+    expect(
+      canSessionAutoApprove(ToolRiskTier.HIGH, {
+        scope: 'session',
+        riskTier: ToolRiskTier.HIGH,
+      }),
+    ).toBe(true)
+    expect(
+      canSessionAutoApprove(ToolRiskTier.CRITICAL, {
+        scope: 'session',
+        riskTier: ToolRiskTier.CRITICAL,
+      }),
+    ).toBe(false)
   })
 
   it('LOW always auto', () => {
-    const riskTier = ToolRiskTier.LOW
-    const canAutoApprove =
-      riskTier === ToolRiskTier.LOW ||
-      (false && riskTier !== ToolRiskTier.HIGH && riskTier !== ToolRiskTier.CRITICAL)
-    expect(canAutoApprove).toBe(true)
+    expect(canSessionAutoApprove(ToolRiskTier.LOW)).toBe(true)
   })
 })
 

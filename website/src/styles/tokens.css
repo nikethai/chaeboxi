@@ -1,0 +1,46 @@
+/* === PRIMITIVES === */
+:root {
+  --ink-void: #121214;
+  --ink-rail: #16161a;
+  --ink-panel: #1c1c21;
+  --ink-lift: #24242b;
+  --ink-1: #ececec;
+  --ink-2: #a8a8ae;
+  --ink-3: #6e6e76;
+  --ink-4: #4a4a52;
+  --line-1: #2a2a32;
+  --line-2: #36363f;
+  --indigo: #5b63d4;
+  --font-sans: "Satoshi", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --radius-1: 7px;
+  --radius-2: 11px;
+  --radius-3: 16px;
+  --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+  --space-section: clamp(6rem, 12vw, 12rem);
+  --measure: min(100%, 72rem);
+}
+
+/* === SEMANTIC === */
+:root {
+  --color-bg: var(--ink-void);
+  --color-fg: var(--ink-1);
+  --color-muted: var(--ink-2);
+  --color-faint: var(--ink-3);
+  --color-brand: var(--indigo);
+  --color-line: var(--line-1);
+  --color-panel: var(--ink-panel);
+  --color-lift: var(--ink-lift);
+}
+
+/* === COMPONENTS === */
+:root {
+  --button-bg: var(--color-brand);
+  --button-fg: #fff;
+  --button-radius: 999px;
+  --card-shell-pad: 6px;
+  --card-radius-outer: var(--radius-3);
+  --card-radius-inner: 10px;
+  --nav-blur: 16px;
+  --focus-ring: 0 0 0 2px var(--ink-void), 0 0 0 4px var(--color-brand);
+}

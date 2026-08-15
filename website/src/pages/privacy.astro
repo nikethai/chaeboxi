@@ -1,0 +1,41 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import IslandNav from '../components/IslandNav.astro'
+import SiteFooter from '../components/SiteFooter.astro'
+---
+
+<BaseLayout title="Privacy — Chaeboxi" description="How Chaeboxi handles chats, keys, and this website.">
+  <IslandNav slot="nav" />
+  <article class="section wrap prose">
+    <h1>Privacy</h1>
+    <p>
+      <span translate="no">Chaeboxi</span> is a local-first, bring-your-own-keys client. This page describes what the
+      software and this website do — not a third-party provider’s policy.
+    </p>
+    <h2>Chats and settings</h2>
+    <p>
+      Conversations and settings stay on your device, or in the platform storage you choose. There is no Chaeboxi
+      hosted chat backend.
+    </p>
+    <h2>API keys</h2>
+    <p>
+      Keys you enter are used only to call the providers you configure. We do not sell chats. Third-party providers
+      process prompts under their own terms when you use your keys.
+    </p>
+    <h2>First-party services</h2>
+    <p>
+      Chaeboxi does not include a first-party hosted LLM subscription. In-app analytics and Sentry stay off until
+      Chaeboxi-owned accounts exist.
+    </p>
+    <h2>This website</h2>
+    <p>
+      This marketing site is static HTML on GitHub Pages. It does not set analytics cookies and does not collect
+      accounts or email.
+    </p>
+    <h2>Contact</h2>
+    <p>
+      Questions: <a href="https://github.com/nikethai/chaeboxi/issues" rel="noopener">GitHub Issues</a>.
+    </p>
+  </article>
+  <SiteFooter slot="footer" />
+</BaseLayout>

@@ -1,0 +1,18 @@
+export const PROVIDERS = [
+  'OpenAI',
+  'Anthropic',
+  'Gemini',
+  'Ollama',
+  'OpenRouter',
+  'Azure',
+  'xAI',
+  'Groq',
+  'Mistral',
+  'DeepSeek',
+  'Qwen',
+  'MiniMax',
+  'Moonshot',
+  'LM Studio',
+  'Perplexity',
+  'SiliconFlow',
+] as const

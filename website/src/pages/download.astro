@@ -1,0 +1,57 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import IslandNav from '../components/IslandNav.astro'
+import SiteFooter from '../components/SiteFooter.astro'
+import { getLatestDownloads } from '../lib/latest-release'
+
+const { tag, rows } = await getLatestDownloads()
+---
+
+<BaseLayout
+  title="Download Chaeboxi"
+  description="Download Chaeboxi for macOS, Windows, and Linux from GitHub Releases."
+>
+  <IslandNav slot="nav" />
+
+  <section class="section wrap">
+    <h1>Download <span translate="no">Chaeboxi</span></h1>
+    <p class="hero__sub">
+      Latest published tag: {tag}. Installers come from GitHub Releases. If a file is missing, the button opens the
+      latest release page.
+    </p>
+
+    <div class="download-list">
+      {
+        rows.map((row) => (
+          <article class="bezel">
+            <div class="bezel__inner download-row">
+              <div>
+                <h2>{row.label}</h2>
+                <p>{row.detail}</p>
+              </div>
+              <a class="btn btn--primary" href={row.href} rel="noopener">
+                Download {row.label}
+                <span class="btn__icon" aria-hidden="true">↗</span>
+              </a>
+            </div>
+          </article>
+        ))
+      }
+    </div>
+
+    <div class="callout bezel">
+      <div class="bezel__inner bento__pad">
+        <p>
+          Unsigned Apple Silicon builds may show “app is damaged”. Clear the quarantine flag:
+          <br />
+          <code>xattr -cr /Applications/Chaeboxi.app</code>
+        </p>
+        <p>
+          <a href="https://github.com/nikethai/chaeboxi/releases" rel="noopener">All releases</a>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <SiteFooter slot="footer" />
+</BaseLayout>

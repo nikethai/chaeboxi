@@ -1,0 +1,41 @@
+---
+const base = import.meta.env.BASE_URL
+const download = `${base}download/`
+---
+
+<header class="island-nav">
+  <div class="island-nav__bar">
+    <a class="wordmark" href={base} translate="no">Chaeboxi</a>
+    <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Open menu">
+      <span></span>
+    </button>
+    <nav id="site-nav" class="island-nav__links" aria-label="Primary">
+      <a class="btn btn--ghost" href="https://github.com/nikethai/chaeboxi" rel="noopener">View Source</a>
+      <a class="btn btn--primary" href={download}>
+        Download Desktop
+        <span class="btn__icon" aria-hidden="true">↗</span>
+      </a>
+    </nav>
+  </div>
+</header>
+
+<script>
+  const toggle = document.querySelector<HTMLButtonElement>('.nav-toggle')
+  const links = document.querySelector<HTMLElement>('#site-nav')
+
+  const setOpen = (open: boolean) => {
+    if (!toggle || !links) return
+    toggle.setAttribute('aria-expanded', String(open))
+    toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu')
+    links.classList.toggle('is-open', open)
+  }
+
+  if (toggle && links) {
+    toggle.addEventListener('click', () => {
+      setOpen(toggle.getAttribute('aria-expanded') !== 'true')
+    })
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') setOpen(false)
+    })
+  }
+</script>

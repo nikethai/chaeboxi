@@ -1,25 +1,68 @@
 # RAG / Knowledge Base
 
-Retrieval-augmented generation for private documents.
+Retrieval-augmented generation for private documents. **Desktop v1 is local-first.**
 
-## Overview
+## What v1 actually does
 
-Chaeboxi supports a local knowledge base so models can answer using user-provided files. On desktop, retrieval and embeddings integrate with the Tauri / platform layer; mobile and web use platform-appropriate storage.
+On **macOS / Linux / Windows**, the Tauri backend (`src-tauri/src/kb/`) persists knowledge bases in SQLite at app data `chaeboxi_kb.db` and searches with a **keyword + vector hybrid** (RRF, top 20).
+
+| Piece | Reality |
+| --- | --- |
+| Metadata, files, chunks, embeddings | SQLite `chaeboxi_kb.db` (AUTOINCREMENT ids — survive quit) |
+| Default embedder | `local:multilingual-e5-small` (intfloat E5, 384-d, ONNX via fastembed). **Linked on desktop** (macOS / Linux / Windows). |
+| Model file | First desktop run downloads **once** (~180MB) into app data `models/` (fastembed cache + `multilingual-e5-small/.ready`). **Not** bundled in the installer. After that, airplane mode works. |
+| Chunking | 1200 characters / 150 overlap. Prefix `passage:` on docs and `query:` on search. |
+| Search | Hybrid keyword + vector (cosine over embedding BLOBs, RRF). English and other languages match without shared words. If the model is not ready, **keyword only — no error toast**. |
+| Existing files | Files marked `done` with chunks but NULL embeddings are re-queued on launch and embedded without re-upload. |
+| Parse | `.txt` / `.md` / `.csv` / `.json` / `.log` / `.pdf` (local text extract). Scanned/empty PDFs and Office fail honestly. |
+| Worker | `pending` / retry / resume actually embed, one batch at a time. Status via `kb:embed:status`. |
+| Mobile (iOS/Android) | Keyword / in-memory path only. No ONNX, no model download, no sqlite-vec, no KB UI changes. |
+
+There is **no Mastra**, no `@mastra/rag`, and no sqlite-vec requirement in v1. Embeddings are `BLOB`s of little-endian `f32`; cosine runs in Rust.
 
 ## High-level flow
 
-1. User uploads or indexes documents into a knowledge base.
-2. Text is chunked and embedded.
-3. At chat time, relevant chunks are retrieved and injected into the model context.
-4. The model answers with that context (and optional citations depending on UI).
+1. User creates a knowledge base (default embedding model: on-device E5).
+2. User uploads a text file. Rust parses honestly, chunks with overlap, writes rows to SQLite, status `pending`.
+3. The embed worker prefixes `passage:` and writes vectors when the local desktop model (or a user-picked Ollama/BYOK model) is ready. First launch downloads the ONNX weights into app data; later launches re-embed any already-uploaded files that still have NULL vectors.
+4. At chat time, `kb:search` embeds the query with `query:`, ranks by keyword + cosine, fuses with RRF, returns top 20.
+5. The model answers with those chunks.
+
+## Optional cloud / Ollama
+
+The create form defaults to `local:multilingual-e5-small`. If the user picks Ollama or another provider, a warning explains that **text leaves the device**. Rerank, vision, MinerU, and PDF/Office parsing are **out of scope** for v1.
 
 ## Implementation pointers
 
-- Knowledge base UI: `src/renderer/components/knowledge-base/`
-- Platform contracts: `src/renderer/platform/`
-- Settings related to document parsing: settings store + document parser types (legacy `chatbox-ai` parser values are mapped away; prefer `local` / `mineru` / `none`)
+- Rust module: `src-tauri/src/kb/` (`mod.rs`, `persist.rs`, `embed.rs`, `search.rs`, `parse.rs`)
+- IPC: existing `kb:*` channels plus `kb:embed:status`. JSON field names are unchanged (mixed camelCase / snake_case).
+- UI: `src/renderer/components/knowledge-base/`
+- Platform contract: `src/renderer/platform/knowledge-base/`
+- Model id parser: `src/shared/utils/knowledge-base-model-parser.ts`
+
+## Airplane mode
+
+After the first successful download of `multilingual-e5-small` into app data, local embedding and search do not need the network. The installer does **not** ship the ONNX weights.
 
 ## Notes
 
-- Chaeboxi hosted document-parser cloud is **disabled** in Chaeboxi (`CHATBOX_CLOUD_ENABLED = false`).
-- Prefer local parsing for privacy.
+- Chaeboxi hosted document-parser cloud is **disabled** (`CHATBOX_CLOUD_ENABLED = false`).
+- Prefer the on-device model for privacy.
+
+## Tests
+
+Rust unit tests live next to the modules (`persist`, `parse`, `search`, `embed`).
+
+On a full desktop Tauri toolchain:
+
+```bash
+cd src-tauri && cargo test --lib kb::
+```
+
+Without GTK/WebKit (this repo also has a thin harness that `#[path]`-includes the logic modules):
+
+```bash
+cargo test --manifest-path src-tauri/kb-tests/Cargo.toml
+```
+
+Covered: SQLite survive-reopen, honest PDF/Office fail, 1200/150 chunk overlap, RRF fuse, keyword fallback, Vietnamese and English paraphrase via fake vectors (top 5), re-queue of done files missing embeddings.

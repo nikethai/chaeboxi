@@ -23,7 +23,7 @@ use std::{
     io::Write,
     path::PathBuf,
     sync::{
-        atomic::{AtomicI64, AtomicU64, Ordering},
+        atomic::{AtomicU64, Ordering},
         Mutex,
     },
     time::Duration,
@@ -49,6 +49,8 @@ mod desktop_shell;
 mod browser_manager;
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 mod computer_manager;
+
+mod kb;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "type")]
@@ -82,42 +84,6 @@ struct McpToolInfo {
     input_schema: Value,
 }
 
-#[derive(Debug, Clone)]
-struct KnowledgeBaseRecord {
-    id: i64,
-    name: String,
-    embedding_model: String,
-    rerank_model: String,
-    vision_model: Option<String>,
-    provider_mode: Option<String>,
-    document_parser: Option<Value>,
-    created_at: i64,
-}
-
-#[derive(Debug, Clone)]
-struct KnowledgeBaseFileRecord {
-    id: i64,
-    kb_id: i64,
-    filename: String,
-    filepath: String,
-    mime_type: String,
-    file_size: i64,
-    chunk_count: i64,
-    total_chunks: i64,
-    status: String,
-    error: Option<String>,
-    created_at: i64,
-    parsed_remotely: i64,
-    parser_type: String,
-}
-
-#[derive(Debug, Default)]
-struct KnowledgeBaseState {
-    bases: HashMap<i64, KnowledgeBaseRecord>,
-    files: HashMap<i64, KnowledgeBaseFileRecord>,
-    file_chunks: HashMap<i64, Vec<String>>,
-}
-
 #[derive(Default)]
 struct AppState {
     store: Mutex<HashMap<String, Value>>,
@@ -125,9 +91,7 @@ struct AppState {
     mcp_servers: Mutex<HashMap<String, McpServerState>>,
     openclaw_streams: Mutex<HashMap<String, tokio::task::JoinHandle<()>>>,
     next_mcp_id: AtomicU64,
-    kb: Mutex<KnowledgeBaseState>,
-    next_kb_id: AtomicI64,
-    next_file_id: AtomicI64,
+    kb: kb::KbRuntime,
     /// Cancels an in-flight local OAuth callback listener (desktop PKCE).
     oauth_cancel: Mutex<Option<oneshot::Sender<()>>>,
 }
@@ -281,87 +245,6 @@ fn get_store_path(app: &AppHandle, filename: &str) -> PathBuf {
         .unwrap_or_else(|_| PathBuf::from("."));
     path.push(filename);
     path
-}
-
-fn get_kb_chunks_dir(app: &AppHandle, kb_id: i64) -> PathBuf {
-    let mut path = app
-        .path()
-        .app_data_dir()
-        .unwrap_or_else(|_| PathBuf::from("."));
-    path.push("kb_chunks");
-    path.push(kb_id.to_string());
-    path
-}
-
-fn get_chunk_file_path(app: &AppHandle, kb_id: i64, file_id: i64) -> PathBuf {
-    let mut path = get_kb_chunks_dir(app, kb_id);
-    path.push(format!("{file_id}.json"));
-    path
-}
-
-fn load_chunks_from_disk(app: &AppHandle, kb_id: i64, file_id: i64) -> Option<Vec<String>> {
-    let path = get_chunk_file_path(app, kb_id, file_id);
-    if let Ok(content) = fs::read_to_string(&path) {
-        if let Ok(chunks) = serde_json::from_str::<Vec<String>>(&content) {
-            return Some(chunks);
-        }
-    }
-    None
-}
-
-fn save_chunks_to_disk(app: &AppHandle, kb_id: i64, file_id: i64, chunks: &[String]) {
-    let path = get_chunk_file_path(app, kb_id, file_id);
-    if let Some(parent) = path.parent() {
-        let _ = fs::create_dir_all(parent);
-    }
-    if let Ok(content) = serde_json::to_string(chunks) {
-        let _ = fs::write(&path, content);
-    }
-}
-
-fn delete_chunks_from_disk(app: &AppHandle, kb_id: i64, file_id: i64) {
-    let path = get_chunk_file_path(app, kb_id, file_id);
-    let _ = fs::remove_file(path);
-}
-
-fn load_all_kb_chunks_from_disk(app: &AppHandle) -> HashMap<i64, Vec<String>> {
-    let mut all_chunks = HashMap::new();
-    let mut kb_chunks_path = app
-        .path()
-        .app_data_dir()
-        .unwrap_or_else(|_| PathBuf::from("."));
-    kb_chunks_path.push("kb_chunks");
-
-    if let Ok(entries) = fs::read_dir(&kb_chunks_path) {
-        for entry in entries.flatten() {
-            let kb_path = entry.path();
-            if kb_path.is_dir() {
-                if let Some(kb_id_str) = kb_path.file_name().and_then(|n| n.to_str()) {
-                    if let Ok(kb_id) = kb_id_str.parse::<i64>() {
-                        if let Ok(file_entries) = fs::read_dir(&kb_path) {
-                            for file_entry in file_entries.flatten() {
-                                let file_path = file_entry.path();
-                                if file_path.extension().and_then(|e| e.to_str()) == Some("json") {
-                                    if let Some(file_id_str) =
-                                        file_path.file_stem().and_then(|n| n.to_str())
-                                    {
-                                        if let Ok(file_id) = file_id_str.parse::<i64>() {
-                                            if let Some(chunks) =
-                                                load_chunks_from_disk(app, kb_id, file_id)
-                                            {
-                                                all_chunks.insert(file_id, chunks);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    all_chunks
 }
 
 fn load_store_from_disk(app: &AppHandle, filename: &str) -> HashMap<String, Value> {
@@ -1485,69 +1368,6 @@ fn build_http_transport_config(
     Ok(config)
 }
 
-fn load_text_from_file(filepath: &str, mime_type: &str) -> Option<String> {
-    if filepath.is_empty() {
-        return None;
-    }
-    let lower_path = filepath.to_ascii_lowercase();
-    let supports_text = mime_type.starts_with("text/")
-        || mime_type.contains("json")
-        || mime_type.contains("xml")
-        || lower_path.ends_with(".txt")
-        || lower_path.ends_with(".md")
-        || lower_path.ends_with(".markdown")
-        || lower_path.ends_with(".json")
-        || lower_path.ends_with(".csv")
-        || lower_path.ends_with(".log");
-    if !supports_text {
-        return None;
-    }
-    std::fs::read_to_string(filepath).ok()
-}
-
-fn chunk_text(text: &str, max_chunk_chars: usize) -> Vec<String> {
-    if text.is_empty() || max_chunk_chars == 0 {
-        return Vec::new();
-    }
-
-    let chars = text.chars().collect::<Vec<_>>();
-    let mut chunks = Vec::new();
-    let mut start = 0;
-
-    while start < chars.len() {
-        let end = (start + max_chunk_chars).min(chars.len());
-        let chunk = chars[start..end].iter().collect::<String>();
-        if !chunk.trim().is_empty() {
-            chunks.push(chunk);
-        }
-        start = end;
-    }
-
-    chunks
-}
-
-fn score_search_text(query_lower: &str, query_terms: &[String], text: &str) -> f64 {
-    if text.is_empty() || query_terms.is_empty() {
-        return 0.0;
-    }
-
-    let text_lower = text.to_ascii_lowercase();
-    let term_hits = query_terms
-        .iter()
-        .filter(|term| text_lower.contains(term.as_str()))
-        .count();
-
-    if term_hits == 0 && !text_lower.contains(query_lower) {
-        return 0.0;
-    }
-
-    let mut score = term_hits as f64 / query_terms.len() as f64;
-    if text_lower.contains(query_lower) {
-        score += 0.5;
-    }
-    score
-}
-
 #[cfg(not(target_os = "android"))]
 async fn run_stdio_list_tools(config: &McpTransportConfig) -> CommandResult<Vec<McpToolInfo>> {
     let McpTransportConfig::Stdio { command, args, env } = config else {
@@ -1975,6 +1795,10 @@ async fn ipc_invoke(
         if let Some(result) = computer.handle(&app, &channel, &args).await {
             return result;
         }
+    }
+
+    if let Some(result) = kb::handle(&app, &state.kb, &state.store, &channel, &args) {
+        return result;
     }
 
     match channel.as_str() {
@@ -2715,500 +2539,6 @@ async fn ipc_invoke(
             }))
         }
 
-        // Knowledge base scaffolding in Rust runtime
-        "kb:list" => {
-            let kb = state
-                .kb
-                .lock()
-                .map_err(|_| "kb lock poisoned".to_string())?;
-            let mut result = Vec::new();
-            for record in kb.bases.values() {
-                result.push(json!({
-                  "id": record.id,
-                  "name": record.name,
-                  "embeddingModel": record.embedding_model,
-                  "rerankModel": record.rerank_model,
-                  "visionModel": record.vision_model,
-                  "providerMode": record.provider_mode,
-                  "documentParser": record.document_parser,
-                  "createdAt": record.created_at,
-                }));
-            }
-            Ok(Value::Array(result))
-        }
-        "kb:create" => {
-            let params = get_arg(&args, 0)?;
-            let name = params
-                .get("name")
-                .and_then(Value::as_str)
-                .unwrap_or("New Knowledge Base")
-                .to_string();
-            let embedding_model = params
-                .get("embeddingModel")
-                .and_then(Value::as_str)
-                .unwrap_or("")
-                .to_string();
-            let rerank_model = params
-                .get("rerankModel")
-                .and_then(Value::as_str)
-                .unwrap_or("")
-                .to_string();
-            let vision_model = params
-                .get("visionModel")
-                .and_then(Value::as_str)
-                .map(std::string::ToString::to_string);
-            let provider_mode = params
-                .get("providerMode")
-                .and_then(Value::as_str)
-                .map(std::string::ToString::to_string);
-            let document_parser = params.get("documentParser").cloned();
-
-            let id = state.next_kb_id.fetch_add(1, Ordering::Relaxed) + 1;
-            let record = KnowledgeBaseRecord {
-                id,
-                name,
-                embedding_model,
-                rerank_model,
-                vision_model,
-                provider_mode,
-                document_parser,
-                created_at: now_ms(),
-            };
-            let created_name = record.name.clone();
-            state
-                .kb
-                .lock()
-                .map_err(|_| "kb lock poisoned".to_string())?
-                .bases
-                .insert(id, record);
-            Ok(json!({ "id": id, "name": created_name }))
-        }
-        "kb:update" => {
-            let params = get_arg(&args, 0)?;
-            let id = params
-                .get("id")
-                .and_then(Value::as_i64)
-                .ok_or_else(|| "missing kb id".to_string())?;
-            let mut kb = state
-                .kb
-                .lock()
-                .map_err(|_| "kb lock poisoned".to_string())?;
-            let record = kb
-                .bases
-                .get_mut(&id)
-                .ok_or_else(|| format!("knowledge base {id} not found"))?;
-            let mut updated = 0_i64;
-            if let Some(name) = params.get("name").and_then(Value::as_str) {
-                record.name = name.to_string();
-                updated = 1;
-            }
-            if let Some(model) = params.get("rerankModel").and_then(Value::as_str) {
-                record.rerank_model = model.to_string();
-                updated = 1;
-            }
-            if let Some(model) = params.get("visionModel").and_then(Value::as_str) {
-                record.vision_model = Some(model.to_string());
-                updated = 1;
-            }
-            Ok(Value::Number(updated.into()))
-        }
-        "kb:delete" => {
-            let kb_id = get_arg(&args, 0)?
-                .as_i64()
-                .ok_or_else(|| "invalid kb id".to_string())?;
-            let mut kb = state
-                .kb
-                .lock()
-                .map_err(|_| "kb lock poisoned".to_string())?;
-            kb.bases.remove(&kb_id);
-            let removed_file_ids: Vec<i64> = kb
-                .files
-                .values()
-                .filter(|file| file.kb_id == kb_id)
-                .map(|file| file.id)
-                .collect();
-            kb.files.retain(|_, file| file.kb_id != kb_id);
-            for file_id in removed_file_ids {
-                kb.file_chunks.remove(&file_id);
-            }
-            drop(kb);
-            let kb_chunks_dir = get_kb_chunks_dir(&app, kb_id);
-            let _ = fs::remove_dir_all(kb_chunks_dir);
-            Ok(json!({ "success": true }))
-        }
-        "kb:file:list" => {
-            let kb_id = get_arg(&args, 0)?
-                .as_i64()
-                .ok_or_else(|| "invalid kb id".to_string())?;
-            let kb = state
-                .kb
-                .lock()
-                .map_err(|_| "kb lock poisoned".to_string())?;
-            let mut files = Vec::new();
-            for file in kb.files.values().filter(|item| item.kb_id == kb_id) {
-                files.push(json!({
-                  "id": file.id,
-                  "kb_id": file.kb_id,
-                  "filename": file.filename,
-                  "filepath": file.filepath,
-                  "mime_type": file.mime_type,
-                  "file_size": file.file_size,
-                  "chunk_count": file.chunk_count,
-                  "total_chunks": file.total_chunks,
-                  "status": file.status,
-                  "error": file.error,
-                  "createdAt": file.created_at,
-                  "parsed_remotely": file.parsed_remotely,
-                  "parser_type": file.parser_type,
-                }));
-            }
-            Ok(Value::Array(files))
-        }
-        "kb:file:count" => {
-            let kb_id = get_arg(&args, 0)?
-                .as_i64()
-                .ok_or_else(|| "invalid kb id".to_string())?;
-            let kb = state
-                .kb
-                .lock()
-                .map_err(|_| "kb lock poisoned".to_string())?;
-            let count = kb.files.values().filter(|item| item.kb_id == kb_id).count() as i64;
-            Ok(Value::Number(count.into()))
-        }
-        "kb:file:list-paginated" => {
-            let kb_id = get_arg(&args, 0)?
-                .as_i64()
-                .ok_or_else(|| "invalid kb id".to_string())?;
-            let offset = get_arg(&args, 1)
-                .ok()
-                .and_then(Value::as_i64)
-                .unwrap_or(0)
-                .max(0) as usize;
-            let limit = get_arg(&args, 2)
-                .ok()
-                .and_then(Value::as_i64)
-                .unwrap_or(20)
-                .max(1) as usize;
-
-            let kb = state
-                .kb
-                .lock()
-                .map_err(|_| "kb lock poisoned".to_string())?;
-            let mut files: Vec<_> = kb
-                .files
-                .values()
-                .filter(|item| item.kb_id == kb_id)
-                .cloned()
-                .collect();
-            files.sort_by(|a, b| b.created_at.cmp(&a.created_at));
-
-            let rows: Vec<Value> = files
-                .into_iter()
-                .skip(offset)
-                .take(limit)
-                .map(|file| {
-                    json!({
-                      "id": file.id,
-                      "kb_id": file.kb_id,
-                      "filename": file.filename,
-                      "filepath": file.filepath,
-                      "mime_type": file.mime_type,
-                      "file_size": file.file_size,
-                      "chunk_count": file.chunk_count,
-                      "total_chunks": file.total_chunks,
-                      "status": file.status,
-                      "error": file.error,
-                      "createdAt": file.created_at,
-                      "parsed_remotely": file.parsed_remotely,
-                      "parser_type": file.parser_type,
-                    })
-                })
-                .collect();
-            Ok(Value::Array(rows))
-        }
-        "kb:file:get-metas" => {
-            let kb_id = get_arg(&args, 0)?
-                .as_i64()
-                .ok_or_else(|| "invalid kb id".to_string())?;
-            let file_ids = get_arg(&args, 1)?
-                .as_array()
-                .cloned()
-                .unwrap_or_default()
-                .into_iter()
-                .filter_map(|value| value.as_i64())
-                .collect::<Vec<_>>();
-
-            let kb = state
-                .kb
-                .lock()
-                .map_err(|_| "kb lock poisoned".to_string())?;
-            let mut rows = Vec::new();
-            for file_id in file_ids {
-                if let Some(file) = kb.files.get(&file_id) {
-                    if file.kb_id != kb_id {
-                        continue;
-                    }
-                    rows.push(json!({
-                      "id": file.id,
-                      "kbId": file.kb_id,
-                      "filename": file.filename,
-                      "mimeType": file.mime_type,
-                      "fileSize": file.file_size,
-                      "chunkCount": file.chunk_count,
-                      "totalChunks": file.total_chunks,
-                      "status": file.status,
-                      "createdAt": file.created_at,
-                    }));
-                }
-            }
-            Ok(Value::Array(rows))
-        }
-        "kb:file:read-chunks" => {
-            let kb_id = get_arg(&args, 0)?
-                .as_i64()
-                .ok_or_else(|| "invalid kb id".to_string())?;
-            let chunks = get_arg(&args, 1)?
-                .as_array()
-                .ok_or_else(|| "invalid chunks parameter".to_string())?;
-
-            let kb = state
-                .kb
-                .lock()
-                .map_err(|_| "kb lock poisoned".to_string())?;
-
-            let mut rows = Vec::new();
-            for chunk in chunks {
-                let file_id = chunk
-                    .get("fileId")
-                    .and_then(Value::as_i64)
-                    .ok_or_else(|| "invalid chunk.fileId".to_string())?;
-                let chunk_index = chunk
-                    .get("chunkIndex")
-                    .and_then(Value::as_i64)
-                    .ok_or_else(|| "invalid chunk.chunkIndex".to_string())?;
-
-                if chunk_index < 0 {
-                    continue;
-                }
-                let Some(file) = kb.files.get(&file_id) else {
-                    continue;
-                };
-                if file.kb_id != kb_id {
-                    continue;
-                }
-                let Some(file_chunks) = kb.file_chunks.get(&file_id) else {
-                    continue;
-                };
-                let Some(text) = file_chunks.get(chunk_index as usize) else {
-                    continue;
-                };
-
-                rows.push(json!({
-                  "fileId": file_id,
-                  "filename": file.filename,
-                  "chunkIndex": chunk_index,
-                  "text": text,
-                }));
-            }
-            Ok(Value::Array(rows))
-        }
-        "kb:file:upload" => {
-            let kb_id = get_arg(&args, 0)?
-                .as_i64()
-                .ok_or_else(|| "invalid kb id".to_string())?;
-            let file = get_arg(&args, 1)?;
-            let filename = file
-                .get("name")
-                .and_then(Value::as_str)
-                .unwrap_or("unknown")
-                .to_string();
-            let filepath = file
-                .get("path")
-                .and_then(Value::as_str)
-                .unwrap_or("")
-                .to_string();
-            let mime_type = file
-                .get("type")
-                .and_then(Value::as_str)
-                .unwrap_or("application/octet-stream")
-                .to_string();
-
-            let chunks = load_text_from_file(&filepath, &mime_type)
-                .map(|text| chunk_text(&text, 1200))
-                .unwrap_or_default();
-            let chunk_count = chunks.len() as i64;
-
-            let id = state.next_file_id.fetch_add(1, Ordering::Relaxed) + 1;
-            let record = KnowledgeBaseFileRecord {
-                id,
-                kb_id,
-                filename,
-                filepath,
-                mime_type,
-                file_size: file.get("size").and_then(Value::as_i64).unwrap_or(0),
-                chunk_count,
-                total_chunks: chunk_count,
-                status: "done".to_string(),
-                error: None,
-                created_at: now_ms(),
-                parsed_remotely: 0,
-                parser_type: "local".to_string(),
-            };
-            let mut kb = state
-                .kb
-                .lock()
-                .map_err(|_| "kb lock poisoned".to_string())?;
-            kb.files.insert(id, record);
-            kb.file_chunks.insert(id, chunks.clone());
-            drop(kb);
-            save_chunks_to_disk(&app, kb_id, id, &chunks);
-            Ok(json!({ "id": id }))
-        }
-        "kb:search" => {
-            let kb_id = get_arg(&args, 0)?
-                .as_i64()
-                .ok_or_else(|| "invalid kb id".to_string())?;
-            let query = get_arg_string(&args, 1)?.trim().to_string();
-            if query.is_empty() {
-                return Err("Search query is required".to_string());
-            }
-
-            let query_lower = query.to_ascii_lowercase();
-            let query_terms: Vec<String> = query_lower
-                .split_whitespace()
-                .map(str::trim)
-                .filter(|term| !term.is_empty())
-                .map(std::string::ToString::to_string)
-                .collect();
-
-            let kb = state
-                .kb
-                .lock()
-                .map_err(|_| "kb lock poisoned".to_string())?;
-            if !kb.bases.contains_key(&kb_id) {
-                return Err(format!("knowledge base {kb_id} not found"));
-            }
-
-            let mut matches = Vec::<(f64, Value)>::new();
-            for file in kb.files.values().filter(|item| item.kb_id == kb_id) {
-                let Some(chunks) = kb.file_chunks.get(&file.id) else {
-                    continue;
-                };
-                for (chunk_index, text) in chunks.iter().enumerate() {
-                    let score = score_search_text(&query_lower, &query_terms, text);
-                    if score <= 0.0 {
-                        continue;
-                    }
-                    matches.push((
-                        score,
-                        json!({
-                          "id": file.id.saturating_mul(1_000_000) + chunk_index as i64,
-                          "score": score,
-                          "text": text,
-                          "fileId": file.id,
-                          "filename": file.filename,
-                          "mimeType": file.mime_type,
-                          "chunkIndex": chunk_index
-                        }),
-                    ));
-                }
-            }
-
-            matches.sort_by(|left, right| {
-                right
-                    .0
-                    .partial_cmp(&left.0)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            });
-
-            let rows = matches
-                .into_iter()
-                .take(20)
-                .map(|(_, result)| result)
-                .collect::<Vec<_>>();
-            Ok(Value::Array(rows))
-        }
-        "kb:file:retry" => {
-            let file_id = get_arg(&args, 0)?
-                .as_i64()
-                .ok_or_else(|| "invalid file id".to_string())?;
-            let use_remote_parsing = get_arg(&args, 1)
-                .ok()
-                .and_then(Value::as_bool)
-                .unwrap_or(false);
-            let mut kb = state
-                .kb
-                .lock()
-                .map_err(|_| "kb lock poisoned".to_string())?;
-            let file = kb
-                .files
-                .get_mut(&file_id)
-                .ok_or_else(|| format!("file {file_id} not found"))?;
-            file.status = "pending".to_string();
-            file.error = None;
-            file.chunk_count = 0;
-            file.total_chunks = 0;
-            file.parsed_remotely = if use_remote_parsing { 1 } else { 0 };
-            file.parser_type = if use_remote_parsing {
-                "chatbox-ai".to_string()
-            } else {
-                "local".to_string()
-            };
-            kb.file_chunks.remove(&file_id);
-            Ok(json!({ "success": true }))
-        }
-        "kb:file:pause" => {
-            let file_id = get_arg(&args, 0)?
-                .as_i64()
-                .ok_or_else(|| "invalid file id".to_string())?;
-            let mut kb = state
-                .kb
-                .lock()
-                .map_err(|_| "kb lock poisoned".to_string())?;
-            if let Some(file) = kb.files.get_mut(&file_id) {
-                file.status = "paused".to_string();
-            }
-            Ok(json!({ "success": true }))
-        }
-        "kb:file:resume" => {
-            let file_id = get_arg(&args, 0)?
-                .as_i64()
-                .ok_or_else(|| "invalid file id".to_string())?;
-            let mut kb = state
-                .kb
-                .lock()
-                .map_err(|_| "kb lock poisoned".to_string())?;
-            let file = kb
-                .files
-                .get_mut(&file_id)
-                .ok_or_else(|| format!("file {file_id} not found"))?;
-            file.status = "pending".to_string();
-            file.error = None;
-            Ok(json!({ "success": true }))
-        }
-        "kb:file:delete" => {
-            let file_id = get_arg(&args, 0)?
-                .as_i64()
-                .ok_or_else(|| "invalid file id".to_string())?;
-            let kb_id = {
-                let kb = state
-                    .kb
-                    .lock()
-                    .map_err(|_| "kb lock poisoned".to_string())?;
-                kb.files.get(&file_id).map(|f| f.kb_id)
-            };
-            let mut kb = state
-                .kb
-                .lock()
-                .map_err(|_| "kb lock poisoned".to_string())?;
-            kb.files.remove(&file_id);
-            kb.file_chunks.remove(&file_id);
-            drop(kb);
-            if let Some(kb_id) = kb_id {
-                delete_chunks_from_disk(&app, kb_id, file_id);
-            }
-            Ok(json!({ "success": true }))
-        }
         "parser:test-mineru" => Ok(json!({
           "success": false,
           "error": "MinerU parser is not configured in Tauri runtime yet"
@@ -3763,20 +3093,20 @@ pub fn run() {
     builder
         .manage(AppState {
             next_mcp_id: AtomicU64::new(0),
-            next_kb_id: AtomicI64::new(0),
-            next_file_id: AtomicI64::new(0),
             ..Default::default()
         })
         .setup(|app| {
             let handle = app.handle();
             let store = load_store_from_disk(handle, "store.json");
             let blobs = load_blobs_from_disk(handle, "blobs.json");
-            let chunks = load_all_kb_chunks_from_disk(handle);
 
             let state: State<AppState> = app.state();
             *state.store.lock().unwrap() = store.clone();
             *state.blobs.lock().unwrap() = blobs;
-            state.kb.lock().unwrap().file_chunks = chunks;
+            #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+            if let Err(err) = state.kb.open_desktop(handle) {
+                eprintln!("[kb] failed to open sqlite store: {err}");
+            }
 
             #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
             {

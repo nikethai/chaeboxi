@@ -38,7 +38,6 @@ import { toast } from 'sonner'
 import { useKnowledgeBaseFiles, useKnowledgeBaseFilesActions, useKnowledgeBaseFilesCount } from '@/hooks/knowledge-base'
 import { useChunksPreview } from '@/hooks/useChunksPreview'
 import platform from '@/platform'
-import { useSettingsStore } from '@/stores/settingsStore'
 import ChunksPreviewModal from './ChunksPreviewModal'
 
 interface KnowledgeBaseDocumentsProps {
@@ -53,8 +52,6 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
   const [showUploadArea, setShowUploadArea] = useState(false)
 
   const scrollAreaRef = useRef<HTMLDivElement>(null)
-  const globalDocumentParserType = useSettingsStore((state) => state.extension?.documentParser?.type)
-
   // Chunks preview hook
   const chunksPreview = useChunksPreview()
 
@@ -117,6 +114,10 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
         mimeType = 'application/rtf'
       } else if (filename.endsWith('.csv')) {
         mimeType = 'text/csv'
+      } else if (filename.endsWith('.json')) {
+        mimeType = 'application/json'
+      } else if (filename.endsWith('.log')) {
+        mimeType = 'text/plain'
       } else if (filename.endsWith('.epub')) {
         mimeType = 'application/epub+zip'
       } else if (filename.endsWith('.jpg') || filename.endsWith('.jpeg')) {
@@ -163,50 +164,23 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
     setShowScrollIndicator(allFiles.length > 5)
   }, [allFiles.length])
 
-  // Get supported file types
+  // v1 local parser: text / markdown / csv / json / log only. PDF and Office fail in Rust.
   const getSupportedFileTypes = useCallback(() => {
-    const effectiveParserType = knowledgeBase?.documentParser?.type || globalDocumentParserType || 'local'
-    const isLocalParser = effectiveParserType === 'local'
-
-    const baseDocumentTypes = ['.pdf', '.docx', '.txt', '.md', '.rtf', '.pptx', '.xlsx', '.csv', '.epub']
-    const extendedDocumentTypes = ['.doc', '.ppt', '.xls']
-    const documentTypes = isLocalParser ? baseDocumentTypes : [...baseDocumentTypes, ...extendedDocumentTypes]
-    const imageTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp']
-
-    // Add MIME types for better Windows compatibility
-    const baseDocumentMimeTypes = [
-      'application/pdf',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    const documentTypes = ['.txt', '.md', '.markdown', '.csv', '.json', '.log', '.pdf']
+    const documentMimeTypes = [
       'text/plain',
       'text/markdown',
-      'application/rtf',
-      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'text/csv',
-      'application/epub+zip',
+      'application/json',
+      'text/x-log',
+      'text/json',
+      'application/pdf',
     ]
-    const extendedDocumentMimeTypes = [
-      'application/msword',
-      'application/vnd.ms-powerpoint',
-      'application/vnd.ms-excel',
-    ]
-    const documentMimeTypes = isLocalParser
-      ? baseDocumentMimeTypes
-      : [...baseDocumentMimeTypes, ...extendedDocumentMimeTypes]
-    const imageMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp']
-
-    const hasVisionModel = knowledgeBase?.visionModel && knowledgeBase.visionModel.trim() !== ''
-
-    // Combine file extensions and MIME types for better compatibility
-    const allDocumentTypes = [...documentTypes, ...documentMimeTypes]
-    const allImageTypes = hasVisionModel ? [...imageTypes, ...imageMimeTypes] : []
-    const allTypes = [...allDocumentTypes, ...allImageTypes]
-
     return {
-      accept: allTypes.join(','),
-      display: hasVisionModel ? [...documentTypes, ...imageTypes] : documentTypes,
+      accept: [...documentTypes, ...documentMimeTypes].join(','),
+      display: documentTypes,
     }
-  }, [knowledgeBase?.documentParser?.type, knowledgeBase?.visionModel, globalDocumentParserType])
+  }, [])
 
   // Handle file upload (shared logic)
   const uploadFiles = useCallback(
@@ -223,6 +197,19 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
         for (let i = 0; i < files.length; i++) {
           const file = files[i]
           const correctedFile = correctMimeType(file)
+          const isPdf =
+            correctedFile.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+          if (isPdf) {
+            const buf = new Uint8Array(await file.arrayBuffer())
+            let binary = ''
+            const step = 0x8000
+            for (let i = 0; i < buf.length; i += step) {
+              binary += String.fromCharCode(...buf.subarray(i, i + step))
+            }
+            correctedFile.contentBase64 = btoa(binary)
+          } else if (!correctedFile.path) {
+            correctedFile.content = await file.text()
+          }
           correctedFiles.push(correctedFile)
 
           console.log(`[Upload] File ${i + 1}/${files.length}: ${file.name} (${correctedFile.type})`)

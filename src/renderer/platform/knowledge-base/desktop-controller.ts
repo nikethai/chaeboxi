@@ -79,6 +79,10 @@ class DesktopKnowledgeBaseController implements KnowledgeBaseController {
   async testMineruConnection(apiToken: string): Promise<{ success: boolean; error?: string }> {
     return this.ipc.invoke('parser:test-mineru', apiToken)
   }
+
+  async embedStatus() {
+    return this.ipc.invoke('kb:embed:status')
+  }
 }
 
 export default DesktopKnowledgeBaseController

@@ -130,7 +130,17 @@ Workflow already forwards these env vars when set; omit them for unsigned CI bui
 - Automated store submission (App Store / TestFlight / Play Store uploads are
   manual; `beta` lane can push to TestFlight when `FASTLANE_TESTFLIGHT_UPLOAD=true`)
 - Linux ARM matrix
-- Publishing web build to hosting
+- Publishing the **chat web app** (`pnpm build:web`) to hosting
+
+## Marketing site (GitHub Pages)
+
+The brochure lives in `website/` (Astro static). Workflow: `.github/workflows/pages.yml`.
+
+Origin: `https://nikethai.github.io/chaeboxi/`. Do **not** publish `pnpm build:web` there.
+
+Repo setting required once: Settings → Pages → Source = GitHub Actions.
+
+Flip `PRODUCT.homepage` / privacy / terms only after all four routes return 200.
 
 ## Local package build
 

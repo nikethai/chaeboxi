@@ -1,0 +1,12 @@
+---
+import { PROVIDERS } from '../lib/providers'
+
+const loop = [...PROVIDERS, ...PROVIDERS]
+---
+
+<div class="marquee">
+  <p class="sr-only">Supported providers: {PROVIDERS.join(', ')}</p>
+  <div class="marquee__track" aria-hidden="true">
+    {loop.map((name) => <span>{name}</span>)}
+  </div>
+</div>

@@ -1,0 +1,165 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import IslandNav from '../components/IslandNav.astro'
+import SiteFooter from '../components/SiteFooter.astro'
+import ProviderMarquee from '../components/ProviderMarquee.astro'
+
+const base = import.meta.env.BASE_URL
+const download = `${base}download/`
+const shell = `${base}screenshot-shell.png`
+const thread = `${base}screenshot-thread.png`
+---
+
+<BaseLayout title="Chaeboxi — local-first AI copilot">
+  <IslandNav slot="nav" />
+
+  <div class="hero-wash" aria-hidden="true"></div>
+  <section class="hero wrap">
+    <div class="hero__grid">
+      <div class="hero__copy">
+        <h1>
+          Local-first
+          <span class="hero__shot-inline">
+            <img src={shell} alt="" width="112" height="36" />
+          </span>
+          AI copilot.
+        </h1>
+        <p class="hero__sub">Bring your own keys. Chats stay on your device. GPLv3.</p>
+        <div class="hero__ctas">
+          <a class="btn btn--primary" href={download}>
+            Download Desktop
+            <span class="btn__icon" aria-hidden="true">↗</span>
+          </a>
+          <a class="btn btn--ghost" href="https://github.com/nikethai/chaeboxi" rel="noopener">View Source</a>
+        </div>
+      </div>
+      <div class="hero__visual reveal">
+        <div class="bezel">
+          <div class="bezel__inner">
+            <img
+              src={shell}
+              alt="Chaeboxi desktop app on a dark studio shell with an empty chat and composer"
+              width="1440"
+              height="900"
+              fetchpriority="high"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <ProviderMarquee />
+
+  <section class="section wrap">
+    <h2>What you get</h2>
+    <div class="bento">
+      <article class="bento__cell bento__cell--wide bezel">
+        <div class="bezel__inner bento__pad">
+          <p class="meta">On device</p>
+          <h3>Local-first</h3>
+          <p>Conversations and settings stay on the machine you choose. No hosted Chaeboxi chat backend.</p>
+          <img
+            src={thread}
+            alt="Chaeboxi thread view in the studio dark theme"
+            width="1440"
+            height="900"
+            loading="lazy"
+            style="margin-top:1rem;border-radius:10px"
+          />
+        </div>
+      </article>
+      <article class="bento__cell bento__cell--side bezel">
+        <div class="bezel__inner bento__pad">
+          <p class="meta">BYOK</p>
+          <h3>Your keys</h3>
+          <p>OpenAI, Anthropic, Gemini, Ollama, OpenRouter, and more. No bundled paid AI plan.</p>
+        </div>
+      </article>
+      <article class="bento__cell bento__cell--side bezel">
+        <div class="bezel__inner bento__pad">
+          <p class="meta">16+</p>
+          <h3>Providers you already have</h3>
+          <p>Same product surface across desktop, web, and mobile. Desktop is the richest shell.</p>
+        </div>
+      </article>
+      <article class="bento__cell bento__cell--full bezel">
+        <div class="bezel__inner bento__pad">
+          <p class="meta">Desktop</p>
+          <h3>Agents, MCP, memory, computer use</h3>
+          <p>
+            Multi-agent rooms, skills, hooks, MCP, knowledge base, browser agent, and computer use ship on
+            <strong>desktop</strong>. They are not claimed for web or mobile.
+          </p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section wrap desire">
+    <div class="desire__title">
+      <h2>On your machine</h2>
+      <p class="hero__sub">A studio copilot, not a cloud subscription. Independent GPLv3. Not a Chatbox commercial client.</p>
+    </div>
+    <div class="desire__stack">
+      <div class="bezel reveal">
+        <div class="bezel__inner">
+          <img src={thread} alt="Chaeboxi conversation thread" width="1440" height="900" loading="lazy" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section wrap">
+    <h2>What it is not</h2>
+    <div class="principles">
+      <article class="bezel">
+        <div class="bezel__inner bento__pad">
+          <h3>Not a SaaS</h3>
+          <p>No first-party hosted LLM. No license marketplace.</p>
+        </div>
+      </article>
+      <article class="bezel">
+        <div class="bezel__inner bento__pad">
+          <h3>Not Chatbox AI</h3>
+          <p>Independent product. Honest GPLv3 derivative — see NOTICE.</p>
+        </div>
+      </article>
+      <article class="bezel">
+        <div class="bezel__inner bento__pad">
+          <h3>Not every feature everywhere</h3>
+          <p>MCP stdio, keychain, and computer use stay desktop-first.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section wrap cta-band">
+    <h2>Install the desktop app</h2>
+    <p>macOS, Windows, and Linux from GitHub Releases.</p>
+    <a class="btn btn--primary" href={download}>
+      Download Desktop
+      <span class="btn__icon" aria-hidden="true">↗</span>
+    </a>
+  </section>
+
+  <script>
+    const els = document.querySelectorAll('.reveal, .hero__visual')
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    if (reduce || !('IntersectionObserver' in window)) {
+      els.forEach((el) => el.classList.add('is-in'))
+    } else {
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) entry.target.classList.add('is-in')
+          }
+        },
+        { threshold: 0.25 },
+      )
+      els.forEach((el) => io.observe(el))
+    }
+  </script>
+
+  <SiteFooter slot="footer" />
+</BaseLayout>

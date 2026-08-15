@@ -1,0 +1,35 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import IslandNav from '../components/IslandNav.astro'
+import SiteFooter from '../components/SiteFooter.astro'
+---
+
+<BaseLayout title="Terms — Chaeboxi" description="GPLv3 terms for Chaeboxi and this website.">
+  <IslandNav slot="nav" />
+  <article class="section wrap prose">
+    <h1>Terms</h1>
+    <p>
+      <span translate="no">Chaeboxi</span> is provided under the
+      <a href="https://github.com/nikethai/chaeboxi/blob/main/LICENSE" rel="noopener">GNU GPLv3</a>. Use at your own
+      risk. There is no warranty.
+    </p>
+    <h2>Independence</h2>
+    <p>
+      Chaeboxi is an independent product. Parts of the codebase are derived from an earlier open-source GPLv3
+      desktop client. See
+      <a href="https://github.com/nikethai/chaeboxi/blob/main/NOTICE" rel="noopener">NOTICE</a>. It is not affiliated
+      with any third-party “AI license” marketplace and does not sell a first-party hosted LLM subscription.
+    </p>
+    <h2>Providers</h2>
+    <p>
+      You are responsible for compliance with each provider’s API terms when you use your own keys or a local model
+      runtime.
+    </p>
+    <h2>This website</h2>
+    <p>
+      The marketing pages on GitHub Pages are informational. Downloads are GitHub Release artifacts. Desktop
+      installers remain the product.
+    </p>
+  </article>
+  <SiteFooter slot="footer" />
+</BaseLayout>

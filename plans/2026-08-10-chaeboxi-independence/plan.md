@@ -46,6 +46,8 @@ Chaeboxi already diverges feature-wise (agents, memory, usage hub, UI polish, et
 | Telemetry | **Disabled** until Chaeboxi Sentry/Plausible exist | No traffic to Chatbox analytics |
 | Domain / legal pages | **GitHub placeholders** until chaeboxi domain | User waits for domain |
 | Mobile | **In scope** (Phase 4) | User wants mobile covered |
+
+**2026-08-15 homepage follow-up:** `plans/260815-1439-marketing-site-github-pages/` ships GitHub Pages (`https://nikethai.github.io/chaeboxi/`) as the interim homepage + legal URLs. Custom domain still later. This supersedes “wait for domain” for *public URL existence* only.
 | Internal renames | **Phase 5 optional** | Not required for legitimacy |
 
 ---

@@ -50,7 +50,7 @@ Use providers you already have (or run Ollama locally).
 - Conversation data is stored on-device (or platform storage you choose)
 - API keys you enter are used only to call the providers you configure
 - First-party analytics/Sentry stay **off** until you configure Chaeboxi-owned accounts
-- Legal pages will move to the Chaeboxi domain when it is ready; until then see [Privacy](#privacy-placeholder) and [Terms](#terms-placeholder) below
+- Legal pages will move to the Chaeboxi domain when it is ready; until then see [Privacy](#privacy-placeholder) and [Terms](#terms-placeholder) below. Interim site is [`website/`](./website/README.md) on GitHub Pages after Actions deploy.
 
 ### Privacy (placeholder)
 
@@ -90,7 +90,8 @@ More detail for contributors: [AGENTS.md](./AGENTS.md).
 | [Codebase summary](./docs/codebase-summary.md) | Repo layout, packages, scale, feature doc map |
 | [Code standards](./docs/code-standards.md) | Style, layering, testing, commits, security |
 | [Design guidelines](./docs/design-guidelines.md) | UI design system |
-| [Deployment guide](./docs/deployment-guide.md) | CI, tags, GitHub Releases, signing |
+| [Deployment guide](./docs/deployment-guide.md) | CI, tags, GitHub Releases, signing, marketing Pages |
+| [Marketing site](./website/README.md) | Isolated Astro brochure; Pages origin forthcoming (`https://nikethai.github.io/chaeboxi/`) |
 | [AGENTS.md](./AGENTS.md) | Contributor architecture entry |
 
 Feature docs (agents, skills, memory, RAG, storage, integrations, OpenClaw, video URL, etc.) live under [`docs/`](./docs/).

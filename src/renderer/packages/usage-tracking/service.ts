@@ -19,7 +19,8 @@ import {
   USAGE_ROLLUP_VERSION,
 } from '@shared/providers/usage'
 import type { Message, ProviderBaseInfo, ProviderSettings, Settings } from '@shared/types'
-import { calculateCost, getModelPricing } from '@/packages/cost-tracking'
+import type { PricingOverrides } from '@/packages/cost-tracking'
+import { usageEventFromMessage } from './usage-event'
 import { hasProviderCredentials, isProviderListedInSettings } from '@shared/providers/provider-credentials'
 import { getSystemProviders } from '@shared/providers/registry'
 import storage, { StorageKey } from '@/storage'
@@ -107,31 +108,10 @@ class ProviderUsageServiceImpl {
   /**
    * Record usage from a completed assistant message.
    */
-  async recordFromMessage(msg: Message): Promise<void> {
-    if (msg.role !== 'assistant' || !msg.usage) return
-    const providerId = String(msg.aiProvider ?? '')
-    const modelId = msg.model ?? 'unknown'
-    if (!providerId) return
-
-    const input = msg.usage.inputTokens ?? 0
-    const output = msg.usage.outputTokens ?? 0
-    const cached = msg.usage.cachedInputTokens ?? 0
-    const reasoning = msg.usage.reasoningTokens ?? 0
-    if (input === 0 && output === 0) return
-
-    const pricing = getModelPricing(providerId, modelId)
-    const costs = calculateCost(input, output, cached, pricing)
-
-    await this.recordLocalUsage({
-      providerId,
-      modelId,
-      inputTokens: input,
-      outputTokens: output,
-      cachedInputTokens: cached,
-      reasoningTokens: reasoning,
-      estimatedCostUsd: costs.actualCost,
-      at: msg.timestamp ? new Date(msg.timestamp).getTime() : Date.now(),
-    })
+  async recordFromMessage(msg: Message, overrides?: PricingOverrides): Promise<void> {
+    const event = usageEventFromMessage(msg, overrides)
+    if (!event) return
+    await this.recordLocalUsage(event)
   }
 
   async markExhausted(
@@ -405,28 +385,9 @@ class ProviderUsageServiceImpl {
           }
 
           for (const msg of allMessages) {
-            if (msg.role !== 'assistant' || !msg.usage) continue
-            const providerId = String(msg.aiProvider ?? '')
-            const modelId = msg.model ?? 'unknown'
-            if (!providerId) continue
-            const input = msg.usage.inputTokens ?? 0
-            const output = msg.usage.outputTokens ?? 0
-            const cached = msg.usage.cachedInputTokens ?? 0
-            const reasoning = msg.usage.reasoningTokens ?? 0
-            if (input === 0 && output === 0) continue
-            const pricing = getModelPricing(providerId, modelId)
-            const costs = calculateCost(input, output, cached, pricing)
-            const at = msg.timestamp ? new Date(msg.timestamp).getTime() : Date.now()
-            rows = upsertRollupRow(rows, {
-              providerId,
-              modelId,
-              inputTokens: input,
-              outputTokens: output,
-              cachedInputTokens: cached,
-              reasoningTokens: reasoning,
-              estimatedCostUsd: costs.actualCost,
-              at,
-            })
+            const event = usageEventFromMessage(msg)
+            if (!event) continue
+            rows = upsertRollupRow(rows, event)
             events++
           }
         } catch {

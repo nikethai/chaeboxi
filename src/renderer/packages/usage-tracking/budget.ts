@@ -163,3 +163,14 @@ export function shouldNotifyBudget(
     },
   }
 }
+
+/**
+ * Optional hard-stop: user opted in and the evaluated budget is already critical.
+ * Used by the composer/generation path to block send. No 429 router.
+ */
+export function shouldHardStopSend(
+  config: UsageBudgetConfig,
+  evalResult: BudgetEvaluation
+): boolean {
+  return Boolean(config.enabled && config.pauseWhenExceeded && evalResult.level === 'critical')
+}

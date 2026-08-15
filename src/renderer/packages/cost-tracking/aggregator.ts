@@ -3,17 +3,17 @@
  *
  * Aggregates prompt caching metrics across messages in a session,
  * producing per-session and per-provider cost breakdowns.
+ * Unknown models contribute tokens only — never a fake dollar amount.
  */
 
 import type { Message } from '@shared/types/session'
-import { calculateCost, getModelPricing } from './calculator'
-import type { ProviderCostMetrics, SessionCostMetrics } from './types'
+import { estimateUsageCost, getModelPricing } from './calculator'
+import type { PricingOverrides, ProviderCostMetrics, SessionCostMetrics } from './types'
 
-/**
- * Aggregate cost metrics from an array of messages.
- * Only assistant messages with usage data are included.
- */
-export function aggregateSessionCosts(messages: Message[]): SessionCostMetrics {
+export function aggregateSessionCosts(
+  messages: Message[],
+  overrides?: PricingOverrides
+): SessionCostMetrics {
   const byProvider: Record<string, ProviderCostMetrics> = {}
 
   let totalInputTokens = 0
@@ -23,6 +23,8 @@ export function aggregateSessionCosts(messages: Message[]): SessionCostMetrics {
   let costWithoutCache = 0
   let actualCost = 0
   let messagesWithUsage = 0
+  let hasKnownPrice = false
+  let hasUnpricedTokens = false
 
   for (const msg of messages) {
     if (msg.role !== 'assistant' || !msg.usage) continue
@@ -38,9 +40,10 @@ export function aggregateSessionCosts(messages: Message[]): SessionCostMetrics {
 
     const provider = String(msg.aiProvider ?? 'unknown')
     const model = msg.model ?? 'unknown'
-
-    const pricing = getModelPricing(provider, model)
-    const costs = calculateCost(input, output, cached, pricing)
+    const pricing = getModelPricing(provider, model, overrides)
+    const costs = estimateUsageCost(input, output, cached, pricing)
+    if (costs.knownPrice) hasKnownPrice = true
+    else hasUnpricedTokens = true
 
     totalInputTokens += input
     totalOutputTokens += output
@@ -49,7 +52,6 @@ export function aggregateSessionCosts(messages: Message[]): SessionCostMetrics {
     costWithoutCache += costs.costWithoutCache
     actualCost += costs.actualCost
 
-    // Accumulate per-provider
     if (!byProvider[provider]) {
       byProvider[provider] = {
         provider,
@@ -60,6 +62,7 @@ export function aggregateSessionCosts(messages: Message[]): SessionCostMetrics {
         costWithoutCache: 0,
         actualCost: 0,
         savings: 0,
+        hasKnownPrice: false,
       }
     }
     const p = byProvider[provider]
@@ -69,9 +72,9 @@ export function aggregateSessionCosts(messages: Message[]): SessionCostMetrics {
     p.costWithoutCache += costs.costWithoutCache
     p.actualCost += costs.actualCost
     p.savings += costs.savings
+    if (costs.knownPrice) p.hasKnownPrice = true
   }
 
-  // Compute cache hit rates
   for (const p of Object.values(byProvider)) {
     p.cacheHitRate = p.inputTokens > 0 ? p.cachedInputTokens / p.inputTokens : 0
   }
@@ -91,6 +94,8 @@ export function aggregateSessionCosts(messages: Message[]): SessionCostMetrics {
     actualCost,
     totalSavings,
     savingsPercent,
+    hasKnownPrice,
+    hasUnpricedTokens,
     byProvider,
     messagesWithUsage,
   }
@@ -106,4 +111,17 @@ export function formatCost(usd: number): string {
   if (usd < 0.01) return `$${usd.toFixed(4)}`
   if (usd < 1) return `$${usd.toFixed(3)}`
   return `$${usd.toFixed(2)}`
+}
+
+/** Show $ only when a known price produced a number; otherwise tokens-only label. */
+export function formatSpendOrTokens(opts: {
+  estimatedCostUsd: number
+  knownPrice?: boolean
+  tokens: number
+  tokensLabel?: string
+}): string {
+  const known = opts.knownPrice ?? opts.estimatedCostUsd > 0
+  if (known && opts.estimatedCostUsd > 0) return formatCost(opts.estimatedCostUsd)
+  if (known && opts.estimatedCostUsd === 0) return formatCost(0)
+  return `${opts.tokens.toLocaleString()} ${opts.tokensLabel ?? 'tokens'}`
 }

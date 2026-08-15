@@ -1,22 +1,17 @@
-import { NumberInput, Stack, Switch, Text } from '@mantine/core'
-import { DEFAULT_USAGE_BUDGET, type UsageBudgetConfig, type UsagePeriod } from '@shared/providers/usage'
+import { Button, Flex, NumberInput, Stack, Switch, Text } from '@mantine/core'
+import { DEFAULT_USAGE_BUDGET, type UsageBudgetConfig } from '@shared/providers/usage'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AdaptiveSelect } from '@/components/AdaptiveSelect'
 import { SettingsCard } from '@/components/settings/SettingsCard'
-import { useSettingsStore } from '@/stores/settingsStore'
-
-const PERIOD_OPTIONS: { value: UsagePeriod; label: string }[] = [
-  { value: '7d', label: 'Last 7 days' },
-  { value: '30d', label: 'Last 30 days' },
-  { value: 'calendar-month', label: 'This calendar month' },
-]
+import { providerUsageService } from '@/packages/usage-tracking'
+import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
 
 export const UsageBudgetSettings: FC = () => {
   const { t } = useTranslation()
-  // Separate selectors — never return a fresh object from the selector (infinite re-render)
   const setSettings = useSettingsStore((s) => s.setSettings)
   const usageBudget = useSettingsStore((s) => s.usageBudget)
+  const providers = useSettingsStore((s) => s.providers)
+  const customProviders = useSettingsStore((s) => s.customProviders)
   const config: UsageBudgetConfig = usageBudget ?? DEFAULT_USAGE_BUDGET
 
   const update = (patch: Partial<UsageBudgetConfig>) => {
@@ -24,52 +19,41 @@ export const UsageBudgetSettings: FC = () => {
       usageBudget: {
         ...DEFAULT_USAGE_BUDGET,
         ...config,
+        period: 'calendar-month',
+        warnAtPercent: 80,
+        criticalAtPercent: 100,
         ...patch,
       },
     })
   }
 
+  void providers
+  void customProviders
+  const listed = providerUsageService.listConfiguredProviders(settingsStore.getState().getSettings())
+
   return (
     <SettingsCard>
       <Stack gap="md">
         <div>
-          <Text fw={600}>{t('Soft budgets')}</Text>
+          <Text fw={600}>{t('Monthly budgets')}</Text>
           <Text size="sm" c="dimmed">
             {t(
-              'Optional limits based on usage measured in this app. They do not replace your provider subscription limits.'
+              'Local estimates from this app, not a provider invoice. Soft-notify once at 80%. Optional hard-stop blocks send when the cap is exceeded.'
             )}
           </Text>
         </div>
 
         <Switch
-          label={t('Enable soft budgets')}
+          label={t('Enable monthly budgets')}
           checked={config.enabled}
           onChange={(e) => update({ enabled: e.currentTarget.checked })}
         />
 
         {config.enabled && (
           <>
-            <AdaptiveSelect
-              label={t('Budget period')}
-              value={config.period}
-              onChange={(v) => v && update({ period: v as UsagePeriod })}
-              data={PERIOD_OPTIONS.map((o) => ({ value: o.value, label: t(o.label) }))}
-            />
             <NumberInput
-              label={t('Token limit (optional)')}
-              description={t('Warn when estimated tokens in this app exceed this amount')}
-              value={config.tokenLimit ?? ''}
-              onChange={(v) =>
-                update({ tokenLimit: typeof v === 'number' && v > 0 ? v : undefined })
-              }
-              min={0}
-              thousandSeparator
-              allowDecimal={false}
-              placeholder={t('No limit')}
-            />
-            <NumberInput
-              label={t('Cost limit USD (optional)')}
-              description={t('Estimated cost using built-in pricing tables')}
+              label={t('Global monthly cap (USD)')}
+              description={t('This calendar month, all providers')}
               value={config.costLimitUsd ?? ''}
               onChange={(v) =>
                 update({ costLimitUsd: typeof v === 'number' && v > 0 ? v : undefined })
@@ -77,28 +61,77 @@ export const UsageBudgetSettings: FC = () => {
               min={0}
               decimalScale={2}
               prefix="$"
-              placeholder={t('No limit')}
+              placeholder={t('No cap')}
             />
             <NumberInput
-              label={t('Warn at %')}
-              value={config.warnAtPercent}
-              onChange={(v) => update({ warnAtPercent: typeof v === 'number' ? v : 80 })}
-              min={1}
-              max={100}
+              label={t('Global monthly token cap (optional)')}
+              value={config.tokenLimit ?? ''}
+              onChange={(v) =>
+                update({ tokenLimit: typeof v === 'number' && v > 0 ? v : undefined })
+              }
+              min={0}
+              thousandSeparator
+              allowDecimal={false}
+              placeholder={t('No token cap')}
             />
-            <NumberInput
-              label={t('Critical at %')}
-              value={config.criticalAtPercent}
-              onChange={(v) => update({ criticalAtPercent: typeof v === 'number' ? v : 100 })}
-              min={1}
-              max={100}
-            />
+
+            <div>
+              <Text size="sm" fw={600} mb={6}>
+                {t('Per-provider monthly cap (optional)')}
+              </Text>
+              <Stack gap="sm">
+                {listed.length === 0 ? (
+                  <Text size="sm" c="dimmed">
+                    {t('Connect a provider to set a per-provider cap.')}
+                  </Text>
+                ) : (
+                  listed.map((p) => (
+                    <NumberInput
+                      key={p.id}
+                      label={p.name}
+                      value={config.perProvider?.[p.id]?.costLimitUsd ?? ''}
+                      onChange={(v) => {
+                        const next = { ...config.perProvider }
+                        const costLimitUsd = typeof v === 'number' && v > 0 ? v : undefined
+                        if (costLimitUsd == null) {
+                          const { [p.id]: _, ...rest } = next
+                          update({ perProvider: Object.keys(rest).length ? rest : undefined })
+                        } else {
+                          update({
+                            perProvider: {
+                              ...next,
+                              [p.id]: { ...next[p.id], costLimitUsd },
+                            },
+                          })
+                        }
+                      }}
+                      min={0}
+                      decimalScale={2}
+                      prefix="$"
+                      placeholder={t('No cap')}
+                    />
+                  ))
+                )}
+              </Stack>
+            </div>
+
             <Switch
-              label={t('Pause generation when budget exceeded')}
-              description={t('Off by default. Soft warning only unless you enable this.')}
+              label={t('Hard-stop send when over cap')}
+              description={t(
+                'Off by default. When on, the composer and generation path block send at 100% of the cap. Auto-fallback to another model is not in v1.'
+              )}
               checked={config.pauseWhenExceeded}
               onChange={(e) => update({ pauseWhenExceeded: e.currentTarget.checked })}
             />
+            <Flex>
+              <Button
+                size="xs"
+                variant="subtle"
+                onClick={() => update({ pauseWhenExceeded: false, enabled: config.enabled })}
+              >
+                {t('Soft notify only (80%)')}
+              </Button>
+            </Flex>
           </>
         )}
       </Stack>

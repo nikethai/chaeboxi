@@ -93,6 +93,8 @@ import { useCommands } from '@/stores/commandsStore'
 import { ensureMemoryStoreInit, useMemoryStore } from '@/stores/memoryStore'
 import { usePromptPresets } from '@/stores/promptPresetsStore'
 import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
+import { DEFAULT_USAGE_BUDGET } from '@shared/providers/usage'
+import { shouldHardStopSend, useUsageBudgetState } from '@/packages/usage-tracking'
 import { useSkills } from '@/stores/skillsStore'
 import type { QuoteDraft } from '@/stores/uiStore'
 import { useUIStore } from '@/stores/uiStore'
@@ -641,6 +643,11 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     // While generating (or sticky race window), button is always Stop and always clickable.
     // Never key Stop on empty-draft (old: generating && disableSubmit) — that flipped Send mid-turn.
     const showStop = Boolean(generating || stickyStop)
+    const usageBudget = useSettingsStore((s) => s.usageBudget)
+    const budgetEval = useUsageBudgetState(model?.provider)
+    const hardStopBlocked = shouldHardStopSend(usageBudget ?? DEFAULT_USAGE_BUDGET, budgetEval)
+    const hardStopMessage = budgetEval.message
+
     const sendDisabled = showStop
       ? false
       : isModelReadinessBlocking ||
@@ -648,7 +655,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
         isPreprocessing ||
         isSubmitting ||
         isSamplingVideoFrames ||
-        isCompactionRunning
+        isCompactionRunning ||
+        hardStopBlocked
 
     const autoCompactionEnabled = useMemo(() => {
       if (!currentSession) return globalSettings.autoCompaction ?? true
@@ -1426,6 +1434,14 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const closeSelectModelErrorTipCb = useRef<NodeJS.Timeout>()
     const handleSubmit = async (needGenerating = true) => {
       if (disableSubmit || isSubmitting || isPreprocessing) {
+        return
+      }
+      if (needGenerating && hardStopBlocked) {
+        toastActions.add(
+          t('Send blocked: {{message}}. Disable hard-stop in Settings → Usage, or raise your monthly cap.', {
+            message: hardStopMessage,
+          })
+        )
         return
       }
 

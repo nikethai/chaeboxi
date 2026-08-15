@@ -3,7 +3,7 @@
  * Dual honesty model: provider quota (best-effort) vs local in-app usage.
  */
 
-export type UsagePeriod = '7d' | '30d' | 'calendar-month'
+export type UsagePeriod = 'today' | '7d' | '30d' | 'calendar-month'
 
 export type LocalUsageSnapshot = {
   period: UsagePeriod
@@ -133,7 +133,7 @@ export const USAGE_ROLLUP_VERSION = 1
 
 export const DEFAULT_USAGE_BUDGET: UsageBudgetConfig = {
   enabled: false,
-  period: '30d',
+  period: 'calendar-month',
   warnAtPercent: 80,
   criticalAtPercent: 100,
   pauseWhenExceeded: false,

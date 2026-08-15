@@ -103,7 +103,7 @@ IPC is **multiplexed**: one Tauri command `ipc_invoke(channel, args)` dispatches
 - **OAuth** — local callback helper
 - **OpenClaw** — `openclaw:*` WebSocket invoke / stream / cancel
 - **MCP** — `mcp:server:create|start|list-tools|call-tool|close|list|status` (stdio + HTTP; connect-per-operation in Rust)
-- **Knowledge base** — `kb:*`, `kb:file:*`, `kb:search` (in-memory maps + `kb_chunks` JSON files; **keyword** search — not SQLite)
+- **Knowledge base** — `kb:*`, `kb:file:*`, `kb:search`, `kb:embed:status` (`src-tauri/src/kb/`; desktop SQLite `chaeboxi_kb.db` + hybrid RRF; mobile keyword/in-memory)
 - **FS / shell** — `fs:*`, `execute_command`
 - **Skills / commands / hooks scan** — filesystem discovery helpers
 - **Desktop shell** — tray, global shortcuts, screenshot (via `desktop_shell`)

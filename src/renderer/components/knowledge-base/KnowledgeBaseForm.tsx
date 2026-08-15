@@ -42,7 +42,7 @@ export const KnowledgeBaseModelSelectors: React.FC<ModelSelectorsProps> = ({
       {showEmbeddingModel && (
         <Select
           label={t('Embedding Model')}
-          description={t('Used to extract text feature vectors, add in Settings - Provider - Model List')}
+          description={t('Default is on-device multilingual-e5-small. Cloud / Ollama models send text off this device.')}
           data={embeddingModelList}
           value={embeddingModel}
           onChange={onEmbeddingModelChange}

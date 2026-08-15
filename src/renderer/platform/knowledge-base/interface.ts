@@ -49,4 +49,16 @@ export interface KnowledgeBaseController {
     chunks: { fileId: number; chunkIndex: number }[]
   ): Promise<{ fileId: number; filename: string; chunkIndex: number; text: string }[]>
   testMineruConnection(apiToken: string): Promise<{ success: boolean; error?: string }>
+  embedStatus?(): Promise<{
+    ready: boolean
+    modelId: string
+    modelPath?: string | null
+    downloading: boolean
+    progress: number
+    reason?: string | null
+    activeFileId?: number | null
+    activeFilename?: string | null
+    embeddedChunks: number
+    totalChunks: number
+  }>
 }

@@ -48,7 +48,7 @@ It is an independent GPLv3 product (derived from an earlier open-source client; 
 | **Skills / commands / hooks** | Extensible skill packs, slash commands, lifecycle hooks | [skills.md](./skills.md), [hooks-and-commands.md](./hooks-and-commands.md) |
 | **MCP** | Model Context Protocol client (stdio on desktop, HTTP); IPC to Rust backend | (see [system-architecture.md](./system-architecture.md)) |
 | **Memory** | Personal / session memory | [memory.md](./memory.md) |
-| **Knowledge base / RAG** | Local document KB; desktop Rust path uses in-memory indexes + JSON chunk files + keyword search (not SQLite in Rust) | [rag.md](./rag.md) |
+| **Knowledge base / RAG** | Desktop v1: SQLite `chaeboxi_kb.db`, local E5 embeddings, hybrid RRF search. Mobile: keyword/in-memory. | [rag.md](./rag.md) |
 | **Video URL reader** | Public video URL tool (YouTube/Vimeo/TikTok/Facebook) — `read_video_url` | [video-url-reader.md](./video-url-reader.md) |
 | **Browser agent** | Desktop isolated browser tools (`browser_*`) | [browser-agent.md](./browser-agent.md) |
 | **Computer use** | Desktop screen observe/act (`computer_*`) | [computer-use.md](./computer-use.md) |

@@ -2,7 +2,11 @@ import { Button, Flex, Group, Pill, Stack, Text } from '@mantine/core'
 import { SystemProviders } from '@shared/defaults'
 import type { KnowledgeBase, ProviderModelInfo } from '@shared/types'
 import type { DocumentParserConfig, DocumentParserType } from '@shared/types/settings'
-import { parseKnowledgeBaseModelString } from '@shared/utils/knowledge-base-model-parser'
+import {
+  isLocalKnowledgeBaseModel,
+  LOCAL_E5_SMALL_MODEL,
+  parseKnowledgeBaseModelString,
+} from '@shared/utils/knowledge-base-model-parser'
 import { IconAlertTriangle, IconBooks, IconPlus } from '@tabler/icons-react'
 import compact from 'lodash/compact'
 import flatten from 'lodash/flatten'
@@ -92,7 +96,7 @@ const KnowledgeBasePage: React.FC = () => {
   const [showCreate, setShowCreate] = useState(false)
   const customProviders = useSettingsStore((state) => state.customProviders)
 
-  const [newEmbeddingModel, setNewEmbeddingModel] = useState<string | null>(null)
+  const [newEmbeddingModel, setNewEmbeddingModel] = useState<string | null>(LOCAL_E5_SMALL_MODEL)
   const [newRerankModel, setNewRerankModel] = useState<string | null>(null)
   const [newVisionModel, setNewVisionModel] = useState<string | null>(null)
   const [newDocumentParser, setNewDocumentParser] = useState<DocumentParserConfig>({ type: 'local' })
@@ -123,7 +127,14 @@ const KnowledgeBasePage: React.FC = () => {
   )
 
   const embeddingModelList = useMemo(() => {
-    return getModelList((model) => !!model.type && model.type === 'embedding')
+    const local = [
+      {
+        label: 'On-device | multilingual-e5-small',
+        value: LOCAL_E5_SMALL_MODEL,
+      },
+    ]
+    const remote = getModelList((model) => !!model.type && model.type === 'embedding')
+    return [...local, ...remote]
   }, [getModelList])
 
   const rerankModelList = useMemo(() => {
@@ -169,6 +180,7 @@ const KnowledgeBasePage: React.FC = () => {
 
   const isProviderAvailable = useCallback(
     (modelString: string) => {
+      if (isLocalKnowledgeBaseModel(modelString)) return true
       const parsed = parseKnowledgeBaseModelString(modelString)
       if (!parsed) return false
       return providers.some((provider) => provider.id === parsed.providerId)
@@ -180,6 +192,9 @@ const KnowledgeBasePage: React.FC = () => {
     const parsed = parseKnowledgeBaseModelString(model)
     if (!parsed) return t('Unknown')
     const { providerId, modelId } = parsed
+    if (providerId === 'local') {
+      return `On-device | ${modelId}`
+    }
     const providerName = getProviderName(providerId)
     const modelName = getModelName(providerId, modelId) || modelId
     return `${providerName} | ${modelName}`
@@ -254,7 +269,7 @@ const KnowledgeBasePage: React.FC = () => {
 
       // Reset form
       setNewKbName('')
-      setNewEmbeddingModel(null)
+      setNewEmbeddingModel(LOCAL_E5_SMALL_MODEL)
       setNewRerankModel(null)
       setNewVisionModel(null)
       setNewDocumentParser({ type: 'local' })
@@ -345,6 +360,13 @@ const KnowledgeBasePage: React.FC = () => {
             onRerankModelChange={setNewRerankModel}
             onVisionModelChange={setNewVisionModel}
           />
+          {newEmbeddingModel && !isLocalKnowledgeBaseModel(newEmbeddingModel) && (
+            <Text size="xs" c="orange">
+              {t(
+                'This embedding model sends document text off this device. Prefer On-device | multilingual-e5-small to keep files local.'
+              )}
+            </Text>
+          )}
 
           <KnowledgeBaseFormActions
             onCancel={() => setShowCreate(false)}

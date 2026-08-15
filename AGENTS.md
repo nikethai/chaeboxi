@@ -105,11 +105,11 @@ Runtime platform detection in `platform/index.ts`: selects `DesktopPlatform` (Ta
 
 **Zod Validation**: Settings and session types use Zod schemas (`SettingsSchema`, `SessionSettingsSchema`, `ProviderSettingsSchema`) for runtime validation with `.catch()` fallbacks for backward compatibility during migrations.
 
-### Backend (`src-tauri/src/main.rs`)
+### Backend (`src-tauri/src/`)
 
-Single Rust file with Tauri command handlers. Key responsibilities:
-- **MCP Client**: Uses `rmcp` crate for stdio and HTTP transports to MCP servers. Manages connections, tool listing, and tool invocation via Tauri IPC commands.
-- **Knowledge Base**: SQLite-backed RAG with embeddings (via `@mastra/rag`)
+`lib.rs` is the Tauri IPC multiplexer. Feature modules live beside it (`desktop_shell.rs`, `kb/`, …):
+- **MCP Client**: `rmcp` crate for stdio and HTTP transports. Connect-per-operation tool list / invoke.
+- **Knowledge Base (desktop v1)**: `src-tauri/src/kb/` — SQLite `chaeboxi_kb.db`, overlapping chunks, local `multilingual-e5-small` (download-once ONNX, not bundled), hybrid keyword + cosine + RRF search. Mobile stays keyword/in-memory. **Not** Mastra / `@mastra/rag`.
 - **Process Management**: Child process spawning for MCP stdio servers
 - **IPC Bridge**: `window.desktopAPI` adapter created by `tauri_ipc_adapter.ts`
 
@@ -145,6 +145,7 @@ Controlled by environment variables defined in `vite.renderer.config.mts`:
 - Integration tests have 300s timeout; file/model-provider subtests have 120s timeout
 - Path aliases (`@/`, `@shared/`) work in tests via `vitest.config.mts`
 - Console output suppressed in tests (`silent: true`)
+- Desktop KB / RAG: `cargo test --lib kb::` in `src-tauri` (or `cargo test --manifest-path src-tauri/kb-tests/Cargo.toml` without GTK)
 
 ### Mobile
 

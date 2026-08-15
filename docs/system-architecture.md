@@ -186,20 +186,18 @@ Renderer packages/mcp
 - **Connect-per-op**: tool list / tool call open a connection for that operation rather than a long-lived multiplexed session per server (status flags track last success/error).
 - Legacy Electron `mcp:stdio-transport:*` channel names are rejected/unused under Tauri.
 
-## Knowledge base (desktop reality)
+## Knowledge base (desktop v1)
 
-**Rust KB is not SQLite.** Implementation in `lib.rs`:
+Implementation in `src-tauri/src/kb/` (dispatched from `lib.rs` via `kb:*`):
 
 | Piece | Reality |
 | --- | --- |
-| Metadata | In-memory `HashMap`s (`bases`, `files`, `file_chunks`) under `KnowledgeBaseState` |
-| Chunk persistence | JSON files under app data `kb_chunks/{kb_id}/{file_id}` |
-| Search (`kb:search`) | **Keyword / term scoring** over chunk text; top 20 results |
-| Embeddings / vector DB in Rust | **Not present** |
+| Metadata / files / chunks / embeddings | SQLite app data `chaeboxi_kb.db` (AUTOINCREMENT ids) |
+| Default embedder | `local:multilingual-e5-small` (ONNX, ~180MB, download once, not bundled) |
+| Search (`kb:search`) | Keyword + cosine hybrid, RRF fuse, top 20. Keyword-only if the model is not ready. |
+| Mobile | In-memory / keyword path; no model download |
 
-Higher-level product flow (upload → chunk → retrieve into chat context) is described in [rag.md](./rag.md). Hosted document-parser cloud is **off** (`CHATBOX_CLOUD_ENABLED = false`). Prefer local parsing.
-
-> **Doc gap vs older AGENTS.md claims:** any description of “SQLite-backed RAG with embeddings in Rust” or `@mastra/rag` as the Tauri KB backend is **outdated**. Trust this file + `lib.rs` for the desktop KB path.
+See [rag.md](./rag.md). Hosted document-parser cloud is **off** (`CHATBOX_CLOUD_ENABLED = false`). Prefer local parsing. `@mastra/rag` is **not** used.
 
 ## Security posture
 
@@ -219,7 +217,7 @@ Threat model is **single-user desktop / personal device**, not multi-tenant SaaS
 
 | Claim | Status |
 | --- | --- |
-| SQLite RAG in Rust | **False** — HashMaps + JSON chunks + keyword search |
+| SQLite RAG in Rust | **True (desktop v1)** — `src-tauri/src/kb/` + `chaeboxi_kb.db`; mobile still keyword/in-memory |
 | Hosted Chatbox cloud / paid features | **Disabled** in product flags; strip helpers remain for migration stability |
 | GitHub Actions CI | **Present** — quality gate (`ci.yml`) + desktop release (`release.yml`); see [deployment-guide.md](./deployment-guide.md) |
 | Full mobile parity with desktop MCP/stdio | **Not assumed** — desktop is richest shell |

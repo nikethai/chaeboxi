@@ -13,7 +13,6 @@ import {
 import type { MessageArtifact as MessageArtifactRecord } from '@shared/types/session'
 import {
   IconCode,
-  IconEye,
   IconFileTypeHtml,
   IconFileTypeSvg,
   IconFileTypeTxt,
@@ -239,64 +238,29 @@ export function ArtifactWithButtons(props: {
   }
 
   if (!preview) {
+    const versionMeta = artifact.version && artifact.version > 1 ? `v${artifact.version}` : null
     return (
-      <div className="artifact-card">
-        <UnstyledButton type="button" className="artifact-card-main" onClick={onPreview}>
-          <span className="artifact-card-icon" aria-hidden>
-            <ArtifactKindIcon kind={kind} />
-          </span>
-          <span className="artifact-card-copy min-w-0">
-            <Text size="sm" fw={600} className="artifact-card-title">
-              {title}
-            </Text>
-            <Text size="xs" className="artifact-card-sub">
-              {typeLabel}
-              {' · '}
-              {isSmallScreen ? t('Tap to preview') : t('Open in workspace')}
-            </Text>
-          </span>
-          <span className="artifact-card-chevron" aria-hidden>
-            <IconLayoutSidebarRightExpand size={18} stroke={1.5} />
-          </span>
-        </UnstyledButton>
-        <div className="artifact-card-actions">
-          <Tooltip label={t('Open in workspace')} openDelay={200}>
-            <ActionIcon
-              variant="subtle"
-              color="gray"
-              size={36}
-              radius="xl"
-              aria-label={t('Open in workspace')}
-              className="artifact-card-btn"
-              onClick={(e) => {
-                e.stopPropagation()
-                openWorkspace()
-              }}
-            >
-              <IconLayoutSidebarRightExpand size={16} stroke={1.5} />
-            </ActionIcon>
-          </Tooltip>
-          {isSmallScreen ? (
-            <Tooltip label={t('Inline preview')} openDelay={200}>
-              <ActionIcon
-                variant="subtle"
-                color="gray"
-                size={36}
-                radius="xl"
-                aria-label={t('Inline preview')}
-                className="artifact-card-btn"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setPreview(true)
-                  setReloadSign((n) => n + 1)
-                }}
-              >
-                <IconEye size={16} stroke={1.5} />
-              </ActionIcon>
-            </Tooltip>
-          ) : null}
-        </div>
-      </div>
+      <UnstyledButton
+        type="button"
+        className="artifact-card"
+        onClick={onPreview}
+        aria-label={`${title} · ${typeLabel}`}
+      >
+        <span className="artifact-card-icon" aria-hidden>
+          <ArtifactKindIcon kind={kind} />
+        </span>
+        <span className="artifact-card-copy min-w-0">
+          <Text size="sm" fw={600} className="artifact-card-title">
+            {title}
+          </Text>
+          <Text size="xs" className="artifact-card-sub">
+            {versionMeta ? `${typeLabel} · ${versionMeta}` : typeLabel}
+          </Text>
+        </span>
+        <span className="artifact-card-chevron" aria-hidden>
+          <IconLayoutSidebarRightExpand size={16} stroke={1.5} />
+        </span>
+      </UnstyledButton>
     )
   }
 

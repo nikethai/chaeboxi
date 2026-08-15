@@ -7690,41 +7690,31 @@ button.session-statusline-plan:focus-visible {
   opacity: 0.75;
 }
 
-/* Artifact card in chat — studio (no gradient AI slop) */
+/* Artifact card in chat — one clickable row, Claude-quiet */
 .artifact-card {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  margin: 0.35rem 0;
-  padding: 3px;
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--chatbox-background-tertiary) 55%, transparent);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 6%, transparent),
-    0 8px 24px -14px color-mix(in srgb, #000 22%, transparent);
-  -webkit-font-smoothing: antialiased;
-}
-
-.artifact-card-main {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.65rem 0.75rem 0.65rem 0.7rem;
+  gap: 0.7rem;
+  width: 100%;
+  max-width: 22rem;
+  margin: 0.45rem 0 0.1rem;
+  padding: 0.55rem 0.65rem 0.55rem 0.55rem;
   border-radius: 11px;
   background: var(--chatbox-background-secondary);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 7%, transparent);
   text-align: left;
-  transition-property: background-color, transform;
+  -webkit-font-smoothing: antialiased;
+  transition-property: background-color, box-shadow, transform;
   transition-duration: 150ms;
   transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 
-.artifact-card-main:hover {
+.artifact-card:hover {
   background: color-mix(in srgb, var(--chatbox-background-secondary) 88%, var(--chatbox-tint-brand) 6%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 16%, transparent);
 }
 
-.artifact-card-main:active {
+.artifact-card:active {
   transform: scale(0.99);
 }
 

@@ -43,6 +43,9 @@ jobs:
         run: pnpm exec astro build
 
       - uses: actions/configure-pages@v5
+        with:
+          # Creates the Pages site if Settings → Pages has never been enabled.
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v3
         with:

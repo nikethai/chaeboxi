@@ -1128,15 +1128,13 @@ export async function generate(
             enabled: isAgentExecuteTurn,
             workspaceRoot: session.workspaceRoot,
           },
-          // Browser / computer: desktop + master settings + session arm; Discuss/non-lead off (D10)
+          // Browser / computer: desktop + master settings + session arm; Discuss/non-do-deliver off (D10)
           browserAgent: (() => {
             const roomMode = options?.roomMode ?? session.roomMode
             const roomMultiLocal = Boolean(session.agentIds && session.agentIds.length > 1)
             const discussOff = roomMultiLocal && roomMode === 'discuss'
-            const leadOnlyOk =
-              !roomMultiLocal ||
-              (roomToolsAllowed && (options?.roomRole === 'lead' || roomRoleForTools === 'lead'))
-            const roomAllowed = !discussOff && leadOnlyOk && !roomBlocksExternalTools
+            const toolsRoleOk = !roomMultiLocal || roomToolsAllowed
+            const roomAllowed = !discussOff && toolsRoleOk && !roomBlocksExternalTools
             return {
               armed: Boolean(session.browserArmed) && roomAllowed,
               sessionId,
@@ -1149,10 +1147,8 @@ export async function generate(
             const roomMode = options?.roomMode ?? session.roomMode
             const roomMultiLocal = Boolean(session.agentIds && session.agentIds.length > 1)
             const discussOff = roomMultiLocal && roomMode === 'discuss'
-            const leadOnlyOk =
-              !roomMultiLocal ||
-              (roomToolsAllowed && (options?.roomRole === 'lead' || roomRoleForTools === 'lead'))
-            const roomAllowed = !discussOff && leadOnlyOk && !roomBlocksExternalTools
+            const toolsRoleOk = !roomMultiLocal || roomToolsAllowed
+            const roomAllowed = !discussOff && toolsRoleOk && !roomBlocksExternalTools
             return {
               armed: Boolean(session.computerArmed) && roomAllowed,
               sessionId,

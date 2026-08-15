@@ -19,6 +19,7 @@ Keep these in sync before tagging:
 | `package.json` | `version` |
 | `src-tauri/tauri.conf.json` | `version` |
 | `src-tauri/Cargo.toml` | `package.version` |
+| `ios/App/App.xcodeproj/project.pbxproj` | `MARKETING_VERSION` |
 
 ## CI workflows
 

@@ -292,6 +292,51 @@ mod tests {
     }
 
     #[test]
+    fn english_paraphrase_hits_with_fake_vectors() {
+        // No shared keywords after stopwords (a an the and or of to in on for is are).
+        let target = SearchCandidate {
+            file_id: 3,
+            filename: "en.txt".into(),
+            mime_type: "text/plain".into(),
+            chunk_index: 0,
+            text: "The kitten curled up on the sofa after dinner.".into(),
+            embedding: Some(vec![1.0, 0.0, 0.0, 0.0]),
+        };
+        let distractors: Vec<SearchCandidate> = (1..8)
+            .map(|i| SearchCandidate {
+                file_id: 4,
+                filename: "other.txt".into(),
+                mime_type: "text/plain".into(),
+                chunk_index: i,
+                text: format!("Quarterly revenue rose after the bank reported earnings {i}."),
+                embedding: Some(vec![0.0, 1.0, 0.0, 0.0]),
+            })
+            .collect();
+        let mut candidates = vec![target];
+        candidates.extend(distractors);
+
+        let query = "Where is the feline resting?";
+        let (ql, terms) = query_terms(query);
+        assert!(
+            !terms.iter().any(|t| ql.contains(t) && "The kitten curled up on the sofa after dinner."
+                .to_ascii_lowercase()
+                .contains(t.as_str())),
+            "query terms should not overlap the target after stopwords, got {terms:?}"
+        );
+        let query_vec = vec![0.96, 0.05, 0.0, 0.0];
+        let rows = hybrid_search(query, Some(&query_vec), &candidates);
+        assert!(!rows.is_empty(), "hybrid search should return vector hits");
+        let top5: Vec<i64> = rows.iter().take(5).map(|r| r["fileId"].as_i64().unwrap()).collect();
+        assert!(
+            top5.contains(&3),
+            "English paraphrase chunk should be in top 5, got {:?}",
+            rows.iter().take(5).collect::<Vec<_>>()
+        );
+        assert_eq!(rows[0]["fileId"], 3);
+        assert_eq!(rows[0]["chunkIndex"], 0);
+    }
+
+    #[test]
     fn cosine_identical_is_one() {
         let v = vec![0.2, 0.4, 0.4];
         let s = cosine_similarity(&v, &v);

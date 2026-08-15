@@ -82,6 +82,14 @@ impl KbRuntime {
         if let Ok(mut worker) = self.inner.worker.lock() {
             worker.status = describe_local_status(&models);
         }
+        {
+            let mut store = self.store()?;
+            let n = store.requeue_files_missing_embeddings()?;
+            if n > 0 {
+                eprintln!("[kb] re-queued {n} file(s) that were done without embeddings");
+            }
+        }
+        self.kick_worker(app, None);
         self.settle_keyword_only()?;
         Ok(())
     }
@@ -89,11 +97,11 @@ impl KbRuntime {
     /// When the ONNX runtime is not linked, chunks are still searchable by keyword.
     /// Mark those files done so the UI does not spin forever.
     fn settle_keyword_only(&self) -> CommandResult<()> {
-        #[cfg(feature = "local-embed")]
+        #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
         {
             return Ok(());
         }
-        #[cfg(not(feature = "local-embed"))]
+        #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
         {
             let mut store = self.store()?;
             for mut file in store.pending_files().unwrap_or_default() {
@@ -623,7 +631,7 @@ fn handle_inner(
                         record.total_chunks = chunks.len() as i64;
                         record.chunk_count = 0;
                         record.status = "pending".into();
-                        #[cfg(not(feature = "local-embed"))]
+                        #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
                         {
                             record.status = "done".into();
                             record.chunk_count = record.total_chunks;
@@ -632,9 +640,9 @@ fn handle_inner(
                         let inserted = store.insert_file(record)?;
                         store.replace_chunks(inserted.id, kb_id, &chunks)?;
                         drop(store);
-                        #[cfg(feature = "local-embed")]
+                        #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
                         runtime.kick_worker(app, snapshot_settings(settings_store));
-                        #[cfg(not(feature = "local-embed"))]
+                        #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
                         let _ = (app, settings_store);
                         return Ok(json!({ "id": inserted.id }));
                     }

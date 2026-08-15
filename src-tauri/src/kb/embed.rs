@@ -7,8 +7,8 @@
 //! `models/multilingual-e5-small/` and then work offline (airplane mode).
 //! They are not bundled in the installer.
 //!
-//! Inference uses fastembed/ONNX when the `local-embed` feature is enabled.
-//! Without that runtime, search falls back to keyword scoring — no error toast.
+//! Inference uses fastembed/ONNX on desktop (macOS / Linux / Windows).
+//! Mobile builds stay keyword-only — no ONNX, no model download.
 
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
@@ -18,12 +18,17 @@ pub const LOCAL_E5_SMALL: &str = "local:multilingual-e5-small";
 pub const E5_DIMS: usize = 384;
 pub const EMBED_BATCH_SIZE: usize = 8;
 
+#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
 const MODEL_ONNX_URL: &str =
     "https://huggingface.co/intfloat/multilingual-e5-small/resolve/main/onnx/model.onnx";
+#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
 const TOKENIZER_URL: &str =
     "https://huggingface.co/intfloat/multilingual-e5-small/resolve/main/tokenizer.json";
+#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
 const TOKENIZER_CONFIG_URL: &str =
     "https://huggingface.co/intfloat/multilingual-e5-small/resolve/main/tokenizer_config.json";
+
+const READY_MARKER: &str = ".ready";
 
 #[derive(Debug, Clone)]
 pub enum ModelKind {
@@ -120,7 +125,8 @@ pub fn local_model_dir(models_root: &Path) -> PathBuf {
 }
 
 pub fn model_files_present(dir: &Path) -> bool {
-    dir.join("model.onnx").is_file() && dir.join("tokenizer.json").is_file()
+    dir.join(READY_MARKER).is_file()
+        || (dir.join("model.onnx").is_file() && dir.join("tokenizer.json").is_file())
 }
 
 pub fn describe_local_status(models_root: &Path) -> EmbedStatus {
@@ -128,12 +134,12 @@ pub fn describe_local_status(models_root: &Path) -> EmbedStatus {
     let mut status = EmbedStatus::idle(LOCAL_E5_SMALL);
     status.model_path = Some(dir.display().to_string());
     if model_files_present(&dir) {
-        #[cfg(feature = "local-embed")]
+        #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
         {
             status.ready = true;
             status.reason = None;
         }
-        #[cfg(not(feature = "local-embed"))]
+        #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
         {
             status.ready = false;
             status.reason = Some(
@@ -151,17 +157,43 @@ pub fn describe_local_status(models_root: &Path) -> EmbedStatus {
     status
 }
 
-/// Download E5 ONNX + tokenizer into `models/multilingual-e5-small/`.
-/// Safe to call repeatedly; skips files that already exist.
+/// Ensure the on-device E5 model is available under `models/`.
+///
+/// Desktop: warm fastembed (`cache_dir` = `models_root`) once and write
+/// `multilingual-e5-small/.ready`. Safe to call repeatedly.
+/// Non-desktop: keep the raw Hugging Face file download so mobile still compiles.
 pub fn ensure_local_model(models_root: &Path) -> Result<PathBuf, String> {
     let dir = local_model_dir(models_root);
     std::fs::create_dir_all(&dir).map_err(|e| format!("create model dir: {e}"))?;
-    download_if_missing(&dir.join("model.onnx"), MODEL_ONNX_URL)?;
-    download_if_missing(&dir.join("tokenizer.json"), TOKENIZER_URL)?;
-    download_if_missing(&dir.join("tokenizer_config.json"), TOKENIZER_CONFIG_URL)?;
+
+    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    {
+        if !dir.join(READY_MARKER).is_file() {
+            warm_fastembed(models_root)?;
+            std::fs::write(dir.join(READY_MARKER), b"ready")
+                .map_err(|e| format!("write model ready marker: {e}"))?;
+        }
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    {
+        download_if_missing(&dir.join("model.onnx"), MODEL_ONNX_URL)?;
+        download_if_missing(&dir.join("tokenizer.json"), TOKENIZER_URL)?;
+        download_if_missing(&dir.join("tokenizer_config.json"), TOKENIZER_CONFIG_URL)?;
+    }
+
     Ok(dir)
 }
 
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+fn warm_fastembed(models_root: &Path) -> Result<(), String> {
+    use fastembed::TextEmbedding;
+    let _model = TextEmbedding::try_new(e5_init_options(models_root))
+        .map_err(|e| format!("download local e5: {e}"))?;
+    Ok(())
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
 fn download_if_missing(path: &Path, url: &str) -> Result<(), String> {
     if path.is_file() {
         return Ok(());
@@ -173,6 +205,7 @@ fn download_if_missing(path: &Path, url: &str) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
 fn download_bytes(url: &str) -> Result<Vec<u8>, String> {
     // Blocking reqwest keeps the embed worker simple (one batch at a time).
     let client = reqwest::blocking::Client::builder()
@@ -226,11 +259,11 @@ fn embed_local(texts: &[String], models_root: &Path) -> Result<Vec<Vec<f32>>, St
     if !model_files_present(&dir) {
         return Err("local model files are not downloaded yet".into());
     }
-    #[cfg(feature = "local-embed")]
+    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
     {
         return onnx_embed(&dir, texts);
     }
-    #[cfg(not(feature = "local-embed"))]
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
     {
         let _ = texts;
         Err(
@@ -240,18 +273,23 @@ fn embed_local(texts: &[String], models_root: &Path) -> Result<Vec<Vec<f32>>, St
     }
 }
 
-#[cfg(feature = "local-embed")]
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+fn e5_init_options(models_root: &Path) -> fastembed::InitOptions {
+    use fastembed::{EmbeddingModel, InitOptions};
+    InitOptions::new(EmbeddingModel::MultilingualE5Small)
+        .with_cache_dir(models_root.to_path_buf())
+        .with_show_download_progress(false)
+}
+
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 fn onnx_embed(model_dir: &Path, texts: &[String]) -> Result<Vec<Vec<f32>>, String> {
-    use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
-    let cache = model_dir
-        .parent()
-        .unwrap_or(model_dir)
-        .to_path_buf();
-    let mut model = TextEmbedding::try_new(
-        InitOptions::new(EmbeddingModel::MultilingualE5Small).with_cache_dir(cache),
-    )
-    .map_err(|e| format!("init local e5: {e}"))?;
-    // Prefixes are already applied by the caller; disable library prefixes if possible.
+    use fastembed::TextEmbedding;
+    // cache_dir is the parent of multilingual-e5-small (app data `models/`).
+    let cache = model_dir.parent().unwrap_or(model_dir);
+    let mut model = TextEmbedding::try_new(e5_init_options(cache))
+        .map_err(|e| format!("init local e5: {e}"))?;
+    // fastembed 4.x does not auto-prefix E5 inputs; caller already added
+    // `passage:` / `query:`. Do not prefix again.
     model
         .embed(texts.to_vec(), None)
         .map_err(|e| format!("local e5 embed: {e}"))

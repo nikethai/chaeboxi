@@ -687,6 +687,50 @@ impl Store {
         }
     }
 
+    /// Mark files that have chunks but no vectors as `pending` so the embed worker
+    /// can write embeddings without a re-upload.
+    pub fn requeue_files_missing_embeddings(&mut self) -> Result<usize, String> {
+        match &mut self.inner {
+            StoreInner::Memory(mem) => {
+                let mut updated = 0usize;
+                let ids: Vec<i64> = mem.files.keys().copied().collect();
+                for id in ids {
+                    let total = mem.files.get(&id).map(|f| f.total_chunks).unwrap_or(0);
+                    if total <= 0 {
+                        continue;
+                    }
+                    let missing = mem
+                        .chunks
+                        .get(&id)
+                        .map(|rows| rows.iter().any(|c| c.embedding.is_none()))
+                        .unwrap_or(false);
+                    if !missing {
+                        continue;
+                    }
+                    if let Some(file) = mem.files.get_mut(&id) {
+                        file.status = "pending".into();
+                        file.error = None;
+                        updated += 1;
+                    }
+                }
+                Ok(updated)
+            }
+            #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+            StoreInner::Sqlite { conn, .. } => {
+                let n = conn
+                    .execute(
+                        "UPDATE kb_files SET status = 'pending', error = NULL
+                         WHERE total_chunks > 0 AND id IN (
+                           SELECT DISTINCT file_id FROM kb_chunks WHERE embedding IS NULL
+                         )",
+                        [],
+                    )
+                    .map_err(|e| e.to_string())?;
+                Ok(n)
+            }
+        }
+    }
+
     pub fn count_embedded_chunks(&self, file_id: i64) -> Result<i64, String> {
         match &self.inner {
             StoreInner::Memory(mem) => Ok(mem
@@ -880,6 +924,101 @@ mod tests {
         assert_eq!(chunks[0].text, "xin chào thế giới");
         assert_eq!(chunks[0].embedding.as_deref(), Some(&[0.1, 0.2, 0.3][..]));
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn requeue_files_missing_embeddings_sets_pending() {
+        let dir = temp_dir();
+        let mut store = Store::open(&dir).unwrap();
+        let base = store
+            .create_base(
+                "Library".into(),
+                "local:multilingual-e5-small".into(),
+                "".into(),
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        let file = store
+            .insert_file(FileRecord {
+                id: 0,
+                kb_id: base.id,
+                filename: "note.md".into(),
+                filepath: "/tmp/note.md".into(),
+                mime_type: "text/markdown".into(),
+                file_size: 12,
+                chunk_count: 1,
+                total_chunks: 1,
+                status: "done".into(),
+                error: Some("keyword-only settle".into()),
+                created_at: now_ms(),
+                parsed_remotely: 0,
+                parser_type: "local".into(),
+            })
+            .unwrap();
+        store
+            .replace_chunks(file.id, base.id, &["the kitten curled up on the sofa".into()])
+            .unwrap();
+        let n = store.requeue_files_missing_embeddings().unwrap();
+        assert_eq!(n, 1, "file with NULL embeddings should be re-queued");
+        let file = store.get_file(file.id).unwrap().unwrap();
+        assert_eq!(file.status, "pending");
+        assert!(file.error.is_none());
+
+        // Already-embedded files stay done.
+        let chunks = store.list_chunks_for_kb(base.id).unwrap();
+        store
+            .set_chunk_embedding(chunks[0].id, &[0.1, 0.2])
+            .unwrap();
+        let mut file = store.get_file(file.id).unwrap().unwrap();
+        file.status = "done".into();
+        store.update_file(&file).unwrap();
+        let n = store.requeue_files_missing_embeddings().unwrap();
+        assert_eq!(n, 0);
+        let file = store.get_file(file.id).unwrap().unwrap();
+        assert_eq!(file.status, "done");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn requeue_files_missing_embeddings_memory() {
+        let mut store = Store::memory();
+        let base = store
+            .create_base(
+                "Mem".into(),
+                "local:multilingual-e5-small".into(),
+                "".into(),
+                None,
+                None,
+                None,
+            )
+            .unwrap();
+        let file = store
+            .insert_file(FileRecord {
+                id: 0,
+                kb_id: base.id,
+                filename: "note.md".into(),
+                filepath: "/tmp/note.md".into(),
+                mime_type: "text/markdown".into(),
+                file_size: 4,
+                chunk_count: 1,
+                total_chunks: 1,
+                status: "done".into(),
+                error: Some("stale".into()),
+                created_at: now_ms(),
+                parsed_remotely: 0,
+                parser_type: "local".into(),
+            })
+            .unwrap();
+        store
+            .replace_chunks(file.id, base.id, &["hello".into()])
+            .unwrap();
+        let n = store.requeue_files_missing_embeddings().unwrap();
+        assert_eq!(n, 1);
+        let file = store.get_file(file.id).unwrap().unwrap();
+        assert_eq!(file.status, "pending");
+        assert!(file.error.is_none());
     }
 
     #[test]

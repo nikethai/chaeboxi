@@ -13,7 +13,7 @@ On **macOS / Linux / Windows**, the Tauri backend (`src-tauri/src/kb/`) persists
 | Model file | Downloaded **once** (~180MB) into `models/multilingual-e5-small/`. **Not** bundled in the installer. After the first download, airplane mode works. |
 | Chunking | 1200 characters / 150 overlap. Prefix `passage:` on docs and `query:` on search. |
 | Search | Keep keyword `score_search_text`; add cosine over embedding BLOBs; fuse with RRF. If the model is not ready, **keyword only — no error toast**. |
-| Parse | `.txt` / `.md` / `.csv` / `.json` / `.log` only. PDF and Office → status `failed` with a real error (never `done` + 0 chunks). |
+| Parse | `.txt` / `.md` / `.csv` / `.json` / `.log` / `.pdf` (local text extract). Scanned/empty PDFs and Office fail honestly. |
 | Worker | `pending` / retry / resume actually embed, one batch at a time. Status via `kb:embed:status`. |
 | Mobile (iOS/Android) | Keyword / in-memory path only. No sqlite-vec, no model download, no KB UI changes. |
 

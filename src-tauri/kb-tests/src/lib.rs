@@ -43,7 +43,7 @@ mod session {
         assert!(!chunks.is_empty(), "markdown should produce chunks");
 
         let pdf_err = parse_file(pdf.to_str().unwrap(), "application/pdf").expect_err("pdf must fail");
-        assert!(pdf_err.message.contains("PDF"), "{}", pdf_err.message);
+        assert!(pdf_err.message.to_ascii_lowercase().contains("pdf") || pdf_err.message.to_ascii_lowercase().contains("extract"), "{}", pdf_err.message);
 
         let (kb_id, file_id) = {
             let mut store = Store::open(&dir).unwrap();

@@ -166,7 +166,7 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
 
   // v1 local parser: text / markdown / csv / json / log only. PDF and Office fail in Rust.
   const getSupportedFileTypes = useCallback(() => {
-    const documentTypes = ['.txt', '.md', '.markdown', '.csv', '.json', '.log']
+    const documentTypes = ['.txt', '.md', '.markdown', '.csv', '.json', '.log', '.pdf']
     const documentMimeTypes = [
       'text/plain',
       'text/markdown',
@@ -174,6 +174,7 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
       'application/json',
       'text/x-log',
       'text/json',
+      'application/pdf',
     ]
     return {
       accept: [...documentTypes, ...documentMimeTypes].join(','),
@@ -196,7 +197,17 @@ const KnowledgeBaseDocuments: React.FC<KnowledgeBaseDocumentsProps> = ({ knowled
         for (let i = 0; i < files.length; i++) {
           const file = files[i]
           const correctedFile = correctMimeType(file)
-          if (!correctedFile.path) {
+          const isPdf =
+            correctedFile.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+          if (isPdf) {
+            const buf = new Uint8Array(await file.arrayBuffer())
+            let binary = ''
+            const step = 0x8000
+            for (let i = 0; i < buf.length; i += step) {
+              binary += String.fromCharCode(...buf.subarray(i, i + step))
+            }
+            correctedFile.contentBase64 = btoa(binary)
+          } else if (!correctedFile.path) {
             correctedFile.content = await file.text()
           }
           correctedFiles.push(correctedFile)

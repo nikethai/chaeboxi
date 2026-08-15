@@ -16,6 +16,7 @@ use embed::{
 use parse::{chunk_document, parse_file, parse_text};
 use persist::{now_ms, FileRecord, Store};
 use search::{hybrid_search, SearchCandidate};
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -574,6 +575,12 @@ fn handle_inner(
                 .to_string();
             let file_size = file.get("size").and_then(Value::as_i64).unwrap_or(0);
             let inline = file.get("content").and_then(Value::as_str);
+            if let Some(b64) = file.get("contentBase64").and_then(Value::as_str) {
+                let bytes = STANDARD
+                    .decode(b64.trim())
+                    .map_err(|e| format!("invalid file bytes: {e}"))?;
+                filepath = save_inbox_bytes(runtime, &filename, &bytes)?;
+            }
 
             let parsed = if !filepath.trim().is_empty() {
                 parse_file(&filepath, &mime_type)
@@ -801,12 +808,16 @@ fn handle_inner(
 }
 
 fn save_inbox_copy(runtime: &KbRuntime, filename: &str, text: &str) -> Result<String, String> {
+    save_inbox_bytes(runtime, filename, text.as_bytes())
+}
+
+fn save_inbox_bytes(runtime: &KbRuntime, filename: &str, bytes: &[u8]) -> Result<String, String> {
     let root = runtime.models_dir();
     let inbox = root.parent().unwrap_or(&root).join("kb_inbox");
     std::fs::create_dir_all(&inbox).map_err(|e| format!("kb inbox: {e}"))?;
     let safe = filename.replace(['/', '\\'], "_");
     let path = inbox.join(format!("{}-{safe}", now_ms()));
-    std::fs::write(&path, text).map_err(|e| format!("write inbox: {e}"))?;
+    std::fs::write(&path, bytes).map_err(|e| format!("write inbox: {e}"))?;
     Ok(path.to_string_lossy().into_owned())
 }
 

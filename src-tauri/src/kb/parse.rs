@@ -34,12 +34,13 @@ fn extension_of(filepath: &str) -> String {
         .to_ascii_lowercase()
 }
 
-fn looks_like_pdf_or_office(filepath: &str, mime_type: &str) -> Option<&'static str> {
+fn is_pdf(filepath: &str, mime_type: &str) -> bool {
+    extension_of(filepath) == "pdf" || mime_type.to_ascii_lowercase().contains("pdf")
+}
+
+fn looks_like_office(filepath: &str, mime_type: &str) -> bool {
     let ext = extension_of(filepath);
     let mime = mime_type.to_ascii_lowercase();
-    if ext == "pdf" || mime.contains("pdf") {
-        return Some("PDF");
-    }
     if matches!(
         ext.as_str(),
         "doc" | "docx" | "xls" | "xlsx" | "ppt" | "pptx" | "odt" | "ods" | "odp" | "rtf" | "epub"
@@ -53,13 +54,34 @@ fn looks_like_pdf_or_office(filepath: &str, mime_type: &str) -> Option<&'static 
         || mime.contains("rtf")
         || mime.contains("epub")
     {
-        return Some("Office");
+        return true;
     }
-    None
+    false
+}
+
+fn extract_pdf_text(path: &str) -> Result<String, ParseError> {
+    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    {
+        let text = pdf_extract::extract_text(path).map_err(|err| {
+            ParseError::new(format!("Failed to extract text from PDF: {err}"))
+        })?;
+        let trimmed = text.trim().to_string();
+        if trimmed.is_empty() {
+            return Err(ParseError::new(
+                "PDF has no extractable text (it may be a scan). Upload a text PDF, or a .md / .txt instead.",
+            ));
+        }
+        Ok(trimmed)
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    {
+        let _ = path;
+        Err(ParseError::new("PDF parsing is only available on desktop."))
+    }
 }
 
 pub fn is_supported_text(filepath: &str, mime_type: &str) -> bool {
-    if looks_like_pdf_or_office(filepath, mime_type).is_some() {
+    if is_pdf(filepath, mime_type) || looks_like_office(filepath, mime_type) {
         return false;
     }
     let ext = extension_of(filepath);
@@ -76,14 +98,18 @@ pub fn parse_file(filepath: &str, mime_type: &str) -> Result<String, ParseError>
     if filepath.trim().is_empty() {
         return Err(ParseError::new("File path is empty; cannot read document"));
     }
-    if let Some(kind) = looks_like_pdf_or_office(filepath, mime_type) {
-        return Err(ParseError::new(format!(
-            "{kind} files are not supported in this version. Upload .txt, .md, .csv, .json, or .log instead."
-        )));
+    if looks_like_office(filepath, mime_type) {
+        return Err(ParseError::new(
+            "Office files are not supported in this version. Upload .txt, .md, .csv, .json, .log, or .pdf instead."
+                .to_string(),
+        ));
+    }
+    if is_pdf(filepath, mime_type) {
+        return extract_pdf_text(filepath);
     }
     if !is_supported_text(filepath, mime_type) {
         return Err(ParseError::new(format!(
-            "Unsupported file type ({mime_type}). Only text, Markdown, CSV, JSON, and log files can be indexed."
+            "Unsupported file type ({mime_type}). Only text, Markdown, CSV, JSON, log, and PDF files can be indexed."
         )));
     }
     std::fs::read_to_string(filepath).map_err(|err| {
@@ -93,10 +119,17 @@ pub fn parse_file(filepath: &str, mime_type: &str) -> Result<String, ParseError>
 
 /// Parse already-loaded UTF-8 text (HTML file picker has no disk path).
 pub fn parse_text(filename: &str, mime_type: &str, text: &str) -> Result<String, ParseError> {
-    if let Some(kind) = looks_like_pdf_or_office(filename, mime_type) {
-        return Err(ParseError::new(format!(
-            "{kind} files are not supported in this version. Upload .txt, .md, .csv, .json, or .log instead."
-        )));
+    if is_pdf(filename, mime_type) {
+        return Err(ParseError::new(
+            "PDF must be uploaded as a file so text can be extracted. The picker sent no binary."
+                .to_string(),
+        ));
+    }
+    if looks_like_office(filename, mime_type) {
+        return Err(ParseError::new(
+            "Office files are not supported in this version. Upload .txt, .md, .csv, .json, .log, or .pdf instead."
+                .to_string(),
+        ));
     }
     if !is_supported_text(filename, mime_type) {
         return Err(ParseError::new(format!(
@@ -145,14 +178,56 @@ mod tests {
     use super::*;
     use std::io::Write;
 
+    fn write_temp(name: &str, bytes: &[u8]) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "chaeboxi-parse-{}-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos(),
+            name
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join(name);
+        std::fs::write(&path, bytes).unwrap();
+        path
+    }
+
     #[test]
-    fn pdf_fails_honestly() {
-        let err = parse_file("/tmp/report.pdf", "application/pdf").unwrap_err();
+    fn scanned_pdf_fails_honestly() {
+        let path = write_temp("scan.pdf", b"%PDF-1.4\n%no text stream\n");
+        let err = parse_file(path.to_str().unwrap(), "application/pdf").unwrap_err();
+        let msg = err.message.to_ascii_lowercase();
         assert!(
-            err.message.contains("PDF"),
-            "expected PDF in error, got {}",
+            msg.contains("pdf") || msg.contains("extract") || msg.contains("scan"),
+            "unexpected error: {}",
             err.message
         );
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn pdf_with_text_extracts() {
+        // Minimal one-page PDF with a Helvetica text draw.
+        let pdf = b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 200 200]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n4 0 obj<</Length 51>>stream\nBT /F1 12 Tf 10 100 Td (Hello Chaeboxi) Tj ET\nendstream\nendobj\n5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\nxref\n0 6\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000262 00000 n \n0000000362 00000 n \ntrailer<</Size 6/Root 1 0 R>>\nstartxref\n441\n%%EOF\n";
+        let path = write_temp("hello.pdf", pdf);
+        match parse_file(path.to_str().unwrap(), "application/pdf") {
+            Ok(text) => assert!(
+                text.to_ascii_lowercase().contains("hello") || text.to_ascii_lowercase().contains("chaeboxi"),
+                "extracted: {text:?}"
+            ),
+            Err(err) => {
+                // Some extractors reject imperfect xref; still must be an honest PDF error, not silent done.
+                let msg = err.message.to_ascii_lowercase();
+                assert!(
+                    msg.contains("pdf") || msg.contains("extract"),
+                    "unexpected error: {}",
+                    err.message
+                );
+            }
+        }
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]

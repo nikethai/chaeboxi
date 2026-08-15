@@ -81,6 +81,39 @@ impl KbRuntime {
         if let Ok(mut worker) = self.inner.worker.lock() {
             worker.status = describe_local_status(&models);
         }
+        self.settle_keyword_only()?;
+        Ok(())
+    }
+
+    /// When the ONNX runtime is not linked, chunks are still searchable by keyword.
+    /// Mark those files done so the UI does not spin forever.
+    fn settle_keyword_only(&self) -> CommandResult<()> {
+        #[cfg(feature = "local-embed")]
+        {
+            return Ok(());
+        }
+        #[cfg(not(feature = "local-embed"))]
+        {
+            let mut store = self.store()?;
+            for mut file in store.pending_files().unwrap_or_default() {
+                if file.total_chunks <= 0 {
+                    continue;
+                }
+                file.status = "done".into();
+                file.error = None;
+                file.chunk_count = file.total_chunks;
+                store.update_file(&file)?;
+            }
+            Ok(())
+        }
+    }
+
+    fn mark_keyword_ready(&self, file: &mut FileRecord) -> CommandResult<()> {
+        file.status = "done".into();
+        file.error = None;
+        file.chunk_count = file.total_chunks;
+        let mut store = self.store()?;
+        store.update_file(file)?;
         Ok(())
     }
 
@@ -213,6 +246,9 @@ impl KbRuntime {
                 let mut status = describe_local_status(&models_dir);
                 status.reason = Some(err);
                 self.set_status(status, Some(app));
+                if file.total_chunks > 0 {
+                    self.mark_keyword_ready(file)?;
+                }
                 return Ok(WorkerProgress::Deferred);
             }
         }
@@ -262,9 +298,13 @@ impl KbRuntime {
                     status.active_file_id = Some(file.id);
                     status.active_filename = Some(file.filename.clone());
                     self.set_status(status, Some(app));
-                    file.status = "pending".into();
-                    let mut store = self.store()?;
-                    store.update_file(file)?;
+                    if file.total_chunks > 0 {
+                        self.mark_keyword_ready(file)?;
+                    } else {
+                        file.status = "pending".into();
+                        let mut store = self.store()?;
+                        store.update_file(file)?;
+                    }
                     return Ok(WorkerProgress::Deferred);
                 }
             };
@@ -576,11 +616,19 @@ fn handle_inner(
                         record.total_chunks = chunks.len() as i64;
                         record.chunk_count = 0;
                         record.status = "pending".into();
+                        #[cfg(not(feature = "local-embed"))]
+                        {
+                            record.status = "done".into();
+                            record.chunk_count = record.total_chunks;
+                        }
                         let mut store = runtime.store()?;
                         let inserted = store.insert_file(record)?;
                         store.replace_chunks(inserted.id, kb_id, &chunks)?;
                         drop(store);
+                        #[cfg(feature = "local-embed")]
                         runtime.kick_worker(app, snapshot_settings(settings_store));
+                        #[cfg(not(feature = "local-embed"))]
+                        let _ = (app, settings_store);
                         return Ok(json!({ "id": inserted.id }));
                     }
                 }

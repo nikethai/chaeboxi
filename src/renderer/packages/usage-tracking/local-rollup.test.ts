@@ -89,4 +89,11 @@ describe('local-rollup', () => {
     expect(periodStartDay('calendar-month', end)).toBe('2026-06-01')
     expect(isDayInPeriod(dayKey(end), '7d', end)).toBe(true)
   })
+
+  it('today window is only the end day', () => {
+    const end = new Date(2026, 7, 15)
+    expect(periodStartDay('today', end)).toBe('2026-08-15')
+    expect(isDayInPeriod('2026-08-15', 'today', end)).toBe(true)
+    expect(isDayInPeriod('2026-08-14', 'today', end)).toBe(false)
+  })
 })

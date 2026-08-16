@@ -589,7 +589,7 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
   usageBudget: z
     .object({
       enabled: z.boolean().default(false).catch(false),
-      period: z.enum(['7d', '30d', 'calendar-month']).default('30d').catch('30d'),
+      period: z.enum(['today', '7d', '30d', 'calendar-month']).default('calendar-month').catch('calendar-month'),
       tokenLimit: z.number().positive().optional().catch(undefined),
       costLimitUsd: z.number().positive().optional().catch(undefined),
       perProvider: z
@@ -606,6 +606,25 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
       criticalAtPercent: z.number().min(1).max(100).default(100).catch(100),
       pauseWhenExceeded: z.boolean().default(false).catch(false),
     })
+    .optional()
+    .catch(undefined),
+
+  /**
+   * User edits to the built-in local price table (USD per 1M tokens).
+   * providerId → modelId → { input, output, cachedInput }
+   */
+  usagePricingOverrides: z
+    .record(
+      z.string(),
+      z.record(
+        z.string(),
+        z.object({
+          input: z.number(),
+          output: z.number(),
+          cachedInput: z.number(),
+        })
+      )
+    )
     .optional()
     .catch(undefined),
 })

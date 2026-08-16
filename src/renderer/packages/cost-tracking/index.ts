@@ -1,27 +1,31 @@
 /**
  * Cost Tracking Module
  *
- * Aggregate and display prompt caching metrics (hit rate, tokens saved, cost savings per provider).
+ * Local spend estimates from a built-in editable price table.
+ * Missing models stay tokens-only — never a fake dollar amount.
  */
 
-// ============================================================================
-// Types
-// ============================================================================
-
 export type {
+  EstimatedCost,
   ModelPricing,
+  PricedCost,
+  PricingOverrides,
   ProviderCostMetrics,
   SessionCostMetrics,
+  UnpricedCost,
 } from './types'
 
-// ============================================================================
-// Calculator
-// ============================================================================
+export {
+  BUILTIN_PRICING,
+  SPEND_PRICE_PROVIDER_LABELS,
+  SPEND_PRICE_PROVIDERS,
+  calculateCost,
+  estimateUsageCost,
+  getModelPricing,
+  listPriceTableRows,
+  removePricingOverride,
+  upsertPricingOverride,
+} from './calculator'
+export type { PriceTableRow, SpendPriceProviderId } from './calculator'
 
-export { calculateCost, getModelPricing } from './calculator'
-
-// ============================================================================
-// Aggregator
-// ============================================================================
-
-export { aggregateSessionCosts, formatCost } from './aggregator'
+export { aggregateSessionCosts, formatCost, formatSpendOrTokens } from './aggregator'

@@ -558,11 +558,13 @@ export async function generate(
   // Track generation event
   trackGenerateEvent(sessionId, effectiveSettings, globalSettings, session.type, options)
 
-  // Soft budget hard-pause (user opt-in only)
+  // Optional hard-stop when the local monthly cap is already exceeded
   try {
     const budgetCfg = globalSettings.usageBudget
     if (budgetCfg?.enabled && budgetCfg.pauseWhenExceeded) {
-      const { providerUsageService, evaluateBudget } = await import('@/packages/usage-tracking')
+      const { providerUsageService, evaluateBudget, shouldHardStopSend } = await import(
+        '@/packages/usage-tracking'
+      )
       await providerUsageService.init()
       const period = budgetCfg.period
       const pid = String(effectiveSettings.provider ?? '')
@@ -572,17 +574,16 @@ export async function generate(
         providerLocal: pid ? providerUsageService.getLocalSnapshot(period, pid) : undefined,
         providerId: pid || undefined,
       })
-      if (evalResult.level === 'critical') {
+      if (shouldHardStopSend(budgetCfg, evalResult)) {
         clearSessionGenerationLive(sessionId, targetMsg.id)
         targetMsg = {
           ...targetMsg,
           generating: false,
           cancel: undefined,
-          error: `Generation paused: ${evalResult.message}. Disable “Pause generation when budget exceeded” in Settings → Usage, or raise your soft budget.`,
+          error: `Send blocked: ${evalResult.message}. Disable hard-stop in Settings → Usage, or raise your monthly cap.`,
           status: [],
         }
         await modifyMessage(sessionId, targetMsg, true)
-        // Drain any messages the user sent while this pause path ran
         await processSessionMessageQueue(sessionId, shouldProcessQueuedMessages)
         return
       }
@@ -1278,7 +1279,10 @@ export async function generate(
         try {
           const { providerUsageService } = await import('@/packages/usage-tracking')
           await providerUsageService.init()
-          await providerUsageService.recordFromMessage(targetMsg)
+          await providerUsageService.recordFromMessage(
+            targetMsg,
+            settingsStore.getState().usagePricingOverrides
+          )
           const pid = String(effectiveSettings.provider ?? targetMsg.aiProvider ?? '')
           if (pid) {
             await providerUsageService.clearExhausted(pid)

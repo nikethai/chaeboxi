@@ -26,6 +26,25 @@ export interface ModelPricing {
  */
 export type ProviderPricingMap = Record<string, ModelPricing>
 
+/** User / built-in overrides: providerId → modelId → pricing */
+export type PricingOverrides = Record<string, Record<string, ModelPricing>>
+
+export type PricedCost = {
+  costWithoutCache: number
+  actualCost: number
+  savings: number
+  knownPrice: true
+}
+
+export type UnpricedCost = {
+  costWithoutCache: 0
+  actualCost: 0
+  savings: 0
+  knownPrice: false
+}
+
+export type EstimatedCost = PricedCost | UnpricedCost
+
 // ============================================================================
 // Cost Metric Types
 // ============================================================================
@@ -46,14 +65,18 @@ export interface SessionCostMetrics {
   cacheHitRate: number
   /** Total tokens saved by caching */
   tokensSaved: number
-  /** Estimated total cost without caching */
+  /** Estimated total cost without caching (known prices only) */
   costWithoutCache: number
-  /** Estimated actual cost (with cache discount) */
+  /** Estimated actual cost (with cache discount, known prices only) */
   actualCost: number
   /** Total savings from caching */
   totalSavings: number
   /** Savings percentage (0-100) */
   savingsPercent: number
+  /** True when at least one message used a known price */
+  hasKnownPrice: boolean
+  /** True when some messages had tokens but no price row */
+  hasUnpricedTokens: boolean
   /** Per-provider breakdown */
   byProvider: Record<string, ProviderCostMetrics>
   /** Number of assistant messages with usage data */
@@ -80,4 +103,5 @@ export interface ProviderCostMetrics {
   actualCost: number
   /** Savings from caching */
   savings: number
+  hasKnownPrice: boolean
 }

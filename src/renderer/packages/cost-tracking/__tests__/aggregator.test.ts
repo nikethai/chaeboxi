@@ -142,3 +142,19 @@ describe('formatCost', () => {
     expect(formatCost(42.7)).toBe('$42.70')
   })
 })
+
+  it('missing model contributes tokens only, never a fake $', () => {
+    const messages = [
+      createAssistantMessage({
+        aiProvider: 'ollama',
+        model: 'llama3.2',
+        usage: { inputTokens: 5000, outputTokens: 1000, cachedInputTokens: 0 },
+      }),
+    ]
+    const result = aggregateSessionCosts(messages)
+    expect(result.messagesWithUsage).toBe(1)
+    expect(result.totalInputTokens).toBe(5000)
+    expect(result.actualCost).toBe(0)
+    expect(result.hasKnownPrice).toBe(false)
+    expect(result.hasUnpricedTokens).toBe(true)
+  })

@@ -26,6 +26,9 @@ export function parseDayKey(day: string): Date {
 
 /** Inclusive start day (YYYY-MM-DD) for a period ending at `end` (default today) */
 export function periodStartDay(period: UsagePeriod, end: Date = new Date()): string {
+  if (period === 'today') {
+    return dayKey(end)
+  }
   if (period === 'calendar-month') {
     return dayKey(new Date(end.getFullYear(), end.getMonth(), 1))
   }
@@ -124,4 +127,52 @@ export function aggregateRows(
 
 export function totalTokens(snapshot: LocalUsageSnapshot): number {
   return snapshot.inputTokens + snapshot.outputTokens
+}
+
+export type ProviderModelSpend = {
+  providerId: string
+  modelId: string
+  inputTokens: number
+  outputTokens: number
+  cachedInputTokens: number
+  reasoningTokens: number
+  estimatedCostUsd: number
+  messageCount: number
+}
+
+/** Day rollup → provider × model rows for a period (airplane-mode safe). */
+export function aggregateByProviderModel(
+  rows: DayRollupRow[],
+  opts: { period: UsagePeriod; end?: Date }
+): ProviderModelSpend[] {
+  const end = opts.end ?? new Date()
+  const map = new Map<string, ProviderModelSpend>()
+  for (const row of rows) {
+    if (!isDayInPeriod(row.day, opts.period, end)) continue
+    const key = `${row.providerId}\0${row.modelId}`
+    const existing = map.get(key)
+    if (existing) {
+      existing.inputTokens += row.inputTokens
+      existing.outputTokens += row.outputTokens
+      existing.cachedInputTokens += row.cachedInputTokens
+      existing.reasoningTokens += row.reasoningTokens
+      existing.estimatedCostUsd += row.estimatedCostUsd
+      existing.messageCount += row.messageCount
+    } else {
+      map.set(key, {
+        providerId: row.providerId,
+        modelId: row.modelId,
+        inputTokens: row.inputTokens,
+        outputTokens: row.outputTokens,
+        cachedInputTokens: row.cachedInputTokens,
+        reasoningTokens: row.reasoningTokens,
+        estimatedCostUsd: row.estimatedCostUsd,
+        messageCount: row.messageCount,
+      })
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => {
+    if (b.estimatedCostUsd !== a.estimatedCostUsd) return b.estimatedCostUsd - a.estimatedCostUsd
+    return b.inputTokens + b.outputTokens - (a.inputTokens + a.outputTokens)
+  })
 }

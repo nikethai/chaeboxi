@@ -62,6 +62,7 @@ export type ComposerToolsMenuProps = {
   onStartNewThread?: () => void
   onRollbackThread?: () => void
   onClickSessionSettings?: () => void
+  onShareRoomPack?: () => void
   onImageUploadClick: () => void
   onFileUploadClick: () => void
   onAttachLink: () => void
@@ -93,6 +94,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
   onStartNewThread,
   onRollbackThread,
   onClickSessionSettings,
+  onShareRoomPack,
   onImageUploadClick,
   onFileUploadClick,
   onAttachLink,
@@ -527,6 +529,17 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
           >
             {t('Chat settings')}
           </Menu.Item>
+          {onShareRoomPack && (
+            <Menu.Item
+              leftSection={<IconFile size={16} stroke={1.5} />}
+              onClick={() => {
+                onShareRoomPack()
+                setOpened(false)
+              }}
+            >
+              {t('Share room pack')}
+            </Menu.Item>
+          )}
 
               </Menu.Dropdown>
               </Menu>
@@ -694,6 +707,17 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
           >
             {t('Chat settings')}
           </Menu.Item>
+          {onShareRoomPack && (
+            <Menu.Item
+              leftSection={<IconFile size={16} stroke={1.5} />}
+              onClick={() => {
+                onShareRoomPack()
+                setOpened(false)
+              }}
+            >
+              {t('Share room pack')}
+            </Menu.Item>
+          )}
         </Menu.Dropdown>
       </Menu>
       <Modal

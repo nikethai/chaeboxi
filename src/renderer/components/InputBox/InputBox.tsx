@@ -29,6 +29,7 @@ import { forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo,
 import { useTranslation } from 'react-i18next'
 import { createModelDependencies } from '@/adapters'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
+import { exportRoomPack } from '@/stores/roomPack'
 import useInputBoxHistory from '@/hooks/useInputBoxHistory'
 import { useKnowledgeBase } from '@/hooks/useKnowledgeBase'
 import { useMessageInput } from '@/hooks/useMessageInput'
@@ -3027,6 +3028,19 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     onClickSessionSettings
                       ? () => {
                           void onClickSessionSettings()
+                        }
+                      : undefined
+                  }
+                  onShareRoomPack={
+                    currentSession?.agentIds && currentSession.agentIds.length > 0
+                      ? () => {
+                          void exportRoomPack(
+                            currentSession,
+                            myAgents,
+                            (currentSession.pinnedSkillIds || []).map((id) => ({ id, name: id }))
+                          ).catch((error) => {
+                            console.error('Share room pack failed:', error)
+                          })
                         }
                       : undefined
                   }

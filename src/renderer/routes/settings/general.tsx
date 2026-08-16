@@ -20,6 +20,7 @@ import platform, { platformCapabilities } from '@/platform'
 import storage, { StorageKey } from '@/storage'
 import { recoverSessionList } from '@/stores/chatStore'
 import { exportHistoryTransferFile, importHistoryTransferFile } from '@/stores/historyTransfer'
+import { importRoomPack } from '@/stores/roomPack'
 import { migrateOnData } from '@/stores/migration'
 import { useSettingsStore } from '@/stores/settingsStore'
 
@@ -456,6 +457,9 @@ const ImportExportDataSection = () => {
   const [historyTransferTips, setHistoryTransferTips] = useState('')
   const [historyTransferError, setHistoryTransferError] = useState(false)
   const [isHistoryTransferPending, setIsHistoryTransferPending] = useState(false)
+  const [roomPackTips, setRoomPackTips] = useState('')
+  const [roomPackError, setRoomPackError] = useState(false)
+  const [isRoomPackPending, setIsRoomPackPending] = useState(false)
   const [exportItems, setExportItems] = useState<ExportDataItem[]>([
     ExportDataItem.Setting,
     ExportDataItem.Conversations,
@@ -634,6 +638,48 @@ const ImportExportDataSection = () => {
     reader.readAsText(file)
   }
 
+
+  const onImportRoomPack = (file: File | null) => {
+    if (!file) return
+    setIsRoomPackPending(true)
+    setRoomPackTips('')
+    setRoomPackError(false)
+    const reader = new FileReader()
+    reader.onload = () => {
+      void (async () => {
+        try {
+          const skills = (await storage.getItem(StorageKey.Skills, [])) || []
+          const installed = (Array.isArray(skills) ? skills : []).map((s: { id: string; name: string }) => ({
+            id: s.id,
+            name: s.name,
+          }))
+          const result = await importRoomPack(String(reader.result || ''), installed)
+          const missing = result.missingSkills.length
+            ? t(' Missing skills: {{names}}', { names: result.missingSkills.map((s) => s.name).join(', ') })
+            : ''
+          setRoomPackTips(
+            t('Imported "{{name}}" with {{count}} agents.{{missing}}', {
+              name: result.preview.name,
+              count: result.preview.memberCount,
+              missing,
+            })
+          )
+        } catch (error) {
+          setRoomPackError(true)
+          setRoomPackTips(error instanceof Error ? error.message : t('Room pack import failed'))
+        } finally {
+          setIsRoomPackPending(false)
+        }
+      })()
+    }
+    reader.onerror = () => {
+      setRoomPackError(true)
+      setRoomPackTips(t('Room pack import failed'))
+      setIsRoomPackPending(false)
+    }
+    reader.readAsText(file)
+  }
+
   const [showStorageInfo, setShowStorageInfo] = useState(false)
   const [storagePersisted, setStoragePersisted] = useState<boolean>()
   const [storageEstimate, setStorageEstimate] = useState<StorageEstimate>()
@@ -677,6 +723,37 @@ const ImportExportDataSection = () => {
                 {(props) => (
                   <Button {...props} loading={isHistoryTransferPending}>
                     {t('Import and Merge Chat History')}
+                  </Button>
+                )}
+              </FileButton>
+            </div>
+          </div>
+        </SettingsCard>
+      </SettingsSection>
+
+
+      <SettingsSection
+        title={t('Room packs')}
+        description={t('Share a room as a file. Import creates a new room with new ids. Keys never go in the file.')}
+      >
+        <SettingsCard>
+          <div className="settings-card-fields">
+            {roomPackTips && (
+              <Alert
+                className="self-start"
+                variant="light"
+                color={roomPackError ? 'yellow' : 'green'}
+                title={roomPackError ? t('Room pack import failed') : t('Room pack imported')}
+                icon={<IconInfoCircle />}
+              >
+                <Text size="sm">{roomPackTips}</Text>
+              </Alert>
+            )}
+            <div className="settings-actions">
+              <FileButton accept=".json,.chaeboxi-room.json,application/json" onChange={onImportRoomPack}>
+                {(props) => (
+                  <Button {...props} loading={isRoomPackPending}>
+                    {t('Import room pack')}
                   </Button>
                 )}
               </FileButton>

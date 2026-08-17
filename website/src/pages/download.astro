@@ -2,6 +2,7 @@
 import BaseLayout from '../layouts/BaseLayout.astro'
 import IslandNav from '../components/IslandNav.astro'
 import SiteFooter from '../components/SiteFooter.astro'
+import FirstMinutes from '../components/FirstMinutes.astro'
 import { getLatestDownloads } from '../lib/latest-release'
 import { softwareApplicationNode } from '../lib/json-ld'
 
@@ -18,8 +19,12 @@ const { tag, rows } = await getLatestDownloads()
   <section class="section wrap">
     <h1>Download <span translate="no">Chaeboxi</span></h1>
     <p class="hero__sub">
-      Latest published tag: {tag}. Installers come from GitHub Releases. If a file is missing, the button opens the
-      latest release page.
+      The desktop app is the full shell. Latest published tag: {tag}. Installers come from GitHub Releases. If a file
+      is missing, the button opens the latest release page.
+    </p>
+    <p class="prose-lead">
+      You need a provider API key, or a local runtime such as Ollama or LM Studio. Chaeboxi does not sell model access
+      and does not create an account for you.
     </p>
 
     <div class="download-list">
@@ -40,7 +45,11 @@ const { tag, rows } = await getLatestDownloads()
         ))
       }
     </div>
+  </section>
 
+  <FirstMinutes />
+
+  <section class="section wrap">
     <div class="callout bezel">
       <div class="bezel__inner bento__pad">
         <p>

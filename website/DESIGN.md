@@ -18,9 +18,9 @@ Studio Editorial. Void `#121214`, Satoshi, JetBrains Mono, indigo `#5b63d4`. One
 
 ## AIDA
 
-Nav island → 2-line H1 + product frame → marquee → how-it-runs strip → gapless bento → compare table → FAQ → download band → footer.
+Nav island → 2-line H1 + product frame → marquee → how-it-runs strip → gapless bento → who-it's-for → desktop tools → compare table → first ten minutes → FAQ → download band → footer.
 
-No sticky desire chapter. Do not reuse the same screenshot twice.
+Inner page `/why/` is the long argument. No sticky desire chapter. Do not reuse the same screenshot twice. No fake testimonials.
 
 ## H1
 

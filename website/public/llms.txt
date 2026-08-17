@@ -6,7 +6,8 @@ Chaeboxi is an independent desktop-primary copilot (web and mobile exist). It is
 
 ## Pages
 
-- [Home](https://nikethai.github.io/chaeboxi/): Product overview, comparison, FAQ
+- [Home](https://nikethai.github.io/chaeboxi/): Product overview, desktop tools, comparison, FAQ
+- [Why](https://nikethai.github.io/chaeboxi/why/): Why the desktop app is the product — local-first, BYOK, not Chatbox
 - [Download](https://nikethai.github.io/chaeboxi/download/): macOS, Windows, and Linux installers from GitHub Releases
 - [Privacy](https://nikethai.github.io/chaeboxi/privacy/): On-device chats, BYOK keys, no marketing cookies
 - [Terms](https://nikethai.github.io/chaeboxi/terms/): GNU GPLv3, no warranty

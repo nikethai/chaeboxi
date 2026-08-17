@@ -1,0 +1,19 @@
+---
+import { FIRST_MINUTES } from '../lib/copy'
+---
+
+<section class="section wrap" aria-labelledby="first-minutes">
+  <h2 id="first-minutes">First ten minutes</h2>
+  <p class="section__lead">No account. No Chaeboxi plan. Install, add a key, start a thread.</p>
+  <div class="steps">
+    {
+      FIRST_MINUTES.map((step) => (
+        <article>
+          <p class="meta">{step.meta}</p>
+          <h3>{step.title}</h3>
+          <p>{step.body}</p>
+        </article>
+      ))
+    }
+  </div>
+</section>

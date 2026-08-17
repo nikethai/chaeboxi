@@ -1,0 +1,23 @@
+---
+import { DESKTOP_TOOLS } from '../lib/copy'
+---
+
+<section class="section wrap" id="desktop" aria-labelledby="inside-desktop">
+  <h2 id="inside-desktop">Open the desktop shell</h2>
+  <p class="section__lead">
+    This is the part hosted chats do not ship. Every card below is desktop. Web and mobile keep chat and settings.
+  </p>
+  <div class="card-grid">
+    {
+      DESKTOP_TOOLS.map((card) => (
+        <article class="panel card-grid__cell">
+          <div class="bento__pad">
+            <p class="meta">{card.meta}</p>
+            <h3>{card.title}</h3>
+            <p>{card.body}</p>
+          </div>
+        </article>
+      ))
+    }
+  </div>
+</section>

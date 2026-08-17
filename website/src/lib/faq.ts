@@ -29,4 +29,14 @@ export const FAQS: FaqItem[] = [
     answer:
       'Download macOS, Windows, or Linux installers from GitHub Releases via the Download page. Unsigned Apple Silicon builds may need xattr -cr /Applications/Chaeboxi.app after install.',
   },
+  {
+    question: 'What do I need after I download?',
+    answer:
+      'A provider API key, or a local runtime such as Ollama or LM Studio. Chaeboxi does not sell model access and does not create an account.',
+  },
+  {
+    question: 'Why download the desktop app instead of using the web build?',
+    answer:
+      'Desktop is the primary product. Agents, MCP stdio, the local E5 knowledge base, browser agent, and computer use ship there. Web and mobile share chat and settings only.',
+  },
 ]

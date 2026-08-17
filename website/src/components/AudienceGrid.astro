@@ -1,0 +1,30 @@
+---
+import { AUDIENCE, AUDIENCE_NOT } from '../lib/copy'
+---
+
+<section class="section wrap" aria-labelledby="who-for">
+  <h2 id="who-for">Built for people who already have a model</h2>
+  <p class="section__lead">
+    If you already pay a provider — or you run Ollama — this is the shell. Not another cloud seat.
+  </p>
+  <div class="card-grid">
+    {
+      AUDIENCE.map((card) => (
+        <article class="panel card-grid__cell">
+          <div class="bento__pad">
+            <p class="meta">{card.meta}</p>
+            <h3>{card.title}</h3>
+            <p>{card.body}</p>
+          </div>
+        </article>
+      ))
+    }
+  </div>
+  <article class="panel card-grid__not">
+    <div class="bento__pad">
+      <p class="meta">{AUDIENCE_NOT.meta}</p>
+      <h3>{AUDIENCE_NOT.title}</h3>
+      <p>{AUDIENCE_NOT.body}</p>
+    </div>
+  </article>
+</section>

@@ -11,6 +11,8 @@ pnpm build
 
 Live origin (project Pages): `https://nikethai.github.io/chaeboxi/`
 
+Public pages: home, `/why/`, `/download/`, `/privacy/`, `/terms/`.
+
 `base` is `/chaeboxi`. Stay on this origin. Do not add a second public hostname without redirects.
 
 Crawl files (project path, not `nikethai.github.io/` root):

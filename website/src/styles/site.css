@@ -122,6 +122,16 @@ a {
   text-decoration: none;
 }
 
+.island-nav__text {
+  color: var(--color-muted);
+  font-size: 0.9375rem;
+  padding: 0.35rem 0.75rem;
+}
+
+.island-nav__text:hover {
+  color: var(--color-fg);
+}
+
 .nav-toggle {
   display: none;
   width: 2.5rem;
@@ -253,6 +263,21 @@ a {
   max-width: 34rem;
   color: var(--color-muted);
   font-size: 1.125rem;
+}
+
+.hero__proof {
+  margin: -1rem 0 1.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-faint);
+}
+
+.prose-lead {
+  margin: 0 0 1.5rem;
+  max-width: 40rem;
+  color: var(--color-muted);
 }
 
 .hero__ctas {
@@ -513,6 +538,35 @@ a {
   color: var(--color-muted);
 }
 
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.card-grid__cell h3,
+.card-grid__not h3 {
+  margin: 0 0 0.45rem;
+  font-size: 1.15rem;
+  letter-spacing: -0.03em;
+}
+
+.card-grid__cell p:last-child,
+.card-grid__not p:last-child {
+  margin: 0;
+  color: var(--color-muted);
+}
+
+.card-grid__not {
+  margin-top: 0.85rem;
+}
+
+@media (max-width: 959px) {
+  .card-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .cta-band {
   text-align: center;
   padding-block: 0.25rem 0.5rem;
@@ -645,9 +699,24 @@ a {
     display: flex;
   }
 
-  .island-nav__links .btn {
+  .island-nav__links .btn,
+  .island-nav__links .island-nav__text {
     min-width: min(100%, 16rem);
     justify-content: center;
+    text-align: center;
+  }
+
+  .island-nav__text {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.6rem;
+    border: 1px solid var(--color-line);
+    border-radius: var(--button-radius);
+    color: var(--color-fg);
+  }
+
+  .card-grid {
+    grid-template-columns: 1fr;
   }
 
   .nav-toggle {

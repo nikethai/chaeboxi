@@ -1,0 +1,46 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro'
+import IslandNav from '../components/IslandNav.astro'
+import SiteFooter from '../components/SiteFooter.astro'
+import { WHY_SECTIONS } from '../lib/copy'
+import { softwareApplicationNode } from '../lib/json-ld'
+
+const base = import.meta.env.BASE_URL
+const download = `${base}download/`
+---
+
+<BaseLayout
+  title="Why download Chaeboxi"
+  description="Why Chaeboxi is a local-first desktop shell: your keys, your machine, no hosted LLM, not Chatbox AI."
+  extraJsonLd={[softwareApplicationNode()]}
+>
+  <IslandNav slot="nav" />
+
+  <article class="section wrap prose">
+    <h1>Why download Chaeboxi</h1>
+    <p>
+      The desktop app is the product. This page is the short argument — not a feature dump, not a testimonial wall.
+    </p>
+    {
+      WHY_SECTIONS.map((section) => (
+        <>
+          <h2>{section.title}</h2>
+          {section.paragraphs.map((paragraph) => (
+            <p>{paragraph}</p>
+          ))}
+        </>
+      ))
+    }
+  </article>
+
+  <section class="section wrap cta-band">
+    <h2>Install the desktop app</h2>
+    <p>macOS, Windows, and Linux from GitHub Releases. No account.</p>
+    <a class="btn btn--primary" href={download}>
+      Download Desktop
+      <span class="btn__icon" aria-hidden="true">↗</span>
+    </a>
+  </section>
+
+  <SiteFooter slot="footer" />
+</BaseLayout>

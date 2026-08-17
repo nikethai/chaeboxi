@@ -4,9 +4,13 @@ import IslandNav from '../components/IslandNav.astro'
 import SiteFooter from '../components/SiteFooter.astro'
 import ProviderMarquee from '../components/ProviderMarquee.astro'
 import CapabilityStrip from '../components/CapabilityStrip.astro'
+import AudienceGrid from '../components/AudienceGrid.astro'
+import DesktopTools from '../components/DesktopTools.astro'
+import FirstMinutes from '../components/FirstMinutes.astro'
 import CompareTable from '../components/CompareTable.astro'
 import FaqList from '../components/FaqList.astro'
 import { faqPageNode, softwareApplicationNode } from '../lib/json-ld'
+import { HERO_PROOF, HERO_SUB } from '../lib/copy'
 import { DEFAULT_DESCRIPTION } from '../lib/site'
 
 const base = import.meta.env.BASE_URL
@@ -23,13 +27,14 @@ const thread = `${base}screenshot-thread.png`
     <div class="hero__grid">
       <div class="hero__copy">
         <h1>Local-first AI copilot.</h1>
-        <p class="hero__sub">Bring your own keys. Chats stay on your device. Independent GPLv3 — not a Chatbox commercial client.</p>
+        <p class="hero__sub">{HERO_SUB}</p>
+        <p class="hero__proof">{HERO_PROOF}</p>
         <div class="hero__ctas">
           <a class="btn btn--primary" href={download}>
             Download Desktop
             <span class="btn__icon" aria-hidden="true">↗</span>
           </a>
-          <a class="btn btn--ghost" href="https://github.com/nikethai/chaeboxi" rel="noopener">View Source</a>
+          <a class="btn btn--ghost" href={`${base}why/`}>Why download</a>
         </div>
       </div>
       <div class="hero__visual reveal">
@@ -55,8 +60,8 @@ const thread = `${base}screenshot-thread.png`
       <article class="bento__cell bento__cell--wide panel">
         <div class="bento__pad">
           <p class="meta">On device</p>
-          <h3>Local-first</h3>
-          <p>Conversations and settings stay on the machine you choose. No hosted Chaeboxi chat backend.</p>
+          <h3>The thread never leaves this machine</h3>
+          <p>Conversations and settings stay on the device you choose. There is no hosted Chaeboxi chat backend to log into.</p>
         </div>
         <img
           src={thread}
@@ -69,7 +74,7 @@ const thread = `${base}screenshot-thread.png`
       <article class="bento__cell bento__cell--side panel">
         <div class="bento__pad">
           <p class="meta">BYOK</p>
-          <h3>Your keys</h3>
+          <h3>Keys you already pay for</h3>
           <p>OpenAI, Anthropic, Gemini, Ollama, OpenRouter, and more. No bundled paid AI plan.</p>
         </div>
       </article>
@@ -93,12 +98,15 @@ const thread = `${base}screenshot-thread.png`
     </div>
   </section>
 
+  <AudienceGrid />
+  <DesktopTools />
   <CompareTable />
+  <FirstMinutes />
   <FaqList />
 
   <section class="section wrap cta-band">
-    <h2>Install the desktop app</h2>
-    <p>macOS, Windows, and Linux from GitHub Releases.</p>
+    <h2>The desktop app is the product</h2>
+    <p>macOS, Windows, and Linux from GitHub Releases. No Chaeboxi account.</p>
     <a class="btn btn--primary" href={download}>
       Download Desktop
       <span class="btn__icon" aria-hidden="true">↗</span>

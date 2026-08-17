@@ -1,0 +1,17 @@
+---
+import { FAQS } from '../lib/faq'
+---
+
+<section class="section wrap" id="faq" aria-labelledby="faq-title">
+  <h2 id="faq-title">Questions</h2>
+  <dl class="faq">
+    {
+      FAQS.map((item) => (
+        <>
+          <dt>{item.question}</dt>
+          <dd>{item.answer}</dd>
+        </>
+      ))
+    }
+  </dl>
+</section>

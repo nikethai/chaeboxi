@@ -1,16 +1,20 @@
 ---
 import '../styles/site.css'
+import { jsonLdGraph } from '../lib/json-ld'
+import { assetUrl, DEFAULT_DESCRIPTION, pageUrl, SITE_NAME } from '../lib/site'
 
 interface Props {
   title: string
   description?: string
+  extraJsonLd?: Record<string, unknown>[]
 }
 
-const { title, description = 'Local-first AI copilot. Bring your own keys. Chats stay on your device. GPLv3.' } =
-  Astro.props
+const { title, description = DEFAULT_DESCRIPTION, extraJsonLd = [] } = Astro.props
 const base = import.meta.env.BASE_URL
-const canonical = new URL(Astro.url.pathname, Astro.site)
-const ogImage = new URL(`${base}og.png`.replace(/\/{2,}/g, '/'), Astro.site)
+const canonical = pageUrl(Astro.url.pathname)
+const ogImage = assetUrl(base, 'screenshot-shell.png')
+const llms = assetUrl(base, 'llms.txt')
+const structured = jsonLdGraph(extraJsonLd)
 ---
 
 <!doctype html>
@@ -19,8 +23,10 @@ const ogImage = new URL(`${base}og.png`.replace(/\/{2,}/g, '/'), Astro.site)
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#121214" />
+    <meta name="robots" content="index,follow" />
     <meta name="description" content={description} />
-    <link rel="canonical" href={canonical.href} />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" type="text/plain" href={llms} title="llms.txt" />
     <title>{title}</title>
     <link rel="icon" type="image/png" href={`${base}favicon.png`} />
     <link rel="preconnect" href="https://api.fontshare.com" />
@@ -36,11 +42,20 @@ const ogImage = new URL(`${base}og.png`.replace(/\/{2,}/g, '/'), Astro.site)
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:url" content={canonical} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
-    <meta property="og:image" content={ogImage.href} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:alt" content="Chaeboxi desktop studio on a dark rail with a pinned composer" />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+    <meta name="twitter:image:alt" content="Chaeboxi desktop studio on a dark rail with a pinned composer" />
+    <script type="application/ld+json" is:inline set:html={JSON.stringify(structured)} />
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>

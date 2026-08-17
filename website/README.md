@@ -11,7 +11,15 @@ pnpm build
 
 Live origin (project Pages): `https://nikethai.github.io/chaeboxi/`
 
-`base` is `/chaeboxi`. Custom domain later: set `site` to the domain and `base` to `/`.
+`base` is `/chaeboxi`. Stay on this origin. Do not add a second public hostname without redirects.
+
+Crawl files (project path, not `nikethai.github.io/` root):
+
+- `https://nikethai.github.io/chaeboxi/robots.txt`
+- `https://nikethai.github.io/chaeboxi/sitemap.xml`
+- `https://nikethai.github.io/chaeboxi/llms.txt`
+
+Submit the sitemap in Search Console as a **URL-prefix** property for `/chaeboxi/`. Google still reads `robots.txt` from the github.io origin root; the project files remain the source of truth for this site.
 
 Workflow: `.github/workflows/pages.yml` (path-filtered). Repo setting: Pages source = GitHub Actions.
 

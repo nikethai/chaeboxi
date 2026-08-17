@@ -6,7 +6,7 @@
     "dev": "astro dev",
     "build": "pnpm exec astro build",
     "preview": "astro preview",
-    "test": "node --experimental-strip-types --test src/lib/latest-release.test.ts"
+    "test": "node --experimental-strip-types --test src/lib/*.test.ts"
   },
   "devDependencies": {
     "astro": "^5.13.0"

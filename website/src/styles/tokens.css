@@ -17,8 +17,18 @@
   --radius-2: 11px;
   --radius-3: 16px;
   --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+  --ease-in: cubic-bezier(0.32, 0, 0.67, 0);
+  --dur-short: 180ms;
+  --dur-mid: 500ms;
   --space-section: clamp(2.75rem, 5vw, 4.5rem);
   --measure: min(100%, 72rem);
+  --measure-stage: min(100%, 80rem);
+  --shadow-border: 0 0 0 1px rgba(255, 255, 255, 0.08);
+  --shadow-border-hover: 0 0 0 1px rgba(255, 255, 255, 0.14);
+  --shadow-stage:
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 24px 48px rgba(0, 0, 0, 0.28),
+    0 48px 96px rgba(0, 0, 0, 0.22);
 }
 
 /* === SEMANTIC === */

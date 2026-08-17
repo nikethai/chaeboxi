@@ -3,13 +3,15 @@ import BaseLayout from '../layouts/BaseLayout.astro'
 import IslandNav from '../components/IslandNav.astro'
 import SiteFooter from '../components/SiteFooter.astro'
 import { getLatestDownloads } from '../lib/latest-release'
+import { softwareApplicationNode } from '../lib/json-ld'
 
 const { tag, rows } = await getLatestDownloads()
 ---
 
 <BaseLayout
   title="Download Chaeboxi"
-  description="Download Chaeboxi for macOS, Windows, and Linux from GitHub Releases."
+  description="Download Chaeboxi for macOS, Windows, and Linux from GitHub Releases. Local-first GPLv3 copilot. Bring your own keys."
+  extraJsonLd={[softwareApplicationNode()]}
 >
   <IslandNav slot="nav" />
 

@@ -139,6 +139,8 @@ The brochure lives in `website/` (Astro static). Workflow: `.github/workflows/pa
 
 Origin: `https://nikethai.github.io/chaeboxi/`. Do **not** publish `pnpm build:web` there.
 
+Crawl surfaces live under that prefix: `robots.txt`, `sitemap.xml`, `llms.txt`. Submit the sitemap as a Search Console URL-prefix property. Stay on this origin unless a later change adds redirects.
+
 Repo setting required once: Settings → Pages → Source = GitHub Actions.
 
 `PRODUCT.homepage` / privacy / terms / OpenRouter referer point at this origin. Enable Pages (Source = GitHub Actions) or those links 404 until the first deploy.

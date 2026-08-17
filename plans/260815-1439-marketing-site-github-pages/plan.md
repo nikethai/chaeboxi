@@ -27,7 +27,7 @@ This completes the independence-plan homepage TODO. It does **not** wait for a c
 
 **Hard no:** `pnpm build:web` on Pages. That is the chat app.
 
-**Status (2026-08-15):** Phases 1–4 implementation complete. `website/` (4 pages) + `pages.yml` + legal + deploy-guide shipped. `PRODUCT.*` not flipped (gated on live 200s). Phase 5 in progress: local build/tests/dist grep done; live Pages + URL flip remain.
+**Status (2026-08-17):** Phases 1–4 complete. `PRODUCT.*` already points at Pages. Density + SEO/GEO pass exists in the **local** `website/` tree (tighter section gap, Desire gone, How-it-runs + compare + FAQ, crawl files, JSON-LD, OG tags). GitHub `main` + live Pages still serve the **pre-pass** site. Phase 5 still open: deploy this pass, then Lighthouse/a11y on live.
 
 ## Scope Challenge
 
@@ -51,6 +51,10 @@ This completes the independence-plan homepage TODO. It does **not** wait for a c
 | 8 | Visual | Studio Editorial — Chaeboxi tokens + AIDA. See phase 01 |
 | 9 | URL flip | Only after all four live routes 200 |
 | 10 | Copy language | English. Honest desktop-only labels. No fake testimonials |
+| 11 | Domain | Stay on `nikethai.github.io/chaeboxi/`. No custom domain this pass |
+| 12 | Density | `--space-section` = `clamp(2.75rem, 5vw, 4.5rem)` as **main gap**, not stacked pad |
+| 13 | Desire | Deleted. Each screenshot used once. Hero = product frame, no H1 chip |
+| 14 | SEO/GEO | `robots.txt` + `sitemap.xml` + `llms.txt` under `/chaeboxi/`. JSON-LD + OG |
 
 ## Design sources (how they bind)
 
@@ -65,15 +69,17 @@ This completes the independence-plan homepage TODO. It does **not** wait for a c
 
 RNG seed = prompt length `164`. Picks + product overrides are in [phase 01](./phase-01-design-contract-and-tokens.md).
 
+`website/DESIGN.md` (2026-08-17) supersedes phase 03 Desire / H1-chip / section-padding notes.
+
 ## Phases
 
 | Phase | Name | Status |
 |-------|------|--------|
 | 1 | [Design contract and tokens](./phase-01-design-contract-and-tokens.md) | Completed |
 | 2 | [Website scaffold and Pages CI](./phase-02-website-scaffold-and-pages-ci.md) | Completed |
-| 3 | [Landing and download](./phase-03-landing-and-download.md) | Completed |
-| 4 | [Legal pages and product URLs](./phase-04-legal-pages-and-product-urls.md) | Completed — PRODUCT flip follow-up after live 200s |
-| 5 | [Verify and ship checklist](./phase-05-verify-and-ship-checklist.md) | In Progress — local verify done, live Pages not done |
+| 3 | [Landing and download](./phase-03-landing-and-download.md) | Completed — Desire later deleted in density pass; phase file stale |
+| 4 | [Legal pages and product URLs](./phase-04-legal-pages-and-product-urls.md) | Completed — PRODUCT flipped |
+| 5 | [Verify and ship checklist](./phase-05-verify-and-ship-checklist.md) | In Progress — live Pages is old HTML; density/SEO not deployed |
 
 ## Review (2026-08-15)
 
@@ -90,12 +96,30 @@ Must-fix before ship (review-time):
 
 **Post-review (2026-08-15):** those three look landed (toggle `z-index` above overlay; IO script inside `BaseLayout`; scale scoped to `.reveal` / `.hero__visual`). Residual review items (heading skip, marquee SR track, nav safe-area) are phase-05 polish, not reopen of 01–03.
 
+## Review (2026-08-17 density + SEO/GEO)
+
+**Score:** 7.5/10. **Verdict:** Request changes. **Status:** DONE_WITH_CONCERNS
+
+Report: [reports/2026-08-17-code-review-marketing-site-density-seo.md](./reports/2026-08-17-code-review-marketing-site-density-seo.md)
+
+Local pass matches locked decisions 11–14. FAQ JSON-LD == visible `FAQS`. Origin/base/canonicals correct in `website/dist`. Compare does not invent Chatbox MCP/computer-use/keychain.
+
+Must-fix before calling SEO shipped:
+1. `og.png` is a byte-identical `favicon.png` (bad `summary_large_image`)
+2. Deploy: live `main` still has Desire + H1 chip; crawl files 404
+3. Copy: CapabilityStrip “already pay for”; compare “Not this project” / ChatGPT computer-use hedge
+
+Do not invent SoftwareApplication ratings.
+
 ## Next steps
 
-1. Repo Settings → Pages → Source = GitHub Actions; dispatch `pages.yml`
-2. Curl `/` `/download/` `/privacy/` `/terms/` → 200 with `/chaeboxi/` assets
-3. Finish phase 05 checklist (a11y/motion/Lighthouse on live or `astro preview`)
-4. Separate PR after live 200s: `PRODUCT.*` + `package.json` homepage + README placeholders
+1. Replace `og.png` with a 1200×630 product card; add image alt/width/height
+2. Soften compare/strip copy so competitor cells cannot be read as feature claims
+3. Merge + dispatch `pages.yml`; curl `/` `/download/` `/privacy/` `/terms/` `/robots.txt` `/sitemap.xml` `/llms.txt`
+4. Finish phase 05 (Lighthouse / 390-768-1280 / keyboard / focus trap)
+5. Optional: `applicationCategory` + Organization `sameAs` + app `image`. No fake stars
+
+`PRODUCT.*` flip already done — do not revert.
 
 ## Cross-plan
 
@@ -111,6 +135,8 @@ Must-fix before ship (review-time):
 - CSS/images work under `/chaeboxi/`
 - App CI and desktop release pipelines unchanged
 - Site does not look like generic AI SaaS
+- Live crawl files exist under `/chaeboxi/`; Search Console is a URL-prefix property
+- Home has no Desire chapter and does not reuse screenshots
 
 ## Out of scope
 
@@ -230,3 +256,12 @@ None.
 **Local verify:** QA report `reports/2026-08-15-qa-marketing-site-tests.md` — 3/3 unit tests, `astro build` 4 pages, `/chaeboxi/` asset prefix
 **Phase status:** 01–04 completed; 05 in-progress
 **ck plan check:** CLI not available in this session; statuses hand-updated to the CLI contract (`completed` / `in-progress`)
+
+### Session 4 — 2026-08-17 density + SEO/GEO review
+**Trigger:** read-only review of density/SEO pass (`website/` + deploy-guide note + DESIGN/README)
+**Result:** 7.5/10, Request changes, DONE_WITH_CONCERNS
+**Report:** `reports/2026-08-17-code-review-marketing-site-density-seo.md`
+**Local:** Desire gone; unique screenshots; product-frame hero; How-it-runs + compare + FAQ; crawl files; JSON-LD; canonicals correct
+**Live / `main`:** still pre-pass HTML; `/chaeboxi/robots.txt|sitemap.xml|llms.txt` 404
+**PRODUCT:** already flipped to Pages — keep
+**Next:** OG card, compare/strip copy, deploy, then close phase 05

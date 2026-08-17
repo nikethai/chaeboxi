@@ -1,0 +1,33 @@
+---
+import { COMPARE_COLUMNS, COMPARE_ROWS } from '../lib/compare'
+---
+
+<section class="section wrap" aria-labelledby="not-that">
+  <h2 id="not-that">Not Chatbox. Not a cloud seat.</h2>
+  <p class="section__lead">
+    Same honest split as the repo NOTICE: independent GPLv3 product, not a commercial Chatbox client, not a hosted LLM.
+  </p>
+  <div class="table-wrap">
+    <table class="compare">
+      <caption class="sr-only">Chaeboxi compared with Chatbox AI and hosted ChatGPT</caption>
+      <thead>
+        <tr>
+          <th scope="col"><span class="sr-only">Topic</span></th>
+          {COMPARE_COLUMNS.map((col) => (
+            <th scope="col">{col}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {COMPARE_ROWS.map((row) => (
+          <tr>
+            <th scope="row">{row.label}</th>
+            {row.values.map((cell) => (
+              <td>{cell}</td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</section>

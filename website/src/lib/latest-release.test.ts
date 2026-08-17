@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { FALLBACK_RELEASE_URL, mapReleaseAssets, matchAsset } from './latest-release'
+import { FALLBACK_RELEASE_URL, mapReleaseAssets, matchAsset } from './latest-release.ts'
 
 const v170 = [
   { name: 'Chaeboxi_1.7.0_aarch64.dmg', browser_download_url: 'https://example.com/arm.dmg' },

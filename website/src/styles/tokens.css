@@ -17,7 +17,7 @@
   --radius-2: 11px;
   --radius-3: 16px;
   --ease-out: cubic-bezier(0.32, 0.72, 0, 1);
-  --space-section: clamp(6rem, 12vw, 12rem);
+  --space-section: clamp(2.75rem, 5vw, 4.5rem);
   --measure: min(100%, 72rem);
 }
 

@@ -1,0 +1,25 @@
+# Chaeboxi
+
+> Local-first, GPLv3 AI copilot. Bring your own keys. Chats stay on your device.
+
+Chaeboxi is an independent desktop-primary copilot (web and mobile exist). It is not Chatbox AI, not a hosted LLM, and not a license marketplace.
+
+## Pages
+
+- [Home](https://nikethai.github.io/chaeboxi/): Product overview, comparison, FAQ
+- [Download](https://nikethai.github.io/chaeboxi/download/): macOS, Windows, and Linux installers from GitHub Releases
+- [Privacy](https://nikethai.github.io/chaeboxi/privacy/): On-device chats, BYOK keys, no marketing cookies
+- [Terms](https://nikethai.github.io/chaeboxi/terms/): GNU GPLv3, no warranty
+- [Source](https://github.com/nikethai/chaeboxi)
+- [Releases](https://github.com/nikethai/chaeboxi/releases)
+- [NOTICE](https://github.com/nikethai/chaeboxi/blob/main/NOTICE)
+
+## Facts
+
+- License: GNU GPLv3
+- Model: BYOK — OpenAI, Anthropic, Gemini, Ollama, OpenRouter, Azure, xAI, Groq, Mistral, DeepSeek, Qwen, MiniMax, Moonshot, LM Studio, Perplexity, SiliconFlow
+- Storage: chats and settings stay on the device or platform storage you choose
+- No first-party hosted Chaeboxi chat backend
+- Desktop-only: MCP stdio, OS keychain, computer use, browser agent, local E5 knowledge base
+- Web and mobile share chat and settings; they do not get those native desktop tools
+- Installers: GitHub Releases for macOS (Apple Silicon and Intel), Windows NSIS, Linux AppImage and .deb

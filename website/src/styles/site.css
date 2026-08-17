@@ -97,8 +97,13 @@ a {
   padding: 0.45rem 0.45rem 0.45rem 1.1rem;
   border-radius: 999px;
   background: color-mix(in srgb, var(--ink-void) 80%, transparent);
-  backdrop-filter: blur(var(--nav-blur));
   border: 1px solid color-mix(in srgb, white 8%, transparent);
+}
+
+@media (min-width: 768px) {
+  .island-nav__bar {
+    backdrop-filter: blur(var(--nav-blur));
+  }
 }
 
 .wordmark {
@@ -616,21 +621,33 @@ a {
 }
 
 @media (max-width: 767px) {
+  html.nav-open,
+  html.nav-open body {
+    overflow: hidden;
+  }
+
   .island-nav__links {
     display: none;
     position: fixed;
     inset: 0;
     z-index: 45;
-    background: color-mix(in srgb, var(--ink-void) 80%, transparent);
+    margin: 0;
+    padding: 6rem 1.5rem 2rem;
+    background: color-mix(in srgb, var(--ink-void) 92%, transparent);
     backdrop-filter: blur(24px);
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    gap: 1.25rem;
+    gap: 1rem;
   }
 
   .island-nav__links.is-open {
     display: flex;
+  }
+
+  .island-nav__links .btn {
+    min-width: min(100%, 16rem);
+    justify-content: center;
   }
 
   .nav-toggle {

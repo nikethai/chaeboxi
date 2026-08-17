@@ -23,38 +23,36 @@ const thread = `${base}screenshot-thread.png`
   <IslandNav slot="nav" />
 
   <div class="hero-wash" aria-hidden="true"></div>
-  <section class="hero wrap">
-    <div class="hero__grid">
-      <div class="hero__copy">
-        <h1>Local-first AI copilot.</h1>
-        <p class="hero__sub">{HERO_SUB}</p>
-        <p class="hero__proof">{HERO_PROOF}</p>
-        <div class="hero__ctas">
-          <a class="btn btn--primary" href={download}>
-            Download Desktop
-            <span class="btn__icon" aria-hidden="true">↗</span>
-          </a>
-          <a class="btn btn--ghost" href={`${base}why/`}>Why download</a>
-        </div>
-      </div>
-      <div class="hero__visual reveal">
-        <figure class="product-frame">
-          <img
-            src={shell}
-            alt="Chaeboxi desktop studio: dark rail, empty thread, and pinned composer"
-            width="1440"
-            height="900"
-            fetchpriority="high"
-          />
-        </figure>
+  <section class="hero hero--cinema wrap">
+    <div class="hero__copy hero__copy--cinema">
+      <h1 class="stagger">Local-first AI copilot.</h1>
+      <p class="hero__sub stagger">{HERO_SUB}</p>
+      <p class="hero__proof stagger">{HERO_PROOF}</p>
+      <div class="hero__ctas stagger">
+        <a class="btn btn--primary" href={download}>
+          Download Desktop
+          <span class="btn__icon" aria-hidden="true">↗</span>
+        </a>
+        <a class="btn btn--ghost" href={`${base}why/`}>Why download</a>
       </div>
     </div>
   </section>
+  <div class="hero-stage reveal">
+    <figure class="product-frame product-frame--stage">
+      <img
+        src={shell}
+        alt="Chaeboxi desktop studio: dark rail, empty thread, and pinned composer"
+        width="1440"
+        height="900"
+        fetchpriority="high"
+      />
+    </figure>
+  </div>
 
   <ProviderMarquee />
   <CapabilityStrip />
 
-  <section class="section wrap">
+  <section class="section wrap reveal">
     <h2>What you get</h2>
     <div class="bento">
       <article class="bento__cell bento__cell--wide panel">
@@ -104,13 +102,15 @@ const thread = `${base}screenshot-thread.png`
   <FirstMinutes />
   <FaqList />
 
-  <section class="section wrap cta-band">
-    <h2>The desktop app is the product</h2>
-    <p>macOS, Windows, and Linux from GitHub Releases. No Chaeboxi account.</p>
-    <a class="btn btn--primary" href={download}>
-      Download Desktop
-      <span class="btn__icon" aria-hidden="true">↗</span>
-    </a>
+  <section class="section wrap cta-band reveal">
+    <div class="cta-band__plate">
+      <h2>The desktop app is the product</h2>
+      <p>macOS, Windows, and Linux from GitHub Releases. No Chaeboxi account.</p>
+      <a class="btn btn--primary" href={download}>
+        Download Desktop
+        <span class="btn__icon" aria-hidden="true">↗</span>
+      </a>
+    </div>
   </section>
 
   <script>

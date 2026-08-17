@@ -28,11 +28,15 @@ const download = `${base}download/`
     toggle.setAttribute('aria-expanded', String(open))
     toggle.setAttribute('aria-label', open ? 'Close menu' : 'Open menu')
     links.classList.toggle('is-open', open)
+    document.documentElement.classList.toggle('nav-open', open)
   }
 
   if (toggle && links) {
     toggle.addEventListener('click', () => {
       setOpen(toggle.getAttribute('aria-expanded') !== 'true')
+    })
+    links.addEventListener('click', (event) => {
+      if (event.target === links) setOpen(false)
     })
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') setOpen(false)

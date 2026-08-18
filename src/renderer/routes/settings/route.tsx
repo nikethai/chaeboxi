@@ -18,6 +18,7 @@ import {
   IconMovie,
   IconBrowser,
   IconDeviceDesktop,
+  IconMicrophone,
   IconPlugConnected,
   IconWorldWww,
   IconCloudLock,
@@ -73,6 +74,11 @@ const ITEMS = [
     key: 'computer-use',
     label: 'Computer Use',
     icon: <IconDeviceDesktop className="w-full h-full" />,
+  },
+  {
+    key: 'voice',
+    label: 'Voice',
+    icon: <IconMicrophone className="w-full h-full" />,
   },
   {
     key: 'integrations',

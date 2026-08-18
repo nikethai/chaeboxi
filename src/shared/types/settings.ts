@@ -261,6 +261,8 @@ const ShortcutSettingSchema = z.object({
   quickOpen: z.string().default('Alt+Shift+Space').catch('Alt+Shift+Space'),
   /** Global hotkey for interactive screenshot → attach to quick chat */
   screenshotToChat: z.string().default('Alt+Shift+S').catch('Alt+Shift+S'),
+  /** Hold-to-talk microphone (Voice Copilot) */
+  voiceHold: z.string().default('Alt+Shift+M').catch('Alt+Shift+M'),
   inputBoxFocus: z.string(),
   inputBoxWebBrowsingMode: z.string(),
   newChat: z.string(),
@@ -381,6 +383,22 @@ const ExtensionSettingsSchema = z.object({
       appAllowlist: z.array(z.string()).default([]).catch([]),
       /** Record last N computer tool steps for export (no image dump by default) */
       debugTrajectory: z.boolean().default(false).catch(false),
+    })
+    .optional()
+    .catch(undefined),
+  /** Hold-to-talk STT + optional TTS. Uses user OpenAI/Groq keys or local Whisper. */
+  voiceCopilot: z
+    .object({
+      enabled: z.boolean().default(false).catch(false),
+      sttProvider: z.enum(['local-whisper', 'openai', 'groq']).default('openai').catch('openai'),
+      ttsProvider: z.enum(['off', 'openai', 'groq']).default('off').catch('off'),
+      localWhisperUrl: z
+        .string()
+        .default('http://127.0.0.1:8080/v1/audio/transcriptions')
+        .catch('http://127.0.0.1:8080/v1/audio/transcriptions'),
+      sttModel: z.string().default('whisper-1').catch('whisper-1'),
+      ttsModel: z.string().default('tts-1').catch('tts-1'),
+      ttsVoice: z.string().default('alloy').catch('alloy'),
     })
     .optional()
     .catch(undefined),

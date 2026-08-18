@@ -130,6 +130,12 @@ export function ShortcutConfig(props: {
       recordable: true,
     },
     {
+      label: t('Hold to Talk'),
+      name: 'voiceHold',
+      keys: shortcuts.voiceHold || 'Alt+Shift+M',
+      recordable: true,
+    },
+    {
       label: t('Focus on the Input Box'),
       name: 'inputBoxFocus',
       keys: shortcuts.inputBoxFocus,

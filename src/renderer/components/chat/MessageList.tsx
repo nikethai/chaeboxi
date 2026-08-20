@@ -3,6 +3,7 @@ import { ActionIcon, Flex, Stack, Text } from '@mantine/core'
 import type { Session, SessionThreadBrief } from '@shared/types'
 import {
   IconAlignRight,
+  IconArrowDown,
   IconChevronLeft,
   IconChevronRight,
   IconListTree,
@@ -137,11 +138,25 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
 
   const virtuoso = useRef<VirtuosoHandle>(null)
   const messageListRef = useRef<HTMLDivElement>(null)
+  const [atBottom, setAtBottom] = useState(true)
 
   const setMessageListElement = useUIStore((s) => s.setMessageListElement)
   const setMessageScrolling = useUIStore((s) => s.setMessageScrolling)
+  const setMessageScrollingAtBottom = useUIStore((s) => s.setMessageScrollingAtBottom)
+
+  const handleAtBottomStateChange = useCallback(
+    (bottom: boolean) => {
+      setAtBottom(bottom)
+      setMessageScrollingAtBottom(bottom)
+    },
+    [setMessageScrollingAtBottom]
+  )
 
   const threadEmpty = useMemo(() => isThreadVisuallyEmpty(currentMessageList), [currentMessageList])
+
+  const handleJumpToLatest = useCallback(() => {
+    virtuoso.current?.scrollTo({ top: Infinity, behavior: 'smooth' })
+  }, [])
 
   const setPrefillText = useSetAtom(atoms.inputBoxPrefillTextFamily(currentSession.id))
   const handlePickStarter = useCallback(
@@ -202,6 +217,8 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
               // Stick to bottom while user is already there. Prefer 'auto' always — 'smooth'
               // restarts every paint and feels cheap. Fixed work-strip height keeps deltas small.
               followOutput={(isAtBottom) => (isAtBottom ? 'auto' : false)}
+              atBottomStateChange={handleAtBottomStateChange}
+              atBottomThreshold={72}
               alignToBottom={alignToBottom}
               {...(sessionScrollPositionCache.has(currentSession.id) && !alignToBottom
                 ? {
@@ -212,10 +229,9 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
                 : {
                     initialTopMostItemIndex: Math.max(0, currentMessageList.length - 1),
                   })}
-              // Streaming: smaller overscan = less offscreen Markdown remeasure thrash.
-              increaseViewportBy={isStreaming ? { top: 120, bottom: 180 } : { top: 280, bottom: 360 }}
-              defaultItemHeight={isStreaming ? 88 : 112}
-              // Skip animation on data changes during stream (Virtuoso internal)
+              // Keep overscan/itemHeight stable — flipping them on generating→idle remeasures the thread.
+              increaseViewportBy={{ top: 200, bottom: 260 }}
+              defaultItemHeight={100}
               skipAnimationFrameInResizeObserver={isStreaming}
               itemContent={(index, msg) => {
                 const prevMsg = index > 0 ? currentMessageList[index - 1] : undefined
@@ -292,6 +308,17 @@ const MessageList = forwardRef<MessageListRef, MessageListProps>((props, ref) =>
               }}
             />
           )}
+          {!threadEmpty && !atBottom && !alignToBottom ? (
+            <button
+              type="button"
+              className="thread-jump-latest"
+              onClick={handleJumpToLatest}
+              aria-label={t('Jump to latest')}
+            >
+              <IconArrowDown size={15} stroke={1.75} aria-hidden />
+              <span>{t('Latest')}</span>
+            </button>
+          ) : null}
         </div>
       </BlockCodeCollapsedStateProvider>
     </div>

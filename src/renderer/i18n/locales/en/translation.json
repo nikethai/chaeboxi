@@ -1192,5 +1192,9 @@
   "Code": "Code",
   "Previous version": "Previous version",
   "Next version": "Next version",
-  "v{{version}}": "v{{version}}"
+  "v{{version}}": "v{{version}}",
+  "Ready when you are": "Ready when you are",
+  "Jump to latest": "Jump to latest",
+  "Latest": "Latest",
+  "off": "off"
 }

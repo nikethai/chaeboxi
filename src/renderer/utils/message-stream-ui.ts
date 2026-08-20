@@ -37,16 +37,76 @@ export function isReadableAnswerPart(part: MessageContentPart): boolean {
   return false
 }
 
+/**
+ * Anything the user can see after settle — answer text/images/plans, or model tool work.
+ * Host memory_lookup and thought-only turns are not visible replies.
+ */
+export function hasVisibleAssistantReply(contentParts: MessageContentParts): boolean {
+  return contentParts.some((part) => {
+    if (isReadableAnswerPart(part)) return true
+    return part.type === 'tool-call' && !isHostChromeTool(part)
+  })
+}
+
+export function buildEmptyCompletionError(
+  contentParts: MessageContentParts,
+  finishReason?: string
+): string | undefined {
+  if (hasVisibleAssistantReply(contentParts)) return undefined
+  return `The model finished without a visible reply${
+    finishReason ? ` (${finishReason})` : ''
+  }. Try sending again, or lower thinking effort.`
+}
+
+/**
+ * Gemini thinking models often put the real conclusion in reasoning, then end on a tool.
+ * Promote that text into a trailing answer so settle is not Worked-strip-only.
+ */
+export function buildFallbackAnswerText(contentParts: MessageContentParts): string | undefined {
+  const lastWorkIdx = findLastWorkIndex(contentParts)
+  if (hasReadableTrailingAnswer(contentParts, lastWorkIdx)) return undefined
+  const hasModelTool = contentParts.some((part) => part.type === 'tool-call' && !isHostChromeTool(part))
+  if (!hasModelTool) return undefined
+
+  const reasonings: string[] = []
+  const monologues: string[] = []
+  const limit = lastWorkIdx >= 0 ? lastWorkIdx : contentParts.length - 1
+  for (let i = 0; i <= limit; i++) {
+    const part = contentParts[i]
+    if (part.type === 'reasoning' && part.text?.trim()) reasonings.push(part.text.trim())
+    else if (part.type === 'text' && part.text?.trim()) monologues.push(part.text.trim())
+  }
+
+  if (reasonings.length > 0) {
+    const last = reasonings[reasonings.length - 1]
+    if (last.length >= 40 || reasonings.length === 1) return last
+    return reasonings.join('\n\n')
+  }
+  if (monologues.length > 0) return monologues.join('\n\n')
+  return undefined
+}
+
+export function withFallbackAnswerParts(contentParts: MessageContentParts): MessageContentParts {
+  const fallback = buildFallbackAnswerText(contentParts)
+  if (!fallback) return contentParts
+  return [...contentParts, { type: 'text', text: fallback }]
+}
+
+export function shouldContinueForVisibleAnswer(contentParts: MessageContentParts, finishReason?: string): boolean {
+  if (finishReason !== 'tool-calls') return false
+  const lastWorkIdx = findLastWorkIndex(contentParts)
+  if (hasReadableTrailingAnswer(contentParts, lastWorkIdx)) return false
+  if (buildFallbackAnswerText(contentParts)) return false
+  return contentParts.some((part) => part.type === 'tool-call' && !isHostChromeTool(part))
+}
+
 export function hasRunningTool(contentParts: MessageContentParts): boolean {
   return contentParts.some(
     (p) => p.type === 'tool-call' && p.state === 'call' && !isHostChromeTool(p) && !isTaskTrackingTool(p.toolName)
   )
 }
 
-export function findLastWorkIndex(
-  contentParts: MessageContentParts,
-  opts?: { keepEmptyReasoning?: boolean }
-): number {
+export function findLastWorkIndex(contentParts: MessageContentParts, opts?: { keepEmptyReasoning?: boolean }): number {
   let lastWorkIdx = -1
   for (let i = 0; i < contentParts.length; i++) {
     if (isWorkPart(contentParts[i], opts)) lastWorkIdx = i
@@ -75,8 +135,7 @@ export function isWorkActive(params: {
   if (!params.generating) return false
   // While generating, keep live chrome until readable answer exists — even with zero work parts.
   // (Prevents Thinking… hide when strip temporarily has no work parts.)
-  const lastWorkIdx =
-    params.lastWorkIdx ?? findLastWorkIndex(params.contentParts, { keepEmptyReasoning: true })
+  const lastWorkIdx = params.lastWorkIdx ?? findLastWorkIndex(params.contentParts, { keepEmptyReasoning: true })
   if (hasRunningTool(params.contentParts)) return true
   if (hasReadableTrailingAnswer(params.contentParts, lastWorkIdx)) return false
   // No answer yet → still live (placeholder strip or pending).
@@ -125,10 +184,11 @@ export type AssistantGroupItem =
  */
 export function groupAssistantContentParts(
   contentParts: MessageContentParts,
-  generating: boolean | undefined
+  generating: boolean | undefined,
+  opts?: { keepEmptyThinking?: boolean }
 ): AssistantGroupItem[] {
-  // While generating with no content yet, still emit a stable thinking-group so the UI
-  // never swaps AssistantPending ↔ strip (the main Thinking… flicker).
+  // While generating with no content yet, still emit a stable thinking-group + empty answer
+  // so the UI never swaps chrome and first token grows in a pre-mounted slot.
   if (contentParts.length === 0) {
     if (generating) {
       return [
@@ -139,6 +199,7 @@ export function groupAssistantContentParts(
           startIndex: 0,
           workActive: true,
         },
+        { type: 'single', part: { type: 'text', text: '' }, index: 0 },
       ]
     }
     return []
@@ -152,16 +213,40 @@ export function groupAssistantContentParts(
     const singles = contentParts
       .map((part, index) => ({ type: 'single' as const, part, index }))
       .filter((item) => !isHostChromeTool(item.part))
-    // Live turn with only answer-bound parts still needs a continuous strip above answer
-    // only when there is no readable answer yet.
-    if (generating && workActive) {
+    // Keep the strip for the entire live turn — even after the first answer token.
+    // Dropping it on first readable text unmounted Thinking… and jerked the thread.
+    if (generating) {
+      const hasAnswerBound = singles.some(
+        (item) =>
+          item.part.type === 'text' ||
+          item.part.type === 'image' ||
+          item.part.type === 'plan' ||
+          item.part.type === 'info'
+      )
       return [
         {
           type: 'thinking-group',
           parts: [],
           monologueTexts: [],
           startIndex: 0,
-          workActive: true,
+          workActive,
+        },
+        // Stable empty answer slot so first token grows in place (same key as later text).
+        ...(hasAnswerBound
+          ? singles
+          : [{ type: 'single' as const, part: { type: 'text' as const, text: '' }, index: 0 }]),
+      ]
+    }
+    // Keep the live-turn strip after settle so Thinking… → Worked does not unmount
+    // and yank the answer up. Historical messages (keepEmptyThinking false) stay clean.
+    if (opts?.keepEmptyThinking) {
+      return [
+        {
+          type: 'thinking-group',
+          parts: [],
+          monologueTexts: [],
+          startIndex: 0,
+          workActive: false,
         },
         ...singles,
       ]
@@ -210,14 +295,23 @@ export function groupAssistantContentParts(
   }
 
   const groups: AssistantGroupItem[] = [...earlySingles]
-  // Always keep the strip while generating (even if workParts emptied) — stable identity.
-  if (workParts.length > 0 || (generating && workActive)) {
+  // Keep strip while generating (even if workParts emptied) or when finished with real work.
+  // Stable identity across first-token → settle; never remount Thinking ↔ answer.
+  if (workParts.length > 0 || generating) {
     groups.push({
       type: 'thinking-group',
       parts: workParts,
       monologueTexts: thinkingMonologue,
       startIndex: 0,
       workActive: generating ? workActive : false,
+    })
+  }
+  // Reserve an empty answer single while live with no trailing content yet.
+  if (generating && afterWork.length === 0) {
+    afterWork.push({
+      type: 'single',
+      part: { type: 'text', text: '' },
+      index: lastWorkIdx + 1,
     })
   }
   groups.push(...afterWork)

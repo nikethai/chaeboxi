@@ -29,9 +29,12 @@ export const MemorySearchResults: FC<MemorySearchResultsProps> = ({
   const { t } = useTranslation()
 
   return (
-    <Stack gap={6} mah={260} style={{ overflowY: 'auto' }}>
+    <Stack gap={6} mah={260} className="memory-search-results" style={{ overflowY: 'auto' }}>
       {entries.map((entry) => (
-        <div key={entry.id} className="rounded-lg border border-[var(--chatbox-border-primary)] p-2">
+        <div
+          key={entry.id}
+          className="memory-search-item rounded-[9px] border border-[var(--chatbox-border-primary)] p-2"
+        >
           <Flex align="flex-start" gap="xs">
             <Checkbox
               size="xs"
@@ -40,11 +43,11 @@ export const MemorySearchResults: FC<MemorySearchResultsProps> = ({
               onChange={() => onToggle(entry.id)}
               aria-label={t('Select memory')}
             />
-            <Text size="sm" lineClamp={3} className="min-w-0 flex-1">
+            <Text size="sm" lineClamp={3} className="min-w-0 flex-1 leading-snug">
               {entry.content}
             </Text>
           </Flex>
-          <Flex justify="space-between" align="center" gap="xs" mt={6}>
+          <Flex justify="space-between" align="center" gap="xs" mt={6} wrap="nowrap">
             <Flex gap={4} wrap="wrap" className="min-w-0">
               {entry.pinned && (
                 <Badge size="xs" variant="light" color="chatbox-brand">
@@ -62,11 +65,22 @@ export const MemorySearchResults: FC<MemorySearchResultsProps> = ({
             </Flex>
             <Flex gap={2} className="shrink-0">
               <Tooltip label={t('Copy')} withArrow>
-                <Button variant="subtle" size="compact-xs" px={4} onClick={() => onCopy(entry.content)}>
+                <Button
+                  variant="subtle"
+                  size="compact-xs"
+                  px={4}
+                  className="active:scale-[0.96] transition-transform"
+                  onClick={() => onCopy(entry.content)}
+                >
                   <IconCopy size={14} />
                 </Button>
               </Tooltip>
-              <Button size="compact-xs" disabled={!canInsert} onClick={() => onInsert(entry)}>
+              <Button
+                size="compact-xs"
+                disabled={!canInsert}
+                className="active:scale-[0.96] transition-transform"
+                onClick={() => onInsert(entry)}
+              >
                 {t('Insert')}
               </Button>
             </Flex>

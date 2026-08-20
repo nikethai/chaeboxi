@@ -8,11 +8,11 @@ import {
   type CopilotHook,
   type CopilotToolAccess,
   createMessage,
+  MAX_SWARM_TASKS,
   type Message,
   type MessageImagePart,
   type MessagePicture,
   ModelProviderEnum,
-  MAX_SWARM_TASKS,
   type PlanPhase,
   type Session,
   type SessionSettings,
@@ -25,6 +25,7 @@ import { getDefaultStore } from 'jotai'
 import { createModelDependencies } from '@/adapters'
 import { getAgentDetailById } from '@/packages/agents'
 import * as appleAppStore from '@/packages/apple_app_store'
+import { buildCommandContextBlocks, resolveCommandActivations } from '@/packages/commands'
 import { buildContextForAI } from '@/packages/context-management'
 import {
   buildAttachmentWrapperPrefix,
@@ -35,7 +36,6 @@ import {
 } from '@/packages/context-management/attachment-payload'
 import { generateImage, streamText } from '@/packages/model-calls'
 import { getModelDisplayName } from '@/packages/model-setting-utils'
-import { buildCommandContextBlocks, resolveCommandActivations } from '@/packages/commands'
 import { buildSkillContextBlocks, resolveSkillActivations, selectCatalogForInject } from '@/packages/skills'
 import { estimateTokensFromMessages } from '@/packages/token'
 import { getVideoLimits } from '@/packages/video'
@@ -45,6 +45,11 @@ import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import { mergeCommandsList, refreshAgentCommands, userCommandsAtom } from '@/stores/commandsStore'
 import { mergeSkillsList, refreshAgentSkills, userSkillsAtom } from '@/stores/skillsStore'
 import { flushSessionTasks, formatActiveTaskContext, taskStore } from '@/stores/taskStore'
+import {
+  buildEmptyCompletionError,
+  shouldContinueForVisibleAnswer,
+  withFallbackAnswerParts,
+} from '@/utils/message-stream-ui'
 import { trackEvent } from '@/utils/track'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
 import * as chatStore from '../chatStore'
@@ -52,10 +57,11 @@ import { settingsStore } from '../settingsStore'
 import { uiStore } from '../uiStore'
 import { createNewFork, findMessageLocation } from './forks'
 import { clearGenerationCancel, registerGenerationCancel } from './generation-cancel'
-import { clearSessionGenerationLive, markSessionGenerationLive } from './session-live-generation'
 import { messageQueueStore } from './messageQueue'
 import { insertMessageAfter, modifyMessage, submitNewUserMessage } from './messages'
+import { clearSessionGenerationLive, markSessionGenerationLive } from './session-live-generation'
 import { getSessionWebBrowsing } from './session-web-browsing'
+import { buildVisibleAnswerContinuePrompt, mergeContinuedContentParts } from './tool-only-continue'
 
 export { getSessionWebBrowsing }
 export { cancelSessionGeneration, clearGenerationCancel } from './generation-cancel'
@@ -562,9 +568,7 @@ export async function generate(
   try {
     const budgetCfg = globalSettings.usageBudget
     if (budgetCfg?.enabled && budgetCfg.pauseWhenExceeded) {
-      const { providerUsageService, evaluateBudget, shouldHardStopSend } = await import(
-        '@/packages/usage-tracking'
-      )
+      const { providerUsageService, evaluateBudget, shouldHardStopSend } = await import('@/packages/usage-tracking')
       await providerUsageService.init()
       const period = budgetCfg.period
       const pid = String(effectiveSettings.provider ?? '')
@@ -652,9 +656,8 @@ export async function generate(
   }
 
   // Shared stream UI coalescing — visible to catch so error path can cancel pending writes.
-  // ~50ms is still smooth for text growth but halves React Query / Virtuoso remeasure thrash
-  // vs 16ms (was fighting scrollbar + Send/Stop stability during multi-step tools).
-  const STREAM_UI_MIN_MS = 50
+  // ~32ms (~30fps) is smoother token growth than 50ms without the 16ms Virtuoso thrash.
+  const STREAM_UI_MIN_MS = 32
   const persistInterval = 2000
   let lastPersistTimestamp = Date.now()
   let lastStreamUiWriteAt = 0
@@ -703,15 +706,8 @@ export async function generate(
     await streamWriteChain
     pendingStreamMsg = null
     await modifyMessage(sessionId, msg, true)
-    // Final pin only when generation finished (not mid-stream settle of partials).
-    if (!msg.generating) {
-      try {
-        const scrollActions = await import('../scrollActions')
-        scrollActions.scrollToBottom('auto')
-      } catch {
-        // non-fatal
-      }
-    }
+    // Do not pin scroll on settle — Virtuoso followOutput already sticks when at bottom;
+    // an extra scrollToBottom fought remeasure and jerked the bar.
   }
 
   try {
@@ -784,10 +780,7 @@ export async function generate(
           const names = options?.participantNames?.length ? options.participantNames : [speakerName]
           const roomRole = options?.roomRole ?? targetMsg.roomRole
           if (agentDetail?.prompt || roomMulti) {
-            const {
-              buildProtocolForRoomRole,
-              buildRoomContinuePrompt,
-            } = await import('@shared/agent-room')
+            const { buildProtocolForRoomRole, buildRoomContinuePrompt } = await import('@shared/agent-room')
             let protocol = ''
             if (roomMulti) {
               const role = roomRole ?? 'turn'
@@ -850,13 +843,8 @@ export async function generate(
         if (!roomMulti) {
           try {
             const { runHooks } = await import('@/packages/hooks')
-            const {
-              mergeHooksList,
-              refreshAgentHooks,
-              pushHookAudit,
-              loadHookOverrides,
-              claimSessionStart,
-            } = await import('@/stores/hooksStore')
+            const { mergeHooksList, refreshAgentHooks, pushHookAudit, loadHookOverrides, claimSessionStart } =
+              await import('@/stores/hooksStore')
             await refreshAgentHooks({ workspaceRoot: session.workspaceRoot })
             const overrides = await loadHookOverrides()
             const globalHooks = mergeHooksList(overrides)
@@ -957,9 +945,7 @@ export async function generate(
         const roomRoleForTools = options?.roomRole ?? targetMsg.roomRole
         const roomModeForTools = options?.roomMode
         const roomToolsAllowed = Boolean(roomMulti && roomRoleAllowsTools(roomRoleForTools))
-        const roomTaskToolsOnly = Boolean(
-          roomMulti && roomRoleAllowsTaskToolsOnly(roomRoleForTools, roomModeForTools)
-        )
+        const roomTaskToolsOnly = Boolean(roomMulti && roomRoleAllowsTaskToolsOnly(roomRoleForTools, roomModeForTools))
         const isPlanMode = Boolean(!roomMulti && isAgentEnabled && session.agentMode && effectiveSettings.planMode)
         const isPendingPlan = existingPlanPart?.status === 'pending'
         managesPlanPhase = isPlanMode
@@ -1049,12 +1035,11 @@ export async function generate(
           const { buildIntegrationsContextBlock } = await import('@shared/integrations')
           await ensureIntegrationsStoreInit()
           const catalog = integrationsStore.getState().catalog
-          const turnCredentialIds =
-            priorUserMsg?.credentialIds?.length
-              ? priorUserMsg.credentialIds
-              : session.credentialIds?.length
-                ? session.credentialIds
-                : undefined
+          const turnCredentialIds = priorUserMsg?.credentialIds?.length
+            ? priorUserMsg.credentialIds
+            : session.credentialIds?.length
+              ? session.credentialIds
+              : undefined
           const integrationsContext = buildIntegrationsContextBlock(catalog, {
             credentialIds: turnCredentialIds,
           })
@@ -1119,8 +1104,7 @@ export async function generate(
           // Swarm plan: task tools only (no KB/web).
           knowledgeBase: roomBlocksExternalTools ? undefined : knowledgeBase,
           webBrowsing: roomBlocksExternalTools ? false : webBrowsing,
-          nativeWebSearch:
-            roomBlocksExternalTools ? undefined : useGeminiGrounding ? 'gemini-grounding' : undefined,
+          nativeWebSearch: roomBlocksExternalTools ? undefined : useGeminiGrounding ? 'gemini-grounding' : undefined,
           agentImageFlowInstructions: executionAgentImageFlowInstructions,
           // Default chat image generate/edit (provider-neutral) when tools are available.
           enableImageGenerationTool: !roomBlocksExternalTools && model.isSupportToolUse(),
@@ -1164,8 +1148,7 @@ export async function generate(
           memory: speakerAgentId
             ? {
                 agentId: speakerAgentId,
-                agentName:
-                  getAgentDetailById(speakerAgentId)?.name || targetMsg.name || speakerAgentId,
+                agentName: getAgentDetailById(speakerAgentId)?.name || targetMsg.name || speakerAgentId,
               }
             : undefined,
         })
@@ -1231,6 +1214,58 @@ export async function generate(
           finalContentParts.push(finalPlanPart)
         }
 
+        // Thought-in-tools (Gemini) often has the conclusion only in reasoning.
+        // Lift it into a trailing answer so settle is not Worked-strip-only.
+        let streamResult = result
+        finalContentParts = withFallbackAnswerParts(finalContentParts)
+        if (shouldContinueForVisibleAnswer(finalContentParts, streamResult.finishReason)) {
+          const firstParts = finalContentParts
+          const { result: continueResult } = await streamText(model, {
+            sessionId: session.id,
+            messages: [
+              ...promptMsgs,
+              { ...targetMsg, contentParts: firstParts },
+              createMessage('user', buildVisibleAnswerContinuePrompt(firstParts)),
+            ],
+            sessionSettings: effectiveSettings,
+            onResultChangeWithCancel: (updated) => {
+              const next = updated.contentParts
+                ? { ...updated, contentParts: mergeContinuedContentParts(firstParts, updated.contentParts) }
+                : updated
+              return modifyMessageCache(next)
+            },
+            onStatusChange: (status) => {
+              targetMsg = {
+                ...targetMsg,
+                status: status ? [status] : [],
+              }
+              void modifyMessage(sessionId, targetMsg, false, true)
+            },
+            providerOptions: effectiveSettings.providerOptions,
+            maxSteps: 1,
+            tools: {},
+            webBrowsing: false,
+            enableImageGenerationTool: false,
+          })
+          finalContentParts = withFallbackAnswerParts(
+            mergeContinuedContentParts(firstParts, continueResult.contentParts || [])
+          )
+          if (!hasTextPart && continueResult.text?.trim()) {
+            const hasTextAfter = finalContentParts.some((p) => p.type === 'text' && p.text?.trim())
+            if (!hasTextAfter) {
+              finalContentParts = [{ type: 'text', text: continueResult.text }, ...finalContentParts]
+            }
+          }
+          streamResult = {
+            ...streamResult,
+            ...continueResult,
+            contentParts: finalContentParts,
+          }
+        }
+
+        // Thought-only / dropped SSE still errors. Model tool-calls are visible work, not empty.
+        const emptyCompletionError = buildEmptyCompletionError(finalContentParts, streamResult.finishReason)
+
         // Paint answer + generating=false first — never block the "done" state on image-flow I/O.
         clearGenerationCancel(sessionId, targetMsg.id)
         clearSessionGenerationLive(sessionId, targetMsg.id)
@@ -1244,16 +1279,19 @@ export async function generate(
           cancel: undefined,
           contentParts: finalContentParts,
           tokensUsed:
-            targetMsg.tokensUsed ?? result.usage?.totalTokens ?? estimateTokensFromMessages([...promptMsgs, targetMsg]),
+            targetMsg.tokensUsed ??
+            streamResult.usage?.totalTokens ??
+            estimateTokensFromMessages([...promptMsgs, targetMsg]),
           status: [],
-          finishReason: result.finishReason,
-          usage: result.usage,
+          finishReason: streamResult.finishReason,
+          usage: streamResult.usage,
           tokenSpeed: lastTokenSpeed ?? targetMsg.tokenSpeed,
           // Persist search citations extracted from tool calls or Gemini grounding
-          citations: result.citations ?? targetMsg.citations,
-          searchQuery: result.searchQuery ?? targetMsg.searchQuery,
-          searchProvider: result.searchProvider ?? targetMsg.searchProvider,
-          groundingMetadata: result.groundingMetadata ?? targetMsg.groundingMetadata,
+          citations: streamResult.citations ?? targetMsg.citations,
+          searchQuery: streamResult.searchQuery ?? targetMsg.searchQuery,
+          searchProvider: streamResult.searchProvider ?? targetMsg.searchProvider,
+          groundingMetadata: streamResult.groundingMetadata ?? targetMsg.groundingMetadata,
+          error: emptyCompletionError,
         }
         await settleStreamUi(targetMsg)
 
@@ -1279,17 +1317,11 @@ export async function generate(
         try {
           const { providerUsageService } = await import('@/packages/usage-tracking')
           await providerUsageService.init()
-          await providerUsageService.recordFromMessage(
-            targetMsg,
-            settingsStore.getState().usagePricingOverrides
-          )
+          await providerUsageService.recordFromMessage(targetMsg, settingsStore.getState().usagePricingOverrides)
           const pid = String(effectiveSettings.provider ?? targetMsg.aiProvider ?? '')
           if (pid) {
             await providerUsageService.clearExhausted(pid)
-            const budgetHit = await providerUsageService.evaluateAndMaybeNotify(
-              settingsStore.getState(),
-              pid
-            )
+            const budgetHit = await providerUsageService.evaluateAndMaybeNotify(settingsStore.getState(), pid)
             if (budgetHit?.shouldToast) {
               const { add: addToast } = await import('@/stores/toastActions')
               addToast(budgetHit.message)
@@ -1303,8 +1335,7 @@ export async function generate(
         if (!roomMulti) {
           try {
             const { notifySystemEvent } = await import('@/packages/notifications')
-            const sessionName =
-              (await chatStore.getSession(sessionId))?.name || session.name || undefined
+            const sessionName = (await chatStore.getSession(sessionId))?.name || session.name || undefined
             void notifySystemEvent({
               kind: 'generation_complete',
               sessionId,
@@ -1322,7 +1353,15 @@ export async function generate(
 
         // Global PostTurn hooks, then agent/copilot post hooks
         if (!roomMulti) {
-          const outputText = result.text ?? ''
+          const outputText =
+            streamResult.text?.trim() ||
+            finalContentParts
+              .filter(
+                (part): part is Extract<(typeof finalContentParts)[number], { type: 'text' }> => part.type === 'text'
+              )
+              .map((part) => part.text)
+              .join('\n')
+              .trim()
           try {
             const { runHooks } = await import('@/packages/hooks')
             const { mergeHooksList, pushHookAudit, loadHookOverrides } = await import('@/stores/hooksStore')

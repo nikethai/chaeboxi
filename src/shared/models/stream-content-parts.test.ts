@@ -5,6 +5,7 @@ import {
   applyTextDelta,
   finalizeReasoningDuration,
   flushPendingStreamText,
+  resolveStreamResultText,
   type StreamContentCursor,
 } from './stream-content-parts'
 
@@ -78,5 +79,25 @@ describe('stream-content-parts', () => {
     const part = { type: 'reasoning' as const, text: 'x', startTime: 1000, duration: 42 }
     finalizeReasoningDuration(part, 9999)
     expect(part.duration).toBe(42)
+  })
+
+  it('falls back to aggregated provider text when stream parts have no answer', () => {
+    expect(resolveStreamResultText([], 'Recovered answer')).toBe('Recovered answer')
+    expect(
+      resolveStreamResultText(
+        [
+          {
+            type: 'tool-call',
+            state: 'result',
+            toolCallId: 't1',
+            toolName: 'web_search',
+            args: {},
+            result: {},
+          },
+        ],
+        'Recovered after tools'
+      )
+    ).toBe('Recovered after tools')
+    expect(resolveStreamResultText([{ type: 'text', text: 'Streamed' }], 'Ignored aggregate')).toBe('Streamed')
   })
 })

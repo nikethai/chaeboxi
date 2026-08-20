@@ -211,6 +211,14 @@ export async function updateSessionWithMessages(sessionId: string, updater: Upda
           console.debug('chatStore', 'persist session', sessionId)
           await storage.setItemNow(StorageKeyGenerator.session(sessionId), session)
         }
+      },
+      // Cache-first: render the computed session immediately, before the async disk
+      // persist resolves. Without this the UI waits on IPC+file write per insert, which
+      // is what let the user bubble and the Thinking placeholder paint frames apart.
+      (session) => {
+        if (session) {
+          _setSessionCache(sessionId, session)
+        }
       }
     )
   }
@@ -448,11 +456,29 @@ export async function insertMessage(sessionId: string, message: Message, previou
   })
 }
 
-export async function updateMessageCache(sessionId: string, messageId: string, updater: Updater<Message>) {
-  return await updateMessage(sessionId, messageId, updater, true)
+/**
+ * Append several messages in one transaction so they commit to the cache (and render)
+ * in the same frame. Splitting a user turn and its assistant placeholder into two
+ * inserts let them paint frames apart — the visible "bubble shoves Thinking down" jerk.
+ */
+export async function insertMessages(sessionId: string, messages: Message[]) {
+  if (messages.length === 0) {
+    return
+  }
+  await updateSessionWithMessages(sessionId, (sess) => {
+    if (!sess) {
+      throw new Error(`session ${sessionId} not found`)
+    }
+    return {
+      ...sess,
+      messages: [...sess.messages, ...messages],
+    } satisfies Session
+  })
 }
 
-export async function updateMessages(sessionId: string, updater: Updater<Message[]>) {
+export async function updateMessageCache(sessionId: string, messageId: string, updater: Updater<Message>) {
+  return await updateMessage(sessionId, messageId, updater, true)
+}export async function updateMessages(sessionId: string, updater: Updater<Message[]>) {
   return await updateSessionWithMessages(sessionId, (session) => {
     if (!session) {
       throw new Error(`session ${sessionId} not found`)

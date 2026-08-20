@@ -172,9 +172,7 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
     const exhausted = providerUsage.quota.state === 'exhausted'
     const budgetWarn = budgetState.level === 'warn' || budgetState.level === 'critical'
     const quotaKnown =
-      providerUsage.quota.state === 'known' &&
-      providerUsage.quota.limit != null &&
-      providerUsage.quota.limit > 0
+      providerUsage.quota.state === 'known' && providerUsage.quota.limit != null && providerUsage.quota.limit > 0
     const used = providerUsage.quota.used ?? 0
     const pct = quotaKnown ? Math.min(100, Math.round((used / (providerUsage.quota.limit as number)) * 100)) : null
 
@@ -194,14 +192,14 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
       label = budgetState.level === 'critical' ? t('Budget critical') : t('Budget warning')
     }
 
-    const tone = exhausted || budgetState.level === 'critical' ? 'is-critical' : budgetWarn || highUsage ? 'is-warn' : ''
+    const tone =
+      exhausted || budgetState.level === 'critical' ? 'is-critical' : budgetWarn || highUsage ? 'is-warn' : ''
     return { label, tone, status: providerUsage }
   }, [compact, providerUsage, budgetState, t])
 
   const menuForSession = !compact && tokenMenu && sessionId && tokenMenu.sessionId === sessionId ? tokenMenu : null
 
-  const tokenCount =
-    hasUsage && metrics ? totalTokens : menuForSession ? menuForSession.totalTokens : null
+  const tokenCount = hasUsage && metrics ? totalTokens : menuForSession ? menuForSession.totalTokens : null
 
   /** Prefer context-window fill when known; else raw token count. */
   const contextLabel = useMemo(() => {
@@ -249,10 +247,7 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
         title: `${t('Cached tokens')}: ${formatNumber(metrics.totalCachedInputTokens)} · ${t('Cache hit rate')}: ${hitRatePercent}%`,
       }
     }
-    return {
-      label: t('cache n/a'),
-      title: t('No upstream cache telemetry was returned for this session yet.'),
-    }
+    return null
   }, [compact, metrics, hasUsage, t])
 
   const tokSegment = (
@@ -292,11 +287,13 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
           <Text className="session-statusline-model min-w-0" lineClamp={1} title={modelTitle}>
             {modelTitle}
           </Text>
-          {generating && (
-            <Text className="session-statusline-live shrink-0" size="xs">
-              {t('Thinking…')}
-            </Text>
-          )}
+          <Text
+            className={`session-statusline-live shrink-0${generating ? '' : ' is-idle'}`}
+            size="xs"
+            aria-hidden={!generating}
+          >
+            {t('Thinking…')}
+          </Text>
         </Flex>
 
         {!compact && !empty && (
@@ -363,9 +360,7 @@ const SessionStatusBar: FC<SessionStatusBarProps> = ({
               <Tooltip label={cacheSegment.title} withArrow openDelay={400}>
                 <Text className="session-statusline-seg">
                   <span className="session-statusline-key">cache</span>
-                  <span className="session-statusline-val">
-                    {cacheSegment.label.replace(/^cache\s*/i, '') || '—'}
-                  </span>
+                  <span className="session-statusline-val">{cacheSegment.label.replace(/^cache\s*/i, '') || '—'}</span>
                 </Text>
               </Tooltip>
             )}

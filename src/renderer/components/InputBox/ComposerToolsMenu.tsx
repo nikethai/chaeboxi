@@ -25,17 +25,17 @@ import {
 } from '@tabler/icons-react'
 import { Link } from '@tanstack/react-router'
 import { type FC, type ReactNode, useEffect, useMemo, useState } from 'react'
-import { Drawer } from 'vaul'
 import { useTranslation } from 'react-i18next'
+import { Drawer } from 'vaul'
 import { useKnowledgeBases } from '@/hooks/knowledge-base'
 import { useMCPServerStatus, useToggleMCPServer } from '@/hooks/mcp'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import { navigateToSettings } from '@/modals/Settings'
 import { BUILTIN_MCP_SERVERS } from '@/packages/mcp/builtin'
+import { platformCapabilities } from '@/platform'
 import { useMcpSettings } from '@/stores/settingsStore'
 import { featureFlags } from '@/utils/feature-flags'
-import { platformCapabilities } from '@/platform'
 import { ScalableIcon } from '../common/ScalableIcon'
 import MCPStatus from '../mcp/MCPStatus'
 
@@ -68,8 +68,11 @@ export type ComposerToolsMenuProps = {
   onAttachLink: () => void
   toolbarButtonClass: string
   toolbarIconSize: number
-  /** Optional mobile-only row (e.g. Memory) rendered inside the overflow menu. */
-  memorySlot?: ReactNode
+  /**
+   * Memory row inside overflow. Prefer a render prop so tools can close first
+   * before Memory modal opens (avoids stacked menus on small desktop).
+   */
+  memorySlot?: ReactNode | ((api: { closeTools: () => void }) => ReactNode)
 }
 
 const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
@@ -105,6 +108,8 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
   const [opened, setOpened] = useState(false)
+  const closeTools = () => setOpened(false)
+  const memoryNode = typeof memorySlot === 'function' ? memorySlot({ closeTools }) : memorySlot
   const [workspaceModalOpen, setWorkspaceModalOpen] = useState(false)
   const [workspaceDraft, setWorkspaceDraft] = useState(workspaceRoot ?? '')
   const mcp = useMcpSettings()
@@ -170,27 +175,27 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
   }
 
   const plusButton = (
-          <UnstyledButton
-            className={cn(
-              toolbarButtonClass,
-              'relative min-w-9 min-h-9 active:scale-[0.96] transition-transform',
-              isSmallScreen && 'mobile-touch-target'
-            )}
-            aria-label={t('Tools and attachments')}
-            aria-expanded={opened}
-          >
-            <IconPlus
-              size={toolbarIconSize}
-              strokeWidth={1.8}
-              className={badgeActive ? 'text-[var(--chatbox-tint-brand)]' : 'text-[var(--chatbox-tint-secondary)]'}
-            />
-            {badgeActive && (
-              <span
-                className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-[var(--chatbox-tint-brand)]"
-                aria-hidden
-              />
-            )}
-          </UnstyledButton>
+    <UnstyledButton
+      className={cn(
+        toolbarButtonClass,
+        'relative min-w-9 min-h-9 active:scale-[0.96] transition-transform',
+        isSmallScreen && 'mobile-touch-target'
+      )}
+      aria-label={t('Tools and attachments')}
+      aria-expanded={opened}
+    >
+      <IconPlus
+        size={toolbarIconSize}
+        strokeWidth={1.8}
+        className={badgeActive ? 'text-[var(--chatbox-tint-brand)]' : 'text-[var(--chatbox-tint-secondary)]'}
+      />
+      {badgeActive && (
+        <span
+          className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-[var(--chatbox-tint-brand)]"
+          aria-hidden
+        />
+      )}
+    </UnstyledButton>
   )
 
   if (isSmallScreen) {
@@ -206,381 +211,378 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
                 {t('Tools and attachments')}
               </Text>
               <Menu opened onChange={() => undefined} closeOnItemClick={false} withinPortal={false}>
-              <Menu.Target>
-                <span className="sr-only" />
-              </Menu.Target>
-              <Menu.Dropdown className="composer-tools-menu !relative !inset-auto !shadow-none !border-0 !w-full !max-h-none overflow-y-auto pb-[max(0.75rem,var(--mobile-safe-area-inset-bottom,env(safe-area-inset-bottom)))]">
-          <Menu.Label fw={600}>{t('Attach')}</Menu.Label>
-          <Menu.Item
-            leftSection={<IconPhoto size={16} stroke={1.5} />}
-            onClick={() => {
-              onImageUploadClick()
-              setOpened(false)
-            }}
-          >
-            {t('Image')}
-          </Menu.Item>
-          <Menu.Item
-            leftSection={<IconFolder size={16} stroke={1.5} />}
-            onClick={() => {
-              onFileUploadClick()
-              setOpened(false)
-            }}
-          >
-            {t('File')}
-          </Menu.Item>
-          <Menu.Item
-            leftSection={<IconLink size={16} stroke={1.5} />}
-            onClick={() => {
-              onAttachLink()
-              setOpened(false)
-            }}
-          >
-            {t('Link')}
-          </Menu.Item>
+                <Menu.Target>
+                  <span className="sr-only" />
+                </Menu.Target>
+                <Menu.Dropdown className="composer-tools-menu !relative !inset-auto !shadow-none !border-0 !w-full !max-h-none overflow-y-auto pb-[max(0.75rem,var(--mobile-safe-area-inset-bottom,env(safe-area-inset-bottom)))]">
+                  <Menu.Label fw={600}>{t('Attach')}</Menu.Label>
+                  <Menu.Item
+                    leftSection={<IconPhoto size={16} stroke={1.5} />}
+                    onClick={() => {
+                      onImageUploadClick()
+                      setOpened(false)
+                    }}
+                  >
+                    {t('Image')}
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<IconFolder size={16} stroke={1.5} />}
+                    onClick={() => {
+                      onFileUploadClick()
+                      setOpened(false)
+                    }}
+                  >
+                    {t('File')}
+                  </Menu.Item>
+                  <Menu.Item
+                    leftSection={<IconLink size={16} stroke={1.5} />}
+                    onClick={() => {
+                      onAttachLink()
+                      setOpened(false)
+                    }}
+                  >
+                    {t('Link')}
+                  </Menu.Item>
 
-          {memorySlot ? (
-            <>
-              <Menu.Divider />
-              <Menu.Label fw={600}>{t('Memory')}</Menu.Label>
-              <div className="px-1 pb-1" onClick={() => setOpened(false)} onKeyDown={() => undefined}>
-                {memorySlot}
-              </div>
-            </>
-          ) : null}
+                  {memoryNode ? (
+                    <>
+                      <Menu.Divider />
+                      <Menu.Label fw={600}>{t('Memory')}</Menu.Label>
+                      <div className="composer-tools-memory-slot px-1 pb-1">{memoryNode}</div>
+                    </>
+                  ) : null}
 
-          {(showWeb || showMcp || showKb) && (
-            <>
-              <Menu.Divider />
-              <Menu.Label fw={600}>{t('Tools')}</Menu.Label>
-            </>
-          )}
+                  {(showWeb || showMcp || showKb) && (
+                    <>
+                      <Menu.Divider />
+                      <Menu.Label fw={600}>{t('Tools')}</Menu.Label>
+                    </>
+                  )}
 
-          {showWeb && (
-            <Menu.Item
-              leftSection={<IconWorldWww size={16} stroke={1.5} />}
-              closeMenuOnClick={false}
-              disabled={!webSearchConfigured && !webBrowsingMode}
-              rightSection={
-                <Switch
-                  size="xs"
-                  checked={webBrowsingMode}
-                  disabled={!webSearchConfigured && !webBrowsingMode}
-                  onChange={(e) => onWebBrowsingChange(e.currentTarget.checked)}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              }
-              onClick={() => {
-                if (webSearchConfigured || webBrowsingMode) {
-                  onWebBrowsingChange(!webBrowsingMode)
-                }
-              }}
-            >
-              <Flex direction="column" gap={2}>
-                <Text size="sm">{t('Web Search')}</Text>
-                {!webSearchConfigured && (
-                  <Text size="xs" c="dimmed">
-                    {t('Configure in Settings')}
-                  </Text>
-                )}
-              </Flex>
-            </Menu.Item>
-          )}
+                  {showWeb && (
+                    <Menu.Item
+                      leftSection={<IconWorldWww size={16} stroke={1.5} />}
+                      closeMenuOnClick={false}
+                      disabled={!webSearchConfigured && !webBrowsingMode}
+                      rightSection={
+                        <Switch
+                          size="xs"
+                          checked={webBrowsingMode}
+                          disabled={!webSearchConfigured && !webBrowsingMode}
+                          onChange={(e) => onWebBrowsingChange(e.currentTarget.checked)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      }
+                      onClick={() => {
+                        if (webSearchConfigured || webBrowsingMode) {
+                          onWebBrowsingChange(!webBrowsingMode)
+                        }
+                      }}
+                    >
+                      <Flex direction="column" gap={2}>
+                        <Text size="sm">{t('Web Search')}</Text>
+                        {!webSearchConfigured && (
+                          <Text size="xs" c="dimmed">
+                            {t('Configure in Settings')}
+                          </Text>
+                        )}
+                      </Flex>
+                    </Menu.Item>
+                  )}
 
-          {showBrowserArm && (
-            <Menu.Item
-              leftSection={<IconBrowser size={16} stroke={1.5} />}
-              closeMenuOnClick={false}
-              disabled={!browserMasterEnabled}
-              rightSection={
-                <Switch
-                  size="xs"
-                  checked={Boolean(browserArmed)}
-                  disabled={!browserMasterEnabled}
-                  onChange={(e) => onBrowserArmedChange?.(e.currentTarget.checked)}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              }
-              onClick={() => {
-                if (browserMasterEnabled) onBrowserArmedChange?.(!browserArmed)
-              }}
-            >
-              <Flex direction="column" gap={2}>
-                <Text size="sm">{t('Chaeboxi Browser')}</Text>
-                <Text size="xs" c="dimmed">
-                  {browserMasterEnabled
-                    ? t('Isolated browser (not your personal Chrome)')
-                    : t('Enable in Settings → Browser Agent')}
-                </Text>
-              </Flex>
-            </Menu.Item>
-          )}
+                  {showBrowserArm && (
+                    <Menu.Item
+                      leftSection={<IconBrowser size={16} stroke={1.5} />}
+                      closeMenuOnClick={false}
+                      disabled={!browserMasterEnabled}
+                      rightSection={
+                        <Switch
+                          size="xs"
+                          checked={Boolean(browserArmed)}
+                          disabled={!browserMasterEnabled}
+                          onChange={(e) => onBrowserArmedChange?.(e.currentTarget.checked)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      }
+                      onClick={() => {
+                        if (browserMasterEnabled) onBrowserArmedChange?.(!browserArmed)
+                      }}
+                    >
+                      <Flex direction="column" gap={2}>
+                        <Text size="sm">{t('Chaeboxi Browser')}</Text>
+                        <Text size="xs" c="dimmed">
+                          {browserMasterEnabled
+                            ? t('Isolated browser (not your personal Chrome)')
+                            : t('Enable in Settings → Browser Agent')}
+                        </Text>
+                      </Flex>
+                    </Menu.Item>
+                  )}
 
-          {showComputerArm && (
-            <Menu.Item
-              leftSection={<IconDeviceDesktop size={16} stroke={1.5} />}
-              closeMenuOnClick={false}
-              disabled={!computerMasterEnabled}
-              rightSection={
-                <Switch
-                  size="xs"
-                  checked={Boolean(computerArmed)}
-                  disabled={!computerMasterEnabled}
-                  onChange={(e) => onComputerArmedChange?.(e.currentTarget.checked)}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              }
-              onClick={() => {
-                if (computerMasterEnabled) onComputerArmedChange?.(!computerArmed)
-              }}
-            >
-              <Flex direction="column" gap={2}>
-                <Text size="sm">{t('Computer Use')}</Text>
-                <Text size="xs" c="dimmed">
-                  {computerMasterEnabled
-                    ? t('Screen observe / act with approvals')
-                    : t('Enable in Settings → Computer Use')}
-                </Text>
-              </Flex>
-            </Menu.Item>
-          )}
+                  {showComputerArm && (
+                    <Menu.Item
+                      leftSection={<IconDeviceDesktop size={16} stroke={1.5} />}
+                      closeMenuOnClick={false}
+                      disabled={!computerMasterEnabled}
+                      rightSection={
+                        <Switch
+                          size="xs"
+                          checked={Boolean(computerArmed)}
+                          disabled={!computerMasterEnabled}
+                          onChange={(e) => onComputerArmedChange?.(e.currentTarget.checked)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      }
+                      onClick={() => {
+                        if (computerMasterEnabled) onComputerArmedChange?.(!computerArmed)
+                      }}
+                    >
+                      <Flex direction="column" gap={2}>
+                        <Text size="sm">{t('Computer Use')}</Text>
+                        <Text size="xs" c="dimmed">
+                          {computerMasterEnabled
+                            ? t('Screen observe / act with approvals')
+                            : t('Enable in Settings → Computer Use')}
+                        </Text>
+                      </Flex>
+                    </Menu.Item>
+                  )}
 
-          {showMcp && (
-            <>
-              <Flex justify="space-between" align="center" px="sm" pt="xs">
-                <Text size="xs" fw={600} c="dimmed" style={{ letterSpacing: '-0.01em' }}>
-                  {t('Extensions')}
-                  {mcpEnabledCount > 0 ? ` · ${mcpEnabledCount}` : ''}
-                </Text>
-                <ActionIcon
-                  variant="subtle"
-                  size={22}
-                  onClick={() => {
-                    setOpened(false)
-                    navigateToSettings('/mcp')
-                  }}
-                  aria-label={t('Extension settings')}
-                >
-                  <ScalableIcon icon={IconSettings2} size={14} color="var(--chatbox-tint-tertiary)" />
-                </ActionIcon>
-              </Flex>
-              {BUILTIN_MCP_SERVERS.map((server) => (
-                <McpServerRow
-                  key={server.id}
-                  id={server.id}
-                  name={server.name}
-                  enabled={mcp.enabledBuiltinServers.includes(server.id)}
-                  onEnabledChange={onMcpEnabledChange}
-                />
-              ))}
-              {mcpServers.map((server) => (
-                <McpServerRow
-                  key={server.id}
-                  id={server.id}
-                  name={server.name}
-                  enabled={server.enabled}
-                  onEnabledChange={onMcpEnabledChange}
-                />
-              ))}
-              {!mcpServers.length && !mcp.enabledBuiltinServers.length && (
-                <Menu.Item component={Link} to="/settings/mcp" onClick={() => setOpened(false)}>
-                  {t('Connect an extension')}
-                </Menu.Item>
-              )}
-            </>
-          )}
+                  {showMcp && (
+                    <>
+                      <Flex justify="space-between" align="center" px="sm" pt="xs">
+                        <Text size="xs" fw={600} c="dimmed" style={{ letterSpacing: '-0.01em' }}>
+                          {t('Extensions')}
+                          {mcpEnabledCount > 0 ? ` · ${mcpEnabledCount}` : ''}
+                        </Text>
+                        <ActionIcon
+                          variant="subtle"
+                          size={22}
+                          onClick={() => {
+                            setOpened(false)
+                            navigateToSettings('/mcp')
+                          }}
+                          aria-label={t('Extension settings')}
+                        >
+                          <ScalableIcon icon={IconSettings2} size={14} color="var(--chatbox-tint-tertiary)" />
+                        </ActionIcon>
+                      </Flex>
+                      {BUILTIN_MCP_SERVERS.map((server) => (
+                        <McpServerRow
+                          key={server.id}
+                          id={server.id}
+                          name={server.name}
+                          enabled={mcp.enabledBuiltinServers.includes(server.id)}
+                          onEnabledChange={onMcpEnabledChange}
+                        />
+                      ))}
+                      {mcpServers.map((server) => (
+                        <McpServerRow
+                          key={server.id}
+                          id={server.id}
+                          name={server.name}
+                          enabled={server.enabled}
+                          onEnabledChange={onMcpEnabledChange}
+                        />
+                      ))}
+                      {!mcpServers.length && !mcp.enabledBuiltinServers.length && (
+                        <Menu.Item component={Link} to="/settings/mcp" onClick={() => setOpened(false)}>
+                          {t('Connect an extension')}
+                        </Menu.Item>
+                      )}
+                    </>
+                  )}
 
-          {showKb && (
-            <>
-              <Flex justify="space-between" align="center" px="sm" pt="xs">
-                <Text size="xs" fw={600} c="dimmed" style={{ letterSpacing: '-0.01em' }}>
-                  {t('Knowledge')}
-                </Text>
-                <ActionIcon
-                  variant="subtle"
-                  size={22}
-                  component={Link}
-                  to="/settings/knowledge-base"
-                  onClick={() => setOpened(false)}
-                  aria-label={t('Knowledge Base Settings')}
-                >
-                  <ScalableIcon icon={IconVocabulary} size={14} color="var(--chatbox-tint-tertiary)" />
-                </ActionIcon>
-              </Flex>
-              {knowledgeBases?.map((kb) => (
-                <Menu.Item
-                  key={kb.id}
-                  leftSection={<IconFile size={14} stroke={1.5} />}
-                  rightSection={
-                    kb.id === knowledgeBaseId ? <IconCheck size={14} color="var(--chatbox-tint-brand)" /> : null
-                  }
-                  onClick={() => {
-                    if (kb.id === knowledgeBaseId) {
-                      onSelectKnowledgeBase?.(null)
-                    } else {
-                      onSelectKnowledgeBase?.(kb)
-                    }
-                  }}
-                >
-                  <Text size="sm" c={kb.id === knowledgeBaseId ? 'chatbox-brand' : undefined}>
-                    {kb.name}
-                  </Text>
-                </Menu.Item>
-              ))}
-              {knowledgeBases?.length === 0 && (
-                <Menu.Item component={Link} to="/settings/knowledge-base" onClick={() => setOpened(false)}>
-                  {t('Create')}
-                </Menu.Item>
-              )}
-              {knowledgeBaseId != null && (
-                <Menu.Item onClick={() => onSelectKnowledgeBase?.(null)}>{t('Clear selection')}</Menu.Item>
-              )}
-            </>
-          )}
+                  {showKb && (
+                    <>
+                      <Flex justify="space-between" align="center" px="sm" pt="xs">
+                        <Text size="xs" fw={600} c="dimmed" style={{ letterSpacing: '-0.01em' }}>
+                          {t('Knowledge')}
+                        </Text>
+                        <ActionIcon
+                          variant="subtle"
+                          size={22}
+                          component={Link}
+                          to="/settings/knowledge-base"
+                          onClick={() => setOpened(false)}
+                          aria-label={t('Knowledge Base Settings')}
+                        >
+                          <ScalableIcon icon={IconVocabulary} size={14} color="var(--chatbox-tint-tertiary)" />
+                        </ActionIcon>
+                      </Flex>
+                      {knowledgeBases?.map((kb) => (
+                        <Menu.Item
+                          key={kb.id}
+                          leftSection={<IconFile size={14} stroke={1.5} />}
+                          rightSection={
+                            kb.id === knowledgeBaseId ? <IconCheck size={14} color="var(--chatbox-tint-brand)" /> : null
+                          }
+                          onClick={() => {
+                            if (kb.id === knowledgeBaseId) {
+                              onSelectKnowledgeBase?.(null)
+                            } else {
+                              onSelectKnowledgeBase?.(kb)
+                            }
+                          }}
+                        >
+                          <Text size="sm" c={kb.id === knowledgeBaseId ? 'chatbox-brand' : undefined}>
+                            {kb.name}
+                          </Text>
+                        </Menu.Item>
+                      ))}
+                      {knowledgeBases?.length === 0 && (
+                        <Menu.Item component={Link} to="/settings/knowledge-base" onClick={() => setOpened(false)}>
+                          {t('Create')}
+                        </Menu.Item>
+                      )}
+                      {knowledgeBaseId != null && (
+                        <Menu.Item onClick={() => onSelectKnowledgeBase?.(null)}>{t('Clear selection')}</Menu.Item>
+                      )}
+                    </>
+                  )}
 
-          {showAgent && (
-            <>
-              <Menu.Divider />
-              <Menu.Label fw={600}>{t('Mode')}</Menu.Label>
-              <Menu.Item
-                leftSection={<IconRobot size={16} stroke={1.5} />}
-                closeMenuOnClick={false}
-                rightSection={
-                  <Switch
-                    size="xs"
-                    checked={agentMode}
-                    onChange={() => onToggleAgentMode?.()}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                }
-                onClick={() => onToggleAgentMode?.()}
-              >
-                <Flex direction="column" gap={2}>
-                  <Text size="sm">{t('Agent Mode')}</Text>
-                  <Text size="xs" c="dimmed" style={{ lineHeight: 1.3 }}>
-                    {t('Use tools and work in steps')}
-                  </Text>
-                </Flex>
-              </Menu.Item>
-              {showWorkspace && (
-                <Menu.Item
-                  leftSection={<IconFolder size={16} stroke={1.5} />}
-                  rightSection={
-                    workspaceRoot ? (
-                      <ActionIcon
-                        size={18}
-                        variant="subtle"
-                        aria-label={t('Clear project folder')}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onWorkspaceRootChange?.(undefined)
-                        }}
+                  {showAgent && (
+                    <>
+                      <Menu.Divider />
+                      <Menu.Label fw={600}>{t('Mode')}</Menu.Label>
+                      <Menu.Item
+                        leftSection={<IconRobot size={16} stroke={1.5} />}
+                        closeMenuOnClick={false}
+                        rightSection={
+                          <Switch
+                            size="xs"
+                            checked={agentMode}
+                            onChange={() => onToggleAgentMode?.()}
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        }
+                        onClick={() => onToggleAgentMode?.()}
                       >
-                        <IconX size={12} />
-                      </ActionIcon>
-                    ) : null
-                  }
-                  onClick={() => {
-                    setWorkspaceModalOpen(true)
-                  }}
-                >
-                  <Flex direction="column" gap={2}>
-                    <Text size="sm">{t('Project folder')}</Text>
-                    <Text size="xs" c="dimmed" style={{ lineHeight: 1.3 }} lineClamp={1}>
-                      {workspaceLabel ? workspaceLabel : t('Where the AI can read and edit files')}
-                    </Text>
-                  </Flex>
-                </Menu.Item>
-              )}
-            </>
-          )}
+                        <Flex direction="column" gap={2}>
+                          <Text size="sm">{t('Agent Mode')}</Text>
+                          <Text size="xs" c="dimmed" style={{ lineHeight: 1.3 }}>
+                            {t('Use tools and work in steps')}
+                          </Text>
+                        </Flex>
+                      </Menu.Item>
+                      {showWorkspace && (
+                        <Menu.Item
+                          leftSection={<IconFolder size={16} stroke={1.5} />}
+                          rightSection={
+                            workspaceRoot ? (
+                              <ActionIcon
+                                size={18}
+                                variant="subtle"
+                                aria-label={t('Clear project folder')}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onWorkspaceRootChange?.(undefined)
+                                }}
+                              >
+                                <IconX size={12} />
+                              </ActionIcon>
+                            ) : null
+                          }
+                          onClick={() => {
+                            setWorkspaceModalOpen(true)
+                          }}
+                        >
+                          <Flex direction="column" gap={2}>
+                            <Text size="sm">{t('Project folder')}</Text>
+                            <Text size="xs" c="dimmed" style={{ lineHeight: 1.3 }} lineClamp={1}>
+                              {workspaceLabel ? workspaceLabel : t('Where the AI can read and edit files')}
+                            </Text>
+                          </Flex>
+                        </Menu.Item>
+                      )}
+                    </>
+                  )}
 
-          <Menu.Divider />
-          <Menu.Label fw={600}>{t('Chat')}</Menu.Label>
-          {showRollbackThreadButton ? (
-            <Menu.Item
-              leftSection={<IconArrowBackUp size={16} stroke={1.5} />}
-              onClick={() => {
-                onRollbackThread?.()
-                setOpened(false)
-              }}
-            >
-              {t('Undo last reply')}
-            </Menu.Item>
-          ) : (
-            <Menu.Item
-              leftSection={<IconFilePencil size={16} stroke={1.5} />}
-              disabled={!onStartNewThread}
-              onClick={() => {
-                onStartNewThread?.()
-                setOpened(false)
-              }}
-            >
-              {t('New Thread')}
-            </Menu.Item>
-          )}
-          <Menu.Item
-            leftSection={<IconAdjustmentsHorizontal size={16} stroke={1.5} />}
-            disabled={!onClickSessionSettings}
-            onClick={() => {
-              onClickSessionSettings?.()
-              setOpened(false)
-            }}
-          >
-            {t('Chat settings')}
-          </Menu.Item>
-          {onShareRoomPack && (
-            <Menu.Item
-              leftSection={<IconFile size={16} stroke={1.5} />}
-              onClick={() => {
-                onShareRoomPack()
-                setOpened(false)
-              }}
-            >
-              {t('Share room pack')}
-            </Menu.Item>
-          )}
-
-              </Menu.Dropdown>
+                  <Menu.Divider />
+                  <Menu.Label fw={600}>{t('Chat')}</Menu.Label>
+                  {showRollbackThreadButton ? (
+                    <Menu.Item
+                      leftSection={<IconArrowBackUp size={16} stroke={1.5} />}
+                      onClick={() => {
+                        onRollbackThread?.()
+                        setOpened(false)
+                      }}
+                    >
+                      {t('Undo last reply')}
+                    </Menu.Item>
+                  ) : (
+                    <Menu.Item
+                      leftSection={<IconFilePencil size={16} stroke={1.5} />}
+                      disabled={!onStartNewThread}
+                      onClick={() => {
+                        onStartNewThread?.()
+                        setOpened(false)
+                      }}
+                    >
+                      {t('New Thread')}
+                    </Menu.Item>
+                  )}
+                  <Menu.Item
+                    leftSection={<IconAdjustmentsHorizontal size={16} stroke={1.5} />}
+                    disabled={!onClickSessionSettings}
+                    onClick={() => {
+                      onClickSessionSettings?.()
+                      setOpened(false)
+                    }}
+                  >
+                    {t('Chat settings')}
+                  </Menu.Item>
+                  {onShareRoomPack && (
+                    <Menu.Item
+                      leftSection={<IconFile size={16} stroke={1.5} />}
+                      onClick={() => {
+                        onShareRoomPack()
+                        setOpened(false)
+                      }}
+                    >
+                      {t('Share room pack')}
+                    </Menu.Item>
+                  )}
+                </Menu.Dropdown>
               </Menu>
             </Drawer.Content>
           </Drawer.Portal>
         </Drawer.Root>
         <Modal
-        opened={workspaceModalOpen}
-        onClose={() => setWorkspaceModalOpen(false)}
-        title={t('Project folder')}
-        centered
-        size="md"
-      >
-        <Flex direction="column" gap="sm">
-          <Text size="sm" c="dimmed">
-            {t(
-              'The AI can only read and edit files inside this folder. Paste the full path (for example /Users/you/projects/my-app).'
-            )}
-          </Text>
-          <TextInput
-            label={t('Folder path')}
-            placeholder="/Users/you/projects/my-app"
-            value={workspaceDraft}
-            onChange={(e) => setWorkspaceDraft(e.currentTarget.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                saveWorkspace()
-              }
-            }}
-            data-autofocus
-          />
-          <Flex justify="flex-end" gap="xs" mt="xs">
-            <Button variant="default" onClick={() => setWorkspaceModalOpen(false)}>
-              {t('Cancel')}
-            </Button>
-            <Button onClick={saveWorkspace}>{t('Save')}</Button>
+          opened={workspaceModalOpen}
+          onClose={() => setWorkspaceModalOpen(false)}
+          title={t('Project folder')}
+          centered
+          size="md"
+        >
+          <Flex direction="column" gap="sm">
+            <Text size="sm" c="dimmed">
+              {t(
+                'The AI can only read and edit files inside this folder. Paste the full path (for example /Users/you/projects/my-app).'
+              )}
+            </Text>
+            <TextInput
+              label={t('Folder path')}
+              placeholder="/Users/you/projects/my-app"
+              value={workspaceDraft}
+              onChange={(e) => setWorkspaceDraft(e.currentTarget.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  saveWorkspace()
+                }
+              }}
+              data-autofocus
+            />
+            <Flex justify="flex-end" gap="xs" mt="xs">
+              <Button variant="default" onClick={() => setWorkspaceModalOpen(false)}>
+                {t('Cancel')}
+              </Button>
+              <Button onClick={saveWorkspace}>{t('Save')}</Button>
+            </Flex>
           </Flex>
-        </Flex>
-      </Modal>
-    </>
+        </Modal>
+      </>
     )
   }
 
@@ -628,13 +630,11 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
           >
             {t('Link')}
           </Menu.Item>
-          {memorySlot ? (
+          {memoryNode ? (
             <>
               <Menu.Divider />
               <Menu.Label fw={600}>{t('Memory')}</Menu.Label>
-              <div className="px-1 pb-1" onClick={() => setOpened(false)} onKeyDown={() => undefined}>
-                {memorySlot}
-              </div>
+              <div className="composer-tools-memory-slot px-1 pb-1">{memoryNode}</div>
             </>
           ) : null}
           {(showWeb || showMcp || showKb) && (

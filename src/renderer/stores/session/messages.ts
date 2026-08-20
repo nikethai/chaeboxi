@@ -36,6 +36,22 @@ export async function insertMessage(sessionId: string, msg: Message) {
 }
 
 /**
+ * Batched variant of insertMessage — appends user turn + assistant placeholder in one
+ * transaction so they render together instead of shoving each other down frame-by-frame.
+ */
+export async function insertMessages(sessionId: string, msgs: Message[]) {
+  const session = await chatStore.getSession(sessionId)
+  if (!session) {
+    return
+  }
+  for (const msg of msgs) {
+    msg.wordCount = countMessageWords(msg)
+    msg.tokenCount = estimateTokensFromMessages([msg])
+  }
+  return await chatStore.insertMessages(session.id, msgs)
+}
+
+/**
  * (legacy comment removed)
  * @param sessionId
  * @param msg
@@ -162,19 +178,6 @@ export async function submitNewUserMessage(
   const { newUserMsg, needGenerating } = params
   const webBrowsing = getSessionWebBrowsing(sessionId, settings.provider)
 
-  // (legacy comment removed)
-  if (!params.userAlreadyInserted) {
-    await insertMessage(sessionId, newUserMsg)
-  }
-
-  const globalSettings = settingsStore.getState().getSettings()
-
-  // Resolve agent room membership early (team multi-agent)
-  const { resolveSpeakers } = await import('@shared/agent-room')
-  const { applyRoomMembership, runAgentRoomDiscussion, shouldRunMultiAgentRoom } = await import('./multi-agent-room')
-  const { clearTeamRoomState } = await import('./team-room-state')
-  const { getBuiltInCopilotById } = await import('@/hooks/useCopilots')
-
   // Pin optimistic assistant ASAP so the thread never looks dead while room setup runs.
   // Multi-agent rooms create their own assistant rows — we remove this placeholder if needed.
   let newAssistantMsg = createMessage('assistant', '')
@@ -197,13 +200,21 @@ export async function submitNewUserMessage(
     })
   }
 
+  // Insert the user turn and the assistant Thinking placeholder in ONE transaction so
+  // they paint in the same frame. Two separate inserts let the user bubble land a beat
+  // after Thinking and shove it down — the jerk seen while the model is thinking.
+  // This runs before the heavy room-setup dynamic imports so first paint stays instant.
   let earlyAssistantInserted = false
   if (needGenerating) {
     newAssistantMsg.generating = true
     // Live-lock ASAP so Stop never flashes Send before generate() marks the target.
     const { markSessionGenerationLive } = await import('./session-live-generation')
     markSessionGenerationLive(sessionId, newAssistantMsg.id)
-    await insertMessage(sessionId, newAssistantMsg)
+    if (!params.userAlreadyInserted) {
+      await insertMessages(sessionId, [newUserMsg, newAssistantMsg])
+    } else {
+      await insertMessage(sessionId, newAssistantMsg)
+    }
     earlyAssistantInserted = true
     try {
       const scrollActions = await import('../scrollActions')
@@ -211,7 +222,17 @@ export async function submitNewUserMessage(
     } catch {
       // non-fatal
     }
+  } else if (!params.userAlreadyInserted) {
+    await insertMessage(sessionId, newUserMsg)
   }
+
+  const globalSettings = settingsStore.getState().getSettings()
+
+  // Resolve agent room membership early (team multi-agent)
+  const { resolveSpeakers } = await import('@shared/agent-room')
+  const { applyRoomMembership, runAgentRoomDiscussion, shouldRunMultiAgentRoom } = await import('./multi-agent-room')
+  const { clearTeamRoomState } = await import('./team-room-state')
+  const { getBuiltInCopilotById } = await import('@/hooks/useCopilots')
 
   clearTeamRoomState(sessionId)
 

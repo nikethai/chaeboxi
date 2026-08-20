@@ -1,8 +1,7 @@
 import { ActionIcon, Collapse, Flex, Tooltip } from '@mantine/core'
-import Alert from '@mui/material/Alert'
-import Link from '@mui/material/Link'
 import { aiProviderNameHash } from '@shared/models'
 import { ProviderAPIError } from '@shared/models/errors'
+import { classifyQuotaError } from '@shared/providers/usage'
 import type { Message } from '@shared/types'
 import { IconCheck, IconChevronDown, IconChevronUp, IconCopy } from '@tabler/icons-react'
 import type React from 'react'
@@ -10,7 +9,6 @@ import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useCopied } from '@/hooks/useCopied'
 import { navigateToSettings } from '@/modals/Settings'
-import { classifyQuotaError } from '@shared/providers/usage'
 import * as settingActions from '@/stores/settingActions'
 
 const MAX_CHARS = 200
@@ -39,6 +37,14 @@ function getProviderDisplayName(aiProvider: string | undefined): string {
   }
   const providerNames = aiProviderNameHash as Record<string, string>
   return providerNames[aiProvider] || aiProvider
+}
+
+function SettingsLink({ children, onClick }: { children?: React.ReactNode; onClick: () => void }) {
+  return (
+    <button type="button" className="msg-error-link" onClick={onClick}>
+      {children}
+    </button>
+  )
 }
 
 /**
@@ -82,7 +88,7 @@ export default function MessageErrTips(props: { msg: Message }) {
   }
 
   const tips: React.ReactNode[] = []
-  let onlyShowTips = false // ，
+  let onlyShowTips = false
 
   const quotaKind = classifyQuotaError({
     message: msg.error,
@@ -95,20 +101,10 @@ export default function MessageErrTips(props: { msg: Message }) {
       <Trans
         i18nKey="You may have reached your provider plan limit. Check <ViewUsageLink>Usage</ViewUsageLink> or <OpenSettingButton>provider settings</OpenSettingButton> to switch models."
         components={{
-          ViewUsageLink: (
-            <Link
-              className="cursor-pointer italic"
-              onClick={() => {
-                navigateToSettings('/usage')
-              }}
-            />
-          ),
+          ViewUsageLink: <SettingsLink onClick={() => navigateToSettings('/usage')} />,
           OpenSettingButton: (
-            <Link
-              className="cursor-pointer italic"
-              onClick={() => {
-                navigateToSettings(msg.aiProvider ? `/provider/${msg.aiProvider}` : '/provider')
-              }}
+            <SettingsLink
+              onClick={() => navigateToSettings(msg.aiProvider ? `/provider/${msg.aiProvider}` : '/provider')}
             />
           ),
         }}
@@ -116,16 +112,10 @@ export default function MessageErrTips(props: { msg: Message }) {
     )
   } else if (quotaKind === 'rate_limit' || msg.errorCode === 20005) {
     tips.push(
-      <Trans i18nKey="You have exceeded the provider rate limit. Please try again later. You can also review <ViewUsageLink>Usage</ViewUsageLink>."
+      <Trans
+        i18nKey="You have exceeded the provider rate limit. Please try again later. You can also review <ViewUsageLink>Usage</ViewUsageLink>."
         components={{
-          ViewUsageLink: (
-            <Link
-              className="cursor-pointer italic"
-              onClick={() => {
-                navigateToSettings('/usage')
-              }}
-            />
-          ),
+          ViewUsageLink: <SettingsLink onClick={() => navigateToSettings('/usage')} />,
         }}
       />
     )
@@ -138,17 +128,10 @@ export default function MessageErrTips(props: { msg: Message }) {
       <Trans
         i18nKey="OCR processing failed (provider: {{aiProvider}}). Please check your <OpenSettingButton>OCR model settings</OpenSettingButton> and ensure the configured model is available."
         values={{
-          aiProvider: msg.errorExtra?.['aiProvider'] || 'AI Provider',
+          aiProvider: msg.errorExtra?.aiProvider || 'AI Provider',
         }}
         components={{
-          OpenSettingButton: (
-            <Link
-              className="cursor-pointer italic"
-              onClick={() => {
-                navigateToSettings('/default-models')
-              }}
-            ></Link>
-          ),
+          OpenSettingButton: <SettingsLink onClick={() => navigateToSettings('/default-models')} />,
         }}
       />
     )
@@ -161,11 +144,8 @@ export default function MessageErrTips(props: { msg: Message }) {
         }}
         components={{
           buttonOpenSettings: (
-            <a
-              className="cursor-pointer underline font-bold hover:text-blue-600 transition-colors"
-              onClick={() => {
-                navigateToSettings(msg.aiProvider ? `/provider/${msg.aiProvider}` : '/provider')
-              }}
+            <SettingsLink
+              onClick={() => navigateToSettings(msg.aiProvider ? `/provider/${msg.aiProvider}` : '/provider')}
             />
           ),
         }}
@@ -176,7 +156,7 @@ export default function MessageErrTips(props: { msg: Message }) {
       <Trans
         i18nKey="network error tips"
         values={{
-          host: msg.errorExtra?.['host'] || 'AI Provider',
+          host: msg.errorExtra?.host || 'AI Provider',
         }}
       />
     )
@@ -191,15 +171,7 @@ export default function MessageErrTips(props: { msg: Message }) {
         values={{
           aiProvider: getProviderDisplayName(msg.aiProvider),
         }}
-        components={[
-          <Link
-            key="link"
-            className="cursor-pointer font-bold"
-            onClick={() => {
-              navigateToSettings()
-            }}
-          ></Link>,
-        ]}
+        components={[<SettingsLink key="link" onClick={() => navigateToSettings()} />]}
       />
     )
   } else if (msg.errorCode && ProviderAPIError.getDetail(msg.errorCode)) {
@@ -214,41 +186,13 @@ export default function MessageErrTips(props: { msg: Message }) {
             supported_web_browsing_models: 'gemini-2.0-flash(API), perplexity API',
           }}
           components={{
-            OpenSettingButton: (
-              <Link
-                className="cursor-pointer italic"
-                onClick={() => {
-                  navigateToSettings()
-                }}
-              ></Link>
-            ),
-            OpenExtensionSettingButton: (
-              <Link
-                className="cursor-pointer italic"
-                onClick={() => {
-                  navigateToSettings('/web-search')
-                }}
-              ></Link>
-            ),
-            OpenMorePlanButton: (
-              <Link
-                className="cursor-pointer italic"
-                onClick={() => {
-                  navigateToSettings('/provider')
-                }}
-              ></Link>
-            ),
+            OpenSettingButton: <SettingsLink onClick={() => navigateToSettings()} />,
+            OpenExtensionSettingButton: <SettingsLink onClick={() => navigateToSettings('/web-search')} />,
+            OpenMorePlanButton: <SettingsLink onClick={() => navigateToSettings('/provider')} />,
             LinkToHomePage: <span />,
             LinkToAdvancedFileProcessing: <span />,
             LinkToAdvancedUrlProcessing: <span />,
-            OpenDocumentParserSettingButton: (
-              <Link
-                className="cursor-pointer italic"
-                onClick={() => {
-                  navigateToSettings('/document-parser')
-                }}
-              ></Link>
-            ),
+            OpenDocumentParserSettingButton: <SettingsLink onClick={() => navigateToSettings('/document-parser')} />,
           }}
         />
       )
@@ -256,60 +200,56 @@ export default function MessageErrTips(props: { msg: Message }) {
   } else {
     tips.push(<Trans i18nKey="unknown error tips" components={[<span key="a"></span>]} />)
   }
+
   return (
-    <Alert icon={false} severity="error" className="message-error-tips">
-      {tips.map((tip, i) => (
-        <b key={`${i}-${tip}`}>{tip}</b>
-      ))}
+    <div className="msg-error-tips message-error-tips" role="alert">
+      <div className="msg-error-tips-body">
+        {tips.map((tip, i) => (
+          <p key={`${i}-${String(tip)}`} className="msg-error-tips-line">
+            {tip}
+          </p>
+        ))}
+      </div>
       {onlyShowTips ? null : (
-        <>
-          <br />
-          <br />
+        <div className="msg-error-detail">
           {isTruncated ? (
-            <div
-              className="text-sm p-2 rounded-md bg-red-50 dark:bg-red-900/20 cursor-pointer overflow-hidden"
+            <button
+              type="button"
+              className="msg-error-detail-toggle"
               onClick={() => setExpanded(!expanded)}
+              aria-expanded={expanded}
             >
-              <Flex align="flex-start" gap="xs" className="min-w-0">
-                <ActionIcon variant="transparent" size="xs" c="red" p={0} className="flex-shrink-0">
-                  {expanded ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
-                </ActionIcon>
-                <div className="flex-1 min-w-0 whitespace-pre-wrap break-all">
-                  {expanded ? errorMessage : getTruncatedText(errorMessage)}
-                </div>
-              </Flex>
-              <Collapse in={expanded}>
-                <Flex justify="flex-end" mt="xs">
-                  <Tooltip label={t('copy')} withArrow openDelay={1000}>
-                    <ActionIcon
-                      variant="subtle"
-                      size="sm"
-                      color="red"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        copy()
-                      }}
-                    >
-                      {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-                    </ActionIcon>
-                  </Tooltip>
-                </Flex>
-              </Collapse>
-            </div>
+              <span className="msg-error-detail-chevron" aria-hidden>
+                {expanded ? <IconChevronUp size={14} /> : <IconChevronDown size={14} />}
+              </span>
+              <span className="msg-error-detail-text whitespace-pre-wrap break-all">
+                {expanded ? errorMessage : getTruncatedText(errorMessage)}
+              </span>
+            </button>
           ) : (
-            <div className="text-sm p-2 rounded-md bg-red-50 dark:bg-red-900/20 overflow-hidden">
-              <div className="whitespace-pre-wrap break-all">{errorMessage}</div>
-              <Flex justify="flex-end" mt="xs">
-                <Tooltip label={t('copy')} withArrow openDelay={1000}>
-                  <ActionIcon variant="subtle" size="sm" color="red" onClick={() => copy()}>
-                    {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-                  </ActionIcon>
-                </Tooltip>
-              </Flex>
-            </div>
+            <div className="msg-error-detail-text whitespace-pre-wrap break-all">{errorMessage}</div>
           )}
-        </>
+          <Collapse in={expanded || !isTruncated}>
+            <Flex justify="flex-end" mt={isTruncated ? 'xs' : 0}>
+              <Tooltip label={t('copy')} withArrow openDelay={1000}>
+                <ActionIcon
+                  variant="subtle"
+                  size="sm"
+                  color="chatbox-error"
+                  className="active:scale-[0.96] transition-transform"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    copy()
+                  }}
+                  aria-label={t('copy')}
+                >
+                  {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+                </ActionIcon>
+              </Tooltip>
+            </Flex>
+          </Collapse>
+        </div>
       )}
-    </Alert>
+    </div>
   )
 }

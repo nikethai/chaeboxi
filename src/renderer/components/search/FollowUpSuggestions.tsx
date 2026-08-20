@@ -1,9 +1,7 @@
-import { Button, Group, Loader } from '@mantine/core'
-import { IconSparkles } from '@tabler/icons-react'
-import { useEffect, useRef, useState } from 'react'
 import { getModel } from '@shared/models'
 import { createMessage, type Message, type SearchCitation } from '@shared/types'
 import { getMessageText } from '@shared/utils/message'
+import { useEffect, useRef, useState } from 'react'
 import { createModelDependencies } from '@/adapters'
 import { languageNameMap } from '@/i18n/locales'
 import { generateText } from '@/packages/model-calls'
@@ -50,8 +48,8 @@ function buildPrompt(
   languageName: string,
   input: { searchQuery?: string; citations?: SearchCitation[]; answer?: string }
 ): { system: string; user: string } {
-  const system = `You are a helpful assistant that suggests follow-up questions to continue a web-search conversation.
-Based on the provided search context and the assistant's answer, generate exactly three concise, natural-language follow-up questions the user is most likely to ask next.
+  const system = `You are a helpful assistant that suggests follow-up questions to continue a conversation.
+Based on the provided context (and any search results when present), generate exactly three concise, natural-language follow-up questions the user is most likely to ask next.
 
 Requirements:
 - Write every question in ${languageName}.
@@ -83,7 +81,10 @@ Requirements:
     sections.push(`<answer>\n${truncate(input.answer.trim(), MAX_ANSWER_CHARS)}\n</answer>`)
   }
 
-  const user = `Generate exactly three follow-up questions based on the following context:\n\n${sections.join('\n\n')}`
+  const user =
+    sections.length > 0
+      ? `Generate exactly three follow-up questions based on the following context:\n\n${sections.join('\n\n')}`
+      : 'Generate exactly three short follow-up questions a user might ask next in this conversation.'
 
   return { system, user }
 }
@@ -254,7 +255,11 @@ async function generateAndPersistFollowUpSuggestions(
   }
 }
 
-function getOrGenerateFollowUpSuggestions(sessionId: string, messageId: string, input: FollowUpContext): Promise<string[]> {
+function getOrGenerateFollowUpSuggestions(
+  sessionId: string,
+  messageId: string,
+  input: FollowUpContext
+): Promise<string[]> {
   const key = `${sessionId}:${messageId}`
   const existing = followUpSuggestionPromises.get(key)
   if (existing) {
@@ -265,12 +270,15 @@ function getOrGenerateFollowUpSuggestions(sessionId: string, messageId: string, 
   return pending
 }
 
-export default function FollowUpSuggestions({ sessionId, message, cachedFollowUpSuggestions }: FollowUpSuggestionsProps) {
+export default function FollowUpSuggestions({
+  sessionId,
+  message,
+  cachedFollowUpSuggestions,
+}: FollowUpSuggestionsProps) {
   const { id: messageId } = message
 
-  // Capture the search context once at mount. The component only renders when
-  // generation is finished and citations are present, so this input is stable
-  // for the life of the message and is safe to reuse across remounts.
+  // Capture answer context once at mount. Component only renders when generation
+  // finished, so this input is stable for the life of the message.
   const contextRef = useRef<FollowUpContext | null>(null)
   if (contextRef.current === null) {
     contextRef.current = {
@@ -281,13 +289,11 @@ export default function FollowUpSuggestions({ sessionId, message, cachedFollowUp
   }
 
   const [suggestions, setSuggestions] = useState<string[] | undefined>(cachedFollowUpSuggestions)
-  const [loading, setLoading] = useState(cachedFollowUpSuggestions === undefined)
 
   useEffect(() => {
     // Already attempted (success or failure) — never call the model again.
     if (cachedFollowUpSuggestions !== undefined) {
       setSuggestions(cachedFollowUpSuggestions)
-      setLoading(false)
       return
     }
 
@@ -298,14 +304,12 @@ export default function FollowUpSuggestions({ sessionId, message, cachedFollowUp
         const generated = await getOrGenerateFollowUpSuggestions(sessionId, messageId, contextRef.current ?? {})
         if (!cancelled) {
           setSuggestions(generated)
-          setLoading(false)
         }
       } catch {
         // generateAndPersist persists [] on failure and never rejects; this is
         // a defensive backstop for unexpected errors.
         if (!cancelled) {
           setSuggestions([])
-          setLoading(false)
         }
       }
     }
@@ -317,15 +321,7 @@ export default function FollowUpSuggestions({ sessionId, message, cachedFollowUp
     }
   }, [sessionId, messageId, cachedFollowUpSuggestions])
 
-  if (loading) {
-    return (
-      <Group gap="xs" mt="xs" wrap="wrap" align="center">
-        <IconSparkles size={14} className="text-[var(--chatbox-tint-brand)] shrink-0" />
-        <Loader size={14} color="chatbox-brand" />
-      </Group>
-    )
-  }
-
+  // Quiet: show nothing while generating or when empty. No sparkles / loader.
   if (!suggestions || suggestions.length === 0) {
     return null
   }
@@ -339,21 +335,17 @@ export default function FollowUpSuggestions({ sessionId, message, cachedFollowUp
   }
 
   return (
-    <Group gap="xs" mt="xs" wrap="wrap">
-      <IconSparkles size={14} className="text-[var(--chatbox-tint-brand)] shrink-0" />
+    <div className="msg-followups" role="group" aria-label="Follow-up suggestions">
       {suggestions.map((suggestion) => (
-        <Button
+        <button
           key={suggestion}
-          variant="light"
-          size="compact-xs"
-          radius="md"
-          color="chatbox-brand"
-          className="font-normal"
+          type="button"
+          className="msg-followup-chip"
           onClick={() => handleSuggestionClick(suggestion)}
         >
           {suggestion}
-        </Button>
+        </button>
       ))}
-    </Group>
+    </div>
   )
 }

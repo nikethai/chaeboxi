@@ -4,7 +4,9 @@ import { IconBrain, IconPlus, IconSearch, IconSettings } from '@tabler/icons-rea
 import { type FC, type ReactNode, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
+import { AdaptiveModal } from '@/components/common/AdaptiveModal'
 import { parseTagsInput } from '@/components/settings/memory/memory-ui-state'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { navigateToSettings } from '@/modals/Settings'
 import { searchEntries } from '@/packages/memory/bank-ops'
 import { ensureMemoryStoreInit, useMemoryStore } from '@/stores/memoryStore'
@@ -28,6 +30,13 @@ export type MemoryDockPopoverProps = {
   onMemoryAutoSaveChange?: (enabled: boolean) => void
   /** Disable toggle while session is not ready (e.g. new unsaved chat). */
   memoryAutoSaveDisabled?: boolean
+  /**
+   * Force AdaptiveModal instead of Popover.
+   * Use from tools overflow so Memory never stacks over the + menu on small desktop.
+   */
+  forceModal?: boolean
+  /** Called when Memory opens (tools menu should close). */
+  onOpen?: () => void
 }
 
 export const MemoryDockPopover: FC<MemoryDockPopoverProps> = ({
@@ -41,8 +50,11 @@ export const MemoryDockPopover: FC<MemoryDockPopoverProps> = ({
   memoryAutoSave,
   onMemoryAutoSaveChange,
   memoryAutoSaveDisabled = false,
+  forceModal = false,
+  onOpen,
 }) => {
   const { t } = useTranslation()
+  const isSmallScreen = useIsSmallScreen()
   const ready = useMemoryStore((state) => state.ready)
   const globalBank = useMemoryStore((state) => state.globalBank)
   const globalMemoryEnabled = useMemoryStore((state) => state.settings.enabled)
@@ -141,148 +153,218 @@ export const MemoryDockPopover: FC<MemoryDockPopoverProps> = ({
     }
   }
 
-  return (
-    <Popover opened={opened} onChange={setOpened} position="top-end" shadow="md" width={360} withinPortal>
-      <Popover.Target>
-        <span className="inline-flex" onClick={() => setOpened((current) => !current)}>
-          {trigger ?? (
-            <UnstyledButton type="button" className={className} aria-label={label} title={title}>
-              <span className="session-statusline-chip-label">{t('Memory')}</span>
-              <span className="session-statusline-val" style={{ opacity: on ? 1 : 0.55 }}>
-                {label}
-              </span>
-            </UnstyledButton>
-          )}
-        </span>
-      </Popover.Target>
+  // useModal is defined below body via const — compute early for header layout
+  const preferModal = forceModal || isSmallScreen
 
-      <Popover.Dropdown p="sm" className="memory-dock-dropdown">
-        <Stack gap="sm" className="memory-dock-body">
-          <Flex justify="space-between" align="center" gap="sm" className="memory-dock-header">
-            <Flex align="center" gap={6}>
-              <IconBrain size={16} stroke={1.6} className="memory-dock-header-icon" />
-              <Text size="sm" fw={600} className="memory-dock-title">
-                {t('Memory')}
+  const body = (
+    <Stack gap="sm" className="memory-dock-body">
+      <Flex justify={preferModal ? 'flex-end' : 'space-between'} align="center" gap="sm" className="memory-dock-header">
+        {!preferModal ? (
+          <Flex align="center" gap={6}>
+            <IconBrain size={16} stroke={1.6} className="memory-dock-header-icon" />
+            <Text size="sm" fw={600} className="memory-dock-title">
+              {t('Memory')}
+            </Text>
+          </Flex>
+        ) : null}
+        <Button
+          variant="subtle"
+          size="compact-sm"
+          leftSection={<IconSettings size={14} />}
+          onClick={() => {
+            setOpened(false)
+            navigateToSettings('memory')
+          }}
+          className="memory-dock-manage"
+        >
+          {t('Manage')}
+        </Button>
+      </Flex>
+
+      {onMemoryAutoSaveChange && (
+        <Stack
+          gap={4}
+          className="rounded-md border border-solid border-chatbox-border-primary bg-[var(--chatbox-background-secondary)] px-2.5 py-2"
+        >
+          <Flex justify="space-between" align="center" gap="sm">
+            <Stack gap={0} className="min-w-0">
+              <Text size="sm" fw={600}>
+                {t('Auto-save this chat')}
               </Text>
-            </Flex>
+              <Text size="xs" c="dimmed" lineClamp={2}>
+                {!globalMemoryEnabled
+                  ? t('Memory is off globally in Settings.')
+                  : !sessionAutoSaveOn
+                    ? t('Off — no auto-extract or model retain. Manual save still works.')
+                    : !globalAutoSave
+                      ? t('On for this chat, but global Auto-save is off in Settings.')
+                      : t('On — durable facts may be saved from this chat.')}
+              </Text>
+            </Stack>
+            <Switch
+              size="sm"
+              checked={sessionAutoSaveOn}
+              disabled={memoryAutoSaveDisabled || !globalMemoryEnabled}
+              onChange={(e) => onMemoryAutoSaveChange(e.currentTarget.checked)}
+              aria-label={t('Auto-save memories from this chat')}
+            />
+          </Flex>
+        </Stack>
+      )}
+
+      {showSaveForm ? (
+        <>
+          <Textarea
+            label={t('Memory to save')}
+            description={t('Review before saving. New memories are unpinned by default.')}
+            value={content}
+            onChange={(event) => setContent(event.currentTarget.value)}
+            autosize
+            minRows={3}
+            maxRows={7}
+            error={
+              content.length > maxEntryChars ? t('Over {{max}} character limit', { max: maxEntryChars }) : undefined
+            }
+          />
+          <TextInput
+            label={t('Tags')}
+            description={t('Optional · comma separated')}
+            value={tags}
+            onChange={(event) => setTags(event.currentTarget.value)}
+            placeholder={t('prefs, project')}
+          />
+          <Flex justify="flex-end" gap="xs">
+            <Button variant="default" size="sm" disabled={saving} onClick={() => setShowSaveForm(false)}>
+              {t('Cancel')}
+            </Button>
             <Button
-              variant="subtle"
-              size="compact-sm"
-              leftSection={<IconSettings size={14} />}
-              onClick={() => {
-                setOpened(false)
-                navigateToSettings('memory')
-              }}
-              className="memory-dock-manage"
+              size="sm"
+              loading={saving}
+              disabled={!content.trim() || content.length > maxEntryChars}
+              onClick={() => void saveMemory()}
             >
-              {t('Manage')}
+              {t('Save memory')}
             </Button>
           </Flex>
-
-          {onMemoryAutoSaveChange && (
-            <Stack
-              gap={4}
-              className="rounded-md border border-solid border-chatbox-border-primary bg-[var(--chatbox-background-secondary)] px-2.5 py-2"
-            >
-              <Flex justify="space-between" align="center" gap="sm">
-                <Stack gap={0} className="min-w-0">
-                  <Text size="sm" fw={600}>
-                    {t('Auto-save this chat')}
-                  </Text>
-                  <Text size="xs" c="dimmed" lineClamp={2}>
-                    {!globalMemoryEnabled
-                      ? t('Memory is off globally in Settings.')
-                      : !sessionAutoSaveOn
-                        ? t('Off — no auto-extract or model retain. Manual save still works.')
-                        : !globalAutoSave
-                          ? t('On for this chat, but global Auto-save is off in Settings.')
-                          : t('On — durable facts may be saved from this chat.')}
-                  </Text>
-                </Stack>
-                <Switch
-                  size="sm"
-                  checked={sessionAutoSaveOn}
-                  disabled={memoryAutoSaveDisabled || !globalMemoryEnabled}
-                  onChange={(e) => onMemoryAutoSaveChange(e.currentTarget.checked)}
-                  aria-label={t('Auto-save memories from this chat')}
-                />
-              </Flex>
-            </Stack>
+        </>
+      ) : (
+        <>
+          <TextInput
+            leftSection={<IconSearch size={15} />}
+            placeholder={t('Search memory')}
+            value={query}
+            onChange={(event) => {
+              setQuery(event.currentTarget.value)
+              setSelectedIds(new Set())
+            }}
+            disabled={!ready}
+          />
+          <Text size="xs" c="chatbox-tertiary">
+            {query.trim() ? t('Results ranked by relevance') : t('Pinned and recent')}
+          </Text>
+          <MemoryTagFilter tags={tagsByBank} activeTag={activeTag} onTagChange={changeActiveTag} />
+          <MemorySearchResults
+            entries={entries}
+            selectedIds={selectedIds}
+            query={query}
+            ready={ready}
+            canInsert={Boolean(onInsertMemory)}
+            onToggle={toggleSelectedEntry}
+            onInsert={(entry) => insertMemories([entry])}
+            onCopy={(entryContent) => void copyMemory(entryContent)}
+          />
+          {selectedEntries.length > 0 && (
+            <Button size="sm" onClick={() => insertMemories(selectedEntries)}>
+              {t('Insert {{count}} selected', { count: selectedEntries.length })}
+            </Button>
           )}
+          <Divider />
+          <Button variant="light" size="sm" leftSection={<IconPlus size={14} />} onClick={openSaveForm}>
+            {t('Save memory from draft')}
+          </Button>
+        </>
+      )}
+    </Stack>
+  )
 
-          {showSaveForm ? (
-            <>
-              <Textarea
-                label={t('Memory to save')}
-                description={t('Review before saving. New memories are unpinned by default.')}
-                value={content}
-                onChange={(event) => setContent(event.currentTarget.value)}
-                autosize
-                minRows={3}
-                maxRows={7}
-                error={
-                  content.length > maxEntryChars ? t('Over {{max}} character limit', { max: maxEntryChars }) : undefined
-                }
-              />
-              <TextInput
-                label={t('Tags')}
-                description={t('Optional · comma separated')}
-                value={tags}
-                onChange={(event) => setTags(event.currentTarget.value)}
-                placeholder={t('prefs, project')}
-              />
-              <Flex justify="flex-end" gap="xs">
-                <Button variant="default" size="sm" disabled={saving} onClick={() => setShowSaveForm(false)}>
-                  {t('Cancel')}
-                </Button>
-                <Button
-                  size="sm"
-                  loading={saving}
-                  disabled={!content.trim() || content.length > maxEntryChars}
-                  onClick={saveMemory}
-                >
-                  {t('Save memory')}
-                </Button>
-              </Flex>
-            </>
-          ) : (
-            <>
-              <TextInput
-                leftSection={<IconSearch size={15} />}
-                placeholder={t('Search memory')}
-                value={query}
-                onChange={(event) => {
-                  setQuery(event.currentTarget.value)
-                  setSelectedIds(new Set())
-                }}
-                disabled={!ready}
-              />
-              <Text size="xs" c="chatbox-tertiary">
-                {query.trim() ? t('Results ranked by relevance') : t('Pinned and recent')}
-              </Text>
-              <MemoryTagFilter tags={tagsByBank} activeTag={activeTag} onTagChange={changeActiveTag} />
-              <MemorySearchResults
-                entries={entries}
-                selectedIds={selectedIds}
-                query={query}
-                ready={ready}
-                canInsert={Boolean(onInsertMemory)}
-                onToggle={toggleSelectedEntry}
-                onInsert={(entry) => insertMemories([entry])}
-                onCopy={(content) => void copyMemory(content)}
-              />
-              {selectedEntries.length > 0 && (
-                <Button size="sm" onClick={() => insertMemories(selectedEntries)}>
-                  {t('Insert {{count}} selected', { count: selectedEntries.length })}
-                </Button>
-              )}
-              <Divider />
-              <Button variant="light" size="sm" leftSection={<IconPlus size={14} />} onClick={openSaveForm}>
-                {t('Save memory from draft')}
-              </Button>
-            </>
-          )}
-        </Stack>
+  const openMemory = () => {
+    // Close parent tools menu first so Memory never stacks over it.
+    onOpen?.()
+    // Defer open one frame so Menu/Drawer unmount doesn't steal focus/portal.
+    window.requestAnimationFrame(() => setOpened(true))
+  }
+
+  const toggleMemory = () => {
+    if (opened) {
+      setOpened(false)
+      return
+    }
+    openMemory()
+  }
+
+  const triggerNode = (
+    <span
+      className="inline-flex w-full min-w-0"
+      onClick={(event) => {
+        // Tools menu / sheet: stop so parent Menu doesn't steal the click.
+        event.stopPropagation()
+        toggleMemory()
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          event.stopPropagation()
+          toggleMemory()
+        }
+      }}
+    >
+      {trigger ?? (
+        <UnstyledButton type="button" className={className} aria-label={label} title={title}>
+          <span className="session-statusline-chip-label">{t('Memory')}</span>
+          <span className="session-statusline-val" style={{ opacity: on ? 1 : 0.55 }}>
+            {label}
+          </span>
+        </UnstyledButton>
+      )}
+    </span>
+  )
+
+  // Modal path: mobile sheet + tools-overflow origin (never stack over + menu).
+  if (preferModal) {
+    return (
+      <>
+        {triggerNode}
+        <AdaptiveModal
+          opened={opened}
+          onClose={() => setOpened(false)}
+          title={t('Memory')}
+          description={title}
+          size="md"
+          className="memory-dock-modal"
+        >
+          <div className="memory-dock-modal-body">{body}</div>
+        </AdaptiveModal>
+      </>
+    )
+  }
+
+  return (
+    <Popover
+      opened={opened}
+      onChange={(next) => {
+        if (next) onOpen?.()
+        setOpened(next)
+      }}
+      position="top-start"
+      shadow="md"
+      width={Math.min(360, typeof window !== 'undefined' ? window.innerWidth - 32 : 360)}
+      withinPortal
+      middlewares={{ flip: true, shift: true, inline: false }}
+      offset={10}
+    >
+      <Popover.Target>{triggerNode}</Popover.Target>
+      <Popover.Dropdown p="sm" className="memory-dock-dropdown">
+        {body}
       </Popover.Dropdown>
     </Popover>
   )

@@ -8,9 +8,6 @@ import {
   Textarea,
   Tooltip as Tooltip1,
 } from '@mantine/core'
-import Box from '@mui/material/Box'
-import { useTheme } from '@mui/material/styles'
-import Typography from '@mui/material/Typography'
 import {
   createMessage,
   type Message,
@@ -41,7 +38,6 @@ import {
   IconTrash,
 } from '@tabler/icons-react'
 import { useQuery } from '@tanstack/react-query'
-import { useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
 import * as dateFns from 'date-fns'
 import { concat, isEqual } from 'lodash'
@@ -76,15 +72,17 @@ import {
   snapshotTasksFromContentParts,
 } from '@/packages/tools/task-tools'
 import { countWord } from '@/packages/word-count'
-import {
-  contentPartsRevision,
-  groupAssistantContentParts,
-  shouldShowAssistantPending,
-} from '@/utils/message-stream-ui'
 import platform from '@/platform'
+import { router } from '@/router'
 import storage from '@/storage'
 import { useSettingsStore } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
+import {
+  contentPartsRevision,
+  groupAssistantContentParts,
+  hasVisibleAssistantReply,
+  shouldShowAssistantPending,
+} from '@/utils/message-stream-ui'
 import '../../static/Block.css'
 import {
   approveAndExecutePlan,
@@ -162,11 +160,10 @@ const _Message: FC<Props> = (props) => {
     assistantAvatarKey: _assistantAvatarKey,
     sessionPicUrl: _sessionPicUrl,
     discussionGroupStart,
-    showFollowUpSuggestions = false
+    showFollowUpSuggestions = false,
   } = props
 
   const { t } = useTranslation()
-  const theme = useTheme()
   const isSamllScreen = useIsSmallScreen()
   const {
     userAvatarKey: _userAvatarKey,
@@ -185,7 +182,6 @@ const _Message: FC<Props> = (props) => {
   const [selectionToolbar, setSelectionToolbar] = useState<{ text: string; x: number; y: number } | null>(null)
   const [feedbackText, setFeedbackText] = useState(msg.feedback?.text ?? '')
 
-  const navigate = useNavigate()
   const isComfyUIReady = useSettingsStore((state) => !!state.providers?.[ModelProviderEnum.ComfyUI]?.comfyuiCheckpoint)
 
   const messageText = useMemo(() => getMessageText(msg), [msg])
@@ -201,7 +197,6 @@ const _Message: FC<Props> = (props) => {
     contentLength - collapseThreshold > 50 // ，
   const [isCollapsed, setIsCollapsed] = useState(needCollapse)
 
-  const ref = useRef<HTMLDivElement>(null)
   const messageContentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -294,8 +289,8 @@ const _Message: FC<Props> = (props) => {
   }, [msg, t])
 
   const handleSendToImageCreator = useCallback(() => {
-    navigate({ to: '/image-creator', search: { prompt: messageText } })
-  }, [navigate, messageText])
+    void router.navigate({ to: '/image-creator', search: { prompt: messageText } })
+  }, [messageText])
 
   // reasoning
   const onCopyReasoningContent =
@@ -520,6 +515,18 @@ const _Message: FC<Props> = (props) => {
   // contentParts may be mutated in place during streaming — length alone is insufficient.
   const partsRevision = contentPartsRevision(contentParts)
 
+  // Keep the Thinking… strip after this turn settles (same mount). Dropping it on
+  // generating→false yanked the answer up. Reset when the message identity changes.
+  const keepEmptyThinkingMsgIdRef = useRef(msg.id)
+  const keepEmptyThinkingRef = useRef(false)
+  if (keepEmptyThinkingMsgIdRef.current !== msg.id) {
+    keepEmptyThinkingMsgIdRef.current = msg.id
+    keepEmptyThinkingRef.current = Boolean(msg.generating)
+  } else if (msg.generating) {
+    keepEmptyThinkingRef.current = true
+  }
+  const keepEmptyThinking = keepEmptyThinkingRef.current
+
   /**
    * Product layout for assistant turns:
    * - One work strip (all tools + reasoning + mid-turn monologue)
@@ -527,16 +534,15 @@ const _Message: FC<Props> = (props) => {
    * User / system messages keep a flat part list.
    */
   const groupedParts = useMemo(() => {
-    if (contentParts.length === 0) return []
-
-    // Non-assistant: no work coalescing
+    // Empty generating assistant still needs a thinking-group (see groupAssistantContentParts).
+    // Returning [] here hid the bubble while statusline said Thinking…
     if (msg.role !== 'assistant') {
       return contentParts.map((part, index) => ({ type: 'single' as const, part, index }))
     }
 
-    return groupAssistantContentParts(contentParts, msg.generating)
+    return groupAssistantContentParts(contentParts, msg.generating, { keepEmptyThinking })
     // eslint-disable-next-line react-hooks/exhaustive-deps -- partsRevision captures in-place stream mutations
-  }, [contentParts, partsRevision, msg.generating, msg.role])
+  }, [contentParts, partsRevision, msg.generating, msg.role, keepEmptyThinking])
 
   const messageTaskSnapshot = useMemo(
     () => (contentPartsHaveTaskTools(contentParts) ? snapshotTasksFromContentParts(contentParts) : []),
@@ -550,12 +556,9 @@ const _Message: FC<Props> = (props) => {
   }, [groupedParts, contentParts.length, msg.generating])
 
   const CollapseButton = (
-    <span
-      className="cursor-pointer inline-block font-bold text-blue-500 hover:text-white hover:bg-blue-500"
-      onClick={() => setIsCollapsed(!isCollapsed)}
-    >
-      [{isCollapsed ? t('Expand') : t('Collapse')}]
-    </span>
+    <button type="button" className="msg-collapse-toggle" onClick={() => setIsCollapsed(!isCollapsed)}>
+      {isCollapsed ? t('Expand') : t('Collapse')}
+    </button>
   )
 
   const actionMenuItems = useMemo<ActionMenuItemProps[]>(
@@ -644,14 +647,42 @@ const _Message: FC<Props> = (props) => {
     ]
   )
   const [actionMenuOpened, setActionMenuOpened] = useState(false)
-
   const isUser = msg.role === 'user'
   const isAssistant = msg.role === 'assistant'
-  const isSystem = msg.role === 'system'
+
+  // Defer follow-up chips after settle so they don't share the generating→done paint.
+  const [settledReady, setSettledReady] = useState(false)
+  useEffect(() => {
+    if (msg.generating) {
+      setSettledReady(false)
+      return
+    }
+    const t = window.setTimeout(() => setSettledReady(true), 180)
+    return () => window.clearTimeout(t)
+  }, [msg.generating, msg.id])
+
+  // Keep the caret mounted ~200ms after generating so it fades instead of snapping off.
+  const wasStreamingRef = useRef(false)
+  const [caretPhase, setCaretPhase] = useState<'off' | 'on' | 'out'>('off')
+  useEffect(() => {
+    const live = Boolean(isAssistant && msg.generating)
+    if (live) {
+      wasStreamingRef.current = true
+      setCaretPhase('on')
+      return
+    }
+    if (!wasStreamingRef.current) {
+      setCaretPhase('off')
+      return
+    }
+    wasStreamingRef.current = false
+    setCaretPhase('out')
+    const t = window.setTimeout(() => setCaretPhase('off'), 280)
+    return () => window.clearTimeout(t)
+  }, [isAssistant, msg.generating, msg.id])
 
   return (
-    <Box
-      ref={ref}
+    <div
       id={props.id}
       key={msg.id}
       className={cn(
@@ -687,30 +718,20 @@ const _Message: FC<Props> = (props) => {
           </div>
         ) : null}
         <div className={cn('msg-bubble', isUser ? 'inline-block' : 'w-full')}>
-          <Box
+          <div
             ref={messageContentRef}
             className={cn('msg-content', { 'msg-content-small': small })}
-            sx={small ? { fontSize: theme.typography.body2.fontSize } : {}}
             onMouseUp={handleSelectionMouseUp}
           >
-            {msg.citations?.length ? <SourceCardList citations={msg.citations} /> : null}
-            {msg.reasoningContent && (
+            {msg.reasoningContent && !groupedParts.some((g) => g.type === 'thinking-group') && (
               <ReasoningContentUI message={msg} onCopyReasoningContent={onCopyReasoningContent} />
             )}
-            {
-              // (legacy comment removed)
-              // (legacy comment)
-              getMessageText(msg, true, true).trim() === '' && <p></p>
-            }
             {groupedParts.length > 0 && (
               <div>
                 {groupedParts.map((group, groupIndex) =>
                   group.type === 'thinking-group' ? (
                     ThinkingGroupUI ? (
-                      <div
-                        key={`thinking-group-${msg.id}-${group.startIndex}`}
-                        className="msg-thinking-slot"
-                      >
+                      <div key={`thinking-group-${msg.id}`} className="msg-thinking-slot">
                         <Suspense
                           fallback={
                             // Quiet Grok line only — dock owns activity chrome.
@@ -745,7 +766,11 @@ const _Message: FC<Props> = (props) => {
                   ) : group.part.type === 'text' ? (
                     <div
                       key={`text-${msg.id}-${group.index}`}
-                      className={cn(msg.role === 'assistant' && 'msg-answer-slot')}
+                      className={cn(
+                        msg.role === 'assistant' && 'msg-answer-slot',
+                        caretPhase === 'on' && 'is-streaming',
+                        caretPhase === 'out' && 'is-streaming is-settling'
+                      )}
                     >
                       {msg.role === 'user' ? (
                         <div className="break-words whitespace-pre-wrap">
@@ -801,8 +826,9 @@ const _Message: FC<Props> = (props) => {
                           compact={msg.role === 'user'}
                         />
                         {(group.part as { ocrResult?: string }).ocrResult && (
-                          <div
-                            className="my-2 p-2 bg-chatbox-background-brand-secondary rounded-md cursor-pointer hover:bg-chatbox-background-brand-secondary-hover transition-colors"
+                          <button
+                            type="button"
+                            className="msg-ocr-card"
                             onClick={async (e) => {
                               e.stopPropagation()
                               await NiceModal.show('content-viewer', {
@@ -811,24 +837,18 @@ const _Message: FC<Props> = (props) => {
                               })
                             }}
                           >
-                            <Typography variant="caption" className="text-gray-600 dark:text-gray-400 block mb-1">
+                            <span className="msg-ocr-card-meta">
                               {t('OCR Text')} ({(group.part as { ocrResult?: string }).ocrResult?.length || 0}{' '}
                               {t('characters')})
-                            </Typography>
-                            <Typography
-                              variant="body2"
-                              className="line-clamp-2 text-gray-700 dark:text-gray-300"
+                            </span>
+                            <span
+                              className="msg-ocr-card-preview"
                               title={(group.part as { ocrResult?: string }).ocrResult}
                             >
                               {(group.part as { ocrResult?: string }).ocrResult}
-                            </Typography>
-                            <Typography
-                              variant="caption"
-                              className="text-blue-500 hover:text-blue-600 mt-1 inline-block"
-                            >
-                              {t('Click to view full text')}
-                            </Typography>
-                          </div>
+                            </span>
+                            <span className="msg-ocr-card-action">{t('Click to view full text')}</span>
+                          </button>
                         )}
                       </div>
                     )
@@ -864,7 +884,7 @@ const _Message: FC<Props> = (props) => {
                 )}
               </div>
             )}
-          </Box>
+          </div>
           {props.sessionType === 'picture' && msg.contentParts.filter((p) => p.type === 'image').length > 0 && (
             <PictureGallery
               pictures={msg.contentParts.filter((p) => p.type === 'image')}
@@ -887,6 +907,7 @@ const _Message: FC<Props> = (props) => {
           )}
           <MessageErrTips msg={msg} />
           {needCollapse && !isCollapsed && CollapseButton}
+          {msg.citations?.length ? <SourceCardList citations={msg.citations} /> : null}
 
           {/*
             Waiting chrome while generating with nothing the user can read yet.
@@ -899,7 +920,7 @@ const _Message: FC<Props> = (props) => {
             workStripAvailable: Boolean(ThinkingGroupUI),
           }) && <AssistantPending className="mt-0.5" />}
 
-          {!msg.generating && tips.length > 0 && (
+          {!msg.generating && settledReady && tips.length > 0 && (
             <Text size="xs" c="chatbox-tertiary" className="mt-1 opacity-80">
               {tips.join(' · ')}
             </Text>
@@ -916,122 +937,121 @@ const _Message: FC<Props> = (props) => {
         />
         {(msg.files || msg.links) && <MessageAttachmentGrid files={msg.files} links={msg.links} />}
 
-        {isAssistant && msg.skillActivations && msg.skillActivations.length > 0 && !msg.generating && (
+        {isAssistant && msg.skillActivations && msg.skillActivations.length > 0 && !msg.generating && settledReady && (
           <SkillActivationsBar activations={msg.skillActivations} className="mt-2.5" />
         )}
 
-        {/* actions — hover-only; never on empty/finished shells (looks "done" before text paints) */}
+        {/* actions — hover-only; last assistant reserves height so settle does not shove the thread */}
         {buttonGroup !== 'none' &&
-          !msg.generating &&
-          !(
-            isAssistant &&
-            !msg.error &&
-            !contentParts.some((p) => {
-              if (p.type === 'text' && p.text?.trim()) return true
-              if (p.type === 'image') return true
-              if (p.type === 'plan') return true
-              if (p.type === 'tool-call' && p.toolName !== 'memory_lookup') return true
-              return false
-            })
-          ) && (
-          <Flex
-            gap={0}
-            mt={4}
-            className={clsx(
-              'msg-actions',
-              (actionMenuOpened || buttonGroup === 'always') && 'is-visible',
-              isSamllScreen ? 'sticky bottom-4' : '',
-              isUser && 'justify-end'
-            )}
-            align="center"
-          >
-            <Flex
-              gap={0}
-              className={
-                isSamllScreen
-                  ? 'p-xxs bg-chatbox-background-primary rounded-md border-[0.5px] border-solid border-chatbox-border-primary'
-                  : ''
-              }
-            >
-              {/* Mock action order (assistant): copy · up · down · reload · more */}
-              {!isSamllScreen && !(props.sessionType === 'picture' && msg.role === 'assistant') && (
-                <MessageActionIcon icon={IconCopy} tooltip={t('copy')} onClick={onCopyMsg} />
+          !(isAssistant && !msg.error && !hasVisibleAssistantReply(contentParts) && !msg.generating) && (
+            <div className={clsx('msg-actions-slot', buttonGroup === 'always' && 'is-reserved')}>
+              {settledReady && !msg.generating && (
+                <Flex
+                  gap={0}
+                  className={clsx(
+                    'msg-actions',
+                    (actionMenuOpened || buttonGroup === 'always') && 'is-visible',
+                    isSamllScreen ? 'sticky bottom-4' : '',
+                    isUser && 'justify-end'
+                  )}
+                  align="center"
+                >
+                  <Flex
+                    gap={0}
+                    className={
+                      isSamllScreen
+                        ? 'p-xxs bg-chatbox-background-primary rounded-md border-[0.5px] border-solid border-chatbox-border-primary'
+                        : ''
+                    }
+                  >
+                    {/* Mock action order (assistant): copy · up · down · reload · more */}
+                    {!isSamllScreen && !(props.sessionType === 'picture' && msg.role === 'assistant') && (
+                      <MessageActionIcon icon={IconCopy} tooltip={t('copy')} onClick={onCopyMsg} />
+                    )}
+
+                    {!isSamllScreen && msg.role === 'assistant' && (
+                      <MessageActionIcon
+                        icon={msg.feedback?.rating === 'up' ? IconThumbUpFilled : IconThumbUp}
+                        tooltip={t('Thumbs Up')}
+                        color={msg.feedback?.rating === 'up' ? 'chatbox-success' : 'chatbox-tertiary'}
+                        onClick={() => toggleFeedbackRating('up')}
+                      />
+                    )}
+
+                    {!isSamllScreen && msg.role === 'assistant' && (
+                      <MessageActionIcon
+                        icon={msg.feedback?.rating === 'down' ? IconThumbDownFilled : IconThumbDown}
+                        tooltip={t('Thumbs Down')}
+                        color={msg.feedback?.rating === 'down' ? 'chatbox-error' : 'chatbox-tertiary'}
+                        onClick={() => toggleFeedbackRating('down')}
+                      />
+                    )}
+
+                    {!isSamllScreen && !msg.generating && msg.role === 'assistant' && (
+                      <MessageActionIcon icon={IconReload} tooltip={t('Reply Again')} onClick={handleRefresh} />
+                    )}
+
+                    {!isSamllScreen && msg.role !== 'assistant' && (
+                      <MessageActionIcon
+                        icon={IconArrowDown}
+                        tooltip={t('Reply Again Below')}
+                        onClick={onGenerateMore}
+                      />
+                    )}
+
+                    {
+                      // legacy cloud model prefix
+                      !isSamllScreen &&
+                        !msg.model?.startsWith('chatboxai') &&
+                        // (legacy comment removed)
+                        !(msg.role === 'assistant' && props.sessionType === 'picture') && (
+                          <MessageActionIcon icon={IconPencil} tooltip={t('edit')} onClick={onEditClick} />
+                        )
+                    }
+
+                    {/* Save to memory — toolbar (same row as copy / edit / more) */}
+                    {!isSamllScreen &&
+                      !msg.generating &&
+                      (msg.role === 'user' || msg.role === 'assistant') &&
+                      !(props.sessionType === 'picture' && msg.role === 'assistant') && (
+                        <MessageActionIcon
+                          icon={IconBrain}
+                          tooltip={t('Save to memory')}
+                          onClick={() => void onSaveToMemory()}
+                        />
+                      )}
+
+                    {!isSamllScreen && msg.role === 'assistant' && isComfyUIReady && (
+                      <MessageActionIcon
+                        icon={IconPhoto}
+                        tooltip={t('Send to Image Creator')}
+                        onClick={handleSendToImageCreator}
+                      />
+                    )}
+
+                    {!isSamllScreen &&
+                      !msg.generating &&
+                      props.sessionType === 'picture' &&
+                      msg.role === 'assistant' && (
+                        <MessageActionIcon
+                          icon={IconPhotoPlus}
+                          tooltip={t('Generate More Images Below')}
+                          onClick={onGenerateMore}
+                        />
+                      )}
+
+                    <ActionMenu
+                      items={actionMenuItems}
+                      opened={actionMenuOpened}
+                      onChange={(opened) => setActionMenuOpened(opened)}
+                    >
+                      <MessageActionIcon icon={IconDotsVertical} tooltip={t('More')} />
+                    </ActionMenu>
+                  </Flex>
+                </Flex>
               )}
-
-              {!isSamllScreen && msg.role === 'assistant' && (
-                <MessageActionIcon
-                  icon={msg.feedback?.rating === 'up' ? IconThumbUpFilled : IconThumbUp}
-                  tooltip={t('Thumbs Up')}
-                  color={msg.feedback?.rating === 'up' ? 'chatbox-success' : 'chatbox-tertiary'}
-                  onClick={() => toggleFeedbackRating('up')}
-                />
-              )}
-
-              {!isSamllScreen && msg.role === 'assistant' && (
-                <MessageActionIcon
-                  icon={msg.feedback?.rating === 'down' ? IconThumbDownFilled : IconThumbDown}
-                  tooltip={t('Thumbs Down')}
-                  color={msg.feedback?.rating === 'down' ? 'chatbox-error' : 'chatbox-tertiary'}
-                  onClick={() => toggleFeedbackRating('down')}
-                />
-              )}
-
-              {!isSamllScreen && !msg.generating && msg.role === 'assistant' && (
-                <MessageActionIcon icon={IconReload} tooltip={t('Reply Again')} onClick={handleRefresh} />
-              )}
-
-              {!isSamllScreen && msg.role !== 'assistant' && (
-                <MessageActionIcon icon={IconArrowDown} tooltip={t('Reply Again Below')} onClick={onGenerateMore} />
-              )}
-
-              {
-                // legacy cloud model prefix
-                !isSamllScreen &&
-                  !msg.model?.startsWith('chatboxai') &&
-                  // (legacy comment removed)
-                  !(msg.role === 'assistant' && props.sessionType === 'picture') && (
-                    <MessageActionIcon icon={IconPencil} tooltip={t('edit')} onClick={onEditClick} />
-                  )
-              }
-
-              {/* Save to memory — toolbar (same row as copy / edit / more) */}
-              {!isSamllScreen &&
-                !msg.generating &&
-                (msg.role === 'user' || msg.role === 'assistant') &&
-                !(props.sessionType === 'picture' && msg.role === 'assistant') && (
-                  <MessageActionIcon
-                    icon={IconBrain}
-                    tooltip={t('Save to memory')}
-                    onClick={() => void onSaveToMemory()}
-                  />
-                )}
-
-              {!isSamllScreen && msg.role === 'assistant' && isComfyUIReady && (
-                <MessageActionIcon
-                  icon={IconPhoto}
-                  tooltip={t('Send to Image Creator')}
-                  onClick={handleSendToImageCreator}
-                />
-              )}
-
-              {!isSamllScreen && !msg.generating && props.sessionType === 'picture' && msg.role === 'assistant' && (
-                <MessageActionIcon
-                  icon={IconPhotoPlus}
-                  tooltip={t('Generate More Images Below')}
-                  onClick={onGenerateMore}
-                />
-              )}
-
-              <ActionMenu
-                items={actionMenuItems}
-                opened={actionMenuOpened}
-                onChange={(opened) => setActionMenuOpened(opened)}
-              >
-                <MessageActionIcon icon={IconDotsVertical} tooltip={t('More')} />
-              </ActionMenu>
-            </Flex>
-          </Flex>
-        )}
+            </div>
+          )}
         {msg.role === 'assistant' && msg.feedback?.rating === 'down' && (
           <Textarea
             mt="xs"
@@ -1049,7 +1069,15 @@ const _Message: FC<Props> = (props) => {
             }}
           />
         )}
-        {showFollowUpSuggestions && msg.role === 'assistant' && !msg.generating && msg.citations?.length ? (
+        {showFollowUpSuggestions &&
+        settledReady &&
+        msg.role === 'assistant' &&
+        !msg.generating &&
+        !msg.error &&
+        contentParts.some((p) => {
+          if (p.type === 'text' && p.text?.trim()) return true
+          return p.type === 'image' || p.type === 'plan'
+        }) ? (
           <FollowUpSuggestions
             sessionId={sessionId}
             message={msg}
@@ -1057,7 +1085,7 @@ const _Message: FC<Props> = (props) => {
           />
         ) : null}
       </div>
-    </Box>
+    </div>
   )
 }
 

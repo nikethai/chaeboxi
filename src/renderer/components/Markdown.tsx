@@ -1,5 +1,6 @@
 import { sanitizeUrl } from '@braintree/sanitize-url'
 import { useTheme } from '@mui/material/styles'
+import { isRenderableCodeLanguage } from '@shared/artifacts'
 import type { SearchCitation } from '@shared/types'
 import {
   createContext,
@@ -9,6 +10,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,7 +22,6 @@ import remarkBreaks from 'remark-breaks'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import * as latex from '../packages/latex'
-import { isRenderableCodeLanguage } from '@shared/artifacts'
 import 'katex/dist/katex.min.css' // `rehype-katex` does not import the CSS for you
 import NiceModal from '@ebay/nice-modal-react'
 import { ActionIcon, Flex, Loader, Text, Tooltip, useComputedColorScheme } from '@mantine/core'
@@ -59,6 +60,7 @@ import {
 import clsx from 'clsx'
 import { visit } from 'unist-util-visit'
 import { useCopied } from '@/hooks/useCopied'
+import { nextFrozenMarkdownSplit } from '@/utils/split-streaming-markdown'
 import { deployHtmlToEdgeOne } from '../packages/edgeone'
 import * as toastActions from '../stores/toastActions'
 import { ScalableIcon } from './common/ScalableIcon'
@@ -145,7 +147,7 @@ function remarkTransformCitationLinks(citations: SearchCitation[]) {
   }
 }
 
-function Markdown(props: {
+type MarkdownProps = {
   children: string
   uniqueId?: string
   enableLaTeXRendering?: boolean
@@ -155,14 +157,15 @@ function Markdown(props: {
   generating?: boolean
   forceColorScheme?: 'light' | 'dark'
   citations?: SearchCitation[]
-}) {
+}
+
+function MarkdownCore(props: MarkdownProps) {
   const {
     children,
     uniqueId,
     enableLaTeXRendering = true,
     enableMermaidRendering = true,
     hiddenCodeCopyButton,
-    className,
     generating,
     forceColorScheme,
     citations = [],
@@ -180,7 +183,8 @@ function Markdown(props: {
           : [remarkGfm, remarkBreaks, remarkAddCodeIndex, remarkTransformCitationLinks(citations)]
       }
       rehypePlugins={[rehypeKatex]}
-      className={`break-words ${className || ''}`}
+      // No className here — the outer Markdown owns the single wrapper div, so a settled+tail
+      // split renders as siblings in one container and block margins collapse like one parse.
       // react-markdown's default defaultUrlTransform will incorrectly encode query parameters in URLs (e.g. & becomes &amp;)
       // Use sanitizeUrl here to avoid that and to prevent XSS attacks
       urlTransform={(url) => sanitizeUrl(url)}
@@ -236,6 +240,54 @@ function Markdown(props: {
     >
       {enableLaTeXRendering ? latex.processLaTeX(children) : children}
     </ReactMarkdown>
+  )
+}
+
+// Settled blocks re-render only when their text changes (a new block completes), not on every
+// token flush. Compare the render-affecting props; citations/uniqueId stay stable for a stream.
+const MemoizedMarkdownCore = memo(
+  MarkdownCore,
+  (prev, next) =>
+    prev.children === next.children &&
+    prev.generating === next.generating &&
+    prev.enableLaTeXRendering === next.enableLaTeXRendering &&
+    prev.enableMermaidRendering === next.enableMermaidRendering &&
+    prev.forceColorScheme === next.forceColorScheme
+)
+
+function Markdown(props: MarkdownProps) {
+  const { children, className, generating, uniqueId, ...rest } = props
+  const frozenRef = useRef<ReturnType<typeof nextFrozenMarkdownSplit>>(null)
+  const uidRef = useRef(uniqueId)
+  if (uidRef.current !== uniqueId) {
+    uidRef.current = uniqueId
+    frozenRef.current = null
+  }
+  frozenRef.current = nextFrozenMarkdownSplit(children, generating, frozenRef.current)
+  const split = frozenRef.current
+  // Single wrapper div (ReactMarkdown only wraps when handed a className, so we withhold it and
+  // wrap here). Settled + tail stay mounted across generating→done so the answer does not remount.
+  return (
+    <div className={`break-words ${className || ''}`}>
+      {split?.settled ? (
+        <>
+          <MemoizedMarkdownCore {...rest} uniqueId={uniqueId} generating={false}>
+            {split.settled}
+          </MemoizedMarkdownCore>
+          <MarkdownCore
+            {...rest}
+            uniqueId={uniqueId ? `${uniqueId}-stream` : undefined}
+            generating={Boolean(generating)}
+          >
+            {split.tail}
+          </MarkdownCore>
+        </>
+      ) : (
+        <MarkdownCore {...rest} uniqueId={uniqueId} generating={generating}>
+          {children}
+        </MarkdownCore>
+      )}
+    </div>
   )
 }
 
@@ -595,41 +647,60 @@ const BlockCode = memo(
         </div>
 
         <div className={clsx('code-fence-body', needCollapse && collapsed && 'is-collapsed')}>
-          <SyntaxHighlighter
-            style={colorScheme !== 'light' ? oneDark : oneLight}
-            language={language}
-            PreTag="div"
-            showLineNumbers
-            customStyle={{
-              margin: 0,
-              padding: '0.75rem 0.85rem',
-              borderRadius: 0,
-              border: 'none',
-              background: 'transparent',
-              fontSize: '0.8125rem',
-              lineHeight: 1.55,
-              ...(generating && needCollapse && collapsed
-                ? {
-                    overflow: 'hidden',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'flex-end',
-                  }
-                : {}),
-            }}
-            lineNumberStyle={{
-              minWidth: '2.25em',
-              paddingRight: '0.85em',
-              opacity: 0.45,
-              fontVariantNumeric: 'tabular-nums',
-            }}
-            codeTagProps={{
-              className: '!bg-transparent',
-              style: { fontFamily: 'var(--chatbox-font-mono)' },
-            }}
-          >
-            {children}
-          </SyntaxHighlighter>
+          {generating ? (
+            // Plain mono while streaming — SyntaxHighlighter remount on every token was a height thrash source.
+            <pre
+              className="code-fence-streaming-pre"
+              style={{
+                margin: 0,
+                padding: '0.75rem 0.85rem',
+                fontSize: '0.8125rem',
+                lineHeight: 1.55,
+                fontFamily: 'var(--chatbox-font-mono)',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                overflow: 'auto',
+                ...(needCollapse && collapsed
+                  ? {
+                      maxHeight: '12rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'flex-end',
+                    }
+                  : {}),
+              }}
+            >
+              {children}
+            </pre>
+          ) : (
+            <SyntaxHighlighter
+              style={colorScheme !== 'light' ? oneDark : oneLight}
+              language={language}
+              PreTag="div"
+              showLineNumbers
+              customStyle={{
+                margin: 0,
+                padding: '0.75rem 0.85rem',
+                borderRadius: 0,
+                border: 'none',
+                background: 'transparent',
+                fontSize: '0.8125rem',
+                lineHeight: 1.55,
+              }}
+              lineNumberStyle={{
+                minWidth: '2.25em',
+                paddingRight: '0.85em',
+                opacity: 0.45,
+                fontVariantNumeric: 'tabular-nums',
+              }}
+              codeTagProps={{
+                className: '!bg-transparent',
+                style: { fontFamily: 'var(--chatbox-font-mono)' },
+              }}
+            >
+              {children}
+            </SyntaxHighlighter>
+          )}
         </div>
       </div>
     )

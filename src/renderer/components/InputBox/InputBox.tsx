@@ -8,8 +8,10 @@ import {
   isAiReadableVideoFile,
   isSupportedFile,
 } from '@shared/file-extensions'
+import { getConnector } from '@shared/integrations'
 import { getOrCreateGatewayClient } from '@shared/models/openclaw'
 import { getModel } from '@shared/providers'
+import type { IntegrationAccount } from '@shared/types/integrations'
 import {
   IconAlertCircle,
   IconArrowUp,
@@ -52,18 +54,14 @@ import {
   matchSystemSlashCommand,
   stripCommandSlashTokens,
 } from '@/packages/commands'
-import { runCompactionWithUIState } from '@/packages/context-management'
 import {
   getContextMessageIds,
   isAutoCompactionEnabled,
   isCompactionInProgress,
+  runCompactionWithUIState,
   useContextTokens,
 } from '@/packages/context-management'
 import { trackingEvent } from '@/packages/event'
-import { searchEntries } from '@/packages/memory/bank-ops'
-import { replacePromptTemplateVars } from '@/packages/model-calls/message-utils'
-import { getModelContextWindowSync } from '@/packages/model-context'
-import * as picUtils from '@/packages/pic_utils'
 import {
   CREDENTIAL_CHIP_MAX,
   extractCredentialSlugsFromText,
@@ -72,14 +70,15 @@ import {
   replaceActiveCredentialHashWithToken,
   slugifyCredentialLabel,
 } from '@/packages/integrations/hash-tokens'
+import { searchEntries } from '@/packages/memory/bank-ops'
+import { replacePromptTemplateVars } from '@/packages/model-calls/message-utils'
+import { getModelContextWindowSync } from '@/packages/model-context'
+import * as picUtils from '@/packages/pic_utils'
 import {
   extractSkillNamesFromText,
   getActiveSkillDollarQuery,
   replaceActiveSkillDollarWithToken,
 } from '@/packages/skills'
-import { ensureIntegrationsStoreInit, useIntegrationsStore } from '@/stores/integrationsStore'
-import type { IntegrationAccount } from '@shared/types/integrations'
-import { getConnector } from '@shared/integrations'
 import { formatBytesForDisplay, formatDurationForDisplay, getVideoLimits } from '@/packages/video'
 import { isWebSearchConfigured } from '@/packages/web-search/is-configured'
 import platform, { platformCapabilities } from '@/platform'
@@ -91,6 +90,7 @@ import { composerTokenMenuAtom } from '@/stores/atoms/uiAtoms'
 import * as chatStore from '@/stores/chatStore'
 import { useSession, useSessionSettings } from '@/stores/chatStore'
 import { useCommands } from '@/stores/commandsStore'
+import { ensureIntegrationsStoreInit, useIntegrationsStore } from '@/stores/integrationsStore'
 import { ensureMemoryStoreInit, useMemoryStore } from '@/stores/memoryStore'
 import { usePromptPresets } from '@/stores/promptPresetsStore'
 import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
@@ -132,15 +132,13 @@ import * as toastActions from '../../stores/toastActions'
 import AgentRoomStrip from '../chat/AgentRoomStrip'
 import { CompactionStatus } from '../chat/CompactionStatus'
 import { MemoryDockPopover } from '../chat/MemoryDockPopover'
-import ReasoningEffortSelect from '../chat/ReasoningEffortSelect'
-import ComposerRichInput, { type ComposerRichInputHandle } from './ComposerRichInput'
-import type { ComposerChipData } from './composer-chip-dom'
 import {
   getActiveMemoryMentionQuery,
   getComposerSelectionOrDraft,
   replaceActiveMemoryMentionWithToken,
   slugifyMemoryLabel,
 } from '../chat/memory-dock-utils'
+import ReasoningEffortSelect from '../chat/ReasoningEffortSelect'
 import TeamRoomActions from '../chat/TeamRoomActions'
 import { CompressionModal } from '../common/CompressionModal'
 import { ScalableIcon } from '../common/ScalableIcon'
@@ -149,7 +147,10 @@ import ModelSelector from '../ModelSelector'
 import AgentPicker, { filterAgents } from './AgentPicker'
 import { FileMiniCard, ImageMiniCard, LinkMiniCard } from './Attachments'
 import CommandPicker, { buildCommandPickerItems, type CommandPickerItem } from './CommandPicker'
+import ComposerRichInput, { type ComposerRichInputHandle } from './ComposerRichInput'
 import ComposerToolsMenu from './ComposerToolsMenu'
+import CredentialPicker, { filterCredentials } from './CredentialPicker'
+import type { ComposerChipData } from './composer-chip-dom'
 import { ImageUploadInput } from './ImageUploadInput'
 import MemoryMentionPicker from './MemoryMentionPicker'
 import { ModelReadinessNotice } from './ModelReadinessNotice'
@@ -167,7 +168,6 @@ import {
 } from './preprocessState'
 import QueuedMessageList from './QueuedMessageList'
 import QuoteChip from './QuoteChip'
-import CredentialPicker, { filterCredentials } from './CredentialPicker'
 import SkillPicker, { filterSkills } from './SkillPicker'
 import TeamModeSelect from './TeamModeSelect'
 import VoiceHoldButton, { voiceAuthFromSettings } from './VoiceHoldButton'
@@ -3150,39 +3150,43 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                   onAttachLink={handleAttachLink}
                   toolbarButtonClass={toolbarButtonClass}
                   toolbarIconSize={toolbarIconSize}
-                  memorySlot={
-                    isSmallScreen ? (
-                      <MemoryDockPopover
-                        label={t('Memory')}
-                        on
-                        title={
-                          currentSession?.settings?.memoryAutoSave === false
-                            ? t('Memory · auto-save off for this chat')
-                            : t('Search and save memory')
-                        }
-                        trigger={
-                          <UnstyledButton
-                            className={cn(
-                              'flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm',
-                              'hover:bg-[var(--chatbox-background-tertiary)] active:scale-[0.99] transition-transform',
-                              currentSession?.settings?.memoryAutoSave === false && 'opacity-80'
-                            )}
-                            aria-label={t('Memory')}
-                          >
-                            <IconBrain size={16} stroke={1.5} />
-                            <span className="flex-1">{t('Memory')}</span>
-                          </UnstyledButton>
-                        }
-                        onInsertMemory={insertMemory}
-                        getMemorySaveContent={getMemorySaveContent}
-                        memoryAutoSave={currentSession?.settings?.memoryAutoSave}
-                        onMemoryAutoSaveChange={
-                          !isNewSession && currentSessionId ? handleMemoryAutoSaveChange : undefined
-                        }
-                        memoryAutoSaveDisabled={isNewSession || !currentSessionId}
-                      />
-                    ) : undefined
-                  }
+                  memorySlot={({ closeTools }) => (
+                    <MemoryDockPopover
+                      forceModal
+                      onOpen={closeTools}
+                      label={t('Memory')}
+                      on
+                      title={
+                        currentSession?.settings?.memoryAutoSave === false
+                          ? t('Memory · auto-save off for this chat')
+                          : t('Search and save memory')
+                      }
+                      trigger={
+                        <UnstyledButton
+                          className={cn(
+                            'composer-tools-memory-trigger',
+                            'flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm',
+                            'hover:bg-[var(--chatbox-background-tertiary)] active:scale-[0.99] transition-transform',
+                            currentSession?.settings?.memoryAutoSave === false && 'opacity-80'
+                          )}
+                          aria-label={t('Memory')}
+                        >
+                          <IconBrain size={16} stroke={1.5} />
+                          <span className="flex-1">{t('Memory')}</span>
+                          {currentSession?.settings?.memoryAutoSave === false ? (
+                            <span className="text-[11px] text-[var(--chatbox-tint-tertiary)]">{t('off')}</span>
+                          ) : null}
+                        </UnstyledButton>
+                      }
+                      onInsertMemory={insertMemory}
+                      getMemorySaveContent={getMemorySaveContent}
+                      memoryAutoSave={currentSession?.settings?.memoryAutoSave}
+                      onMemoryAutoSaveChange={
+                        !isNewSession && currentSessionId ? handleMemoryAutoSaveChange : undefined
+                      }
+                      memoryAutoSaveDisabled={isNewSession || !currentSessionId}
+                    />
+                  )}
                 />
                 {voiceCopilot.enabled && (
                   <VoiceHoldButton
@@ -3192,39 +3196,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     toolbarButtonClass={toolbarButtonClass}
                     toolbarIconSize={toolbarIconSize}
                     onTranscript={onVoiceTranscript}
-                  />
-                )}
-                {!isSmallScreen && (
-                  <MemoryDockPopover
-                    label={t('Memory')}
-                    on
-                    title={
-                      currentSession?.settings?.memoryAutoSave === false
-                        ? t('Memory · auto-save off for this chat')
-                        : t('Search and save memory')
-                    }
-                    trigger={
-                      <UnstyledButton
-                        className={cn(
-                          toolbarButtonClass,
-                          'min-h-9 min-w-9 active:scale-[0.96] transition-transform',
-                          currentSession?.settings?.memoryAutoSave === false && 'opacity-80'
-                        )}
-                        aria-label={t('Memory')}
-                        title={
-                          currentSession?.settings?.memoryAutoSave === false
-                            ? t('Memory · auto-save off for this chat')
-                            : t('Search and save memory')
-                        }
-                      >
-                        <IconBrain size={toolbarIconSize} stroke={1.8} />
-                      </UnstyledButton>
-                    }
-                    onInsertMemory={insertMemory}
-                    getMemorySaveContent={getMemorySaveContent}
-                    memoryAutoSave={currentSession?.settings?.memoryAutoSave}
-                    onMemoryAutoSaveChange={!isNewSession && currentSessionId ? handleMemoryAutoSaveChange : undefined}
-                    memoryAutoSaveDisabled={isNewSession || !currentSessionId}
                   />
                 )}
               </Flex>
@@ -3344,15 +3315,33 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                         : undefined
                     }
                   >
-                    {/* Fixed slot avoids icon swap layout pop between Send / Stop */}
+                    {/* Cross-fade send/stop so icon swap does not snap */}
                     <span className="composer-send-icon-slot" aria-hidden>
-                      {showStop ? (
+                      <span
+                        className={cn(
+                          'composer-send-icon',
+                          showStop ? 'is-active' : 'is-exit',
+                          isSamplingVideoFrames && 'is-hidden'
+                        )}
+                      >
                         <ScalableIcon icon={IconPlayerStopFilled} size={14} />
-                      ) : isSamplingVideoFrames ? (
+                      </span>
+                      <span
+                        className={cn(
+                          'composer-send-icon',
+                          !showStop && isSamplingVideoFrames ? 'is-active' : 'is-exit'
+                        )}
+                      >
                         <IconLoader2 size={14} className="animate-spin" stroke={1.75} />
-                      ) : (
+                      </span>
+                      <span
+                        className={cn(
+                          'composer-send-icon',
+                          !showStop && !isSamplingVideoFrames ? 'is-active' : 'is-exit'
+                        )}
+                      >
                         <ScalableIcon icon={IconArrowUp} size={14} />
-                      )}
+                      </span>
                     </span>
                   </ActionIcon>
                 </Tooltip>

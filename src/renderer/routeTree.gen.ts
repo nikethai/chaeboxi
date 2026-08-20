@@ -25,8 +25,8 @@ import { Route as SettingsVideoUrlImport } from './routes/settings/video-url'
 import { Route as SettingsVoiceImport } from './routes/settings/voice'
 import { Route as SettingsUserPersonalInfoImport } from './routes/settings/user-personal-info'
 import { Route as SettingsUsageImport } from './routes/settings/usage'
-import { Route as SettingsSkillsImport } from './routes/settings/skills'
 import { Route as SettingsSyncImport } from './routes/settings/sync'
+import { Route as SettingsSkillsImport } from './routes/settings/skills'
 import { Route as SettingsMemoryImport } from './routes/settings/memory'
 import { Route as SettingsMcpImport } from './routes/settings/mcp'
 import { Route as SettingsKnowledgeBaseImport } from './routes/settings/knowledge-base'
@@ -137,15 +137,15 @@ const SettingsUsageRoute = SettingsUsageImport.update({
   getParentRoute: () => SettingsRouteRoute,
 } as any)
 
-const SettingsSkillsRoute = SettingsSkillsImport.update({
-  id: '/skills',
-  path: '/skills',
-  getParentRoute: () => SettingsRouteRoute,
-} as any)
-
 const SettingsSyncRoute = SettingsSyncImport.update({
   id: '/sync',
   path: '/sync',
+  getParentRoute: () => SettingsRouteRoute,
+} as any)
+
+const SettingsSkillsRoute = SettingsSkillsImport.update({
+  id: '/skills',
+  path: '/skills',
   getParentRoute: () => SettingsRouteRoute,
 } as any)
 

@@ -127,9 +127,11 @@ html[data-theme='dark'] {
   a {
     color: #fff;
   }
-  /* 错误消息中的链接强制成蓝色 */
-  .message-error-tips a {
-    color: #2563eb !important;
+  /* Error tips use studio brand tokens */
+  .message-error-tips a,
+  .msg-error-tips a,
+  .msg-error-tips .msg-error-link {
+    color: var(--chatbox-tint-brand) !important;
   }
 }
 
@@ -170,9 +172,10 @@ html[data-theme='light'] {
   a {
     color: #333;
   }
-  /* 错误消息中的链接强制成蓝色 */
-  .message-error-tips a {
-    color: #2563eb !important;
+  .message-error-tips a,
+  .msg-error-tips a,
+  .msg-error-tips .msg-error-link {
+    color: var(--chatbox-tint-brand) !important;
   }
 }
 

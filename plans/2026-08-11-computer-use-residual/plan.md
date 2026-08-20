@@ -27,7 +27,7 @@ related:
 | 2 Fix-by-class | **Harness hardened 2026-08-12** — exclusive browser strip, frameId, step/screenshot budgets, prepareStep prune (see `plans/2026-08-12-browser-computer-reliability/`) |
 | 3 Playbooks + deep links | **Implemented** — `computer-playbooks.ts`, `computer_open_uri`, phone extract |
 | 4 Coord audit | **frameId + map_coords stale reject** in `computer_manager.rs`; live verify on device still recommended |
-| 5 AX hybrid | **Thin only** — `computer_frontmost`; full AX deferred (product decision) |
+| 5 AX hybrid | **Implemented 2026-08-21** — `computer_ax_query` / `computer_focus_search` / `computer_ax_press`; vision fallback |
 | 6 Ship UX | Settings binary warning + allowlist/trajectory section; **release binary still manual** |
 | 7 Trajectory + allowlist | **Implemented** — settings + `trajectory.ts` |
 
@@ -129,7 +129,7 @@ User goal
 | Harness pure | `.../computer-harness.ts` |
 | UI lock | `.../computer-ui-lock.ts` |
 | Loop | `stream-text.ts`, `abstract-ai-sdk.ts`, `generation.ts` |
-| Backend | `src-tauri/src/computer_manager.rs` |
+| Backend | `src-tauri/src/computer_manager.rs`, `src-tauri/src/ax_assist/` |
 | Platform | `src/renderer/platform/interfaces.ts`, `desktop_platform.ts` |
 | Settings UI | `src/renderer/routes/settings/computer-use.tsx` |
 | Docs | `docs/computer-use.md` |
@@ -167,4 +167,4 @@ User goal
 /ck:cook plans/2026-08-11-computer-use-residual/phase-03-app-playbooks-and-deep-links.md
 ```
 
-**Do not cook Phase 5 without Phase 1 class E + Phase 3 attempt.**
+**Phase 5 cooked 2026-08-21** (product asked for full AX + the two playbooks). Live WhatsApp AX yield still needs a signed-binary measure.

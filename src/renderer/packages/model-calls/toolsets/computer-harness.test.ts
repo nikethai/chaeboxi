@@ -44,6 +44,8 @@ describe('shouldForceComputerScreenshot', () => {
     expect(shouldForceComputerScreenshot('computer_open_app', false)).toBe(true)
     expect(shouldForceComputerScreenshot('computer_open_app', true)).toBe(false)
     expect(shouldForceComputerScreenshot('computer_click', false)).toBe(true)
+    expect(shouldForceComputerScreenshot('computer_focus_search', false)).toBe(true)
+    expect(shouldForceComputerScreenshot('computer_ax_press', true)).toBe(false)
     expect(shouldForceComputerScreenshot('computer_screenshot', false)).toBe(false)
   })
 })

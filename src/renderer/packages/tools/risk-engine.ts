@@ -26,7 +26,7 @@ const CRITICAL_INTENT_PATTERNS = [
   // Process / service lifecycle / app launch
   /(?:^|[\s_-])(kill|pkill|shutdown|reboot|restart[_-]?service|systemctl|launchctl|open[_-]?app|launch[_-]?app)(?:$|[\s_-])/,
   // Computer use actuation (full user-equivalent control)
-  /\bcomputer_(click|type|key|scroll|mouse_move|open_app|open_uri)\b/,
+  /\bcomputer_(click|type|key|scroll|mouse_move|open_app|open_uri|ax_press)\b/,
 ]
 
 const HIGH_INTENT_PATTERNS = [
@@ -42,6 +42,7 @@ const HIGH_INTENT_PATTERNS = [
   /(?:^|[\s_-])(install|uninstall|npm|pip|brew|apt|yum)(?:$|[\s_-])/,
   // Browser act (click/type/scroll/navigate can submit forms or change origin)
   /\bbrowser_(click|type|scroll|navigate)\b/,
+  /\bcomputer_focus_search\b/,
 ]
 
 const MEDIUM_INTENT_PATTERNS = [
@@ -176,6 +177,8 @@ const BUILTIN_LOW_RISK_TOOLS = new Set([
   'memory_recall',
   'memory_list',
   'memory_reflect',
+  'computer_ax_query',
+  'computer_frontmost',
 ])
 
 export function classifyToolRisk(toolName: string, description?: string, args?: unknown): RiskClassification {

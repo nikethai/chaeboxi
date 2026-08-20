@@ -199,6 +199,15 @@ impl ComputerManager {
                 open_uri(uri).await
             }
             "computer:frontmost" => frontmost_application().await,
+            "computer:ax-query" => {
+                let params = arg_object(args, 0).unwrap_or_else(|_| json!({}));
+                crate::ax_assist::ax_query(&params).await
+            }
+            "computer:ax-act" => {
+                self.ensure_act_allowed()?;
+                let params = arg_object(args, 0).unwrap_or_else(|_| json!({}));
+                crate::ax_assist::ax_act(&params).await
+            }
             "computer:abort" => {
                 self.abort_act();
                 Ok(json!({ "aborted": true }))
@@ -1066,7 +1075,7 @@ end try"#;
             "ok": true,
             "frontmost": frontmost,
             "backend": "System Events",
-            "note": "AX tree assist (search-field focus) is not implemented yet; use vision playbooks."
+            "note": "Use computer_ax_query / computer_focus_search / computer_ax_press for AX grounding; vision if fallback."
         }));
     }
 

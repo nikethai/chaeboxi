@@ -17,6 +17,7 @@ import {
   isMessagingTargetApp,
   isSpotlightLikeKey,
 } from './computer-harness'
+import { normalizeAxRole } from './computer-ax'
 import { formatPlaybookInstructions, isAllowedOpenUri, matchPlaybook } from './computer-playbooks'
 
 export type ComputerToolOptions = {
@@ -328,18 +329,21 @@ You can control the user's desktop with tools. Do NOT only describe steps — ca
 - computer_screenshot: see the display (vision required). Coordinates for click/move use the returned width×height (must match image; backend maps to display points).
 - computer_wait: pause 0.3–2s then auto-screenshot (UI settle after open/animation).
 - computer_frontmost: query frontmost process name (macOS).
+- computer_ax_query: list AX controls (search fields / buttons). macOS. If fallback=vision, use the screenshot. LOW.
 ${
     allowAct
       ? `- computer_open_app: launch + activate by name (WhatsApp, Calculator, Slack…). Host attaches verification image. {ok:true} ≠ done.
 - computer_open_uri: open allowlisted URI (whatsapp://send?phone=…, https://, sms:). Prefer when phone is known — skips contact search. CRITICAL.
-- computer_click / computer_type / computer_key / computer_scroll / computer_mouse_move: act tools (need approval). Host attaches verification after most acts.
+- computer_focus_search: AX-focus the in-app search field (WhatsApp / Messages). HIGH. If fallback=vision, click search from the image.
+- computer_ax_press: AX-press a named button (Calculator 7 / + / =). CRITICAL. Vision click if AX empty.
+- computer_click / computer_type / computer_key / computer_scroll / computer_mouse_move: pixel acts (need approval). Host attaches verification after most acts.
 - computer_key: enter, tab, escape, meta+f (in-app only when target focused). Avoid cmd+space.
 
 ${playbook}
 
 ## Quick examples
-- Calculator: open → click keypad from verification image → report result.
-- WhatsApp name: open → in-app search (not Finder) → type → open chat → type message.
+- Calculator: open → computer_ax_press 7 + 8 = (or click keypad from the image) → report result.
+- WhatsApp name: open → computer_focus_search → type → open chat → type message.
 - WhatsApp phone: computer_open_uri(whatsapp://send?phone=…&text=…) → verify compose UI.
 - If screenshot fails with PERMISSION_DENIED: fix Screen Recording for THIS Chaeboxi binary, quit/relaunch.`
       : '- Act tools unavailable until computer act is armed for this session. You may still screenshot if allowed.'
@@ -387,6 +391,43 @@ export function createComputerToolSet(opts: ComputerToolOptions): { description:
     },
   })
 
+  const targetAppName = () => getComputerUiTargetApp(opts.sessionId)
+
+  const computer_ax_query = tool({
+    description:
+      'List macOS Accessibility controls in the target/frontmost app (search fields, text fields, buttons). Use before computer_focus_search or computer_ax_press. If fallback=vision, the tree is empty — use the screenshot. LOW risk. Does not change focus.',
+    inputSchema: z.object({
+      role: z.enum(['search', 'text_field', 'button', 'any']).optional().describe('Filter. Default any interesting controls.'),
+      app: z.string().optional().describe('Process name hint (defaults to current computer target).'),
+    }),
+    execute: async (input: { role?: 'search' | 'text_field' | 'button' | 'any'; app?: string }) => {
+      if (!platform.computerAxQuery) {
+        return {
+          ok: false,
+          error: 'UNSUPPORTED_PLATFORM',
+          fallback: 'vision',
+          note: 'AX query is macOS desktop only. Use computer_screenshot.',
+        }
+      }
+      try {
+        const result = (await platform.computerAxQuery({
+          role: normalizeAxRole(input.role),
+          app: input.app || targetAppName(),
+          limit: 20,
+        })) as Record<string, unknown>
+        traj(opts.sessionId, 'computer_ax_query', input, result)
+        return result
+      } catch (err) {
+        return {
+          ok: false,
+          error: 'ACTION_ERROR',
+          fallback: 'vision',
+          message: err instanceof Error ? err.message : String(err),
+        }
+      }
+    },
+  })
+
   const computer_wait = tool({
     description:
       'Wait for UI to settle (0.3–2 seconds), then auto-capture a verification screenshot. Use after open_app or animations. LOW risk.',
@@ -414,6 +455,7 @@ export function createComputerToolSet(opts: ComputerToolOptions): { description:
     computer_screenshot,
     computer_wait,
     computer_frontmost,
+    computer_ax_query,
   } as ToolSet
 
   if (allowAct) {
@@ -534,6 +576,107 @@ export function createComputerToolSet(opts: ComputerToolOptions): { description:
           const e = { error: 'ACTION_ERROR', message: err instanceof Error ? err.message : String(err) }
           traj(opts.sessionId, 'computer_open_uri', input, e)
           return e
+        }
+      },
+      toModelOutput: ({ output }: { output: Record<string, unknown> }) => actResultToModelOutput(output),
+    })
+
+    tools.computer_focus_search = tool({
+      description:
+        'Focus the in-app search field via macOS Accessibility (WhatsApp / Messages / Slack). Prefer this over pixel-clicking search. HIGH risk. If fallback=vision, click the search field from the verification image. Host attaches a screenshot.',
+      inputSchema: z.object({
+        app: z.string().optional().describe('Process name hint; defaults to current computer target'),
+        id: z.string().optional().describe('Element id from computer_ax_query'),
+      }),
+      execute: async (input: { app?: string; id?: string }) => {
+        if (!platform.computerAxAct) {
+          return { ok: false, error: 'UNSUPPORTED_PLATFORM', fallback: 'vision' }
+        }
+        try {
+          computerUseUiStore.getState().setActive(opts.sessionId, true)
+          const focus = await ensureTargetFrontmost(opts.sessionId)
+          const result = (await platform.computerAxAct({
+            action: 'focus',
+            role: 'search',
+            app: input.app || targetAppName(),
+            id: input.id,
+          })) as Record<string, unknown>
+          const { verification, embedded } = await maybeAutoScreenshot(opts, 200)
+          recordComputerToolUse(opts.sessionId, 'computer_focus_search', embedded)
+          const out = {
+            ...result,
+            focus,
+            verification,
+            nextAction: result.fallback === 'vision'
+              ? 'AX missed. Click the in-app search field from the verification image, then computer_type. Never Finder.'
+              : 'Search field should be focused. computer_type the contact or query, then verify.',
+          }
+          traj(opts.sessionId, 'computer_focus_search', input, out)
+          return out
+        } catch (err) {
+          recordComputerToolUse(opts.sessionId, 'computer_focus_search', false)
+          return {
+            ok: false,
+            error: 'ACTION_ERROR',
+            fallback: 'vision',
+            message: err instanceof Error ? err.message : String(err),
+          }
+        }
+      },
+      toModelOutput: ({ output }: { output: Record<string, unknown> }) => actResultToModelOutput(output),
+    })
+
+    tools.computer_ax_press = tool({
+      description:
+        'Press a control via macOS Accessibility (Calculator digits/operators, buttons). Prefer name=7, name=+, name==. CRITICAL risk. If fallback=vision, computer_click the control from the image. Host attaches a screenshot.',
+      inputSchema: z.object({
+        name: z.string().optional().describe('Button title, e.g. 7, +, =, 8'),
+        role: z.enum(['button', 'search', 'text_field', 'any']).optional(),
+        id: z.string().optional().describe('Element id from computer_ax_query'),
+        index: z.number().optional().describe('Index in the last filtered query list (0-based)'),
+        app: z.string().optional(),
+      }),
+      execute: async (input: {
+        name?: string
+        role?: 'button' | 'search' | 'text_field' | 'any'
+        id?: string
+        index?: number
+        app?: string
+      }) => {
+        if (!platform.computerAxAct) {
+          return { ok: false, error: 'UNSUPPORTED_PLATFORM', fallback: 'vision' }
+        }
+        try {
+          computerUseUiStore.getState().setActive(opts.sessionId, true)
+          const focus = await ensureTargetFrontmost(opts.sessionId)
+          const result = (await platform.computerAxAct({
+            action: 'press',
+            role: normalizeAxRole(input.role || (input.name ? 'button' : 'any')),
+            name: input.name,
+            id: input.id,
+            index: input.index,
+            app: input.app || targetAppName(),
+          })) as Record<string, unknown>
+          const { verification, embedded } = await maybeAutoScreenshot(opts, 150)
+          recordComputerToolUse(opts.sessionId, 'computer_ax_press', embedded)
+          const out = {
+            ...result,
+            focus,
+            verification,
+            nextAction: result.fallback === 'vision'
+              ? 'AX press missed. computer_click the control from the verification image.'
+              : 'Read verification and continue the next keypad/UI step.',
+          }
+          traj(opts.sessionId, 'computer_ax_press', input, out)
+          return out
+        } catch (err) {
+          recordComputerToolUse(opts.sessionId, 'computer_ax_press', false)
+          return {
+            ok: false,
+            error: 'ACTION_ERROR',
+            fallback: 'vision',
+            message: err instanceof Error ? err.message : String(err),
+          }
         }
       },
       toModelOutput: ({ output }: { output: Record<string, unknown> }) => actResultToModelOutput(output),

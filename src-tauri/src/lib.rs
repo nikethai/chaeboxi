@@ -49,6 +49,8 @@ mod desktop_shell;
 mod browser_manager;
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 mod computer_manager;
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+mod ax_assist;
 
 mod kb;
 

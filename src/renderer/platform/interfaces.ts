@@ -173,6 +173,10 @@ export interface Platform extends Storage {
   }>
   /** Best-effort frontmost process name (macOS). */
   computerFrontmost?(): Promise<{ ok?: boolean; frontmost?: string; note?: string; error?: string }>
+  /** macOS AX tree query. Empty / unsupported returns fallback: vision. */
+  computerAxQuery?(opts: ComputerAxQueryInput): Promise<ComputerAxResult>
+  /** macOS AX focus or press. Act — requires Accessibility. */
+  computerAxAct?(opts: ComputerAxActInput): Promise<ComputerAxResult>
   computerCaptureDisplay?(opts?: {
     displayId?: string
     maxWidth?: number
@@ -304,6 +308,45 @@ export type ComputerCapturePayload = {
   fileName?: string
   /** Encoded payload size after resize/JPEG (not base64 string length). */
   byteLength?: number
+}
+
+export type ComputerAxRole = 'search' | 'text_field' | 'button' | 'any'
+
+export type ComputerAxElement = {
+  id: string
+  role: string
+  title?: string
+  description?: string
+  placeholder?: string
+}
+
+export type ComputerAxQueryInput = {
+  role?: ComputerAxRole
+  app?: string
+  limit?: number
+}
+
+export type ComputerAxActInput = {
+  action: 'focus' | 'press'
+  role?: ComputerAxRole
+  name?: string
+  id?: string
+  index?: number
+  app?: string
+}
+
+export type ComputerAxResult = {
+  ok?: boolean
+  error?: string
+  fallback?: 'vision'
+  app?: string
+  pid?: number
+  elements?: ComputerAxElement[]
+  acted?: boolean
+  action?: string
+  focused?: boolean
+  pressed?: boolean
+  note?: string
 }
 
 export interface Exporter {

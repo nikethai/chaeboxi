@@ -102,7 +102,7 @@ function RouteComponent() {
       return
     }
     if (screen === 'granted' && access === 'denied') {
-      toast.message(t('Screen Recording is allowed. Enable Accessibility for click/type.'))
+      toast.message(t('Screen Recording is allowed. Enable Accessibility for click/type and AX focus.'))
       return
     }
     if (screen === 'denied') {
@@ -205,7 +205,7 @@ function RouteComponent() {
   })()
 
   const accessDescription = (() => {
-    if (accessStatus === 'granted') return t('Click and type allowed.')
+    if (accessStatus === 'granted') return t('Click, type, and AX focus/press allowed.')
     if (accessStatus === 'denied') return t('Blocked. Enable Chaeboxi under Accessibility, then recheck.')
     return t('Needed for act. Status updates after the first click/type prompt. Opens: {{path}}', {
       path: privacySettingsPathLabel(os, 'accessibility'),

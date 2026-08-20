@@ -12,6 +12,8 @@ export const COMPUTER_ACT_TOOLS = new Set([
   'computer_scroll',
   'computer_mouse_move',
   'computer_wait',
+  'computer_focus_search',
+  'computer_ax_press',
 ])
 
 export const COMPUTER_AUTO_SCREENSHOT_TOOLS = new Set([
@@ -22,6 +24,8 @@ export const COMPUTER_AUTO_SCREENSHOT_TOOLS = new Set([
   'computer_key',
   'computer_scroll',
   'computer_wait',
+  'computer_focus_search',
+  'computer_ax_press',
 ])
 
 /** Apps that must not be opened for messaging / contact-find goals. */

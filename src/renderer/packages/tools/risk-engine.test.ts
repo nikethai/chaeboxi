@@ -20,6 +20,9 @@ describe('risk-engine', () => {
       expect(getToolRiskTier('computer_screenshot')).toBe(ToolRiskTier.MEDIUM)
       expect(getToolRiskTier('computer_click')).toBe(ToolRiskTier.CRITICAL)
       expect(getToolRiskTier('computer_type')).toBe(ToolRiskTier.CRITICAL)
+      expect(getToolRiskTier('computer_ax_query')).toBe(ToolRiskTier.LOW)
+      expect(getToolRiskTier('computer_focus_search')).toBe(ToolRiskTier.HIGH)
+      expect(getToolRiskTier('computer_ax_press')).toBe(ToolRiskTier.CRITICAL)
     })
 
     it('returns MEDIUM for network/file access tools', () => {

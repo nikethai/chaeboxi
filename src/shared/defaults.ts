@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid'
 import { type Config, ModelProviderEnum, type SessionSettings, type Settings, Theme } from './types'
+import { DEFAULT_VOICE_COPILOT } from './voice-copilot'
 
 export function settings(): Settings {
   return {
@@ -118,6 +119,7 @@ export function settings(): Settings {
       quickAttachOrOpen: 'Alt+Shift+V', // Open quick chat and attach clipboard
       quickOpen: 'Alt+Shift+Space', // Open quick chat only
       screenshotToChat: 'Alt+Shift+S', // Screenshot and attach to quick chat
+      voiceHold: 'Alt+Shift+M', // Hold-to-talk microphone
       inputBoxFocus: 'mod+i', // Focus input box shortcut
       inputBoxWebBrowsingMode: 'mod+e', // Toggle web browsing mode in input
       newChat: 'mod+n', // New chat shortcut
@@ -202,6 +204,7 @@ export function settings(): Settings {
         appAllowlist: [],
         debugTrajectory: false,
       },
+      voiceCopilot: { ...DEFAULT_VOICE_COPILOT },
     },
     mcp: {
       servers: [],

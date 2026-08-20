@@ -401,7 +401,7 @@ describe('provider settings schema', () => {
 
   it('defaults desktop shell settings and screenshot shortcut', () => {
     const base = defaults.settings()
-    const { screenshotToChat: _omit, ...legacyShortcuts } = base.shortcuts
+    const { screenshotToChat: _omit, voiceHold: _omitVoice, ...legacyShortcuts } = base.shortcuts
     const parsed = SettingsSchema.parse({
       ...base,
       keepInTray: undefined,
@@ -411,6 +411,8 @@ describe('provider settings schema', () => {
     expect(parsed.quickWindowAlwaysOnTop).toBe(true)
     expect(parsed.trayIntroSeen).toBe(false)
     expect(parsed.shortcuts.screenshotToChat).toBe('Alt+Shift+S')
+    expect(parsed.shortcuts.voiceHold).toBe('Alt+Shift+M')
+    expect(parsed.extension.voiceCopilot).toEqual(base.extension.voiceCopilot)
   })
 
   it('parses comfyui agent image flow settings', () => {

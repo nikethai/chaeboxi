@@ -96,6 +96,7 @@ import { usePromptPresets } from '@/stores/promptPresetsStore'
 import { settingsStore, useSettingsStore } from '@/stores/settingsStore'
 import { DEFAULT_USAGE_BUDGET } from '@shared/providers/usage'
 import { shouldHardStopSend, useUsageBudgetState } from '@/packages/usage-tracking'
+import { mergeVoiceConfig, synthesizeSpeech } from '@shared/voice-copilot'
 import { useSkills } from '@/stores/skillsStore'
 import type { QuoteDraft } from '@/stores/uiStore'
 import { useUIStore } from '@/stores/uiStore'
@@ -169,6 +170,7 @@ import QueuedMessageList from './QueuedMessageList'
 import QuoteChip from './QuoteChip'
 import SkillPicker, { filterSkills } from './SkillPicker'
 import TeamModeSelect from './TeamModeSelect'
+import VoiceHoldButton, { voiceAuthFromSettings } from './VoiceHoldButton'
 
 export type InputBoxPayload = {
   constructedMessage: Message
@@ -219,6 +221,49 @@ export type InputBoxProps = {
   onDraftRoomModeChange?(mode: 'discuss' | 'work' | 'swarm'): void
   draftSettings?: Session['settings']
   onDraftSettingsChange?(next: Pick<SessionSettings, 'providerOptions'>): void
+}
+
+
+function lastAssistantText(
+  session:
+    | {
+        messages?: Array<{
+          role?: string
+          contentParts?: Array<{ type: string; text?: string }>
+        }>
+      }
+    | null
+    | undefined
+): string {
+  const messages = session?.messages
+  if (!messages?.length) return ''
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i]
+    if (message.role !== 'assistant') continue
+    return (message.contentParts || [])
+      .filter((part) => part.type === 'text' && typeof part.text === 'string')
+      .map((part) => part.text || '')
+      .join('\n')
+      .trim()
+  }
+  return ''
+}
+
+async function playSpeechBytes(bytes: Uint8Array) {
+  const copy = new Uint8Array(bytes.byteLength)
+  copy.set(bytes)
+  const blob = new Blob([copy.buffer], { type: 'audio/mpeg' })
+  const url = URL.createObjectURL(blob)
+  try {
+    const audio = new Audio(url)
+    await new Promise<void>((resolve, reject) => {
+      audio.onended = () => resolve()
+      audio.onerror = () => reject(new Error('Audio playback failed'))
+      void audio.play().catch(reject)
+    })
+  } finally {
+    URL.revokeObjectURL(url)
+  }
 }
 
 const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
@@ -277,6 +322,8 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const extensionWebSearch = useSettingsStore((s) => s.extension.webSearch)
     const browserMasterEnabled = Boolean(useSettingsStore((s) => s.extension?.browserAgent?.enabled))
     const computerMasterEnabled = Boolean(useSettingsStore((s) => s.extension?.computerUse?.enabled))
+    const voiceCopilot = mergeVoiceConfig(useSettingsStore((s) => s.extension?.voiceCopilot))
+    const voiceHoldShortcut = useSettingsStore((s) => s.shortcuts?.voiceHold) || 'Alt+Shift+M'
     const webSearchConfigured = useMemo(() => isWebSearchConfigured(extensionWebSearch), [extensionWebSearch])
     const webBrowsingMode = useMemo(() => {
       const sessionValue = sessionWebBrowsingMap[currentSessionId || 'new']
@@ -503,6 +550,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
     const lastPasteAtRef = useRef(0)
     /** Anchor for portaled @ / $ / / pickers (avoids blank-home overflow clip). */
     const composerCardRef = useRef<HTMLDivElement | null>(null)
+    const pendingVoiceSubmitRef = useRef<string | null>(null)
+    const pendingVoiceTtsRef = useRef(false)
+    const voiceSawGeneratingRef = useRef(false)
+    const messageInputRef = useRef(messageInput)
+    messageInputRef.current = messageInput
+    const handleSubmitRef = useRef<(needGenerating?: boolean) => Promise<void>>(async () => {})
 
     // Check if any preprocessing is in progress
     const isPreprocessing = useMemo(() => {
@@ -2047,6 +2100,54 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
       showSkillPicker,
     ])
 
+    handleSubmitRef.current = handleSubmit
+
+    useEffect(() => {
+      const pending = pendingVoiceSubmitRef.current
+      if (!pending) return
+      if (messageInput !== pending) return
+      if (preConstructedMessage.text !== pending) return
+      pendingVoiceSubmitRef.current = null
+      void handleSubmitRef.current()
+    }, [messageInput, preConstructedMessage.text])
+
+    useEffect(() => {
+      if (generating) {
+        voiceSawGeneratingRef.current = true
+        return
+      }
+      if (!pendingVoiceTtsRef.current || !voiceSawGeneratingRef.current) return
+      pendingVoiceTtsRef.current = false
+      voiceSawGeneratingRef.current = false
+      const voice = mergeVoiceConfig(settingsStore.getState().extension?.voiceCopilot)
+      if (voice.ttsProvider === 'off') return
+      const replyText = lastAssistantText(currentSession)
+      if (!replyText) return
+      void synthesizeSpeech({
+        text: replyText,
+        config: voice,
+        auth: voiceAuthFromSettings(),
+      })
+        .then(playSpeechBytes)
+        .catch((error) => {
+          const message = error instanceof Error ? error.message : String(error)
+          toastActions.add(message || t('Could not speak reply'))
+        })
+    }, [generating, currentSession, t])
+
+    const onVoiceTranscript = (text: string) => {
+      const trimmed = text.trim()
+      if (!trimmed) {
+        toastActions.add(t('Empty transcript'))
+        return
+      }
+      const current = messageInputRef.current.trim()
+      const next = current ? `${current} ${trimmed}` : trimmed
+      pendingVoiceSubmitRef.current = next
+      pendingVoiceTtsRef.current = voiceCopilot.ttsProvider !== 'off'
+      setMessageInput(next)
+    }
+
     const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement | HTMLTextAreaElement>) => {
       if (handlePickerKeyDown(event)) {
         return
@@ -3087,6 +3188,16 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     />
                   )}
                 />
+                {voiceCopilot.enabled && (
+                  <VoiceHoldButton
+                    enabled={voiceCopilot.enabled}
+                    config={voiceCopilot}
+                    shortcut={voiceHoldShortcut}
+                    toolbarButtonClass={toolbarButtonClass}
+                    toolbarIconSize={toolbarIconSize}
+                    onTranscript={onVoiceTranscript}
+                  />
+                )}
               </Flex>
 
               {/* Right Group: Team mode (multi-agent) + Model + Send */}

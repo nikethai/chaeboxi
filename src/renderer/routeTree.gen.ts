@@ -22,6 +22,7 @@ import { Route as ImageCreatorIndexImport } from './routes/image-creator/index'
 import { Route as DevIndexImport } from './routes/dev/index'
 import { Route as SettingsWebSearchImport } from './routes/settings/web-search'
 import { Route as SettingsVideoUrlImport } from './routes/settings/video-url'
+import { Route as SettingsVoiceImport } from './routes/settings/voice'
 import { Route as SettingsUserPersonalInfoImport } from './routes/settings/user-personal-info'
 import { Route as SettingsUsageImport } from './routes/settings/usage'
 import { Route as SettingsSyncImport } from './routes/settings/sync'
@@ -115,6 +116,12 @@ const SettingsWebSearchRoute = SettingsWebSearchImport.update({
 const SettingsVideoUrlRoute = SettingsVideoUrlImport.update({
   id: '/video-url',
   path: '/video-url',
+  getParentRoute: () => SettingsRouteRoute,
+} as any)
+
+const SettingsVoiceRoute = SettingsVoiceImport.update({
+  id: '/voice',
+  path: '/voice',
   getParentRoute: () => SettingsRouteRoute,
 } as any)
 
@@ -510,6 +517,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsVideoUrlImport
       parentRoute: typeof SettingsRouteImport
     }
+    '/settings/voice': {
+      id: '/settings/voice'
+      path: '/voice'
+      fullPath: '/settings/voice'
+      preLoaderRoute: typeof SettingsVoiceImport
+      parentRoute: typeof SettingsRouteImport
+    }
     '/settings/web-search': {
       id: '/settings/web-search'
       path: '/web-search'
@@ -614,6 +628,7 @@ interface SettingsRouteRouteChildren {
   SettingsUsageRoute: typeof SettingsUsageRoute
   SettingsUserPersonalInfoRoute: typeof SettingsUserPersonalInfoRoute
   SettingsVideoUrlRoute: typeof SettingsVideoUrlRoute
+  SettingsVoiceRoute: typeof SettingsVoiceRoute
   SettingsWebSearchRoute: typeof SettingsWebSearchRoute
   SettingsIndexRoute: typeof SettingsIndexRoute
 }
@@ -640,6 +655,7 @@ const SettingsRouteRouteChildren: SettingsRouteRouteChildren = {
   SettingsUsageRoute: SettingsUsageRoute,
   SettingsUserPersonalInfoRoute: SettingsUserPersonalInfoRoute,
   SettingsVideoUrlRoute: SettingsVideoUrlRoute,
+  SettingsVoiceRoute: SettingsVoiceRoute,
   SettingsWebSearchRoute: SettingsWebSearchRoute,
   SettingsIndexRoute: SettingsIndexRoute,
 }
@@ -681,6 +697,7 @@ export interface FileRoutesByFullPath {
   '/settings/usage': typeof SettingsUsageRoute
   '/settings/user-personal-info': typeof SettingsUserPersonalInfoRoute
   '/settings/video-url': typeof SettingsVideoUrlRoute
+  '/settings/voice': typeof SettingsVoiceRoute
   '/settings/web-search': typeof SettingsWebSearchRoute
   '/dev/': typeof DevIndexRoute
   '/image-creator': typeof ImageCreatorIndexRoute
@@ -719,6 +736,7 @@ export interface FileRoutesByTo {
   '/settings/usage': typeof SettingsUsageRoute
   '/settings/user-personal-info': typeof SettingsUserPersonalInfoRoute
   '/settings/video-url': typeof SettingsVideoUrlRoute
+  '/settings/voice': typeof SettingsVoiceRoute
   '/settings/web-search': typeof SettingsWebSearchRoute
   '/dev': typeof DevIndexRoute
   '/image-creator': typeof ImageCreatorIndexRoute
@@ -761,6 +779,7 @@ export interface FileRoutesById {
   '/settings/usage': typeof SettingsUsageRoute
   '/settings/user-personal-info': typeof SettingsUserPersonalInfoRoute
   '/settings/video-url': typeof SettingsVideoUrlRoute
+  '/settings/voice': typeof SettingsVoiceRoute
   '/settings/web-search': typeof SettingsWebSearchRoute
   '/dev/': typeof DevIndexRoute
   '/image-creator/': typeof ImageCreatorIndexRoute
@@ -804,6 +823,7 @@ export interface FileRouteTypes {
     | '/settings/usage'
     | '/settings/user-personal-info'
     | '/settings/video-url'
+    | '/settings/voice'
     | '/settings/web-search'
     | '/dev/'
     | '/image-creator'
@@ -841,6 +861,7 @@ export interface FileRouteTypes {
     | '/settings/usage'
     | '/settings/user-personal-info'
     | '/settings/video-url'
+    | '/settings/voice'
     | '/settings/web-search'
     | '/dev'
     | '/image-creator'
@@ -881,6 +902,7 @@ export interface FileRouteTypes {
     | '/settings/usage'
     | '/settings/user-personal-info'
     | '/settings/video-url'
+    | '/settings/voice'
     | '/settings/web-search'
     | '/dev/'
     | '/image-creator/'
@@ -969,6 +991,7 @@ export const routeTree = rootRoute
         "/settings/usage",
         "/settings/user-personal-info",
         "/settings/video-url",
+        "/settings/voice",
         "/settings/web-search",
         "/settings/"
       ]
@@ -1087,6 +1110,10 @@ export const routeTree = rootRoute
     },
     "/settings/video-url": {
       "filePath": "settings/video-url.tsx",
+      "parent": "/settings"
+    },
+    "/settings/voice": {
+      "filePath": "settings/voice.tsx",
       "parent": "/settings"
     },
     "/settings/web-search": {

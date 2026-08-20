@@ -8,7 +8,7 @@
 
 Desktop AI copilot chrome that feels like a focused studio tool — Grok + ChatGPT conversation DNA, not a generic “AI SaaS” template.
 
-**Blank / empty chat:** Gemini-quiet first paint — one short centered greeting + composer **vertically centered**. No chips/tags/manifesto, no agents combobox on blank (use `@` in composer or deep-link). On first send: greeting fades, dock eases to bottom (~420ms), then session thread loads with dock pinned bottom.
+**Blank / empty chat:** Gemini-quiet first paint — one short centered greeting + composer **vertically centered**. Greeting copy is Chaeboxi-owned (`Ready when you are`), never ChatGPT’s “What can I help with?”. No chips/tags/manifesto, no agents combobox on blank (use `@` in composer or deep-link). On first send: greeting fades, dock eases to bottom (~420ms), then session thread loads with dock pinned bottom.
 
 ## Locked decisions
 
@@ -24,8 +24,11 @@ Desktop AI copilot chrome that feels like a focused studio tool — Grok + ChatG
 | Type | Satoshi (UI) + JetBrains Mono (meta/kbd); base 16px; LH ~1.55 |
 | Content column | `--chatbox-col: 48rem` + `--chatbox-col-pad-x: 1.5rem` shared by blank home, thread + composer |
 | Dock pad | `--chatbox-dock-pad-y` / `--chatbox-dock-pad-b` on `.session-dock-pad` (home + session) |
-| Messages | Assistant open prose full column; user right-aligned pill; no “You/Chaeboxi” labels |
-| Thinking | Grok plain text: “Worked for 3s ›” — no card border; expand for body; **status preview only while streaming + collapsed** (never duplicate body) |
+| Messages | Assistant open prose full column; user right-aligned pill (~16px radius); no “You/Chaeboxi” labels; chat path uses studio tokens only (no MUI Alert/Typography) |
+| Thinking | Grok plain text: “Worked for 3s ›” — no card border; expand for body; **status preview only while streaming + collapsed** (never duplicate body). **One live signal only** — thread work strip + statusline pulse. No dock “Thinking…” sentence. |
+| Streaming | No answer fade on settle; 1.5px caret on streaming answer slot; thinking strip stays mounted for the whole live turn **and after settle** (Thinking… → Worked). Never remount the answer markdown tree on generating→done. |
+| Follow-ups | Quiet text chips after latest finished assistant turn (not search-only). **No sparkles / brand chips / loaders** while generating |
+| Scroll | Jump-to-latest pill when thread is scrolled up |
 | Tools UI | Quiet header when all succeed; attention chips only on fail/running; expanded tools as soft timeline steps (no heavy card borders) |
 | Actions | Hidden by default; full opacity on hover; last assistant message always visible (`is-visible`); opacity/transform only |
 | Chrome | No topbar bottom border; no dock `border-top` |
@@ -36,10 +39,10 @@ Desktop AI copilot chrome that feels like a focused studio tool — Grok + ChatG
 | Session overflow menu | Title Case labels; grouped; danger separated; full-width lives in overflow (not empty toolbar icon) |
 | Projects | Always-visible section (even when empty); section-like folder rows; hover-only project `+` + New Chat in menu; New Project on section trail **and** rail-tools |
 | Recents | Unfiled chats (`folderId` empty) — **not** a synthetic project; day groups + optional coaching when many unfiled; drag chat onto project / Recents |
-| Composer tools | Single **`+` overflow** (click-primary) for attach / web / MCP / KB / agent / thread / settings — not always-on icon rail |
+| Composer tools | Single **`+` overflow** (click-primary) for attach / web / MCP / KB / memory / agent / thread / settings — not always-on icon rail. Memory is overflow-only (statusline still owns telemetry). **Tools-origin Memory always uses AdaptiveModal** (`forceModal` + close tools first) — never Popover stacked over the + menu on small desktop. Statusline Memory may still use Popover on wide desktop. |
 | Session tasks | Attached above composer in one joined dock stack; desktop expands inline with bounded scroll, narrow/mobile opens a bottom sheet; task state stays outside `InputBox` |
 | Auto tools | Web search **default ON** when configured; MCP tools from **enabled servers** always attached for tool-capable models; agent mode **opt-in**; KB **explicit select** |
-| Telemetry | Session statusline is SoT for tok/$/msg; **no composer token chip**; click statusline `tok` for compress / auto-compaction |
+| Telemetry | Session statusline is SoT for tok/$/msg; **no composer token chip**; click statusline `tok` for compress / auto-compaction. Statusline sits **below** composer with solid primary surface + higher z-index so composer ambient shadow never buries model/cost |
 | Rail brand | Left-aligned `ChaeboxiWordmark`; no collapse control in brand row (hide via menu / resizer double-click) |
 | Projects | User-facing “Project” (storage may stay `Folder`); shared outline icon; **no emoji UI**; never invent system “Uncategorized” folder |
 | Keyboard | Enter send; Shift+Enter and Alt+Enter newline (default send is Enter) |
@@ -133,6 +136,12 @@ Compact HUD density of the full session — not a second main window.
 - Separate max-widths for blank home / messages vs composer
 - Always-visible dense action toolbars on every message
 - Always-visible multi-icon composer capability rail (use single `+` overflow)
+- Dual live chrome (dock “Thinking…” + thread strip saying the same thing)
+- ChatGPT greeting copy (“What can I help with?”)
+- Sparkles / brand chips / loaders for follow-up suggestions
+- MUI Alert/Typography on the hot chat path
+- Nested Mantine Popover inside tools Menu/Vaul sheet (Menu context crash / clipped UI)
+- Forced browser-blue error links (`#2563eb`) — use brand token
 - Composer token chip duplicating statusline telemetry
 - Letter-circle avatars as brand identity
 - Heavy dividers under topbar / above dock

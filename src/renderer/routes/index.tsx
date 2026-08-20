@@ -261,7 +261,7 @@ function Index() {
 
         <div className="blank-home-cluster">
           <div className="blank-home-greeting">
-            <h1 className="blank-title blank-enter">{t('What can I help with?')}</h1>
+            <h1 className="blank-title blank-enter">{t('Ready when you are')}</h1>
             {!providers.length && (
               <Button
                 size="sm"

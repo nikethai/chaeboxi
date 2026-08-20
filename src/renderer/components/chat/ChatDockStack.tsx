@@ -1,6 +1,4 @@
-import type { Message } from '@shared/types'
 import type { ReactNode } from 'react'
-import LiveGenerationDockHint from '@/components/chat/LiveGenerationDockHint'
 import TaskProgress, { type TaskDetailsMode } from '@/components/TaskProgress/TaskProgress'
 
 type ChatDockStackProps = {
@@ -10,9 +8,13 @@ type ChatDockStackProps = {
   afterComposer?: ReactNode
   /** How task details open. Quick Chat uses `sheet` so the dock never grows. */
   taskDetailsMode?: TaskDetailsMode
-  /** Show fixed live-thinking hint above the composer. */
+  /**
+   * @deprecated Dual live chrome removed — thread work strip + statusline pulse are SoT.
+   * Kept optional so call sites can drop props without a flag day.
+   */
   generating?: boolean
-  liveMessage?: Message | null
+  /** @deprecated See `generating`. */
+  liveMessage?: unknown
 }
 
 export default function ChatDockStack({
@@ -21,14 +23,11 @@ export default function ChatDockStack({
   children,
   afterComposer,
   taskDetailsMode = 'inline',
-  generating = false,
-  liveMessage = null,
 }: ChatDockStackProps) {
   return (
     <div className="chat-dock-stack chat-col">
       <TaskProgress key={sessionId} sessionId={sessionId} onContinue={onContinueTasks} detailsMode={taskDetailsMode} />
-      {/* Always-visible live cue near the input — easier than hunting the thread strip */}
-      <LiveGenerationDockHint generating={Boolean(generating)} liveMessage={liveMessage} />
+      {/* Live generation lives in the thread strip + statusline pulse only (no dual chrome). */}
       <div className="chat-dock-composer">{children}</div>
       {afterComposer ? <div className="chat-dock-after-composer">{afterComposer}</div> : null}
     </div>

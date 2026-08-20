@@ -13,7 +13,11 @@ export class UpdateQueue<T extends object> {
 
   constructor(
     private initial: T | (() => Promise<T | null>),
-    private onChange?: (s: T | null) => void | Promise<void>
+    private onChange?: (s: T | null) => void | Promise<void>,
+    // Fires synchronously with the freshly computed state, before the async onChange
+    // (storage persist) resolves. Lets callers commit to the UI cache immediately so
+    // rendering never waits on disk. On persist rollback it fires again with prevState.
+    private onStateChange?: (s: T | null) => void
   ) {}
 
   set(update: UpdaterFn<T>): Promise<T> {
@@ -71,6 +75,7 @@ export class UpdateQueue<T extends object> {
     const prevState = this.state
     if (s !== this.state) {
       this.state = s
+      this.onStateChange?.(s)
       try {
         const onChangeResult = this.onChange?.(s)
         if (onChangeResult && typeof (onChangeResult as any).then === 'function') {
@@ -80,6 +85,7 @@ export class UpdateQueue<T extends object> {
       } catch (e) {
         // rollback memory state if persistence failed
         this.state = prevState
+        this.onStateChange?.(prevState)
         // if onChange fails, all updates are considered failed
         this.settleQueue([], [...resolved.map((r) => ({ u: r.u, e })), ...rejected])
       }

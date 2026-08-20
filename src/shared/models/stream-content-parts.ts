@@ -94,12 +94,7 @@ export function applyReasoningDelta(
   return {
     contentParts: cursor.contentParts,
     currentTextPart: undefined,
-    currentReasoningPart: appendReasoningPart(
-      cursor.contentParts,
-      cursor.currentReasoningPart,
-      textDelta,
-      now
-    ),
+    currentReasoningPart: appendReasoningPart(cursor.contentParts, cursor.currentReasoningPart, textDelta, now),
     pendingTextWhitespace: cursor.pendingTextWhitespace,
   }
 }
@@ -108,6 +103,16 @@ export function applyReasoningDelta(
  * Flush buffered leading whitespace at stream end / abort so content is not lost.
  * Finalizes open reasoning duration.
  */
+/** Prefer streamed text parts; fall back to the provider's aggregated text (dropped SSE). */
+export function resolveStreamResultText(contentParts: MessageContentParts, aggregatedText?: string): string {
+  const streamed = contentParts
+    .filter((part): part is MessageTextPart => part.type === 'text')
+    .map((part) => part.text)
+    .join('')
+  if (streamed.trim()) return streamed
+  return aggregatedText?.trim() ? aggregatedText : streamed
+}
+
 export function flushPendingStreamText(cursor: StreamContentCursor, now = Date.now()): StreamContentCursor {
   finalizeReasoningDuration(cursor.currentReasoningPart, now)
   if (!cursor.pendingTextWhitespace) {

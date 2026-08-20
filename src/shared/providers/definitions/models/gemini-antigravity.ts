@@ -19,6 +19,7 @@ import {
   GEMINI_ANTIGRAVITY_DEFAULT_MODELS,
   resolveAntigravityChatModelId,
   resolveAntigravityThinkingLevel,
+  resolveSessionAntigravityThinkingLevel,
 } from '../../oauth/gemini-antigravity-models'
 import {
   buildAntigravityRequestHeaders,
@@ -87,7 +88,8 @@ function headersToRecord(headers?: HeadersInit): Record<string, string> {
 function prepareAntigravityInnerRequest(
   body: Record<string, unknown>,
   chatModelId: string,
-  sourceModelId: string
+  sourceModelId: string,
+  sessionThinkingLevel?: ReturnType<typeof resolveSessionAntigravityThinkingLevel>
 ): Record<string, unknown> {
   const request = { ...body }
   delete request.model
@@ -102,7 +104,16 @@ function prepareAntigravityInnerRequest(
   const responseModalities = gen.responseModalities
   const isImageGen =
     Array.isArray(responseModalities) && responseModalities.some((m) => String(m).toUpperCase() === 'IMAGE')
-  const thinkingLevel = resolveAntigravityThinkingLevel(sourceModelId) || resolveAntigravityThinkingLevel(chatModelId)
+  const existingTc =
+    gen.thinkingConfig && typeof gen.thinkingConfig === 'object'
+      ? { ...(gen.thinkingConfig as Record<string, unknown>) }
+      : {}
+  const thinkingLevel =
+    sessionThinkingLevel ||
+    resolveSessionAntigravityThinkingLevel(sourceModelId, {
+      google: { thinkingConfig: { thinkingLevel: existingTc.thinkingLevel as string | undefined } },
+    }) ||
+    resolveAntigravityThinkingLevel(chatModelId)
   if (
     !isImageGen &&
     thinkingLevel &&
@@ -110,10 +121,6 @@ function prepareAntigravityInnerRequest(
     !/image|imagen/i.test(chatModelId) &&
     !/image|imagen/i.test(sourceModelId)
   ) {
-    const existingTc =
-      gen.thinkingConfig && typeof gen.thinkingConfig === 'object'
-        ? { ...(gen.thinkingConfig as Record<string, unknown>) }
-        : {}
     // Gemini 3: thinkingLevel preferred over thinkingBudget (OpenCode)
     delete existingTc.thinkingBudget
     gen.thinkingConfig = {
@@ -146,6 +153,8 @@ export function createAntigravityFetch(options: {
   /** Prefer these bases in order; default GEMINI_ANTIGRAVITY_ENDPOINT_FALLBACKS */
   endpointFallbacks?: readonly string[]
   innerFetch?: FetchFunction
+  /** Composer/session thinking chip — Google SDK may drop thinkingLevel from the body. */
+  thinkingLevel?: ReturnType<typeof resolveSessionAntigravityThinkingLevel>
 }): FetchFunction {
   const projectId = options.projectId || GEMINI_ANTIGRAVITY_DEFAULT_PROJECT_ID
   const inner = options.innerFetch || globalThis.fetch.bind(globalThis)
@@ -193,7 +202,12 @@ export function createAntigravityFetch(options: {
       rawBody = rawBody.request as Record<string, unknown>
     }
 
-    const innerRequest = prepareAntigravityInnerRequest(rawBody, chatModelId, sourceModelId)
+    const innerRequest = prepareAntigravityInnerRequest(
+      rawBody,
+      chatModelId,
+      sourceModelId,
+      options.thinkingLevel
+    )
 
     const envelope = {
       project: projectId,
@@ -275,6 +289,32 @@ export function createAntigravityFetch(options: {
   }
 }
 
+function emitUnwrappedSseLine(
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  encoder: TextEncoder,
+  line: string
+) {
+  if (!line.startsWith('data:')) {
+    controller.enqueue(encoder.encode(`${line}\n`))
+    return
+  }
+  const payload = line.slice(5).trim()
+  if (!payload || payload === '[DONE]') {
+    controller.enqueue(encoder.encode(`${line}\n`))
+    return
+  }
+  try {
+    const parsed = JSON.parse(payload) as { response?: unknown }
+    if (parsed && typeof parsed === 'object' && 'response' in parsed && parsed.response !== undefined) {
+      controller.enqueue(encoder.encode(`data: ${JSON.stringify(parsed.response)}\n`))
+      return
+    }
+  } catch {
+    // keep original line when payload is not JSON
+  }
+  controller.enqueue(encoder.encode(`${line}\n`))
+}
+
 async function finalizeAntigravityResponse(res: Response, wantsStream: boolean): Promise<Response> {
   if (!wantsStream) {
     const text = await res.text()
@@ -302,6 +342,10 @@ async function finalizeAntigravityResponse(res: Response, wantsStream: boolean):
     async pull(controller) {
       const { done, value } = await reader.read()
       if (done) {
+        // Cloud Code SSE often omits a trailing newline on the last event.
+        if (buffer.trim()) {
+          emitUnwrappedSseLine(controller, encoder, buffer)
+        }
         controller.close()
         return
       }
@@ -311,25 +355,7 @@ async function finalizeAntigravityResponse(res: Response, wantsStream: boolean):
       buffer = parts.pop() || ''
 
       for (const line of parts) {
-        if (!line.startsWith('data:')) {
-          controller.enqueue(encoder.encode(`${line}\n`))
-          continue
-        }
-        const payload = line.slice(5).trim()
-        if (!payload || payload === '[DONE]') {
-          controller.enqueue(encoder.encode(`${line}\n`))
-          continue
-        }
-        try {
-          const parsed = JSON.parse(payload) as { response?: unknown }
-          if (parsed && typeof parsed === 'object' && 'response' in parsed && parsed.response !== undefined) {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(parsed.response)}\n`))
-          } else {
-            controller.enqueue(encoder.encode(`${line}\n`))
-          }
-        } catch {
-          controller.enqueue(encoder.encode(`${line}\n`))
-        }
+        emitUnwrappedSseLine(controller, encoder, line)
       }
     },
     cancel(reason) {
@@ -364,7 +390,7 @@ export default class GeminiAntigravity extends AbstractAISDKModel {
     return resolveAntigravityChatModelId(this.options.model.modelId)
   }
 
-  private resolveFetch(_options: CallChatCompletionOptions): FetchFunction {
+  private resolveFetch(options: CallChatCompletionOptions): FetchFunction {
     const proxyFetch = createFetchWithProxy(this.options.useProxy, this.dependencies)
     return createAntigravityFetch({
       accessToken: this.options.apiKey,
@@ -373,6 +399,10 @@ export default class GeminiAntigravity extends AbstractAISDKModel {
       endpointFallbacks: GEMINI_ANTIGRAVITY_ENDPOINT_FALLBACKS,
       apiBase: undefined,
       innerFetch: proxyFetch,
+      thinkingLevel: resolveSessionAntigravityThinkingLevel(
+        this.options.model.modelId,
+        options.providerOptions
+      ),
     })
   }
 
@@ -395,7 +425,8 @@ export default class GeminiAntigravity extends AbstractAISDKModel {
   protected getCallSettings(options: CallChatCompletionOptions): CallSettings {
     const chatId = this.chatModelId()
     const isGemini3 = chatId.toLowerCase().includes('gemini-3')
-    const thinkingLevel = resolveAntigravityThinkingLevel(this.options.model.modelId) || 'low'
+    const thinkingLevel =
+      resolveSessionAntigravityThinkingLevel(this.options.model.modelId, options.providerOptions) || 'low'
 
     let providerParams: GoogleGenerativeAIProviderOptions = {
       safetySettings: [

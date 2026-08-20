@@ -21,6 +21,7 @@ import {
   mergeGeminiAntigravityModels,
   resolveAntigravityChatModelId,
   resolveModelsAfterAntigravityLogin,
+  resolveSessionAntigravityThinkingLevel,
 } from './gemini-antigravity-models'
 import { createAntigravityFetch } from '../definitions/models/gemini-antigravity'
 
@@ -301,4 +302,62 @@ describe('createAntigravityFetch', () => {
       { method: 'POST', body: JSON.stringify({ contents: [] }) }
     )
   })
+
+  it('flushes a last SSE event that has no trailing newline',
+    async () => {
+      const inner = mockFetch(async () => {
+        return new Response('data: {"response":{"candidates":[{"content":{"parts":[{"text":"hi"}]}}]}}', {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        })
+      })
+      const fetchFn = createAntigravityFetch({
+        accessToken: 'tok',
+        projectId: 'p',
+        endpointFallbacks: ['https://cloudcode-pa.googleapis.com'],
+        innerFetch: inner,
+      })
+      const res = await fetchFn(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:streamGenerateContent?alt=sse',
+        { method: 'POST', body: JSON.stringify({ contents: [] }) }
+      )
+      const text = await res.text()
+      expect(text).toContain('"text":"hi"')
+      expect(text).not.toContain('"response"')
+    }
+  )
+
+  it('uses composer Medium as Antigravity thinkingLevel',
+    () => {
+      expect(
+        resolveSessionAntigravityThinkingLevel('gemini-3.6-flash', {
+          openai: { reasoningEffort: 'medium' },
+        })
+      ).toBe('medium')
+      expect(resolveSessionAntigravityThinkingLevel('gemini-3.6-flash')).toBe('low')
+    }
+  )
+
+  it('injects session thinkingLevel into the Cloud Code envelope',
+    async () => {
+      const inner = mockFetch(async (_url, init) => {
+        const body = JSON.parse(String(init?.body || '{}')) as {
+          request?: { generationConfig?: { thinkingConfig?: { thinkingLevel?: string } } }
+        }
+        expect(body.request?.generationConfig?.thinkingConfig?.thinkingLevel).toBe('medium')
+        return new Response(JSON.stringify({ response: { candidates: [] } }), { status: 200 })
+      })
+      const fetchFn = createAntigravityFetch({
+        accessToken: 'tok',
+        projectId: 'p',
+        endpointFallbacks: ['https://cloudcode-pa.googleapis.com'],
+        innerFetch: inner,
+        thinkingLevel: 'medium',
+      })
+      await fetchFn(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent',
+        { method: 'POST', body: JSON.stringify({ contents: [] }) }
+      )
+    }
+  )
 })

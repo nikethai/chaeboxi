@@ -39,6 +39,7 @@ import {
   applyTextDelta,
   finalizeReasoningDuration,
   flushPendingStreamText,
+  resolveStreamResultText,
   type StreamContentCursor,
 } from './stream-content-parts'
 import type { CallChatCompletionOptions, ModelInterface } from './types'
@@ -230,9 +231,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       prompt,
       n: params.num,
       aspectRatio:
-        params.aspectRatio && params.aspectRatio !== 'auto'
-          ? (params.aspectRatio as `${number}:${number}`)
-          : undefined,
+        params.aspectRatio && params.aspectRatio !== 'auto' ? (params.aspectRatio as `${number}:${number}`) : undefined,
       abortSignal: signal,
     })
     const dataUrls = result.images.map((image) => `data:${image.mediaType};base64,${image.base64}`)
@@ -466,6 +465,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       usage?: LanguageModelUsage
       finishReason?: FinishReason
       tokenSpeed?: number
+      text?: string
     },
     finalResultMetadata: FinalResultMetadata,
     options: CallChatCompletionOptions
@@ -494,6 +494,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     })
     return {
       contentParts,
+      text: result.text,
       usage: normalizedUsage,
       finishReason: result.finishReason,
       citations: finalResultMetadata.citations,
@@ -655,6 +656,12 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     const finalTokenSpeed = computeSpeed()
     const providerMetadata = await result.providerMetadata
     const finalResultMetadata = this.extractFinalResultMetadata(contentParts, providerMetadata)
+    let aggregatedText = ''
+    try {
+      aggregatedText = (await result.text) || ''
+    } catch {
+      aggregatedText = ''
+    }
 
     return this.finalizeResult(
       contentParts,
@@ -662,6 +669,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
         usage: await result.totalUsage,
         finishReason: await result.finishReason,
         tokenSpeed: finalTokenSpeed,
+        text: resolveStreamResultText(contentParts, aggregatedText),
       },
       finalResultMetadata,
       options

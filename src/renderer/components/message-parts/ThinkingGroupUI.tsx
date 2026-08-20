@@ -6,7 +6,7 @@ import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'reac
 import { useTranslation } from 'react-i18next'
 import Markdown from '@/components/Markdown'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
-import { formatWorkedDuration, useThinkingTimer } from '@/hooks/useThinkingTimer'
+import { formatWorkedDuration } from '@/hooks/useThinkingTimer'
 import { copyToClipboard } from '@/packages/navigator'
 import { isTaskTrackingTool } from '@/packages/tools/task-tools'
 import * as toastActions from '@/stores/toastActions'
@@ -28,22 +28,14 @@ interface ThinkingGroupUIProps {
  * All tools + reasoning + monologue live here; final answer renders outside.
  * Collapsed by default when finished successfully.
  */
-export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({
-  message,
-  parts,
-  monologueTexts = [],
-  isLastGroup,
-}) => {
+export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({ message, parts, monologueTexts = [], isLastGroup }) => {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
 
   const reasoningParts = useMemo(() => parts.filter((p) => p.type === 'reasoning') as MessageReasoningPart[], [parts])
   const toolCallParts = useMemo(() => parts.filter((p) => p.type === 'tool-call') as MessageToolCallPart[], [parts])
   const visibleToolCallParts = useMemo(
-    () =>
-      toolCallParts.filter(
-        (p) => !isTaskTrackingTool(p.toolName) && p.toolName !== 'memory_lookup'
-      ),
+    () => toolCallParts.filter((p) => !isTaskTrackingTool(p.toolName) && p.toolName !== 'memory_lookup'),
     [toolCallParts]
   )
   const toolCount = visibleToolCallParts.length
@@ -66,9 +58,7 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({
   }, [visibleToolCallParts])
   // Live while parent says work is active OR any tool is still running OR generation
   // has not finished yet with this work strip present. Never flash "Worked" mid-turn.
-  const isThinking = Boolean(
-    message.generating && (isLastGroup || toolStatusCounts.running > 0)
-  )
+  const isThinking = Boolean(message.generating && (isLastGroup || toolStatusCounts.running > 0))
 
   // Product default: always collapsed during live generation (header-only).
   // Expanding tools mid-stream is the main scrollbar thrash source — only open on user click
@@ -76,30 +66,43 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({
   const [isExpanded, setIsExpanded] = useState(false)
   const userToggledRef = useRef(false)
 
+  const hasReadableAnswer = useMemo(
+    () =>
+      (message.contentParts || []).some((part) => {
+        if (part.type === 'text' || part.type === 'info') return Boolean(part.text?.trim())
+        return part.type === 'image' || part.type === 'plan'
+      }),
+    [message.contentParts]
+  )
+
   useEffect(() => {
+    if (userToggledRef.current) return
     if (message.generating) {
-      // Force collapsed while streaming unless the user explicitly opened the strip.
-      if (!userToggledRef.current && isExpanded) setIsExpanded(false)
+      setIsExpanded(false)
       return
     }
-    // Generation ended: collapse successful work; leave open if tools failed.
-    userToggledRef.current = false
-    if (toolStatusCounts.failed === 0) {
-      setIsExpanded(false)
-    } else {
-      setIsExpanded(true)
-    }
-  }, [message.generating, toolStatusCounts.failed, isExpanded])
+    // Finished with no answer: keep tools open so the turn is inspectable.
+    // Do not reset userToggledRef here — that snapped the chevron shut on click.
+    setIsExpanded(toolStatusCounts.failed > 0 || (toolCount > 0 && !hasReadableAnswer))
+  }, [message.generating, toolStatusCounts.failed, toolCount, hasReadableAnswer])
 
   const totalDuration = useMemo(() => {
     return reasoningParts.reduce((sum, p) => sum + (p.duration || 0), 0)
   }, [reasoningParts])
 
   const lastReasoningPart = reasoningParts[reasoningParts.length - 1]
-  const elapsedTime = useThinkingTimer(lastReasoningPart?.startTime, isThinking || false)
-  const shouldShowTimer = message.isStreamingMode === true
+  const workStart = lastReasoningPart?.startTime || message.timestamp
+  const [settledMs, setSettledMs] = useState(0)
+  useEffect(() => {
+    if (message.generating) {
+      setSettledMs(0)
+      return
+    }
+    if (!workStart) return
+    setSettledMs(Date.now() - workStart)
+  }, [message.generating, workStart])
 
-  const displayTime = totalDuration > 0 ? totalDuration : isThinking && elapsedTime > 0 ? elapsedTime : 0
+  const displayTime = totalDuration > 0 ? totalDuration : settledMs
 
   const allReasoningText = useMemo(() => {
     const fromParts = reasoningParts.map((p) => p.text).filter(Boolean)
@@ -122,57 +125,56 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({
     [allReasoningText, t]
   )
 
-  // Grok DNA: one calm phrase. Avoid "Using tools… / Thinking…" thrash + busy badges.
+  // One live phrase only. Swapping Thinking… ↔ Using tools… was the mid-turn jitter.
   const headerLabel = useMemo(() => {
-    if (message.generating) {
-      if (toolStatusCounts.running > 0) {
-        return toolCount > 1 ? t('Using tools…') : t('Using tools…')
-      }
-      // After tools finish but before answer — still live, never "Worked".
-      return t('Thinking…')
-    }
+    if (message.generating) return t('Thinking…')
 
-    const hasDuration = shouldShowTimer && displayTime > 0
-    const compact = hasDuration ? formatWorkedDuration(displayTime) : null
-
-    // Finished: "Worked for 3s" (design contract). Tools are detail, not the headline.
-    if (compact) {
-      return t('Worked for {{duration}}', { duration: compact })
-    }
+    const compact = displayTime > 0 ? formatWorkedDuration(displayTime) : null
+    if (compact) return t('Worked for {{duration}}', { duration: compact })
     if (toolCount > 0) {
       return toolCount === 1 ? t('Worked · 1 tool') : t('Worked · {{count}} tools', { count: toolCount })
     }
     return t('Worked')
-  }, [message.generating, toolStatusCounts.running, shouldShowTimer, displayTime, toolCount, t])
+  }, [message.generating, displayTime, toolCount, t])
+
+  const [labelShown, setLabelShown] = useState(headerLabel)
+  const [labelLeaving, setLabelLeaving] = useState<string | null>(null)
+  useEffect(() => {
+    if (headerLabel === labelShown) return
+    setLabelLeaving(labelShown)
+    setLabelShown(headerLabel)
+    const swap = window.setTimeout(() => setLabelLeaving(null), 220)
+    return () => window.clearTimeout(swap)
+  }, [headerLabel, labelShown])
 
   const hasExpandableBody = toolCount > 0 || allReasoningText.length > 0
-  // Always reserve timer width while live so 0s→1s does not shove chevron/layout.
-  const showLiveTimer = Boolean(message.generating && shouldShowTimer)
-  const liveSeconds =
-    displayTime >= 1000
-      ? formatWorkedDuration(displayTime)
-      : elapsedTime >= 1000
-        ? formatWorkedDuration(elapsedTime)
-        : '0s'
 
-  // One-shot enter animation — do not re-fire when label/timer updates mid-turn.
-  const [enterSettled, setEnterSettled] = useState(false)
+  // Hold is-live a beat after settle so pulse/color ease out instead of snapping.
+  const [liveChrome, setLiveChrome] = useState(Boolean(message.generating))
   useEffect(() => {
-    if (!message.generating) {
-      setEnterSettled(false)
+    if (message.generating) {
+      setLiveChrome(true)
       return
     }
+    const finish = window.setTimeout(() => setLiveChrome(false), 220)
+    return () => window.clearTimeout(finish)
+  }, [message.generating])
+
+  // One-shot enter animation on mount only — never reset when generation ends
+  // (resetting re-armed opacity/transform flash on the Thinking → Worked morph).
+  const [enterSettled, setEnterSettled] = useState(false)
+  useEffect(() => {
     if (enterSettled) return
     const t = window.setTimeout(() => setEnterSettled(true), 260)
     return () => window.clearTimeout(t)
-  }, [message.generating, enterSettled])
+  }, [enterSettled])
 
   return (
     <div
       className={clsx(
         'msg-worked',
-        message.generating && 'is-live',
-        message.generating && enterSettled && 'is-settled',
+        liveChrome && 'is-live',
+        liveChrome && enterSettled && 'is-settled',
         isSmallScreen && 'mx-0.5'
       )}
     >
@@ -185,17 +187,14 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({
           aria-expanded={isExpanded}
           disabled={!hasExpandableBody}
         >
-          <span
-            className={clsx(
-              'msg-worked-label',
-              message.generating && 'animate-shimmer shimmer-text'
-            )}
-          >
-            {headerLabel}
+          <span className="msg-worked-label-stack">
+            {labelLeaving ? (
+              <span className="msg-worked-label is-leave" aria-hidden>
+                {labelLeaving}
+              </span>
+            ) : null}
+            <span className={clsx('msg-worked-label', labelLeaving && 'is-enter')}>{labelShown}</span>
           </span>
-          {showLiveTimer && (
-            <span className="msg-worked-live tabular-nums">{liveSeconds}</span>
-          )}
           {toolStatusCounts.failed > 0 && !message.generating && (
             <Group gap={3} ml={4} wrap="nowrap" className="shrink-0">
               <ScalableIcon icon={IconCircleXFilled} size={12} color="var(--chatbox-tint-error)" />
@@ -204,11 +203,12 @@ export const ThinkingGroupUI: FC<ThinkingGroupUIProps> = ({
               </Text>
             </Group>
           )}
-          {hasExpandableBody && (
-            <span className={clsx('msg-worked-chevron', isExpanded && 'is-open')} aria-hidden>
-              ›
-            </span>
-          )}
+          <span
+            className={clsx('msg-worked-chevron', isExpanded && 'is-open', !hasExpandableBody && 'is-idle')}
+            aria-hidden
+          >
+            ›
+          </span>
         </button>
         {allReasoningText.length > 0 && !message.generating && (
           <ActionIcon

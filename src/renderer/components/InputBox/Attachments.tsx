@@ -1,6 +1,4 @@
 import NiceModal from '@ebay/nice-modal-react'
-import Tooltip from '@mui/material/Tooltip'
-import Typography from '@mui/material/Typography'
 import { ProviderAPIError } from '@shared/models/errors'
 import { useQuery } from '@tanstack/react-query'
 import { AlertCircle, CheckCircle, Eye, Film, Link, Link2, Loader2, X } from 'lucide-react'
@@ -235,7 +233,7 @@ export function FileMiniCard(props: {
         }
       }}
     >
-      <Tooltip title={tooltipTitle}>
+      <div title={tooltipTitle} className="size-full">
         {posterStorageKey ? (
           <div className="size-full overflow-hidden rounded-[9px] p-0.5">
             <div className="relative size-full overflow-hidden rounded-[8px] outline outline-1 -outline-offset-1 outline-black/10 dark:outline-white/10">
@@ -255,13 +253,9 @@ export function FileMiniCard(props: {
             ) : (
               <FileIcon filename={name} className="h-7 w-7 text-[var(--chatbox-tint-primary)]" />
             )}
-            <Typography
-              className="w-full text-center text-[var(--chatbox-tint-primary)]"
-              noWrap
-              sx={{ fontSize: '11px', lineHeight: 1.3, letterSpacing: '-0.01em' }}
-            >
+            <span className="w-full truncate text-center text-[11px] leading-tight tracking-[-0.01em] text-[var(--chatbox-tint-primary)]">
               {name}
-            </Typography>
+            </span>
             {typeLabel && (
               <span className="max-w-full truncate font-mono text-[10px] tabular-nums text-[var(--chatbox-tint-tertiary)]">
                 {typeLabel}
@@ -269,7 +263,7 @@ export function FileMiniCard(props: {
             )}
           </div>
         )}
-      </Tooltip>
+      </div>
 
       {/* Status indicator — top-left so it never collides with duration (bottom-right) */}
       <StatusBadge status={status} />
@@ -357,91 +351,83 @@ export function MessageAttachment(props: {
 
   if (isVideo || isLinkWithThumb) {
     return (
-      <Tooltip title={isClickable ? (isVideo ? t('Open video') : t('Open link content')) : label}>
-        <button
-          type="button"
-          className={cn(
-            'group/attachment flex w-full min-w-0 items-stretch gap-0 overflow-hidden rounded-md',
-            'bg-chatbox-background-secondary text-left',
-            'transition-[background-color,transform] duration-150 ease-out',
-            isClickable && 'cursor-pointer hover:bg-chatbox-background-secondary-hover active:scale-[0.96]'
-          )}
-          onClick={handleClick}
-          disabled={!isClickable}
-          aria-label={isVideo ? t('Open video') : t('Open link content')}
-        >
-          <div className="relative h-[52px] w-[72px] shrink-0 overflow-hidden bg-[var(--chatbox-background-tertiary)]">
-            {posterStorageKey ? (
-              <PosterThumb storageKey={posterStorageKey} className="size-full" />
-            ) : (
-              <div className="flex size-full items-center justify-center">
-                {isVideo ? (
-                  <Film className="size-5 text-chatbox-tertiary" strokeWidth={1.5} />
-                ) : (
-                  <Link2 className="size-5 text-chatbox-tertiary" strokeWidth={1.5} />
-                )}
-              </div>
-            )}
-            {isVideo && durationLabel && (
-              <span className="absolute right-1 bottom-1 rounded bg-black/60 px-1 font-mono text-[10px] tabular-nums text-white">
-                {durationLabel}
-              </span>
-            )}
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-2 py-1.5">
-            <Typography className="text-xs leading-tight" noWrap>
-              {label}
-            </Typography>
-            {subtitle && (
-              <Typography className="text-chatbox-tertiary" noWrap sx={{ fontSize: '10px', lineHeight: 1.4 }}>
-                {subtitle}
-              </Typography>
-            )}
-          </div>
-          {isClickable && (
-            <div className="flex shrink-0 items-center pr-2">
-              <Eye
-                className="size-3.5 text-chatbox-tertiary opacity-0 transition-opacity duration-150 group-hover/attachment:opacity-100"
-                strokeWidth={1.5}
-              />
+      <button
+        type="button"
+        title={isClickable ? (isVideo ? t('Open video') : t('Open link content')) : label}
+        className={cn(
+          'group/attachment flex w-full min-w-0 items-stretch gap-0 overflow-hidden rounded-md',
+          'bg-chatbox-background-secondary text-left',
+          'transition-[background-color,transform] duration-150 ease-out',
+          isClickable && 'cursor-pointer hover:bg-chatbox-background-secondary-hover active:scale-[0.96]'
+        )}
+        onClick={handleClick}
+        disabled={!isClickable}
+        aria-label={isVideo ? t('Open video') : t('Open link content')}
+      >
+        <div className="relative h-[52px] w-[72px] shrink-0 overflow-hidden bg-[var(--chatbox-background-tertiary)]">
+          {posterStorageKey ? (
+            <PosterThumb storageKey={posterStorageKey} className="size-full" />
+          ) : (
+            <div className="flex size-full items-center justify-center">
+              {isVideo ? (
+                <Film className="size-5 text-chatbox-tertiary" strokeWidth={1.5} />
+              ) : (
+                <Link2 className="size-5 text-chatbox-tertiary" strokeWidth={1.5} />
+              )}
             </div>
           )}
-        </button>
-      </Tooltip>
+          {isVideo && durationLabel && (
+            <span className="absolute right-1 bottom-1 rounded bg-black/60 px-1 font-mono text-[10px] tabular-nums text-white">
+              {durationLabel}
+            </span>
+          )}
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5 px-2 py-1.5">
+          <span className="truncate text-xs leading-tight text-[var(--chatbox-tint-primary)]">{label}</span>
+          {subtitle && (
+            <span className="truncate text-[10px] leading-snug text-[var(--chatbox-tint-tertiary)]">{subtitle}</span>
+          )}
+        </div>
+        {isClickable && (
+          <div className="flex shrink-0 items-center pr-2">
+            <Eye
+              className="size-3.5 text-chatbox-tertiary opacity-0 transition-opacity duration-150 group-hover/attachment:opacity-100"
+              strokeWidth={1.5}
+            />
+          </div>
+        )}
+      </button>
     )
   }
 
   return (
-    <Tooltip title={isClickable ? t('Click to view parsed content') : label}>
-      <div
-        className={`flex items-center gap-2 px-2 py-1.5 min-w-0
+    <div
+      title={isClickable ? t('Click to view parsed content') : label}
+      className={`group/attachment flex items-center gap-2 px-2 py-1.5 min-w-0
             rounded-md
             bg-chatbox-background-secondary
             ${isClickable ? 'cursor-pointer hover:bg-chatbox-background-secondary-hover transition-colors' : ''}`}
-        onClick={handleClick}
-      >
-        <div className="flex-none w-7 h-7 rounded-md bg-chatbox-background-primary flex items-center justify-center">
-          {filename && <FileIcon filename={filename} className="w-4 h-4" />}
-          {url && !filename && <Link2 className="w-4 h-4 text-chatbox-secondary" strokeWidth={1.5} />}
-        </div>
-        <div className="min-w-0 flex-1">
-          <Typography className="text-xs leading-tight" noWrap>
-            {label}
-          </Typography>
-          {subtitle && (
-            <Typography className="text-chatbox-tertiary" noWrap sx={{ fontSize: '10px', lineHeight: 1.4 }}>
-              {subtitle}
-            </Typography>
-          )}
-        </div>
-        {isClickable && (
-          <Eye
-            className="flex-none w-3.5 h-3.5 text-chatbox-tertiary opacity-0 group-hover/attachment:opacity-100 transition-opacity"
-            strokeWidth={1.5}
-          />
+      onClick={handleClick}
+    >
+      <div className="flex-none w-7 h-7 rounded-md bg-chatbox-background-primary flex items-center justify-center">
+        {filename && <FileIcon filename={filename} className="w-4 h-4" />}
+        {url && !filename && <Link2 className="w-4 h-4 text-chatbox-secondary" strokeWidth={1.5} />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <span className="block truncate text-xs leading-tight text-[var(--chatbox-tint-primary)]">{label}</span>
+        {subtitle && (
+          <span className="block truncate text-[10px] leading-snug text-[var(--chatbox-tint-tertiary)]">
+            {subtitle}
+          </span>
         )}
       </div>
-    </Tooltip>
+      {isClickable && (
+        <Eye
+          className="flex-none w-3.5 h-3.5 text-chatbox-tertiary opacity-0 group-hover/attachment:opacity-100 transition-opacity"
+          strokeWidth={1.5}
+        />
+      )}
+    </div>
   )
 }
 
@@ -480,36 +466,31 @@ export function LinkMiniCard(props: {
       onClick={handleClick}
       role={status === 'error' ? 'button' : undefined}
     >
-      <Tooltip title={status === 'error' && translatedError ? translatedError : title ? `${title}\n${url}` : url}>
+      <div
+        title={status === 'error' && translatedError ? translatedError : title ? `${title}\n${url}` : url}
+        className="size-full"
+      >
         {hasThumb && imageStorageKey ? (
           <div className="relative flex size-full flex-col overflow-hidden">
             <div className="min-h-0 flex-1">
               <PosterThumb storageKey={imageStorageKey} className="size-full" />
             </div>
             <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-1.5 pb-1.5 pt-5">
-              <Typography
-                className="w-full text-center text-white"
-                noWrap
-                sx={{ fontSize: '10px', lineHeight: 1.25, letterSpacing: '-0.01em', fontWeight: 600 }}
-              >
+              <span className="block w-full truncate text-center text-[10px] font-semibold leading-tight tracking-[-0.01em] text-white">
                 {label}
-              </Typography>
+              </span>
             </div>
           </div>
         ) : (
           <div className="flex w-full flex-col items-center justify-center gap-1 px-1.5">
             <Link className="h-7 w-7 text-[var(--chatbox-tint-primary)]" strokeWidth={1.5} />
-            <Typography
-              className="w-full text-center text-[var(--chatbox-tint-primary)]"
-              noWrap
-              sx={{ fontSize: '11px', lineHeight: 1.3, letterSpacing: '-0.01em' }}
-            >
+            <span className="w-full truncate text-center text-[11px] leading-tight tracking-[-0.01em] text-[var(--chatbox-tint-primary)]">
               {label}
-            </Typography>
+            </span>
             <span className="font-mono text-[10px] text-[var(--chatbox-tint-tertiary)]">URL</span>
           </div>
         )}
-      </Tooltip>
+      </div>
 
       <StatusBadge status={status} />
 

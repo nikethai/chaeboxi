@@ -114,16 +114,37 @@ export function resolveAntigravityChatModelId(modelId: string): string {
   return id
 }
 
+export type AntigravityThinkingLevel = 'minimal' | 'low' | 'medium' | 'high'
+
+function asThinkingLevel(value: unknown): AntigravityThinkingLevel | undefined {
+  if (value === 'minimal' || value === 'low' || value === 'medium' || value === 'high') return value
+  return undefined
+}
+
 /** Thinking level for Gemini 3 request generationConfig (OpenCode convention). */
-export function resolveAntigravityThinkingLevel(modelId: string): 'minimal' | 'low' | 'medium' | 'high' | undefined {
+export function resolveAntigravityThinkingLevel(modelId: string): AntigravityThinkingLevel | undefined {
   const lower = (modelId || '').toLowerCase()
   if (!lower.includes('gemini-3')) return undefined
   const tier = lower.match(TIER_SUFFIX)?.[1]?.toLowerCase()
-  if (tier === 'minimal' || tier === 'low' || tier === 'medium' || tier === 'high') {
-    return tier
+  return asThinkingLevel(tier) ?? 'low'
+}
+
+/**
+ * Session chip (OpenAI reasoningEffort / Google thinkingLevel) wins over model-id default.
+ * Composer "Medium" is stored as providerOptions.openai.reasoningEffort.
+ */
+export function resolveSessionAntigravityThinkingLevel(
+  modelId: string,
+  providerOptions?: {
+    openai?: { reasoningEffort?: string }
+    google?: { thinkingConfig?: { thinkingLevel?: string } }
   }
-  // Flash / Pro without tier: default low
-  return 'low'
+): AntigravityThinkingLevel | undefined {
+  return (
+    asThinkingLevel(providerOptions?.google?.thinkingConfig?.thinkingLevel) ??
+    asThinkingLevel(providerOptions?.openai?.reasoningEffort) ??
+    resolveAntigravityThinkingLevel(modelId)
+  )
 }
 
 function isGeminiModelId(id: string): boolean {

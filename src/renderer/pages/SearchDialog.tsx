@@ -1,5 +1,8 @@
+import NiceModal from '@ebay/nice-modal-react'
 import Dialog from '@mui/material/Dialog'
 import DialogContent from '@mui/material/DialogContent'
+import type { ImportedSearchHit } from '@shared/imported-history'
+import { searchImportedSnapshot } from '@shared/imported-history'
 import type { Session } from '@shared/types'
 import { useAtomValue } from 'jotai'
 import { Loader2, ScanSearch, Search } from 'lucide-react'
@@ -11,6 +14,8 @@ import { BlockCodeCollapsedStateProvider } from '@/components/Markdown'
 import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList } from '@/components/ui/command'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
+import { loadImportedHistory } from '@/packages/imported-history'
+import { platformCapabilities } from '@/platform'
 import { currentSessionIdAtom } from '@/stores/atoms'
 import { searchSessions } from '@/stores/sessionHelpers'
 import { useUIStore } from '@/stores/uiStore'
@@ -28,6 +33,7 @@ export default function SearchDialog(_props: Props) {
   const [loading, setLoading] = useState(false)
   const [searchInput, setSearchInput] = useState('')
   const [searchResult, setSearchResult] = useState<Session[]>([])
+  const [importedHits, setImportedHits] = useState<ImportedSearchHit[]>([])
   const { t } = useTranslation()
   const ref = useRef<HTMLInputElement>(null)
 
@@ -37,6 +43,7 @@ export default function SearchDialog(_props: Props) {
     if (open) {
       setMode('command')
       setSearchResult([])
+      setImportedHits([])
       setLoading(false)
       const timer = window.setTimeout(() => {
         ref.current?.focus()
@@ -55,15 +62,25 @@ export default function SearchDialog(_props: Props) {
     if (!searchInput.trim()) return
     setMode('search-result')
     setSearchResult([])
+    setImportedHits([])
     setLoading(true)
     if (flag === 'current-session' && !currentSessionId) {
       setLoading(false)
       return
     }
-    searchSessions(searchInput, flag === 'current-session' ? (currentSessionId ?? undefined) : undefined, (batches) => {
-      setSearchResult((prev) => [...prev, ...batches])
+    void searchSessions(
+      searchInput,
+      flag === 'current-session' ? (currentSessionId ?? undefined) : undefined,
+      (batches) => {
+        setSearchResult((prev) => [...prev, ...batches])
+      }
+    ).then(async () => {
+      if (flag === 'global') {
+        const snapshot = await loadImportedHistory()
+        setImportedHits(searchImportedSnapshot(snapshot, searchInput))
+      }
+      setLoading(false)
     })
-    setLoading(false)
     ref.current?.select()
   }
 
@@ -79,9 +96,22 @@ export default function SearchDialog(_props: Props) {
     }
   }
 
-  const placeholder = globalOnly
-    ? `${t('Search conversations')}...`
-    : `${t('Type a command or search')}...`
+  const placeholder = globalOnly ? `${t('Search conversations')}...` : `${t('Type a command or search')}...`
+
+  const openImportArchive = () => {
+    setOpen(false)
+    void NiceModal.show('import-chatgpt-archive')
+  }
+
+  const importArchiveItem = platformCapabilities.supportsImportedArchives ? (
+    <CommandItem value="import-chatgpt-archive" className="search-dialog-item" onSelect={openImportArchive}>
+      <ScanSearch className="mr-2 h-4 w-4 shrink-0 opacity-70" />
+      <span className="flex min-w-0 flex-col">
+        <span>{t('Import ChatGPT archive')}</span>
+        <span className="text-xs text-[var(--chatbox-tint-tertiary)]">{t('Needs an OpenAI data-export ZIP')}</span>
+      </span>
+    </CommandItem>
+  ) : null
 
   return (
     <Dialog
@@ -145,6 +175,7 @@ export default function SearchDialog(_props: Props) {
                     {searchInput.length > 0 ? ` "${searchInput}"` : ''}
                   </span>
                 </CommandItem>
+                {importArchiveItem}
                 <CommandItem
                   value="search-global"
                   className="search-dialog-item"
@@ -161,9 +192,26 @@ export default function SearchDialog(_props: Props) {
           )}
 
           {mode === 'command' && globalOnly && (
-            <div className="search-dialog-hint">
-              <p>{t('Press Enter to search all conversations')}</p>
-            </div>
+            <CommandList className="search-dialog-list">
+              <CommandEmpty className="search-dialog-empty">{t('No results found')}</CommandEmpty>
+              <CommandGroup heading={t('Search')} className="search-dialog-group">
+                <CommandItem
+                  value="search-global"
+                  className="search-dialog-item"
+                  onSelect={() => onSearchClick('global')}
+                >
+                  <ScanSearch className="mr-2 h-4 w-4 shrink-0 opacity-70" />
+                  <span>
+                    {t('Search All Conversations')}
+                    {searchInput.length > 0 ? ` "${searchInput}"` : ''}
+                  </span>
+                </CommandItem>
+                {importArchiveItem}
+              </CommandGroup>
+              <div className="search-dialog-hint">
+                <p>{t('Press Enter to search all conversations')}</p>
+              </div>
+            </CommandList>
           )}
 
           {mode === 'search-result' && loading && (
@@ -232,6 +280,33 @@ export default function SearchDialog(_props: Props) {
                       ))}
                     </CommandGroup>
                   ))}
+                  {importedHits.length > 0 ? (
+                    <CommandGroup heading={t('Imported')} className="search-dialog-group">
+                      {importedHits.map((hit) => (
+                        <CommandItem
+                          key={`${hit.sourceId}-${hit.message.id}`}
+                          value={`imported-${hit.sourceId}-${hit.message.id}`}
+                          className="search-dialog-item"
+                          onSelect={() => {
+                            void (async () => {
+                              const snapshot = await loadImportedHistory()
+                              const source = snapshot.sources.find((item) => item.id === hit.sourceId)
+                              const conversation = source?.conversations.find((item) => item.id === hit.conversationId)
+                              if (!source || !conversation) {
+                                return
+                              }
+                              setOpen(false)
+                              void NiceModal.show('imported-conversation', { source, conversation })
+                            })()
+                          }}
+                        >
+                          <span>
+                            {hit.conversationTitle}: {hit.message.text.slice(0, 160)}
+                          </span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  ) : null}
                 </CommandList>
               </Mark>
             </BlockCodeCollapsedStateProvider>

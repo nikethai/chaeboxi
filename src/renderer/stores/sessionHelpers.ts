@@ -10,12 +10,16 @@ import type {
   Settings,
 } from '@shared/types'
 import type { DocumentParserConfig } from '@shared/types/settings'
-import { getMessageText, migrateMessage } from '@shared/utils/message'
 import { pick } from 'lodash'
 import i18n from '@/i18n'
 import { formatChatAsHtml, formatChatAsMarkdown, formatChatAsTxt } from '@/lib/format-chat'
 import { getLogger } from '@/lib/utils'
 import { PREVIEW_LINES } from '@/packages/context-management/attachment-payload'
+import {
+  createHistorySearchRegexp,
+  LINEAR_HISTORY_SEARCH_RESULT_CAP,
+  matchSessionMessages,
+} from '@/packages/history-search'
 import * as localParser from '@/packages/local-parser'
 import { estimateTokens, getTokenizerType } from '@/packages/token'
 import {
@@ -37,7 +41,7 @@ import {
 import platform from '@/platform'
 import storage from '@/storage'
 import { StorageKey, StorageKeyGenerator } from '@/storage/StoreStorage'
-import { migrateSession, sortSessions } from '@/utils/session-utils'
+import { sortSessions } from '@/utils/session-utils'
 import * as defaults from '../../shared/defaults'
 import {
   createMessage,
@@ -905,33 +909,8 @@ export function getSessionMeta(session: SessionMeta & { messages?: { timestamp?:
   return base
 }
 
-function _searchSessions(regexp: RegExp, s: Session) {
-  const session = migrateSession(s)
-  const matchedMessages: Message[] = []
-  for (let i = session.messages.length - 1; i >= 0; i--) {
-    const message = session.messages[i]
-    if (regexp.test(getMessageText(message))) {
-      matchedMessages.push(message)
-    }
-  }
-  // (legacy comment removed)
-  if (session.threads) {
-    for (let i = session.threads.length - 1; i >= 0; i--) {
-      const thread = session.threads[i]
-      for (let j = thread.messages.length - 1; j >= 0; j--) {
-        const message = thread.messages[j]
-        if (regexp.test(getMessageText(message))) {
-          matchedMessages.push(message)
-        }
-      }
-    }
-  }
-  return matchedMessages.map((m) => migrateMessage(m))
-}
-
 export async function searchSessions(searchInput: string, sessionId?: string, onResult?: (result: Session[]) => void) {
-  const safeInput = searchInput.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
-  const regexp = new RegExp(safeInput, 'i')
+  const regexp = createHistorySearchRegexp(searchInput)
   let matchedMessageTotal = 0
 
   const emitBatch = (batch: Session[]) => {
@@ -944,7 +923,7 @@ export async function searchSessions(searchInput: string, sessionId?: string, on
   if (sessionId) {
     const session = await storage.getItem<Session | null>(StorageKeyGenerator.session(sessionId), null)
     if (session) {
-      const matchedMessages = _searchSessions(regexp, session)
+      const matchedMessages = matchSessionMessages(session, regexp)
       matchedMessageTotal += matchedMessages.length
       emitBatch([{ ...session, messages: matchedMessages }])
     }
@@ -954,12 +933,12 @@ export async function searchSessions(searchInput: string, sessionId?: string, on
     for (const sessionMeta of sessionsList) {
       const session = await storage.getItem<Session | null>(StorageKeyGenerator.session(sessionMeta.id), null)
       if (session) {
-        const messages = _searchSessions(regexp, session)
+        const messages = matchSessionMessages(session, regexp)
         if (messages.length > 0) {
           matchedMessageTotal += messages.length
           emitBatch([{ ...session, messages }])
         }
-        if (matchedMessageTotal >= 50) {
+        if (matchedMessageTotal >= LINEAR_HISTORY_SEARCH_RESULT_CAP) {
           break
         }
       }

@@ -140,6 +140,7 @@ export default class DesktopPlatform implements Platform {
       key === 'settings' ||
       key === 'configVersion' ||
       key === 'chat-sessions-list' ||
+      key === 'imported-history' ||
       key.startsWith('session:')
     )
   }
@@ -261,6 +262,15 @@ export default class DesktopPlatform implements Platform {
 
   public async ensureAutoLaunch(enable: boolean) {
     return this.ipc.invoke('ensureAutoLaunch', enable)
+  }
+
+  pickImportedArchivePath = async (): Promise<string | null> => {
+    const picked = await this.ipc.invoke('pickImportedArchive')
+    return typeof picked === 'string' && picked.length > 0 ? picked : null
+  }
+
+  inspectImportedArchive = async (path: string): Promise<unknown> => {
+    return this.ipc.invoke('inspectImportedArchive', path)
   }
 
   async parseFileLocally(file: File): Promise<{ key?: string; isSupported: boolean }> {

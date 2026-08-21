@@ -3,6 +3,7 @@
  * It uses react-query for caching.
  * */
 
+import { isImportedRecordId } from '@shared/imported-history'
 import {
   type Message,
   ModelProviderEnum,
@@ -19,20 +20,21 @@ import compact from 'lodash/compact'
 import isEmpty from 'lodash/isEmpty'
 import { useMemo } from 'react'
 import { v4 as uuidv4 } from 'uuid'
+import { clearScrollPositionCache } from '@/components/chat/MessageList'
 import storage, { StorageKey } from '@/storage'
 import { StorageKeyGenerator } from '@/storage/StoreStorage'
 import * as defaults from '../../shared/defaults'
 import { getLogger } from '../lib/utils'
 import { migrateSession, sortSessions } from '../utils/session-utils'
-import { clearScrollPositionCache } from '@/components/chat/MessageList'
-import { uiStore } from './uiStore'
 import { currentSessionIdAtom } from './atoms'
 import { cleanupSessionAtomCache } from './atoms/throttleWriteSessionAtom'
 import { lastUsedModelStore } from './lastUsedModelStore'
 import queryClient from './queryClient'
 import { getSessionMeta } from './sessionHelpers'
 import { settingsStore, useSettingsStore } from './settingsStore'
+import { uiStore } from './uiStore'
 import { UpdateQueue } from './updateQueue'
+
 const log = getLogger('chat-store')
 
 const QueryKeys = {
@@ -129,6 +131,9 @@ const getSessionQueryOptions = (sessionId: string) => ({
 })
 
 export async function getSession(sessionId: string) {
+  if (isImportedRecordId(sessionId)) {
+    throw new Error('Imported records cannot use native session APIs')
+  }
   return await queryClient.fetchQuery(getSessionQueryOptions(sessionId))
 }
 
@@ -168,6 +173,13 @@ function _setSessionCache(sessionId: string, updated: Session | null) {
 // create session
 export async function createSession(newSession: Omit<Session, 'id'>, previousId?: string) {
   console.debug('chatStore', 'createSession', newSession)
+  if (
+    'id' in newSession &&
+    typeof (newSession as { id?: string }).id === 'string' &&
+    isImportedRecordId((newSession as { id: string }).id)
+  ) {
+    throw new Error('Imported records cannot use native session APIs')
+  }
   const { chat: lastUsedChatModel, picture: lastUsedPictureModel } = lastUsedModelStore.getState()
   const session = {
     ...newSession,
@@ -202,6 +214,9 @@ const sessionUpdateQueues: Record<string, UpdateQueue<Session>> = {}
 
 export async function updateSessionWithMessages(sessionId: string, updater: Updater<Session>) {
   console.debug('chatStore', 'updateSession', sessionId, updater)
+  if (isImportedRecordId(sessionId)) {
+    throw new Error('Imported records cannot use native session APIs')
+  }
   if (!sessionUpdateQueues[sessionId]) {
     // do not use await here to avoid data race
     sessionUpdateQueues[sessionId] = new UpdateQueue<Session>(
@@ -415,11 +430,7 @@ export async function insertMessage(sessionId: string, message: Message, previou
       if (previousIndex >= 0) {
         return {
           ...sess,
-          messages: [
-            ...sess.messages.slice(0, previousIndex + 1),
-            message,
-            ...sess.messages.slice(previousIndex + 1),
-          ],
+          messages: [...sess.messages.slice(0, previousIndex + 1), message, ...sess.messages.slice(previousIndex + 1)],
         } satisfies Session
       }
 
@@ -478,7 +489,8 @@ export async function insertMessages(sessionId: string, messages: Message[]) {
 
 export async function updateMessageCache(sessionId: string, messageId: string, updater: Updater<Message>) {
   return await updateMessage(sessionId, messageId, updater, true)
-}export async function updateMessages(sessionId: string, updater: Updater<Message[]>) {
+}
+export async function updateMessages(sessionId: string, updater: Updater<Message[]>) {
   return await updateSessionWithMessages(sessionId, (session) => {
     if (!session) {
       throw new Error(`session ${sessionId} not found`)

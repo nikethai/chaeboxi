@@ -92,11 +92,12 @@ export default function useShortcut() {
     }
 
     if (e.key === 'k' && ctrlKey) {
-      const openSearchDialog = uiStore.getState().openSearchDialog
+      e.preventDefault()
+      const { openSearchDialog, setOpenSearchDialog } = uiStore.getState()
       if (openSearchDialog) {
-        uiStore.setState({ openSearchDialog: false })
+        setOpenSearchDialog(false)
       } else {
-        uiStore.setState({ openSearchDialog: true })
+        setOpenSearchDialog(true, true)
       }
     }
     if (e.key === ',' && ctrlKey) {

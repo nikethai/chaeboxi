@@ -72,6 +72,11 @@ export interface Platform extends Storage {
 
   parseFileLocally(file: File): Promise<{ key?: string; isSupported: boolean }>
 
+  /** Desktop: native ZIP file picker. Returns a filesystem path or null if cancelled. */
+  pickImportedArchivePath?(): Promise<string | null>
+  /** Desktop: inspect a ChatGPT export ZIP at a filesystem path. */
+  inspectImportedArchive?(path: string): Promise<unknown>
+
   // Parse file using MinerU service (Desktop only)
   parseFileWithMineru?(
     file: File,

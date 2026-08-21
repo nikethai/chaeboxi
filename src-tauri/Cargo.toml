@@ -55,6 +55,8 @@ keyring = "3"
 # Local semantic RAG: bundled SQLite. Embeddings stored as BLOB; cosine in Rust.
 rusqlite = { version = "0.32", features = ["bundled"] }
 pdf-extract = "0.7"
+zip = { version = "0.6.6", default-features = false, features = ["deflate"] }
+rfd = "0.15"
 # Desktop-only ONNX runtime. Never listed under [dependencies] so Android/iOS stay keyword-only.
 fastembed = "4"
 

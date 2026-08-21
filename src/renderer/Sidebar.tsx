@@ -25,8 +25,8 @@ import {
   IconX,
 } from '@tabler/icons-react'
 import { useNavigate } from '@tanstack/react-router'
-import { getDefaultStore } from 'jotai'
 import clsx from 'clsx'
+import { getDefaultStore } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ChaeboxiWordmark from './components/brand/ChaeboxiWordmark'
@@ -45,11 +45,11 @@ import {
 } from './hooks/useScreenChange'
 import useVersion from './hooks/useVersion'
 import { navigateToSettings } from './modals/Settings'
+import { trackingEvent } from './packages/event'
+import appIcon from './static/icon.png'
 import { currentSessionIdAtom } from './stores/atoms'
 import { useLanguage, useSettingsStore } from './stores/settingsStore'
 import { useUIStore } from './stores/uiStore'
-import appIcon from './static/icon.png'
-import { trackingEvent } from './packages/event'
 import { CHATBOX_BUILD_PLATFORM } from './variables'
 
 export default function Sidebar() {
@@ -296,7 +296,7 @@ export default function Sidebar() {
           >
             {isIconRail ? (
               <>
-                <Tooltip label={t('Search')} position="right" withArrow openDelay={300}>
+                <Tooltip label={`${t('Search')} ⌘K`} position="right" withArrow openDelay={300}>
                   <button
                     type="button"
                     className="rail-icon-btn active:scale-[0.96]"
@@ -342,6 +342,7 @@ export default function Sidebar() {
                 >
                   <IconSearch size={18} stroke={1.5} aria-hidden />
                   <span>{t('Search')}</span>
+                  {!isSmallScreen && <kbd className="rail-nav-kbd">⌘K</kbd>}
                 </button>
                 <button type="button" className="rail-nav-item rail-nav-item--primary" onClick={handleCreateNewSession}>
                   <IconEdit size={18} stroke={1.5} aria-hidden />

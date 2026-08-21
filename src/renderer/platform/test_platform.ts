@@ -298,6 +298,14 @@ export default class TestPlatform implements Platform {
     // no-op
   }
 
+  public async pickImportedArchivePath(): Promise<string | null> {
+    return null
+  }
+
+  public async inspectImportedArchive(_path: string): Promise<unknown> {
+    throw new Error('Use importChatGptArchiveFromPath in tests')
+  }
+
   public async parseFileLocally(file: File): Promise<{ key?: string; isSupported: boolean }> {
     // (legacy comment removed)
     try {

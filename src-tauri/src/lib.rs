@@ -53,6 +53,8 @@ mod computer_manager;
 mod ax_assist;
 
 mod kb;
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+mod imported_archive;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "type")]
@@ -2168,6 +2170,38 @@ async fn ipc_invoke(
         "exportLogs" => Ok(Value::String(String::new())),
         "clearLogs" => Ok(Value::Null),
         "ensureAutoLaunch" => Ok(Value::Null),
+        "pickImportedArchive" => {
+            #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+            {
+                let picked = tauri::async_runtime::spawn_blocking(|| {
+                    rfd::FileDialog::new()
+                        .add_filter("ZIP archive", &["zip"])
+                        .pick_file()
+                })
+                .await
+                .map_err(|err| format!("archive picker failed: {err}"))?;
+                Ok(match picked {
+                    Some(path) => Value::String(path.to_string_lossy().into_owned()),
+                    None => Value::Null,
+                })
+            }
+            #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+            {
+                Err("imported archives are desktop-only".into())
+            }
+        }
+        "inspectImportedArchive" => {
+            #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+            {
+                let path = get_arg_string(&args, 0)?;
+                let result = imported_archive::inspect_arg_path(&path)?;
+                Ok(result)
+            }
+            #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+            {
+                Err("imported archives are desktop-only".into())
+            }
+        }
         "parseFileLocally" => {
             let data_json = get_arg_string(&args, 0)?;
             let data = serde_json::from_str::<Value>(&data_json)

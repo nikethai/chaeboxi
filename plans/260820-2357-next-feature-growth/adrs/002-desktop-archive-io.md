@@ -28,6 +28,8 @@ Commands stay on the existing `ipc_invoke` multiplexer. Do not add a second IPC 
 
 Renderer owns progress UI and the report. Renderer must not use JS zip libraries on the user-selected path.
 
+Treat the ZIP as a **container**, not a tree to extract. Stream allowlisted names only (`conversations.json` and numbered `*.json` conversation files). Skip `chat.html`, `files/`, nested archives, symlinks, and encrypted entries. Do **not** reuse `importHistoryTransferFile` (full `JSON.parse`, no size caps, merges into live `session:*`).
+
 ## Limits (candidate envelope; tune after a real ZIP)
 
 - Compressed ≤ 200 MB

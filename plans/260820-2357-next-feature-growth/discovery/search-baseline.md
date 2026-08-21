@@ -25,7 +25,9 @@ Desktop `session:*` keys are file-backed (`needStoreInFile`). Search is therefor
 - `messageForksHash` (forks)
 - tool-call / image parts (`getMessageText` is text + optional `[image]`)
 - imported vendor archives (do not exist yet)
-- session titles unless they also appear in a message
+- session **names** (titles are not searched)
+- **hidden** sessions (skipped via `sortSessions`)
+- **archived** sessions **are** searched today
 
 ## UI bug (do not "fix" as an index)
 

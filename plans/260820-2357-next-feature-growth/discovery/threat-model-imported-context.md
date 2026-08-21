@@ -7,7 +7,7 @@
 | ID | Threat | Impact | Mitigation (v1) | Residual |
 | --- | --- | --- | --- | --- |
 | H1 | System-prompt smuggling | Model follows imported "you are …" | Omit `system` / `tool` roles; wrap remaining text in `<untrusted-imported-context>`; attach as **user** role only | Model may still obey user-role jailbreaks — preview + user chose the text |
-| H2 | Tool / MCP / computer-use escalation | Imported text causes file or OS actions | First continuation: `browserArmed=false`, `computerArmed=false`, `agentMode=false`, `includeMcp=false`, no workspaceRoot; user must arm later | User can arm tools on turn 2; keep disclosure |
+| H2 | Tool / MCP / computer-use escalation | Imported text causes file or OS actions | First send: `tools: {}`, `webBrowsing: false`, `includeMcp: false`, no skill/command/integration system unshifts, `browserArmed=false`, `computerArmed=false`, `agentMode=false`, no workspaceRoot. Unset flags are **not** enough — MCP/web/skills attach by default today. | User can arm tools on a later turn; keep disclosure |
 | H3 | Memory poisoning | Auto-save stores jailbreak as fact | `memoryAutoSave: false` on first continuation; imported text is not a memory source | Manual "save to memory" still possible — user action |
 | H4 | Hidden extra context | More leaves the device than previewed | Preview lists titles, excerpt hashes/lengths, token estimate, destination provider/model | Token estimator is approximate |
 | H5 | Local-first misunderstanding | User thinks nothing is sent | Preview copy: selected content **will leave the device** for remote APIs; local models labeled local | Cannot prevent skimming the dialog |

@@ -1,5 +1,7 @@
 # Phase 0 status — 2026-08-21
 
+Late scout/research (same day) added: ChatGPT numbered JSON variant; do not reuse history-transfer `JSON.parse`; first handoff must force-off MCP/web/skills, not only browser/computer flags. Folded into ADRs 002/004 and threat models.
+
 **Plan:** `phase-0-artifacts-complete-field-work-open`  
 **MVP Phase 1:** CLOSED. Not started. No retention numbers claimed (`TELEMETRY_ENABLED = false`).
 

@@ -37,13 +37,13 @@ Handoff first turn **must** be:
 
 Omit imported system and tool records in the builder (already tested).
 
-Tool defaults for the new session: `browserArmed: false`, `computerArmed: false`, `agentMode: false`, no `workspaceRoot`, `includeMcp: false` for the first send. Web browsing follows the user's existing session toggle only if they turn it on; default off.
+Tool defaults for the first send must be **forced off**, not merely unset. `initEmptyChatSession` already leaves `browserArmed` / `computerArmed` / `agentMode` false, but `streamText` still attaches MCP, web browsing (if configured), image-gen tools, video-url tools, memory tools, and auto skills. Handoff must pass `tools: {}`, `webBrowsing: false`, `includeMcp: false`, and skip skill/command/integration system unshifts until the user arms them.
 
 Token preview: `estimateTokensFromMessages` on the block + instruction + destination model tokenizer when known.
 
 ## Insertion point
 
-Do **not** fork `InputBox.tsx`. Build the extra user message in session create / first `submitNewUserMessage` path with an explicit flag. Keep the untrusted builder in `packages/imported-context`.
+Closest existing analog: `formatQuoteAttachment` (user-turn prefix, not system). Do **not** fork `InputBox.tsx`. Do **not** put imported text in `injectModelSystemPrompt`. First `submitNewUserMessage` with an explicit flag; keep the untrusted builder in `packages/imported-context`.
 
 ## Rejected
 

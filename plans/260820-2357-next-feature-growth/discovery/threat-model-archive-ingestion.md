@@ -20,6 +20,8 @@ Attacker: malicious ZIP the user is tricked into importing, or a compromised pro
 | A10 | Re-import / clone flooding | Disk fill | Dedup by provider conversation id + checksum; user-visible quota | Malicious unique ids still fill disk up to envelope |
 | A11 | Privilege confusion | Renderer unpacks ZIP | ZIP/FS only via Platform → IPC; Web/mobile capability false | Bypass if a future UI uses JS zip libs — forbid in review |
 | A12 | Attachment binaries | Path traversal, codecs, preview RCE | Skip all attachments; record count only | User may want files later — Phase 2 needs a new review |
+| A13 | Reuse history-transfer importer | Whole-file `JSON.parse`; merge-by-id can overwrite live sessions | Separate inspect/publish path; never call `importHistoryTransferFile` on a vendor ZIP | |
+| A14 | Execute `chat.html` | XSS via scripts / remote beacons | Do not open or preview `chat.html`; text JSON only | |
 
 ## Research-data
 

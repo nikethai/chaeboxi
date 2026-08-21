@@ -12,7 +12,8 @@ Official help: [Exporting your ChatGPT history and data](https://help.openai.com
 - Available: Free, Go, Plus, Pro, eligible Edu. **Not** Business / Enterprise / Healthcare self-service
 - Delivery: email or SMS, up to 7 days; download link 24h; must be signed into the same account
 - Artifact: ZIP including **chat history** and other account data
-- Community-observed payload: `conversations.json` plus `chat.html`; mapping is a **message tree**, not a flat list
+- OpenAI Help names `conversations.json`. Large/Edu exports may instead use **numbered conversation JSON files** plus assets. Detect by JSON shape, not a single filename.
+- Community-observed payload: `conversations.json` and/or numbered JSON, plus `chat.html`; mapping is a **message tree** (`current_node` → `parent`), not a flat list
 - Format drift is documented (asset ids `file-…` → `file_…`, layout changes) with **no public schema**
 - Attachments live beside JSON; v1 records "attachment existed" and skips bytes
 

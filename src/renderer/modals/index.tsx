@@ -17,9 +17,13 @@ import ThreadNameEdit from './ThreadNameEdit'
 import ToolApproval from './ToolApproval'
 import VideoAttachmentPreview from './VideoAttachmentPreview'
 import VideoPlayer from './VideoPlayer'
+import ImportChatGptArchive from './ImportChatGptArchive'
+import ImportedConversationView from './ImportedConversationView'
 import Welcome from './Welcome'
 
 NiceModal.register('welcome', Welcome)
+NiceModal.register('import-chatgpt-archive', ImportChatGptArchive)
+NiceModal.register('imported-conversation', ImportedConversationView)
 NiceModal.register('file-parse-error', FileParseError)
 NiceModal.register('content-viewer', ContentViewer)
 NiceModal.register('video-player', VideoPlayer)

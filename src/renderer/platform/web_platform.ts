@@ -162,6 +162,14 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
     return
   }
 
+  async pickImportedArchivePath(): Promise<string | null> {
+    throw new Error('Imported archives are desktop-only')
+  }
+
+  async inspectImportedArchive(_path: string): Promise<unknown> {
+    throw new Error('Imported archives are desktop-only')
+  }
+
   async parseFileLocally(file: File): Promise<{ key?: string; isSupported: boolean }> {
     const result = await parseTextFileLocally(file)
     if (!result.isSupported) {

@@ -17,6 +17,7 @@ describe('createPlatformCapabilities', () => {
     expect(capabilities.supportsDesktopOnlySettings).toBe(false)
     expect(capabilities.supportsAgentSkillScan).toBe(false)
     expect(capabilities.supportsSystemNotifications).toBe(true)
+    expect(capabilities.supportsImportedArchives).toBe(false)
   })
 
   test('enables desktop-only capabilities on desktop builds', () => {
@@ -34,6 +35,7 @@ describe('createPlatformCapabilities', () => {
     expect(capabilities.supportsDesktopOnlySettings).toBe(true)
     expect(capabilities.supportsAgentSkillScan).toBe(true)
     expect(capabilities.supportsSystemNotifications).toBe(true)
+    expect(capabilities.supportsImportedArchives).toBe(true)
   })
 
   test('does not infer runtime support from mobile layout alone', () => {
@@ -51,5 +53,6 @@ describe('createPlatformCapabilities', () => {
     expect(capabilities.supportsDesktopOnlySettings).toBe(false)
     expect(capabilities.supportsAgentSkillScan).toBe(false)
     expect(capabilities.supportsSystemNotifications).toBe(true)
+    expect(capabilities.supportsImportedArchives).toBe(false)
   })
 })

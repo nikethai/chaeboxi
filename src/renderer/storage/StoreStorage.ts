@@ -35,6 +35,8 @@ export enum StorageKey {
    * see integration-secret:* / OS keychain via secret-store.
    */
   Integrations = 'integrations',
+  /** Device-local imported vendor archives. Never use session: keys. */
+  ImportedHistory = 'imported-history',
 }
 
 export const StorageKeyGenerator = {
@@ -76,6 +78,7 @@ export default class StoreStorage extends BaseStorage {
     StorageKey.MemoryBankGlobal,
     StorageKey.UsageBudgetNotify,
     StorageKey.Integrations,
+    StorageKey.ImportedHistory,
   ])
 
   public async getItem<T>(key: string, initialValue: T): Promise<T> {

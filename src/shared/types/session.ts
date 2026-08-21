@@ -523,6 +523,31 @@ export const SessionSchema = z.object({
    * Never stores secrets — ids only.
    */
   credentialIds: z.array(z.string()).optional().catch(undefined),
+  continuationLineage: z
+    .object({
+      importedSourceId: z.string(),
+      importedConversationId: z.string(),
+      selectedMessageIds: z.array(z.string()),
+      targetProvider: z.string().optional(),
+      targetModelId: z.string().optional(),
+      createdAt: z.number(),
+      omittedCount: z.number(),
+      omittedReasons: z.array(z.string()),
+      sourceMissing: z.boolean().optional(),
+      firstHandoffPending: z.boolean().optional(),
+      pendingExcerpts: z
+        .array(
+          z.object({
+            conversationTitle: z.string(),
+            messageId: z.string(),
+            role: z.string(),
+            text: z.string(),
+          })
+        )
+        .optional(),
+    })
+    .optional()
+    .catch(undefined),
 })
 
 export const SessionMetaSchema = SessionSchema.pick({

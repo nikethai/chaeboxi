@@ -1,4 +1,5 @@
 import * as Sentry from '@sentry/react'
+import { buildFirstHandoffStreamOverrides, markHandoffConsumed } from '@shared/imported-history'
 import { getModel } from '@shared/models'
 import { AIProviderNoImplementedPaintError, ApiError, BaseError, NetworkError, OCRError } from '@shared/models/errors'
 import type { OnResultChangeWithCancel } from '@shared/models/types'
@@ -34,6 +35,8 @@ import {
   MAX_INLINE_FILE_LINES,
   PREVIEW_LINES,
 } from '@/packages/context-management/attachment-payload'
+import { buildUntrustedImportedContextBlock } from '@/packages/imported-context'
+import { prependUntrustedBlockToPrompt } from '@/packages/imported-history/continue-session'
 import { generateImage, streamText } from '@/packages/model-calls'
 import { getModelDisplayName } from '@/packages/model-setting-utils'
 import { buildSkillContextBlocks, resolveSkillActivations, selectCatalogForInject } from '@/packages/skills'
@@ -723,8 +726,10 @@ export async function generate(
     const knowledgeBase = sessionKnowledgeBaseMap[sessionId]
     const agentImageFlowInstructions =
       isAgentEnabled && session.agentMode ? buildAgentImageFlowInstruction(globalSettings) : undefined
-    const webBrowsing =
-      getSessionWebBrowsing(sessionId, effectiveSettings.provider) || Boolean(agentImageFlowInstructions)
+    const firstHandoff = buildFirstHandoffStreamOverrides(session.continuationLineage)
+    const webBrowsing = firstHandoff
+      ? false
+      : getSessionWebBrowsing(sessionId, effectiveSettings.provider) || Boolean(agentImageFlowInstructions)
     const useGeminiGrounding =
       webBrowsing &&
       effectiveSettings.provider === ModelProviderEnum.Gemini &&
@@ -765,6 +770,14 @@ export async function generate(
           model.isSupportToolUse('read-file'),
           { compactionPoints: session.compactionPoints, truncateTokenLimit: options?.truncateTokenLimit }
         )
+        if (firstHandoff && session.continuationLineage?.pendingExcerpts?.length) {
+          const block = buildUntrustedImportedContextBlock({
+            sourceProvider: 'chatgpt',
+            sourceLabel: session.name,
+            excerpts: session.continuationLineage.pendingExcerpts,
+          })
+          promptMsgs = prependUntrustedBlockToPrompt(promptMsgs, block.text)
+        }
 
         if (effectiveSettings.provider === ModelProviderEnum.OpenClaw) {
           // OpenClaw manages its own session prompt. Drop persisted chat-level system messages,
@@ -1002,16 +1015,20 @@ export async function generate(
         const priorUserMsg = [...messages.slice(0, targetMsgIx)].reverse().find((m) => m.role === 'user')
         const storedUserSkills = getDefaultStore().get(userSkillsAtom)
         const skillPackages = mergeSkillsList(Array.isArray(storedUserSkills) ? storedUserSkills : [])
-        const skillActivations = resolveSkillActivations({
-          skills: skillPackages,
-          explicitSkillIds: priorUserMsg?.skillIds,
-          pinnedSkillIds: session.pinnedSkillIds,
-          userText: priorUserMsg ? getMessageText(priorUserMsg) : '',
-          autoSkills: session.autoSkills,
-        })
+        const skillActivations = firstHandoff?.skipSkillContext
+          ? []
+          : resolveSkillActivations({
+              skills: skillPackages,
+              explicitSkillIds: priorUserMsg?.skillIds,
+              pinnedSkillIds: session.pinnedSkillIds,
+              userText: priorUserMsg ? getMessageText(priorUserMsg) : '',
+              autoSkills: session.autoSkills,
+            })
         const skillById = new Map(skillPackages.map((s) => [s.id, s]))
         const skillCatalog = selectCatalogForInject(skillPackages, skillActivations)
-        const skillContext = buildSkillContextBlocks(skillCatalog, skillActivations, skillById)
+        const skillContext = firstHandoff?.skipSkillContext
+          ? ''
+          : buildSkillContextBlocks(skillCatalog, skillActivations, skillById)
         if (skillContext) {
           promptMsgs.unshift(createMessage('system', skillContext))
         }
@@ -1024,7 +1041,9 @@ export async function generate(
           explicitCommandIds: priorUserMsg?.commandIds,
         })
         const commandById = new Map(commandPackages.map((c) => [c.id, c]))
-        const commandContext = buildCommandContextBlocks(commandActivations, commandById)
+        const commandContext = firstHandoff?.skipCommandContext
+          ? ''
+          : buildCommandContextBlocks(commandActivations, commandById)
         if (commandContext) {
           promptMsgs.unshift(createMessage('system', commandContext))
         }
@@ -1040,9 +1059,11 @@ export async function generate(
             : session.credentialIds?.length
               ? session.credentialIds
               : undefined
-          const integrationsContext = buildIntegrationsContextBlock(catalog, {
-            credentialIds: turnCredentialIds,
-          })
+          const integrationsContext = firstHandoff?.skipIntegrationsContext
+            ? ''
+            : buildIntegrationsContextBlock(catalog, {
+                credentialIds: turnCredentialIds,
+              })
           if (integrationsContext) {
             promptMsgs.unshift(createMessage('system', integrationsContext))
           }
@@ -1102,16 +1123,17 @@ export async function generate(
           providerOptions: effectiveSettings.providerOptions,
           // Discuss/plan/review: pure chat. Work/Swarm do/deliver: allow tools/web like solo agent.
           // Swarm plan: task tools only (no KB/web).
-          knowledgeBase: roomBlocksExternalTools ? undefined : knowledgeBase,
-          webBrowsing: roomBlocksExternalTools ? false : webBrowsing,
-          nativeWebSearch: roomBlocksExternalTools ? undefined : useGeminiGrounding ? 'gemini-grounding' : undefined,
+          knowledgeBase: firstHandoff || roomBlocksExternalTools ? undefined : knowledgeBase,
+          webBrowsing: firstHandoff || roomBlocksExternalTools ? false : webBrowsing,
+          nativeWebSearch:
+            firstHandoff || roomBlocksExternalTools ? undefined : useGeminiGrounding ? 'gemini-grounding' : undefined,
           agentImageFlowInstructions: executionAgentImageFlowInstructions,
           // Default chat image generate/edit (provider-neutral) when tools are available.
-          enableImageGenerationTool: !roomBlocksExternalTools && model.isSupportToolUse(),
+          enableImageGenerationTool: !firstHandoff && !roomBlocksExternalTools && model.isSupportToolUse(),
           imageGenerationMessageId: targetMsg.id,
           agentCoding: {
-            enabled: isAgentExecuteTurn,
-            workspaceRoot: session.workspaceRoot,
+            enabled: !firstHandoff && isAgentExecuteTurn,
+            workspaceRoot: firstHandoff ? undefined : session.workspaceRoot,
           },
           // Browser / computer: desktop + master settings + session arm; Discuss/non-do-deliver off (D10)
           browserAgent: (() => {
@@ -1121,7 +1143,7 @@ export async function generate(
             const toolsRoleOk = !roomMultiLocal || roomToolsAllowed
             const roomAllowed = !discussOff && toolsRoleOk && !roomBlocksExternalTools
             return {
-              armed: Boolean(session.browserArmed) && roomAllowed,
+              armed: !firstHandoff && Boolean(session.browserArmed) && roomAllowed,
               sessionId,
               workspaceRoot: session.workspaceRoot,
               runId: targetMsg.id,
@@ -1135,16 +1157,16 @@ export async function generate(
             const toolsRoleOk = !roomMultiLocal || roomToolsAllowed
             const roomAllowed = !discussOff && toolsRoleOk && !roomBlocksExternalTools
             return {
-              armed: Boolean(session.computerArmed) && roomAllowed,
+              armed: !firstHandoff && Boolean(session.computerArmed) && roomAllowed,
               sessionId,
               // Act tools only when computerArmed (observe+act share arm; master setting gates tools)
-              allowAct: Boolean(session.computerArmed),
+              allowAct: !firstHandoff && Boolean(session.computerArmed),
               roomAllowed,
             }
           })(),
-          maxSteps: roomMaxSteps,
-          tools: toolsToUse,
-          toolAccess: copilotOverrides?.toolAccess,
+          maxSteps: firstHandoff ? 1 : roomMaxSteps,
+          tools: firstHandoff ? {} : toolsToUse,
+          toolAccess: firstHandoff ? firstHandoff.toolAccess : copilotOverrides?.toolAccess,
           memory: speakerAgentId
             ? {
                 agentId: speakerAgentId,
@@ -1164,6 +1186,14 @@ export async function generate(
           })
         } catch {
           // non-fatal
+        }
+
+        if (firstHandoff && session.continuationLineage) {
+          const consumed = markHandoffConsumed({ ...session.continuationLineage, pendingExcerpts: undefined })
+          await chatStore.updateSessionWithMessages(sessionId, (current) => ({
+            ...current,
+            continuationLineage: consumed,
+          }))
         }
 
         // Extract plan text from result if in planning phase

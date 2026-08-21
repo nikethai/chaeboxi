@@ -1,10 +1,13 @@
 ---
 title: Phase 0D — Security and privacy
-status: ready
+status: artifacts-complete-field-work-open
 created: 2026-08-21
 ---
 
 # Phase 0D — Security and privacy
+
+**In-repo:** two threat models; untrusted-block spike with delimiter neutralization, prefix packing, omitted reason codes (not wired to send).  
+**Open (human):** red-team of a real ZIP inspector (inspector not written).
 
 ## Context
 

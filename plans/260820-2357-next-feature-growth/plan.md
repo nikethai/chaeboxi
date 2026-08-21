@@ -1,6 +1,11 @@
 ---
 title: Continuity workspace growth roadmap
-status: phase-0-artifacts-complete
+description: Phase 0 discovery for a Continuity retention wedge. In-repo artifacts complete; field recruiting, consented ChatGPT ZIP, desktop session I/O timing, and ZIP inspector red-team remain open. MVP Phase 1 gated closed.
+status: phase-0-artifacts-complete-field-work-open
+priority: P1
+effort: 2-3 weeks discovery
+branch: main
+tags: [discovery, continuity, retention, desktop]
 created: 2026-08-21
 owner: product
 segment: multi-model-power-users
@@ -18,11 +23,13 @@ phase_0: ./phase-00-discovery.md
 
 The earlier report recommended shipping Voice v1 and validating Computer Use. Voice and macOS computer-use grounding subsequently shipped in commits `d1ff040d` and `fe5999d7`. This plan therefore evaluates the next wedge; it does not abandon unfinished work.
 
-**Phase 0 discovery is approved. Do not approve six months of implementation yet.**
+**Phase 0 discovery is approved. Do not approve six months of implementation yet. Do not start Phase 1.**
 
 Continuity is a plausible retention wedge, but current evidence proves recurring pain—not adoption, switching intent, or repeat use in Chaeboxi.
 
-Phase 0 artifacts (2026-08-21): protocols, export feasibility, search baseline spike, threat models, five ADRs. MVP remains gated. See [phase-00-discovery.md](./phase-00-discovery.md).
+**Current status (2026-08-21):** in-repo artifacts complete; field work open. MVP Phase 1 remains **CLOSED**. Status note: [reports/phase-0-status-2026-08-21.md](./reports/phase-0-status-2026-08-21.md). See [phase-00-discovery.md](./phase-00-discovery.md).
+
+No product telemetry; do not invent retention numbers. Baseline: [discovery/measurement-baseline.md](./discovery/measurement-baseline.md).
 
 ### Target outcome
 
@@ -455,11 +462,13 @@ Telemetry remains opt-in. If disabled, use versioned local counters and particip
 
 In-repo spikes match the approved Phase 0 scope (extract linear search; untrusted block not wired). No imported-source storage, archive IPC, FTS index, importer UI, or generation-path wiring.
 
-Fix before any send-path wiring (not Phase 0 blockers):
+Review warnings on the untrusted block **fixed in-repo** (still not wired to send):
 
-- Neutralize wrapper tags inside excerpt/metadata text
-- Stop at block budget (prefix), do not skip a large excerpt and keep later smaller ones
-- Use omitted reason codes to match ADR 004
+- Wrapper tags inside excerpt/metadata text are neutralized
+- Block packing is prefix-only (`block_size_limit` then stop)
+- Omitted reason codes (`role_ineligible`, `empty`, `block_size_limit`) match ADR 004
+
+Focused tests **16/16** pass after those fixes.
 
 ## Unresolved Questions
 

@@ -1,10 +1,13 @@
 ---
 title: Phase 0A — Demand validation
-status: ready
+status: artifacts-complete-field-work-open
 created: 2026-08-21
 ---
 
 # Phase 0A — Demand validation
+
+**In-repo:** screener, task scripts, consent/custody, measurement baseline.  
+**Open (human):** recruit 8–12 qualified participants. Do not substitute synthetic users.
 
 ## Context
 

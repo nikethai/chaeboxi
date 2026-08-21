@@ -1,12 +1,12 @@
 ---
 title: Phase 0E — Architecture ADRs
-status: ready
+status: completed
 created: 2026-08-21
 ---
 
 # Phase 0E — Architecture ADRs
 
-All five ADRs are **accepted for discovery**. They are not an implementation license.
+**Status:** completed in-repo. All five ADRs are **accepted for discovery**. They are not an implementation license. Phase 1 remains closed.
 
 | ADR | File |
 | --- | --- |

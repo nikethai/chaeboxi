@@ -1,10 +1,13 @@
 ---
 title: Phase 0C — Search baseline and launch envelope
-status: ready
+status: artifacts-complete-field-work-open
 created: 2026-08-21
 ---
 
 # Phase 0C — Search baseline
+
+**In-repo:** linear-scan extract + tests; no FTS chosen.  
+**Open (human):** desktop I/O timing of `session:*` keys. In-memory 10k-message match is CPU-only.
 
 ## Context
 

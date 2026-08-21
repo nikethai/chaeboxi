@@ -1,10 +1,13 @@
 ---
 title: Phase 0B — Export feasibility
-status: ready
+status: artifacts-complete-field-work-open
 created: 2026-08-21
 ---
 
 # Phase 0B — Export feasibility
+
+**In-repo:** ChatGPT v1 feasibility documented; Claude official but deferred to Phase 2.  
+**Open (human):** consented ChatGPT ZIP. Samples stay out of git.
 
 ## Context
 

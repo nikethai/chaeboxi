@@ -50,5 +50,12 @@ describe('formatPlaybookInstructions', () => {
     expect(t).toContain('whatsapp')
     expect(t).toContain('84901234567')
     expect(t).toContain('computer_open_uri')
+    expect(t).toContain('computer_focus_search')
+  })
+
+  it('calculator playbook prefers AX press', () => {
+    const t = formatPlaybookInstructions('Calculator')
+    expect(t).toContain('calculator')
+    expect(t).toContain('computer_ax_press')
   })
 })

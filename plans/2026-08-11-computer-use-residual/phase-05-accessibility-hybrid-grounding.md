@@ -1,7 +1,7 @@
 ---
 phase: 5
 title: "Accessibility hybrid grounding"
-status: pending
+status: implemented
 priority: P2
 effort: "3–5d"
 dependencies: [3]

@@ -48,6 +48,7 @@ Mitigations in this repo:
 | `computer_screenshot` | MEDIUM |
 | `computer_wait` | LOW — settle then auto-screenshot |
 | `computer_frontmost` | LOW — macOS frontmost process name |
+| `computer_ax_query` | LOW — macOS Accessibility control list |
 
 ### Act (when armed)
 
@@ -60,6 +61,8 @@ Mitigations in this repo:
 | `computer_key` | CRITICAL |
 | `computer_scroll` | CRITICAL |
 | `computer_mouse_move` | HIGH (intent) / CRITICAL patterns may apply |
+| `computer_focus_search` | HIGH — AX-focus in-app search field |
+| `computer_ax_press` | CRITICAL — AX-press named button (Calculator) |
 
 Coordinates are in the **last screenshot / verification image pixel space** returned to the model. Each capture includes a **`frameId`**; click/move may pin to that id — stale frames are rejected with `STALE_FRAME`.
 
@@ -130,7 +133,8 @@ Industry-style host loop (see `docs/research/2026-08-11-computer-use-industry-pa
 4. **Messaging guards** — block open Finder / Spotlight (`cmd+space`) while a target app is set.
 5. **Re-activate target** before click/type when last known `frontmost` drifted.
 6. **Playbooks + deep links** — WhatsApp/Calculator/… skills; phone → `whatsapp://send?phone=…`.
-7. **Optional allowlist + trajectory** — Settings → Computer Use (empty allowlist = all apps).
+7. **AX hybrid** — `computer_ax_query` / `computer_focus_search` / `computer_ax_press` on macOS; `fallback: vision` when the tree is empty (common on Electron WhatsApp).
+8. **Optional allowlist + trajectory** — Settings → Computer Use (empty allowlist = all apps).
 
 Coordinate contract: model coords = verification/screenshot width×height; backend maps to act points (`CGDisplayBounds`). Capture resizes with aspect preserved (max width ~1280); reported `width`/`height` must match JPEG pixels the model sees.
 
@@ -138,7 +142,7 @@ Coordinate contract: model coords = verification/screenshot width×height; backe
 
 Full remaining roadmap (measure → ship): `plans/2026-08-11-computer-use-residual/`.
 
-**AX note:** full accessibility-tree search-field focus is **not** implemented; `computer_frontmost` is the thin probe. Use vision playbooks + deep links first.
+**AX hybrid (macOS):** `computer_focus_search` and `computer_ax_press` walk the Accessibility tree (same TCC as act). If the tree is empty or focus fails, tools return `{ fallback: "vision" }` and the playbook continues from the screenshot. Windows/Linux stub the same fallback. Secure fields (`AXSecureTextField`) are never listed.
 
 ## Ship / binary identity
 

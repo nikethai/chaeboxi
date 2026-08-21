@@ -616,6 +616,14 @@ export default class DesktopPlatform implements Platform {
     return this.ipc.invoke('computer:frontmost')
   }
 
+  public async computerAxQuery(opts: import('./interfaces').ComputerAxQueryInput) {
+    return this.ipc.invoke('computer:ax-query', opts || {})
+  }
+
+  public async computerAxAct(opts: import('./interfaces').ComputerAxActInput) {
+    return this.ipc.invoke('computer:ax-act', opts)
+  }
+
   public async computerClick(opts: { x: number; y: number; button?: string; frameId?: string }) {
     return this.ipc.invoke('computer:click', opts)
   }

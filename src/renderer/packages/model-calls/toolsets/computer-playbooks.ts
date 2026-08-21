@@ -18,8 +18,8 @@ export const APP_PLAYBOOKS: AppPlaybook[] = [
     steps: [
       'computer_open_app("WhatsApp") — host attaches verification image',
       'If phone known: prefer computer_open_uri(whatsapp://send?phone=…&text=…) then verify',
-      'Else: click WhatsApp search field (left sidebar / top), NOT Finder',
-      'computer_type contact name → verification → click matching chat row',
+      'Else: computer_focus_search (AX). If fallback=vision, click the left/top search field from the image — never Finder',
+      'computer_type contact name → verification → click matching chat row (or computer_ax_press the row if listed)',
       'computer_type message → enter or click Send → verification',
     ],
   },
@@ -28,8 +28,8 @@ export const APP_PLAYBOOKS: AppPlaybook[] = [
     match: /calculator/i,
     steps: [
       'computer_open_app("Calculator") → verification image',
-      'Click digit/operator buttons from the keypad in the image (not Spotlight)',
-      'Read result from verification image after =',
+      'Prefer computer_ax_press name=7 / + / 8 / = (AX buttons). If fallback=vision, click the keypad from the image',
+      'Never Spotlight. Read the result from the verification image after =',
     ],
   },
   {
@@ -142,7 +142,7 @@ export function formatPlaybookInstructions(targetApp?: string | null, userText?:
   }
 
   lines.push(
-    'Deep links skip contact search when phone is known. Name-only contacts must use in-app UI search.'
+    'Deep links skip contact search when phone is known. Name-only contacts: computer_focus_search then type. AX fallback=vision means click from the screenshot. Never Finder.'
   )
   return lines.join('\n')
 }

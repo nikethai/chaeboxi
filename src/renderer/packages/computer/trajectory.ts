@@ -80,6 +80,8 @@ export function summarizeToolArgs(tool: string, args: unknown): string {
   }
   if (tool === 'computer_click') return `x=${o.x},y=${o.y}`
   if (tool === 'computer_key' && typeof o.key === 'string') return `key=${o.key}`
+  if (tool === 'computer_ax_press' && typeof o.name === 'string') return `name=${o.name}`
+  if (tool === 'computer_focus_search') return o.id ? `id=${o.id}` : 'search'
   try {
     return JSON.stringify(o).slice(0, 200)
   } catch {

@@ -79,7 +79,7 @@ You are locked into **desktop UI control** for this turn. Desktop goals use comp
 ${targetLine}
 
 ## Allowed for desktop goals
-- computer_screenshot, computer_wait, computer_frontmost, computer_open_app, computer_open_uri, computer_click, computer_type, computer_key, computer_scroll, computer_mouse_move
+- computer_screenshot, computer_wait, computer_frontmost, computer_ax_query, computer_focus_search, computer_ax_press, computer_open_app, computer_open_uri, computer_click, computer_type, computer_key, computer_scroll, computer_mouse_move
 
 ## FORBIDDEN while Computer Use owns this turn
 - Do NOT use browser_* tools (stripped). Prefer computer_* for desktop apps; use a Browser-only arm for pure web.
@@ -91,13 +91,13 @@ ${targetLine}
 ## Correct in-app find (WhatsApp / Telegram / Messages / Slack)
 1. computer_open_app(target) — host attaches verification image; confirm app UI.
 2. Optional computer_wait(0.5) if UI still loading.
-3. Click the app's **search field / chat list** from the image (not macOS Finder).
+3. computer_focus_search (AX). If fallback=vision, click the app's search field from the image — never Finder.
 4. computer_type the name → read verification image → click the matching row.
 5. Type message → send (enter or send button) → confirm from verification image.
 
 ## App playbooks (follow when target matches)
-- **WhatsApp:** open → verify → click left search / top search → type contact → click chat → type message → send.
-- **Calculator:** open → verify → click digits/operators on the keypad from the image (not Spotlight).
+- **WhatsApp:** open → verify → computer_focus_search (or click search) → type contact → click chat → type message → send.
+- **Calculator:** open → verify → computer_ax_press keypad names (7, +, 8, =). Vision click if AX empty.
 
 ## Keys
 - \`meta+f\` / in-app Find: only after a screenshot shows the target app is focused.

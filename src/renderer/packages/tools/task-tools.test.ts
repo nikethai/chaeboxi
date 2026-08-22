@@ -65,9 +65,51 @@ describe('task-tools helpers', () => {
 
     expect(contentPartsHaveTaskTools(parts)).toBe(true)
     const snapshot = snapshotTasksFromContentParts(parts)
-    expect(snapshot).toHaveLength(2)
+    expect(snapshot).toHaveLength(1)
     expect(snapshot.find((t) => t.id === 't1')?.status).toBe('done')
-    expect(snapshot.find((t) => t.id === 't2')?.progress).toBe(40)
+    expect(snapshot.find((t) => t.id === 't2')).toBeUndefined()
+  })
+
+  it('does not mix leftover session board from create_task payload', () => {
+    const parts: MessageContentParts = [
+      {
+        type: 'tool-call',
+        state: 'result',
+        toolCallId: '1',
+        toolName: 'create_task',
+        args: { title: 'Write HTML' },
+        result: {
+          id: 'new-1',
+          title: 'Write HTML',
+          status: 'pending',
+          task: { id: 'new-1', title: 'Write HTML', status: 'pending' },
+          tasks: [
+            { id: 'old-whatsapp', title: 'Open WhatsApp application', status: 'pending' },
+            { id: 'new-1', title: 'Write HTML', status: 'pending' },
+          ],
+        },
+      },
+    ]
+    const snapshot = snapshotTasksFromContentParts(parts)
+    expect(snapshot.map((t) => t.id)).toEqual(['new-1'])
+  })
+
+  it('uses list_tasks only when the turn did not create or update', () => {
+    const parts: MessageContentParts = [
+      {
+        type: 'tool-call',
+        state: 'result',
+        toolCallId: '1',
+        toolName: 'list_tasks',
+        args: {},
+        result: {
+          tasks: [{ id: 'board-1', title: 'Only listed', status: 'pending' }],
+        },
+      },
+    ]
+    expect(snapshotTasksFromContentParts(parts)).toEqual([
+      { id: 'board-1', title: 'Only listed', status: 'pending' },
+    ])
   })
 
   it('returns empty when no task tools', () => {

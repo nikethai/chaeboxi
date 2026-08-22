@@ -42,6 +42,8 @@ function taskFromUnknown(value: unknown): TaskSnapshot | null {
 export function snapshotTasksFromContentParts(parts: MessageContentParts | undefined): TaskSnapshot[] {
   if (!parts?.length) return []
   const byId = new Map<string, TaskSnapshot>()
+  let lastList: TaskSnapshot[] | null = null
+  let wroteThisTurn = false
 
   for (const part of parts) {
     if (part.type !== 'tool-call' || !isTaskTrackingTool(part.toolName)) continue
@@ -50,24 +52,30 @@ export function snapshotTasksFromContentParts(parts: MessageContentParts | undef
     const result = toolPart.result as Record<string, unknown> | undefined
     if (!result) continue
 
-    if (Array.isArray(result.tasks)) {
-      for (const item of result.tasks) {
-        const task = taskFromUnknown(item)
-        if (task) byId.set(task.id, task)
-      }
+    if (toolName === 'list_tasks' && Array.isArray(result.tasks)) {
+      lastList = result.tasks.map(taskFromUnknown).filter((task): task is TaskSnapshot => Boolean(task))
+      continue
     }
 
+    // create/update also return the full session board on `tasks` — ignore that dump
+    // so a new checklist is not mixed with leftover session todos.
     const single = taskFromUnknown(result.task)
-    if (single) byId.set(single.id, single)
+    if (single) {
+      byId.set(single.id, single)
+      wroteThisTurn = true
+    }
 
-    // create_task may return flat id/title/status
     if (toolName === 'create_task' && typeof result.id === 'string') {
       const flat = taskFromUnknown(result)
-      if (flat) byId.set(flat.id, flat)
+      if (flat) {
+        byId.set(flat.id, flat)
+        wroteThisTurn = true
+      }
     }
   }
 
-  return [...byId.values()]
+  if (wroteThisTurn) return [...byId.values()]
+  return lastList ?? []
 }
 
 export function contentPartsHaveTaskTools(parts: MessageContentParts | undefined): boolean {

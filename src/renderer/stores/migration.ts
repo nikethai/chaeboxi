@@ -54,7 +54,7 @@ type MigrateStore = {
   removeData?: (key: StorageKey | string) => Promise<void>
 }
 
-export const CurrentVersion = 16
+export const CurrentVersion = 17
 
 async function doMigrateStorage(oldStorage: Storage) {
   // (legacy comment removed)
@@ -214,6 +214,7 @@ export async function migrateOnData(dataStore: MigrateStore, canRelaunch = true)
     migrate_13_to_14,
     migrate_14_to_15,
     migrate_15_to_16,
+    migrate_16_to_17,
   ]
 
   for (; configVersion < CurrentVersion; configVersion++) {
@@ -866,5 +867,16 @@ async function migrate_15_to_16(dataStore: MigrateStore) {
   }
 
   log.info(`migrate_15_to_16, migrated ${migratedCount} personal info entries to memory bank`)
+  return false
+}
+
+/** Dual-write portable Projects from Folders. Native bindings are never migrated. */
+async function migrate_16_to_17(dataStore: MigrateStore) {
+  const { runProjectMetadataMigration } = await import('@/projects/project-migration')
+  await runProjectMetadataMigration({
+    getData: dataStore.getData,
+    setData: dataStore.setData,
+  })
+  log.info('migrate_16_to_17, portable Project metadata dual-write complete')
   return false
 }

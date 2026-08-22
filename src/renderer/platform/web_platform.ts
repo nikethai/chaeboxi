@@ -211,15 +211,58 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
   }
 
   public async readFileByPath(_path: string): Promise<string> {
-    throw new Error('Filesystem read is not supported in the web platform.')
+    throw new Error('UNSUPPORTED_PLATFORM: privileged workspace access is desktop-only.')
   }
 
   public async writeFile(_path: string, _content: string): Promise<void> {
-    throw new Error('Filesystem write is not supported in the web platform.')
+    throw new Error('UNSUPPORTED_PLATFORM: privileged workspace access is desktop-only.')
   }
 
   public async deleteFile(_path: string): Promise<void> {
-    throw new Error('Filesystem delete is not supported in the web platform.')
+    throw new Error('UNSUPPORTED_PLATFORM: privileged workspace access is desktop-only.')
+  }
+
+  public async pickAndBindProject(_projectId: string): Promise<import('@shared/types/workspace').WorkspaceDescriptor | null> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async restoreProjectBinding(_projectId: string): Promise<import('@shared/types/workspace').WorkspaceDescriptor> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async createWorkspaceFile(
+    _capabilityId?: string,
+    _relativePath?: string,
+    _content?: string,
+    _mode?: 'create' | 'overwrite',
+    _expectedRevision?: string
+  ): Promise<import('@shared/types/workspace').WorkspaceMutationResult> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async editWorkspaceFile(
+    _capabilityId?: string,
+    _relativePath?: string,
+    _oldString?: string,
+    _newString?: string,
+    _expectedRevision?: string
+  ): Promise<import('@shared/types/workspace').WorkspaceMutationResult> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async deleteWorkspaceFile(
+    _capabilityId?: string,
+    _relativePath?: string,
+    _expectedRevision?: string
+  ): Promise<import('@shared/types/workspace').WorkspaceMutationResult> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async readWorkspaceFile(
+    _capabilityId?: string,
+    _relativePath?: string
+  ): Promise<import('@shared/types/workspace').WorkspaceReadResult> {
+    throw new Error('UNSUPPORTED_PLATFORM')
   }
 
   public minimize() {

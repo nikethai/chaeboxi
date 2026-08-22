@@ -66,9 +66,11 @@ export function resolveAgentRootPaths(
     }
 
     if (isProjectRelativePath(raw) && workspaceRoot) {
+      // Do not emit an absolute project path for Tauri scan. Project files
+      // are read through native workspace capabilities, never skills:scan.
       return {
         origin: spec.origin,
-        path: joinWorkspaceRoot(workspaceRoot, raw),
+        path: raw,
         workspaceBound: true,
       }
     }
@@ -77,10 +79,15 @@ export function resolveAgentRootPaths(
   })
 }
 
+/** Paths sent to Tauri scan: user-global `~/…` only. Project-relative paths are omitted. */
+export function globalScanPaths(specs: AgentRootSpec[]): string[] {
+  return specs.map((s) => s.path.trim()).filter((path) => isUserGlobalPath(path))
+}
+
 /** Paths only (for Tauri invoke). */
 export function resolveAgentRootPathList(
   specs: AgentRootSpec[],
-  options?: { workspaceRoot?: string | null }
+  _options?: { workspaceRoot?: string | null }
 ): string[] {
-  return resolveAgentRootPaths(specs, options).map((r) => r.path)
+  return globalScanPaths(specs)
 }

@@ -858,18 +858,17 @@ export async function generate(
             const { runHooks } = await import('@/packages/hooks')
             const { mergeHooksList, refreshAgentHooks, pushHookAudit, loadHookOverrides, claimSessionStart } =
               await import('@/stores/hooksStore')
-            await refreshAgentHooks({ workspaceRoot: session.workspaceRoot })
+            await refreshAgentHooks()
             const overrides = await loadHookOverrides()
             const globalHooks = mergeHooksList(overrides)
-            const shellEnabled = Boolean(overrides.shellHooksEnabled)
+            const shellEnabled = false
 
-            if (claimSessionStart(sessionId, session.workspaceRoot)) {
+            if (claimSessionStart(sessionId)) {
               const sessionStart = await runHooks({
                 event: 'SessionStart',
                 hooks: globalHooks,
                 shellEnabled,
                 sessionId,
-                workspaceRoot: session.workspaceRoot,
                 onRun: pushHookAudit,
               })
               if (sessionStart.injectText) {
@@ -882,7 +881,6 @@ export async function generate(
               hooks: globalHooks,
               shellEnabled,
               sessionId,
-              workspaceRoot: session.workspaceRoot,
               onRun: pushHookAudit,
             })
             if (globalPre.injectText) {
@@ -907,9 +905,8 @@ export async function generate(
 
         // If we have an approved plan, inject it into the prompt for context
         if (isExecutionPhase && existingPlanPart) {
-          const workspaceHint = session.workspaceRoot
-            ? `Workspace root: ${session.workspaceRoot}. Use create_file / edit_file / terminal under this root.`
-            : 'No workspace folder is set — filesystem write and terminal tools are unavailable until the user sets one.'
+          const workspaceHint =
+            'Project files require a native Open Folder binding. Pasted paths cannot authorize access. Generic project shell is unavailable.'
           const planInjection = createMessage(
             'system',
             `## APPROVED EXECUTION PLAN\n\n${existingPlanPart.planText}\n\nProceed with executing this plan using all available tools.\n\n${workspaceHint}`
@@ -1003,12 +1000,12 @@ export async function generate(
         // Skills: progressive catalog + activated bodies (explicit $ / pin / auto)
         // Ensure agent folders have been scanned at least once this session.
         try {
-          await refreshAgentSkills({ workspaceRoot: session.workspaceRoot })
+          await refreshAgentSkills()
         } catch {
           // non-fatal — builtins + user skills still work
         }
         try {
-          await refreshAgentCommands({ workspaceRoot: session.workspaceRoot })
+          await refreshAgentCommands()
         } catch {
           // non-fatal
         }
@@ -1131,10 +1128,45 @@ export async function generate(
           // Default chat image generate/edit (provider-neutral) when tools are available.
           enableImageGenerationTool: !firstHandoff && !roomBlocksExternalTools && model.isSupportToolUse(),
           imageGenerationMessageId: targetMsg.id,
-          agentCoding: {
-            enabled: !firstHandoff && isAgentExecuteTurn,
-            workspaceRoot: firstHandoff ? undefined : session.workspaceRoot,
-          },
+          agentCoding: await (async () => {
+            const enabled = !firstHandoff && isAgentExecuteTurn
+            const projectId = session.projectId || session.folderId
+            let capabilityId: string | undefined
+            let rootGeneration: string | undefined
+            const { getProjectWorkspaceFlags } = await import('@/projects/flags')
+            const { platformCapabilities } = await import('@/platform')
+            if (enabled && projectId && platform.restoreProjectBinding && platformCapabilities.supportsProjectWorkspace) {
+              try {
+                const desc = await platform.restoreProjectBinding(projectId)
+                if (desc?.status === 'ready' && desc.capabilityId) {
+                  capabilityId = desc.capabilityId
+                  rootGeneration = desc.rootGeneration
+                  if (desc.trust?.instructions === 'allowed') {
+                    const { loadTrustedProjectInstructions, formatInstructionContext } =
+                      await import('@/projects/project-instructions')
+                    const sources = await loadTrustedProjectInstructions({
+                      capabilityId,
+                      instructionsTrust: desc.trust.instructions,
+                    })
+                    const text = formatInstructionContext(sources)
+                    if (text) {
+                      promptMsgs.unshift(createMessage('system', text))
+                    }
+                  }
+                }
+              } catch {
+                // chat-only / missing binding
+              }
+            }
+            return {
+              enabled,
+              workspaceRoot: undefined,
+              capabilityId,
+              projectId,
+              rootGeneration,
+              mutationEnabled: getProjectWorkspaceFlags().mutationEnabled,
+            }
+          })(),
           // Browser / computer: desktop + master settings + session arm; Discuss/non-do-deliver off (D10)
           browserAgent: (() => {
             const roomMode = options?.roomMode ?? session.roomMode
@@ -1145,7 +1177,7 @@ export async function generate(
             return {
               armed: !firstHandoff && Boolean(session.browserArmed) && roomAllowed,
               sessionId,
-              workspaceRoot: session.workspaceRoot,
+              workspaceRoot: undefined,
               runId: targetMsg.id,
               roomAllowed,
             }
@@ -1190,10 +1222,12 @@ export async function generate(
 
         if (firstHandoff && session.continuationLineage) {
           const consumed = markHandoffConsumed({ ...session.continuationLineage, pendingExcerpts: undefined })
-          await chatStore.updateSessionWithMessages(sessionId, (current) => ({
-            ...current,
-            continuationLineage: consumed,
-          }))
+          await chatStore.updateSessionWithMessages(sessionId, (current) => {
+            if (!current) {
+              throw new Error(`Session ${sessionId} not found`)
+            }
+            return { ...current, continuationLineage: consumed }
+          })
         }
 
         // Extract plan text from result if in planning phase
@@ -1400,9 +1434,9 @@ export async function generate(
             await runHooks({
               event: 'PostTurn',
               hooks: globalHooks,
-              shellEnabled: Boolean(overrides.shellHooksEnabled),
+              shellEnabled: false,
               sessionId,
-              workspaceRoot: session.workspaceRoot,
+              workspaceRoot: undefined,
               output: outputText,
               onRun: pushHookAudit,
             })

@@ -10,6 +10,47 @@
   -webkit-app-region: no-drag;
 }
 
+.workspace-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  margin-left: 4px;
+}
+
+.workspace-header-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  max-width: 11rem;
+  height: 22px;
+  padding: 0 0.45rem 0 0.35rem;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--chatbox-tint-secondary);
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+}
+
+.workspace-header-chip:hover {
+  background: var(--chatbox-background-secondary);
+  color: var(--chatbox-tint-primary);
+}
+
+.workspace-header-chip:active {
+  transform: scale(0.96);
+}
+
+.workspace-header-chip-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* Shared chrome row: desktop 44px / mobile 56px; optional mac traffic inset */
 .title-bar-row {
   height: var(--chatbox-titlebar-height, 44px);

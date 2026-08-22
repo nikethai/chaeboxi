@@ -1,6 +1,6 @@
 /**
- * Resolve and confine filesystem paths to a session workspace root.
- * Pure string logic (no Node path module) so it runs in renderer + tests.
+ * UX-only lexical helper. Not a security boundary.
+ * Native handle-relative capability APIs authorize filesystem access.
  */
 
 export type WorkspacePathResult = { ok: true; absolutePath: string } | { ok: false; error: string }

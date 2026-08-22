@@ -55,6 +55,7 @@ mod ax_assist;
 mod kb;
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 mod imported_archive;
+mod workspace;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "type")]
@@ -98,6 +99,7 @@ struct AppState {
     kb: kb::KbRuntime,
     /// Cancels an in-flight local OAuth callback listener (desktop PKCE).
     oauth_cancel: Mutex<Option<oneshot::Sender<()>>>,
+    workspace: workspace::WorkspaceRuntime,
 }
 
 type CommandResult<T> = Result<T, String>;
@@ -1805,6 +1807,10 @@ async fn ipc_invoke(
         return result;
     }
 
+    if let Some(result) = workspace::handle(&app, &window, &state.workspace, &channel, &args) {
+        return result;
+    }
+
     match channel.as_str() {
         "getStoreValue" => {
             let key = get_arg_string(&args, 0)?;
@@ -2584,120 +2590,12 @@ async fn ipc_invoke(
           "error": "MinerU parser is not configured in Tauri runtime yet"
         })),
         "parser:cancel-mineru-parse" => Ok(json!({ "success": true })),
-        "execute_command" => {
-            #[cfg(not(target_os = "android"))]
-            {
-                let params_json = get_arg_string(&args, 0)?;
-                let params: Value = serde_json::from_str(&params_json)
-                    .map_err(|err| format!("invalid execute_command params: {err}"))?;
-
-                let command_str = params
-                    .get("command")
-                    .and_then(Value::as_str)
-                    .ok_or_else(|| "missing 'command' parameter".to_string())?
-                    .to_string();
-
-                let cwd = params
-                    .get("cwd")
-                    .and_then(Value::as_str)
-                    .filter(|s| !s.is_empty())
-                    .map(std::string::ToString::to_string);
-
-                let timeout_ms = params
-                    .get("timeoutMs")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(30_000);
-
-                let shell = if cfg!(target_os = "windows") {
-                    "cmd"
-                } else {
-                    "sh"
-                };
-                let shell_arg = if cfg!(target_os = "windows") {
-                    "/C"
-                } else {
-                    "-c"
-                };
-
-                let mut cmd = Command::new(shell);
-                cmd.arg(shell_arg).arg(&command_str);
-
-                if let Some(ref dir) = cwd {
-                    cmd.current_dir(dir);
-                }
-
-                cmd.stdout(std::process::Stdio::piped());
-                cmd.stderr(std::process::Stdio::piped());
-
-                let child = cmd
-                    .spawn()
-                    .map_err(|err| format!("failed to spawn command: {err}"))?;
-
-                let output = tokio::time::timeout(
-                    std::time::Duration::from_millis(timeout_ms),
-                    child.wait_with_output(),
-                )
-                .await
-                .map_err(|_| format!("command timed out after {timeout_ms}ms"))?
-                .map_err(|err| format!("command execution failed: {err}"))?;
-
-                let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-                let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-                let exit_code = output.status.code().unwrap_or(-1);
-
-                Ok(json!({
-                    "exitCode": exit_code,
-                    "stdout": stdout,
-                    "stderr": stderr
-                }))
-            }
-            #[cfg(target_os = "android")]
-            {
-                Err("execute_command is not supported on Android".to_string())
-            }
-        }
-        // Filesystem operations for copilot file tools (desktop only — sandboxed out of Android)
-        "fs:read-file" | "fs:write-file" | "fs:delete-file" => {
-            #[cfg(target_os = "android")]
-            {
-                Err(format!("'{channel}' is not available on Android"))
-            }
-            #[cfg(not(target_os = "android"))]
-            {
-                match channel.as_str() {
-                    "fs:read-file" => {
-                        let file_path = get_arg_string(&args, 0)?;
-                        let file_path = expand_user_path(&file_path);
-                        let content = fs::read_to_string(&file_path).map_err(|err| {
-                            format!("failed to read file '{}': {}", file_path, err)
-                        })?;
-                        Ok(Value::String(content))
-                    }
-                    "fs:write-file" => {
-                        let file_path = get_arg_string(&args, 0)?;
-                        let content = get_arg_string(&args, 1)?;
-                        let path = PathBuf::from(&file_path);
-                        if let Some(parent) = path.parent() {
-                            fs::create_dir_all(parent).map_err(|err| {
-                                format!("failed to create directories for '{}': {}", file_path, err)
-                            })?;
-                        }
-                        fs::write(&file_path, &content).map_err(|err| {
-                            format!("failed to write file '{}': {}", file_path, err)
-                        })?;
-                        Ok(Value::Null)
-                    }
-                    "fs:delete-file" => {
-                        let file_path = get_arg_string(&args, 0)?;
-                        fs::remove_file(&file_path).map_err(|err| {
-                            format!("failed to delete file '{}': {}", file_path, err)
-                        })?;
-                        Ok(Value::Null)
-                    }
-                    _ => unreachable!(),
-                }
-            }
-        }
+        "execute_command" => Err(
+            "execute_command is unavailable. Generic project shell is disabled; use narrow native brokers.".to_string(),
+        ),
+        "fs:read-file" | "fs:write-file" | "fs:delete-file" => Err(format!(
+            "'{channel}' is unavailable. Privileged file access requires a native project capability."
+        )),
 
         // Discover Agent Skills (SKILL.md) from Claude/Codex/Cursor/agents/grok folders
         "skills:scan" => {
@@ -2719,6 +2617,9 @@ async fn ipc_invoke(
                     let Some(root_raw) = root_val.as_str() else {
                         continue;
                     };
+                    if !is_allowed_global_agent_root(root_raw) {
+                        continue;
+                    }
                     let root_path = expand_skill_root_path(root_raw);
                     let origin = skill_origin_from_path(&root_path);
                     let path = PathBuf::from(&root_path);
@@ -2804,6 +2705,9 @@ async fn ipc_invoke(
                     let Some(path_raw) = path_val.as_str() else {
                         continue;
                     };
+                    if !is_allowed_global_agent_root(path_raw) {
+                        continue;
+                    }
                     let path_str = expand_skill_root_path(path_raw);
                     let pb = PathBuf::from(&path_str);
                     if pb.is_file() {
@@ -2835,115 +2739,9 @@ async fn ipc_invoke(
             }
         }
 
-        // Run a shell hook with timeout, optional cwd, stdin JSON
-        "hooks:run-shell" => {
-            #[cfg(target_os = "android")]
-            {
-                Err("'hooks:run-shell' is not available on Android".to_string())
-            }
-            #[cfg(not(target_os = "android"))]
-            {
-                use std::io::{Read, Write};
-                use std::process::{Command, Stdio};
-                use std::time::Duration;
-
-                let opts = get_arg(&args, 0)?;
-                let command = opts
-                    .get("command")
-                    .and_then(|v| v.as_str())
-                    .ok_or_else(|| "hooks:run-shell requires command".to_string())?
-                    .to_string();
-                let timeout_ms = opts
-                    .get("timeoutMs")
-                    .and_then(|v| v.as_u64())
-                    .unwrap_or(10_000)
-                    .min(30_000);
-                let stdin_data = opts
-                    .get("stdin")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("")
-                    .to_string();
-                let cwd = opts
-                    .get("cwd")
-                    .and_then(|v| v.as_str())
-                    .map(|s| s.to_string())
-                    .filter(|s| !s.is_empty());
-
-                let mut cmd = if cfg!(target_os = "windows") {
-                    let mut c = Command::new("cmd");
-                    c.arg("/C").arg(&command);
-                    c
-                } else {
-                    let mut c = Command::new("sh");
-                    c.arg("-c").arg(&command);
-                    c
-                };
-
-                cmd.stdin(Stdio::piped())
-                    .stdout(Stdio::piped())
-                    .stderr(Stdio::piped());
-
-                if let Some(dir) = cwd {
-                    let dir_path = PathBuf::from(&dir);
-                    if dir_path.is_dir() {
-                        cmd.current_dir(dir_path);
-                    }
-                }
-
-                let mut child = cmd
-                    .spawn()
-                    .map_err(|e| format!("failed to spawn hook: {e}"))?;
-
-                if let Some(mut stdin) = child.stdin.take() {
-                    let _ = stdin.write_all(stdin_data.as_bytes());
-                    drop(stdin);
-                }
-
-                let start = std::time::Instant::now();
-                let wait_result = loop {
-                    match child.try_wait() {
-                        Ok(Some(status)) => break Ok(status),
-                        Ok(None) => {
-                            if start.elapsed() > Duration::from_millis(timeout_ms) {
-                                let _ = child.kill();
-                                let _ = child.wait();
-                                break Err("hook timeout".to_string());
-                            }
-                            std::thread::sleep(Duration::from_millis(50));
-                        }
-                        Err(e) => break Err(format!("wait error: {e}")),
-                    }
-                };
-
-                match wait_result {
-                    Ok(status) => {
-                        let mut stdout = String::new();
-                        let mut stderr = String::new();
-                        if let Some(mut out) = child.stdout.take() {
-                            let mut buf = Vec::new();
-                            let _ = out.read_to_end(&mut buf);
-                            stdout = String::from_utf8_lossy(&buf).to_string();
-                        }
-                        if let Some(mut err) = child.stderr.take() {
-                            let mut buf = Vec::new();
-                            let _ = err.read_to_end(&mut buf);
-                            stderr = String::from_utf8_lossy(&buf).to_string();
-                        }
-                        let exit_code = status.code().unwrap_or(1);
-                        Ok(json!({
-                            "exitCode": exit_code,
-                            "stdout": stdout.chars().take(8000).collect::<String>(),
-                            "stderr": stderr.chars().take(8000).collect::<String>(),
-                        }))
-                    }
-                    Err(msg) => Ok(json!({
-                        "exitCode": 1,
-                        "stdout": "",
-                        "stderr": msg,
-                    })),
-                }
-            }
-        }
+        "hooks:run-shell" => Err(
+            "hooks:run-shell is unavailable. Project shell hooks are disabled; generic renderer shell is not a workspace sandbox.".to_string(),
+        ),
 
         // Discover slash commands: flat `name.md` or folder with body/COMMAND.md/SKILL.md
         "commands:scan" => {
@@ -2965,6 +2763,9 @@ async fn ipc_invoke(
                     let Some(root_raw) = root_val.as_str() else {
                         continue;
                     };
+                    if !is_allowed_global_agent_root(root_raw) {
+                        continue;
+                    }
                     let root_path = expand_skill_root_path(root_raw);
                     let origin = command_origin_from_path(&root_path);
                     let path = PathBuf::from(&root_path);
@@ -3048,16 +2849,16 @@ async fn ipc_invoke(
 
 #[cfg(not(target_os = "android"))]
 fn expand_skill_root_path(path: &str) -> String {
-    let expanded = expand_user_path(path);
-    let pb = PathBuf::from(&expanded);
-    if pb.is_absolute() {
-        return expanded;
-    }
-    // Resolve relative roots against process cwd (useful when launched from a repo)
-    if let Ok(cwd) = std::env::current_dir() {
-        return cwd.join(pb).to_string_lossy().to_string();
-    }
-    expanded
+    // Global user roots only (`~/...`). Project-relative paths are scanned via workspace capabilities.
+    expand_user_path(path)
+}
+
+#[cfg(not(target_os = "android"))]
+fn is_allowed_global_agent_root(raw: &str) -> bool {
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .unwrap_or_default();
+    crate::workspace::is_native_known_global_root(raw, &home)
 }
 
 #[cfg(not(target_os = "android"))]
@@ -3143,6 +2944,7 @@ pub fn run() {
             if let Err(err) = state.kb.open_desktop(handle) {
                 eprintln!("[kb] failed to open sqlite store: {err}");
             }
+            workspace::open_desktop(handle, &state.workspace);
 
             #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
             {
@@ -3172,10 +2974,15 @@ pub fn run() {
                     // App quitting: best-effort kill browser hosts (async fire-and-forget).
                     if window.label() == "main" {
                         let app = window.app_handle().clone();
+                        let state: State<AppState> = window.app_handle().state();
+                        state.workspace.revoke_window("main");
                         tauri::async_runtime::spawn(async move {
                             let browser = app.state::<browser_manager::BrowserManager>();
                             browser.stop_all().await;
                         });
+                    } else {
+                        let state: State<AppState> = window.app_handle().state();
+                        state.workspace.revoke_window(window.label());
                     }
                 }
                 let _ = api;

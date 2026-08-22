@@ -1,6 +1,6 @@
 import type { SkillOrigin, SkillPackage } from '@shared/types'
 import { platformCapabilities } from '@/platform'
-import { resolveAgentRootPathList } from '@/packages/agent-scan'
+import { isUserGlobalPath, resolveAgentRootPathList } from '@/packages/agent-scan'
 import platform from '@/platform'
 import { parseSkillMd } from './parse-skill-md'
 
@@ -68,7 +68,7 @@ export async function scanAgentSkillFiles(
 
   const roots = [
     ...resolveAgentRootPathList(AGENT_SKILL_ROOTS, { workspaceRoot: options.workspaceRoot }),
-    ...(options.extraRoots || []).filter(Boolean),
+    ...(options.extraRoots || []).filter((p) => isUserGlobalPath(p)),
   ]
 
   try {

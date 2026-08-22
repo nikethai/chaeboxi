@@ -387,11 +387,13 @@ export default function Sidebar() {
             )}
             <Menu
               shadow="md"
-              width={isIconRail ? 220 : (accountMenuWidth ?? 'target')}
+              width={isIconRail ? 240 : (accountMenuWidth ?? 'target')}
               position={isIconRail ? 'right-end' : 'top'}
               withinPortal
-              offset={6}
-              middlewares={{ flip: true, shift: false, size: true }}
+              offset={isIconRail ? 10 : 6}
+              middlewares={
+                isIconRail ? { flip: true, shift: true, size: false } : { flip: true, shift: false, size: true }
+              }
               opened={accountMenuOpen}
               onChange={(open) => {
                 if (open && !isIconRail) {
@@ -400,23 +402,21 @@ export default function Sidebar() {
                 setAccountMenuOpen(open)
               }}
               classNames={{
-                dropdown: 'user-menu-dropdown user-menu-dropdown-full',
+                dropdown: clsx('user-menu-dropdown user-menu-dropdown-full', isIconRail && 'user-menu-dropdown--rail'),
               }}
             >
               <Menu.Target>
                 {isIconRail ? (
-                  <Tooltip label={displayName} position="right" withArrow openDelay={300} disabled={accountMenuOpen}>
-                    <UnstyledButton
-                      ref={accountTriggerRef}
-                      className="rail-icon-btn user-trigger-icon active:scale-[0.96]"
-                      data-expanded={accountMenuOpen ? 'true' : 'false'}
-                      aria-expanded={accountMenuOpen}
-                      aria-haspopup="menu"
-                      aria-label={displayName}
-                    >
-                      <UserAvatar size={28} avatarKey={userAvatarKey} />
-                    </UnstyledButton>
-                  </Tooltip>
+                  <UnstyledButton
+                    ref={accountTriggerRef}
+                    className="rail-icon-btn user-trigger-icon active:scale-[0.96]"
+                    data-expanded={accountMenuOpen ? 'true' : 'false'}
+                    aria-expanded={accountMenuOpen}
+                    aria-haspopup="menu"
+                    aria-label={displayName}
+                  >
+                    <UserAvatar size={28} avatarKey={userAvatarKey} />
+                  </UnstyledButton>
                 ) : (
                   <UnstyledButton
                     ref={accountTriggerRef}

@@ -21,8 +21,8 @@ import { Route as SettingsIndexImport } from './routes/settings/index'
 import { Route as ImageCreatorIndexImport } from './routes/image-creator/index'
 import { Route as DevIndexImport } from './routes/dev/index'
 import { Route as SettingsWebSearchImport } from './routes/settings/web-search'
-import { Route as SettingsVideoUrlImport } from './routes/settings/video-url'
 import { Route as SettingsVoiceImport } from './routes/settings/voice'
+import { Route as SettingsVideoUrlImport } from './routes/settings/video-url'
 import { Route as SettingsUserPersonalInfoImport } from './routes/settings/user-personal-info'
 import { Route as SettingsUsageImport } from './routes/settings/usage'
 import { Route as SettingsSyncImport } from './routes/settings/sync'
@@ -113,15 +113,15 @@ const SettingsWebSearchRoute = SettingsWebSearchImport.update({
   getParentRoute: () => SettingsRouteRoute,
 } as any)
 
-const SettingsVideoUrlRoute = SettingsVideoUrlImport.update({
-  id: '/video-url',
-  path: '/video-url',
-  getParentRoute: () => SettingsRouteRoute,
-} as any)
-
 const SettingsVoiceRoute = SettingsVoiceImport.update({
   id: '/voice',
   path: '/voice',
+  getParentRoute: () => SettingsRouteRoute,
+} as any)
+
+const SettingsVideoUrlRoute = SettingsVideoUrlImport.update({
+  id: '/video-url',
+  path: '/video-url',
   getParentRoute: () => SettingsRouteRoute,
 } as any)
 

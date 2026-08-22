@@ -479,6 +479,10 @@ export const FolderSchema = z.object({
   order: z.number(),
 })
 
+/** Portable Project metadata. Same fields as Folder; contains no filesystem root. */
+export const ProjectSchema = FolderSchema
+export type Project = z.infer<typeof ProjectSchema>
+
 export const SessionSchema = z.object({
   id: z.string(),
   type: SessionTypeSchema.optional(),
@@ -496,11 +500,16 @@ export const SessionSchema = z.object({
   /** Preferred lead agent for Team answer / Work execute (defaults to first speaker) */
   roomLeadId: z.string().optional().catch(undefined),
   folderId: z.string().optional(),
+  /** Canonical Project assignment. Dual-written with folderId for one compatibility release. */
+  projectId: z.string().optional(),
   tags: z.array(z.string()).optional(),
   archived: z.boolean().optional(),
   assistantAvatarKey: z.string().optional(),
   agentMode: z.boolean().optional(),
-  /** Absolute path to the session workspace root for agent file/terminal tools (desktop). */
+  /**
+   * Legacy reconnect hint only. Never authority. Tombstoned on move/unbind/reconnect.
+   * @deprecated Native picker binding is the only authorization path.
+   */
   workspaceRoot: z.string().optional(),
   /** Arm Chaeboxi isolated browser tools for this chat (desktop). */
   browserArmed: z.boolean().optional().catch(undefined),
@@ -556,6 +565,7 @@ export const SessionMetaSchema = SessionSchema.pick({
   starred: true,
   hidden: true,
   folderId: true,
+  projectId: true,
   tags: true,
   archived: true,
   assistantAvatarKey: true,

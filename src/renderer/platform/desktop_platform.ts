@@ -141,6 +141,9 @@ export default class DesktopPlatform implements Platform {
       key === 'configVersion' ||
       key === 'chat-sessions-list' ||
       key === 'imported-history' ||
+      key === 'myProjects' ||
+      key === 'myFolders' ||
+      key === 'projectMigrationJournal' ||
       key.startsWith('session:')
     )
   }
@@ -346,16 +349,113 @@ export default class DesktopPlatform implements Platform {
     return this._imageGenerationStorage
   }
 
-  public async readFileByPath(path: string): Promise<string> {
-    return this.ipc.invoke('fs:read-file', path)
+  public async readFileByPath(_path: string): Promise<string> {
+    throw new Error('Broad filesystem IPC is unavailable. Use workspace capability APIs.')
   }
 
-  public async writeFile(path: string, content: string): Promise<void> {
-    return this.ipc.invoke('fs:write-file', path, content)
+  public async writeFile(_path: string, _content: string): Promise<void> {
+    throw new Error('Broad filesystem IPC is unavailable. Use workspace capability APIs.')
   }
 
-  public async deleteFile(path: string): Promise<void> {
-    return this.ipc.invoke('fs:delete-file', path)
+  public async deleteFile(_path: string): Promise<void> {
+    throw new Error('Broad filesystem IPC is unavailable. Use workspace capability APIs.')
+  }
+
+  private async syncWorkspaceMutationFlag() {
+    const { getProjectWorkspaceFlags } = await import('@/projects/flags')
+    await this.ipc.invoke('workspace:set-mutation', getProjectWorkspaceFlags().mutationEnabled)
+  }
+
+  public async pickAndBindProject(projectId: string) {
+    const desc = await this.ipc.invoke('workspace:pick-and-bind', projectId)
+    await this.syncWorkspaceMutationFlag()
+    return desc
+  }
+
+  public async restoreProjectBinding(projectId: string) {
+    const desc = await this.ipc.invoke('workspace:restore', projectId)
+    await this.syncWorkspaceMutationFlag()
+    return desc
+  }
+
+  public async revokeProjectBinding(projectId: string) {
+    await this.ipc.invoke('workspace:revoke', projectId)
+  }
+
+  public async relinkProject(projectId: string) {
+    return this.ipc.invoke('workspace:relink', projectId)
+  }
+
+  public async unbindProject(projectId: string) {
+    await this.ipc.invoke('workspace:unbind', projectId)
+  }
+
+  public async revealProject(projectId: string) {
+    await this.ipc.invoke('workspace:reveal', projectId)
+  }
+
+  public async readWorkspaceFile(capabilityId: string, relativePath: string) {
+    return this.ipc.invoke('workspace:read', { capabilityId, relativePath })
+  }
+
+  public async listWorkspaceChildren(capabilityId: string, relativePath: string, cursor?: string, requestId?: string) {
+    return this.ipc.invoke('workspace:list', { capabilityId, relativePath, cursor, requestId })
+  }
+
+  public async searchWorkspace(capabilityId: string, query: string, requestId?: string) {
+    return this.ipc.invoke('workspace:search', { capabilityId, query, requestId })
+  }
+
+  public async cancelWorkspaceRequest(requestId: string) {
+    await this.ipc.invoke('workspace:cancel', requestId)
+  }
+
+  public async createWorkspaceFile(
+    capabilityId: string,
+    relativePath: string,
+    content: string,
+    mode: 'create' | 'overwrite',
+    expectedRevision?: string
+  ) {
+    const { getProjectWorkspaceFlags } = await import('@/projects/flags')
+    if (!getProjectWorkspaceFlags().mutationEnabled) {
+      return { ok: false, code: 'MUTATION_DISABLED' as const }
+    }
+    return this.ipc.invoke('workspace:create', { capabilityId, relativePath, content, mode, expectedRevision })
+  }
+
+  public async editWorkspaceFile(
+    capabilityId: string,
+    relativePath: string,
+    oldString: string,
+    newString: string,
+    expectedRevision: string
+  ) {
+    const { getProjectWorkspaceFlags } = await import('@/projects/flags')
+    if (!getProjectWorkspaceFlags().mutationEnabled) {
+      return { ok: false, code: 'MUTATION_DISABLED' as const }
+    }
+    return this.ipc.invoke('workspace:edit', { capabilityId, relativePath, oldString, newString, expectedRevision })
+  }
+
+  public async deleteWorkspaceFile(capabilityId: string, relativePath: string, expectedRevision: string) {
+    const { getProjectWorkspaceFlags } = await import('@/projects/flags')
+    if (!getProjectWorkspaceFlags().mutationEnabled) {
+      return { ok: false, code: 'MUTATION_DISABLED' as const }
+    }
+    return this.ipc.invoke('workspace:delete', { capabilityId, relativePath, expectedRevision })
+  }
+
+  public async setProjectTrust(projectId: string, category: string, value: string) {
+    await this.ipc.invoke('workspace:set-trust', projectId, category, value)
+  }
+
+  public async readCodexAuthConfig() {
+    return this.ipc.invoke('codex:read-auth-config')
+  }
+
+  public async videoYtDlp(op: 'detect' | 'install') {
+    return this.ipc.invoke('video:yt-dlp', op)
   }
 
   public minimize() {
@@ -387,11 +487,11 @@ export default class DesktopPlatform implements Platform {
   }
 
   public async executeCommand(
-    command: string,
-    cwd?: string,
-    timeoutMs?: number
+    _command: string,
+    _cwd?: string,
+    _timeoutMs?: number
   ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-    return this.ipc.invoke('execute_command', JSON.stringify({ command, cwd, timeoutMs }))
+    throw new Error('Generic project shell is unavailable.')
   }
 
   public async getSystemNotificationPermission(): Promise<SystemNotificationPermission> {

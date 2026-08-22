@@ -2,7 +2,6 @@ import type { ToolSet } from 'ai'
 import { tool } from 'ai'
 import z from 'zod'
 import { MAX_INLINE_FILE_LINES, PREVIEW_LINES } from '@/packages/context-management/attachment-payload'
-import { resolveWorkspacePath } from '@/packages/tools/workspace-path'
 import platform from '@/platform'
 
 const DEFAULT_LINES = 200
@@ -55,26 +54,37 @@ Searches for text patterns within an uploaded file.
 - Call in parallel when searching multiple files
 `
 
-export function workspaceFileToolSetDescription(workspaceRoot: string): string {
-  return `
+export type WorkspaceToolContext = {
+  capabilityId: string
+  projectId: string
+  rootGeneration: string
+  mutationEnabled: boolean
+}
+
+export function workspaceFileToolSetDescription(context: WorkspaceToolContext | string): string {
+  if (typeof context === 'string') {
+    return `
 # Workspace filesystem tools
 
-Session workspace root: \`${workspaceRoot}\`
+Filesystem mutation requires a native Project folder binding. A pasted path is not authorization.
+Generic project shell is unavailable.
+`
+  }
+  return `
+# Project filesystem tools
 
-Use these tools to create and edit project files on the user's machine under the workspace root.
-- Prefer paths relative to the workspace root (e.g. \`src/App.tsx\`). Absolute paths must stay inside the root.
-- Parent directories are created automatically for \`create_file\`.
-- Do not attempt to write outside the workspace; those calls will fail.
+Use relative paths only (e.g. src/App.tsx). Absolute host paths are rejected.
+create/edit/delete require an expected revision. Conflicts return CONFLICT and keep the original file.
+Generic project shell is unavailable.
 
 ## create_file
-Creates or overwrites a file under the workspace with full content.
+Create a new file, or overwrite when mode=overwrite and expected_revision matches.
 
 ## edit_file
-Replaces the first occurrence of \`old_string\` with \`new_string\` in a workspace file.
-- \`old_string\` must exist and be unique enough to match the intended location
+Native replacement of old_string. Rejects 0 or >1 matches (AMBIGUOUS_EDIT).
 
 ## delete_file
-Deletes a file under the workspace root.
+Deletes a file when expected_revision matches.
 `
 }
 
@@ -199,27 +209,59 @@ export const attachmentFileToolSet = {
   tools: attachmentFileTools,
 }
 
-/** Workspace create/edit/delete tools confined to the session workspace root. */
-export function createWorkspaceFileTools(workspaceRoot: string): ToolSet {
+function relativeOnly(path: string): string | { error: string } {
+  const trimmed = path.trim()
+  if (!trimmed || trimmed.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(trimmed) || trimmed.includes('..')) {
+    return { error: 'Path must be a relative project path without .. or absolute roots.' }
+  }
+  return trimmed.replace(/\\/g, '/')
+}
+
+/** Workspace create/edit/delete tools via native capability. Dark unless mutationEnabled. */
+export function createWorkspaceFileTools(context: WorkspaceToolContext | string): ToolSet {
+  const ctx: WorkspaceToolContext | null =
+    typeof context === 'string' ? null : context.mutationEnabled && context.capabilityId ? context : null
+  if (!ctx) {
+    return {} as ToolSet
+  }
   const createFileTool = tool({
     description:
       'Creates or overwrites a file under the session workspace root. Prefer relative paths (e.g. src/App.tsx).',
     inputSchema: z.object({
-      path: z.string().describe('File path relative to the workspace root, or an absolute path inside the workspace.'),
+      path: z.string().describe('File path relative to the project root.'),
       content: z.string().describe('The full content to write to the file.'),
+      mode: z
+        .enum(['create', 'overwrite'])
+        .optional()
+        .describe('create rejects existing files; overwrite requires expected_revision.'),
+      expected_revision: z.string().optional().describe('Required when mode is overwrite.'),
     }),
-    execute: async (input: { path: string; content: string }) => {
-      const resolved = resolveWorkspacePath(workspaceRoot, input.path)
-      if (!resolved.ok) {
-        return { success: false, message: resolved.error }
+    execute: async (input: {
+      path: string
+      content: string
+      mode?: 'create' | 'overwrite'
+      expected_revision?: string
+    }) => {
+      const rel = relativeOnly(input.path)
+      if (typeof rel !== 'string') return { success: false, message: rel.error, code: 'OUTSIDE_ROOT' }
+      if (!platform.createWorkspaceFile) {
+        return { success: false, message: 'Workspace mutation is unavailable.', code: 'UNSUPPORTED_PLATFORM' }
       }
       try {
-        await platform.writeFile(resolved.absolutePath, input.content)
-        return {
-          success: true,
-          message: `File created successfully: ${resolved.absolutePath}`,
-          path: resolved.absolutePath,
+        const result = await platform.createWorkspaceFile(
+          ctx.capabilityId,
+          rel,
+          input.content,
+          input.mode === 'overwrite' ? 'overwrite' : 'create',
+          input.expected_revision
+        )
+        if (result && 'ok' in result && result.ok === false) {
+          return { success: false, message: result.code, code: result.code }
         }
+        void import('@/projects/open-workspace-preview').then((m) => {
+          m.openWorkspaceFilePreview(rel, input.content)
+        })
+        return { success: true, path: rel, revision: (result as { revision?: string }).revision }
       } catch (err) {
         return { success: false, message: `Failed to create file: ${toErrorMessage(err)}` }
       }
@@ -230,32 +272,44 @@ export function createWorkspaceFileTools(workspaceRoot: string): ToolSet {
     description:
       'Edits a workspace file by replacing the first occurrence of old_string with new_string. Path must be under the workspace root.',
     inputSchema: z.object({
-      path: z.string().describe('File path relative to the workspace root, or an absolute path inside the workspace.'),
+      path: z.string().describe('File path relative to the project root.'),
       old_string: z.string().min(1).describe('The exact string to find and replace. Must not be empty.'),
       new_string: z.string().describe('The replacement string.'),
+      expected_revision: z.string().describe('Revision from the last native read. Required.'),
     }),
-    execute: async (input: { path: string; old_string: string; new_string: string }) => {
-      const resolved = resolveWorkspacePath(workspaceRoot, input.path)
-      if (!resolved.ok) {
-        return { success: false, message: resolved.error, changes_made: 0 }
+    execute: async (input: { path: string; old_string: string; new_string: string; expected_revision: string }) => {
+      const rel = relativeOnly(input.path)
+      if (typeof rel !== 'string') return { success: false, message: rel.error, changes_made: 0, code: 'OUTSIDE_ROOT' }
+      if (!platform.editWorkspaceFile) {
+        return {
+          success: false,
+          message: 'Workspace mutation is unavailable.',
+          code: 'UNSUPPORTED_PLATFORM',
+          changes_made: 0,
+        }
       }
       try {
-        const content = await platform.readFileByPath(resolved.absolutePath)
-        if (!content.includes(input.old_string)) {
-          return {
-            success: false,
-            message: `old_string not found in file: ${resolved.absolutePath}`,
-            changes_made: 0,
-          }
+        const result = await platform.editWorkspaceFile(
+          ctx.capabilityId,
+          rel,
+          input.old_string,
+          input.new_string,
+          input.expected_revision
+        )
+        if (result && 'ok' in result && result.ok === false) {
+          return { success: false, message: result.code, code: result.code, changes_made: 0 }
         }
-        const newContent = content.replace(input.old_string, input.new_string)
-        await platform.writeFile(resolved.absolutePath, newContent)
-        return {
-          success: true,
-          message: `File edited successfully: ${resolved.absolutePath}`,
-          path: resolved.absolutePath,
-          changes_made: 1,
-        }
+        const preview =
+          (platform.readWorkspaceFile
+            ? await platform
+                .readWorkspaceFile(ctx.capabilityId, rel)
+                .then((file) => file.content)
+                .catch(() => '')
+            : '') || input.new_string
+        void import('@/projects/open-workspace-preview').then((m) => {
+          m.openWorkspaceFilePreview(rel, preview)
+        })
+        return { success: true, path: rel, revision: (result as { revision?: string }).revision, changes_made: 1 }
       } catch (err) {
         return { success: false, message: `Failed to edit file: ${toErrorMessage(err)}`, changes_made: 0 }
       }
@@ -265,20 +319,21 @@ export function createWorkspaceFileTools(workspaceRoot: string): ToolSet {
   const deleteFileTool = tool({
     description: 'Deletes a file under the session workspace root.',
     inputSchema: z.object({
-      path: z.string().describe('File path relative to the workspace root, or an absolute path inside the workspace.'),
+      path: z.string().describe('File path relative to the project root.'),
+      expected_revision: z.string().describe('Revision from the last native read. Required.'),
     }),
-    execute: async (input: { path: string }) => {
-      const resolved = resolveWorkspacePath(workspaceRoot, input.path)
-      if (!resolved.ok) {
-        return { success: false, message: resolved.error }
+    execute: async (input: { path: string; expected_revision: string }) => {
+      const rel = relativeOnly(input.path)
+      if (typeof rel !== 'string') return { success: false, message: rel.error, code: 'OUTSIDE_ROOT' }
+      if (!platform.deleteWorkspaceFile) {
+        return { success: false, message: 'Workspace mutation is unavailable.', code: 'UNSUPPORTED_PLATFORM' }
       }
       try {
-        await platform.deleteFile(resolved.absolutePath)
-        return {
-          success: true,
-          message: `File deleted successfully: ${resolved.absolutePath}`,
-          path: resolved.absolutePath,
+        const result = await platform.deleteWorkspaceFile(ctx.capabilityId, rel, input.expected_revision)
+        if (result && 'ok' in result && result.ok === false) {
+          return { success: false, message: result.code, code: result.code }
         }
+        return { success: true, path: rel }
       } catch (err) {
         return { success: false, message: `Failed to delete file: ${toErrorMessage(err)}` }
       }
@@ -292,10 +347,10 @@ export function createWorkspaceFileTools(workspaceRoot: string): ToolSet {
   } as ToolSet
 }
 
-export function createWorkspaceFileToolSet(workspaceRoot: string) {
+export function createWorkspaceFileToolSet(context: WorkspaceToolContext | string) {
   return {
-    description: workspaceFileToolSetDescription(workspaceRoot),
-    tools: createWorkspaceFileTools(workspaceRoot),
+    description: workspaceFileToolSetDescription(context),
+    tools: createWorkspaceFileTools(context),
   }
 }
 

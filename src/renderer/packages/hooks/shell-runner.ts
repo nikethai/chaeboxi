@@ -47,33 +47,13 @@ export async function runShellHook(
     workspaceRoot: input.workspaceRoot || null,
   }
 
-  try {
-    const result = (await window.desktopAPI.invoke('hooks:run-shell', {
-      command: hook.command,
-      cwd: input.workspaceRoot || null,
-      timeoutMs,
-      stdin: JSON.stringify(payload),
-    })) as { exitCode?: number; stdout?: string; stderr?: string }
-
-    const exitCode = typeof result?.exitCode === 'number' ? result.exitCode : 1
-    const stdout = String(result?.stdout || '').slice(0, MAX_STDOUT_CHARS)
-    const stderr = String(result?.stderr || '').slice(0, MAX_STDOUT_CHARS)
-    const blocked = input.event === 'PreToolUse' && exitCode === 2
-
-    return {
-      exitCode,
-      stdout,
-      stderr,
-      blocked,
-      injectText: stdout.trim() || undefined,
-    }
-  } catch (error) {
-    return {
-      exitCode: 1,
-      stdout: '',
-      stderr: (error as Error)?.message || 'shell hook failed',
-      blocked: false,
-    }
+  void timeoutMs
+  void payload
+  return {
+    exitCode: 1,
+    stdout: '',
+    stderr: 'Project shell hooks are disabled. Generic renderer shell is unavailable.',
+    blocked: false,
   }
 }
 

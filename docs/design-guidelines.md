@@ -2,7 +2,7 @@
 
 **Status:** Active design contract for the UI redesign  
 **Visual source of truth:** `plans/2026-08-05-ui-ux-redesign/mock-dark-shell.html`  
-**Last updated:** 2026-08-10
+**Last updated:** 2026-08-22
 
 ## Product intent
 
@@ -45,6 +45,7 @@ Desktop AI copilot chrome that feels like a focused studio tool — Grok + ChatG
 | Telemetry | Session statusline is SoT for tok/$/msg; **no composer token chip**; click statusline `tok` for compress / auto-compaction. Statusline sits **below** composer with solid primary surface + higher z-index so composer ambient shadow never buries model/cost |
 | Rail brand | Left-aligned `ChaeboxiWordmark`; no collapse control in brand row (hide via menu / resizer double-click) |
 | Projects | User-facing “Project” (storage may stay `Folder`); shared outline icon; **no emoji UI**; never invent system “Uncategorized” folder |
+| Project explorer | File tree in `.session-body-row` left of chat, only when the chat belongs to a Project. Same rail surface as the session list. Not a chip above the composer. Artifact Studio stays the right pane and auto-opens while code is written. Title bar shows a folder chip plus Open Folder / Reveal. Hidden below 900px and off desktop. | |
 | Keyboard | Enter send; Shift+Enter and Alt+Enter newline (default send is Enter) |
 | Film grain | Mock only — **omit** in production |
 
@@ -67,6 +68,7 @@ Desktop AI copilot chrome that feels like a focused studio tool — Grok + ChatG
 ```
 shell: sidebar | main
 main: flex column; min-height: 0
+session-body-row: project-explorer | session-main-col | workspace-panel (Artifact Studio)
 thread: flex 1 1 0; min-height: 0; overflow auto
 dock: flex-none; no border-top
 .session-dock-pad: horizontal --chatbox-col-pad-x + bottom breathing room

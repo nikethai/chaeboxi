@@ -2,7 +2,7 @@
  * Side workspace pane — Claude Artifacts–style preview for html/markdown/svg/mermaid/code.
  */
 
-import { ActionIcon, SegmentedControl, Text, Tooltip } from '@mantine/core'
+import { ActionIcon, Tooltip } from '@mantine/core'
 import {
   type ArtifactKind,
   artifactKindLabel,
@@ -10,7 +10,16 @@ import {
   isLegacyDefaultTitle,
   normalizeArtifactKind,
 } from '@shared/artifacts'
-import { IconChevronLeft, IconChevronRight, IconCopy, IconReload, IconX } from '@tabler/icons-react'
+import type { Session } from '@shared/types'
+import {
+  IconArrowsMaximize,
+  IconArrowsMinimize,
+  IconChevronLeft,
+  IconChevronRight,
+  IconCopy,
+  IconReload,
+  IconX,
+} from '@tabler/icons-react'
 import type React from 'react'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,6 +27,8 @@ import { cn } from '@/lib/utils'
 import { copyToClipboard } from '@/packages/navigator'
 import * as toastActions from '@/stores/toastActions'
 import { useUIStore, type WorkspaceArtifactVersion, type WorkspacePanelState } from '@/stores/uiStore'
+import Toolbar from '../layout/Toolbar'
+import WindowControls from '../layout/WindowControls'
 import Markdown from '../Markdown'
 import { MessageMermaid } from '../Mermaid'
 import { HtmlWorkspaceView } from './HtmlWorkspaceView'
@@ -76,12 +87,14 @@ function WorkspacePreview(props: {
   return <WorkspaceCodeView code={content} language={language} />
 }
 
-function WorkspacePanel() {
+function WorkspacePanel({ session }: { session?: Session }) {
   const { t } = useTranslation()
   const panel = useUIStore((s) => s.workspacePanel)
   const widthPx = useUIStore((s) => s.workspaceWidthPx)
+  const expanded = useUIStore((s) => s.workspaceExpanded)
   const realTheme = useUIStore((s) => s.realTheme)
   const setWorkspacePanel = useUIStore((s) => s.setWorkspacePanel)
+  const setWorkspaceExpanded = useUIStore((s) => s.setWorkspaceExpanded)
   const setWorkspaceWidthPx = useUIStore((s) => s.setWorkspaceWidthPx)
   const [tab, setTab] = useState<'preview' | 'code'>('preview')
   const [reloadSign, setReloadSign] = useState(0)
@@ -119,9 +132,7 @@ function WorkspacePanel() {
   const versions = display?.versions ?? []
   const versionIndex = display?.versionIndex ?? Math.max(0, versions.length - 1)
   const sourceKind = source?.kind
-  const contentKey = display
-    ? `${display.versions?.[0]?.id ?? display.artifactId ?? display.messageId ?? ''}`
-    : ''
+  const contentKey = display ? `${display.versions?.[0]?.id ?? display.artifactId ?? display.messageId ?? ''}` : ''
 
   useEffect(() => {
     if (!contentKey || !sourceKind) return
@@ -131,14 +142,17 @@ function WorkspacePanel() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && panel) {
-        e.preventDefault()
-        setWorkspacePanel(null)
+      if (e.key !== 'Escape' || !panel) return
+      e.preventDefault()
+      if (expanded) {
+        setWorkspaceExpanded(false)
+        return
       }
+      setWorkspacePanel(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [panel, setWorkspacePanel])
+  }, [panel, expanded, setWorkspaceExpanded, setWorkspacePanel])
 
   useEffect(() => {
     if (open && panel && panelRef.current) {
@@ -192,6 +206,7 @@ function WorkspacePanel() {
   const sourceText = source.content
   const kicker = artifactKindLabel(source.kind, source.language)
   const close = () => setWorkspacePanel(null)
+  const toggleExpanded = () => setWorkspaceExpanded(!expanded)
   const canPage = versions.length > 1
 
   const copySource = () => {
@@ -203,69 +218,68 @@ function WorkspacePanel() {
   return (
     <aside
       ref={panelRef}
-      className={cn('workspace-panel', open && 'is-open', !open && 'is-closing')}
+      className={cn('workspace-panel', open && 'is-open', !open && 'is-closing', expanded && 'is-expanded')}
       style={
         {
           '--workspace-w': `${widthPx}px`,
-          width: open ? widthPx : 0,
+          width: !open ? 0 : expanded ? '100%' : `min(${widthPx}px, 42%)`,
           transition: `width ${EXIT_MS}ms ${EASE}`,
         } as React.CSSProperties
       }
-      aria-label={t('Workspace')}
+      aria-label={t('Artifact Studio')}
       aria-hidden={!open}
       tabIndex={-1}
     >
-      <div
-        className="workspace-panel-resizer"
-        onPointerDown={onResizePointerDown}
-        role="separator"
-        aria-orientation="vertical"
-        aria-valuenow={widthPx}
-        aria-valuemin={320}
-        aria-valuemax={720}
-        aria-label={t('Resize workspace')}
-      />
+      {!expanded ? (
+        <div
+          className="workspace-panel-resizer"
+          onPointerDown={onResizePointerDown}
+          role="separator"
+          aria-orientation="vertical"
+          aria-valuenow={widthPx}
+          aria-valuemin={320}
+          aria-valuemax={720}
+          aria-label={t('Resize workspace')}
+        />
+      ) : null}
 
-      <div className="workspace-panel-shell" style={{ width: widthPx }}>
+      <div className="workspace-panel-shell">
         <div className="workspace-panel-inner">
           <header className="workspace-panel-header">
             <div className="workspace-panel-header-left min-w-0">
               <span className="workspace-panel-kicker">{kicker}</span>
-              <Text size="sm" fw={600} className="workspace-panel-title truncate" title={title}>
+              <span className="workspace-panel-title" title={title}>
                 {title}
-              </Text>
+              </span>
               {canPage ? (
                 <div className="workspace-version-pager">
                   <Tooltip label={t('Previous version')} openDelay={200}>
                     <ActionIcon
                       variant="subtle"
                       color="gray"
-                      size={24}
-                      radius="xl"
+                      size={22}
+                      radius="md"
                       disabled={versionIndex <= 0}
                       onClick={() => showVersion(versionIndex - 1)}
                       aria-label={t('Previous version')}
                     >
-                      <IconChevronLeft size={14} stroke={1.5} />
+                      <IconChevronLeft size={13} stroke={1.7} />
                     </ActionIcon>
                   </Tooltip>
                   <span className="workspace-version-label tabular-nums">
                     {t('v{{version}}', { version: versions[versionIndex]?.version ?? versionIndex + 1 })}
-                    <span className="workspace-version-count">
-                      {versionIndex + 1}/{versions.length}
-                    </span>
                   </span>
                   <Tooltip label={t('Next version')} openDelay={200}>
                     <ActionIcon
                       variant="subtle"
                       color="gray"
-                      size={24}
-                      radius="xl"
+                      size={22}
+                      radius="md"
                       disabled={versionIndex >= versions.length - 1}
                       onClick={() => showVersion(versionIndex + 1)}
                       aria-label={t('Next version')}
                     >
-                      <IconChevronRight size={14} stroke={1.5} />
+                      <IconChevronRight size={13} stroke={1.7} />
                     </ActionIcon>
                   </Tooltip>
                 </div>
@@ -273,62 +287,86 @@ function WorkspacePanel() {
             </div>
 
             <div className="workspace-panel-header-actions">
-              <SegmentedControl
-                size="xs"
-                value={tab}
-                onChange={(v) => setTab(v as 'preview' | 'code')}
-                data={[
-                  { label: t('Preview'), value: 'preview' },
-                  { label: t('Code'), value: 'code' },
-                ]}
-                className="workspace-segmented"
-                classNames={{
-                  root: 'workspace-segmented-root',
-                  label: 'workspace-segmented-label',
-                }}
-              />
-
-              <div className="workspace-action-island" role="toolbar" aria-label={t('Workspace actions')}>
+              <div className="workspace-tabs" role="tablist" aria-label={t('Artifact')}>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === 'preview'}
+                  className={cn('workspace-tab', tab === 'preview' && 'is-on')}
+                  onClick={() => setTab('preview')}
+                >
+                  {t('Preview')}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === 'code'}
+                  className={cn('workspace-tab', tab === 'code' && 'is-on')}
+                  onClick={() => setTab('code')}
+                >
+                  {t('Code')}
+                </button>
+              </div>
+              <div className="workspace-header-icons" role="toolbar" aria-label={t('Artifact Studio actions')}>
+                <Tooltip label={expanded ? t('Exit full workspace') : t('Expand workspace')} openDelay={200}>
+                  <ActionIcon
+                    variant="subtle"
+                    color="gray"
+                    size={26}
+                    radius="md"
+                    onClick={toggleExpanded}
+                    aria-label={expanded ? t('Exit full workspace') : t('Expand workspace')}
+                    aria-pressed={expanded}
+                    className="workspace-action-btn workspace-header-expand"
+                  >
+                    {expanded ? (
+                      <IconArrowsMinimize size={14} stroke={1.6} />
+                    ) : (
+                      <IconArrowsMaximize size={14} stroke={1.6} />
+                    )}
+                  </ActionIcon>
+                </Tooltip>
                 <Tooltip label={t('Refresh')} openDelay={200}>
                   <ActionIcon
                     variant="subtle"
                     color="gray"
-                    size={32}
-                    radius="xl"
+                    size={26}
+                    radius="md"
                     onClick={() => setReloadSign((n) => n + 1)}
                     aria-label={t('Refresh')}
                     className="workspace-action-btn"
                   >
-                    <IconReload size={15} stroke={1.5} />
+                    <IconReload size={14} stroke={1.6} />
                   </ActionIcon>
                 </Tooltip>
                 <Tooltip label={t('Copy source')} openDelay={200}>
                   <ActionIcon
                     variant="subtle"
                     color="gray"
-                    size={32}
-                    radius="xl"
+                    size={26}
+                    radius="md"
                     onClick={copySource}
                     aria-label={t('Copy source')}
                     className="workspace-action-btn"
                   >
-                    <IconCopy size={15} stroke={1.5} />
+                    <IconCopy size={14} stroke={1.6} />
                   </ActionIcon>
                 </Tooltip>
-                <span className="workspace-action-sep" aria-hidden />
+                {expanded && session ? <Toolbar session={session} compact /> : null}
                 <Tooltip label={t('Close workspace')} openDelay={200}>
                   <ActionIcon
                     variant="subtle"
                     color="gray"
-                    size={32}
-                    radius="xl"
+                    size={26}
+                    radius="md"
                     onClick={close}
                     aria-label={t('Close')}
                     className="workspace-action-btn workspace-action-close"
                   >
-                    <IconX size={15} stroke={1.5} />
+                    <IconX size={14} stroke={1.6} />
                   </ActionIcon>
                 </Tooltip>
+                {expanded ? <WindowControls className="workspace-window-controls" /> : null}
               </div>
             </div>
           </header>

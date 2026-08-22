@@ -286,7 +286,7 @@ fn onnx_embed(model_dir: &Path, texts: &[String]) -> Result<Vec<Vec<f32>>, Strin
     use fastembed::TextEmbedding;
     // cache_dir is the parent of multilingual-e5-small (app data `models/`).
     let cache = model_dir.parent().unwrap_or(model_dir);
-    let mut model = TextEmbedding::try_new(e5_init_options(cache))
+    let model = TextEmbedding::try_new(e5_init_options(cache))
         .map_err(|e| format!("init local e5: {e}"))?;
     // fastembed 4.x does not auto-prefix E5 inputs; caller already added
     // `passage:` / `query:`. Do not prefix again.

@@ -70,10 +70,17 @@ async function runShell(
   command: string,
   timeoutMs = 30_000
 ): Promise<{ exitCode: number; stdout: string; stderr: string }> {
-  if (!platform.executeCommand) {
-    throw new Error('Command execution is only available in the desktop app.')
+  if (!platform.videoYtDlp) {
+    throw new Error('yt-dlp detection is only available in the desktop app.')
   }
-  return platform.executeCommand(command, undefined, timeoutMs)
+  void command
+  void timeoutMs
+  const result = (await platform.videoYtDlp('detect')) as { installed?: boolean; version?: string }
+  return {
+    exitCode: result?.installed ? 0 : 1,
+    stdout: result?.version || '',
+    stderr: result?.installed ? '' : 'yt-dlp not found',
+  }
 }
 
 async function probeBinary(absoluteOrCommand: string, useWhich = false): Promise<{ path: string; version?: string } | null> {

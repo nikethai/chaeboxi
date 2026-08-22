@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | **Product** | Chaeboxi 1.7.0 |
-| **Last updated** | 2026-08-11 |
+| **Last updated** | 2026-08-22 |
 
 High-level map of the monorepo for onboarding and navigation. Prefer feature docs (linked below) for subsystem detail.
 
@@ -14,7 +14,7 @@ chaeboxi/
 ├── src/
 │   ├── renderer/     # React 18 UI, routes, stores, packages, platform
 │   └── shared/       # Providers, models, types, pure agent/room logic
-├── src-tauri/        # Tauri 2 / Rust backend (IPC, MCP, KB, shell)
+├── src-tauri/        # Tauri 2 / Rust backend (IPC, MCP, KB, workspace, shell)
 ├── test/             # Integration / case tests
 ├── docs/             # Product & feature documentation
 ├── plans/            # Implementation plans (timestamped folders)
@@ -104,7 +104,8 @@ IPC is **multiplexed**: one Tauri command `ipc_invoke(channel, args)` dispatches
 - **OpenClaw** — `openclaw:*` WebSocket invoke / stream / cancel
 - **MCP** — `mcp:server:create|start|list-tools|call-tool|close|list|status` (stdio + HTTP; connect-per-operation in Rust)
 - **Knowledge base** — `kb:*`, `kb:file:*`, `kb:search`, `kb:embed:status` (`src-tauri/src/kb/`; desktop SQLite `chaeboxi_kb.db` + hybrid RRF; mobile keyword/in-memory)
-- **FS / shell** — `fs:*`, `execute_command`
+- **Project workspace** — `workspace:*` picker/capability APIs (`src-tauri/src/workspace/`); `fs:*` / `execute_command` rejected
+- **Narrow brokers** — `codex:read-auth-config`, `video:yt-dlp`
 - **Skills / commands / hooks scan** — filesystem discovery helpers
 - **Desktop shell** — tray, global shortcuts, screenshot (via `desktop_shell`)
 
@@ -135,6 +136,7 @@ See [testing.md](./testing.md).
 | [memory.md](./memory.md) | Memory |
 | [rag.md](./rag.md) | Knowledge base / RAG |
 | [storage.md](./storage.md) | Storage backends & migration |
+| [project-workspaces.md](./project-workspaces.md) | Native Project folders, explorer, safe edits |
 | [video-url-reader.md](./video-url-reader.md) | Video URL tool |
 | [browser-agent.md](./browser-agent.md) | Desktop browser agent tools |
 | [computer-use.md](./computer-use.md) | Desktop computer use |

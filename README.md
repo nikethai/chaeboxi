@@ -34,6 +34,7 @@ Release process for maintainers: [docs/deployment-guide.md](./docs/deployment-gu
 - **Bring your own keys** — no bundled paid AI subscription
 - **16+ providers** — OpenAI, Anthropic, Gemini, Ollama, OpenRouter, and more
 - **Agents & tools** — multi-agent rooms, skills, hooks, MCP, public video URL reader
+- **Project folders** — desktop Projects can bind one user-picked directory; generic project shell is unavailable
 - **Memory & RAG** — knowledge base and session memory
 - **Cross-platform** — Windows, macOS, Linux, web, iOS, Android targets
 

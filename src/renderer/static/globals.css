@@ -311,10 +311,190 @@
     overflow: hidden;
   }
 
+  /* File tree — same rail chrome as the session list; not Artifact Studio */
+  .project-explorer {
+    display: flex;
+    flex-direction: column;
+    flex: 0 0 220px;
+    width: 220px;
+    min-width: 180px;
+    max-width: 280px;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    background: var(--chatbox-background-rail);
+    box-shadow: 1px 0 0 color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .project-explorer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.25rem;
+    flex: 0 0 auto;
+    min-height: 30px;
+    padding: 0.55rem 0.55rem 0.15rem 0.7rem;
+  }
+
+  .project-explorer-kicker {
+    font-size: 0.65rem;
+    font-weight: 650;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--chatbox-tint-tertiary);
+  }
+
+  .project-explorer-root {
+    flex: 0 0 auto;
+    padding: 0.15rem 0.7rem 0.25rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--chatbox-tint-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .project-explorer-filter {
+    flex: 0 0 auto;
+    margin: 0 0.45rem 0.35rem;
+    width: calc(100% - 0.9rem);
+    height: 24px;
+    padding: 0 0.45rem;
+    border: none;
+    border-radius: 5px;
+    background: color-mix(in srgb, var(--chatbox-background-tertiary) 70%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 40%, transparent);
+    color: var(--chatbox-tint-primary);
+    font-size: 0.72rem;
+    outline: none;
+  }
+
+  .project-explorer-filter::placeholder {
+    color: var(--chatbox-tint-tertiary);
+  }
+
+  .project-explorer-filter:focus {
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 45%, transparent);
+  }
+
+  .project-explorer-tree {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 0 0 0.75rem;
+  }
+
+  .project-explorer-empty {
+    flex: 1 1 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 0.65rem;
+    padding: 0.35rem 0.7rem 1rem;
+  }
+
+  .project-explorer-empty-copy {
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    color: var(--chatbox-tint-secondary);
+    text-wrap: pretty;
+  }
+
+  .project-explorer-open {
+    align-self: flex-start;
+    height: 24px;
+    padding: 0 0.55rem;
+    border-radius: 5px;
+    border: none;
+    background: color-mix(in srgb, var(--chatbox-background-tertiary) 80%, transparent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-border-primary) 55%, transparent);
+    color: var(--chatbox-tint-primary);
+    font-size: 0.72rem;
+    font-weight: 550;
+    cursor: pointer;
+  }
+
+  .project-explorer-open:hover {
+    background: var(--chatbox-background-tertiary);
+  }
+
+  .project-explorer-open:active {
+    transform: scale(0.96);
+  }
+
+  .project-explorer-muted {
+    padding: 0.35rem 0.7rem;
+    font-size: 0.72rem;
+    color: var(--chatbox-tint-tertiary);
+  }
+
+  .project-explorer-row {
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+    width: 100%;
+    height: 22px;
+    padding: 0 0.35rem 0 0;
+    border-radius: 0;
+    font-size: 0.78rem;
+    line-height: 22px;
+    color: var(--chatbox-tint-primary);
+    text-align: left;
+  }
+
+  .project-explorer-row:hover {
+    background: color-mix(in srgb, var(--chatbox-background-tertiary) 90%, transparent);
+  }
+
+  .project-explorer-row.is-attached {
+    background: color-mix(in srgb, var(--chatbox-tint-brand) 10%, transparent);
+  }
+
+  .project-explorer-chevron,
+  .project-explorer-chevron-spacer {
+    width: 14px;
+    flex-shrink: 0;
+    color: var(--chatbox-tint-tertiary);
+  }
+
+  .project-explorer-glyph {
+    flex-shrink: 0;
+    color: var(--chatbox-tint-secondary);
+    opacity: 0.9;
+  }
+
+  .project-explorer-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .session-shell.has-workspace .session-main-col {
-    min-width: min(360px, 100%);
+    min-width: min(420px, 100%);
     /* Soft reflow when workspace docks — avoid hard snap */
     transition: min-width 260ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .session-shell.has-workspace-expanded .session-main-col,
+  .session-shell.has-workspace-expanded .project-explorer {
+    flex: 0 0 0;
+    width: 0;
+    min-width: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .session-shell.has-workspace-expanded > .title-bar-row {
+    display: none;
   }
 
   .session-thread {
@@ -4637,6 +4817,16 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   max-width: none !important;
 }
 
+.user-menu-dropdown--rail.mantine-Menu-dropdown,
+.user-menu-dropdown--rail {
+  min-width: 240px !important;
+  width: 240px !important;
+}
+
+.user-menu-dropdown--rail .mantine-Menu-itemLabel {
+  white-space: nowrap;
+}
+
 .user-menu-identity {
   display: grid;
   grid-template-columns: 36px 1fr;
@@ -4677,6 +4867,9 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   font-weight: 500;
   color: var(--chatbox-tint-tertiary);
   letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .user-menu-dropdown .mantine-Menu-label {
@@ -7927,22 +8120,46 @@ button.session-statusline-plan:focus-visible {
 /* ── Workspace side panel (diagram / artifact) — studio, Claude Artifacts–like ── */
 .workspace-panel {
   position: relative;
-  flex: 0 0 auto;
+  flex: 0 1 auto;
   height: 100%;
   min-height: 0;
   min-width: 0;
+  max-width: min(720px, 42%);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   z-index: 20;
   -webkit-font-smoothing: antialiased;
+  container-type: inline-size;
   /* Width driven inline; shell fixed-width inside prevents content reflow jitter */
+}
+
+.workspace-panel.is-expanded {
+  flex: 1 1 auto;
+  max-width: none;
+  min-width: 0;
+}
+
+.workspace-panel.is-expanded .workspace-panel-header {
+  -webkit-app-region: drag;
+  padding-right: 0.75rem;
+}
+
+.workspace-panel.is-expanded .workspace-panel-header-actions,
+.workspace-panel.is-expanded .workspace-panel-header .controls {
+  -webkit-app-region: no-drag;
+}
+
+.workspace-window-controls {
+  margin-left: 0.15rem;
 }
 
 .workspace-panel-shell {
   height: 100%;
+  width: 100%;
   min-height: 0;
-  flex: 0 0 auto;
+  min-width: 0;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   opacity: 0;
@@ -8004,8 +8221,8 @@ button.session-statusline-plan:focus-visible {
   height: 100%;
   min-height: 0;
   margin: 0;
-  /* Double-bezel: outer tray */
-  padding: 4px;
+  /* Double-bezel: extra end pad so close isn't clipped by the window edge */
+  padding: 4px 12px 4px 4px;
   background: color-mix(in srgb, var(--chatbox-background-tertiary) 70%, transparent);
   box-shadow:
     -1px 0 0 color-mix(in srgb, var(--chatbox-tint-primary) 7%, transparent),
@@ -8024,65 +8241,113 @@ button.session-statusline-plan:focus-visible {
   align-items: center;
   justify-content: space-between;
   gap: 0.65rem;
-  flex-wrap: wrap;
-  padding: 0.5rem 0.55rem 0.5rem 0.9rem;
-  /* concentric with 4px tray → ~12px if shell used rounded; keep flush for full-height dock */
-  border-radius: 12px 12px 0 0;
+  flex-wrap: nowrap;
+  min-height: 2.5rem;
+  padding: 0 0.65rem 0 0.7rem;
   background: var(--chatbox-background-secondary);
   box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--chatbox-tint-primary) 6%, transparent);
 }
 
 .workspace-panel-header-left {
   display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1 1 auto;
   min-width: 0;
+  overflow: hidden;
 }
 
 .workspace-panel-header-actions {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  flex-wrap: wrap;
+  gap: 0.2rem;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
   justify-content: flex-end;
 }
 
 .workspace-panel-kicker {
   font-family: var(--chatbox-font-mono);
-  font-size: 0.625rem !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.08em;
+  font-size: 0.625rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--chatbox-tint-tertiary) !important;
-  line-height: 1.2;
+  color: var(--chatbox-tint-tertiary);
+  line-height: 1;
+  flex-shrink: 0;
 }
 
 .workspace-panel-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8125rem;
+  font-weight: 600;
   letter-spacing: -0.015em;
-  color: var(--chatbox-tint-primary) !important;
-  text-wrap: balance;
+  color: var(--chatbox-tint-primary);
 }
 
-.workspace-segmented-root {
-  background: color-mix(in srgb, var(--chatbox-background-primary) 55%, transparent) !important;
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 6%, transparent) !important;
-  border: none !important;
-}
-
-.workspace-segmented-label {
-  font-size: 0.6875rem !important;
-  font-weight: 500 !important;
-  padding-inline: 0.65rem !important;
-}
-
-.workspace-action-island {
+.workspace-tabs {
   display: flex;
   align-items: center;
   gap: 0.1rem;
-  padding: 0.15rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--chatbox-background-primary) 40%, transparent);
+  padding: 0.12rem;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--chatbox-background-primary) 70%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 6%, transparent);
+}
+
+.workspace-tab {
+  height: 1.5rem;
+  padding: 0 0.55rem;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--chatbox-tint-secondary);
+  font-size: 0.72rem;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+}
+
+.workspace-tab:hover {
+  color: var(--chatbox-tint-primary);
+}
+
+.workspace-tab.is-on {
+  background: var(--chatbox-background-secondary);
+  color: var(--chatbox-tint-primary);
+  box-shadow: 0 0.5px 0.5px color-mix(in srgb, #000 8%, transparent);
+}
+
+.workspace-tab:active {
+  transform: scale(0.96);
+}
+
+.workspace-header-icons {
+  display: flex;
+  align-items: center;
+  gap: 0.05rem;
+  margin-left: 0.1rem;
+  flex-shrink: 0;
+}
+
+.workspace-action-close {
+  flex-shrink: 0;
+}
+
+@container (max-width: 420px) {
+  .workspace-panel-kicker,
+  .workspace-version-pager {
+    display: none;
+  }
+
+  .workspace-tab {
+    padding: 0 0.4rem;
+  }
 }
 
 .workspace-action-btn {
@@ -8229,8 +8494,9 @@ button.session-statusline-plan:focus-visible {
 .workspace-version-pager {
   display: flex;
   align-items: center;
-  gap: 0.15rem;
-  margin-top: 0.15rem;
+  gap: 0.05rem;
+  flex-shrink: 0;
+  margin-left: 0.1rem;
 }
 
 .workspace-version-label {
@@ -8246,55 +8512,62 @@ button.session-statusline-plan:focus-visible {
   opacity: 0.75;
 }
 
-/* Artifact card in chat — one clickable row, Claude-quiet */
+/* Artifact chip in chat — hug content, same weight as follow-up chips */
 .artifact-card {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.7rem;
-  width: 100%;
-  max-width: 22rem;
-  margin: 0.45rem 0 0.1rem;
-  padding: 0.55rem 0.65rem 0.55rem 0.55rem;
-  border-radius: 11px;
-  background: var(--chatbox-background-secondary);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 7%, transparent);
+  gap: 0.35rem;
+  width: max-content;
+  max-width: 100%;
+  min-height: 2rem;
+  margin: 0.35rem 0 0.1rem;
+  padding: 0.28rem 0.45rem 0.28rem 0.4rem;
+  border-radius: var(--chatbox-radius-md);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 12%, transparent);
   text-align: left;
   -webkit-font-smoothing: antialiased;
-  transition-property: background-color, box-shadow, transform;
-  transition-duration: 150ms;
-  transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  transition-property: color, background-color, box-shadow, transform;
+  transition-duration: 140ms;
+  transition-timing-function: var(--chatbox-ease, cubic-bezier(0.2, 0, 0, 1));
 }
 
 .artifact-card:hover {
-  background: color-mix(in srgb, var(--chatbox-background-secondary) 88%, var(--chatbox-tint-brand) 6%);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 16%, transparent);
+  background: var(--chatbox-background-tertiary);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 18%, transparent);
 }
 
 .artifact-card:active {
-  transform: scale(0.99);
+  transform: scale(0.96);
 }
 
 .artifact-card-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 9px;
-  color: var(--chatbox-tint-brand);
-  background: color-mix(in srgb, var(--chatbox-tint-brand) 12%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 18%, transparent);
+  width: 1rem;
+  height: 1rem;
+  color: var(--chatbox-tint-secondary);
   flex-shrink: 0;
 }
 
 .artifact-card-title {
-  letter-spacing: -0.015em;
-  color: var(--chatbox-tint-primary) !important;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--chatbox-tint-primary);
 }
 
 .artifact-card-sub {
-  color: var(--chatbox-tint-tertiary) !important;
-  margin-top: 0.05rem;
+  flex-shrink: 0;
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--chatbox-tint-tertiary);
+  white-space: nowrap;
 }
 
 .artifact-card-chevron {
@@ -8375,6 +8648,10 @@ button.session-statusline-plan:focus-visible {
     position: relative;
   }
 
+  .project-explorer {
+    display: none;
+  }
+
   .workspace-panel {
     position: absolute;
     inset: 0;
@@ -8391,13 +8668,15 @@ button.session-statusline-plan:focus-visible {
     width: 100% !important;
   }
 
-  .workspace-panel-resizer {
+  .workspace-panel-resizer,
+  .workspace-header-expand {
     display: none;
   }
 
   .workspace-panel-inner {
     box-shadow: none;
     background: var(--chatbox-background-primary);
+    padding: 4px;
   }
 }
 

@@ -717,6 +717,7 @@ dependencies = [
  "http",
  "image",
  "keyring",
+ "libc",
  "notify-rust",
  "pdf-extract",
  "rand_core 0.6.4",

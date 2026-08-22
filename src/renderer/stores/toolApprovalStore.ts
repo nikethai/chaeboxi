@@ -11,6 +11,8 @@ export type ToolApprovalRecord = {
   riskTier: ToolRiskTier
   scope: ToolApprovalScope
   timestamp: number
+  /** Concrete invocation fingerprint; required for workspace mutations. */
+  argsFingerprint?: string
 }
 
 export type ToolApprovalAuditEntry = {

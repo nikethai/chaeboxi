@@ -91,7 +91,7 @@ export function settings(): Settings {
     enableLaTeXRendering: true,
     enableMermaidRendering: true,
     injectDefaultMetadata: true,
-    autoPreviewArtifacts: false,
+    autoPreviewArtifacts: true,
     autoCollapseCodeBlock: true,
     pasteLongTextAsAFile: true,
 

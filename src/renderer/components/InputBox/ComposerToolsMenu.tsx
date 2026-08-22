@@ -168,8 +168,6 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
   }, [workspaceRoot])
 
   const saveWorkspace = () => {
-    const next = workspaceDraft.trim()
-    onWorkspaceRootChange?.(next || undefined)
     setWorkspaceModalOpen(false)
     setOpened(false)
   }
@@ -558,27 +556,13 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
           <Flex direction="column" gap="sm">
             <Text size="sm" c="dimmed">
               {t(
-                'The AI can only read and edit files inside this folder. Paste the full path (for example /Users/you/projects/my-app).'
+                'Choose a folder from the Projects rail using the system folder picker. Pasted absolute paths cannot authorize access. Generic project shell is unavailable.'
               )}
             </Text>
-            <TextInput
-              label={t('Folder path')}
-              placeholder="/Users/you/projects/my-app"
-              value={workspaceDraft}
-              onChange={(e) => setWorkspaceDraft(e.currentTarget.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault()
-                  saveWorkspace()
-                }
-              }}
-              data-autofocus
-            />
             <Flex justify="flex-end" gap="xs" mt="xs">
               <Button variant="default" onClick={() => setWorkspaceModalOpen(false)}>
-                {t('Cancel')}
+                {t('Close')}
               </Button>
-              <Button onClick={saveWorkspace}>{t('Save')}</Button>
             </Flex>
           </Flex>
         </Modal>
@@ -730,27 +714,13 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
         <Flex direction="column" gap="sm">
           <Text size="sm" c="dimmed">
             {t(
-              'The AI can only read and edit files inside this folder. Paste the full path (for example /Users/you/projects/my-app).'
+              'Choose a folder from the Projects rail using the system folder picker. Pasted absolute paths cannot authorize access. Generic project shell is unavailable.'
             )}
           </Text>
-          <TextInput
-            label={t('Folder path')}
-            placeholder="/Users/you/projects/my-app"
-            value={workspaceDraft}
-            onChange={(e) => setWorkspaceDraft(e.currentTarget.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                saveWorkspace()
-              }
-            }}
-            data-autofocus
-          />
           <Flex justify="flex-end" gap="xs" mt="xs">
             <Button variant="default" onClick={() => setWorkspaceModalOpen(false)}>
-              {t('Cancel')}
+              {t('Close')}
             </Button>
-            <Button onClick={saveWorkspace}>{t('Save')}</Button>
           </Flex>
         </Flex>
       </Modal>

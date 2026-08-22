@@ -111,6 +111,7 @@ Runtime platform detection in `platform/index.ts`: selects `DesktopPlatform` (Ta
 - **MCP Client**: `rmcp` crate for stdio and HTTP transports. Connect-per-operation tool list / invoke.
 - **Knowledge Base (desktop v1)**: `src-tauri/src/kb/` — SQLite `chaeboxi_kb.db`, overlapping chunks, local `multilingual-e5-small` (download-once ONNX, not bundled), hybrid keyword + cosine + RRF search. Mobile stays keyword/in-memory. **Not** Mastra / `@mastra/rag`.
 - **Process Management**: Child process spawning for MCP stdio servers
+- **Project workspace authority**: `src-tauri/src/workspace/` — native picker-owned directory bindings, window/project/generation capabilities, handle-relative list/read/search/mutate. Broad renderer `fs:*` / `execute_command` is rejected. See `docs/project-workspaces.md`.
 - **IPC Bridge**: `window.desktopAPI` adapter created by `tauri_ipc_adapter.ts`
 
 ### Build Variants

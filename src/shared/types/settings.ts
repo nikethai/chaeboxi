@@ -571,7 +571,7 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
   enableMermaidRendering: z.boolean().default(true),
   enableLaTeXRendering: z.boolean().default(true),
   injectDefaultMetadata: z.boolean().default(true), // Inject default metadata (model name, date)
-  autoPreviewArtifacts: z.boolean().default(false), // Auto-expand artifact previews
+  autoPreviewArtifacts: z.boolean().default(true), // Auto-expand artifact previews while writing
   autoCollapseCodeBlock: z.boolean().default(true), // Auto-collapse code blocks
   pasteLongTextAsAFile: z.boolean().default(true), // Paste long text as a file
 
@@ -593,6 +593,20 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
   trayIntroSeen: z.boolean().default(false).catch(false),
 
   shortcuts: ShortcutSettingSchema,
+
+  /**
+   * Independent Project Workspace rollout flags. Each can fail closed without
+   * restoring broad renderer filesystem/shell IPC.
+   */
+  projectWorkspace: z
+    .object({
+      migrationEnabled: z.boolean().optional().catch(true),
+      directoryUxEnabled: z.boolean().optional().catch(true),
+      explorerEnabled: z.boolean().optional().catch(true),
+      mutationEnabled: z.boolean().optional().catch(true),
+    })
+    .optional()
+    .catch(undefined),
 
   extension: ExtensionSettingsSchema,
   mcp: MCPSettingsSchema,

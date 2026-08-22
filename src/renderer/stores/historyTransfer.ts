@@ -66,6 +66,11 @@ function parseSessionMetaList(value: unknown): SessionMeta[] {
     .map((result) => result.data)
 }
 
+function stripPrivilegedWorkspace(session: Session): Session {
+  const { workspaceRoot: _workspaceRoot, ...rest } = session
+  return rest
+}
+
 function getSessionMeta(session: Session): SessionMeta {
   return SessionMetaSchema.parse({
     id: session.id,
@@ -73,6 +78,7 @@ function getSessionMeta(session: Session): SessionMeta {
     starred: session.starred,
     hidden: session.hidden,
     folderId: session.folderId,
+    projectId: session.projectId || session.folderId,
     tags: session.tags,
     archived: session.archived,
     assistantAvatarKey: session.assistantAvatarKey,
@@ -158,7 +164,7 @@ function buildPayload(sessions: Session[], store: HistoryTransferStorage): Histo
     __exported_at: new Date().toISOString(),
     __storage_type: store.getStorageType(),
     sessionMetaList,
-    sessions: sortedSessions,
+    sessions: sortedSessions.map(stripPrivilegedWorkspace),
   }
 }
 

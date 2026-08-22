@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const getToolApprovalMock = vi.hoisted(() => vi.fn())
 const addAuditEntryMock = vi.hoisted(() => vi.fn())
+const addApprovalMock = vi.hoisted(() => vi.fn())
+const removeApprovalMock = vi.hoisted(() => vi.fn())
 const showModalMock = vi.hoisted(() => vi.fn())
 
 vi.mock('@/stores/toolApprovalStore', () => ({
@@ -10,6 +12,8 @@ vi.mock('@/stores/toolApprovalStore', () => ({
   toolApprovalStore: {
     getState: () => ({
       addAuditEntry: addAuditEntryMock,
+      addApproval: addApprovalMock,
+      removeApproval: removeApprovalMock,
     }),
   },
 }))
@@ -22,9 +26,8 @@ vi.mock('@ebay/nice-modal-react', () => ({
 
 vi.mock('../tools/risk-engine', () => ({
   getToolRiskTier: (name: string) => {
-    if (name.startsWith('computer_click') || name === 'computer_type') return ToolRiskTier.CRITICAL
-    if (name === 'browser_click') return ToolRiskTier.HIGH
-    if (name === 'browser_snapshot') return ToolRiskTier.LOW
+    if (name === 'delete_file' || name === 'edit_file' || name === 'create_file') return ToolRiskTier.HIGH
+    if (name === 'web_search') return ToolRiskTier.LOW
     return ToolRiskTier.MEDIUM
   },
 }))
@@ -33,77 +36,88 @@ vi.mock('i18next', () => ({
   t: (s: string) => s,
 }))
 
-// Mirrors stream-text wrap policy (D8): LOW always auto; session scope may auto
-// MEDIUM/HIGH; CRITICAL must never session-auto. Typed helper keeps enum comparisons valid.
+import { wrapToolsWithApproval, workspaceApprovalFingerprint } from './wrap-tools-approval'
 
-function canSessionAutoApprove(
-  riskTier: ToolRiskTier,
-  existingApproval?: { scope: 'session'; riskTier: ToolRiskTier },
-): boolean {
-  return (
-    riskTier === ToolRiskTier.LOW ||
-    (existingApproval?.scope === 'session' &&
-      existingApproval.riskTier === riskTier &&
-      riskTier !== ToolRiskTier.CRITICAL)
-  )
-}
-
-describe('CRITICAL approval policy (D8)', () => {
+describe('wrapToolsWithApproval shipped wrapper', () => {
   beforeEach(() => {
     getToolApprovalMock.mockReset()
     addAuditEntryMock.mockReset()
+    addApprovalMock.mockReset()
+    removeApprovalMock.mockReset()
     showModalMock.mockReset()
   })
 
-  it('session approval must not auto-approve CRITICAL', () => {
-    expect(
-      canSessionAutoApprove(ToolRiskTier.CRITICAL, {
-        scope: 'session',
-        riskTier: ToolRiskTier.CRITICAL,
-      }),
-    ).toBe(false)
+  it('never session-auto-approves delete_file even with a session HIGH approval', async () => {
+    getToolApprovalMock.mockReturnValue({
+      toolName: 'delete_file',
+      riskTier: ToolRiskTier.HIGH,
+      scope: 'session',
+      timestamp: 1,
+      argsFingerprint: workspaceApprovalFingerprint('delete_file', { path: 'a.txt' }),
+    })
+    const execute = vi.fn(async () => ({ ok: true }))
+    const wrapped = wrapToolsWithApproval('sess-1', {
+      delete_file: { description: 'delete a file', execute },
+    } as never)
+    showModalMock.mockResolvedValue('deny')
+    const result = await (wrapped.delete_file as { execute: (a: unknown, c: unknown) => Promise<{ denied?: boolean }> }).execute(
+      { path: 'a.txt', expected_revision: 'r' },
+      {}
+    )
+    expect(execute).not.toHaveBeenCalled()
+    expect(result.denied).toBe(true)
+    expect(showModalMock).toHaveBeenCalled()
   })
 
-  it('session approval can auto-approve MEDIUM', () => {
-    expect(
-      canSessionAutoApprove(ToolRiskTier.MEDIUM, {
-        scope: 'session',
-        riskTier: ToolRiskTier.MEDIUM,
-      }),
-    ).toBe(true)
+  it('stores argsFingerprint and requires a new approval when args change', async () => {
+    getToolApprovalMock.mockReturnValue(undefined)
+    const execute = vi.fn(async () => ({ ok: true }))
+    const wrapped = wrapToolsWithApproval('sess-1', {
+      edit_file: { description: 'edit a file', execute },
+    } as never)
+    showModalMock.mockResolvedValue('once')
+    const args = { path: 'a.txt', old_string: 'a', new_string: 'b', expected_revision: 'r1' }
+    await (wrapped.edit_file as { execute: (a: unknown, c: unknown) => Promise<unknown> }).execute(args, {})
+    expect(addApprovalMock).toHaveBeenCalledWith(
+      'sess-1',
+      expect.objectContaining({
+        toolName: 'edit_file',
+        argsFingerprint: workspaceApprovalFingerprint('edit_file', args),
+      })
+    )
+    expect(execute).toHaveBeenCalled()
+
+    addApprovalMock.mockClear()
+    execute.mockClear()
+    showModalMock.mockClear()
+    const previous = workspaceApprovalFingerprint('edit_file', args)
+    getToolApprovalMock.mockReturnValue({
+      toolName: 'edit_file',
+      riskTier: ToolRiskTier.HIGH,
+      scope: 'session',
+      timestamp: 1,
+      argsFingerprint: previous,
+    })
+    showModalMock.mockResolvedValue('once')
+    const changed = { ...args, new_string: 'c' }
+    await (wrapped.edit_file as { execute: (a: unknown, c: unknown) => Promise<unknown> }).execute(changed, {})
+    expect(showModalMock).toHaveBeenCalled()
+    expect(addApprovalMock).toHaveBeenCalledWith(
+      'sess-1',
+      expect.objectContaining({
+        argsFingerprint: workspaceApprovalFingerprint('edit_file', changed),
+      })
+    )
   })
 
-  it('HIGH can session-auto after explicit allow-session (CRITICAL still never)', () => {
-    expect(
-      canSessionAutoApprove(ToolRiskTier.HIGH, {
-        scope: 'session',
-        riskTier: ToolRiskTier.HIGH,
-      }),
-    ).toBe(true)
-    expect(
-      canSessionAutoApprove(ToolRiskTier.CRITICAL, {
-        scope: 'session',
-        riskTier: ToolRiskTier.CRITICAL,
-      }),
-    ).toBe(false)
-  })
-
-  it('LOW always auto', () => {
-    expect(canSessionAutoApprove(ToolRiskTier.LOW)).toBe(true)
-  })
-})
-
-describe('risk engine browser/computer intents', () => {
-  it('classifies browser and computer tools', async () => {
-    vi.doUnmock('../tools/risk-engine')
-    const { getToolRiskTier } = await import('../tools/risk-engine')
-    // Prefer explicit name matches from updated intent patterns
-    expect(getToolRiskTier('browser_snapshot')).toBe(ToolRiskTier.LOW)
-    expect(getToolRiskTier('browser_click')).toBe(ToolRiskTier.HIGH)
-    expect(getToolRiskTier('browser_navigate')).toBe(ToolRiskTier.HIGH)
-    expect(getToolRiskTier('computer_screenshot')).toBe(ToolRiskTier.MEDIUM)
-    expect(getToolRiskTier('computer_click')).toBe(ToolRiskTier.CRITICAL)
-    expect(getToolRiskTier('computer_type')).toBe(ToolRiskTier.CRITICAL)
-    expect(getToolRiskTier('computer_open_app')).toBe(ToolRiskTier.CRITICAL)
+  it('auto-approves LOW tools without a modal', async () => {
+    getToolApprovalMock.mockReturnValue(undefined)
+    const execute = vi.fn(async () => ({ hits: [] }))
+    const wrapped = wrapToolsWithApproval('sess-1', {
+      web_search: { description: 'search the web', execute },
+    } as never)
+    await (wrapped.web_search as { execute: (a: unknown, c: unknown) => Promise<unknown> }).execute({ q: 'x' }, {})
+    expect(showModalMock).not.toHaveBeenCalled()
+    expect(execute).toHaveBeenCalled()
   })
 })

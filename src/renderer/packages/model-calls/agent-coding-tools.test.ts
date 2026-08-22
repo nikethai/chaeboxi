@@ -231,7 +231,7 @@ describe('streamText agent coding tools', () => {
     googleSearchProviderToolMock.mockClear()
   })
 
-  it('registers workspace write + terminal tools when agent coding is enabled with workspace', async () => {
+  it('registers workspace write tools only with a native capability and mutation gate, never terminal', async () => {
     let toolsArg: Record<string, unknown> | undefined
     const chat = vi.fn(async (_messages, options) => {
       toolsArg = options?.tools as Record<string, unknown>
@@ -246,20 +246,45 @@ describe('streamText agent coding tools', () => {
       agentCoding: {
         enabled: true,
         workspaceRoot: '/Users/dev/project',
+        capabilityId: 'cap-1',
+        projectId: 'p1',
+        rootGeneration: 'gen-1',
+        mutationEnabled: true,
       },
     })
 
-    expect(createWorkspaceFileToolSetMock).toHaveBeenCalledWith('/Users/dev/project')
-    expect(createTerminalToolSetMock).toHaveBeenCalledWith('/Users/dev/project')
+    expect(createWorkspaceFileToolSetMock).toHaveBeenCalledWith({
+      capabilityId: 'cap-1',
+      projectId: 'p1',
+      rootGeneration: 'gen-1',
+      mutationEnabled: true,
+    })
+    expect(createTerminalToolSetMock).not.toHaveBeenCalled()
     expect(toolsArg).toBeDefined()
     expect(toolsArg?.create_file).toBeDefined()
     expect(toolsArg?.edit_file).toBeDefined()
     expect(toolsArg?.delete_file).toBeDefined()
-    expect(toolsArg?.terminal).toBeDefined()
+    expect(toolsArg?.terminal).toBeUndefined()
+  })
 
-    const injected = injectModelSystemPromptMock.mock.calls[0]?.[2] as string
-    expect(injected).toContain('workspace:/Users/dev/project')
-    expect(injected).toContain('terminal:/Users/dev/project')
+  it('does not register mutation tools from a pasted workspaceRoot alone', async () => {
+    const chat = vi.fn(async (_messages, options) => {
+      const result: StreamTextResult = { contentParts: [] }
+      options?.onResultChange?.(result)
+      return result
+    })
+
+    await streamText(createTestModel(chat), {
+      messages: [createMessage('user', 'scaffold a react app')],
+      onResultChangeWithCancel: vi.fn(),
+      agentCoding: {
+        enabled: true,
+        workspaceRoot: '/Users/dev/project',
+      },
+    })
+
+    expect(createWorkspaceFileToolSetMock).not.toHaveBeenCalled()
+    expect(createTerminalToolSetMock).not.toHaveBeenCalled()
   })
 
   it('does not register workspace tools without workspace root', async () => {

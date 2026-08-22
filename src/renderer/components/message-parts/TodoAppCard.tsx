@@ -77,7 +77,18 @@ export const TodoAppCard: FC<TodoAppCardProps> = ({
 
   const items: TaskSnapshot[] = useMemo(() => {
     if (snapshot.length > 0) {
-      return snapshot
+      if (liveTasks.length === 0) return snapshot
+      const liveById = new Map(liveTasks.map((task) => [task.id, task]))
+      return snapshot.map((entry) => {
+        const live = liveById.get(entry.id)
+        if (!live) return entry
+        return {
+          id: live.id,
+          title: live.title,
+          status: live.status,
+          progress: live.progress,
+        }
+      })
     }
     return liveTasks.map((task) => ({
       id: task.id,

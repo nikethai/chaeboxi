@@ -68,6 +68,7 @@ export class LocalStorage implements Storage {
     StorageKey.Settings,
     StorageKey.MyCopilots,
     StorageKey.MyFolders,
+    StorageKey.MyProjects,
     StorageKey.PromptPresets,
     StorageKey.ChatSessions,
   ]

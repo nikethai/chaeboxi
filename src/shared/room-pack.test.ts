@@ -48,6 +48,9 @@ describe('room pack', () => {
     expect(JSON.stringify(pack)).not.toContain('/tmp/local.png')
     expect(pack.agents[1].picUrl).toBe('https://example.com/b.png')
     assertPackHasNoSecrets(pack)
+    expect(() =>
+      assertPackHasNoSecrets({ capabilityId: 'cap', rootGeneration: 'g', filesystemIdentity: 'x' })
+    ).toThrow()
   })
 
   it('remaps ids on import so it cannot clobber', () => {

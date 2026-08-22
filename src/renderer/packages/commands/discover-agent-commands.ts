@@ -1,5 +1,5 @@
 import type { CommandOrigin, CommandPackage } from '@shared/types'
-import { resolveAgentRootPathList } from '@/packages/agent-scan'
+import { isUserGlobalPath, resolveAgentRootPathList } from '@/packages/agent-scan'
 import platform from '@/platform'
 import { parseCommandMd } from './parse-command-md'
 
@@ -60,7 +60,7 @@ export async function scanAgentCommandFiles(
 
   const roots = [
     ...resolveAgentRootPathList(AGENT_COMMAND_ROOTS, { workspaceRoot: options.workspaceRoot }),
-    ...(options.extraRoots || []).filter(Boolean),
+    ...(options.extraRoots || []).filter((p) => isUserGlobalPath(p)),
   ]
 
   try {

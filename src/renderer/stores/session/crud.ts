@@ -21,6 +21,8 @@ async function create(newSession: Omit<Session, 'id'>) {
 export type CreateEmptyOptions = {
   /** Assign the new session to a project folder */
   folderId?: string
+  /** Canonical Project id (dual-written with folderId) */
+  projectId?: string
   /** Optional agent/copilot to attach (e.g. project default) */
   copilotId?: string
   /** Preferred: agent persona id(s) for the room */
@@ -43,8 +45,9 @@ export async function createEmpty(type: 'chat' | 'picture', options?: CreateEmpt
       throw new Error(`Unknown session type: ${type}`)
   }
 
-  if (options?.folderId) {
-    draft = { ...draft, folderId: options.folderId }
+  const projectId = options?.projectId || options?.folderId
+  if (projectId) {
+    draft = { ...draft, folderId: projectId, projectId }
   }
   const agentIds =
     options?.agentIds && options.agentIds.length > 0

@@ -12,6 +12,7 @@ import * as settingActions from '@/stores/settingActions'
 import { useUIStore } from '@/stores/uiStore'
 import { getSidebarToggleResult } from '@/utils/sidebarToggle'
 import { ScalableIcon } from '../common/ScalableIcon'
+import { WorkspaceHeaderControls } from '../project/WorkspaceHeaderControls'
 import TitleBarRow from './TitleBarRow'
 import Toolbar from './Toolbar'
 import WindowControls from './WindowControls'
@@ -218,6 +219,7 @@ export default function Header(props: { session: Session }) {
                 <ScalableIcon icon={IconPencil} size={isSmallScreen ? 16 : 15} />
               </ActionIcon>
             </Tooltip>
+            {!isSmallScreen ? <WorkspaceHeaderControls session={currentSession} /> : null}
           </>
         )}
       </Flex>

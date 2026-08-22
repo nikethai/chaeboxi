@@ -78,6 +78,9 @@ export const uiStore = createStore(
          */
         workspacePanel: null as null | WorkspacePanelState,
         workspaceWidthPx: 520 as number,
+        workspaceExpanded: false as boolean,
+        /** One-send explicit Project context draft, keyed by session id. */
+        projectContextDrafts: {} as Record<string, import('@shared/types/workspace').WorkspaceContextDraftEntry[]>,
         showCopilotsInNewSession: false,
         sidebarWidth: null as number | null, // Custom sidebar width, null means use default
         /** User dismissed the Recents coaching banner once. */
@@ -141,7 +144,11 @@ export const uiStore = createStore(
         },
 
         setWorkspacePanel: (workspacePanel: ReturnType<typeof get>['workspacePanel']) => {
-          set({ workspacePanel })
+          set(workspacePanel ? { workspacePanel } : { workspacePanel: null, workspaceExpanded: false })
+        },
+
+        setWorkspaceExpanded: (workspaceExpanded: boolean) => {
+          set((state) => (state.workspaceExpanded === workspaceExpanded ? state : { workspaceExpanded }))
         },
 
         setWorkspaceWidthPx: (workspaceWidthPx: number) => {
@@ -257,6 +264,23 @@ export const uiStore = createStore(
 
         setSidebarWidth: (sidebarWidth: number | null) => {
           set((state) => (state.sidebarWidth === sidebarWidth ? state : { sidebarWidth }))
+        },
+
+        setProjectContextDraft: (
+          sessionId: string,
+          entries: import('@shared/types/workspace').WorkspaceContextDraftEntry[]
+        ) => {
+          set((state) => ({
+            projectContextDrafts: { ...state.projectContextDrafts, [sessionId]: entries },
+          }))
+        },
+
+        clearProjectContextDraft: (sessionId: string) => {
+          set((state) => {
+            const next = { ...state.projectContextDrafts }
+            delete next[sessionId]
+            return { projectContextDrafts: next }
+          })
         },
       })
     ),

@@ -18,6 +18,8 @@ export interface PlatformCapabilities {
   supportsSystemNotifications: boolean
   /** Vendor archive import (ChatGPT ZIP). Desktop only. */
   supportsImportedArchives: boolean
+  /** Native directory Project bind/read/mutate (desktop Tauri only). */
+  supportsProjectWorkspace: boolean
 }
 
 /**
@@ -47,5 +49,6 @@ export function createPlatformCapabilities({
     supportsAgentSkillScan: isDesktopRuntime,
     supportsSystemNotifications,
     supportsImportedArchives: isDesktopRuntime,
+    supportsProjectWorkspace: isDesktopRuntime,
   }
 }

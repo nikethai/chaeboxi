@@ -255,7 +255,7 @@ export function assertPackHasNoSecrets(value: unknown): void {
   if (SECRET_KEY.test(json) && /sk-|Bearer |apiKey|mcpEnv|workspaceRoot|credentialIds/i.test(json)) {
     throw new Error('Room pack must not contain secrets or local paths')
   }
-  if (/"workspaceRoot"|"credentialIds"|"apiKey"|"mcp"/i.test(json)) {
+  if (/"workspaceRoot"|"credentialIds"|"apiKey"|"mcp"|"capabilityId"|"rootGeneration"|"filesystemIdentity"/i.test(json)) {
     throw new Error('Room pack must not contain secrets or local paths')
   }
 }

@@ -31,11 +31,11 @@ describe('resolveAgentRootPaths', () => {
     { origin: 'cursor', path: '~/.cursor/skills' },
   ]
 
-  it('binds project roots to workspaceRoot when set', () => {
+  it('does not turn project roots into absolute scan paths', () => {
     const resolved = resolveAgentRootPaths(specs, { workspaceRoot: '/proj' })
     expect(resolved[0]).toEqual({
       origin: 'project',
-      path: '/proj/.claude/skills',
+      path: './.claude/skills',
       workspaceBound: true,
     })
     expect(resolved[1].path).toBe('~/.claude/skills')
@@ -51,9 +51,10 @@ describe('resolveAgentRootPaths', () => {
     })
   })
 
-  it('resolveAgentRootPathList returns path strings only', () => {
+  it('resolveAgentRootPathList sends only user-global roots to native scan', () => {
     const list = resolveAgentRootPathList(specs, { workspaceRoot: '/ws' })
-    expect(list).toEqual(['/ws/.claude/skills', '~/.claude/skills', '~/.cursor/skills'])
+    expect(list).toEqual(['~/.claude/skills', '~/.cursor/skills'])
+    expect(list.some((p) => p.startsWith('/ws'))).toBe(false)
   })
 })
 

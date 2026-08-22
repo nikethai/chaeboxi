@@ -6,37 +6,34 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import BrowserAgentPanel from '@/components/BrowserAgent/BrowserAgentPanel'
+import ComputerUseHud from '@/components/ComputerUse/ComputerUseHud'
 import ChatDockStack from '@/components/chat/ChatDockStack'
 import MessageList, { type MessageListRef } from '@/components/chat/MessageList'
 import SessionStatusBar from '@/components/chat/SessionStatusBar'
 import { ErrorBoundary } from '@/components/common/ErrorBoundary'
-import ComputerUseHud from '@/components/ComputerUse/ComputerUseHud'
 import InputBox, { type InputBoxRef } from '@/components/InputBox/InputBox'
 import Header from '@/components/layout/Header'
+import { ProjectContextPanel } from '@/components/project/ProjectContextPanel'
 import ThreadHistoryDrawer from '@/components/session/ThreadHistoryDrawer'
 import WorkspacePanel, { useWorkspaceChromeActive } from '@/components/workspace/WorkspacePanel'
+import { useProjectWorkspace } from '@/hooks/useProjectWorkspace'
+import { useProviders } from '@/hooks/useProviders'
+import platform from '@/platform'
+import { commitProjectContextDraft } from '@/projects/project-context-draft'
 import { updateSessionWithMessages as updateSessionStore, useSession } from '@/stores/chatStore'
 import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 import * as scrollActions from '@/stores/scrollActions'
-import {
-  modifyMessage,
-  removeCurrentThread,
-  startNewThread,
-  submitNewUserMessage,
-} from '@/stores/sessionActions'
 import { isSessionGenerationActive } from '@/stores/session/generation-cancel'
-import {
-  isSessionGenerationLive,
-  subscribeSessionGenerationLive,
-} from '@/stores/session/session-live-generation'
 import { continueActiveSessionTasks } from '@/stores/session/messages'
+import { isSessionGenerationLive, subscribeSessionGenerationLive } from '@/stores/session/session-live-generation'
+import { modifyMessage, removeCurrentThread, startNewThread, submitNewUserMessage } from '@/stores/sessionActions'
 import { getAllMessageList } from '@/stores/sessionHelpers'
-import { useUIStore } from '@/stores/uiStore'
+import * as toastActions from '@/stores/toastActions'
+import { uiStore, useUIStore } from '@/stores/uiStore'
 import { isThreadVisuallyEmpty } from '@/utils/chat-starters'
 import { getModelDisplayName } from '@/utils/modelDisplayName'
 import { getSessionRouteState } from '@/utils/sessionRouteState'
 import { CHATBOX_BUILD_PLATFORM } from '@/variables'
-import { useProviders } from '@/hooks/useProviders'
 
 // Agent-mode panels are not used on Android. Use compile-time conditional
 // dynamic imports so the modules (and their @mantine/openclaw deps) are
@@ -56,6 +53,7 @@ function RouteComponent() {
   const { sessionId: currentSessionId } = Route.useParams()
   const navigate = useNavigate()
   const { session: currentSession, isPending, isError, refetch } = useSession(currentSessionId)
+  const { projectId, descriptor, setDescriptor, resolved } = useProjectWorkspace(currentSession)
   const sessionRouteState = getSessionRouteState({ session: currentSession, isPending, isError })
   const { providers } = useProviders()
   const [showToolAudit, setShowToolAudit] = useState(false)
@@ -170,6 +168,30 @@ function RouteComponent() {
       if (!currentSession) {
         return
       }
+      const drafts = uiStore.getState().projectContextDrafts[currentSession.id] || []
+      if (drafts.length > 0) {
+        if (!descriptor?.capabilityId || !platform.readWorkspaceFile) {
+          toastActions.add('Project folder is not ready')
+          return
+        }
+        const committed = await commitProjectContextDraft(drafts, (relativePath) =>
+          platform.readWorkspaceFile!(descriptor.capabilityId, relativePath)
+        )
+        if (!committed.ok) {
+          toastActions.add(
+            committed.reason === 'revision-mismatch'
+              ? 'A selected file changed. Refresh or remove it before sending.'
+              : 'Selected project context could not be sent.'
+          )
+          return
+        }
+        const provenance = `\n\n## Selected project context\n\n${committed.blocks.join('\n\n')}`
+        const textPart = constructedMessage.contentParts.find((p) => p.type === 'text')
+        if (textPart && textPart.type === 'text') {
+          textPart.text = `${textPart.text}${provenance}`
+        }
+        uiStore.getState().clearProjectContextDraft(currentSession.id)
+      }
       messageListRef.current?.scrollToBottom('instant')
       await submitNewUserMessage(currentSession.id, {
         newUserMsg: constructedMessage,
@@ -177,7 +199,7 @@ function RouteComponent() {
         onUserMessageReady,
       })
     },
-    [currentSession]
+    [currentSession, descriptor]
   )
 
   const onContinueTasks = useCallback(() => {
@@ -219,6 +241,7 @@ function RouteComponent() {
   const isOpenClawProvider = currentSession?.settings?.provider === ModelProviderEnum.OpenClaw
   const [showSessionPanel, setShowSessionPanel] = useState(false)
   const workspaceChromeActive = useWorkspaceChromeActive()
+  const workspaceExpanded = useUIStore((s) => s.workspaceExpanded)
   const setWorkspacePanel = useUIStore((s) => s.setWorkspacePanel)
 
   // Close workspace when leaving this conversation so state doesn't leak
@@ -247,10 +270,19 @@ function RouteComponent() {
   }
 
   return currentSession ? (
-    <div className={`session-shell ${workspaceChromeActive ? 'has-workspace' : ''}`}>
+    <div
+      className={`session-shell ${workspaceChromeActive ? 'has-workspace' : ''}${workspaceExpanded ? ' has-workspace-expanded' : ''}`}
+    >
       <Header session={currentSession} />
 
       <div className="session-body-row">
+        <ProjectContextPanel
+          sessionId={currentSession.id}
+          projectId={projectId}
+          descriptor={descriptor}
+          resolved={resolved}
+          onDescriptorChange={setDescriptor}
+        />
         <div className="session-main-col">
           {/* key ensures a fresh MessageList instance per session */}
           <div className="session-thread">
@@ -306,53 +338,53 @@ function RouteComponent() {
 
           <div className="session-dock">
             <div className="session-dock-pad">
-<ChatDockStack
-  key={currentSession.id}
-  sessionId={currentSession.id}
-  onContinueTasks={onContinueTasks}
-  generating={isGenerating}
-  liveMessage={lastGeneratingMessage}
->
-  <BrowserAgentPanel
-    sessionId={currentSession.id}
-    armed={Boolean(currentSession.browserArmed)}
-    generating={isGenerating}
-  />
-  <ComputerUseHud sessionId={currentSession.id} armed={Boolean(currentSession.computerArmed)} />
-  <ErrorBoundary name="session-inputbox">
-    <InputBox
-      key={`input-box${currentSession.id}`}
-      ref={inputBoxRef}
-      sessionId={currentSession.id}
-      sessionType={currentSession.type}
-      model={model}
-      modelDisplayName={modelDisplayName}
-      agentMode={currentSession.agentMode ?? false}
-      workspaceRoot={currentSession.workspaceRoot}
-      onStartNewThread={onStartNewThread}
-      onRollbackThread={onRollbackThread}
-      onSelectModel={onSelectModel}
-      onToggleAgentMode={(agentMode) => {
-        void updateSessionStore(currentSession.id, { agentMode })
-      }}
-      onWorkspaceRootChange={(workspaceRoot) => {
-        void updateSessionStore(currentSession.id, { workspaceRoot })
-      }}
-      browserArmed={currentSession.browserArmed ?? false}
-      onBrowserArmedChange={(browserArmed) => {
-        void updateSessionStore(currentSession.id, { browserArmed })
-      }}
-      computerArmed={currentSession.computerArmed ?? false}
-      onComputerArmedChange={(computerArmed) => {
-        void updateSessionStore(currentSession.id, { computerArmed })
-      }}
-      onClickSessionSettings={onClickSessionSettings}
-      generating={isGenerating}
-      onSubmit={onSubmit}
-      onStopGenerating={onStopGenerating}
-    />
-  </ErrorBoundary>
-</ChatDockStack>
+              <ChatDockStack
+                key={currentSession.id}
+                sessionId={currentSession.id}
+                onContinueTasks={onContinueTasks}
+                generating={isGenerating}
+                liveMessage={lastGeneratingMessage}
+              >
+                <BrowserAgentPanel
+                  sessionId={currentSession.id}
+                  armed={Boolean(currentSession.browserArmed)}
+                  generating={isGenerating}
+                />
+                <ComputerUseHud sessionId={currentSession.id} armed={Boolean(currentSession.computerArmed)} />
+                <ErrorBoundary name="session-inputbox">
+                  <InputBox
+                    key={`input-box${currentSession.id}`}
+                    ref={inputBoxRef}
+                    sessionId={currentSession.id}
+                    sessionType={currentSession.type}
+                    model={model}
+                    modelDisplayName={modelDisplayName}
+                    agentMode={currentSession.agentMode ?? false}
+                    workspaceRoot={currentSession.workspaceRoot}
+                    onStartNewThread={onStartNewThread}
+                    onRollbackThread={onRollbackThread}
+                    onSelectModel={onSelectModel}
+                    onToggleAgentMode={(agentMode) => {
+                      void updateSessionStore(currentSession.id, { agentMode })
+                    }}
+                    onWorkspaceRootChange={(workspaceRoot) => {
+                      void updateSessionStore(currentSession.id, { workspaceRoot })
+                    }}
+                    browserArmed={currentSession.browserArmed ?? false}
+                    onBrowserArmedChange={(browserArmed) => {
+                      void updateSessionStore(currentSession.id, { browserArmed })
+                    }}
+                    computerArmed={currentSession.computerArmed ?? false}
+                    onComputerArmedChange={(computerArmed) => {
+                      void updateSessionStore(currentSession.id, { computerArmed })
+                    }}
+                    onClickSessionSettings={onClickSessionSettings}
+                    generating={isGenerating}
+                    onSubmit={onSubmit}
+                    onStopGenerating={onStopGenerating}
+                  />
+                </ErrorBoundary>
+              </ChatDockStack>
             </div>
             <SessionStatusBar
               messages={currentMessageList}
@@ -370,7 +402,7 @@ function RouteComponent() {
           </div>
         </div>
 
-        <WorkspacePanel />
+        <WorkspacePanel session={currentSession} />
       </div>
 
       <ThreadHistoryDrawer session={currentSession} />

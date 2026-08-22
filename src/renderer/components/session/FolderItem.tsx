@@ -15,6 +15,8 @@ import { useTranslation } from 'react-i18next'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import ActionMenu, { type ActionMenuItemProps } from '../ActionMenu'
 import { ScalableIcon } from '../common/ScalableIcon'
+import { ProjectBadge } from '../project/ProjectBadge'
+import { projectFolderActions } from '../project/ProjectMenu'
 
 export interface FolderItemProps {
   count: number
@@ -23,6 +25,8 @@ export interface FolderItemProps {
   expanded: boolean
   implicit?: boolean
   name: string
+  projectId?: string
+  workspaceStatus?: import('@shared/types/workspace').WorkspaceStatus
   onCreateChat?(): void
   onDelete?(): void
   onRename?(): void
@@ -35,6 +39,8 @@ function FolderItem({
   expanded,
   implicit = false,
   name,
+  projectId,
+  workspaceStatus,
   onCreateChat,
   onDelete,
   onRename,
@@ -66,15 +72,23 @@ function FolderItem({
               onClick: () => onSetDefaultCopilot?.(),
             },
             { divider: true },
-            {
-              text: t('Delete Project'),
-              icon: IconTrash,
-              color: 'chatbox-error',
-              doubleCheck: true,
-              onClick: () => onDelete?.(),
-            },
+            ...(projectId
+              ? projectFolderActions({
+                  projectId,
+                  t,
+                  onRemoveProject: onDelete,
+                })
+              : [
+                  {
+                    text: t('Delete Project'),
+                    icon: IconTrash,
+                    color: 'chatbox-error' as const,
+                    doubleCheck: true,
+                    onClick: () => onDelete?.(),
+                  },
+                ]),
           ],
-    [implicit, onCreateChat, onDelete, onRename, onSetDefaultCopilot, t]
+    [implicit, onCreateChat, onDelete, onRename, onSetDefaultCopilot, projectId, t]
   )
 
   return (
@@ -116,6 +130,7 @@ function FolderItem({
       >
         {name}
       </Text>
+      {workspaceStatus ? <ProjectBadge status={workspaceStatus} /> : null}
 
       <Text
         span

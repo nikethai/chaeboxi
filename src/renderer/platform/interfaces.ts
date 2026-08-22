@@ -1,5 +1,14 @@
 /** biome-ignore-all lint/suspicious/noExplicitAny: <any> */
 import type { Config, Language, Settings, ShortcutSetting } from '@shared/types'
+import type {
+  WorkspaceDescriptor,
+  WorkspaceListResult,
+  WorkspaceMutationResult,
+  WorkspaceReadResult,
+  WorkspaceSearchHit,
+  WorkspaceTrustCategory,
+  WorkspaceTrustValue,
+} from '@shared/types/workspace'
 import type { ImageGenerationStorage } from '@/storage/ImageGenerationStorage'
 import type { KnowledgeBaseController } from './knowledge-base/interface'
 
@@ -96,11 +105,56 @@ export interface Platform extends Storage {
 
   getImageGenerationStorage(): ImageGenerationStorage
 
-  // Filesystem operations (real filesystem, not blob storage)
+  // Broad filesystem operations are unavailable. Use workspace capability APIs.
 
   readFileByPath(path: string): Promise<string>
   writeFile(path: string, content: string): Promise<void>
   deleteFile(path: string): Promise<void>
+
+  /** Native picker-owned bind. Never accepts a renderer path. */
+  pickAndBindProject?(projectId: string): Promise<WorkspaceDescriptor | null>
+  restoreProjectBinding?(projectId: string): Promise<WorkspaceDescriptor>
+  revokeProjectBinding?(projectId: string): Promise<void>
+  relinkProject?(projectId: string): Promise<WorkspaceDescriptor | null>
+  unbindProject?(projectId: string): Promise<void>
+  revealProject?(projectId: string): Promise<void>
+  readWorkspaceFile?(capabilityId: string, relativePath: string): Promise<WorkspaceReadResult>
+  listWorkspaceChildren?(
+    capabilityId: string,
+    relativePath: string,
+    cursor?: string,
+    requestId?: string
+  ): Promise<WorkspaceListResult>
+  searchWorkspace?(
+    capabilityId: string,
+    query: string,
+    requestId?: string
+  ): Promise<{ hits: WorkspaceSearchHit[]; requestId?: string }>
+  cancelWorkspaceRequest?(requestId: string): Promise<void>
+  createWorkspaceFile?(
+    capabilityId: string,
+    relativePath: string,
+    content: string,
+    mode: 'create' | 'overwrite',
+    expectedRevision?: string
+  ): Promise<WorkspaceMutationResult>
+  editWorkspaceFile?(
+    capabilityId: string,
+    relativePath: string,
+    oldString: string,
+    newString: string,
+    expectedRevision: string
+  ): Promise<WorkspaceMutationResult>
+  deleteWorkspaceFile?(
+    capabilityId: string,
+    relativePath: string,
+    expectedRevision: string
+  ): Promise<WorkspaceMutationResult>
+  setProjectTrust?(projectId: string, category: WorkspaceTrustCategory, value: WorkspaceTrustValue): Promise<void>
+  readCodexAuthConfig?(): Promise<string>
+  videoYtDlp?(op: 'detect' | 'install'): Promise<unknown>
+  /** Test-only: never a renderer authorization path. */
+  __testBindProjectFolder?(projectId: string, folderPath: string): Promise<WorkspaceDescriptor>
 
   // window controls
   minimize(): Promise<void>

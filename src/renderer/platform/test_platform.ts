@@ -340,23 +340,44 @@ export default class TestPlatform implements Platform {
 
   // ============ Filesystem operations ============
 
-  public async readFileByPath(path: string): Promise<string> {
-    const content = this.files.get(path)
-    if (content === undefined) {
-      throw new Error(`File not found: ${path}`)
-    }
-    return content
+  public async readFileByPath(_path: string): Promise<string> {
+    throw new Error('UNSUPPORTED_PLATFORM: privileged workspace access is unavailable on TestPlatform')
   }
 
-  public async writeFile(path: string, content: string): Promise<void> {
-    this.files.set(path, content)
+  public async writeFile(_path: string, _content: string): Promise<void> {
+    throw new Error('UNSUPPORTED_PLATFORM: privileged workspace access is unavailable on TestPlatform')
   }
 
-  public async deleteFile(path: string): Promise<void> {
-    if (!this.files.has(path)) {
-      throw new Error(`File not found: ${path}`)
-    }
-    this.files.delete(path)
+  public async deleteFile(_path: string): Promise<void> {
+    throw new Error('UNSUPPORTED_PLATFORM: privileged workspace access is unavailable on TestPlatform')
+  }
+
+  public async pickAndBindProject(_projectId: string): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async restoreProjectBinding(_projectId: string): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async readWorkspaceFile(_capabilityId: string, _relativePath: string): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async createWorkspaceFile(): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async editWorkspaceFile(): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async deleteWorkspaceFile(): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public getWindowLabel(): Promise<string> {
+    return Promise.resolve('test')
   }
 
   public async getSystemNotificationPermission(): Promise<SystemNotificationPermission> {

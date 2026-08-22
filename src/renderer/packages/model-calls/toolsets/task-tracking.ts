@@ -69,6 +69,16 @@ export const createTaskTool = tool({
   ) => {
     const sessionId = context.sessionId || 'default'
     await taskStore.getState().hydrateSessionTasks(sessionId)
+    const existing = taskStore.getState().getSessionTasks(sessionId)
+    if (existing.length >= MAX_SESSION_TASKS) {
+      const finished = existing.filter((task) => task.status === 'done' || task.status === 'failed')
+      if (finished.length > 0) {
+        taskStore.getState().replaceSessionTasks(
+          sessionId,
+          existing.filter((task) => task.status === 'pending' || task.status === 'in-progress')
+        )
+      }
+    }
     const id = generateTaskId()
     const result = taskStore.getState().createTask(sessionId, id, input.title, {
       assigneeAgentId: input.assigneeAgentId,

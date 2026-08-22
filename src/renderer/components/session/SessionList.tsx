@@ -693,7 +693,8 @@ export default function SessionList({
     projectsSection.ensureOpen()
     await createEmpty('chat', {
       folderId: folder.id,
-      copilotId: folder.defaultCopilotId,
+      projectId: folder.id,
+      copilotId: folder.defaultCopilotId ?? folder.defaultAgentId,
     })
     trackingEvent('create_new_conversation', { event_category: 'user', source: 'project' })
     refetch()
@@ -796,6 +797,7 @@ export default function SessionList({
                         expanded={expandedFolders[row.folder.key] ?? true}
                         implicit={row.folder.implicit}
                         name={row.folder.name}
+                        projectId={row.folder.implicit ? undefined : row.folder.key}
                         onCreateChat={
                           row.folder.implicit || !folder
                             ? undefined

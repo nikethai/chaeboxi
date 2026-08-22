@@ -1,9 +1,7 @@
 import { google } from '@ai-sdk/google'
-import NiceModal from '@ebay/nice-modal-react'
 import { getModel } from '@shared/models'
 import { OCRError, ProviderAPIError } from '@shared/models/errors'
 import type { ModelDependencies } from '@shared/types/adapters'
-import { ToolRiskTier } from '@shared/types/mcp'
 import { sequenceMessages } from '@shared/utils/message'
 import { getModelSettings } from '@shared/utils/model_settings'
 import { shouldPreserveReasoningInContext } from '@shared/utils/reasoning-replay'
@@ -12,7 +10,6 @@ import type { ModelMessage, ToolSet } from 'ai'
 import { t } from 'i18next'
 import { uniqueId } from 'lodash'
 import { createModelDependencies } from '@/adapters'
-import type { ToolApprovalModalResult } from '@/modals/ToolApproval'
 import { hostPreSearchMemories } from '@/packages/memory/host-presearch'
 import { isSessionMemoryToolRetainAllowed } from '@/packages/memory/session-policy'
 import { getMemoryToolSet, MEMORY_TOOL_NAMES } from '@/packages/memory/tools'
@@ -20,7 +17,7 @@ import platform from '@/platform'
 import { ensureMemoryStoreInit, memoryStore } from '@/stores/memoryStore'
 import { settingsStore } from '@/stores/settingsStore'
 import { formatActiveTaskContext, taskStore } from '@/stores/taskStore'
-import { getToolApproval, toolApprovalStore } from '@/stores/toolApprovalStore'
+import { wrapToolsWithApproval } from './wrap-tools-approval'
 import { getMessageText } from '@/utils/message'
 import type {
   ModelInterface,
@@ -41,7 +38,6 @@ import type {
   StreamTextResult,
 } from '../../../shared/types'
 import { mcpController } from '../mcp/controller'
-import { getToolRiskTier } from '../tools/risk-engine'
 import { convertToModelMessages, injectModelSystemPrompt } from './message-utils'
 import { imageOCR } from './preprocess'
 import {
@@ -79,17 +75,21 @@ import {
   computerUiSpaceLockInstructions,
   filterToolsForComputerUiSpace,
 } from './toolsets/computer-ui-lock'
-import { createTerminalToolSet } from './toolsets/terminal'
+
 import videoToolSet, { initVideoToolBudget, resetVideoToolBudget } from './toolsets/video'
 import videoUrlToolSet from './toolsets/video-url'
 import websearchToolSet, { parseLinkTool, webSearchTool } from './toolsets/web-search'
 
-/** Agent coding context: enables workspace write + terminal tools when set. */
+/** Agent coding context: enables workspace write tools when a native capability is ready. */
 export type AgentCodingOptions = {
   /** True when agent mode is active and this turn may execute (not plan-only). */
   enabled: boolean
-  /** Absolute workspace root; required for write/terminal tools. */
+  /** Legacy reconnect hint only — never authority. */
   workspaceRoot?: string
+  capabilityId?: string
+  projectId?: string
+  rootGeneration?: string
+  mutationEnabled?: boolean
 }
 
 /** Desktop browser agent tools (isolated Chromium). */
@@ -243,139 +243,7 @@ async function ocrMessages(messages: Message[], dependencies: ModelDependencies)
   }
 }
 
-function createToolDeniedResult(toolName: string, riskTier: ToolRiskTier) {
-  return {
-    denied: true,
-    toolName,
-    riskTier,
-    message: t('Tool execution denied by user.'),
-  }
-}
-
-/** Bound hung tool executes so generation cannot sit on "Using tools…" forever. */
-const TOOL_EXECUTE_TIMEOUT_MS = 90_000
-/** Approval is separate from execute — must not share the 90s tool budget. */
-const TOOL_APPROVAL_TIMEOUT_MS = 120_000
-
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`))
-    }, ms)
-    promise.then(
-      (value) => {
-        clearTimeout(timer)
-        resolve(value)
-      },
-      (err) => {
-        clearTimeout(timer)
-        reject(err)
-      }
-    )
-  })
-}
-
-/** Shared approval wrapper for MCP + first-party tools (D16). Never auto-approves CRITICAL (D8). */
-export function wrapToolsWithApproval(sessionId: string | undefined, tools: ToolSet): ToolSet {
-  if (!sessionId) {
-    return tools
-  }
-
-  return Object.fromEntries(
-    Object.entries(tools).map(([toolName, definition]) => {
-      const riskTier = getToolRiskTier(toolName, definition?.description)
-
-      return [
-        toolName,
-        {
-          ...definition,
-          execute: async (args: unknown, context) => {
-            const existingApproval = getToolApproval(sessionId, toolName)
-            // Built-in read-only tools (web_search, read_video_url, …) are LOW and
-            // should not interrupt the user with an approval modal.
-            // CRITICAL must never session-auto (D8). HIGH may session-auto after user "Allow for session".
-            const canAutoApprove =
-              riskTier === ToolRiskTier.LOW ||
-              (existingApproval?.scope === 'session' &&
-                existingApproval.riskTier === riskTier &&
-                riskTier !== ToolRiskTier.CRITICAL)
-
-            // 'auto' = skipped modal; otherwise once|session from user choice
-            let approvedScope: 'auto' | 'once' | 'session' = 'auto'
-
-            if (canAutoApprove) {
-              toolApprovalStore.getState().addAuditEntry({
-                sessionId,
-                toolName,
-                riskTier,
-                scope: existingApproval?.scope || 'session',
-                decision: 'auto-approve',
-                timestamp: Date.now(),
-                args,
-              })
-            } else {
-              // Approval modal can hang if UI never resolves — time-box to deny (separate from execute budget)
-              const modalResult = (await withTimeout(
-                NiceModal.show('tool-approval', {
-                  toolName,
-                  description: definition?.description,
-                  riskTier,
-                  parameters: args,
-                }) as Promise<ToolApprovalModalResult | undefined>,
-                TOOL_APPROVAL_TIMEOUT_MS,
-                `Tool approval for ${toolName}`
-              ).catch(() => 'deny' as const)) as ToolApprovalModalResult | undefined
-
-              if (!modalResult || modalResult === 'deny') {
-                toolApprovalStore.getState().addAuditEntry({
-                  sessionId,
-                  toolName,
-                  riskTier,
-                  scope: 'none',
-                  decision: 'deny',
-                  timestamp: Date.now(),
-                  args,
-                })
-                return createToolDeniedResult(toolName, riskTier)
-              }
-
-              approvedScope = modalResult
-              const approval = {
-                toolName,
-                riskTier,
-                scope: modalResult,
-                timestamp: Date.now(),
-              }
-              toolApprovalStore.getState().addApproval(sessionId, approval)
-              toolApprovalStore.getState().addAuditEntry({
-                sessionId,
-                toolName,
-                riskTier,
-                scope: modalResult,
-                decision: 'allow',
-                timestamp: approval.timestamp,
-                args,
-              })
-            }
-
-            try {
-              // Only the underlying tool is bound by execute timeout — not the approval wait.
-              return await withTimeout(
-                Promise.resolve(definition.execute?.(args, context)),
-                TOOL_EXECUTE_TIMEOUT_MS,
-                `Tool ${toolName}`
-              )
-            } finally {
-              if (approvedScope === 'once') {
-                toolApprovalStore.getState().removeApproval(sessionId, toolName)
-              }
-            }
-          },
-        },
-      ]
-    })
-  ) as ToolSet
-}
+export { wrapToolsWithApproval } from './wrap-tools-approval'
 
 const MCP_TOOL_PREFIX = 'mcp__'
 
@@ -496,16 +364,29 @@ export async function streamText(
   // Attachment tools (fileKey) only when user uploaded files/links
   const needAttachmentFileToolSet = hasDocumentFileOrLink && model.isSupportToolUse()
   const workspaceRoot = agentCoding?.workspaceRoot?.trim() || ''
+  const capabilityId = agentCoding?.capabilityId?.trim() || ''
+  const mutationEnabled = Boolean(agentCoding?.mutationEnabled)
   const needWorkspaceCodingTools =
-    Boolean(agentCoding?.enabled) && Boolean(workspaceRoot) && platform.type === 'desktop' && model.isSupportToolUse()
+    Boolean(agentCoding?.enabled) &&
+    Boolean(capabilityId) &&
+    mutationEnabled &&
+    platform.type === 'desktop' &&
+    model.isSupportToolUse()
   const needVideoToolSet = hasVideoAttachment && model.isSupportToolUse() && model.isSupportVision()
   // Public video URL reader — independent of local video attachments
   const videoUrlExtension = settingsStore.getState().extension?.videoUrl
   const needVideoUrlToolSet = videoUrlExtension?.enabled !== false && model.isSupportToolUse()
   const kbNotSupported = knowledgeBase && !model.isSupportToolUse('knowledge-base')
   const webNotSupported = webBrowsing && !model.isSupportToolUse('web-browsing')
-  const workspaceFileToolSet = needWorkspaceCodingTools ? createWorkspaceFileToolSet(workspaceRoot) : null
-  const terminalToolSet = needWorkspaceCodingTools ? createTerminalToolSet(workspaceRoot) : null
+  const workspaceFileToolSet = needWorkspaceCodingTools
+    ? createWorkspaceFileToolSet({
+        capabilityId,
+        projectId: agentCoding?.projectId || '',
+        rootGeneration: agentCoding?.rootGeneration || '',
+        mutationEnabled,
+      })
+    : null
+  const terminalToolSet = null
 
   // Computer use (observe / act) — preferred exclusive lease over browser when both armed
   const computerExt = globalSettings.extension?.computerUse
@@ -649,9 +530,6 @@ export async function streamText(
   if (workspaceFileToolSet) {
     toolSetInstructions += workspaceFileToolSet.description
   }
-  if (terminalToolSet) {
-    toolSetInstructions += terminalToolSet.description
-  }
   if (browserToolSet) {
     toolSetInstructions += browserToolSet.description
   }
@@ -672,7 +550,7 @@ ${computerUiSpaceLockInstructions({
 
 You do NOT currently have filesystem write or terminal tools for this session.
 ${platform.type !== 'desktop' ? '- Coding tools require the desktop app.' : ''}
-${!workspaceRoot ? '- No session workspace folder is set. Ask the user to set a workspace folder before scaffolding or writing project files on disk.' : ''}
+${!capabilityId ? '- No native Project folder is bound. Ask the user to Open Folder from the Projects rail. Pasted absolute paths cannot authorize access. Generic project shell is unavailable.' : ''}
 - You may still use task checklist tools and answer with code in chat when local write/terminal is unavailable.
 `
   }
@@ -977,13 +855,7 @@ Do not open with repeated web searches when personal memory may apply.
         }
       }
 
-      if (terminalToolSet) {
-        const wrappedTerminalTools = wrapToolsWithApproval(sessionId, terminalToolSet.tools)
-        tools = {
-          ...tools,
-          ...wrappedTerminalTools,
-        }
-      }
+
 
       if (needVideoToolSet) {
         const wrappedVideoTools = wrapToolsWithApproval(sessionId, videoToolSet.tools as ToolSet)

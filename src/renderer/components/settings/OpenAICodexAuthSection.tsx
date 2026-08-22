@@ -202,7 +202,9 @@ export function OpenAICodexAuthSection({ providerSettings, setProviderSettings }
     setErrorMessage(null)
     setPhase('starting')
     try {
-      const raw = await platform.readFileByPath('~/.codex/auth.json')
+      const raw = platform.readCodexAuthConfig
+        ? await platform.readCodexAuthConfig()
+        : await Promise.reject(new Error('Codex auth import is only available on desktop'))
       const parsed = JSON.parse(raw) as unknown
       const tokens = tokensFromCodexAuthJson(parsed)
       const authPatch = settingsPatchFromOpenAICodexTokens(tokens)

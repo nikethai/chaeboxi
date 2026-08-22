@@ -881,6 +881,7 @@ export function getSessionMeta(session: SessionMeta & { messages?: { timestamp?:
     'starred',
     'hidden',
     'folderId',
+    'projectId',
     'tags',
     'archived',
     'assistantAvatarKey',

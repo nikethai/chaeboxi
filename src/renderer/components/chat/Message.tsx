@@ -899,7 +899,7 @@ const _Message: FC<Props> = (props) => {
                 messageContent={messageText}
                 preview={previewArtifact}
                 setPreview={setPreviewArtifact}
-                autoOpenWorkspace={autoPreviewArtifacts}
+                autoOpenWorkspace={autoPreviewArtifacts || currentArtifact?.type !== 'markdown'}
                 generating={!!msg.generating}
                 artifact={currentArtifact}
               />

@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | **Product** | Chaeboxi 1.6.0 |
-| **Last updated** | 2026-08-21 |
+| **Last updated** | 2026-08-22 |
 
 Runtime architecture of Chaeboxi: three-layer TypeScript + Tauri shell, platform abstraction, chat/tool path, storage, MCP, and knowledge base.
 
@@ -27,7 +27,7 @@ flowchart TB
 
   subgraph Shell["Desktop shell"]
     IPC[ipc_invoke multiplex]
-    RustState[App state: store, blobs, MCP, KB, OpenClaw]
+    RustState[App state: store, blobs, MCP, KB, workspace, OpenClaw]
     Keychain[OS keychain]
     MCPProc[MCP stdio / HTTP]
     KBDisk[kb_chunks JSON + in-memory maps]
@@ -109,7 +109,7 @@ Full rules, caps, and message roles: [agents-multi-agent-rooms.md](./agents-mult
 
 | Implementation | When | Capabilities (illustrative) |
 | --- | --- | --- |
-| `DesktopPlatform` | Tauri / `window.desktopAPI` | Full IPC: store, secrets, MCP, KB, FS, OpenClaw, shell |
+| `DesktopPlatform` | Tauri / `window.desktopAPI` | Full IPC: store, secrets, MCP, KB, workspace capabilities, OpenClaw |
 | `WebPlatform` | Browser / non-Tauri | IndexedDB storage, web notifications, reduced native surface |
 | `TestPlatform` | Vitest | In-memory fakes |
 
@@ -149,7 +149,8 @@ ipc_invoke(channel: string, args: Value[]) -> Value
 | OpenClaw | `openclaw:test-connection`, `list-agents`, `invoke-agent`, stream cancel |
 | MCP | `mcp:server:create|start|list-tools|call-tool|close|list|status` |
 | KB | `kb:list|create|update|delete`, `kb:file:*`, `kb:search` |
-| FS / process | `fs:*`, `execute_command` |
+| Workspace | `workspace:pick-and-bind`, `restore`, `read`, `list`, `search`, revision mutations; `fs:*` / `execute_command` rejected |
+| Narrow brokers | `codex:read-auth-config`, `video:yt-dlp` |
 | Discovery | skills / commands / hooks scan |
 | Shell extras | tray, shortcuts, screenshot (`desktop_shell.rs`) |
 

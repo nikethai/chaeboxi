@@ -9,6 +9,7 @@ export enum StorageKey {
   Settings = 'settings',
   MyCopilots = 'myCopilots',
   MyFolders = 'myFolders',
+  MyProjects = 'myProjects',
   PromptPresets = 'promptPresets',
   SystemPromptPresets = 'systemPromptPresets',
   Skills = 'skills',

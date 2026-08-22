@@ -1,4 +1,4 @@
-import { ActionIcon, Text, Tooltip, UnstyledButton } from '@mantine/core'
+import { ActionIcon, Tooltip, UnstyledButton } from '@mantine/core'
 import {
   type ArtifactKind,
   artifactKindLabel,
@@ -12,6 +12,7 @@ import {
 } from '@shared/artifacts'
 import type { MessageArtifact as MessageArtifactRecord } from '@shared/types/session'
 import {
+  IconChevronRight,
   IconCode,
   IconFileTypeHtml,
   IconFileTypeSvg,
@@ -20,7 +21,7 @@ import {
   IconPlayerStop,
   IconReload,
 } from '@tabler/icons-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
@@ -128,10 +129,10 @@ async function collectThreadArtifactVersions(
 }
 
 function ArtifactKindIcon({ kind }: { kind: ArtifactKind }) {
-  if (kind === 'html') return <IconFileTypeHtml size={16} stroke={1.5} />
-  if (kind === 'svg') return <IconFileTypeSvg size={16} stroke={1.5} />
-  if (kind === 'markdown') return <IconFileTypeTxt size={16} stroke={1.5} />
-  return <IconCode size={16} stroke={1.5} />
+  if (kind === 'html') return <IconFileTypeHtml size={15} stroke={1.5} />
+  if (kind === 'svg') return <IconFileTypeSvg size={15} stroke={1.5} />
+  if (kind === 'markdown') return <IconFileTypeTxt size={15} stroke={1.5} />
+  return <IconCode size={15} stroke={1.5} />
 }
 
 export function MessageArtifact(props: {
@@ -157,28 +158,14 @@ export function MessageArtifact(props: {
   } = props
 
   const setWorkspacePanel = useUIStore((s) => s.setWorkspacePanel)
-  const didAutoOpen = useRef(false)
-  const prevGenerating = useRef(generating)
-  const pendingAutoOpen = useRef(false)
 
   const derived = useMemo(() => artifact ?? deriveMessageArtifacts(messageContent)?.[0], [artifact, messageContent])
 
   useEffect(() => {
-    const finished = prevGenerating.current && !generating
-    prevGenerating.current = generating
-    if (finished && autoOpenWorkspace) {
-      pendingAutoOpen.current = true
-    }
-  }, [generating, autoOpenWorkspace])
-
-  useEffect(() => {
-    if (!pendingAutoOpen.current || didAutoOpen.current || !derived || generating) return
-    didAutoOpen.current = true
-    pendingAutoOpen.current = false
-    void collectThreadArtifactVersions(sessionId, messageId, derived).then((versions) => {
-      setWorkspacePanel(toWorkspacePanelState(derived, messageId, versions))
-    })
-  }, [derived, generating, messageId, sessionId, setWorkspacePanel])
+    if (!autoOpenWorkspace || !derived?.content) return
+    if (generating && derived.content.length < 24) return
+    setWorkspacePanel(toWorkspacePanelState(derived, messageId))
+  }, [autoOpenWorkspace, derived, generating, messageId, setWorkspacePanel])
 
   if (!derived) return null
 
@@ -249,17 +236,9 @@ export function ArtifactWithButtons(props: {
         <span className="artifact-card-icon" aria-hidden>
           <ArtifactKindIcon kind={kind} />
         </span>
-        <span className="artifact-card-copy min-w-0">
-          <Text size="sm" fw={600} className="artifact-card-title">
-            {title}
-          </Text>
-          <Text size="xs" className="artifact-card-sub">
-            {versionMeta ? `${typeLabel} · ${versionMeta}` : typeLabel}
-          </Text>
-        </span>
-        <span className="artifact-card-chevron" aria-hidden>
-          <IconLayoutSidebarRightExpand size={16} stroke={1.5} />
-        </span>
+        <span className="artifact-card-title">{title}</span>
+        <span className="artifact-card-sub">{versionMeta ? `${typeLabel} · ${versionMeta}` : typeLabel}</span>
+        <IconChevronRight size={13} stroke={2} className="artifact-card-chevron" aria-hidden />
       </UnstyledButton>
     )
   }

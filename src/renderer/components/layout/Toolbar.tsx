@@ -17,7 +17,7 @@ import UpdateAvailableButton from '../UpdateAvailableButton'
  * Thread header overflow — one ⋯ for session options + export + destructive actions.
  * Global search lives in the sidebar only (not duplicated here).
  */
-export default function Toolbar({ session }: { session: Session }) {
+export default function Toolbar({ session, compact }: { session: Session; compact?: boolean }) {
   const { t } = useTranslation()
   const isSmallScreen = useIsSmallScreen()
   const sessionId = session.id
@@ -79,18 +79,19 @@ export default function Toolbar({ session }: { session: Session }) {
   }, [isSmallScreen, session, sessionId, t])
 
   return (
-    <Flex align="center" gap={isSmallScreen ? 'xs' : 'sm'} className="controls">
+    <Flex align="center" gap={compact ? 0 : isSmallScreen ? 'xs' : 'sm'} className="controls">
       {showUpdateNotification && <UpdateAvailableButton />}
 
       <ActionMenu position="bottom-end" items={overflowItems}>
         <ActionIcon
           variant="subtle"
-          size={isSmallScreen ? 30 : 32}
-          color="chatbox-secondary"
-          className="active:scale-[0.96] transition-transform"
+          size={compact ? 26 : isSmallScreen ? 30 : 32}
+          color={compact ? 'gray' : 'chatbox-secondary'}
+          radius={compact ? 'md' : undefined}
+          className={compact ? 'workspace-action-btn active:scale-[0.96]' : 'active:scale-[0.96] transition-transform'}
           aria-label={t('More actions')}
         >
-          <IconDots strokeWidth={1.8} />
+          <IconDots size={compact ? 16 : undefined} strokeWidth={1.8} />
         </ActionIcon>
       </ActionMenu>
     </Flex>

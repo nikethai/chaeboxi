@@ -1,4 +1,5 @@
 export {
+  globalScanPaths,
   isProjectRelativePath,
   isUserGlobalPath,
   joinWorkspaceRoot,

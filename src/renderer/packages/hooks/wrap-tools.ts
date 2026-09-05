@@ -1,3 +1,4 @@
+import { isSensitiveToolName, redactSensitiveToolPayload } from '@shared/privacy/sensitive-tools'
 import type { ToolSet } from 'ai'
 import { runHooks } from './executor'
 
@@ -23,6 +24,9 @@ export function wrapToolsWithLifecycleHooks(tools: ToolSet, ctx: ToolHookContext
     Object.entries(tools).map(([toolName, definition]) => {
       const rawExecute = (definition as { execute?: ToolExecute } | undefined)?.execute
       if (typeof rawExecute !== 'function') {
+        return [toolName, definition]
+      }
+      if (isSensitiveToolName(toolName)) {
         return [toolName, definition]
       }
 
@@ -78,7 +82,7 @@ async function safeRunToolHooks(
       hooks,
       shellEnabled: Boolean(overrides.shellHooksEnabled),
       toolName,
-      toolInput,
+      toolInput: redactSensitiveToolPayload(toolName, toolInput),
       sessionId: ctx.sessionId,
       workspaceRoot: ctx.workspaceRoot,
       output: output !== undefined ? safeStringify(output) : undefined,

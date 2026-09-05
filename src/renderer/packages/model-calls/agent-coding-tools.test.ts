@@ -241,6 +241,7 @@ describe('streamText agent coding tools', () => {
     })
 
     await streamText(createTestModel(chat), {
+      sessionId: 'sess-live',
       messages: [createMessage('user', 'scaffold a react app')],
       onResultChangeWithCancel: vi.fn(),
       agentCoding: {
@@ -258,6 +259,8 @@ describe('streamText agent coding tools', () => {
       projectId: 'p1',
       rootGeneration: 'gen-1',
       mutationEnabled: true,
+      sessionId: 'sess-live',
+      turnId: '',
     })
     expect(createTerminalToolSetMock).not.toHaveBeenCalled()
     expect(toolsArg).toBeDefined()

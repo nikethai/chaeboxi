@@ -376,6 +376,34 @@ export default class TestPlatform implements Platform {
     throw new Error('UNSUPPORTED_PLATFORM')
   }
 
+  public async applyWorkspaceChangeSet(): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async beginWorkspaceChangeSet(): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async prepareWorkspaceExport(): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async getSourceControlStatus(): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async getLocalExecutionStatus(): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async getManagedWorktreeStatus(): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async getWorkspaceSuiteCapabilities(): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
   public getWindowLabel(): Promise<string> {
     return Promise.resolve('test')
   }

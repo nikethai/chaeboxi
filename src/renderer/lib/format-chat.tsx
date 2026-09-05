@@ -5,6 +5,7 @@ import Markdown, { BlockCodeCollapsedStateProvider } from '@/components/Markdown
 import * as base64 from '@/packages/base64'
 import { CHAEBOXI_ICON_DATA_URI } from '@/packages/brand-icon-data-uri'
 import storage from '@/storage'
+import { isSensitiveToolName, redactSensitiveToolPayload } from '@shared/privacy/sensitive-tools'
 import type { Message, MessageToolCallPart, SessionThread } from '../../shared/types'
 import { getMessageText } from '../../shared/utils/message'
 
@@ -84,13 +85,18 @@ function getAttachmentNames(message: Message): string[] {
   return message.files?.map((file) => file.name).filter(Boolean) ?? []
 }
 
+function exportToolPayload(toolName: string, payload: unknown): string | null {
+  const safe = isSensitiveToolName(toolName) ? redactSensitiveToolPayload(toolName, payload) : payload
+  return stringifyDataForExport(safe)
+}
+
 function renderToolCallMarkdown(summary: ToolCallSummary): string {
   let content = `Tool Call: ${summary.toolName} (state: ${summary.state})\n`
-  const argsText = stringifyDataForExport(summary.args)
+  const argsText = exportToolPayload(summary.toolName, summary.args)
   if (argsText) {
     content += `Args:\n${indentMultiline(argsText, '  ')}\n`
   }
-  const resultText = stringifyDataForExport(summary.result)
+  const resultText = exportToolPayload(summary.toolName, summary.result)
   if (resultText) {
     content += `Result:\n${indentMultiline(resultText, '  ')}\n`
   }
@@ -99,11 +105,11 @@ function renderToolCallMarkdown(summary: ToolCallSummary): string {
 
 function renderToolCallTxt(summary: ToolCallSummary): string {
   let content = `    Tool Call: ${summary.toolName} (state: ${summary.state})\n`
-  const argsText = stringifyDataForExport(summary.args)
+  const argsText = exportToolPayload(summary.toolName, summary.args)
   if (argsText) {
     content += `      Args:\n${indentMultiline(argsText, '        ')}\n`
   }
-  const resultText = stringifyDataForExport(summary.result)
+  const resultText = exportToolPayload(summary.toolName, summary.result)
   if (resultText) {
     content += `      Result:\n${indentMultiline(resultText, '        ')}\n`
   }
@@ -113,12 +119,12 @@ function renderToolCallTxt(summary: ToolCallSummary): string {
 function renderToolCallHtml(summary: ToolCallSummary): string {
   let html = '<div class="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">\n'
   html += `<p class="font-semibold text-sm">${escapeHtml(summary.toolName)} <span class="text-xs text-slate-500">(state: ${escapeHtml(summary.state)})</span></p>\n`
-  const argsText = stringifyDataForExport(summary.args)
+  const argsText = exportToolPayload(summary.toolName, summary.args)
   if (argsText) {
     html += '<p class="text-xs text-slate-500 mt-1 mb-1">Args</p>\n'
     html += `<pre class="bg-white border border-slate-200 rounded p-2 text-xs whitespace-pre-wrap overflow-x-auto">${escapeHtml(argsText)}</pre>\n`
   }
-  const resultText = stringifyDataForExport(summary.result)
+  const resultText = exportToolPayload(summary.toolName, summary.result)
   if (resultText) {
     html += '<p class="text-xs text-slate-500 mt-2 mb-1">Result</p>\n'
     html += `<pre class="bg-white border border-slate-200 rounded p-2 text-xs whitespace-pre-wrap overflow-x-auto">${escapeHtml(resultText)}</pre>\n`

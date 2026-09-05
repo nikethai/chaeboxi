@@ -8,7 +8,12 @@ import type { ResolvedProjectContext } from '@/projects/project-context'
 import { canAttachContext } from '@/projects/project-context-draft'
 import * as toastActions from '@/stores/toastActions'
 import { uiStore, useUIStore } from '@/stores/uiStore'
+import { getStagedChangeSetId, subscribeStagedChangeSets } from '@/packages/model-calls/toolsets/file'
+import { ProjectChangeReview } from './ProjectChangeReview'
+import { ProjectExportDialog } from './ProjectExportDialog'
 import { ExplorerFileRow, ProjectExplorerTree } from './ProjectExplorerTree'
+import { QuickRunPanel } from './QuickRunPanel'
+import { SourceControlView } from './SourceControlView'
 
 function folderLabel(displayPath?: string) {
   if (!displayPath) return ''
@@ -35,10 +40,19 @@ export function ProjectContextPanel({
   const [openDirs, setOpenDirs] = useState<Record<string, boolean>>({})
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState<Array<{ relativePath: string }>>([])
+  const [tab, setTab] = useState<'files' | 'scm' | 'review' | 'run'>('files')
+  const [exportOpen, setExportOpen] = useState(false)
+  const [changeSetId, setChangeSetId] = useState(() => getStagedChangeSetId(sessionId) || '')
   const attached = useUIStore((s) => s.projectContextDrafts[sessionId])
   const attachedPaths = useMemo(() => new Set((attached ?? []).map((e) => e.relativePath)), [attached])
 
   const ready = descriptor?.status === 'ready' && Boolean(descriptor.capabilityId)
+
+  useEffect(() => {
+    const sync = () => setChangeSetId(getStagedChangeSetId(sessionId) || '')
+    sync()
+    return subscribeStagedChangeSets(sync)
+  }, [sessionId])
 
   const loadRoot = useCallback(async () => {
     if (!descriptor?.capabilityId || !platform.listWorkspaceChildren) {
@@ -141,9 +155,9 @@ export function ProjectContextPanel({
         : t('You have not yet opened a folder.')
 
   return (
-    <aside aria-label={t('Explorer')} className="project-explorer">
+    <aside aria-label={t('Project Files')} className="project-explorer">
       <header className="project-explorer-header">
-        <span className="project-explorer-kicker">{t('Explorer')}</span>
+        <span className="project-explorer-kicker">{t('Project Files')}</span>
         {ready ? (
           <Tooltip label={t('Refresh files')}>
             <ActionIcon variant="subtle" size={22} onClick={() => void loadRoot()} aria-label={t('Refresh files')}>
@@ -158,44 +172,77 @@ export function ProjectContextPanel({
           <div className="project-explorer-root" title={descriptor?.displayPath}>
             {folderLabel(descriptor?.displayPath)}
           </div>
-          <input
-            className="project-explorer-filter"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.currentTarget.value)
-              if (!e.currentTarget.value.trim()) setHits([])
-            }}
-            placeholder={t('Search files')}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                void search()
-              }
-            }}
-          />
-          <div className="project-explorer-tree">
-            {hits.length > 0 ? (
-              hits.map((hit) => (
-                <ExplorerFileRow
-                  key={hit.relativePath}
-                  name={hit.relativePath}
-                  attached={attachedPaths.has(hit.relativePath)}
-                  onClick={() => void attach(hit.relativePath)}
-                />
-              ))
-            ) : entries.length === 0 ? (
-              <div className="project-explorer-muted">{t('No files')}</div>
-            ) : (
-              <ProjectExplorerTree
-                entries={entries}
-                attachedPaths={attachedPaths}
-                openDirs={openDirs}
-                childrenByDir={childrenByDir}
-                onToggle={toggleDir}
-                onAttach={attach}
-              />
-            )}
+          <div className="project-explorer-tabs" role="tablist">
+            <button type="button" role="tab" aria-selected={tab === 'files'} onClick={() => setTab('files')}>
+              {t('Project Files')}
+            </button>
+            <button type="button" role="tab" aria-selected={tab === 'scm'} onClick={() => setTab('scm')}>
+              {t('Source Control')}
+            </button>
+            <button type="button" role="tab" aria-selected={tab === 'review'} onClick={() => setTab('review')}>
+              {t('Change Review')}
+            </button>
+            <button type="button" role="tab" aria-selected={tab === 'run'} onClick={() => setTab('run')}>
+              {t('Quick Local Run')}
+            </button>
           </div>
+          {tab === 'files' ? (
+            <>
+              <button type="button" className="project-explorer-open" onClick={() => setExportOpen(true)}>
+                {t('Export safe snapshot')}
+              </button>
+              {exportOpen && descriptor?.capabilityId ? (
+                <ProjectExportDialog capabilityId={descriptor.capabilityId} onClose={() => setExportOpen(false)} />
+              ) : null}
+              <input
+                className="project-explorer-filter"
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.currentTarget.value)
+                  if (!e.currentTarget.value.trim()) setHits([])
+                }}
+                placeholder={t('Search files')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    void search()
+                  }
+                }}
+              />
+              <div className="project-explorer-tree" role="tree">
+                {hits.length > 0 ? (
+                  hits.map((hit) => (
+                    <ExplorerFileRow
+                      key={hit.relativePath}
+                      name={hit.relativePath}
+                      attached={attachedPaths.has(hit.relativePath)}
+                      onClick={() => undefined}
+                      onKeyDown={(event) => {
+                        if (event.key === ' ' || event.key === 'Enter') {
+                          event.preventDefault()
+                          void attach(hit.relativePath)
+                        }
+                      }}
+                    />
+                  ))
+                ) : entries.length === 0 ? (
+                  <div className="project-explorer-muted">{t('No files')}</div>
+                ) : (
+                  <ProjectExplorerTree
+                    entries={entries}
+                    attachedPaths={attachedPaths}
+                    openDirs={openDirs}
+                    childrenByDir={childrenByDir}
+                    onToggle={toggleDir}
+                    onAttach={attach}
+                  />
+                )}
+              </div>
+            </>
+          ) : null}
+          {tab === 'scm' && descriptor?.capabilityId ? <SourceControlView capabilityId={descriptor.capabilityId} /> : null}
+          {tab === 'review' ? <ProjectChangeReview changeSetId={changeSetId} /> : null}
+          {tab === 'run' ? <QuickRunPanel /> : null}
         </>
       ) : (
         <div className="project-explorer-empty">

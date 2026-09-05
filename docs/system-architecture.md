@@ -149,7 +149,7 @@ ipc_invoke(channel: string, args: Value[]) -> Value
 | OpenClaw | `openclaw:test-connection`, `list-agents`, `invoke-agent`, stream cancel |
 | MCP | `mcp:server:create|start|list-tools|call-tool|close|list|status` |
 | KB | `kb:list|create|update|delete`, `kb:file:*`, `kb:search` |
-| Workspace | `workspace:pick-and-bind`, `restore`, `read`, `list`, `search`, revision mutations; `fs:*` / `execute_command` rejected |
+| Workspace | `workspace:pick-and-bind`, `restore`, `read`, `list`, `search`, `export:*`, `scm:*`, `changes:*`; WASI/worktrees gated unavailable; `fs:*` / `execute_command` rejected |
 | Narrow brokers | `codex:read-auth-config`, `video:yt-dlp` |
 | Discovery | skills / commands / hooks scan |
 | Shell extras | tray, shortcuts, screenshot (`desktop_shell.rs`) |

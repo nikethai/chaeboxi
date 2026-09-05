@@ -110,6 +110,24 @@ describe('wrapToolsWithApproval shipped wrapper', () => {
     )
   })
 
+  it('stores metadata-only audit args without file content', async () => {
+    getToolApprovalMock.mockReturnValue(undefined)
+    const execute = vi.fn(async () => ({ ok: true }))
+    const wrapped = wrapToolsWithApproval('sess-1', {
+      create_file: { description: 'create a file', execute },
+    } as never)
+    showModalMock.mockResolvedValue('once')
+    const sentinel = 'SECRET_SENTINEL_BYTES_9f3a'
+    await (wrapped.create_file as { execute: (a: unknown, c: unknown) => Promise<unknown> }).execute(
+      { path: 'a.txt', content: sentinel },
+      {}
+    )
+    const auditArgs = addAuditEntryMock.mock.calls[0]?.[0]?.args
+    expect(JSON.stringify(auditArgs)).not.toContain(sentinel)
+    expect(auditArgs.redacted).toBe(true)
+    expect(JSON.stringify(showModalMock.mock.calls[0]?.[1]?.parameters)).not.toContain(sentinel)
+  })
+
   it('auto-approves LOW tools without a modal', async () => {
     getToolApprovalMock.mockReturnValue(undefined)
     const execute = vi.fn(async () => ({ hits: [] }))

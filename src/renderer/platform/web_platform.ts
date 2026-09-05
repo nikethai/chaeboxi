@@ -265,6 +265,34 @@ export default class WebPlatform extends IndexedDBStorage implements Platform {
     throw new Error('UNSUPPORTED_PLATFORM')
   }
 
+  public async applyWorkspaceChangeSet(_applyTicket?: string): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async beginWorkspaceChangeSet(): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async prepareWorkspaceExport(): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async getSourceControlStatus(): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async getLocalExecutionStatus(): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async getManagedWorktreeStatus(): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
+  public async getWorkspaceSuiteCapabilities(): Promise<never> {
+    throw new Error('UNSUPPORTED_PLATFORM')
+  }
+
   public minimize() {
     return Promise.resolve()
   }

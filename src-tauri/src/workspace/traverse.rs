@@ -28,10 +28,32 @@ pub fn filesystem_identity(path: &Path) -> Result<String, WorkspaceError> {
         use std::os::unix::fs::MetadataExt;
         Ok(format!("{}:{}", meta.dev(), meta.ino()))
     }
-    #[cfg(not(unix))]
+    #[cfg(windows)]
     {
-        Ok(format!("{}:{}", path.display(), meta.len()))
+        use std::os::windows::fs::MetadataExt;
+        let serial = meta.volume_serial_number().unwrap_or(0);
+        let index = meta.file_index().unwrap_or(0);
+        if serial == 0 && index == 0 {
+            return Err(WorkspaceError::new(
+                PERMISSION_DENIED,
+                "Windows root identity is unavailable; mutation stays disabled",
+            ));
+        }
+        Ok(format!("{serial}:{index}"))
     }
+    #[cfg(not(any(unix, windows)))]
+    {
+        let _ = meta;
+        Err(WorkspaceError::new(
+            PERMISSION_DENIED,
+            "Root identity is not guaranteed on this platform",
+        ))
+    }
+}
+
+#[allow(dead_code)]
+pub fn identity_is_strong(identity: &str) -> bool {
+    !identity.is_empty() && identity != "0:0"
 }
 
 fn reject_symlink(path: &Path) -> Result<fs::Metadata, WorkspaceError> {
@@ -120,15 +142,38 @@ fn unix_walk(root: &Path, rel: &RelativePath, last_flags: i32, create: bool) -> 
     Ok(current)
 }
 
-pub fn read_file_bytes(root: &Path, rel: &RelativePath) -> Result<Vec<u8>, WorkspaceError> {
+pub struct LimitedRead {
+    pub bytes: Vec<u8>,
+    pub size: u64,
+    pub truncated: bool,
+}
+
+fn read_limited_from_file(file: &mut File, max_bytes: usize) -> io::Result<LimitedRead> {
+    let size = file.metadata()?.len();
+    let to_read = max_bytes.min(size as usize);
+    let mut buf = vec![0u8; to_read];
+    let mut read_total = 0usize;
+    while read_total < to_read {
+        match file.read(&mut buf[read_total..])? {
+            0 => break,
+            n => read_total += n,
+        }
+    }
+    buf.truncate(read_total);
+    Ok(LimitedRead {
+        truncated: size as usize > buf.len(),
+        size,
+        bytes: buf,
+    })
+}
+
+pub fn read_file_limited(root: &Path, rel: &RelativePath, max_bytes: usize) -> Result<LimitedRead, WorkspaceError> {
     #[cfg(unix)]
     {
         use std::os::fd::FromRawFd;
         let fd = unix_walk(root, rel, libc::O_RDONLY, false)?;
         let mut file = unsafe { File::from_raw_fd(std::os::fd::IntoRawFd::into_raw_fd(fd)) };
-        let mut buf = Vec::new();
-        file.read_to_end(&mut buf).map_err(|err| map_io(&rel.as_display(), err))?;
-        return Ok(buf);
+        return read_limited_from_file(&mut file, max_bytes).map_err(|err| map_io(&rel.as_display(), err));
     }
     #[cfg(not(unix))]
     {
@@ -137,8 +182,14 @@ pub fn read_file_bytes(root: &Path, rel: &RelativePath) -> Result<Vec<u8>, Works
         if meta.is_dir() {
             return Err(not_found(&rel.as_display()));
         }
-        fs::read(&path).map_err(|err| map_io(&rel.as_display(), err))
+        let mut file = File::open(&path).map_err(|err| map_io(&rel.as_display(), err))?;
+        read_limited_from_file(&mut file, max_bytes).map_err(|err| map_io(&rel.as_display(), err))
     }
+}
+
+pub fn read_file_bytes(root: &Path, rel: &RelativePath) -> Result<Vec<u8>, WorkspaceError> {
+    let limited = read_file_limited(root, rel, usize::MAX)?;
+    Ok(limited.bytes)
 }
 
 pub fn list_children(root: &Path, rel: &RelativePath) -> Result<Vec<(String, bool, u64)>, WorkspaceError> {

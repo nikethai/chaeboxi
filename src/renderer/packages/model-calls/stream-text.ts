@@ -90,6 +90,8 @@ export type AgentCodingOptions = {
   projectId?: string
   rootGeneration?: string
   mutationEnabled?: boolean
+  sessionId?: string
+  turnId?: string
 }
 
 /** Desktop browser agent tools (isolated Chromium). */
@@ -384,6 +386,8 @@ export async function streamText(
         projectId: agentCoding?.projectId || '',
         rootGeneration: agentCoding?.rootGeneration || '',
         mutationEnabled,
+        sessionId: agentCoding?.sessionId || params.sessionId || '',
+        turnId: agentCoding?.turnId || '',
       })
     : null
   const terminalToolSet = null

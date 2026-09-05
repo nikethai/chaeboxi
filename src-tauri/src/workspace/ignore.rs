@@ -176,11 +176,26 @@ impl IgnoreStack {
         }
     }
 
+    pub fn layer_count(&self) -> usize {
+        self.layers.len()
+    }
+
+    pub fn truncate_layers(&mut self, len: usize) {
+        self.layers.truncate(len);
+    }
+
     pub fn push_gitignore(&mut self, dir_relative: &str, text: &str) {
+        if self.layers.len() >= super::budgets::IGNORE_MAX_LAYERS {
+            return;
+        }
         let rules = parse_gitignore(text);
         if !rules.is_empty() {
             self.layers.push((dir_relative.replace('\\', "/"), rules));
         }
+    }
+
+    pub fn pop_gitignore(&mut self) {
+        self.layers.pop();
     }
 
     pub fn is_ignored(&self, relative_path: &str, is_dir: bool) -> bool {
@@ -258,5 +273,25 @@ mod tests {
         assert!(stack.is_ignored("foo.log", false));
         assert!(stack.is_ignored("node_modules", true));
         assert!(!stack.is_ignored("src/app.ts", false));
+    }
+
+    #[test]
+    fn nested_gitignore_does_not_leak_to_siblings() {
+        let mut stack = IgnoreStack::new(true);
+        stack.push_gitignore("", "*.tmp\n");
+        let before = stack.layer_count();
+        stack.push_gitignore("src", "secret.txt\n");
+        assert!(stack.is_ignored("src/secret.txt", false));
+        stack.truncate_layers(before);
+        assert!(!stack.is_ignored("other/secret.txt", false));
+        assert!(stack.is_ignored("other/foo.tmp", false));
+    }
+
+    #[test]
+    fn negation_cannot_override_hard_deny() {
+        let mut stack = IgnoreStack::new(true);
+        stack.push_gitignore("", "!.env\n.env\n");
+        assert!(stack.is_ignored(".env", false));
+        assert!(is_hard_denied(".env"));
     }
 }

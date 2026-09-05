@@ -135,7 +135,7 @@ const PlanApproval: FC<PlanApprovalProps> = ({ planPart, onApprove, onRequestCha
                   loading={pendingAction === 'approve'}
                   disabled={isBusy}
                 >
-                  {t('Approve & Execute')}
+                  {t('Run plan')}
                 </Button>
               </Group>
             )}

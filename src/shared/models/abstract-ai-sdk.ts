@@ -31,6 +31,16 @@ import type {
   SearchCitation,
   StreamTextResult,
 } from '../types'
+import { isSensitiveToolName, redactSensitiveToolPayload } from '../privacy/sensitive-tools'
+
+/** Metadata-only tool error payload persisted on message parts. */
+export function persistedSensitiveToolErrorResult(toolName: string, serializedError: unknown, input: unknown) {
+  return {
+    error: serializedError,
+    input: isSensitiveToolName(toolName) ? redactSensitiveToolPayload(toolName, input) : input,
+    toolName,
+  }
+}
 import type { ModelDependencies } from '../types/adapters'
 import { annotateTextWithGrounding, groundingMetadataToCitations } from '../utils/search'
 import { ApiError, ProviderAPIError } from './errors'
@@ -271,7 +281,9 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     options: CallChatCompletionOptions
   ): void {
     for (const toolCall of toolCalls) {
-      const args = toolCall.input
+      const args = isSensitiveToolName(toolCall.toolName)
+        ? redactSensitiveToolPayload(toolCall.toolName, toolCall.input)
+        : toolCall.input
       this.addContentPart(
         {
           type: 'tool-call',
@@ -318,11 +330,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
           : toolError.error
       const mappedResult: ToolExecutionResult = {
         toolCallId: toolError.toolCallId,
-        result: {
-          error: serializedError,
-          input: toolError.input,
-          toolName: toolError.toolName,
-        },
+        result: persistedSensitiveToolErrorResult(toolError.toolName, serializedError, toolError.input),
         isError: true,
       }
       this.updateToolResultPart(mappedResult, contentParts)
@@ -338,24 +346,39 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
     if (toolCallPart) {
       const isError = toolResult.isError || (toolResult.result as unknown) instanceof Error
       if (isError) {
+        const sensitive = isSensitiveToolName(toolCallPart.toolName)
         if ((toolResult.result as unknown) instanceof Error) {
           const error = toolResult.result as Error
-          console.debug('mcp tool execute error', error)
+          if (!sensitive) {
+            console.debug('mcp tool execute error', error)
+          }
           toolCallPart.result = {
             name: error.name,
             message: error.message,
             stack: error.stack,
           }
         } else {
-          console.debug('mcp tool execute error', toolResult.result)
-          toolCallPart.result = toolResult.result ?? {
-            message: 'Unknown tool error',
+          const payload = toolResult.result ?? { message: 'Unknown tool error' }
+          if (!sensitive) {
+            console.debug('mcp tool execute error', payload)
+          }
+          if (sensitive && payload && typeof payload === 'object') {
+            const rec = payload as Record<string, unknown>
+            toolCallPart.result = persistedSensitiveToolErrorResult(
+              toolCallPart.toolName,
+              rec.error ?? rec.message,
+              rec.input ?? rec
+            )
+          } else {
+            toolCallPart.result = payload
           }
         }
         toolCallPart.state = 'error'
       } else {
         toolCallPart.state = 'result'
-        toolCallPart.result = toolResult.result
+        toolCallPart.result = isSensitiveToolName(toolCallPart.toolName)
+          ? redactSensitiveToolPayload(toolCallPart.toolName, toolResult.result)
+          : toolResult.result
       }
     }
   }

@@ -15,6 +15,17 @@ impl WorkspaceError {
     pub fn to_ipc_err(&self) -> String {
         format!("{}: {}", self.code, self.message)
     }
+
+    pub fn to_envelope(&self) -> serde_json::Value {
+        serde_json::json!({
+            "ok": false,
+            "error": { "code": self.code, "message": self.message },
+        })
+    }
+}
+
+pub fn envelope_ok(value: serde_json::Value) -> serde_json::Value {
+    serde_json::json!({ "ok": true, "value": value })
 }
 
 pub const UNAUTHORIZED_ROOT: &str = "UNAUTHORIZED_ROOT";
@@ -34,6 +45,19 @@ pub const MUTATION_DISABLED: &str = "MUTATION_DISABLED";
 pub const HARD_DENIED: &str = "HARD_DENIED";
 pub const BINARY: &str = "BINARY";
 pub const CANCELLED: &str = "CANCELLED";
+pub const LIMIT_EXCEEDED: &str = "LIMIT_EXCEEDED";
+pub const QUEUE_SATURATED: &str = "QUEUE_SATURATED";
+pub const FEATURE_DISABLED: &str = "FEATURE_DISABLED";
+pub const EXPORT_CONFLICT: &str = "EXPORT_CONFLICT";
+pub const EXPORT_CANCELLED: &str = "EXPORT_CANCELLED";
+pub const ENOSPC: &str = "ENOSPC";
+pub const REPOSITORY_OUTSIDE_ROOT: &str = "REPOSITORY_OUTSIDE_ROOT";
+pub const GIT_UNAVAILABLE: &str = "GIT_UNAVAILABLE";
+pub const SCM_TIMEOUT: &str = "SCM_TIMEOUT";
+pub const SCM_DISABLED: &str = "SCM_DISABLED";
+pub const CHANGE_SET_INVALID: &str = "CHANGE_SET_INVALID";
+pub const APPLY_TICKET_INVALID: &str = "APPLY_TICKET_INVALID";
+pub const PARTIAL_APPLY: &str = "PARTIAL_APPLY";
 
 pub fn unauthorized_root(msg: &str) -> WorkspaceError {
     WorkspaceError::new(UNAUTHORIZED_ROOT, msg)
@@ -85,4 +109,45 @@ pub fn hard_denied(path: &str) -> WorkspaceError {
 
 pub fn cancelled() -> WorkspaceError {
     WorkspaceError::new(CANCELLED, "Workspace request was cancelled")
+}
+
+pub fn limit_exceeded(msg: &str) -> WorkspaceError {
+    WorkspaceError::new(LIMIT_EXCEEDED, msg)
+}
+
+pub fn queue_saturated() -> WorkspaceError {
+    WorkspaceError::new(QUEUE_SATURATED, "Too many concurrent workspace operations")
+}
+
+pub fn feature_disabled(name: &str) -> WorkspaceError {
+    WorkspaceError::new(FEATURE_DISABLED, format!("{name} is disabled"))
+}
+
+#[allow(dead_code)]
+pub fn export_cancelled() -> WorkspaceError {
+    WorkspaceError::new(EXPORT_CANCELLED, "Export was cancelled")
+}
+
+pub fn enospc() -> WorkspaceError {
+    WorkspaceError::new(ENOSPC, "Not enough space to complete the export or apply")
+}
+
+pub fn repository_outside_root() -> WorkspaceError {
+    WorkspaceError::new(REPOSITORY_OUTSIDE_ROOT, "Git repository root is outside the authorized folder")
+}
+
+pub fn git_unavailable() -> WorkspaceError {
+    WorkspaceError::new(GIT_UNAVAILABLE, "Git is not available")
+}
+
+pub fn scm_timeout() -> WorkspaceError {
+    WorkspaceError::new(SCM_TIMEOUT, "Source control operation timed out")
+}
+
+pub fn apply_ticket_invalid() -> WorkspaceError {
+    WorkspaceError::new(APPLY_TICKET_INVALID, "Apply ticket is invalid, expired, or already used")
+}
+
+pub fn change_set_invalid(msg: &str) -> WorkspaceError {
+    WorkspaceError::new(CHANGE_SET_INVALID, msg)
 }

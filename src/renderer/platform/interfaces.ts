@@ -151,6 +151,24 @@ export interface Platform extends Storage {
     expectedRevision: string
   ): Promise<WorkspaceMutationResult>
   setProjectTrust?(projectId: string, category: WorkspaceTrustCategory, value: WorkspaceTrustValue): Promise<void>
+  getWorkspaceSuiteCapabilities?(): Promise<unknown>
+  beginWorkspaceChangeSet?(capabilityId: string, sessionId: string, turnId: string): Promise<{ changeSetId: string }>
+  appendWorkspaceChange?(changeSetId: string, operation: Record<string, unknown>): Promise<{ operationId?: string; staged?: boolean }>
+  sealWorkspaceChangeSet?(changeSetId: string): Promise<{ digest?: string; operations?: unknown[] }>
+  getWorkspaceChangeSet?(changeSetId: string): Promise<unknown>
+  discardWorkspaceChangeSet?(changeSetId: string): Promise<unknown>
+  preflightWorkspaceChangeSet?(changeSetId: string, digest: string, selectedIds: string[]): Promise<{ ok?: boolean }>
+  prepareWorkspaceApply?(changeSetId: string, digest: string, selectedIds: string[]): Promise<{ applyTicket?: string }>
+  applyWorkspaceChangeSet?(applyTicket: string): Promise<{ status?: string }>
+  prepareWorkspaceExport?(capabilityId: string, selection: Record<string, unknown>): Promise<unknown>
+  prepareAppArtifactExport?(artifactId: string): Promise<unknown>
+  exportWorkspace?(manifestId: string): Promise<{ status?: string }>
+  discardWorkspaceExport?(manifestId: string): Promise<unknown>
+  getSourceControlStatus?(capabilityId: string): Promise<unknown>
+  getSourceControlDiff?(capabilityId: string, changeId?: string): Promise<unknown>
+  getSourceControlLog?(capabilityId: string, limit?: number): Promise<unknown>
+  getLocalExecutionStatus?(): Promise<unknown>
+  getManagedWorktreeStatus?(): Promise<unknown>
   readCodexAuthConfig?(): Promise<string>
   videoYtDlp?(op: 'detect' | 'install'): Promise<unknown>
   /** Test-only: never a renderer authorization path. */

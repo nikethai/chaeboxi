@@ -1,4 +1,5 @@
 import { UnstyledButton } from '@mantine/core'
+import type { KeyboardEvent } from 'react'
 import type { WorkspaceListEntry } from '@shared/types/workspace'
 import { IconChevronDown, IconChevronRight, IconFile, IconFolder } from '@tabler/icons-react'
 
@@ -67,7 +68,13 @@ function ExplorerBranch({
             void onToggle(entry.relativePath)
             return
           }
-          void onAttach(entry.relativePath)
+        }}
+        onKeyDown={(event) => {
+          if (entry.kind !== 'file') return
+          if (event.key === ' ' || event.key === 'Enter') {
+            event.preventDefault()
+            void onAttach(entry.relativePath)
+          }
         }}
       />
       {entry.kind === 'directory' && open
@@ -88,8 +95,18 @@ function ExplorerBranch({
   )
 }
 
-export function ExplorerFileRow({ name, attached, onClick }: { name: string; attached: boolean; onClick: () => void }) {
-  return <ExplorerRow name={name} kind="file" depth={0} attached={attached} onClick={onClick} />
+export function ExplorerFileRow({
+  name,
+  attached,
+  onClick,
+  onKeyDown,
+}: {
+  name: string
+  attached: boolean
+  onClick: () => void
+  onKeyDown?: (event: KeyboardEvent) => void
+}) {
+  return <ExplorerRow name={name} kind="file" depth={0} attached={attached} onClick={onClick} onKeyDown={onKeyDown} />
 }
 
 function ExplorerRow({
@@ -99,6 +116,7 @@ function ExplorerRow({
   open,
   attached,
   onClick,
+  onKeyDown,
 }: {
   name: string
   kind: 'file' | 'directory'
@@ -106,6 +124,7 @@ function ExplorerRow({
   open?: boolean
   attached?: boolean
   onClick: () => void
+  onKeyDown?: (event: KeyboardEvent) => void
 }) {
   const Icon = kind === 'directory' ? IconFolder : IconFile
   const Chevron = open ? IconChevronDown : IconChevronRight
@@ -114,6 +133,9 @@ function ExplorerRow({
       className={`project-explorer-row${attached ? ' is-attached' : ''}`}
       style={{ paddingLeft: 6 + depth * 8 }}
       onClick={onClick}
+      onKeyDown={onKeyDown}
+      role={kind === 'directory' ? 'treeitem' : 'treeitem'}
+      aria-selected={attached}
     >
       {kind === 'directory' ? (
         <Chevron size={11} stroke={2} className="project-explorer-chevron" />

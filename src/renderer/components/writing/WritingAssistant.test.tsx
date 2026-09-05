@@ -7,7 +7,10 @@ import type { WritingResult } from '@/packages/writing/rewrite'
 
 vi.mock('@/hooks/useProviders', () => ({
   useProviders: () => ({
-    providers: [{ id: 'gemini', name: 'Gemini', models: [{ modelId: 'test-text' }] }],
+    providers: [
+      { id: 'gemini', name: 'Gemini', models: [{ modelId: 'test-text' }] },
+      { id: 'perplexity', name: 'Perplexity', models: [{ modelId: 'sonar-pro' }] },
+    ],
   }),
 }))
 vi.mock('@/stores/lastUsedModelStore', () => ({
@@ -29,6 +32,8 @@ import WritingAssistant from './WritingAssistant'
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // JSDOM does not implement the scrolling API used by Mantine's model picker.
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: vi.fn() })
   Object.defineProperty(window, 'matchMedia', {
     configurable: true,
     value: vi.fn(() => ({
@@ -108,6 +113,20 @@ describe('writing assistant', () => {
     await screen.findByRole('button', { name: 'Saved to chat' })
     expect(saveWritingResult).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('button', { name: 'Saved to chat' }).hasAttribute('disabled')).toBe(true)
+  })
+
+  it('lets the user select Perplexity and discloses that destination before rewriting', async () => {
+    setup()
+    fireEvent.click(screen.getByLabelText('Provider and model', { selector: 'input' }))
+    fireEvent.click(await screen.findByRole('option', { name: 'sonar-pro' }))
+    expect(screen.getByText(/Your draft will be sent to Perplexity/)).toBeTruthy()
+    expect(requestWritingRewrite).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Improve writing' }))
+    await screen.findByLabelText('Revised message')
+    expect(vi.mocked(requestWritingRewrite).mock.calls[0][0].model).toEqual({
+      provider: 'perplexity',
+      modelId: 'sonar-pro',
+    })
   })
 
   it('keeps an oversized pasted draft intact and blocks submission', () => {

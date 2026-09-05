@@ -39,6 +39,7 @@ export async function rewriteDraft(
 
   const result = await model.chat(buildWritingMessages(request), {
     signal,
+    purpose: 'writing',
     contentPrivacy: 'ephemeral',
     tools: {},
     maxSteps: 1,

@@ -6,6 +6,8 @@ The writing assistant is implemented as a development checkpoint in `d19af16c`, 
 
 This follow-up adds 40 synthetic drafts: eight per writing style. No real conversations, credentials, model responses, or paid calls are included.
 
+Provider compatibility is not limited to a model chosen for a first evaluation. The [compatibility follow-up](./writing-provider-compatibility.md) shares picker/runtime eligibility, enables Perplexity without search, and adds offline coverage across the provider registry and custom text API formats.
+
 ## Evaluation design
 
 Use [the JSON corpus](../../src/renderer/packages/writing/__fixtures__/corpus.json) for both offline boundary tests and explicitly approved human evaluations.
@@ -29,7 +31,7 @@ The corpus is test-only; it is not imported by the application or automatically 
 Run from the repository root:
 
 ```bash
-pnpm exec vitest run src/renderer/packages/writing src/renderer/components/writing src/shared/models/abstract-ai-sdk-ephemeral.test.ts
+pnpm exec vitest run src/renderer/packages/writing src/renderer/components/writing src/shared/models/abstract-ai-sdk-ephemeral.test.ts src/shared/providers/definitions/models/perplexity-writing.test.ts
 pnpm exec biome lint src/renderer/packages/writing src/renderer/components/writing src/renderer/modals/WritingAssistant.tsx src/shared/types/writing.ts src/shared/models/abstract-ai-sdk-ephemeral.test.ts
 ```
 
@@ -115,4 +117,4 @@ The full-suite result includes unrelated tests; it is not 1,731 writing tests. T
 
 Environment: Node `24.13.0`, pnpm `10.15.1`, Vitest `4.0.18`. The installed Node version is outside the project's supported Node 20–22 range. These results are useful development evidence, not a supported-toolchain release certification; repeat release checks on Node 20–22.
 
-Next: approve a bounded evaluation against the user's chosen model, run the corpus and packaged workflow checks, record failures, and refine the writing slice. Keep local analysis, engines, OAuth, OCR, and replacement gated independently.
+Next: authorize bounded evaluations across representative configured providers, run the corpus and packaged workflow checks, record failures, and refine the writing slice. Choosing an initial test model does not narrow supported-model scope. Keep local analysis, engines, OAuth, OCR, and replacement gated independently.

@@ -26,7 +26,7 @@ describe('isolated writing request', () => {
     expect(messages).toEqual(buildWritingMessages(request))
     expect(messages).toHaveLength(2)
     expect(messages[1]).toEqual({ role: 'user', content: request.draft })
-    expect(options).toMatchObject({ signal, tools: {}, maxSteps: 1, contentPrivacy: 'ephemeral' })
+    expect(options).toMatchObject({ signal, tools: {}, maxSteps: 1, purpose: 'writing', contentPrivacy: 'ephemeral' })
     expect(options).not.toHaveProperty('sessionId')
     expect(options).not.toHaveProperty('providerOptions')
     expect(result.request).toEqual(request)

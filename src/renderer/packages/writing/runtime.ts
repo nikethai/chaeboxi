@@ -1,21 +1,29 @@
-import { getModel } from '@shared/models'
+import { getModel, getProviderSettings } from '@shared/models'
 import { WritingError, type WritingRequest, WritingRequestSchema } from '@shared/types/writing'
 import { createModelDependencies } from '@/adapters'
 import { settingsStore } from '@/stores/settingsStore'
-import { supportsWritingProvider } from './models'
+import { isWritingModelAvailable } from './models'
 import { rewriteDraft, type WritingCallbacks } from './rewrite'
 
 export async function requestWritingRewrite(input: WritingRequest, callbacks: WritingCallbacks) {
   const parsed = WritingRequestSchema.safeParse(input)
   if (!parsed.success) throw new WritingError('invalid_input')
   const request = parsed.data
-  if (!supportsWritingProvider(request.model.provider)) throw new WritingError('unsupported_model')
   callbacks.signal.throwIfAborted()
 
   try {
+    const globalSettings = settingsStore.getState().getSettings()
+    // Re-resolve against current settings: stale or forged selections must not bypass the picker.
+    let resolved: ReturnType<typeof getProviderSettings>
+    try {
+      resolved = getProviderSettings(request.model, globalSettings)
+    } catch {
+      throw new WritingError('unsupported_model')
+    }
+    const provider = { ...resolved.providerBaseInfo, ...resolved.providerSetting }
+    if (!isWritingModelAvailable(provider, request.model)) throw new WritingError('unsupported_model')
     const dependencies = await createModelDependencies()
     callbacks.signal.throwIfAborted()
-    const globalSettings = settingsStore.getState().getSettings()
     const model = getModel(
       {
         provider: request.model.provider,

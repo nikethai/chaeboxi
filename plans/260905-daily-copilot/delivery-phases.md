@@ -20,6 +20,7 @@ Every phase ships through a reviewable branch/PR. Do not change shared `main` di
 - [ ] Reproduce native Gemini grounding/tool-selection interactions and record the actual execution path.
 - [ ] Spike isolated writing requests through existing model adapters without Quick Chat history/memory leakage.
   - [x] Implement the direct-adapter writing boundary and deterministic service/runtime/lifecycle tests. Live provider request capture and packaged-app retention checks remain pending.
+  - [x] Add offline compatibility coverage for every registered text provider, four custom API formats, OAuth factory routes, and Perplexity's serialized no-search policy. See [provider compatibility](./writing-provider-compatibility.md); live service guarantees remain unverified.
 - [ ] Compare candidate tabular engines on supported operations, decimal/date correctness, input size, cancellation, memory/temp storage, security controls, installer impact, and licensing.
 - [ ] Check Excel parser behavior for sheets, formula caches, hidden rows, merged headers, links, dates, and archive limits.
 - [ ] Evaluate PDF/DOCX provenance and scanned-page detection; identify local/remote OCR candidates without enabling uploads.
@@ -53,6 +54,7 @@ An inconclusive engine spike is not permission to embed arbitrary Python. An OAu
 - [x] Show one primary rewrite with Copy, retry, cancel, and optional original-text comparison. Model-generated explanations are not implemented.
 - [x] Integrate into existing Quick Chat and main-chat entry points without another agent or sidebar system.
 - [x] Use only the current draft and selected style/context at the writing service boundary. Do not inherit unrelated chat, tools, or general memory; live provider validation remains in Phase 0.
+- [x] Use shared picker/runtime model eligibility, reject stale or non-text selections, and support Perplexity writing with search explicitly disabled. Keep remote agent sessions excluded.
 - [ ] Keep drafts/results ephemeral by default. Add explicit Save to chat; exclude unsaved work from ordinary chat sync and memory auto-save.
   - [x] Implement local review state, unmount cancellation, explicit Save, and content-bearing diagnostic suppression. Packaged retention/sync checks remain pending.
 - [ ] Support paste/copy first; shortcut capture must require an intentional capture action and a visible draft preview before sending.

@@ -36,6 +36,7 @@ export interface ModelInterface {
 
 export const CallChatCompletionOptionsSchema = z.object({
   sessionId: z.string().optional(),
+  purpose: z.literal('writing').optional(),
   contentPrivacy: z.literal('ephemeral').optional(),
   signal: z.instanceof(AbortSignal).optional(),
   onResultChange: z.custom<OnResultChange>().optional(),
@@ -45,6 +46,8 @@ export const CallChatCompletionOptionsSchema = z.object({
 
 export interface CallChatCompletionOptions<Tools extends ToolSet = ToolSet> {
   sessionId?: string
+  /** Purpose-specific provider behavior; independent of diagnostic/retention policy. */
+  purpose?: 'writing'
   /** Suppress content-bearing diagnostics for unsaved, purpose-specific requests. */
   contentPrivacy?: 'ephemeral'
   signal?: AbortSignal

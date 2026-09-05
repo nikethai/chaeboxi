@@ -16,7 +16,7 @@ import { lastUsedModelStore } from '@/stores/lastUsedModelStore'
 
 const ERROR_MESSAGES: Record<WritingErrorCode, string> = {
   invalid_input: 'Enter a draft of up to 8,000 characters and choose a model.',
-  unsupported_model: 'Choose a text model. Remote agents and search-only providers are not available for writing.',
+  unsupported_model: 'Choose an available text model. Remote agents and non-text models are not available for writing.',
   request_failed: 'The rewrite failed. Check your provider connection and try again. Your draft is unchanged.',
   incomplete: 'The model did not return a complete rewrite. Try again or choose another model.',
   timeout: 'The rewrite took too long and was stopped. Try again or choose another model.',

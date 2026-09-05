@@ -12,6 +12,7 @@
 - The user wants dependable assistance, personal continuity, and desktop actions in the roadmap.
 - The initial request was for a full plan. The user subsequently confirmed Daily Copilot as the baseline and requested committing/pushing the existing code on a separate branch, then continuing to the next step.
 - The existing writing code was published as checkpoint `d19af16c` on `feat/daily-copilot-writing`. Continuing with synthetic writing evaluation does not authorize paid services, private-data transfer, or broader native access.
+- The user explicitly confirmed cross-model writing support and authorized the compatibility follow-up. A first evaluation model must not become a product allowlist. Native agent actions and paid evaluations remain separately gated.
 
 Not established: actual file sizes, representative analytical questions, frequency, supported OS requirements, provider configuration, budget, team capacity, or why particular existing Chaeboxi answers failed.
 

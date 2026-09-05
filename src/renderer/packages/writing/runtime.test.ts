@@ -3,12 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   getModel: vi.fn(),
+  getProviderSettings: vi.fn(),
   dependencies: vi.fn(),
   chat: vi.fn(),
   getSettings: vi.fn(),
 }))
 
-vi.mock('@shared/models', () => ({ getModel: mocks.getModel }))
+vi.mock('@shared/models', () => ({ getModel: mocks.getModel, getProviderSettings: mocks.getProviderSettings }))
 vi.mock('@/adapters', () => ({ createModelDependencies: mocks.dependencies }))
 vi.mock('@/stores/settingsStore', () => ({
   settingsStore: { getState: () => ({ getSettings: mocks.getSettings }) },
@@ -27,6 +28,10 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.dependencies.mockResolvedValue({})
   mocks.getModel.mockReturnValue({ chat: mocks.chat })
+  mocks.getProviderSettings.mockImplementation((selection) => ({
+    providerBaseInfo: { id: selection.provider, name: 'Test', type: 'openai' },
+    providerSetting: { models: [{ modelId: request.model.modelId }] },
+  }))
   mocks.getSettings.mockReturnValue({
     defaultPrompt: 'UNRELATED_SYSTEM_PROMPT',
     injectDefaultMetadata: true,
@@ -42,9 +47,10 @@ describe('writing runtime', () => {
     expect(mocks.getModel.mock.calls[0][1].injectDefaultMetadata).toBe(false)
     expect(JSON.stringify(mocks.chat.mock.calls)).not.toContain('UNRELATED_SYSTEM_PROMPT')
     expect(mocks.chat.mock.calls[0][1].contentPrivacy).toBe('ephemeral')
+    expect(mocks.chat.mock.calls[0][1].purpose).toBe('writing')
   })
 
-  it.each(['openclaw', 'comfyui', 'chatbox-ai', 'perplexity'])(
+  it.each(['openclaw', 'comfyui', 'chatbox-ai'])(
     'refuses the %s backend before initializing dependencies',
     async (provider) => {
       // Use actual enum IDs below to avoid treating a custom provider as a builtin.
@@ -53,7 +59,6 @@ describe('writing runtime', () => {
         openclaw: ModelProviderEnum.OpenClaw,
         comfyui: ModelProviderEnum.ComfyUI,
         'chatbox-ai': ModelProviderEnum.ChatboxAI,
-        perplexity: ModelProviderEnum.Perplexity,
       }
       await expect(
         requestWritingRewrite(
@@ -66,6 +71,67 @@ describe('writing runtime', () => {
       expect(mocks.dependencies).not.toHaveBeenCalled()
     }
   )
+
+  it('allows Perplexity with the writing purpose for its no-search adapter policy', async () => {
+    const input = { ...request, model: { ...request.model, provider: 'perplexity' } }
+    await requestWritingRewrite(input, { signal: new AbortController().signal })
+    expect(mocks.getModel.mock.calls[0][0]).toEqual({ ...input.model, stream: true })
+    expect(mocks.chat.mock.calls[0][1].purpose).toBe('writing')
+  })
+
+  it.each([
+    { modelId: 'text-embedding-v3', type: 'embedding' },
+    { modelId: 'rerank-v1', type: 'rerank' },
+    { modelId: 'gpt-image-1' },
+    { modelId: 'pixels', capabilities: ['image_generation'] },
+  ])('rejects a direct request for non-text model $modelId', async (model) => {
+    mocks.getProviderSettings.mockReturnValue({
+      providerBaseInfo: { id: request.model.provider, name: 'Test', type: 'gemini' },
+      providerSetting: { models: [model] },
+    })
+    await expect(
+      requestWritingRewrite(
+        { ...request, model: { ...request.model, modelId: model.modelId } },
+        { signal: new AbortController().signal }
+      )
+    ).rejects.toMatchObject({ code: 'unsupported_model' })
+    expect(mocks.dependencies).not.toHaveBeenCalled()
+    expect(mocks.chat).not.toHaveBeenCalled()
+  })
+
+  it('rejects a removed model instead of silently using a fallback', async () => {
+    await expect(
+      requestWritingRewrite(
+        { ...request, model: { ...request.model, modelId: 'removed-model' } },
+        { signal: new AbortController().signal }
+      )
+    ).rejects.toMatchObject({ code: 'unsupported_model' })
+    expect(mocks.getModel).not.toHaveBeenCalled()
+  })
+
+  it('rejects an unknown or deleted provider before initializing dependencies', async () => {
+    mocks.getProviderSettings.mockImplementation(() => {
+      throw new Error('Cannot find provider')
+    })
+    await expect(requestWritingRewrite(request, { signal: new AbortController().signal })).rejects.toMatchObject({
+      code: 'unsupported_model',
+    })
+    expect(mocks.dependencies).not.toHaveBeenCalled()
+  })
+
+  it.each(['comfyui', 'chatbox-ai'])('rejects the custom %s API format', async (type) => {
+    mocks.getProviderSettings.mockReturnValue({
+      providerBaseInfo: { id: 'custom-test', name: 'Test', isCustom: true, type },
+      providerSetting: { models: [{ modelId: request.model.modelId }] },
+    })
+    await expect(
+      requestWritingRewrite(
+        { ...request, model: { ...request.model, provider: 'custom-test' } },
+        { signal: new AbortController().signal }
+      )
+    ).rejects.toMatchObject({ code: 'unsupported_model' })
+    expect(mocks.dependencies).not.toHaveBeenCalled()
+  })
 
   it('does not reveal a provider error that echoes private data', async () => {
     mocks.chat.mockRejectedValue(new Error('Provider rejected PRIVATE_DRAFT_SENTINEL with token SECRET'))

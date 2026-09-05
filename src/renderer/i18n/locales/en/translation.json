@@ -34,7 +34,7 @@
   "Could not save this review. You can still copy the revised message.": "Could not save this review. You can still copy the revised message.",
   "This review stays temporary until you choose Save to chat. Closing it clears the review; existing chat drafts are unchanged. Provider retention policies still apply.": "This review stays temporary until you choose Save to chat. Closing it clears the review; existing chat drafts are unchanged. Provider retention policies still apply.",
   "Enter a draft of up to 8,000 characters and choose a model.": "Enter a draft of up to 8,000 characters and choose a model.",
-  "Choose a text model. Remote agents and search-only providers are not available for writing.": "Choose a text model. Remote agents and search-only providers are not available for writing.",
+  "Choose an available text model. Remote agents and non-text models are not available for writing.": "Choose an available text model. Remote agents and non-text models are not available for writing.",
   "The rewrite failed. Check your provider connection and try again. Your draft is unchanged.": "The rewrite failed. Check your provider connection and try again. Your draft is unchanged.",
   "The model did not return a complete rewrite. Try again or choose another model.": "The model did not return a complete rewrite. Try again or choose another model.",
   "The rewrite took too long and was stopped. Try again or choose another model.": "The rewrite took too long and was stopped. Try again or choose another model.",

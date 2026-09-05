@@ -87,6 +87,7 @@ describe('synthetic writing evaluation corpus', () => {
     expect(chat.mock.calls[0][0]).toEqual([buildWritingMessages(request)[0], { role: 'user', content: fixture.draft }])
     expect(chat.mock.calls[0][1]).toEqual({
       signal,
+      purpose: 'writing',
       contentPrivacy: 'ephemeral',
       tools: {},
       maxSteps: 1,

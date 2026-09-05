@@ -63,6 +63,7 @@ export type ComposerToolsMenuProps = {
   onRollbackThread?: () => void
   onClickSessionSettings?: () => void
   onShareRoomPack?: () => void
+  onImproveWriting?: () => void
   onImageUploadClick: () => void
   onFileUploadClick: () => void
   onAttachLink: () => void
@@ -98,6 +99,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
   onRollbackThread,
   onClickSessionSettings,
   onShareRoomPack,
+  onImproveWriting,
   onImageUploadClick,
   onFileUploadClick,
   onAttachLink,
@@ -241,6 +243,18 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
                   >
                     {t('Link')}
                   </Menu.Item>
+
+                  {onImproveWriting && (
+                    <Menu.Item
+                      leftSection={<IconFilePencil size={16} stroke={1.5} />}
+                      onClick={() => {
+                        setOpened(false)
+                        onImproveWriting()
+                      }}
+                    >
+                      {t('Improve writing')}
+                    </Menu.Item>
+                  )}
 
                   {memoryNode ? (
                     <>
@@ -614,6 +628,17 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
           >
             {t('Link')}
           </Menu.Item>
+          {onImproveWriting && (
+            <Menu.Item
+              leftSection={<IconFilePencil size={16} stroke={1.5} />}
+              onClick={() => {
+                setOpened(false)
+                onImproveWriting()
+              }}
+            >
+              {t('Improve writing')}
+            </Menu.Item>
+          )}
           {memoryNode ? (
             <>
               <Menu.Divider />

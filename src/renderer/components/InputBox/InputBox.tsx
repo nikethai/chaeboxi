@@ -3104,6 +3104,12 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                 <ComposerToolsMenu
                   isOpenClawModel={isOpenClawModel}
                   sessionType={sessionType}
+                  onImproveWriting={() => {
+                    void NiceModal.show('writing-assistant', {
+                      initialDraft: messageInput,
+                      initialModel: model,
+                    })
+                  }}
                   webBrowsingMode={webBrowsingMode}
                   webSearchConfigured={webSearchConfigured}
                   onWebBrowsingChange={(enabled) => {

@@ -20,8 +20,10 @@ import VideoPlayer from './VideoPlayer'
 import ImportChatGptArchive from './ImportChatGptArchive'
 import ImportedConversationView from './ImportedConversationView'
 import Welcome from './Welcome'
+import WritingAssistant from './WritingAssistant'
 
 NiceModal.register('welcome', Welcome)
+NiceModal.register('writing-assistant', WritingAssistant)
 NiceModal.register('import-chatgpt-archive', ImportChatGptArchive)
 NiceModal.register('imported-conversation', ImportedConversationView)
 NiceModal.register('file-parse-error', FileParseError)

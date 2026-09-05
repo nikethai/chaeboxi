@@ -197,13 +197,14 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
         throw ProviderAPIError.fromCodeName('model_not_support_image', 'model_not_support_image_2')
       }
 
-      // (legacy comment)
-      this.dependencies.sentry.withScope((scope) => {
-        scope.setTag('provider_name', this.name)
-        scope.setExtra('messages', JSON.stringify(messages))
-        scope.setExtra('options', JSON.stringify(options))
-        this.dependencies.sentry.captureException(e)
-      })
+      if (options.contentPrivacy !== 'ephemeral') {
+        this.dependencies.sentry.withScope((scope) => {
+          scope.setTag('provider_name', this.name)
+          scope.setExtra('messages', JSON.stringify(messages))
+          scope.setExtra('options', JSON.stringify(options))
+          this.dependencies.sentry.captureException(e)
+        })
+      }
       throw e
     }
   }
@@ -733,9 +734,8 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
       retries: [retryable5xx],
       onError: (context) => {
         if (isErrorAttempt(context.current)) {
-          const { error } = context.current
-          const errorMessage = error instanceof Error ? error.message : String(error)
-          console.debug(`[ai-retry] Error on attempt ${context.attempts.length}:`, errorMessage)
+          // Provider error bodies can echo prompts, credentials, or source text.
+          console.debug(`[ai-retry] Error on attempt ${context.attempts.length}`)
         }
       },
       onRetry: (context) => {
@@ -754,7 +754,7 @@ export default abstract class AbstractAISDKModel implements ModelInterface {
           type: 'retrying',
           attempt: attemptNumber,
           maxAttempts: RETRY_CONFIG.MAX_ATTEMPTS,
-          error: errorMessage,
+          error: options.contentPrivacy === 'ephemeral' ? 'Provider request failed' : errorMessage,
         })
       },
     })

@@ -1,6 +1,7 @@
 import { createPerplexity } from '@ai-sdk/perplexity'
 import { extractReasoningMiddleware, wrapLanguageModel } from 'ai'
-import AbstractAISDKModel from '../../../models/abstract-ai-sdk'
+import AbstractAISDKModel, { type CallSettings } from '../../../models/abstract-ai-sdk'
+import type { CallChatCompletionOptions } from '../../../models/types'
 import type { ProviderModelInfo } from '../../../types'
 import type { ModelDependencies } from '../../../types/adapters'
 
@@ -16,10 +17,19 @@ interface Options {
 export default class Perplexity extends AbstractAISDKModel {
   public name = 'Perplexity API'
 
-  constructor(public options: Options, dependencies: ModelDependencies) {
+  constructor(
+    public options: Options,
+    dependencies: ModelDependencies
+  ) {
     super(options, dependencies)
   }
-  
+
+  protected getCallSettings(options: CallChatCompletionOptions): CallSettings {
+    // The SDK forwards Perplexity extensions verbatim. Writing must not trigger server-side search.
+    // https://docs.perplexity.ai/api-reference/sonar-post
+    return options.purpose === 'writing' ? { providerOptions: { perplexity: { disable_search: true } } } : {}
+  }
+
   protected getProvider() {
     return createPerplexity({
       apiKey: this.options.perplexityApiKey,

@@ -172,7 +172,7 @@ function _setSessionCache(sessionId: string, updated: Session | null) {
 
 // create session
 export async function createSession(newSession: Omit<Session, 'id'>, previousId?: string) {
-  console.debug('chatStore', 'createSession', newSession)
+  console.debug('chatStore', 'createSession', { type: newSession.type, messageCount: newSession.messages.length })
   if (
     'id' in newSession &&
     typeof (newSession as { id?: string }).id === 'string' &&

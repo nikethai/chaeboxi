@@ -1,7 +1,7 @@
 # Decision Register
 
 **Date:** 2026-09-05  
-**Status:** proposed planning baseline
+**Status:** writing development authorized to continue; later architecture and release gates remain proposed
 
 ## 1. Confirmed in the conversation
 
@@ -10,7 +10,8 @@
 - Another recurring task is analysis of personal/local files and Google Drive content.
 - The relevant format families include Excel/CSV, Google Sheets, and PDFs/documents.
 - The user wants dependable assistance, personal continuity, and desktop actions in the roadmap.
-- The user requested a full plan, not immediate implementation, publishing, paid services, or broader access to private data.
+- The initial request was for a full plan. The user subsequently confirmed Daily Copilot as the baseline and requested committing/pushing the existing code on a separate branch, then continuing to the next step.
+- The existing writing code was published as checkpoint `d19af16c` on `feat/daily-copilot-writing`. Continuing with synthetic writing evaluation does not authorize paid services, private-data transfer, or broader native access.
 
 Not established: actual file sizes, representative analytical questions, frequency, supported OS requirements, provider configuration, budget, team capacity, or why particular existing Chaeboxi answers failed.
 
@@ -18,8 +19,8 @@ Not established: actual file sizes, representative analytical questions, frequen
 
 | ID | Recommendation | Reason | Approval state |
 | --- | --- | --- | --- |
-| D1 | Workflow-first delivery rather than three independent A/B/C programs | Connect investment to daily use | Proposed |
-| D2 | Writing beta first, using existing Quick Chat | Frequent use, lower risk, existing shell | Proposed |
+| D1 | Workflow-first delivery rather than three independent A/B/C programs | Connect investment to daily use | Roadmap direction confirmed |
+| D2 | Writing beta first, using existing Quick Chat | Frequent use, lower risk, existing shell | Development continuation confirmed; beta release gated |
 | D3 | Read-only local snapshots and deterministic analysis | Auditable results without touching originals | Proposed |
 | D4 | Typed analysis operations rather than unrestricted code | Smaller authority and correctness surface | Proposed; engine gated |
 | D5 | Google per-file selection with broker-enforced read-only behavior | Narrow data access without whole-Drive indexing | Proposed; OAuth/Picker gated |
@@ -76,4 +77,4 @@ These are Phase 0 discovery tasks, not a demand that the user answer a long ques
 
 ## 7. Next action
 
-Review the roadmap and approve Phase 0. After feasibility evidence, approve a bounded Phase 1 specification before implementation. Keep engine, OAuth, OCR, and replacement decisions explicit rather than burying them inside feature code.
+Complete the writing baseline using the [synthetic corpus and evaluation procedure](./writing-evaluation.md). Obtain explicit provider/model and paid-call approval before live evaluation. The development checkpoint does not substitute for Phase 0 evidence or Phase 1 release approval. Keep engine, OAuth, OCR, and replacement decisions explicit rather than burying them inside feature code.

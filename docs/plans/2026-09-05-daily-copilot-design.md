@@ -1,9 +1,11 @@
 # Dependable Daily Copilot — Proposed Technical Design
 
 **Date:** 2026-09-05  
-**Status:** proposed for review; not an implementation authorization  
+**Status:** writing development checkpoint published; later architecture remains proposed  
 **Baseline:** `a2f72b45`  
 **Roadmap:** [Dependable daily copilot](../../plans/260905-daily-copilot/plan.md)
+
+Writing checkpoint `d19af16c` implements the isolated paste/review/copy slice on `feat/daily-copilot-writing`. See [writing evaluation](../../plans/260905-daily-copilot/writing-evaluation.md) for current evidence and open gates. This does not authorize analysis engines, OAuth, OCR, native replacement, or a beta release.
 
 ## 1. Design principles
 
@@ -59,14 +61,14 @@ The model can propose an analysis operation through typed tools; the broker vali
 
 ## 4. Code ownership and integration seams
 
-Paths marked **proposed** do not exist yet and require the Phase 0 architecture decision.
+Paths marked **proposed** still require the Phase 0 architecture decision. The writing package and `writing.ts` contract now exist in the development checkpoint.
 
 | Responsibility | Existing seam / proposed location |
 | --- | --- |
-| Writing entry and result UI | [Quick Chat](../../src/renderer/routes/quick.tsx), existing main chat/composer; proposed `src/renderer/packages/writing/` |
+| Writing entry and result UI | [Quick Chat](../../src/renderer/routes/quick.tsx), existing main chat/composer; implemented `src/renderer/packages/writing/` |
 | Global shortcut and capture transport | [Desktop shell](../../src-tauri/src/desktop_shell.rs); narrow broker rather than general computer tools |
 | Request composition | [Generation](../../src/renderer/stores/session/generation.ts), [stream orchestration](../../src/renderer/packages/model-calls/stream-text.ts), provider-neutral adapters |
-| Shared contracts | Existing `src/shared/types/`; proposed `analysis.ts` and `writing.ts` with Zod validation |
+| Shared contracts | Existing `src/shared/types/writing.ts` with Zod validation; proposed `analysis.ts` |
 | Analysis UI orchestration | Proposed `src/renderer/packages/analysis/`; components in the existing conversation surface |
 | Native intake, snapshots, jobs, execution | Proposed `src-tauri/src/analysis/`, dispatched by existing `ipc_invoke` in `src-tauri/src/lib.rs` |
 | Platform contract | [Platform interface](../../src/renderer/platform/interfaces.ts) plus desktop/web/test implementations with explicit unsupported states |

@@ -1,6 +1,6 @@
 ---
 title: Dependable daily copilot
-status: proposed-for-review
+status: writing-development-in-progress
 created: 2026-09-05
 baseline_commit: a2f72b45
 priority: P1
@@ -18,7 +18,7 @@ Build one coherent daily assistant around two proven user needs:
 
 Combine **A: dependable assistance**, **B: personal continuity**, and **C: controlled desktop actions** inside these workflows. Do not build three separate products or enable every available tool on every turn.
 
-**Status:** the user requested a full plan and endorsed the overall direction. Detailed architecture, limits, effort, and release gates below are proposals, not approved implementation decisions. No application code is changed by this plan.
+**Status:** the user endorsed continuing from this roadmap and requested committing and pushing the existing work on a separate branch. Writing implementation checkpoint `d19af16c` is published on `feat/daily-copilot-writing`; it is not a validated beta. The next step is writing baseline/evaluation work. Detailed analysis architecture, limits, effort, and later release decisions remain proposals.
 
 **First release recommendation:** dependable writing assistance through existing Quick Chat, followed by verifiable local-file analysis. Start Google authorization and computation feasibility work early, but do not make writing depend on those larger projects.
 
@@ -31,6 +31,7 @@ Combine **A: dependable assistance**, **B: personal continuity**, and **C: contr
 | [Delivery phases](./delivery-phases.md) | Ordered implementation tasks, dependencies, and exit criteria |
 | [Validation and rollout](./validation-and-rollout.md) | Fixtures, measurable gates, platform checks, release and rollback |
 | [Decision register](./decision-register.md) | Confirmed needs, assumptions, feasibility gates, and unresolved choices |
+| [Writing evaluation](./writing-evaluation.md) | Current implementation evidence, synthetic corpus, human rubric, and remaining writing gates |
 
 ## 3. Product promise
 
@@ -162,7 +163,7 @@ Proposed thresholds and fixture sizes are in [validation](./validation-and-rollo
 
 ## 11. Next approval
 
-Approve this roadmap as the planning baseline, then authorize **Phase 0 only** on a separate feature branch. Phase 0 produces measured feasibility decisions and a smaller implementation specification for Phase 1.
+Continue the writing baseline on the separate feature branch. The existing writing checkpoint does not close Phase 0 or the Phase 1 release gate. Before live evaluation, confirm the provider/model, permission to transfer synthetic drafts, and any paid-call budget; use the [writing evaluation procedure](./writing-evaluation.md).
 
 Source samples are still needed, but lack of private samples does not block synthetic fixture preparation. Request consented/redacted examples; do not commit the user's private messages or files.
 

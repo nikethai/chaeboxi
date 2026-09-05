@@ -1,6 +1,6 @@
 # Delivery Phases
 
-**Status:** proposed. All tasks below are unchecked because this change creates a plan, not implementation.
+**Status:** writing development is in progress on `feat/daily-copilot-writing` (checkpoint `d19af16c`). Checked items indicate implemented code or prepared fixtures, not release approval. Phase 0 live-model/packaged-app evidence and the Phase 1 quality gate are still incomplete. See [writing evaluation](./writing-evaluation.md) for commands, evidence, and remaining checks.
 
 Every phase ships through a reviewable branch/PR. Do not change shared `main` directly, batch unrelated security changes, or enable later phases implicitly.
 
@@ -14,10 +14,12 @@ Every phase ships through a reviewable branch/PR. Do not change shared `main` di
 
 - [ ] Collect consented/redacted writing examples and representative file metadata: format, size, row/page count, language, formulas, and desired questions.
 - [ ] Create synthetic fixtures for every requested format; keep private originals outside the repository and diagnostics.
+  - [x] Prepare 40 synthetic writing drafts, eight per style, with reference examples, protected fragments, human review notes, and offline request-boundary checks. File-analysis fixtures remain pending.
 - [ ] Record current Chaeboxi results for writing, numerical questions, document questions, and Drive onboarding.
 - [ ] With explicit permission for any remote use, compare the same tasks in the user's Gemini/Grok workflows. Record consumer app settings and API/model differences; do not claim controlled model equivalence.
 - [ ] Reproduce native Gemini grounding/tool-selection interactions and record the actual execution path.
 - [ ] Spike isolated writing requests through existing model adapters without Quick Chat history/memory leakage.
+  - [x] Implement the direct-adapter writing boundary and deterministic service/runtime/lifecycle tests. Live provider request capture and packaged-app retention checks remain pending.
 - [ ] Compare candidate tabular engines on supported operations, decimal/date correctness, input size, cancellation, memory/temp storage, security controls, installer impact, and licensing.
 - [ ] Check Excel parser behavior for sheets, formula caches, hidden rows, merged headers, links, dates, and archive limits.
 - [ ] Evaluate PDF/DOCX provenance and scanned-page detection; identify local/remote OCR candidates without enabling uploads.
@@ -45,13 +47,16 @@ An inconclusive engine spike is not permission to embed arbitrary Python. An OAu
 ### Tasks
 
 - [ ] Add an internal writing request policy and provider-neutral service; reuse existing credentials, streaming, cancellation, error translation, and usage tracking.
-- [ ] Default to Fix grammar. Add Natural, Shorter, Professional, and Casual as explicit alternatives.
-- [ ] Specify preserve-meaning behavior for names, numbers, dates, links, markdown, code, mentions, negation, certainty, and commitments.
-- [ ] Show one primary rewrite with Copy, retry, cancel, and optional changes/explanation.
-- [ ] Integrate into existing Quick Chat and main-chat entry points without another agent or sidebar system.
-- [ ] Use only the current draft and selected style/context. Do not inherit unrelated chat, tools, or general memory.
+  - [x] Implement service, configured-model selection, streaming, cancellation, bounded errors, and displayed token usage. Provider compatibility and usage-accounting review remain pending.
+- [x] Default to Fix grammar. Add Natural, Shorter, Professional, and Casual as explicit alternatives.
+- [x] Specify preserve-meaning behavior for names, numbers, dates, links, markdown, code, mentions, negation, certainty, and commitments.
+- [x] Show one primary rewrite with Copy, retry, cancel, and optional original-text comparison. Model-generated explanations are not implemented.
+- [x] Integrate into existing Quick Chat and main-chat entry points without another agent or sidebar system.
+- [x] Use only the current draft and selected style/context at the writing service boundary. Do not inherit unrelated chat, tools, or general memory; live provider validation remains in Phase 0.
 - [ ] Keep drafts/results ephemeral by default. Add explicit Save to chat; exclude unsaved work from ordinary chat sync and memory auto-save.
+  - [x] Implement local review state, unmount cancellation, explicit Save, and content-bearing diagnostic suppression. Packaged retention/sync checks remain pending.
 - [ ] Support paste/copy first; shortcut capture must require an intentional capture action and a visible draft preview before sending.
+  - [x] Implement paste/review/copy without automatic capture or sending. Native clipboard and platform checks remain pending.
 - [ ] Provide first-use provider setup/readiness, model choice, and visible destination; no hidden fallback model.
 - [ ] Test keyboard navigation, screen readers, focus return, multiline text, mixed English/Vietnamese, emojis, and small screens.
 

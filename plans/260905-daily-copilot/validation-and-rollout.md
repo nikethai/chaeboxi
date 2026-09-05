@@ -1,6 +1,6 @@
 # Validation, Budgets, and Rollout
 
-**Status:** proposed targets, not measured performance or demonstrated reliability.
+**Status:** release targets remain proposed. Writing has an implementation checkpoint, synthetic corpus, and deterministic checks; see [writing evaluation](./writing-evaluation.md). Human quality, performance, and packaged-platform gates are not yet demonstrated.
 
 ## 1. Evidence hierarchy
 
@@ -125,7 +125,7 @@ Full native tests/builds require the documented platform toolchain. If adding an
 
 Run packaged desktop builds for shortcuts, OS consent, window ownership, AX replacement, Google redirects, and native parser/engine packaging. Browser-only tests cannot substitute for these checks.
 
-Record existing baseline failures separately rather than weakening tests or fixing unrelated code inside feature PRs. These commands were not run as part of the planning-only change.
+Record existing baseline failures separately rather than weakening tests or fixing unrelated code inside feature PRs. The initial planning-only change did not run these commands; subsequent writing checkpoint verification and baseline TypeScript failures are recorded in [writing evaluation](./writing-evaluation.md#evidence-and-remaining-work).
 
 ## 7. Rollout and rollback
 

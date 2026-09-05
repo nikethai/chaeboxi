@@ -125,7 +125,13 @@ export const ProjectWorkspaceFlagsSchema = z
     migrationEnabled: z.boolean().optional().catch(true),
     directoryUxEnabled: z.boolean().optional().catch(true),
     explorerEnabled: z.boolean().optional().catch(true),
-    mutationEnabled: z.boolean().optional().catch(true),
+    mutationEnabled: z.boolean().optional().catch(false),
+    exportEnabled: z.boolean().optional().catch(false),
+    scmEnabled: z.boolean().optional().catch(false),
+    stagingEnabled: z.boolean().optional().catch(false),
+    applyEnabled: z.boolean().optional().catch(false),
+    wasiEnabled: z.boolean().optional().catch(false),
+    worktreesEnabled: z.boolean().optional().catch(false),
   })
   .optional()
   .catch(undefined)
@@ -136,5 +142,32 @@ export const DEFAULT_PROJECT_WORKSPACE_FLAGS: ProjectWorkspaceFlags = {
   migrationEnabled: true,
   directoryUxEnabled: true,
   explorerEnabled: true,
-  mutationEnabled: true,
+  mutationEnabled: false,
+  exportEnabled: false,
+  scmEnabled: false,
+  stagingEnabled: false,
+  applyEnabled: false,
+  wasiEnabled: false,
+  worktreesEnabled: false,
 }
+
+export const WorkspaceCapabilityStateSchema = z.enum(['ready', 'disabled', 'unavailable', 'unsupported'])
+export type WorkspaceCapabilityState = z.infer<typeof WorkspaceCapabilityStateSchema>
+
+export const WorkspaceCapabilityEntrySchema = z.object({
+  state: WorkspaceCapabilityStateSchema,
+  reason: z.string().optional(),
+})
+export type WorkspaceCapabilityEntry = z.infer<typeof WorkspaceCapabilityEntrySchema>
+
+export const WorkspaceSuiteCapabilitiesSchema = z.object({
+  explorer: WorkspaceCapabilityEntrySchema.optional(),
+  export: WorkspaceCapabilityEntrySchema.optional(),
+  scm: WorkspaceCapabilityEntrySchema.optional(),
+  staging: WorkspaceCapabilityEntrySchema.optional(),
+  apply: WorkspaceCapabilityEntrySchema.optional(),
+  wasi: WorkspaceCapabilityEntrySchema.optional(),
+  worktrees: WorkspaceCapabilityEntrySchema.optional(),
+  directMutation: WorkspaceCapabilityEntrySchema.optional(),
+})
+export type WorkspaceSuiteCapabilities = z.infer<typeof WorkspaceSuiteCapabilitiesSchema>

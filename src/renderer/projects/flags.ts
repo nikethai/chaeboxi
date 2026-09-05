@@ -8,7 +8,13 @@ export function getProjectWorkspaceFlags(): ProjectWorkspaceFlags {
     migrationEnabled: flags?.migrationEnabled !== false,
     directoryUxEnabled: flags?.directoryUxEnabled !== false,
     explorerEnabled: flags?.explorerEnabled !== false,
-    mutationEnabled: flags?.mutationEnabled !== false,
+    mutationEnabled: flags?.mutationEnabled === true,
+    exportEnabled: flags?.exportEnabled === true,
+    scmEnabled: flags?.scmEnabled === true,
+    stagingEnabled: flags?.stagingEnabled === true,
+    applyEnabled: flags?.applyEnabled === true,
+    wasiEnabled: flags?.wasiEnabled === true,
+    worktreesEnabled: flags?.worktreesEnabled === true,
   }
 }
 

@@ -603,7 +603,13 @@ export const SettingsSchema = GlobalSessionSettingsSchema.extend({
       migrationEnabled: z.boolean().optional().catch(true),
       directoryUxEnabled: z.boolean().optional().catch(true),
       explorerEnabled: z.boolean().optional().catch(true),
-      mutationEnabled: z.boolean().optional().catch(true),
+      mutationEnabled: z.boolean().optional().catch(false),
+      exportEnabled: z.boolean().optional().catch(false),
+      scmEnabled: z.boolean().optional().catch(false),
+      stagingEnabled: z.boolean().optional().catch(false),
+      applyEnabled: z.boolean().optional().catch(false),
+      wasiEnabled: z.boolean().optional().catch(false),
+      worktreesEnabled: z.boolean().optional().catch(false),
     })
     .optional()
     .catch(undefined),

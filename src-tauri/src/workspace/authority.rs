@@ -1,14 +1,21 @@
 //! Private binding registry, runtime capabilities, and privileged operations.
 
+use super::budgets::{
+    LIST_PAGE_SIZE, MUTATION_MAX_BYTES, READ_MAX_BYTES, SEARCH_DEADLINE_MS, SEARCH_MAX_DEPTH, SEARCH_MAX_ENTRIES,
+    SEARCH_MAX_FILE_BYTES, SEARCH_MAX_HITS, SEARCH_MAX_INSPECTED_BYTES,
+};
 use super::error::{
-    already_exists, ambiguous_edit, cancelled, conflict, hard_denied, mutation_disabled, not_found, revoked,
-    stale_capability, unauthorized_root, wrong_window, WorkspaceError, PERMISSION_DENIED,
+    already_exists, ambiguous_edit, cancelled, conflict, hard_denied, limit_exceeded, mutation_disabled, not_found,
+    revoked, stale_capability, unauthorized_root, wrong_window, WorkspaceError, PERMISSION_DENIED,
 };
 use super::ignore::{gitignore_path, is_hard_denied, IgnoreStack};
+use super::lease::{LeaseBook, OpGuard};
 use super::path::{content_revision, RelativePath};
+use super::policy::NativeRollout;
+use super::suite_state::SuiteState;
 use super::traverse::{
-    create_new_exclusive, delete_file, exists_nofollow, filesystem_identity, list_children,
-    read_file_bytes, write_atomic,
+    create_new_exclusive, delete_file, exists_nofollow, filesystem_identity, list_children, read_file_bytes,
+    read_file_limited, write_atomic,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -16,16 +23,12 @@ use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 use uuid::Uuid;
 
 const MAIN_WINDOW: &str = "main";
-const MAX_READ_BYTES: usize = 1024 * 1024;
-const MAX_SEARCH_FILE_BYTES: usize = 5 * 1024 * 1024;
-const DEFAULT_LIST_PAGE: usize = 200;
-const DEFAULT_SEARCH_LIMIT: usize = 100;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -102,31 +105,21 @@ struct RuntimeCapability {
     cancel_epoch: u64,
 }
 
-struct InFlightGuard {
-    n: Arc<AtomicU64>,
-}
-
-impl Drop for InFlightGuard {
-    fn drop(&mut self) {
-        self.n.fetch_sub(1, Ordering::SeqCst);
-    }
-}
-
-struct RequestState {
-    cancelled: bool,
-}
-
 struct Inner {
     registry_path: PathBuf,
+    private_root: PathBuf,
     bindings: HashMap<String, ProjectBinding>,
     capabilities: HashMap<String, RuntimeCapability>,
-    requests: HashMap<String, RequestState>,
-    in_flight: Arc<AtomicU64>,
+    leases: LeaseBook,
 }
 
 pub struct WorkspaceRuntime {
     inner: Mutex<Inner>,
     mutation_enabled: AtomicBool,
+    rollout: Mutex<NativeRollout>,
+    pub(crate) suite: Mutex<SuiteState>,
+    #[cfg(test)]
+    revoke_before_commit: AtomicBool,
 }
 
 impl Default for WorkspaceRuntime {
@@ -134,12 +127,16 @@ impl Default for WorkspaceRuntime {
         Self {
             inner: Mutex::new(Inner {
                 registry_path: PathBuf::from("project-bindings.json"),
+                private_root: PathBuf::from("workspace-suite"),
                 bindings: HashMap::new(),
                 capabilities: HashMap::new(),
-                requests: HashMap::new(),
-                in_flight: Arc::new(AtomicU64::new(0)),
+                leases: LeaseBook::default(),
             }),
             mutation_enabled: AtomicBool::new(false),
+            rollout: Mutex::new(NativeRollout::compiled()),
+            suite: Mutex::new(SuiteState::default()),
+            #[cfg(test)]
+            revoke_before_commit: AtomicBool::new(false),
         }
     }
 }
@@ -149,14 +146,65 @@ impl WorkspaceRuntime {
     pub fn for_tests(registry_path: PathBuf, mutation_enabled: bool) -> Self {
         let rt = Self::default();
         if let Ok(mut inner) = rt.inner.lock() {
-            inner.registry_path = registry_path;
+            inner.registry_path = registry_path.clone();
+            if let Some(parent) = registry_path.parent() {
+                inner.private_root = parent.join("workspace-suite");
+                let _ = fs::create_dir_all(&inner.private_root);
+            }
         }
         rt.mutation_enabled.store(mutation_enabled, Ordering::SeqCst);
+        if let Ok(mut rollout) = rt.rollout.lock() {
+            *rollout = NativeRollout::for_tests_with_mutation(mutation_enabled);
+        }
+        if let Ok(mut suite) = rt.suite.lock() {
+            if let Some(parent) = registry_path.parent() {
+                *suite = SuiteState::new(parent.join("workspace-suite"));
+            }
+        }
         rt
     }
 
+    pub fn rollout(&self) -> NativeRollout {
+        self.rollout.lock().map(|g| *g).unwrap_or_else(|_| NativeRollout::compiled())
+    }
+
+    #[allow(dead_code)]
+    pub fn set_rollout(&self, rollout: NativeRollout) {
+        if let Ok(mut g) = self.rollout.lock() {
+            *g = rollout;
+        }
+        self.mutation_enabled
+            .store(rollout.direct_mutation, Ordering::SeqCst);
+    }
+
+    /// Renderer may only disable. Enabling is ignored.
     pub fn set_mutation_enabled(&self, enabled: bool) {
+        if enabled {
+            return;
+        }
+        self.mutation_enabled.store(false, Ordering::SeqCst);
+        if let Ok(mut g) = self.rollout.lock() {
+            g.direct_mutation = false;
+        }
+    }
+
+    #[cfg(test)]
+    #[allow(dead_code)]
+    pub fn force_mutation_enabled_for_tests(&self, enabled: bool) {
         self.mutation_enabled.store(enabled, Ordering::SeqCst);
+        if let Ok(mut g) = self.rollout.lock() {
+            g.direct_mutation = enabled;
+        }
+    }
+
+    #[cfg(test)]
+    pub fn set_revoke_before_commit(&self, enabled: bool) {
+        self.revoke_before_commit.store(enabled, Ordering::SeqCst);
+    }
+
+    pub fn private_root(&self) -> Result<PathBuf, WorkspaceError> {
+        let inner = self.lock()?;
+        Ok(inner.private_root.clone())
     }
 
     pub fn mutation_enabled(&self) -> bool {
@@ -166,8 +214,16 @@ impl WorkspaceRuntime {
     pub fn open_desktop(&self, dir: &Path) -> Result<(), WorkspaceError> {
         fs::create_dir_all(dir).map_err(|e| WorkspaceError::new(PERMISSION_DENIED, format!("{e}")))?;
         let path = dir.join("project-bindings.json");
+        let private = dir.join("workspace-suite");
+        fs::create_dir_all(&private).map_err(|e| WorkspaceError::new(PERMISSION_DENIED, format!("{e}")))?;
         let mut inner = self.lock()?;
         inner.registry_path = path.clone();
+        inner.private_root = private.clone();
+        drop(inner);
+        if let Ok(mut suite) = self.suite.lock() {
+            *suite = SuiteState::new(private);
+        }
+        let mut inner = self.lock()?;
         if let Ok(text) = fs::read_to_string(&path) {
             if let Ok(map) = serde_json::from_str::<HashMap<String, ProjectBinding>>(&text) {
                 inner.bindings = map.into_iter().filter(|(_, b)| b.verify()).collect();
@@ -176,7 +232,7 @@ impl WorkspaceRuntime {
         Ok(())
     }
 
-    fn lock(&self) -> Result<std::sync::MutexGuard<'_, Inner>, WorkspaceError> {
+    pub(crate) fn lock(&self) -> Result<std::sync::MutexGuard<'_, Inner>, WorkspaceError> {
         self.inner
             .lock()
             .map_err(|_| WorkspaceError::new(PERMISSION_DENIED, "workspace lock poisoned"))
@@ -188,14 +244,14 @@ impl WorkspaceRuntime {
         }
     }
 
-    fn now_ms() -> i64 {
+    pub(crate) fn now_ms() -> i64 {
         SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map(|d| d.as_millis() as i64)
             .unwrap_or(0)
     }
 
-    fn require_main(window_label: &str) -> Result<(), WorkspaceError> {
+    pub(crate) fn require_main(window_label: &str) -> Result<(), WorkspaceError> {
         if window_label != MAIN_WINDOW {
             return Err(wrong_window());
         }
@@ -263,6 +319,15 @@ impl WorkspaceRuntime {
         root: &Path,
         generation: &str,
     ) -> Result<RuntimeCapability, WorkspaceError> {
+        if let Some(existing) = inner.capabilities.values().find(|cap| {
+            !cap.revoked
+                && cap.project_id == project_id
+                && cap.window_label == window_label
+                && cap.root_generation == generation
+                && cap.root_path == root
+        }) {
+            return Ok(existing.clone());
+        }
         let cap = RuntimeCapability {
             id: Uuid::new_v4().to_string(),
             project_id: project_id.to_string(),
@@ -346,7 +411,8 @@ impl WorkspaceRuntime {
         self.revoke_project_locked(&mut inner, project_id);
         inner.bindings.remove(project_id);
         Self::persist(&inner);
-        self.wait_in_flight(&inner);
+        drop(inner);
+        self.wait_in_flight();
         Ok(())
     }
 
@@ -354,7 +420,8 @@ impl WorkspaceRuntime {
         Self::require_main(window_label)?;
         let mut inner = self.lock()?;
         self.revoke_project_locked(&mut inner, project_id);
-        self.wait_in_flight(&inner);
+        drop(inner);
+        self.wait_in_flight();
         Ok(())
     }
 
@@ -370,26 +437,31 @@ impl WorkspaceRuntime {
         }
     }
 
-    fn wait_in_flight(&self, inner: &Inner) {
+    fn wait_in_flight(&self) {
         let start = std::time::Instant::now();
-        while inner.in_flight.load(Ordering::SeqCst) > 0 && start.elapsed().as_millis() < 2_000 {
+        while start.elapsed().as_millis() < 2_000 {
+            let n = self
+                .lock()
+                .ok()
+                .map(|inner| inner.leases.global.load(std::sync::atomic::Ordering::SeqCst))
+                .unwrap_or(0);
+            if n == 0 {
+                break;
+            }
             std::thread::yield_now();
         }
     }
 
-    fn begin_op(&self) -> Result<InFlightGuard, WorkspaceError> {
-        let inner = self.lock()?;
-        inner.in_flight.fetch_add(1, Ordering::SeqCst);
-        Ok(InFlightGuard {
-            n: inner.in_flight.clone(),
-        })
+    fn begin_op(&self, project_id: &str, request_id: Option<&str>) -> Result<OpGuard, WorkspaceError> {
+        let mut inner = self.lock()?;
+        inner.leases.begin(project_id, request_id)
     }
 
-    fn lookup_cap(
+    pub(crate) fn lookup_cap(
         &self,
         capability_id: &str,
         window_label: &str,
-    ) -> Result<(PathBuf, String, String), WorkspaceError> {
+    ) -> Result<(PathBuf, String, String, String), WorkspaceError> {
         let inner = self.lock()?;
         let cap = inner
             .capabilities
@@ -404,15 +476,20 @@ impl WorkspaceRuntime {
         if window_label != MAIN_WINDOW {
             return Err(wrong_window());
         }
-        let binding = inner.bindings.get(&cap.project_id);
-        if let Some(binding) = binding {
-            if binding.root_generation != cap.root_generation {
-                return Err(stale_capability());
-            }
-        } else {
+        let binding = inner.bindings.get(&cap.project_id).ok_or_else(stale_capability)?;
+        if binding.root_generation != cap.root_generation {
             return Err(stale_capability());
         }
-        Ok((cap.root_path.clone(), cap.project_id.clone(), cap.root_generation.clone()))
+        let identity = filesystem_identity(&cap.root_path).unwrap_or_default();
+        if identity != binding.filesystem_identity {
+            return Err(stale_capability());
+        }
+        Ok((
+            cap.root_path.clone(),
+            cap.project_id.clone(),
+            cap.root_generation.clone(),
+            identity,
+        ))
     }
 
     pub fn set_trust(
@@ -454,33 +531,32 @@ impl WorkspaceRuntime {
         window_label: &str,
         relative_path: &str,
     ) -> Result<Value, WorkspaceError> {
-        let _guard = self.begin_op()?;
-        let (root, _, _) = self.lookup_cap(capability_id, window_label)?;
+        let (_root, project_id, _, _) = self.lookup_cap(capability_id, window_label)?;
+        let _guard = self.begin_op(&project_id, None)?;
+        let (root, _, _, _) = self.lookup_cap(capability_id, window_label)?;
         if is_hard_denied(relative_path) {
             return Err(hard_denied(relative_path));
         }
         let rel = RelativePath::parse(relative_path)?;
-        let bytes = read_file_bytes(&root, &rel)?;
-        if looks_binary(&bytes) {
+        let limited = read_file_limited(&root, &rel, READ_MAX_BYTES)?;
+        if looks_binary(&limited.bytes) {
             return Ok(json!({
                 "content": "",
-                "revision": content_revision(&bytes),
-                "truncated": false,
+                "revision": content_revision(&limited.bytes),
+                "truncated": limited.truncated,
                 "encoding": "binary",
                 "relativePath": rel.as_display(),
-                "size": bytes.len(),
+                "size": limited.size,
             }));
         }
-        let truncated = bytes.len() > MAX_READ_BYTES;
-        let slice = if truncated { &bytes[..MAX_READ_BYTES] } else { &bytes };
-        let content = String::from_utf8_lossy(slice).into_owned();
+        let content = String::from_utf8_lossy(&limited.bytes).into_owned();
         Ok(json!({
             "content": content,
-            "revision": content_revision(&bytes),
-            "truncated": truncated,
+            "revision": content_revision(&limited.bytes),
+            "truncated": limited.truncated,
             "encoding": "utf-8",
             "relativePath": rel.as_display(),
-            "size": bytes.len(),
+            "size": limited.size,
         }))
     }
 
@@ -492,13 +568,14 @@ impl WorkspaceRuntime {
         cursor: Option<&str>,
         request_id: Option<&str>,
     ) -> Result<Value, WorkspaceError> {
-        let _guard = self.begin_op()?;
+        let (_, project_id, _, _) = self.lookup_cap(capability_id, window_label)?;
+        let _guard = self.begin_op(&project_id, request_id)?;
         if let Some(id) = request_id {
             if self.is_cancelled(id) {
                 return Err(cancelled());
             }
         }
-        let (root, _, generation) = self.lookup_cap(capability_id, window_label)?;
+        let (root, _, generation, _) = self.lookup_cap(capability_id, window_label)?;
         if is_hard_denied(relative_path) {
             return Err(hard_denied(relative_path));
         }
@@ -508,10 +585,12 @@ impl WorkspaceRuntime {
         self.load_ignore_chain(&root, &rel, &mut stack);
         let mut children = list_children(&root, &rel)?;
         children.sort_by(|a, b| a.0.cmp(&b.0));
-        let skip = cursor.and_then(|c| c.parse::<usize>().ok()).unwrap_or(0);
+        let start_after = cursor.unwrap_or("");
         let mut entries = Vec::new();
-        let mut idx = 0usize;
         for (name, is_dir, size) in children {
+            if !start_after.is_empty() && name.as_str() <= start_after {
+                continue;
+            }
             let child_rel = if rel.components.is_empty() {
                 name.clone()
             } else {
@@ -520,31 +599,20 @@ impl WorkspaceRuntime {
             if stack.is_ignored(&child_rel, is_dir) {
                 continue;
             }
-            if idx < skip {
-                idx += 1;
-                continue;
-            }
-            if entries.len() >= DEFAULT_LIST_PAGE {
+            if entries.len() >= LIST_PAGE_SIZE {
                 break;
             }
-            let revision = if !is_dir {
-                read_file_bytes(&root, &RelativePath::parse(&child_rel).unwrap_or(rel.clone()))
-                    .ok()
-                    .map(|b| content_revision(&b))
-            } else {
-                None
-            };
             entries.push(json!({
                 "name": name,
                 "relativePath": child_rel,
                 "kind": if is_dir { "directory" } else { "file" },
                 "size": size,
-                "revision": revision,
             }));
-            idx += 1;
         }
-        let next = if entries.len() == DEFAULT_LIST_PAGE {
-            Some((skip + entries.len()).to_string())
+        let next = if entries.len() == LIST_PAGE_SIZE {
+            entries
+                .last()
+                .and_then(|e| e.get("name").and_then(|v| v.as_str()).map(str::to_string))
         } else {
             None
         };
@@ -556,7 +624,7 @@ impl WorkspaceRuntime {
         }))
     }
 
-    fn load_ignore_chain(&self, root: &Path, rel: &RelativePath, stack: &mut IgnoreStack) {
+    pub(crate) fn load_ignore_chain(&self, root: &Path, rel: &RelativePath, stack: &mut IgnoreStack) {
         let mut acc = RelativePath { components: vec![] };
         if let Ok(gi) = RelativePath::parse(&gitignore_path("")) {
             if let Ok(bytes) = read_file_bytes(root, &gi) {
@@ -584,7 +652,8 @@ impl WorkspaceRuntime {
         query: &str,
         request_id: Option<&str>,
     ) -> Result<Value, WorkspaceError> {
-        let _guard = self.begin_op()?;
+        let (_, project_id, _, _) = self.lookup_cap(capability_id, window_label)?;
+        let _guard = self.begin_op(&project_id, request_id)?;
         if let Some(id) = request_id {
             if self.is_cancelled(id) {
                 return Err(cancelled());
@@ -592,9 +661,9 @@ impl WorkspaceRuntime {
         }
         let q = query.trim();
         if q.is_empty() {
-            return Ok(json!({ "hits": [], "requestId": request_id }));
+            return Ok(json!({ "hits": [], "requestId": request_id, "truncated": false }));
         }
-        let (root, _, _) = self.lookup_cap(capability_id, window_label)?;
+        let (root, _, _, _) = self.lookup_cap(capability_id, window_label)?;
         let has_git = root.join(".git").exists();
         let mut stack = IgnoreStack::new(has_git);
         if let Ok(gi) = RelativePath::parse(&gitignore_path("")) {
@@ -605,6 +674,12 @@ impl WorkspaceRuntime {
             }
         }
         let mut hits = Vec::new();
+        let mut stats = SearchStats {
+            entries: 0,
+            inspected: 0,
+            started: std::time::Instant::now(),
+            truncated: false,
+        };
         self.search_walk(
             &root,
             &RelativePath { components: vec![] },
@@ -612,8 +687,10 @@ impl WorkspaceRuntime {
             q,
             request_id,
             &mut hits,
+            0,
+            &mut stats,
         )?;
-        Ok(json!({ "hits": hits, "requestId": request_id }))
+        Ok(json!({ "hits": hits, "requestId": request_id, "truncated": stats.truncated }))
     }
 
     fn search_walk(
@@ -624,8 +701,16 @@ impl WorkspaceRuntime {
         query: &str,
         request_id: Option<&str>,
         hits: &mut Vec<Value>,
+        depth: usize,
+        stats: &mut SearchStats,
     ) -> Result<(), WorkspaceError> {
-        if hits.len() >= DEFAULT_SEARCH_LIMIT {
+        if hits.len() >= SEARCH_MAX_HITS
+            || stats.entries >= SEARCH_MAX_ENTRIES
+            || stats.inspected >= SEARCH_MAX_INSPECTED_BYTES
+            || depth > SEARCH_MAX_DEPTH
+            || stats.started.elapsed() >= std::time::Duration::from_millis(SEARCH_DEADLINE_MS)
+        {
+            stats.truncated = true;
             return Ok(());
         }
         if let Some(id) = request_id {
@@ -635,9 +720,11 @@ impl WorkspaceRuntime {
         }
         let children = list_children(root, dir)?;
         for (name, is_dir, _) in children {
-            if hits.len() >= DEFAULT_SEARCH_LIMIT {
+            if hits.len() >= SEARCH_MAX_HITS || stats.entries >= SEARCH_MAX_ENTRIES {
+                stats.truncated = true;
                 break;
             }
+            stats.entries += 1;
             let child = dir.join_child(&name)?;
             let rel = child.as_display();
             if stack.is_ignored(&rel, is_dir) {
@@ -650,6 +737,7 @@ impl WorkspaceRuntime {
                 }));
             }
             if is_dir {
+                let before = stack.layer_count();
                 if let Ok(gi) = RelativePath::parse(&gitignore_path(&rel)) {
                     if let Ok(bytes) = read_file_bytes(root, &gi) {
                         if let Ok(text) = String::from_utf8(bytes) {
@@ -657,10 +745,12 @@ impl WorkspaceRuntime {
                         }
                     }
                 }
-                self.search_walk(root, &child, stack, query, request_id, hits)?;
-            } else if let Ok(bytes) = read_file_bytes(root, &child) {
-                if bytes.len() <= MAX_SEARCH_FILE_BYTES && !looks_binary(&bytes) {
-                    if let Ok(text) = String::from_utf8(bytes) {
+                self.search_walk(root, &child, stack, query, request_id, hits, depth + 1, stats)?;
+                stack.truncate_layers(before);
+            } else if let Ok(limited) = read_file_limited(root, &child, SEARCH_MAX_FILE_BYTES) {
+                stats.inspected = stats.inspected.saturating_add(limited.bytes.len());
+                if limited.bytes.len() <= SEARCH_MAX_FILE_BYTES && !looks_binary(&limited.bytes) {
+                    if let Ok(text) = String::from_utf8(limited.bytes) {
                         for (i, line) in text.lines().enumerate() {
                             if line.to_ascii_lowercase().contains(&query.to_ascii_lowercase()) {
                                 hits.push(json!({
@@ -680,15 +770,15 @@ impl WorkspaceRuntime {
     }
 
     pub fn cancel_request(&self, request_id: &str) {
-        if let Ok(mut inner) = self.lock() {
-            inner.requests.insert(request_id.to_string(), RequestState { cancelled: true });
+        if let Ok(inner) = self.lock() {
+            inner.leases.cancel(request_id);
         }
     }
 
     fn is_cancelled(&self, request_id: &str) -> bool {
         self.lock()
             .ok()
-            .and_then(|inner| inner.requests.get(request_id).map(|r| r.cancelled))
+            .map(|inner| inner.leases.is_cancelled(request_id))
             .unwrap_or(false)
     }
 
@@ -701,6 +791,9 @@ impl WorkspaceRuntime {
         mode: &str,
         expected_revision: Option<&str>,
     ) -> Result<Value, WorkspaceError> {
+        if content.len() > MUTATION_MAX_BYTES {
+            return Err(limit_exceeded("File content exceeds the 1 MiB write limit"));
+        }
         self.mutate(capability_id, window_label, |root| {
             if is_hard_denied(relative_path) {
                 return Err(hard_denied(relative_path));
@@ -743,6 +836,9 @@ impl WorkspaceRuntime {
         new_string: &str,
         expected_revision: &str,
     ) -> Result<Value, WorkspaceError> {
+        if new_string.len() > MUTATION_MAX_BYTES {
+            return Err(limit_exceeded("File content exceeds the 1 MiB write limit"));
+        }
         self.mutate(capability_id, window_label, |root| {
             if is_hard_denied(relative_path) {
                 return Err(hard_denied(relative_path));
@@ -805,14 +901,59 @@ impl WorkspaceRuntime {
         if !self.mutation_enabled() {
             return Err(mutation_disabled());
         }
-        let _guard = self.begin_op()?;
-        let (root, _, _) = self.lookup_cap(capability_id, window_label)?;
-        // Re-check revocation after acquiring lease, before side effects.
-        let (root2, _, _) = self.lookup_cap(capability_id, window_label)?;
-        if root != root2 {
+        let (root, project_id, _, identity) = self.lookup_cap(capability_id, window_label)?;
+        let _guard = self.begin_op(&project_id, None)?;
+        let root_lock = {
+            let mut inner = self.lock()?;
+            inner.leases.root_lock(&identity)
+        };
+        let _serialized = root_lock
+            .lock()
+            .map_err(|_| WorkspaceError::new(PERMISSION_DENIED, "root lease poisoned"))?;
+        // Re-check revocation after acquiring lease, immediately before side effects.
+        #[cfg(test)]
+        if self.revoke_before_commit.swap(false, Ordering::SeqCst) {
+            if let Ok(mut inner) = self.lock() {
+                self.revoke_project_locked(&mut inner, &project_id);
+            }
+        }
+        let (root2, _, _, identity2) = self.lookup_cap(capability_id, window_label)?;
+        if root != root2 || identity != identity2 {
             return Err(stale_capability());
         }
-        f(&root)
+        f(&root2)
+    }
+
+    pub(crate) fn mutate_with_apply_permit<F>(
+        &self,
+        capability_id: &str,
+        window_label: &str,
+        f: F,
+    ) -> Result<Value, WorkspaceError>
+    where
+        F: FnOnce(&Path) -> Result<Value, WorkspaceError>,
+    {
+        if !self.rollout().apply {
+            return Err(mutation_disabled());
+        }
+        let (root, project_id, _, identity) = self.lookup_cap(capability_id, window_label)?;
+        let _guard = self.begin_op(&project_id, None)?;
+        let root_lock = {
+            let mut inner = self.lock()?;
+            inner.leases.root_lock(&identity)
+        };
+        let _serialized = root_lock
+            .lock()
+            .map_err(|_| WorkspaceError::new(PERMISSION_DENIED, "root lease poisoned"))?;
+        let (root2, _, _, identity2) = self.lookup_cap(capability_id, window_label)?;
+        if root != root2 || identity != identity2 {
+            return Err(stale_capability());
+        }
+        f(&root2)
+    }
+
+    pub fn suite_capabilities(&self) -> Value {
+        super::policy::discovery_matrix(self.rollout(), git_bin_exists())
     }
 
     pub fn reveal_path(&self, project_id: &str, window_label: &str) -> Result<String, WorkspaceError> {
@@ -851,4 +992,25 @@ fn descriptor_json(
 
 fn looks_binary(bytes: &[u8]) -> bool {
     bytes.iter().take(8000).any(|b| *b == 0)
+}
+
+fn git_bin_exists() -> bool {
+    let names = ["git", "git.exe"];
+    if let Ok(path) = std::env::var("PATH") {
+        for dir in std::env::split_paths(&path) {
+            for name in names {
+                if dir.join(name).is_file() {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+struct SearchStats {
+    entries: usize,
+    inspected: usize,
+    started: std::time::Instant,
+    truncated: bool,
 }

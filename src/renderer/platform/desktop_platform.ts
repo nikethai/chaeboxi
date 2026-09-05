@@ -361,89 +361,157 @@ export default class DesktopPlatform implements Platform {
     throw new Error('Broad filesystem IPC is unavailable. Use workspace capability APIs.')
   }
 
-  private async syncWorkspaceMutationFlag() {
+  private async invokeWorkspace<T>(channel: string, ...args: unknown[]): Promise<T> {
+    const { unwrapWorkspaceBroker } = await import('./workspace-broker')
+    const raw = await this.ipc.invoke(channel, ...args)
+    return unwrapWorkspaceBroker<T>(raw)
+  }
+
+  private async revokeNativeMutationIfHidden() {
     const { getProjectWorkspaceFlags } = await import('@/projects/flags')
-    await this.ipc.invoke('workspace:set-mutation', getProjectWorkspaceFlags().mutationEnabled)
+    if (!getProjectWorkspaceFlags().mutationEnabled) {
+      await this.invokeWorkspace('workspace:set-mutation', false)
+    }
   }
 
   public async pickAndBindProject(projectId: string) {
-    const desc = await this.ipc.invoke('workspace:pick-and-bind', projectId)
-    await this.syncWorkspaceMutationFlag()
+    const desc = await this.invokeWorkspace('workspace:pick-and-bind', projectId)
+    await this.revokeNativeMutationIfHidden()
     return desc
   }
 
   public async restoreProjectBinding(projectId: string) {
-    const desc = await this.ipc.invoke('workspace:restore', projectId)
-    await this.syncWorkspaceMutationFlag()
+    const desc = await this.invokeWorkspace('workspace:restore', projectId)
+    await this.revokeNativeMutationIfHidden()
     return desc
   }
 
   public async revokeProjectBinding(projectId: string) {
-    await this.ipc.invoke('workspace:revoke', projectId)
+    await this.invokeWorkspace('workspace:revoke', projectId)
   }
 
   public async relinkProject(projectId: string) {
-    return this.ipc.invoke('workspace:relink', projectId)
+    return this.invokeWorkspace('workspace:relink', projectId)
   }
 
   public async unbindProject(projectId: string) {
-    await this.ipc.invoke('workspace:unbind', projectId)
+    await this.invokeWorkspace('workspace:unbind', projectId)
   }
 
   public async revealProject(projectId: string) {
-    await this.ipc.invoke('workspace:reveal', projectId)
+    await this.invokeWorkspace('workspace:reveal', projectId)
   }
 
   public async readWorkspaceFile(capabilityId: string, relativePath: string) {
-    return this.ipc.invoke('workspace:read', { capabilityId, relativePath })
+    return this.invokeWorkspace('workspace:read', { capabilityId, relativePath })
   }
 
   public async listWorkspaceChildren(capabilityId: string, relativePath: string, cursor?: string, requestId?: string) {
-    return this.ipc.invoke('workspace:list', { capabilityId, relativePath, cursor, requestId })
+    return this.invokeWorkspace('workspace:list', { capabilityId, relativePath, cursor, requestId })
   }
 
   public async searchWorkspace(capabilityId: string, query: string, requestId?: string) {
-    return this.ipc.invoke('workspace:search', { capabilityId, query, requestId })
+    return this.invokeWorkspace('workspace:search', { capabilityId, query, requestId })
   }
 
   public async cancelWorkspaceRequest(requestId: string) {
-    await this.ipc.invoke('workspace:cancel', requestId)
+    await this.invokeWorkspace('workspace:cancel', requestId)
+  }
+
+  public async getWorkspaceSuiteCapabilities() {
+    return this.invokeWorkspace('workspace:capabilities')
   }
 
   public async createWorkspaceFile(
-    capabilityId: string,
-    relativePath: string,
-    content: string,
-    mode: 'create' | 'overwrite',
-    expectedRevision?: string
+    _capabilityId: string,
+    _relativePath: string,
+    _content: string,
+    _mode: 'create' | 'overwrite',
+    _expectedRevision?: string
   ) {
-    const { getProjectWorkspaceFlags } = await import('@/projects/flags')
-    if (!getProjectWorkspaceFlags().mutationEnabled) {
-      return { ok: false, code: 'MUTATION_DISABLED' as const }
-    }
-    return this.ipc.invoke('workspace:create', { capabilityId, relativePath, content, mode, expectedRevision })
+    return { ok: false, code: 'MUTATION_DISABLED' as const }
   }
 
   public async editWorkspaceFile(
-    capabilityId: string,
-    relativePath: string,
-    oldString: string,
-    newString: string,
-    expectedRevision: string
+    _capabilityId: string,
+    _relativePath: string,
+    _oldString: string,
+    _newString: string,
+    _expectedRevision: string
   ) {
-    const { getProjectWorkspaceFlags } = await import('@/projects/flags')
-    if (!getProjectWorkspaceFlags().mutationEnabled) {
-      return { ok: false, code: 'MUTATION_DISABLED' as const }
-    }
-    return this.ipc.invoke('workspace:edit', { capabilityId, relativePath, oldString, newString, expectedRevision })
+    return { ok: false, code: 'MUTATION_DISABLED' as const }
   }
 
-  public async deleteWorkspaceFile(capabilityId: string, relativePath: string, expectedRevision: string) {
-    const { getProjectWorkspaceFlags } = await import('@/projects/flags')
-    if (!getProjectWorkspaceFlags().mutationEnabled) {
-      return { ok: false, code: 'MUTATION_DISABLED' as const }
-    }
-    return this.ipc.invoke('workspace:delete', { capabilityId, relativePath, expectedRevision })
+  public async deleteWorkspaceFile(_capabilityId: string, _relativePath: string, _expectedRevision: string) {
+    return { ok: false, code: 'MUTATION_DISABLED' as const }
+  }
+
+  public async beginWorkspaceChangeSet(capabilityId: string, sessionId: string, turnId: string) {
+    return this.invokeWorkspace('changes:begin', { capabilityId, sessionId, turnId })
+  }
+
+  public async appendWorkspaceChange(changeSetId: string, operation: Record<string, unknown>) {
+    return this.invokeWorkspace('changes:append', { changeSetId, operation })
+  }
+
+  public async sealWorkspaceChangeSet(changeSetId: string) {
+    return this.invokeWorkspace('changes:seal', changeSetId)
+  }
+
+  public async getWorkspaceChangeSet(changeSetId: string) {
+    return this.invokeWorkspace('changes:get', changeSetId)
+  }
+
+  public async discardWorkspaceChangeSet(changeSetId: string) {
+    return this.invokeWorkspace('changes:discard', changeSetId)
+  }
+
+  public async preflightWorkspaceChangeSet(changeSetId: string, digest: string, selectedIds: string[]) {
+    return this.invokeWorkspace('changes:preflight', { changeSetId, digest, selectedIds })
+  }
+
+  public async prepareWorkspaceApply(changeSetId: string, digest: string, selectedIds: string[]) {
+    return this.invokeWorkspace('changes:prepare-apply', { changeSetId, digest, selectedIds })
+  }
+
+  public async applyWorkspaceChangeSet(applyTicket: string) {
+    return this.invokeWorkspace('changes:apply', applyTicket)
+  }
+
+  public async prepareWorkspaceExport(capabilityId: string, selection: Record<string, unknown>) {
+    return this.invokeWorkspace('workspace:prepare-export', { capabilityId, selection })
+  }
+
+  public async prepareAppArtifactExport(artifactId: string) {
+    return this.invokeWorkspace('workspace:prepare-artifact-export', artifactId)
+  }
+
+  public async exportWorkspace(manifestId: string) {
+    return this.invokeWorkspace('workspace:export', manifestId)
+  }
+
+  public async discardWorkspaceExport(manifestId: string) {
+    return this.invokeWorkspace('workspace:discard-export', manifestId)
+  }
+
+  public async getSourceControlStatus(capabilityId: string) {
+    return this.invokeWorkspace('scm:status', { capabilityId })
+  }
+
+  public async getSourceControlDiff(capabilityId: string, changeId?: string) {
+    return this.invokeWorkspace('scm:diff', { capabilityId, changeId })
+  }
+
+  public async getSourceControlLog(capabilityId: string, limit?: number) {
+    return this.invokeWorkspace('scm:log', { capabilityId, limit })
+  }
+
+  public async getLocalExecutionStatus() {
+    return this.invokeWorkspace('wasi:status')
+  }
+
+  public async getManagedWorktreeStatus() {
+    return this.invokeWorkspace('worktrees:status')
   }
 
   public async setProjectTrust(projectId: string, category: string, value: string) {

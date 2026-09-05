@@ -19,6 +19,11 @@ describe('createPlatformCapabilities', () => {
     expect(capabilities.supportsSystemNotifications).toBe(true)
     expect(capabilities.supportsImportedArchives).toBe(false)
     expect(capabilities.supportsProjectWorkspace).toBe(false)
+    expect(capabilities.supportsWorkspaceExport).toBe(false)
+    expect(capabilities.supportsSourceControl).toBe(false)
+    expect(capabilities.supportsChangeReview).toBe(false)
+    expect(capabilities.supportsLocalExecution).toBe(false)
+    expect(capabilities.supportsManagedWorktrees).toBe(false)
   })
 
   test('enables desktop-only capabilities on desktop builds', () => {
@@ -38,6 +43,11 @@ describe('createPlatformCapabilities', () => {
     expect(capabilities.supportsSystemNotifications).toBe(true)
     expect(capabilities.supportsImportedArchives).toBe(true)
     expect(capabilities.supportsProjectWorkspace).toBe(true)
+    expect(capabilities.supportsWorkspaceExport).toBe(true)
+    expect(capabilities.supportsSourceControl).toBe(true)
+    expect(capabilities.supportsChangeReview).toBe(true)
+    expect(capabilities.supportsLocalExecution).toBe(false)
+    expect(capabilities.supportsManagedWorktrees).toBe(false)
   })
 
   test('does not infer runtime support from mobile layout alone', () => {
@@ -57,5 +67,10 @@ describe('createPlatformCapabilities', () => {
     expect(capabilities.supportsSystemNotifications).toBe(true)
     expect(capabilities.supportsImportedArchives).toBe(false)
     expect(capabilities.supportsProjectWorkspace).toBe(false)
+    expect(capabilities.supportsWorkspaceExport).toBe(false)
+    expect(capabilities.supportsSourceControl).toBe(false)
+    expect(capabilities.supportsChangeReview).toBe(false)
+    expect(capabilities.supportsLocalExecution).toBe(false)
+    expect(capabilities.supportsManagedWorktrees).toBe(false)
   })
 })

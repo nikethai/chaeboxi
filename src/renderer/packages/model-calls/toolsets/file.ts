@@ -59,6 +59,8 @@ export type WorkspaceToolContext = {
   projectId: string
   rootGeneration: string
   mutationEnabled: boolean
+  sessionId?: string
+  turnId?: string
 }
 
 export function workspaceFileToolSetDescription(context: WorkspaceToolContext | string): string {
@@ -217,7 +219,70 @@ function relativeOnly(path: string): string | { error: string } {
   return trimmed.replace(/\\/g, '/')
 }
 
-/** Workspace create/edit/delete tools via native capability. Dark unless mutationEnabled. */
+const changeSetsBySession = new Map<string, string>()
+const changeSetListeners = new Set<() => void>()
+
+function changeSetKeys(ctx: WorkspaceToolContext): string[] {
+  if (ctx.sessionId?.trim()) {
+    return [ctx.sessionId]
+  }
+  return ctx.capabilityId?.trim() ? [ctx.capabilityId] : []
+}
+
+function notifyStagedChangeSets() {
+  for (const listener of changeSetListeners) {
+    listener()
+  }
+}
+
+/** Live native change-set id for a chat session, if this run has staged file ops. */
+export function getStagedChangeSetId(sessionId: string): string | undefined {
+  if (!sessionId) return undefined
+  return changeSetsBySession.get(sessionId)
+}
+
+export function subscribeStagedChangeSets(listener: () => void): () => void {
+  changeSetListeners.add(listener)
+  return () => {
+    changeSetListeners.delete(listener)
+  }
+}
+
+async function ensureChangeSet(ctx: WorkspaceToolContext): Promise<string | { error: string; code: string }> {
+  const keys = changeSetKeys(ctx)
+  for (const key of keys) {
+    const existing = changeSetsBySession.get(key)
+    if (existing) return existing
+  }
+  if (!platform.beginWorkspaceChangeSet) {
+    return { error: 'Workspace staging is unavailable.', code: 'UNSUPPORTED_PLATFORM' }
+  }
+  try {
+    const begun = await platform.beginWorkspaceChangeSet(ctx.capabilityId, ctx.sessionId || '', ctx.turnId || '')
+    if (!begun?.changeSetId) {
+      return { error: 'Could not begin a change set.', code: 'CHANGE_SET_INVALID' }
+    }
+    for (const key of keys) {
+      changeSetsBySession.set(key, begun.changeSetId)
+    }
+    notifyStagedChangeSets()
+    return begun.changeSetId
+  } catch (err) {
+    return { error: toErrorMessage(err), code: 'CHANGE_SET_INVALID' }
+  }
+}
+
+async function stageOperation(ctx: WorkspaceToolContext, operation: Record<string, unknown>) {
+  const changeSet = await ensureChangeSet(ctx)
+  if (typeof changeSet !== 'string') return { success: false as const, message: changeSet.error, code: changeSet.code }
+  if (!platform.appendWorkspaceChange) {
+    return { success: false as const, message: 'Workspace staging is unavailable.', code: 'UNSUPPORTED_PLATFORM' }
+  }
+  const result = await platform.appendWorkspaceChange(changeSet, operation)
+  return { success: true as const, staged: true as const, changeSetId: changeSet, operationId: result?.operationId }
+}
+
+/** Workspace create/edit/delete tools stage native change sets. They never write Project Files during a run. */
 export function createWorkspaceFileTools(context: WorkspaceToolContext | string): ToolSet {
   const ctx: WorkspaceToolContext | null =
     typeof context === 'string' ? null : context.mutationEnabled && context.capabilityId ? context : null
@@ -226,7 +291,7 @@ export function createWorkspaceFileTools(context: WorkspaceToolContext | string)
   }
   const createFileTool = tool({
     description:
-      'Creates or overwrites a file under the session workspace root. Prefer relative paths (e.g. src/App.tsx).',
+      'Proposes creating or replacing a project file. Changes are staged for Change Review and are not written until the user Applies them.',
     inputSchema: z.object({
       path: z.string().describe('File path relative to the project root.'),
       content: z.string().describe('The full content to write to the file.'),
@@ -244,33 +309,24 @@ export function createWorkspaceFileTools(context: WorkspaceToolContext | string)
     }) => {
       const rel = relativeOnly(input.path)
       if (typeof rel !== 'string') return { success: false, message: rel.error, code: 'OUTSIDE_ROOT' }
-      if (!platform.createWorkspaceFile) {
-        return { success: false, message: 'Workspace mutation is unavailable.', code: 'UNSUPPORTED_PLATFORM' }
-      }
       try {
-        const result = await platform.createWorkspaceFile(
-          ctx.capabilityId,
-          rel,
-          input.content,
-          input.mode === 'overwrite' ? 'overwrite' : 'create',
-          input.expected_revision
-        )
-        if (result && 'ok' in result && result.ok === false) {
-          return { success: false, message: result.code, code: result.code }
-        }
-        void import('@/projects/open-workspace-preview').then((m) => {
-          m.openWorkspaceFilePreview(rel, input.content)
+        const staged = await stageOperation(ctx, {
+          kind: input.mode === 'overwrite' ? 'edit' : 'create',
+          relativePath: rel,
+          content: input.content,
+          expectedRevision: input.expected_revision,
         })
-        return { success: true, path: rel, revision: (result as { revision?: string }).revision }
+        if (!staged.success) return { success: false, message: staged.message, code: staged.code }
+        return { success: true, staged: true, path: rel, changeSetId: staged.changeSetId }
       } catch (err) {
-        return { success: false, message: `Failed to create file: ${toErrorMessage(err)}` }
+        return { success: false, message: `Failed to stage file create: ${toErrorMessage(err)}` }
       }
     },
   })
 
   const editFileTool = tool({
     description:
-      'Edits a workspace file by replacing the first occurrence of old_string with new_string. Path must be under the workspace root.',
+      'Proposes replacing the first occurrence of old_string with new_string. Staged for Change Review; Project Files are unchanged until Apply.',
     inputSchema: z.object({
       path: z.string().describe('File path relative to the project root.'),
       old_string: z.string().min(1).describe('The exact string to find and replace. Must not be empty.'),
@@ -280,44 +336,24 @@ export function createWorkspaceFileTools(context: WorkspaceToolContext | string)
     execute: async (input: { path: string; old_string: string; new_string: string; expected_revision: string }) => {
       const rel = relativeOnly(input.path)
       if (typeof rel !== 'string') return { success: false, message: rel.error, changes_made: 0, code: 'OUTSIDE_ROOT' }
-      if (!platform.editWorkspaceFile) {
-        return {
-          success: false,
-          message: 'Workspace mutation is unavailable.',
-          code: 'UNSUPPORTED_PLATFORM',
-          changes_made: 0,
-        }
-      }
       try {
-        const result = await platform.editWorkspaceFile(
-          ctx.capabilityId,
-          rel,
-          input.old_string,
-          input.new_string,
-          input.expected_revision
-        )
-        if (result && 'ok' in result && result.ok === false) {
-          return { success: false, message: result.code, code: result.code, changes_made: 0 }
-        }
-        const preview =
-          (platform.readWorkspaceFile
-            ? await platform
-                .readWorkspaceFile(ctx.capabilityId, rel)
-                .then((file) => file.content)
-                .catch(() => '')
-            : '') || input.new_string
-        void import('@/projects/open-workspace-preview').then((m) => {
-          m.openWorkspaceFilePreview(rel, preview)
+        const staged = await stageOperation(ctx, {
+          kind: 'edit',
+          relativePath: rel,
+          oldString: input.old_string,
+          newString: input.new_string,
+          expectedRevision: input.expected_revision,
         })
-        return { success: true, path: rel, revision: (result as { revision?: string }).revision, changes_made: 1 }
+        if (!staged.success) return { success: false, message: staged.message, code: staged.code, changes_made: 0 }
+        return { success: true, staged: true, path: rel, changeSetId: staged.changeSetId, changes_made: 0 }
       } catch (err) {
-        return { success: false, message: `Failed to edit file: ${toErrorMessage(err)}`, changes_made: 0 }
+        return { success: false, message: `Failed to stage file edit: ${toErrorMessage(err)}`, changes_made: 0 }
       }
     },
   })
 
   const deleteFileTool = tool({
-    description: 'Deletes a file under the session workspace root.',
+    description: 'Proposes deleting a project file. Staged for Change Review; the file is not deleted until Apply.',
     inputSchema: z.object({
       path: z.string().describe('File path relative to the project root.'),
       expected_revision: z.string().describe('Revision from the last native read. Required.'),
@@ -325,17 +361,16 @@ export function createWorkspaceFileTools(context: WorkspaceToolContext | string)
     execute: async (input: { path: string; expected_revision: string }) => {
       const rel = relativeOnly(input.path)
       if (typeof rel !== 'string') return { success: false, message: rel.error, code: 'OUTSIDE_ROOT' }
-      if (!platform.deleteWorkspaceFile) {
-        return { success: false, message: 'Workspace mutation is unavailable.', code: 'UNSUPPORTED_PLATFORM' }
-      }
       try {
-        const result = await platform.deleteWorkspaceFile(ctx.capabilityId, rel, input.expected_revision)
-        if (result && 'ok' in result && result.ok === false) {
-          return { success: false, message: result.code, code: result.code }
-        }
-        return { success: true, path: rel }
+        const staged = await stageOperation(ctx, {
+          kind: 'delete',
+          relativePath: rel,
+          expectedRevision: input.expected_revision,
+        })
+        if (!staged.success) return { success: false, message: staged.message, code: staged.code }
+        return { success: true, staged: true, path: rel, changeSetId: staged.changeSetId }
       } catch (err) {
-        return { success: false, message: `Failed to delete file: ${toErrorMessage(err)}` }
+        return { success: false, message: `Failed to stage file delete: ${toErrorMessage(err)}` }
       }
     },
   })

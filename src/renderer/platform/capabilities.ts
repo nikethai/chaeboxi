@@ -20,6 +20,11 @@ export interface PlatformCapabilities {
   supportsImportedArchives: boolean
   /** Native directory Project bind/read/mutate (desktop Tauri only). */
   supportsProjectWorkspace: boolean
+  supportsWorkspaceExport: boolean
+  supportsSourceControl: boolean
+  supportsChangeReview: boolean
+  supportsLocalExecution: boolean
+  supportsManagedWorktrees: boolean
 }
 
 /**
@@ -50,5 +55,10 @@ export function createPlatformCapabilities({
     supportsSystemNotifications,
     supportsImportedArchives: isDesktopRuntime,
     supportsProjectWorkspace: isDesktopRuntime,
+    supportsWorkspaceExport: isDesktopRuntime,
+    supportsSourceControl: isDesktopRuntime,
+    supportsChangeReview: isDesktopRuntime,
+    supportsLocalExecution: false,
+    supportsManagedWorktrees: false,
   }
 }

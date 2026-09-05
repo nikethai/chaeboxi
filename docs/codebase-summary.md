@@ -104,7 +104,7 @@ IPC is **multiplexed**: one Tauri command `ipc_invoke(channel, args)` dispatches
 - **OpenClaw** — `openclaw:*` WebSocket invoke / stream / cancel
 - **MCP** — `mcp:server:create|start|list-tools|call-tool|close|list|status` (stdio + HTTP; connect-per-operation in Rust)
 - **Knowledge base** — `kb:*`, `kb:file:*`, `kb:search`, `kb:embed:status` (`src-tauri/src/kb/`; desktop SQLite `chaeboxi_kb.db` + hybrid RRF; mobile keyword/in-memory)
-- **Project workspace** — `workspace:*` picker/capability APIs (`src-tauri/src/workspace/`); `fs:*` / `execute_command` rejected
+- **Project workspace** — `workspace:*` picker/capability APIs plus export, read-only SCM, and staged change sets (`src-tauri/src/workspace/`); Quick Local Run and managed worktrees stay unavailable; `fs:*` / `execute_command` rejected
 - **Narrow brokers** — `codex:read-auth-config`, `video:yt-dlp`
 - **Skills / commands / hooks scan** — filesystem discovery helpers
 - **Desktop shell** — tray, global shortcuts, screenshot (via `desktop_shell`)

@@ -297,8 +297,8 @@ You have access to **read-only** tools only:
 - read_file / search_file_content for **uploaded chat attachments** (fileKey) when present
 - knowledge_base search when a knowledge base is selected
 
-You do **NOT** have create_file, edit_file, delete_file, or terminal in planning mode.
-After the user approves the plan, execution will use workspace write + terminal tools (desktop, when a workspace folder is set).
+You do **NOT** have create_file, edit_file, delete_file, or a terminal in planning mode.
+After the user approves the plan, execution may stage project file proposals for Change Review (desktop, when a Project folder is bound). Generic shell and terminal tools stay unavailable.
 
 ## Important
 - Do NOT execute the task - only create a plan
@@ -1165,6 +1165,8 @@ export async function generate(
               projectId,
               rootGeneration,
               mutationEnabled: getProjectWorkspaceFlags().mutationEnabled,
+              sessionId: session.id,
+              turnId: targetMsg.id,
             }
           })(),
           // Browser / computer: desktop + master settings + session arm; Discuss/non-do-deliver off (D10)

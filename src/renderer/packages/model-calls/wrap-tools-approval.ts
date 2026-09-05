@@ -1,4 +1,5 @@
 import NiceModal from '@ebay/nice-modal-react'
+import { fingerprintSensitiveToolArgs, isSensitiveToolName, redactSensitiveToolPayload } from '@shared/privacy/sensitive-tools'
 import { ToolRiskTier } from '@shared/types/mcp'
 import type { ToolSet } from 'ai'
 import { t } from 'i18next'
@@ -10,10 +11,10 @@ const TOOL_EXECUTE_TIMEOUT_MS = 90_000
 const TOOL_APPROVAL_TIMEOUT_MS = 120_000
 
 export function workspaceApprovalFingerprint(toolName: string, args: unknown): string | null {
-  if (toolName !== 'create_file' && toolName !== 'edit_file' && toolName !== 'delete_file') {
+  if (!isSensitiveToolName(toolName)) {
     return null
   }
-  return JSON.stringify({ toolName, args })
+  return fingerprintSensitiveToolArgs(toolName, args)
 }
 
 function createToolDeniedResult(toolName: string, riskTier: ToolRiskTier) {
@@ -80,7 +81,7 @@ export function wrapToolsWithApproval(sessionId: string | undefined, tools: Tool
                 scope: existingApproval?.scope || 'session',
                 decision: 'auto-approve',
                 timestamp: Date.now(),
-                args,
+                args: redactSensitiveToolPayload(toolName, args),
               })
             } else {
               const modalResult = (await withTimeout(
@@ -88,7 +89,7 @@ export function wrapToolsWithApproval(sessionId: string | undefined, tools: Tool
                   toolName,
                   description: definition?.description,
                   riskTier,
-                  parameters: args,
+                  parameters: redactSensitiveToolPayload(toolName, args),
                 }) as Promise<ToolApprovalModalResult | undefined>,
                 TOOL_APPROVAL_TIMEOUT_MS,
                 `Tool approval for ${toolName}`
@@ -102,7 +103,7 @@ export function wrapToolsWithApproval(sessionId: string | undefined, tools: Tool
                   scope: 'none',
                   decision: 'deny',
                   timestamp: Date.now(),
-                  args,
+                  args: redactSensitiveToolPayload(toolName, args),
                 })
                 return createToolDeniedResult(toolName, riskTier)
               }
@@ -123,7 +124,7 @@ export function wrapToolsWithApproval(sessionId: string | undefined, tools: Tool
                 scope: modalResult,
                 decision: 'allow',
                 timestamp: approval.timestamp,
-                args,
+                args: redactSensitiveToolPayload(toolName, args),
               })
             }
 

@@ -328,3 +328,19 @@ fn generation_stale_after_relink() {
     let read = rt.read(cap2, "main", "x.txt").unwrap();
     assert_eq!(read.get("content").and_then(|v| v.as_str()).unwrap(), "b");
 }
+
+#[test]
+fn huge_file_read_is_truncated_without_returning_full_body() {
+    let dir = test_dir();
+    let folder = dir.join("proj");
+    fs::create_dir(&folder).unwrap();
+    let big = vec![b'x'; 1024 * 1024 + 64];
+    fs::write(folder.join("big.txt"), &big).unwrap();
+    let rt = runtime(&dir, false);
+    let desc = bind_main(&rt, "p1", &folder);
+    let read = rt.read(cap_id(&desc), "main", "big.txt").unwrap();
+    assert_eq!(read.get("truncated").and_then(|v| v.as_bool()), Some(true));
+    let content = read.get("content").and_then(|v| v.as_str()).unwrap();
+    assert_eq!(content.len(), 1024 * 1024);
+    assert_eq!(read.get("size").and_then(|v| v.as_u64()), Some(big.len() as u64));
+}

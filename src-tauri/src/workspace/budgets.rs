@@ -1,0 +1,29 @@
+//! Central workspace resource limits. Enforced before allocation and traversal.
+
+pub const LIST_PAGE_SIZE: usize = 200;
+pub const READ_MAX_BYTES: usize = 1024 * 1024;
+pub const SEARCH_MAX_HITS: usize = 100;
+pub const SEARCH_MAX_ENTRIES: usize = 10_000;
+pub const SEARCH_MAX_INSPECTED_BYTES: usize = 100 * 1024 * 1024;
+pub const SEARCH_MAX_FILE_BYTES: usize = 5 * 1024 * 1024;
+pub const SEARCH_MAX_DEPTH: usize = 64;
+pub const SEARCH_DEADLINE_MS: u64 = 2_000;
+pub const MAX_CONCURRENT_JOBS_GLOBAL: u64 = 4;
+pub const MAX_CONCURRENT_JOBS_PER_PROJECT: u64 = 2;
+pub const CANCEL_WAIT_MS: u128 = 500;
+pub const MUTATION_MAX_BYTES: usize = 1024 * 1024;
+pub const IGNORE_MAX_LAYERS: usize = 64;
+pub const EXPORT_MAX_FILES: usize = 5_000;
+pub const EXPORT_MAX_BYTES: u64 = 200 * 1024 * 1024;
+pub const EXPORT_MAX_DEPTH: usize = 64;
+pub const EXPORT_MANIFEST_TTL_MS: i64 = 120_000;
+pub const CHANGE_SET_MAX_OPS: usize = 200;
+pub const CHANGE_SET_MAX_BYTES: usize = 10 * 1024 * 1024;
+pub const CHANGE_SET_TTL_MS: i64 = 24 * 60 * 60 * 1000;
+pub const APPLY_TICKET_TTL_MS: i64 = 120_000;
+pub const SCM_TIMEOUT_MS: u64 = 5_000;
+pub const SCM_MAX_CHANGES: usize = 5_000;
+pub const SCM_MAX_OUTPUT_BYTES: usize = 2 * 1024 * 1024;
+pub const SCM_LOG_PAGE: usize = 100;
+pub const ARTIFACT_TTL_MS: i64 = 24 * 60 * 60 * 1000;
+pub const ARTIFACT_MAX_BYTES: u64 = 32 * 1024 * 1024;

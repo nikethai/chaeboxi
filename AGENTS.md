@@ -6,6 +6,18 @@ Chaeboxi is a multi-platform AI copilot (desktop/web/mobile) supporting 16+ LLM 
 
 **Language policy**: Repository docs, code comments, and default product copy are **English**. Optional UI locales (including Chinese) remain for end-user preference, but first-run language is always English.
 
+## Planning docs and decisions
+
+Product direction lives in `docs/`; [`docs/index.md`](docs/index.md) maps it and [`docs/log.md`](docs/log.md) records what changed, newest first. Read both before proposing product or architecture changes.
+
+- **Designs and implementation plans** go in `docs/specs/`, as `YYYY-MM-DD-topic.md`. When a skill or tool names its own plans folder (superpowers, claudedocs, a `plans/` or `tasks/` folder), save to `docs/specs/` instead.
+- **Research notes** go in `docs/research/`.
+- **Decisions** go in `docs/adr/` as the next number. You write them as proposals: `status: draft` plus `generated: { by: <agent>/<model>, at: <ISO time> }` in the frontmatter. The maintainer accepts a decision by setting `status: stable` and adding `verified`; treat any decision without `verified` as a proposal, even when its text says "accepted".
+- **Ideas and work items** go on the Backlog.md board (`backlog/`, columns Ideas → Proposed → Now → Done). New ideas start in Ideas; the maintainer moves cards into Now. Record decisions as ADRs in `docs/adr/`, not as Backlog decisions.
+- **Every new or changed spec, decision or research note** gets one line in `docs/log.md` under today's date.
+- New docs carry OKF 0.2 frontmatter: `type` (decision, spec, plan, research), `status` (draft, stable, deprecated) and a one-line `description`.
+- `docs/archive/` is read-only history.
+
 ## Build & Development Commands
 
 ```bash
@@ -151,3 +163,27 @@ Controlled by environment variables defined in `vite.renderer.config.mts`:
 ### Mobile
 
 Capacitor 7 bridges for iOS and Android. Build with `pnpm mobile:ios` or `pnpm mobile:android`. Platform detection in `src/renderer/platform/`. Safe area handling for iOS notch screens loaded conditionally.
+
+<!-- BACKLOG.MD GUIDELINES START -->
+<!-- backlog.md-instructions-version: 1.53.0 -->
+<CRITICAL_INSTRUCTION>
+
+## Backlog.md Workflow
+
+This project uses Backlog.md for task and project management.
+
+**At the beginning of each conversation in this project, run `backlog instructions overview` before answering or taking action. Re-read it only if you have not read it yet in the current conversation.**
+
+Use the overview to decide whether to search, read, create, or update Backlog tasks.
+
+Before task lifecycle actions, read the matching detailed guide:
+- `backlog instructions task-creation` before creating or splitting tasks
+- `backlog instructions task-execution` before planning, changing status or assignee, adding a plan or implementation notes, or implementing task work
+- `backlog instructions task-finalization` before checking acceptance criteria, writing final summaries, or moving tasks to terminal statuses
+
+Use `backlog <command> --help` before running unfamiliar commands. Help shows options, fields, and examples.
+
+Do not edit Backlog task, draft, document, decision, or milestone markdown files directly. Use the `backlog` CLI so metadata, relationships, and history stay consistent.
+
+</CRITICAL_INSTRUCTION>
+<!-- BACKLOG.MD GUIDELINES END -->

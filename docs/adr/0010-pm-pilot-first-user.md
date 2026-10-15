@@ -1,6 +1,6 @@
 # ADR 0010: Small-agency PM as first external user
 
-Status: accepted product direction, 2026-10-13. Design in [the PM pilot design](../plans/2026-10-13-pm-pilot-design.md).
+Status: accepted product direction, 2026-10-13. Design in [the PM pilot design](../specs/2026-10-13-pm-pilot-design.md).
 
 ## Context
 

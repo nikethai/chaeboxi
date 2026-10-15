@@ -65,7 +65,7 @@ To add a provider:
 - **xAI SuperGrok:** no remaining-quota API; OAuth label + local + errors.
 - **Gemini Antigravity:** model catalog may include `quotaInfo.isExhausted` when listing models — partial state only.
 
-Longer research notes: [claudedocs/provider-usage-adapter-spikes.md](../claudedocs/provider-usage-adapter-spikes.md).
+Longer research notes: [docs/research/provider-usage-adapter-spikes.md](research/provider-usage-adapter-spikes.md).
 
 ## Related packages
 

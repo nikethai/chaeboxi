@@ -140,7 +140,7 @@ Coordinate contract: model coords = verification/screenshot width×height; backe
 
 ## Residual plan
 
-Full remaining roadmap (measure → ship): `plans/2026-08-11-computer-use-residual/`.
+Full remaining roadmap (measure → ship): `docs/archive/plans/2026-08-11-computer-use-residual/`.
 
 **AX hybrid (macOS):** `computer_focus_search` and `computer_ax_press` walk the Accessibility tree (same TCC as act). If the tree is empty or focus fails, tools return `{ fallback: "vision" }` and the playbook continues from the screenshot. Windows/Linux stub the same fallback. Secure fields (`AXSecureTextField`) are never listed.
 
@@ -180,4 +180,4 @@ Screen Recording and Accessibility must list **Chaeboxi** (the installed app). I
 ## Related
 
 - Browser agent: [browser-agent.md](./browser-agent.md)
-- Threat model: `plans/260811-1011-use-browser-use-computer/reports/phase-01-threat-model.md`
+- Threat model: `docs/archive/plans/260811-1011-use-browser-use-computer/reports/phase-01-threat-model.md`

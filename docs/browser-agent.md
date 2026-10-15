@@ -71,4 +71,4 @@ npm install
 ## Related
 
 - Computer use: [computer-use.md](./computer-use.md)
-- Plan: `plans/260811-1011-use-browser-use-computer/`
+- Plan: `docs/archive/plans/260811-1011-use-browser-use-computer/`

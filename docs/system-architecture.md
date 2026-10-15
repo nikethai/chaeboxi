@@ -174,7 +174,7 @@ Migrations: `src/renderer/stores/migration.ts` on startup.
 
 ## Continuity (discovery only)
 
-Continuity (vendor-archive import → inspect → continue with another model) is **not shipped**. Phase 0 is research-only: any later MVP would be **desktop-only**, with **ChatGPT conversation export** as the first candidate importer, gated on a participant study and the ADRs under [`plans/260820-2357-next-feature-growth/adrs/`](../plans/260820-2357-next-feature-growth/adrs/). User-visible history search is unchanged (`src/renderer/packages/history-search/` is an extract of the existing linear matcher). Do not add `imported:*` keys or mix archives with `session:*` / `chaeboxi_kb.db`.
+Continuity (vendor-archive import → inspect → continue with another model) is **not shipped**. Phase 0 is research-only: any later MVP would be **desktop-only**, with **ChatGPT conversation export** as the first candidate importer, gated on a participant study and the ADRs under [`docs/adr/continuity/`](adr/continuity/). User-visible history search is unchanged (`src/renderer/packages/history-search/` is an extract of the existing linear matcher). Do not add `imported:*` keys or mix archives with `session:*` / `chaeboxi_kb.db`.
 
 ## MCP architecture
 
@@ -236,4 +236,4 @@ When fixing AGENTS.md or feature docs, align with this architecture document and
 - [code-standards.md](./code-standards.md)
 - [storage.md](./storage.md), [rag.md](./rag.md), [agents-multi-agent-rooms.md](./agents-multi-agent-rooms.md)
 - [AGENTS.md](../AGENTS.md)
-- Continuity Phase 0 (not a product feature): [plan](../plans/260820-2357-next-feature-growth/plan.md)
+- Continuity Phase 0 (not a product feature): [plan](archive/plans/260820-2357-next-feature-growth/plan.md)

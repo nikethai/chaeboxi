@@ -1,3 +1,9 @@
+---
+type: decision
+status: stable
+description: "Automatic method learning within existing authority"
+verified: { by: human:nikethai, at: 2026-10-13T19:56:12+07:00 }
+---
 # Automatic method learning within existing authority
 
 The user wants learning across conversations to feel automatic, referencing a Codex-like memory thread. Chaeboxi may automatically improve search ordering and reuse proven task methods within already granted permissions, with visible learning history and undo, rather than requiring approval for every procedural improvement. Additions or changes to authoritative facts and project guidelines still require confirmation under ADR 0001; a learned procedure cannot bypass knowledge approval, source privacy, project scope, or capability activation.

@@ -1,3 +1,9 @@
+---
+type: decision
+status: stable
+description: "Central authority for hosted knowledge"
+verified: { by: human:nikethai, at: 2026-10-13T19:56:12+07:00 }
+---
 # ADR 0008: Central authority for hosted knowledge
 
 Status: accepted product direction and fallback behavior; implementation details pending review.

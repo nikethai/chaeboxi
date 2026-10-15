@@ -1,3 +1,9 @@
+---
+type: decision
+status: stable
+description: "Explicit knowledge source connections"
+verified: { by: human:nikethai, at: 2026-10-13T19:56:12+07:00 }
+---
 # Explicit knowledge source connections
 
 Users connect knowledge sources beforehand in Settings, assign their scope, and separately choose whether each source permits background memory review. The connection permits ongoing reading within that scope without repeated per-lookup approval; Chaeboxi does not automatically discover and ingest other agents' histories. This gives the user control over what is searchable and what can generate proposals, while preserving quick access after setup.

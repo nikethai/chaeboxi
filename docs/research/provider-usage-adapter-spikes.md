@@ -1,3 +1,8 @@
+---
+type: research
+status: stable
+description: "Provider usage adapter spikes (v1)"
+---
 # Provider usage adapter spikes (v1)
 
 Date: 2026-08-10

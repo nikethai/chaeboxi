@@ -1,3 +1,9 @@
+---
+type: decision
+status: stable
+description: "Deletion graph and local-only sync"
+verified: { by: human:canvilled, at: 2026-08-21T13:18:50+07:00 }
+---
 # ADR 005 — Deletion graph and local-only sync
 
 **Status:** Accepted (discovery)  

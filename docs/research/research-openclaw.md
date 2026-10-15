@@ -1,3 +1,8 @@
+---
+type: research
+status: stable
+description: "OpenClaw Research Report"
+---
 # OpenClaw Research Report
 
 **Date**: 2026-04-05

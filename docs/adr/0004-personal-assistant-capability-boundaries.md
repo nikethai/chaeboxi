@@ -1,3 +1,9 @@
+---
+type: decision
+status: stable
+description: "Personal assistant capability boundaries"
+verified: { by: human:nikethai, at: 2026-10-13T19:56:12+07:00 }
+---
 # Personal assistant capability boundaries
 
 Chaeboxi retains Swarm and computer use as useful personal-assistant capabilities, while coding workspaces fall outside the refined product scope because dedicated implementation work belongs in specialists such as Codex or Pi. Swarm requires explicit manual activation by the user; Chaeboxi must not automatically enable it based on a request. This preserves optional multi-agent assistance without adding unsolicited orchestration to everyday chat.

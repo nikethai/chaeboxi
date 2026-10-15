@@ -1,3 +1,8 @@
+---
+type: spec
+status: draft
+description: "Personal assistant product refinement"
+---
 # Personal assistant product refinement
 
 Status: understanding and milestone acceptance scenarios confirmed; focused evolution selected; positioning and detailed design in progress. Implementation has not been authorized.

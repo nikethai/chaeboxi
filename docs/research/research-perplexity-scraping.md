@@ -1,3 +1,8 @@
+---
+type: research
+status: stable
+description: "Research Report: Perplexity-like Web Search & Scraping for AI Chat Apps"
+---
 # Research Report: Perplexity-like Web Search & Scraping for AI Chat Apps
 
 **Date**: 2026-04-05

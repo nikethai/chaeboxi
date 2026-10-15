@@ -1,3 +1,9 @@
+---
+type: decision
+status: stable
+description: "Search owner and index lifecycle"
+verified: { by: human:canvilled, at: 2026-08-21T13:18:50+07:00 }
+---
 # ADR 003 — Search owner and index lifecycle
 
 **Status:** Accepted (discovery)  

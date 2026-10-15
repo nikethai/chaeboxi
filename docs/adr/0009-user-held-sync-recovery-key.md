@@ -1,3 +1,9 @@
+---
+type: decision
+status: stable
+description: "User-held recovery key for encrypted sync"
+verified: { by: human:nikethai, at: 2026-10-13T19:56:12+07:00 }
+---
 # ADR 0009: User-held recovery key for encrypted sync
 
 Status: accepted recovery policy; technical design pending.

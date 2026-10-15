@@ -1,3 +1,8 @@
+---
+type: spec
+status: draft
+description: "Chaeboxi personal assistant design"
+---
 # Chaeboxi personal assistant design
 
 Status: draft; section-by-section review in progress. Understanding and focused evolution are accepted. Implementation has not started or been authorized.

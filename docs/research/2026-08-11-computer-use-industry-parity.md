@@ -1,3 +1,8 @@
+---
+type: research
+status: stable
+description: "Research Report: Computer Use Parity (Claude / GPT / Perplexity → Chaeboxi)"
+---
 # Research Report: Computer Use Parity (Claude / GPT / Perplexity → Chaeboxi)
 
 **Date:** 2026-08-11  

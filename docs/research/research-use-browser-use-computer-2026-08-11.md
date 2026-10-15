@@ -1,3 +1,8 @@
+---
+type: research
+status: stable
+description: "Research Report: Use Browser & Use Computer for Chaeboxi"
+---
 # Research Report: Use Browser & Use Computer for Chaeboxi
 
 **Date:** 2026-08-11 (UTC)  

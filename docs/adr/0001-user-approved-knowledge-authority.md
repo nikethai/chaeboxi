@@ -1,3 +1,9 @@
+---
+type: decision
+status: stable
+description: "User-approved knowledge authority"
+verified: { by: human:nikethai, at: 2026-10-13T19:56:12+07:00 }
+---
 # User-approved knowledge authority
 
 Chaeboxi is the user's main assistant and home for accepted knowledge, while other agents' memories and work records provide reference material. Additions and changes to authoritative knowledge require explicit user confirmation; neither imported records nor generated answers become authoritative automatically. This preserves the user's control over conflicting or mistaken information at the cost of an approval step, rather than allowing agents to merge or overwrite accepted knowledge autonomously.

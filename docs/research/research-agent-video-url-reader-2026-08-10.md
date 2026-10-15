@@ -1,3 +1,8 @@
+---
+type: research
+status: stable
+description: "Research Report: Agent Tool for Reading YouTube / Vimeo / TikTok / Facebook Video URLs"
+---
 # Research Report: Agent Tool for Reading YouTube / Vimeo / TikTok / Facebook Video URLs
 
 **Date:** 2026-08-10  

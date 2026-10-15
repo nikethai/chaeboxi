@@ -1,3 +1,9 @@
+---
+type: decision
+status: stable
+description: "Imported-source storage"
+verified: { by: human:canvilled, at: 2026-08-21T13:18:50+07:00 }
+---
 # ADR 001 — Imported-source storage
 
 **Status:** Accepted (discovery)  

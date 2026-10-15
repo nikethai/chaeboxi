@@ -1,3 +1,9 @@
+---
+type: decision
+status: stable
+description: "Desktop archive I/O and staged publication"
+verified: { by: human:canvilled, at: 2026-08-21T13:18:50+07:00 }
+---
 # ADR 002 — Desktop archive I/O and staged publication
 
 **Status:** Accepted (discovery)  

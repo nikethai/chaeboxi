@@ -1,3 +1,8 @@
+---
+type: spec
+status: draft
+description: "Dependable Daily Copilot — Proposed Technical Design"
+---
 # Dependable Daily Copilot — Proposed Technical Design
 
 **Date:** 2026-09-05  

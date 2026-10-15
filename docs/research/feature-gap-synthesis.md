@@ -1,3 +1,8 @@
+---
+type: research
+status: stable
+description: "Chaeboxi Feature Gap Synthesis (v2 — Evidence-Based)"
+---
 # Chaeboxi Feature Gap Synthesis (v2 — Evidence-Based)
 ## Open WebUI + Jan AI → Actionable Feature Roadmap
 

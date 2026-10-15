@@ -1,3 +1,9 @@
+---
+type: spec
+status: stable
+description: "Chaeboxi PM pilot design"
+# Approved in conversation on 2026-10-13; not yet reviewed in git.
+---
 # Chaeboxi PM pilot design
 
 Status: design approved in conversation on 2026-10-13; implementation plan not yet written. This supersedes the first-source and milestone-order decisions in [the personal assistant design](2026-10-05-personal-assistant-design.md) where they conflict; everything else in that document and in ADRs 0001–0009 stands. See [ADR 0010](../adr/0010-pm-pilot-first-user.md).

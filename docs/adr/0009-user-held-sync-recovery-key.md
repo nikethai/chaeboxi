@@ -1,3 +1,9 @@
+---
+type: decision
+status: stable
+description: "User-held recovery key for encrypted sync"
+verified: { by: human:nikethai, at: 2026-10-13T19:56:12+07:00 }
+---
 # ADR 0009: User-held recovery key for encrypted sync
 
 Status: accepted recovery policy; technical design pending.
@@ -14,4 +20,4 @@ Resetting the account password alone cannot decrypt this content. Losing every t
 
 ## Consequences
 
-The onboarding experience must clearly explain the consequence of losing the key and help users save it outside the app. No specific backup integration is selected. Claims about server-inaccessible content apply to encrypted sync-only collections, not Cloud Knowledge collections enrolled for hosted processing. Device enrollment and revocation interactions remain proposed in the [detailed design](../plans/2026-10-05-personal-assistant-design.md).
+The onboarding experience must clearly explain the consequence of losing the key and help users save it outside the app. No specific backup integration is selected. Claims about server-inaccessible content apply to encrypted sync-only collections, not Cloud Knowledge collections enrolled for hosted processing. Device enrollment and revocation interactions remain proposed in the [detailed design](../specs/2026-10-05-personal-assistant-design.md).

@@ -1,7 +1,7 @@
 # Chaeboxi Design Guidelines
 
 **Status:** Active design contract for the UI redesign  
-**Visual source of truth:** `plans/2026-08-05-ui-ux-redesign/mock-dark-shell.html`  
+**Visual source of truth:** `docs/archive/plans/2026-08-05-ui-ux-redesign/mock-dark-shell.html`  
 **Last updated:** 2026-08-22
 
 ## Product intent

@@ -1,3 +1,9 @@
+---
+type: decision
+status: stable
+description: "Central authority for hosted knowledge"
+verified: { by: human:nikethai, at: 2026-10-13T19:56:12+07:00 }
+---
 # ADR 0008: Central authority for hosted knowledge
 
 Status: accepted product direction and fallback behavior; implementation details pending review.
@@ -18,4 +24,4 @@ Central storage does not imply permission for the service to read encrypted cont
 
 Central serialization reduces competing device writes but cannot resolve contradictory evidence or simultaneous stale edits automatically. Offline caches may be stale; queued changes are not globally authoritative until accepted. Central authority for chats, canvases, and learned methods is not selected by this decision.
 
-The user accepted fallback to the last cached approved knowledge, responsive chat, durable pending edits, background retry, and honest coverage gaps when nothing is cached. A normal online commit target of a few seconds needs measurement; concrete status UI, retry policy, and outage/recovery tests remain to be validated in the [detailed design](../plans/2026-10-05-personal-assistant-design.md).
+The user accepted fallback to the last cached approved knowledge, responsive chat, durable pending edits, background retry, and honest coverage gaps when nothing is cached. A normal online commit target of a few seconds needs measurement; concrete status UI, retry policy, and outage/recovery tests remain to be validated in the [detailed design](../specs/2026-10-05-personal-assistant-design.md).

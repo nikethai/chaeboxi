@@ -107,7 +107,7 @@ Browser free-path scrapes may hit **CORS** limits. Desktop/app shells and BYOK p
 
 ## See also
 
-- Research notes: `claudedocs/research-agent-video-url-reader-2026-08-10.md`  
-- Plan / reports: `plans/2026-08-10-agent-video-url-reader/`  
+- Research notes: `docs/research/research-agent-video-url-reader-2026-08-10.md`  
+- Plan / reports: `docs/archive/plans/2026-08-10-agent-video-url-reader/`  
 - Team rooms (when tools run): [agents-multi-agent-rooms.md](./agents-multi-agent-rooms.md)  
 - Tool lifecycle hooks: [hooks-and-commands.md](./hooks-and-commands.md)  

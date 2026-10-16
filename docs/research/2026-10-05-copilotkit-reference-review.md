@@ -1,3 +1,8 @@
+---
+type: research
+status: stable
+description: "CopilotKit reference review for Chaeboxi"
+---
 # CopilotKit reference review for Chaeboxi
 
 Inspected October 5, 2026. Design research only; no dependencies, code imports, hosted services, or runtime evaluations were introduced.

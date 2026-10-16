@@ -17,7 +17,7 @@ chaeboxi/
 ├── src-tauri/        # Tauri 2 / Rust backend (IPC, MCP, KB, workspace, shell)
 ├── test/             # Integration / case tests
 ├── docs/             # Product & feature documentation
-├── plans/            # Implementation plans (timestamped folders)
+├── backlog/          # Backlog.md board (ideas, proposed, now, done)
 ├── package.json      # pnpm scripts, engines (Node 20–22, pnpm ≥10)
 ├── AGENTS.md         # Contributor architecture entry
 └── README.md

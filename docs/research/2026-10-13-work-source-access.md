@@ -1,3 +1,8 @@
+---
+type: research
+status: stable
+description: "Work source access feasibility"
+---
 # Work source access feasibility
 
 Checked: 2026-10-13. Documentation review only; no personal history was imported, no export was requested, and no connector was implemented or tested. Findings establish candidate access paths, not complete coverage of either product.

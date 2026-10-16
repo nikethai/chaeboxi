@@ -1,7 +1,13 @@
+---
+type: decision
+status: stable
+description: "Automatic method learning within existing authority"
+verified: { by: human:nikethai, at: 2026-10-13T19:56:12+07:00 }
+---
 # Automatic method learning within existing authority
 
 The user wants learning across conversations to feel automatic, referencing a Codex-like memory thread. Chaeboxi may automatically improve search ordering and reuse proven task methods within already granted permissions, with visible learning history and undo, rather than requiring approval for every procedural improvement. Additions or changes to authoritative facts and project guidelines still require confirmation under ADR 0001; a learned procedure cannot bypass knowledge approval, source privacy, project scope, or capability activation.
 
 This replaces the proposed blanket approval requirement for learned procedures. It does not authorize arbitrary self-modification or model retraining. Evidence of success, learning cadence, and storage remain design questions. A background record of lessons is the current interpretation of "memory thread," not a statement about Codex's implementation or a confirmed requirement for a separate chat UI.
 
-The user accepted shared learning by eligible devices explicitly enabled for that purpose, with automatic takeover coordinated through the hosted sync service. Encrypted eligible records upload from a device, another authorized device decrypts and processes them, and encrypted learned results synchronize back to enrolled devices. Device-only records do not participate. The service coordinates jobs without running hosted learning or requiring plaintext content for encrypted sync-only collections. Detailed ownership, stale-result rejection, duplicate-publication protection, and mobile execution constraints still require technical validation; see section 6 of the [detailed design](../plans/2026-10-05-personal-assistant-design.md).
+The user accepted shared learning by eligible devices explicitly enabled for that purpose, with automatic takeover coordinated through the hosted sync service. Encrypted eligible records upload from a device, another authorized device decrypts and processes them, and encrypted learned results synchronize back to enrolled devices. Device-only records do not participate. The service coordinates jobs without running hosted learning or requiring plaintext content for encrypted sync-only collections. Detailed ownership, stale-result rejection, duplicate-publication protection, and mobile execution constraints still require technical validation; see section 6 of the [detailed design](../specs/2026-10-05-personal-assistant-design.md).

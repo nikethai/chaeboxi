@@ -1,3 +1,9 @@
+---
+type: decision
+status: stable
+description: "Optional hosted sync service"
+verified: { by: human:nikethai, at: 2026-10-13T19:56:12+07:00 }
+---
 # Optional hosted sync service
 
 Chaeboxi's initial SaaS offering is optional hosted storage and sync so users can share selected personal context across devices without operating a server. The user chose effortless sync over server-side indexing, retrieval, or learning; those advanced services are deferred rather than included in the initial subscription. Local use remains the foundation, while operating a hosted service is now an accepted business direction that revises the earlier preference to avoid hosting obligations entirely.

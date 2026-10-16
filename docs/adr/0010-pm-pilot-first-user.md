@@ -2,7 +2,7 @@
 type: decision
 status: stable
 description: "Small-agency PM as first external user"
-# Accepted in conversation on 2026-10-13; not yet reviewed in git. Sequencing proposed in ADR 0011.
+# Accepted in conversation on 2026-10-13; not yet reviewed in git. Milestone order set by ADR 0011.
 ---
 # ADR 0010: Small-agency PM as first external user
 

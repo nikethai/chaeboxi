@@ -1,12 +1,13 @@
 ---
 type: decision
-status: draft
+status: stable
 description: "Maintainer first on a shared knowledge core; PM pilot as the next source"
 generated: { by: claude/opus-5.5, at: 2026-10-15T11:40:00+07:00 }
+verified: { by: human:nikethai, at: 2026-10-16T21:15:00+07:00 }
 ---
 # ADR 0011: Maintainer first on a shared knowledge core
 
-Status: proposed, 2026-10-15. Not accepted until the maintainer adds `verified` and sets `status: stable`. Sequences [ADR 0010](0010-pm-pilot-first-user.md); does not replace it.
+Status: accepted by the maintainer, 2026-10-16 (proposed 2026-10-15). Sequences [ADR 0010](0010-pm-pilot-first-user.md); does not replace it.
 
 ## Context
 

@@ -2,6 +2,9 @@
 
 Newest first. Add a line when you create, accept, supersede or move a decision, spec or research note.
 
+## 2026-10-16
+* **Acceptance**: [ADR 0011](adr/0011-maintainer-first-shared-core.md) accepted by the maintainer — shared knowledge core grouped by scope; this repo is the first source; Gmail + Asana follow once the PM pilot's prerequisites are met.
+
 ## 2026-10-15
 * **Proposal**: [ADR 0011](adr/0011-maintainer-first-shared-core.md) (draft) — maintainer first on a shared knowledge core; PM pilot as the next source.
 * **Reorganisation**: planning folders moved under `docs/` (`specs/`, `research/`, `archive/`); continuity ADRs moved to `adr/continuity/`; OKF 0.2 frontmatter added to decisions, specs and research; Backlog.md board added in `backlog/`; `AGENTS.md` now says where plans, research, decisions and ideas go.

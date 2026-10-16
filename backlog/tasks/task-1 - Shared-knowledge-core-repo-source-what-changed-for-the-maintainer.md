@@ -1,9 +1,10 @@
 ---
 id: TASK-1
 title: Shared knowledge core + repo source ("what changed" for the maintainer)
-status: Proposed
+status: Now
 assignee: []
 created_date: '2026-10-15 04:30'
+updated_date: '2026-10-16 14:15'
 labels:
   - direction
 dependencies: []

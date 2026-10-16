@@ -2,6 +2,9 @@
 
 Newest first. Add a line when you create, accept, supersede or move a decision, spec or research note.
 
+## 2026-10-17
+* **Update**: [UX flows](specs/2026-10-16-ux-flows.md) — screen-level wireframes for all 16 flows added to the canvas (Screens page); mascot and Thread colours applied to the wireframes.
+
 ## 2026-10-16
 * **Proposal**: [UX flows](specs/2026-10-16-ux-flows.md) (draft) — 16 journeys: first run, Ask, Review, knowledge, chat, sources, permissions, Swarm, background work, PM email, what changed, conflicts, Trust, search, errors, undo.
 * **Update**: [redesign brief](specs/2026-10-16-redesign-brief.md) — UX model added (three jobs: Ask, Review, Browse; trust level Auto/Ask; Review item types); first look exploration rejected.

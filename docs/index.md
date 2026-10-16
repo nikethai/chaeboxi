@@ -28,6 +28,7 @@ Start here. [log.md](log.md) lists what changed, newest first. Work items and id
 * [2026-10-13-pm-pilot-design](specs/2026-10-13-pm-pilot-design.md) - Chaeboxi PM pilot design (stable)
 * [2026-10-14-pm-pilot-phase-1-client-memory](specs/2026-10-14-pm-pilot-phase-1-client-memory.md) - PM Pilot Phase 1: Client Memory Implementation Plan (draft)
 * [2026-10-16-redesign-brief](specs/2026-10-16-redesign-brief.md) - Total redesign brief: structure first, then a new look (draft)
+* [2026-10-16-ux-flows](specs/2026-10-16-ux-flows.md) - UX flows for the redesign: trigger, steps, states and exits for every user journey (draft)
 * [260905-daily-copilot/](specs/260905-daily-copilot/) - Daily copilot roadmap, phases and evaluation
 
 # Research

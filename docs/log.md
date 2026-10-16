@@ -3,6 +3,7 @@
 Newest first. Add a line when you create, accept, supersede or move a decision, spec or research note.
 
 ## 2026-10-16
+* **Proposal**: [UX flows](specs/2026-10-16-ux-flows.md) (draft) — 16 journeys: first run, Ask, Review, knowledge, chat, sources, permissions, Swarm, background work, PM email, what changed, conflicts, Trust, search, errors, undo.
 * **Update**: [redesign brief](specs/2026-10-16-redesign-brief.md) — UX model added (three jobs: Ask, Review, Browse; trust level Auto/Ask; Review item types); first look exploration rejected.
 * **Proposal**: [redesign brief](specs/2026-10-16-redesign-brief.md) (draft) — structure first (Quick Chat, Chat, Scopes, Search; 5 top-level settings plus Advanced), then a new look.
 * **Acceptance**: [ADR 0011](adr/0011-maintainer-first-shared-core.md) accepted by the maintainer — shared knowledge core grouped by scope; this repo is the first source; Gmail + Asana follow once the PM pilot's prerequisites are met.

@@ -6,7 +6,7 @@ generated: { by: claude/opus-5.5, at: 2026-10-16T21:40:00+07:00 }
 ---
 # Chaeboxi redesign brief
 
-Status: draft. The four structure decisions below were made by the maintainer on 2026-10-16; the brief as a whole is not yet accepted. Nothing is built.
+Status: draft. The UX model and the four structure decisions were settled with the maintainer on 2026-10-16; the brief as a whole is not yet accepted. Nothing is built.
 
 ## Why
 
@@ -29,35 +29,58 @@ Structure comes before look so styling effort goes only to surfaces that survive
 - **In-thread chrome:** agent room strip and speaker headers, skill activations bar, task progress, plan approval, tool audit, memory dock, compaction status, session status bar.
 - **Other routes:** Quick Chat overlay, Copilots, Image creator, About, Dev tools.
 
-## Proposed structure
+## UX model (maintainer and Claude, 2026-10-16 evening)
 
-### Main surfaces
+**One line.** Chaeboxi tells you what needs you, remembers what you approved, and answers from that. Chat is how you talk to it, not what it is.
 
-| Surface | Purpose | Replaces or absorbs |
+**Three jobs, three places.**
+
+| Job | Place | What happens |
 | --- | --- | --- |
-| **Quick Chat** | A question or idea from anywhere via hotkey. | Unchanged. |
-| **Chat** | Conversations, each optionally tied to a scope. | Main chat; Copilots become new-chat starters. |
-| **Scopes** | One page per project or client: since you last looked, what's open, approved knowledge, proposals to review, connected sources, its chats. | Projects, Memory dock, Knowledge base picker, project folder. |
-| **Search** | Find anything across chats and scopes. | Unchanged. |
+| Ask | Quick Chat (hotkey) | A question, an idea, "what changed". The daily entry point; most days the main window stays closed. |
+| Review | Home | What needs you, across scopes: proposals, drafts, changes, finished background work. One list, newest first, one key per item. |
+| Browse | Sidebar | Scopes, chats, search. For going somewhere specific. |
 
-A scope's sources include a folder (this repo for the maintainer) and, later, Gmail and the work tracker (the PM). The current project-folder binding becomes a scope source rather than a separate concept.
+**The loop that matters.** Something arrives (a commit, an agent note, a client email, a finished review). Chaeboxi turns it into a Review item with a proposed action. You approve, edit or dismiss in seconds. What you approve becomes knowledge, and the next answer uses it.
 
-### Composer
+**Trust level.** A setting with two positions; default **Auto**. It moves the line between *done* and *waiting*:
 
-Kept visible: attach, scope picker, Improve writing, send. Behind one Tools button: web search, browser, computer use, Swarm (a visible per-conversation toggle, per ADR 0004). Moved to Advanced or chat settings: agent mode switch, extensions picker, share room pack.
+- Auto: safe, confident actions happen first and appear in Review as done, with Undo (labels, tags, Gmail drafts, low-risk knowledge).
+- Ask: the same items appear as waiting, with Approve.
+- Always asks, whatever the setting: sending anything, deleting, editing files, changing a decision.
 
-### Settings
+This maps onto the pilot design's confidence tiers; the toggle sets the threshold.
 
-**Top level (5):** Models and keys (provider, default models) · Sources (integrations, knowledge base, folders) · Memory and privacy (memory, sync) · Voice · General (appearance, language, keyboard shortcuts).
+**Review item types.** Proposal (knowledge to save) · Draft (a reply written into the user's Gmail thread; Chaeboxi never sends) · Change (something moved in a source) · Done (background work finished) · Needs you (a question the assistant cannot answer alone).
 
-**Advanced:** Usage, Web search providers, Video URL, Browser agent, Computer use, Document parser, Chat settings, Skills, Commands, Hooks, Agents, MCP, Dev tools. Nothing is removed (ADR 0010); it is moved.
+**The PM's behaviour.** The PM stays in Gmail and Asana. Chaeboxi labels threads and writes drafts into Gmail in the background. They open Chaeboxi to skim Review and to ask Quick Chat questions ("what did we promise Acme about the deadline?"). Chaeboxi is never their inbox.
+
+**Principles (behaviour, not style).**
+
+- One primary action per screen: Review → approve, Chat → send, Scope → ask.
+- Progressive disclosure: sources, agent turns, tokens and cost stay behind a click.
+- Sidebar, content, inspector. The inspector holds the current scope's sources and knowledge; it slides in on demand.
+- Sheets, not modals, for approvals and tool permissions; Esc dismisses.
+- Direct manipulation: one key approves; drop a folder on a scope to connect it; drag a chat onto a scope to move it.
+- Undo everything for a few seconds after approve, dismiss, stop.
+- Light by default, dark follows the system. Few lines, more space, short labels.
+
+**Modes removed.** Agent mode on/off (the assistant always may use tools and asks before acting). Project folder as its own concept (it is a source). Team mode choice in the composer (Swarm is one toggle; Discuss and Work are how a Swarm run organises itself).
+
+## Surfaces
+
+- **Review** (home): the feed above, grouped by day, filterable by scope.
+- **Scope**: one page per project or client: since you last looked, open items, background work, approved knowledge, chats. Sources and knowledge detail live in the inspector.
+- **Chat**: a conversation, optionally in a scope. Composer: attach, scope, Improve writing, Tools (web, browser, computer use, Swarm), send. One answer per turn; a Swarm run collapses behind "Worked with N agents".
+- **Quick Chat**: the overlay; "Continue in Chat" and "Open scope" hand off.
+- **Settings** (5 top level): Models and keys · Sources · Memory and privacy (includes Trust level) · Voice · General. Advanced holds the rest, including Image studio. Nothing removed.
 
 ## Decisions (maintainer, 2026-10-16)
 
 1. **Image studio** moves to Advanced. It leaves the rail and the user menu.
 2. **Project folder** merges into Scopes: a folder is one kind of scope source. Projects stop being a separate concept.
 3. **Multi-agent rooms** show only when Swarm is on. The room strip, speaker headers and agent bar are hidden otherwise.
-4. **Look**: a new visual direction, not an evolution of Studio. Explored after wireframes, as a new design system.
+4. **Look**: a new visual direction, not an evolution of Studio. A first "local workbench" exploration (dark, mono, status strip) was rejected on 2026-10-16: too much a developer tool. Next exploration follows the UX model above and leans toward native macOS conventions.
 
 ## Acceptance
 

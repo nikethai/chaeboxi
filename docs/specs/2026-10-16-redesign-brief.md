@@ -6,7 +6,7 @@ generated: { by: claude/opus-5.5, at: 2026-10-16T21:40:00+07:00 }
 ---
 # Chaeboxi redesign brief
 
-Status: draft for the maintainer's review. Nothing here is approved or built.
+Status: draft. The four structure decisions below were made by the maintainer on 2026-10-16; the brief as a whole is not yet accepted. Nothing is built.
 
 ## Why
 
@@ -52,12 +52,12 @@ Kept visible: attach, scope picker, Improve writing, send. Behind one Tools butt
 
 **Advanced:** Usage, Web search providers, Video URL, Browser agent, Computer use, Document parser, Chat settings, Skills, Commands, Hooks, Agents, MCP, Dev tools. Nothing is removed (ADR 0010); it is moved.
 
-## Open decisions
+## Decisions (maintainer, 2026-10-16)
 
-1. **Image studio**: keep in the rail, move to Advanced, or remove?
-2. **Project folder as a scope source**: accept merging the folder binding into Scopes?
-3. **Multi-agent rooms**: keep only as the Swarm toggle, or keep the room strip and speaker headers as they are?
-4. **Look**: evolve Studio (same void, indigo, Satoshi; new density and components) or start a new direction? Explored after the structure is approved.
+1. **Image studio** moves to Advanced. It leaves the rail and the user menu.
+2. **Project folder** merges into Scopes: a folder is one kind of scope source. Projects stop being a separate concept.
+3. **Multi-agent rooms** show only when Swarm is on. The room strip, speaker headers and agent bar are hidden otherwise.
+4. **Look**: a new visual direction, not an evolution of Studio. Explored after wireframes, as a new design system.
 
 ## Acceptance
 

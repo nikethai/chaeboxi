@@ -3,6 +3,7 @@
 Newest first. Add a line when you create, accept, supersede or move a decision, spec or research note.
 
 ## 2026-10-17
+* **Implementation**: [slice 1b](specs/2026-10-17-slice-01b-shared-foundations.md) built on `feat/redesign-01b-shared-foundations` — Sheet with focus rules, undo toast and ⌘Z, eight-state Mascot, Review entries store with openers and renderers, BackgroundJob types, new chat at /new.
 * **Decision**: relicensing runs after the redesign — [roadmap](specs/2026-10-17-redesign-roadmap.md) says the slices are not bound by the clean-room rule or provenance gate; the relicensing plan cleans what is left afterwards.
 * **Update**: [slice 04 knowledge](specs/2026-10-17-slice-04-knowledge.md), [roadmap](specs/2026-10-17-redesign-roadmap.md) and [UX flows](specs/2026-10-16-ux-flows.md) — knowledge records made OKF-ready per [ADR 0014](adr/0014-okf-knowledge-document-format.md): stable source and revision ids, approval bound to a content hash, review dates; OKF import/export left to a later plan.
 * **Update**: [UX flows](specs/2026-10-16-ux-flows.md) and [redesign brief](specs/2026-10-16-redesign-brief.md) — synced with the slice plans: decisions settled while planning written into the flows, contradictions fixed, open items listed.

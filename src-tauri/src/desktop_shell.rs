@@ -15,7 +15,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 const QUICK_LABEL: &str = "quick";
 const MAIN_LABEL: &str = "main";
-const TRAY_ID: &str = "chaeboxi-tray";
+const TRAY_ID: &str = "dango-tray";
 
 pub struct ShellState {
     pub keep_in_tray: Mutex<bool>,
@@ -93,7 +93,7 @@ pub fn ensure_quick_window(app: &AppHandle) -> Result<WebviewWindow, String> {
 
     // Sized like a real chat panel (matches full-session density in a floating frame)
     let window = WebviewWindowBuilder::new(app, QUICK_LABEL, WebviewUrl::App("index.html".into()))
-        .title("Chaeboxi Quick Chat")
+        .title("Dango Quick Chat")
         .inner_size(520.0, 700.0)
         .min_inner_size(400.0, 480.0)
         .resizable(true)
@@ -377,7 +377,7 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), String> {
             .map_err(|e| e.to_string())?;
     let sep = PredefinedMenuItem::separator(app).map_err(|e| e.to_string())?;
     let quit_i =
-        MenuItem::with_id(app, "quit", "Quit Chaeboxi", true, None::<&str>).map_err(|e| e.to_string())?;
+        MenuItem::with_id(app, "quit", "Quit Dango", true, None::<&str>).map_err(|e| e.to_string())?;
 
     let menu = Menu::with_items(app, &[&quick_i, &show_i, &shot_i, &clip_i, &sep, &quit_i])
         .map_err(|e| e.to_string())?;
@@ -392,7 +392,7 @@ pub fn setup_tray(app: &AppHandle) -> Result<(), String> {
     let tray = TrayIconBuilder::with_id(TRAY_ID)
         .icon(icon)
         .menu(&menu)
-        .tooltip("Chaeboxi — Alt+` quick chat")
+        .tooltip("Dango — Alt+` quick chat")
         .show_menu_on_left_click(false)
         .on_menu_event(|app, event| match event.id.as_ref() {
             "show_main" => show_main(app),
@@ -476,7 +476,7 @@ pub async fn capture_region_image() -> Result<Value, String> {
 
 #[cfg(target_os = "macos")]
 async fn capture_macos_region() -> Result<Value, String> {
-    let path = std::env::temp_dir().join(format!("chaeboxi-shot-{}.png", uuid::Uuid::new_v4()));
+    let path = std::env::temp_dir().join(format!("dango-shot-{}.png", uuid::Uuid::new_v4()));
     let path_str = path.to_string_lossy().to_string();
 
     // -i interactive region, -x no sound, write to path
@@ -527,7 +527,7 @@ async fn capture_windows_region() -> Result<Value, String> {
 
 #[cfg(target_os = "linux")]
 async fn capture_linux_region() -> Result<Value, String> {
-    let path = std::env::temp_dir().join(format!("chaeboxi-shot-{}.png", uuid::Uuid::new_v4()));
+    let path = std::env::temp_dir().join(format!("dango-shot-{}.png", uuid::Uuid::new_v4()));
     let path_str = path.to_string_lossy().to_string();
 
     // Try common tools in order

@@ -45,7 +45,7 @@ mod tests {
 
     #[test]
     fn journal_round_trip() {
-        let dir = std::env::temp_dir().join(format!("chaeboxi-journal-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("dango-journal-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();
         append_journal(&dir, "cs1", "prepare", &json!({ "n": 1 })).unwrap();

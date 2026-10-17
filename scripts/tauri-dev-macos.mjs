@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const root = join(__dirname, '..')
-const bin = join(root, 'src-tauri/target/debug/chaeboxi')
+const bin = join(root, 'src-tauri/target/debug/dango')
 const signScript = join(root, 'scripts/macos-sign-dev-binary.sh')
 const isMac = process.platform === 'darwin'
 
@@ -73,7 +73,7 @@ if (isMac) {
   const debugDir = join(root, 'src-tauri/target/debug')
   try {
     watch(debugDir, { persistent: true }, (_event, filename) => {
-      if (!filename || filename === 'chaeboxi' || String(filename).startsWith('chaeboxi')) {
+      if (!filename || filename === 'dango' || String(filename).startsWith('dango')) {
         scheduleSign('watch')
       }
     })

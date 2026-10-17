@@ -136,7 +136,7 @@ const WORKFLOW_TEMPLATE: ComfyUIWorkflow = {
   // Save image (output node)
   '9': {
     inputs: {
-      filename_prefix: 'Chaeboxi',
+      filename_prefix: 'Dango',
       images: ['8', 0], // Default: no upscale, directly from VAEDecode
     },
     class_type: 'SaveImage',

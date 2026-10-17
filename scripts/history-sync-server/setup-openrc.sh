@@ -112,8 +112,8 @@ chown "${RUN_USER}:${RUN_USER}" "${INSTALL_DIR}/run.sh"
 
 cat > "${INIT_FILE}" <<EOF
 #!/sbin/openrc-run
-name="Chaeboxi History Sync Server"
-description="Self-hosted history sync server for Chaeboxi"
+name="Dango History Sync Server"
+description="Self-hosted history sync server for Dango"
 
 command="${INSTALL_DIR}/run.sh"
 command_user="${RUN_USER}:${RUN_USER}"

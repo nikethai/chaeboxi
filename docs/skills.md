@@ -1,6 +1,6 @@
 # Skills
 
-Agent Skills give Chaeboxi modular, on-demand procedures (like Claude/Cursor skills) without bloating every system prompt.
+Agent Skills give Dango modular, on-demand procedures (like Claude/Cursor skills) without bloating every system prompt.
 
 ## User guide
 
@@ -32,7 +32,7 @@ When session auto-skills is on (default), the app may activate up to **2** relev
 
 ### Shared agent folders (desktop)
 
-Chaeboxi loads the same skill trees other coding agents use. Project roots win over user-global when names collide.
+Dango loads the same skill trees other coding agents use. Project roots win over user-global when names collide.
 
 **Hybrid scan:** project-local folders resolve under the session **workspace root** when set; otherwise process CWD. User-global trees (`~/…`) always load.
 

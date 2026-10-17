@@ -22,7 +22,7 @@ function defaultTranslate(key: string, options?: Record<string, unknown>): strin
     case 'notifications.updateAvailable.title':
       return 'Update ready'
     case 'notifications.updateAvailable.body':
-      return 'A Chaeboxi update is ready to install'
+      return 'A Dango update is ready to install'
     default:
       return key
   }
@@ -51,9 +51,7 @@ function buildCopy(
     case 'generation_complete':
       return {
         title: t('notifications.generationComplete.title'),
-        body: name
-          ? t('notifications.generationComplete.body', { name })
-          : 'Generation finished',
+        body: name ? t('notifications.generationComplete.body', { name }) : 'Generation finished',
       }
     case 'room_complete':
       return {

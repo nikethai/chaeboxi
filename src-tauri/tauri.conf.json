@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Chaeboxi",
+  "productName": "Dango",
   "version": "1.7.0",
-  "identifier": "com.chaeboxi",
+  "identifier": "io.github.nikethai.dango",
   "build": {
     "beforeDevCommand": "pnpm start:renderer",
     "beforeBuildCommand": "pnpm build:renderer && pnpm delete-sourcemaps",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Chaeboxi",
+        "title": "Dango",
         "width": 1200,
         "height": 800,
         "minWidth": 1000,

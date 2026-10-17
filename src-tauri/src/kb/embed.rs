@@ -214,7 +214,7 @@ fn download_bytes(url: &str) -> Result<Vec<u8>, String> {
         .map_err(|e| format!("http client: {e}"))?;
     let response = client
         .get(url)
-        .header("user-agent", "chaeboxi-kb/1.0")
+        .header("user-agent", "dango-kb/1.0")
         .send()
         .map_err(|e| format!("download {url}: {e}"))?;
     if !response.status().is_success() {

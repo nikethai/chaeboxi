@@ -29,7 +29,7 @@ import clsx from 'clsx'
 import { getDefaultStore } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ChaeboxiWordmark from './components/brand/ChaeboxiWordmark'
+import DangoWordmark from './components/brand/DangoWordmark'
 import { AdaptiveModal } from './components/common/AdaptiveModal'
 import { UserAvatar } from './components/common/Avatar'
 import ThemeSwitchButton from './components/dev/ThemeSwitchButton'
@@ -99,7 +99,7 @@ export default function Sidebar() {
 
   const displayName = useMemo(() => {
     // Local-first CE — no cloud account; product name as workspace identity
-    return 'Chaeboxi'
+    return 'Dango'
   }, [])
 
   const displaySubtitle = useMemo(() => t('On this device'), [t])
@@ -255,12 +255,12 @@ export default function Sidebar() {
             className={clsx('rail-head', isSmallScreen && 'rail-head--mobile')}
           >
             {isIconRail ? (
-              <Tooltip label="Chaeboxi" position="right" withArrow openDelay={300}>
+              <Tooltip label="Dango" position="right" withArrow openDelay={300}>
                 <Image
                   src={appIcon}
                   w={28}
                   h={28}
-                  alt="Chaeboxi"
+                  alt="Dango"
                   className="rounded-[6px] active:scale-[0.96] transition-transform"
                 />
               </Tooltip>
@@ -283,7 +283,7 @@ export default function Sidebar() {
               </Flex>
             ) : (
               <Flex align="center" gap={8} miw={0} justify="flex-start" className="controls min-w-0 w-full">
-                <ChaeboxiWordmark size="rail" />
+                <DangoWordmark size="rail" />
                 {FORCE_ENABLE_DEV_PAGES && <ThemeSwitchButton size="xs" />}
               </Flex>
             )}

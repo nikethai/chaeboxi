@@ -12,13 +12,13 @@ let POOL = [
   'https://api.chatboxapp.xyz',
 ]
 
-/** True when Chaeboxi may call Chaeboxi hosted APIs (local dev override or explicit enable). */
+/** True when Dango may call Dango hosted APIs (local dev override or explicit enable). */
 export function isChatboxCloudAllowed(): boolean {
   return CHATBOX_CLOUD_ENABLED || Boolean(process.env.USE_LOCAL_API)
 }
 
 export function isChatboxAPI(input: RequestInfo | URL) {
-  const url = typeof input === 'string' ? input : (input as Request).url ?? input.toString()
+  const url = typeof input === 'string' ? input : ((input as Request).url ?? input.toString())
   return POOL.some((o) => url.startsWith(o)) || url.startsWith(API_ORIGIN)
 }
 
@@ -34,7 +34,7 @@ export function getChatboxAPIOrigin() {
  * Probe API origins in order; switch traffic to the first healthy origin.
  * During probing, new origins returned by the server are merged and cached locally.
  *
- * Chaeboxi: no-op when Chaeboxi cloud is disabled (stability + no upstream traffic).
+ * Dango: no-op when Dango cloud is disabled (stability + no upstream traffic).
  */
 export async function testApiOrigins() {
   if (!isChatboxCloudAllowed()) {

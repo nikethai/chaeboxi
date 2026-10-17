@@ -165,10 +165,7 @@ export function useDesktopShell() {
     const unsubHide = platform.onHiddenToTray?.(() => {
       const settings = settingsStore.getState()
       if (!settings.trayIntroSeen) {
-        toastActions.add(
-          t('Chaeboxi is still running in the menu bar. Click the icon or use the hotkey to reopen.'),
-          6000
-        )
+        toastActions.add(t('Dango is still running in the menu bar. Click the icon or use the hotkey to reopen.'), 6000)
         settingsStore.getState().setSettings({ trayIntroSeen: true })
       }
     })

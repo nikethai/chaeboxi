@@ -25,12 +25,7 @@ function workRoom() {
       workspaceRoot: '/Users/huy/secret-project',
       credentialIds: ['cred-1'],
     },
-    agents: [
-      critic,
-      builder,
-      researcher,
-      { id: 'unused', name: 'Local', prompt: 'no', picUrl: '/tmp/local.png' },
-    ],
+    agents: [critic, builder, researcher, { id: 'unused', name: 'Local', prompt: 'no', picUrl: '/tmp/local.png' }],
     skills: [{ id: 'skill-review', name: 'code-review' }],
   })
 }
@@ -38,7 +33,7 @@ function workRoom() {
 describe('room pack', () => {
   it('exports a 3-agent work room and strips local paths', () => {
     const pack = workRoom()
-    expect(pack.__type).toBe('chaeboxi-room-pack')
+    expect(pack.__type).toBe('dango-room-pack')
     expect(pack.mode).toBe('work')
     expect(pack.agents).toHaveLength(3)
     expect(pack.leadPackId).toBe('a2')
@@ -80,10 +75,17 @@ describe('room pack', () => {
       memberCount: 3,
       skillNames: ['code-review'],
     })
-    expect(roomPackFileName(parsed.name)).toBe('critic-builder-researcher.chaeboxi-room.json')
+    expect(roomPackFileName(parsed.name)).toBe('critic-builder-researcher.dango-room.json')
+  })
+
+  it('imports a pack exported before the rename', () => {
+    const pack = { ...workRoom(), __type: 'chaeboxi-room-pack' }
+    const parsed = parseRoomPack(JSON.parse(JSON.stringify(pack)))
+    expect(parsed.__type).toBe('dango-room-pack')
+    expect(parsed.agents).toHaveLength(3)
   })
 
   it('rejects a file that is not a room pack', () => {
-    expect(() => parseRoomPack({ __type: 'chatbox-history-transfer' })).toThrow(/Not a Chaeboxi room pack/)
+    expect(() => parseRoomPack({ __type: 'chatbox-history-transfer' })).toThrow(/Not a Dango room pack/)
   })
 })

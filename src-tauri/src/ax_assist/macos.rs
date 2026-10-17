@@ -78,7 +78,7 @@ pub async fn dispatch(kind: &str, params: &Value) -> Result<Value, String> {
             "ok": false,
             "error": "PERMISSION_DENIED",
             "fallback": "vision",
-            "note": "Enable Accessibility for this Chaeboxi binary (Settings → Computer Use → Recheck), then retry. Until then use screenshots."
+            "note": "Enable Accessibility for this Dango binary (Settings → Computer Use → Recheck), then retry. Until then use screenshots."
         }));
     }
 

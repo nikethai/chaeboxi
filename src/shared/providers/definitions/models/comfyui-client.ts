@@ -283,7 +283,7 @@ export class ComfyUIClient {
    * Upload a reference image (data URL or remote URL) to ComfyUI /upload/image.
    * Returns the server-side filename for LoadImage nodes.
    */
-  async uploadImage(imageUrl: string, filenameHint = 'chaeboxi-ref.png'): Promise<string> {
+  async uploadImage(imageUrl: string, filenameHint = 'dango-ref.png'): Promise<string> {
     let blob: Blob
     if (imageUrl.startsWith('data:')) {
       const match = imageUrl.match(/^data:([^;]+);base64,(.+)$/)
@@ -304,7 +304,7 @@ export class ComfyUIClient {
     }
 
     const form = new FormData()
-    const safeName = filenameHint.replace(/[^a-zA-Z0-9._-]/g, '_') || 'chaeboxi-ref.png'
+    const safeName = filenameHint.replace(/[^a-zA-Z0-9._-]/g, '_') || 'dango-ref.png'
     form.append('image', blob, safeName)
     form.append('overwrite', 'true')
 

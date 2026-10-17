@@ -1,4 +1,4 @@
-export const FALLBACK_RELEASE_URL = 'https://github.com/nikethai/chaeboxi/releases/latest'
+export const FALLBACK_RELEASE_URL = 'https://github.com/nikethai/dango/releases/latest'
 
 export type PlatformId = 'mac-arm' | 'mac-intel' | 'windows' | 'linux-appimage' | 'linux-deb'
 
@@ -50,10 +50,10 @@ export function mapReleaseAssets(assets: ReleaseAsset[]): DownloadRow[] {
 
 export async function getLatestDownloads(): Promise<{ tag: string; rows: DownloadRow[] }> {
   try {
-    const res = await fetch('https://api.github.com/repos/nikethai/chaeboxi/releases/latest', {
+    const res = await fetch('https://api.github.com/repos/nikethai/dango/releases/latest', {
       headers: {
         Accept: 'application/vnd.github+json',
-        'User-Agent': 'chaeboxi-website',
+        'User-Agent': 'dango-website',
       },
     })
     if (!res.ok) {

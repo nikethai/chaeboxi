@@ -12,7 +12,7 @@ import {
 
 /**
  * WHAM `/models?client_version=` requires a dotted semver-like value.
- * Free-form strings (e.g. "chaeboxi") return: Invalid client_version format.
+ * Free-form strings (e.g. "dango") return: Invalid client_version format.
  * Prefer package version when available; fall back to a stable Codex-compatible default.
  */
 export const OPENAI_CODEX_CLIENT_VERSION = '1.6.0'
@@ -107,7 +107,7 @@ export async function fetchOpenAICodexModels(
 
   const fetchImpl = options.fetchImpl || defaultOAuthFetch()
   const base = (options.apiBase || OPENAI_CODEX_WHAM_API_BASE).replace(/\/+$/, '')
-  // WHAM rejects free-form strings (e.g. "chaeboxi") with: Invalid client_version format.
+  // WHAM rejects free-form strings (e.g. "dango") with: Invalid client_version format.
   // Use dotted semver (app version or a stable Codex-compatible fallback).
   const version = options.clientVersion || OPENAI_CODEX_CLIENT_VERSION
   const url = `${base}/models?client_version=${encodeURIComponent(version)}`
@@ -139,7 +139,9 @@ export async function fetchOpenAICodexModels(
     const msg =
       (json && typeof json === 'object' && 'error' in (json as object)
         ? JSON.stringify((json as { error?: unknown }).error)
-        : undefined) || text.slice(0, 200) || `Model list failed (${res.status})`
+        : undefined) ||
+      text.slice(0, 200) ||
+      `Model list failed (${res.status})`
     throw new OpenAICodexOAuthError(msg, 'models_failed', res.status)
   }
 

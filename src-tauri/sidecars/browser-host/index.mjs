@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Chaeboxi browser host — JSON-RPC over stdio (newline-delimited JSON).
+ * Dango browser host — JSON-RPC over stdio (newline-delimited JSON).
  * Protocol:
  *   request:  { id, method, params }
  *   response: { id, result } | { id, error: { code, message } }
@@ -216,7 +216,7 @@ function getActivePage() {
   return pages.get(activePageId)
 }
 
-const REF_MARK_ATTR = 'data-chaeboxi-ref'
+const REF_MARK_ATTR = 'data-dango-ref'
 
 async function settlePage(page, ms = 150) {
   await page.waitForLoadState('domcontentloaded', { timeout: ACTION_TIMEOUT_MS }).catch(() => {})

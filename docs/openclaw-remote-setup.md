@@ -1,16 +1,16 @@
 # OpenClaw Remote Access via Cloudflare Tunnel
 
-Expose your local OpenClaw gateway to the internet securely using Cloudflare Tunnel and CF Access, then connect from Chaeboxi on any network.
+Expose your local OpenClaw gateway to the internet securely using Cloudflare Tunnel and CF Access, then connect from Dango on any network.
 
 **Architecture:**
 
 ```
-Chaeboxi (Tauri app)
+Dango (Tauri app)
   └─ WSS → Cloudflare Edge (TLS termination + CF Access auth)
        └─ cloudflared (local daemon) → ws://127.0.0.1:18789 (OpenClaw gateway)
 ```
 
-Chaeboxi's Tauri runtime uses a native Rust WebSocket client for the connection. This bypasses WebView CORS restrictions entirely and injects CF Access headers directly on the WebSocket upgrade request.
+Dango's Tauri runtime uses a native Rust WebSocket client for the connection. This bypasses WebView CORS restrictions entirely and injects CF Access headers directly on the WebSocket upgrade request.
 
 ---
 
@@ -21,9 +21,9 @@ Chaeboxi's Tauri runtime uses a native Rust WebSocket client for the connection.
 | OpenClaw gateway | Installed and functional on the host machine |
 | Cloudflare account | Free tier works. You need a domain with DNS managed by Cloudflare. |
 | `cloudflared` CLI | [Install guide](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) |
-| Chaeboxi | Desktop build (Tauri) — the native transport is required for CF Access header injection |
+| Dango | Desktop build (Tauri) — the native transport is required for CF Access header injection |
 
-> **Note**: The web build of Chaeboxi cannot set custom headers on WebSocket upgrades due to browser restrictions. Use the Tauri desktop app for CF Access-protected gateways.
+> **Note**: The web build of Dango cannot set custom headers on WebSocket upgrades due to browser restrictions. Use the Tauri desktop app for CF Access-protected gateways.
 
 ---
 
@@ -119,7 +119,7 @@ If CF Access is not yet configured, this should return the gateway health JSON. 
 2. Click **Add an application** > **Self-hosted**
 3. Configure:
    - **Application name**: `OpenClaw Gateway`
-   - **Session duration**: 8 hours (matches Chaeboxi's max connection duration)
+   - **Session duration**: 8 hours (matches Dango's max connection duration)
    - **Application domain**: `gateway.example.com`
 
 ### 4.2 Set Up an Access Policy
@@ -134,13 +134,13 @@ Add at least one policy to control who can reach the gateway:
 | Action | Allow |
 | Include rule | Emails — `you@example.com` |
 
-**Option B: Service Token (for machine-to-machine — recommended for Chaeboxi)**
+**Option B: Service Token (for machine-to-machine — recommended for Dango)**
 
-This is the better option for Chaeboxi since the Tauri client sends headers automatically without browser interaction.
+This is the better option for Dango since the Tauri client sends headers automatically without browser interaction.
 
 1. Go to **Access** > **Service Auth** > **Service Tokens**
 2. Click **Create Service Token**
-3. Name it (e.g., `chaeboxi-desktop`)
+3. Name it (e.g., `dango-desktop`)
 4. Copy the **Client ID** and **Client Secret** — you won't see the secret again
 
 Then add a policy to your Access application:
@@ -153,9 +153,9 @@ Then add a policy to your Access application:
 
 > **Warning**: Store your Client Secret securely. If compromised, revoke and rotate the token immediately from the CF Zero Trust dashboard.
 
-### 4.3 How It Works with Chaeboxi
+### 4.3 How It Works with Dango
 
-When Chaeboxi connects to `wss://gateway.example.com`:
+When Dango connects to `wss://gateway.example.com`:
 
 1. The Tauri Rust client sets `CF-Access-Client-Id` and `CF-Access-Client-Secret` as HTTP headers on the WebSocket upgrade request
 2. Cloudflare Edge validates the service token
@@ -166,7 +166,7 @@ The WebView-side JS preflight for CF Access is best-effort and may time out due 
 
 ---
 
-## 5. Connect from Chaeboxi
+## 5. Connect from Dango
 
 ### 5.1 Configure the Provider
 
@@ -179,7 +179,7 @@ Open **Settings** > **Provider** > **OpenClaw** and fill in:
 | Cloudflare Client ID | *(from step 4.2, if using Service Token)* |
 | Cloudflare Client Secret | *(from step 4.2, if using Service Token)* |
 
-> **Important**: Enter `https://gateway.example.com`, not `wss://`. Chaeboxi's `normalizeGatewayUrl()` converts `https://` to `wss://` automatically. For remote hostnames, port 443 is used by default (no need to specify a port).
+> **Important**: Enter `https://gateway.example.com`, not `wss://`. Dango's `normalizeGatewayUrl()` converts `https://` to `wss://` automatically. For remote hostnames, port 443 is used by default (no need to specify a port).
 
 ### 5.2 Test the Connection
 
@@ -194,7 +194,7 @@ On the machine running the OpenClaw gateway:
 openclaw devices approve
 ```
 
-This lists pending devices. Approve the one matching your Chaeboxi client. Each device has a unique Ed25519 identity key generated and stored locally.
+This lists pending devices. Approve the one matching your Dango client. Each device has a unique Ed25519 identity key generated and stored locally.
 
 ### 5.4 Confirm
 
@@ -212,13 +212,13 @@ Click **Test Connection** again. You should see:
 
 ### Connection Security
 
-- **Always use HTTPS/WSS** for remote connections. Chaeboxi shows a red alert banner for `ws://` (plaintext) to remote hosts. If you see it, switch to `https://` in the Gateway URL.
+- **Always use HTTPS/WSS** for remote connections. Dango shows a red alert banner for `ws://` (plaintext) to remote hosts. If you see it, switch to `https://` in the Gateway URL.
 - **CF Access** adds a second authentication layer on top of OpenClaw's own token + device pairing.
 - Gateway secrets (auth token, CF credentials) are **scrubbed from settings exports** — they won't leak if you share your config.
 
 ### Agent Capability Awareness
 
-Chaeboxi color-codes agent capabilities in the UI:
+Dango color-codes agent capabilities in the UI:
 
 | Color | Risk Level | Examples |
 |---|---|---|
@@ -249,31 +249,31 @@ These are enforced gateway-side and protect against abandoned connections.
 | Problem | Cause | Solution |
 |---|---|---|
 | "CF Access preflight timed out" | WebView CORS blocks the preflight fetch to Cloudflare | Not a real problem. The Tauri native Rust transport handles CF auth independently. This warning can be ignored. |
-| Connection closes immediately (1006/1005) | WebSocket opens through CF Tunnel but closes before OpenClaw handshake completes. Usually a transient CF Tunnel relay issue. | Chaeboxi retries 3 times with exponential backoff automatically. If persistent, restart `cloudflared tunnel run`. Check `cloudflared` logs for upstream errors. |
-| "pairing required" (`PAIRING_REQUIRED`) | The device's Ed25519 identity is not yet approved on the gateway. | On the gateway host, run `openclaw devices approve` and approve the pending device. Then retry the connection from Chaeboxi. |
-| Red "Insecure Connection" alert | Gateway URL uses `ws://` or `http://` to a non-localhost host. | Change the Gateway URL to `https://gateway.example.com`. Chaeboxi converts to `wss://` automatically. |
+| Connection closes immediately (1006/1005) | WebSocket opens through CF Tunnel but closes before OpenClaw handshake completes. Usually a transient CF Tunnel relay issue. | Dango retries 3 times with exponential backoff automatically. If persistent, restart `cloudflared tunnel run`. Check `cloudflared` logs for upstream errors. |
+| "pairing required" (`PAIRING_REQUIRED`) | The device's Ed25519 identity is not yet approved on the gateway. | On the gateway host, run `openclaw devices approve` and approve the pending device. Then retry the connection from Dango. |
+| Red "Insecure Connection" alert | Gateway URL uses `ws://` or `http://` to a non-localhost host. | Change the Gateway URL to `https://gateway.example.com`. Dango converts to `wss://` automatically. |
 | Works locally, fails remotely | CF Tunnel not running, DNS not routed, or CF Access policy blocking. | 1. Verify tunnel: `cloudflared tunnel info openclaw-gateway` 2. Verify DNS: `dig gateway.example.com` (should be a CNAME to `cfargotunnel.com`) 3. Check CF Access audit logs in Zero Trust dashboard 4. Verify tunnel config routes to `http://localhost:18789` |
-| 403 Forbidden from Cloudflare | CF Access rejecting the request — missing or invalid service token. | Verify Client ID and Client Secret in Chaeboxi settings. Check the service token hasn't expired in CF Zero Trust > Service Auth. |
+| 403 Forbidden from Cloudflare | CF Access rejecting the request — missing or invalid service token. | Verify Client ID and Client Secret in Dango settings. Check the service token hasn't expired in CF Zero Trust > Service Auth. |
 | Gateway health check passes but WS fails | Tunnel routes HTTP fine but WebSocket upgrade fails at CF edge. | Rare. Check `cloudflared` version is up to date (`cloudflared update`). Ensure no intermediate proxy is stripping `Upgrade` headers. |
 
 ### Viewing Tauri Debug Logs
 
-Chaeboxi logs WebSocket connection events and errors to stderr. To see them:
+Dango logs WebSocket connection events and errors to stderr. To see them:
 
 **macOS/Linux** — run from terminal:
 
 ```bash
 # macOS
-/Applications/Chaeboxi.app/Contents/MacOS/Chaeboxi 2>&1 | grep -i "openclaw\|websocket\|ws::\|cf-access"
+/Applications/Dango.app/Contents/MacOS/Dango 2>&1 | grep -i "openclaw\|websocket\|ws::\|cf-access"
 
 # Linux
-./chaeboxi 2>&1 | grep -i "openclaw\|websocket\|ws::\|cf-access"
+./dango 2>&1 | grep -i "openclaw\|websocket\|ws::\|cf-access"
 ```
 
 **Windows** — run from PowerShell:
 
 ```powershell
-& "C:\Program Files\Chaeboxi\Chaeboxi.exe" 2>&1 | Select-String "openclaw|websocket|ws::|cf-access"
+& "C:\Program Files\Dango\Dango.exe" 2>&1 | Select-String "openclaw|websocket|ws::|cf-access"
 ```
 
 Look for:
@@ -306,7 +306,7 @@ openclaw devices list
 curl https://gateway.example.com/health
 ```
 
-**Chaeboxi Settings** (Settings > Provider > OpenClaw):
+**Dango Settings** (Settings > Provider > OpenClaw):
 
 ```
 Gateway URL:              https://gateway.example.com

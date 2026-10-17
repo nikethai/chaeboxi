@@ -1,6 +1,6 @@
 //! Knowledge-base persistence.
 //!
-//! Desktop opens `chaeboxi_kb.db` (bundled SQLite). Mobile and the default
+//! Desktop opens `dango_kb.db` (bundled SQLite). Mobile and the default
 //! runtime keep an in-memory store so iOS/Android still compile without
 //! rusqlite / sqlite-vec.
 
@@ -8,7 +8,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
-pub const DB_FILENAME: &str = "chaeboxi_kb.db";
+pub const DB_FILENAME: &str = "dango_kb.db";
 
 #[derive(Debug, Clone)]
 pub struct BaseRecord {
@@ -857,7 +857,7 @@ mod tests {
         use std::sync::atomic::{AtomicU64, Ordering};
         static SEQ: AtomicU64 = AtomicU64::new(0);
         let dir = std::env::temp_dir().join(format!(
-            "chaeboxi-kb-persist-{}-{}-{}",
+            "dango-kb-persist-{}-{}-{}",
             std::process::id(),
             now_ms(),
             SEQ.fetch_add(1, Ordering::Relaxed)

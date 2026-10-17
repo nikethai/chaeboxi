@@ -1,4 +1,4 @@
-# Chaeboxi marketing site
+# Dango marketing site
 
 Static Astro site for GitHub Pages. Not the chat app. Do not deploy `pnpm build:web` here.
 
@@ -9,19 +9,19 @@ pnpm test
 pnpm build
 ```
 
-Live origin (project Pages): `https://nikethai.github.io/chaeboxi/`
+Live origin (project Pages): `https://nikethai.github.io/dango/`
 
 Public pages: home, `/why/`, `/download/`, `/privacy/`, `/terms/`.
 
-`base` is `/chaeboxi`. Stay on this origin. Do not add a second public hostname without redirects.
+`base` is `/dango`. Stay on this origin. Do not add a second public hostname without redirects.
 
 Crawl files (project path, not `nikethai.github.io/` root):
 
-- `https://nikethai.github.io/chaeboxi/robots.txt`
-- `https://nikethai.github.io/chaeboxi/sitemap.xml`
-- `https://nikethai.github.io/chaeboxi/llms.txt`
+- `https://nikethai.github.io/dango/robots.txt`
+- `https://nikethai.github.io/dango/sitemap.xml`
+- `https://nikethai.github.io/dango/llms.txt`
 
-Submit the sitemap in Search Console as a **URL-prefix** property for `/chaeboxi/`. Google still reads `robots.txt` from the github.io origin root; the project files remain the source of truth for this site.
+Submit the sitemap in Search Console as a **URL-prefix** property for `/dango/`. Google still reads `robots.txt` from the github.io origin root; the project files remain the source of truth for this site.
 
 Workflow: `.github/workflows/pages.yml` (path-filtered). Repo setting: Pages source = GitHub Actions.
 

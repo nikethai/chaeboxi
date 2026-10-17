@@ -1,4 +1,4 @@
-# Chaeboxi Design Guidelines
+# Dango Design Guidelines
 
 **Status:** Active design contract for the UI redesign  
 **Visual source of truth:** `docs/archive/plans/2026-08-05-ui-ux-redesign/mock-dark-shell.html`  
@@ -8,7 +8,7 @@
 
 Desktop AI copilot chrome that feels like a focused studio tool — Grok + ChatGPT conversation DNA, not a generic “AI SaaS” template.
 
-**Blank / empty chat:** Gemini-quiet first paint — one short centered greeting + composer **vertically centered**. Greeting copy is Chaeboxi-owned (`Ready when you are`), never ChatGPT’s “What can I help with?”. No chips/tags/manifesto, no agents combobox on blank (use `@` in composer or deep-link). On first send: greeting fades, dock eases to bottom (~420ms), then session thread loads with dock pinned bottom.
+**Blank / empty chat:** Gemini-quiet first paint — one short centered greeting + composer **vertically centered**. Greeting copy is Dango-owned (`Ready when you are`), never ChatGPT’s “What can I help with?”. No chips/tags/manifesto, no agents combobox on blank (use `@` in composer or deep-link). On first send: greeting fades, dock eases to bottom (~420ms), then session thread loads with dock pinned bottom.
 
 ## Locked decisions
 
@@ -24,7 +24,7 @@ Desktop AI copilot chrome that feels like a focused studio tool — Grok + ChatG
 | Type | Satoshi (UI) + JetBrains Mono (meta/kbd); base 16px; LH ~1.55 |
 | Content column | `--chatbox-col: 48rem` + `--chatbox-col-pad-x: 1.5rem` shared by blank home, thread + composer |
 | Dock pad | `--chatbox-dock-pad-y` / `--chatbox-dock-pad-b` on `.session-dock-pad` (home + session) |
-| Messages | Assistant open prose full column; user right-aligned pill (~16px radius); no “You/Chaeboxi” labels; chat path uses studio tokens only (no MUI Alert/Typography) |
+| Messages | Assistant open prose full column; user right-aligned pill (~16px radius); no “You/Dango” labels; chat path uses studio tokens only (no MUI Alert/Typography) |
 | Thinking | Grok plain text: “Worked for 3s ›” — no card border; expand for body; **status preview only while streaming + collapsed** (never duplicate body). **One live signal only** — thread work strip + statusline pulse. No dock “Thinking…” sentence. |
 | Streaming | No answer fade on settle; 1.5px caret on streaming answer slot; thinking strip stays mounted for the whole live turn **and after settle** (Thinking… → Worked). Never remount the answer markdown tree on generating→done. |
 | Follow-ups | Quiet text chips after latest finished assistant turn (not search-only). **No sparkles / brand chips / loaders** while generating |
@@ -43,7 +43,7 @@ Desktop AI copilot chrome that feels like a focused studio tool — Grok + ChatG
 | Session tasks | Attached above composer in one joined dock stack; desktop expands inline with bounded scroll, narrow/mobile opens a bottom sheet; task state stays outside `InputBox` |
 | Auto tools | Web search **default ON** when configured; MCP tools from **enabled servers** always attached for tool-capable models; agent mode **opt-in**; KB **explicit select** |
 | Telemetry | Session statusline is SoT for tok/$/msg; **no composer token chip**; click statusline `tok` for compress / auto-compaction. Statusline sits **below** composer with solid primary surface + higher z-index so composer ambient shadow never buries model/cost |
-| Rail brand | Left-aligned `ChaeboxiWordmark`; no collapse control in brand row (hide via menu / resizer double-click) |
+| Rail brand | Left-aligned `DangoWordmark`; no collapse control in brand row (hide via menu / resizer double-click) |
 | Projects | User-facing “Project” (storage may stay `Folder`); shared outline icon; **no emoji UI**; never invent system “Uncategorized” folder |
 | Project explorer | File tree in `.session-body-row` left of chat, only when the chat belongs to a Project. Same rail surface as the session list. Not a chip above the composer. Artifact Studio stays the right pane and auto-opens while code is written. Title bar shows a folder chip plus Open Folder / Reveal. Hidden below 900px and off desktop. | |
 | Keyboard | Enter send; Shift+Enter and Alt+Enter newline (default send is Enter) |

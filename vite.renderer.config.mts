@@ -103,7 +103,7 @@ function injectBaseTag(): Plugin {
   }
 }
 
-/** Plausible domain rewrite disabled — Chaeboxi ships without third-party analytics until owned accounts exist. */
+/** Plausible domain rewrite disabled — Dango ships without third-party analytics until owned accounts exist. */
 function replacePlausibleDomain(): Plugin {
   return {
     name: 'replace-plausible-domain',
@@ -162,12 +162,12 @@ export default defineConfig(({ mode }) => {
       dvhToVh(),
       isWeb ? injectBaseTag() : undefined,
       isWeb ? replacePlausibleDomain() : undefined,
-      // Telemetry disabled until Chaeboxi-owned Sentry project exists (require both token + explicit opt-in).
-      process.env.SENTRY_AUTH_TOKEN && process.env.CHAEBOXI_SENTRY_ENABLED === '1'
+      // Telemetry disabled until Dango-owned Sentry project exists (require both token + explicit opt-in).
+      process.env.SENTRY_AUTH_TOKEN && process.env.DANGO_SENTRY_ENABLED === '1'
         ? sentryVitePlugin({
             authToken: process.env.SENTRY_AUTH_TOKEN,
             org: process.env.SENTRY_ORG || 'sentry',
-            project: process.env.SENTRY_PROJECT || 'chaeboxi',
+            project: process.env.SENTRY_PROJECT || 'dango',
             url: process.env.SENTRY_URL || 'https://sentry.io/',
             release: {
               name: inferredRelease,

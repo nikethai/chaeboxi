@@ -2,10 +2,10 @@
 
 | | |
 | --- | --- |
-| **Product** | Chaeboxi 1.6.0 |
+| **Product** | Dango 1.6.0 |
 | **Last updated** | 2026-08-22 |
 
-Runtime architecture of Chaeboxi: three-layer TypeScript + Tauri shell, platform abstraction, chat/tool path, storage, MCP, and knowledge base.
+Runtime architecture of Dango: three-layer TypeScript + Tauri shell, platform abstraction, chat/tool path, storage, MCP, and knowledge base.
 
 ## High-level diagram
 
@@ -174,7 +174,7 @@ Migrations: `src/renderer/stores/migration.ts` on startup.
 
 ## Continuity (discovery only)
 
-Continuity (vendor-archive import → inspect → continue with another model) is **not shipped**. Phase 0 is research-only: any later MVP would be **desktop-only**, with **ChatGPT conversation export** as the first candidate importer, gated on a participant study and the ADRs under [`docs/adr/continuity/`](adr/continuity/). User-visible history search is unchanged (`src/renderer/packages/history-search/` is an extract of the existing linear matcher). Do not add `imported:*` keys or mix archives with `session:*` / `chaeboxi_kb.db`.
+Continuity (vendor-archive import → inspect → continue with another model) is **not shipped**. Phase 0 is research-only: any later MVP would be **desktop-only**, with **ChatGPT conversation export** as the first candidate importer, gated on a participant study and the ADRs under [`docs/adr/continuity/`](adr/continuity/). User-visible history search is unchanged (`src/renderer/packages/history-search/` is an extract of the existing linear matcher). Do not add `imported:*` keys or mix archives with `session:*` / `dango_kb.db`.
 
 ## MCP architecture
 
@@ -197,7 +197,7 @@ Implementation in `src-tauri/src/kb/` (dispatched from `lib.rs` via `kb:*`):
 
 | Piece | Reality |
 | --- | --- |
-| Metadata / files / chunks / embeddings | SQLite app data `chaeboxi_kb.db` (AUTOINCREMENT ids) |
+| Metadata / files / chunks / embeddings | SQLite app data `dango_kb.db` (AUTOINCREMENT ids) |
 | Default embedder | `local:multilingual-e5-small` (ONNX, ~180MB, download once, not bundled) |
 | Search (`kb:search`) | Keyword + cosine hybrid, RRF fuse, top 20. Keyword-only if the model is not ready. |
 | Mobile | In-memory / keyword path; no model download |
@@ -209,7 +209,7 @@ See [rag.md](./rag.md). Hosted document-parser cloud is **off** (`CHATBOX_CLOUD_
 | Topic | Posture |
 | --- | --- |
 | Data residency | Local-first; chats/settings on device |
-| Cloud | `CHATBOX_CLOUD_ENABLED = false` — no Chaeboxi hosted API dependency |
+| Cloud | `CHATBOX_CLOUD_ENABLED = false` — no Dango hosted API dependency |
 | Telemetry | `TELEMETRY_ENABLED = false` until owned accounts exist |
 | Secrets | Keychain channels for integrations; user-supplied LLM keys stored via settings/storage paths |
 | Desktop trust | High: FS, command execution, MCP stdio child processes, open CSP for app shell |
@@ -222,7 +222,7 @@ Threat model is **single-user desktop / personal device**, not multi-tenant SaaS
 
 | Claim | Status |
 | --- | --- |
-| SQLite RAG in Rust | **True (desktop v1)** — `src-tauri/src/kb/` + `chaeboxi_kb.db`; mobile still keyword/in-memory |
+| SQLite RAG in Rust | **True (desktop v1)** — `src-tauri/src/kb/` + `dango_kb.db`; mobile still keyword/in-memory |
 | Hosted Chatbox cloud / paid features | **Disabled** in product flags; strip helpers remain for migration stability |
 | GitHub Actions CI | **Present** — quality gate (`ci.yml`) + desktop release (`release.yml`); see [deployment-guide.md](./deployment-guide.md) |
 | Full mobile parity with desktop MCP/stdio | **Not assumed** — desktop is richest shell |

@@ -55,6 +55,8 @@ mod ax_assist;
 mod kb;
 #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
 mod imported_archive;
+#[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+mod legacy_rename;
 mod workspace;
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -531,7 +533,7 @@ fn openclaw_build_connect_params(
     }
     params.insert(
         "userAgent".to_string(),
-        Value::String(format!("chaeboxi-tauri/{}", env!("CARGO_PKG_VERSION"))),
+        Value::String(format!("dango-tauri/{}", env!("CARGO_PKG_VERSION"))),
     );
     params.insert(
         "device".to_string(),
@@ -598,7 +600,7 @@ fn openclaw_build_connect_params_without_device(auth: &OpenClawAuth) -> Value {
     }
     params.insert(
         "userAgent".to_string(),
-        Value::String(format!("chaeboxi-tauri/{}", env!("CARGO_PKG_VERSION"))),
+        Value::String(format!("dango-tauri/{}", env!("CARGO_PKG_VERSION"))),
     );
 
     Value::Object(params)
@@ -828,7 +830,7 @@ async fn openclaw_connect_socket(url: &str, auth: &OpenClawAuth) -> CommandResul
 
     // Some OpenClaw gateway deployments enforce stricter non-local handshake checks.
     // Explicit Origin + User-Agent avoids the "origin=n/a, ua=n/a" rejection path.
-    let user_agent = format!("chaeboxi-tauri/{}", env!("CARGO_PKG_VERSION"));
+    let user_agent = format!("dango-tauri/{}", env!("CARGO_PKG_VERSION"));
     if let Ok(value) = HeaderValue::from_str(&user_agent) {
         request.headers_mut().insert("User-Agent", value);
     }
@@ -1416,7 +1418,7 @@ async fn run_http_list_tools(config: &McpTransportConfig) -> CommandResult<Vec<M
         protocol_version: Default::default(),
         capabilities: ClientCapabilities::default(),
         client_info: Implementation {
-            name: "chaeboxi".to_string(),
+            name: "dango".to_string(),
             title: None,
             version: "0.1.0".to_string(),
             description: None,
@@ -1512,7 +1514,7 @@ async fn run_http_call_tool(
         protocol_version: Default::default(),
         capabilities: ClientCapabilities::default(),
         client_info: Implementation {
-            name: "chaeboxi".to_string(),
+            name: "dango".to_string(),
             title: None,
             version: "0.1.0".to_string(),
             description: None,
@@ -1569,7 +1571,7 @@ fn oauth_callback_success_html() -> &'static str {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Signed in — Chaeboxi</title>
+  <title>Signed in — Dango</title>
   <style>
     body { font-family: system-ui, -apple-system, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; margin:0; background:#0f1419; color:#e7e9ea; }
     .card { max-width: 28rem; padding: 2rem; border-radius: 12px; background:#1a2332; text-align:center; line-height:1.5; }
@@ -1580,7 +1582,7 @@ fn oauth_callback_success_html() -> &'static str {
 <body>
   <div class="card">
     <h1>Sign-in complete</h1>
-    <p>You can close this tab and return to Chaeboxi.</p>
+    <p>You can close this tab and return to Dango.</p>
   </div>
 </body>
 </html>"#
@@ -1591,7 +1593,7 @@ fn oauth_callback_error_html(message: &str) -> String {
         r#"<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"/><title>Sign-in failed</title>
 <style>body{{font-family:system-ui,sans-serif;padding:2rem;background:#0f1419;color:#e7e9ea}} .err{{color:#f4212e}}</style>
-</head><body><h1 class="err">Sign-in failed</h1><p>{}</p><p>Return to Chaeboxi and try again.</p></body></html>"#,
+</head><body><h1 class="err">Sign-in failed</h1><p>{}</p><p>Return to Dango and try again.</p></body></html>"#,
         message.replace('<', "&lt;").replace('>', "&gt;")
     )
 }
@@ -2913,6 +2915,11 @@ pub fn run() {
     {
         let _ = fix_path_env::fix();
     }
+
+    // Move data left under the old Chaeboxi identifier before any window
+    // (and so any webview storage) is created.
+    #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+    legacy_rename::migrate();
 
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())

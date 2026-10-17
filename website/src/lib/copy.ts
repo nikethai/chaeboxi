@@ -1,7 +1,7 @@
 export const HERO_SUB =
   'Paste a key you already pay for. The thread stays on this machine. Independent GPLv3 — not Chatbox AI, not a hosted LLM.'
 
-export const HERO_PROOF = 'Desktop-primary. No Chaeboxi cloud. No bundled AI plan.'
+export const HERO_PROOF = 'Desktop-primary. No Dango cloud. No bundled AI plan.'
 
 export type CopyCard = {
   meta: string
@@ -13,12 +13,12 @@ export const AUDIENCE: CopyCard[] = [
   {
     meta: 'BYOK',
     title: 'You already have keys',
-    body: 'OpenAI, Anthropic, Gemini, OpenRouter, Azure, and more. Chaeboxi never sells you a model seat.',
+    body: 'OpenAI, Anthropic, Gemini, OpenRouter, Azure, and more. Dango never sells you a model seat.',
   },
   {
     meta: 'Local',
     title: 'Or skip the API bill',
-    body: 'Point the studio at Ollama or LM Studio. Same chat surface. Still no Chaeboxi account.',
+    body: 'Point the studio at Ollama or LM Studio. Same chat surface. Still no Dango account.',
   },
   {
     meta: 'Desktop',
@@ -30,7 +30,7 @@ export const AUDIENCE: CopyCard[] = [
 export const AUDIENCE_NOT: CopyCard = {
   meta: 'Skip this',
   title: 'Not a ChatGPT subscription',
-  body: 'If you want a hosted LLM plan or a commercial Chatbox client, this is the wrong download. Chaeboxi is the local shell.',
+  body: 'If you want a hosted LLM plan or a commercial Chatbox client, this is the wrong download. Dango is the local shell.',
 }
 
 export const DESKTOP_TOOLS: CopyCard[] = [
@@ -62,7 +62,7 @@ export const DESKTOP_TOOLS: CopyCard[] = [
   {
     meta: 'Skills',
     title: 'Commands and hooks',
-    body: 'Skill packs, slash commands, and lifecycle hooks extend the desktop studio without a Chaeboxi marketplace.',
+    body: 'Skill packs, slash commands, and lifecycle hooks extend the desktop studio without a Dango marketplace.',
   },
 ]
 
@@ -70,12 +70,12 @@ export const FIRST_MINUTES: CopyCard[] = [
   {
     meta: '01',
     title: 'Install the desktop app',
-    body: 'macOS, Windows, or Linux from GitHub Releases. No Chaeboxi account.',
+    body: 'macOS, Windows, or Linux from GitHub Releases. No Dango account.',
   },
   {
     meta: '02',
     title: 'Add a key — or a local runtime',
-    body: 'Paste a provider key, or point at Ollama or LM Studio. Chaeboxi does not sell model access.',
+    body: 'Paste a provider key, or point at Ollama or LM Studio. Dango does not sell model access.',
   },
   {
     meta: '03',
@@ -89,14 +89,14 @@ export const WHY_SECTIONS: { title: string; paragraphs: string[] }[] = [
     title: 'The last copilot already kept the thread',
     paragraphs: [
       'Most chat apps are a seat on someone else’s service. The model, the history, and the upsell live there. That is fine if you want ChatGPT-the-product.',
-      'Chaeboxi is the other shape: a local-first shell. You bring the keys. The thread stays on the device or platform storage you choose. There is no hosted Chaeboxi chat backend.',
+      'Dango is the other shape: a local-first shell. You bring the keys. The thread stays on the device or platform storage you choose. There is no hosted Dango chat backend.',
     ],
   },
   {
     title: 'BYOK is the whole offer',
     paragraphs: [
-      'There is no Chaeboxi AI plan and no first-party hosted LLM. OpenAI, Anthropic, Gemini, OpenRouter, Azure, xAI, Groq, and the rest are providers you already have.',
-      'If you do not want an API bill, run Ollama or LM Studio. Same studio. Still no Chaeboxi account.',
+      'There is no Dango AI plan and no first-party hosted LLM. OpenAI, Anthropic, Gemini, OpenRouter, Azure, xAI, Groq, and the rest are providers you already have.',
+      'If you do not want an API bill, run Ollama or LM Studio. Same studio. Still no Dango account.',
     ],
   },
   {
@@ -109,7 +109,7 @@ export const WHY_SECTIONS: { title: string; paragraphs: string[] }[] = [
   {
     title: 'Independent of Chatbox',
     paragraphs: [
-      'Parts of the codebase come from an earlier open-source GPLv3 client. Chaeboxi is not the Chatbox commercial app and is not affiliated with any AI license marketplace. See NOTICE in the repository.',
+      'Parts of the codebase come from an earlier open-source GPLv3 client. Dango is not the Chatbox commercial app and is not affiliated with any AI license marketplace. See NOTICE in the repository.',
       'The license is GNU GPLv3. The source is public. That is the product, not a landing-page slogan.',
     ],
   },

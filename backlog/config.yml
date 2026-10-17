@@ -1,4 +1,4 @@
-project_name: "Chaeboxi"
+project_name: "Dango"
 default_status: "Ideas"
 statuses: ["Ideas", "Proposed", "Now", "Done"]
 labels: []

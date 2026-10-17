@@ -153,7 +153,10 @@ export interface Platform extends Storage {
   setProjectTrust?(projectId: string, category: WorkspaceTrustCategory, value: WorkspaceTrustValue): Promise<void>
   getWorkspaceSuiteCapabilities?(): Promise<unknown>
   beginWorkspaceChangeSet?(capabilityId: string, sessionId: string, turnId: string): Promise<{ changeSetId: string }>
-  appendWorkspaceChange?(changeSetId: string, operation: Record<string, unknown>): Promise<{ operationId?: string; staged?: boolean }>
+  appendWorkspaceChange?(
+    changeSetId: string,
+    operation: Record<string, unknown>
+  ): Promise<{ operationId?: string; staged?: boolean }>
   sealWorkspaceChangeSet?(changeSetId: string): Promise<{ digest?: string; operations?: unknown[] }>
   getWorkspaceChangeSet?(changeSetId: string): Promise<unknown>
   discardWorkspaceChangeSet?(changeSetId: string): Promise<unknown>
@@ -254,14 +257,17 @@ export interface Platform extends Storage {
   computerAxQuery?(opts: ComputerAxQueryInput): Promise<ComputerAxResult>
   /** macOS AX focus or press. Act — requires Accessibility. */
   computerAxAct?(opts: ComputerAxActInput): Promise<ComputerAxResult>
-  computerCaptureDisplay?(opts?: {
-    displayId?: string
-    maxWidth?: number
-  }): Promise<ComputerCapturePayload>
+  computerCaptureDisplay?(opts?: { displayId?: string; maxWidth?: number }): Promise<ComputerCapturePayload>
   computerClick?(opts: { x: number; y: number; button?: string; frameId?: string }): Promise<unknown>
   computerType?(opts: { text: string }): Promise<unknown>
   computerKey?(opts: { key: string }): Promise<unknown>
-  computerScroll?(opts: { x?: number; y?: number; deltaY?: number; direction?: string; amount?: number }): Promise<unknown>
+  computerScroll?(opts: {
+    x?: number
+    y?: number
+    deltaY?: number
+    direction?: string
+    amount?: number
+  }): Promise<unknown>
   computerMouseMove?(opts: { x: number; y: number; frameId?: string }): Promise<unknown>
   computerAbort?(): Promise<unknown>
   computerClearAbort?(): Promise<unknown>
@@ -355,7 +361,7 @@ export type ComputerPermissionStatus = {
   experimental?: boolean
   /** Probe method used by backend (e.g. tcc-process). */
   probe?: string
-  /** Absolute path of the running process (dev: target/debug/chaeboxi). */
+  /** Absolute path of the running process (dev: target/debug/dango). */
   executablePath?: string
   processName?: string
   isDevBinary?: boolean

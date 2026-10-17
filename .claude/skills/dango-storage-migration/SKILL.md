@@ -1,15 +1,15 @@
 ---
-name: chaeboxi-storage-migration
-description: This skill should be used when changing Chaeboxi persistence, storage keys, settings or session schemas, migrations, blobs, or multi-window durable data.
+name: dango-storage-migration
+description: This skill should be used when changing Dango persistence, storage keys, settings or session schemas, migrations, blobs, or multi-window durable data.
 ---
 
-# Chaeboxi Storage Migration
+# Dango Storage Migration
 
 ## Scope
 
 This skill handles durable data: storage keys, write semantics, Zod schemas, startup migrations, blobs, and multi-window persistence.
 
-Does NOT handle: pure UI state, provider API adapters, Tauri channel wiring alone (use `chaeboxi-cross-platform-change`), chat tool pipeline, or product end-user skills.
+Does NOT handle: pure UI state, provider API adapters, Tauri channel wiring alone (use `dango-cross-platform-change`), chat tool pipeline, or product end-user skills.
 
 ## Source of truth
 

@@ -28,14 +28,14 @@ const AppStoreRating = NiceModal.create(() => {
   }
 
   return (
-    <AdaptiveModal opened={modal.visible} onClose={onClose} ariaLabel={t('Rate Chaeboxi')} centered>
+    <AdaptiveModal opened={modal.visible} onClose={onClose} ariaLabel={t('Rate Dango')} centered>
       <Stack align="center">
         <ScalableIcon icon={IconThumbUpFilled} size={64} color="var(--chatbox-tint-success)" />
         <Text size="xl" fw={600} className="text-center">
-          {t('Enjoying Chaeboxi?')}
+          {t('Enjoying Dango?')}
         </Text>
         <Text size="md" c="chatbox-secondary" className="text-center">
-          {t('Your rating on the App Store would help make Chaeboxi even better!')}
+          {t('Your rating on the App Store would help make Dango even better!')}
         </Text>
         <Text size="sm" c="chatbox-tertiary" className="text-center">
           {t('It only takes a few seconds and helps a lot.')}

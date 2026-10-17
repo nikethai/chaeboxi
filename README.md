@@ -1,13 +1,13 @@
-# Chaeboxi
+# Dango
 
-**Chaeboxi** is a multi-platform AI copilot for desktop, web, and mobile. Use your own API keys with OpenAI, Anthropic, Gemini, Ollama, OpenRouter, Azure, and many more providers.
+**Dango** is a multi-platform AI copilot for desktop, web, and mobile. Use your own API keys with OpenAI, Anthropic, Gemini, Ollama, OpenRouter, Azure, and many more providers.
 
 Built with **Tauri 2 + React 18 + TypeScript**.
 
 | | |
 | --- | --- |
 | **License** | [GNU GPLv3](./LICENSE) |
-| **Repo** | [github.com/nikethai/chaeboxi](https://github.com/nikethai/chaeboxi) |
+| **Repo** | [github.com/nikethai/dango](https://github.com/nikethai/dango) |
 | **Default language** | English |
 | **Cloud upsell** | None — BYOK only |
 
@@ -17,7 +17,7 @@ Built with **Tauri 2 + React 18 + TypeScript**.
 
 ## Download
 
-Desktop installers: [GitHub Releases](https://github.com/nikethai/chaeboxi/releases).
+Desktop installers: [GitHub Releases](https://github.com/nikethai/dango/releases).
 
 | Platform | Package |
 | --- | --- |
@@ -38,7 +38,7 @@ Release process for maintainers: [docs/deployment-guide.md](./docs/deployment-gu
 - **Memory & RAG** — knowledge base and session memory
 - **Cross-platform** — Windows, macOS, Linux, web, iOS, Android targets
 
-## What Chaeboxi is not
+## What Dango is not
 
 - Not a rebranded commercial SaaS client
 - Not affiliated with any third-party “AI license” marketplace
@@ -50,8 +50,8 @@ Use providers you already have (or run Ollama locally).
 
 - Conversation data is stored on-device (or platform storage you choose)
 - API keys you enter are used only to call the providers you configure
-- First-party analytics/Sentry stay **off** until you configure Chaeboxi-owned accounts
-- Legal pages: [Privacy](https://nikethai.github.io/chaeboxi/privacy/) and [Terms](https://nikethai.github.io/chaeboxi/terms/) (GitHub Pages until a custom domain exists). Source: [`website/`](./website/README.md).
+- First-party analytics/Sentry stay **off** until you configure Dango-owned accounts
+- Legal pages: [Privacy](https://nikethai.github.io/dango/privacy/) and [Terms](https://nikethai.github.io/dango/terms/) (GitHub Pages until a custom domain exists). Source: [`website/`](./website/README.md).
 
 ## Development
 
@@ -84,19 +84,19 @@ More detail for contributors: [AGENTS.md](./AGENTS.md).
 | [Code standards](./docs/code-standards.md) | Style, layering, testing, commits, security |
 | [Design guidelines](./docs/design-guidelines.md) | UI design system |
 | [Deployment guide](./docs/deployment-guide.md) | CI, tags, GitHub Releases, signing, marketing Pages |
-| [Marketing site](./website/README.md) | Isolated Astro brochure; Pages origin forthcoming (`https://nikethai.github.io/chaeboxi/`) |
+| [Marketing site](./website/README.md) | Isolated Astro brochure; Pages origin forthcoming (`https://nikethai.github.io/dango/`) |
 | [AGENTS.md](./AGENTS.md) | Contributor architecture entry |
 
 Feature docs (agents, skills, memory, RAG, storage, integrations, OpenClaw, video URL, etc.) live under [`docs/`](./docs/).
 
 ## Attribution (license)
 
-Chaeboxi is an independent project. Parts of the codebase are derived from an earlier open-source GPLv3 desktop client ([upstream source](https://github.com/chatboxai/chatbox)).
+Dango is an independent project. Parts of the codebase are derived from an earlier open-source GPLv3 desktop client ([upstream source](https://github.com/chatboxai/chatbox)).
 
 - Full license: [LICENSE](./LICENSE)
 - Copyright / origin notice: [NOTICE](./NOTICE)
 
-Upstream authors retain copyright in their contributions. Chaeboxi modifications are also GPLv3.
+Upstream authors retain copyright in their contributions. Dango modifications are also GPLv3.
 
 ## License
 

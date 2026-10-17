@@ -1,6 +1,6 @@
 # Storage Architecture
 
-Cross-platform storage and version migration for Chaeboxi (cross-platform storage patterns).
+Cross-platform storage and version migration for Dango (cross-platform storage patterns).
 
 ## Storage backends
 

@@ -29,7 +29,7 @@ docker run -p 80:80 -p 443:443 \
 
 See `Dockerfile`, `Caddyfile`, and `main.sh` in this directory for the concrete image used by this project.
 
-## 4. Point Chaeboxi at the proxy
+## 4. Point Dango at the proxy
 
 In **Settings → Provider → OpenAI** (or a custom OpenAI-compatible provider), set **API Host** to your server URL (for example `https://share.example.com`).
 

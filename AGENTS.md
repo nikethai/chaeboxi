@@ -1,8 +1,8 @@
 ## Project Overview
 
-Chaeboxi is a multi-platform AI copilot (desktop/web/mobile) supporting 16+ LLM providers. Built with **Tauri 2 + React 18 + TypeScript**, it targets Windows, macOS, Linux, iOS, Android, and Web from a single codebase.
+Dango is a multi-platform AI copilot (desktop/web/mobile) supporting 16+ LLM providers. Built with **Tauri 2 + React 18 + TypeScript**, it targets Windows, macOS, Linux, iOS, Android, and Web from a single codebase.
 
-**Independence note**: Chaeboxi is an independent GPLv3 product (derived from an earlier open-source client; see `NOTICE`). Hosted third-party cloud is disabled (`CHATBOX_CLOUD_ENABLED`). Settings still strip legacy paid-cloud keys via `stripChatboxPaidFeatures()` for migration stability.
+**Independence note**: Dango is an independent GPLv3 product (derived from an earlier open-source client; see `NOTICE`). Hosted third-party cloud is disabled (`CHATBOX_CLOUD_ENABLED`). Settings still strip legacy paid-cloud keys via `stripChatboxPaidFeatures()` for migration stability.
 
 **Language policy**: Repository docs, code comments, and default product copy are **English**. Optional UI locales (including Chinese) remain for end-user preference, but first-run language is always English.
 
@@ -121,7 +121,7 @@ Runtime platform detection in `platform/index.ts`: selects `DesktopPlatform` (Ta
 
 `lib.rs` is the Tauri IPC multiplexer. Feature modules live beside it (`desktop_shell.rs`, `kb/`, …):
 - **MCP Client**: `rmcp` crate for stdio and HTTP transports. Connect-per-operation tool list / invoke.
-- **Knowledge Base (desktop v1)**: `src-tauri/src/kb/` — SQLite `chaeboxi_kb.db`, overlapping chunks, local `multilingual-e5-small` (download-once ONNX, not bundled), hybrid keyword + cosine + RRF search. Mobile stays keyword/in-memory. **Not** Mastra / `@mastra/rag`.
+- **Knowledge Base (desktop v1)**: `src-tauri/src/kb/` — SQLite `dango_kb.db`, overlapping chunks, local `multilingual-e5-small` (download-once ONNX, not bundled), hybrid keyword + cosine + RRF search. Mobile stays keyword/in-memory. **Not** Mastra / `@mastra/rag`.
 - **Process Management**: Child process spawning for MCP stdio servers
 - **Project workspace authority**: `src-tauri/src/workspace/` — native picker-owned directory bindings, window/project/generation capabilities, handle-relative list/read/search, native export, read-only SCM, staged change sets/apply. Quick Local Run and managed worktrees are feasibility-gated unavailable. Broad renderer `fs:*` / `execute_command` is rejected. See `docs/project-workspaces.md`.
 - **IPC Bridge**: `window.desktopAPI` adapter created by `tauri_ipc_adapter.ts`

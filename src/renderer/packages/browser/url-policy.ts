@@ -34,6 +34,6 @@ export function assertBrowserUrl(
 export function workspaceBrowserDownloadsDir(workspaceRoot: string | undefined | null): string | null {
   if (!workspaceRoot?.trim()) return null
   const root = workspaceRoot.trim().replace(/[/\\]+$/, '')
-  // Prefer .chaeboxi-browser-downloads under workspace
-  return `${root}/.chaeboxi-browser-downloads`
+  // Prefer .dango-browser-downloads under workspace
+  return `${root}/.dango-browser-downloads`
 }

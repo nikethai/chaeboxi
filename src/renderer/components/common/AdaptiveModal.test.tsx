@@ -142,10 +142,10 @@ describe('AdaptiveModal mobile dialog semantics', () => {
   })
 
   it('uses an explicit accessible label when no visible title is supplied', () => {
-    renderMobileModal({ ariaLabel: 'Welcome to Chaeboxi' })
+    renderMobileModal({ ariaLabel: 'Welcome to Dango' })
 
-    const dialog = screen.getByRole('dialog', { name: 'Welcome to Chaeboxi' })
-    const title = screen.getByText('Welcome to Chaeboxi')
+    const dialog = screen.getByRole('dialog', { name: 'Welcome to Dango' })
+    const title = screen.getByText('Welcome to Dango')
 
     expect(title.classList.contains('sr-only')).toBe(true)
     expect(dialog.getAttribute('aria-labelledby')).toBe(title.id)

@@ -1,7 +1,7 @@
 /**
  * Session Module Public API
  *
- * This module provides all session-related operations for Chaeboxi.
+ * This module provides all session-related operations for Dango.
  * Internal helpers (prefixed with _) are intentionally not exported.
  *
  * Public exports: 40 functions + types + state

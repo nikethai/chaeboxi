@@ -58,7 +58,7 @@ function RouteComponent() {
         <SettingsCard divided>
           <SettingsPrefRow
             title={t('Enable browser agent')}
-            description={t('Master switch. Arm “Chaeboxi Browser” per chat from the composer + menu.')}
+            description={t('Master switch. Arm “Dango Browser” per chat from the composer + menu.')}
             control={
               <Switch
                 checked={browserAgent.enabled}
@@ -102,7 +102,10 @@ function RouteComponent() {
         </SettingsCard>
       </SettingsSection>
 
-      <SettingsSection title={t('Allowlist')} description={t('Optional. Empty = any http(s) host, still approval-gated.')}>
+      <SettingsSection
+        title={t('Allowlist')}
+        description={t('Optional. Empty = any http(s) host, still approval-gated.')}
+      >
         <SettingsCard>
           <TagsInput
             placeholder={t('example.com')}
@@ -119,22 +122,38 @@ function RouteComponent() {
           <SettingsPrefRow
             title={t('Isolated profile')}
             description={t('Fresh cookies each session — never your daily Chrome profile.')}
-            control={<Text size="xs" c="dimmed">{t('Always on')}</Text>}
+            control={
+              <Text size="xs" c="dimmed">
+                {t('Always on')}
+              </Text>
+            }
           />
           <SettingsPrefRow
             title={t('Approvals')}
             description={t('Navigate, click, and type require approval. Critical tools never auto-approve.')}
-            control={<Text size="xs" c="dimmed">{t('Required')}</Text>}
+            control={
+              <Text size="xs" c="dimmed">
+                {t('Required')}
+              </Text>
+            }
           />
           <SettingsPrefRow
             title={t('Downloads')}
             description={t('Only into the session workspace folder. Blocked if no workspace is set.')}
-            control={<Text size="xs" c="dimmed">{t('Workspace')}</Text>}
+            control={
+              <Text size="xs" c="dimmed">
+                {t('Workspace')}
+              </Text>
+            }
           />
           <SettingsPrefRow
             title={t('Rooms')}
             description={t('Discuss: off. Work / swarm: lead only.')}
-            control={<Text size="xs" c="dimmed">{t('Policy')}</Text>}
+            control={
+              <Text size="xs" c="dimmed">
+                {t('Policy')}
+              </Text>
+            }
           />
         </SettingsCard>
       </SettingsSection>

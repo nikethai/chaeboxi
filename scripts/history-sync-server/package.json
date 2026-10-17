@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Self-hosted encrypted history sync server for Chaeboxi",
+  "description": "Self-hosted encrypted history sync server for Dango",
   "engines": {
     "node": ">=20"
   },

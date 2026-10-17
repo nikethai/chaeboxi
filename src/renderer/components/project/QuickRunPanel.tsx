@@ -20,7 +20,7 @@ export function QuickRunPanel() {
   return (
     <section aria-label={t('Quick Local Run')} className="quick-run-panel">
       <p>{detail}</p>
-      <p>{t('Chaeboxi does not fall back to host commands, Docker, or cloud sandboxes.')}</p>
+      <p>{t('Dango does not fall back to host commands, Docker, or cloud sandboxes.')}</p>
     </section>
   )
 }

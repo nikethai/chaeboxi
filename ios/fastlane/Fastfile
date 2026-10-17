@@ -37,10 +37,10 @@ platform :ios do
 
     FileUtils.mkdir_p(OUTPUT_DIR)
     built_app = File.join(DERIVED_DATA, 'Build/Products/Debug-iphonesimulator/App.app')
-    output_app = File.join(OUTPUT_DIR, 'Chaeboxi-simulator.app')
+    output_app = File.join(OUTPUT_DIR, 'Dango-simulator.app')
     FileUtils.rm_rf(output_app)
     FileUtils.cp_r(built_app, output_app)
-    UI.success("Simulator build done: #{File.join(OUTPUT_DIR, 'Chaeboxi-simulator.app')}")
+    UI.success("Simulator build done: #{File.join(OUTPUT_DIR, 'Dango-simulator.app')}")
   end
 
   desc 'Signed Release archive (automatic signing) + optional TestFlight upload'
@@ -57,7 +57,7 @@ platform :ios do
       clean: true,
       export_method: 'app-store',
       output_directory: OUTPUT_DIR,
-      output_name: 'Chaeboxi.ipa',
+      output_name: 'Dango.ipa',
       include_symbols: true
     )
 

@@ -1,4 +1,4 @@
-# Chaeboxi History Sync Server
+# Dango History Sync Server
 
 Small self-hosted sync service for cross-machine chat history sync.
 
@@ -37,7 +37,7 @@ Clients encrypt the existing `chatbox-history-transfer` JSON with the user's pas
 
 - Token authenticates the HTTP request. Passphrase never leaves the device.
 - Legacy plaintext transfer payloads are still accepted on GET for migration.
-- New PUTs from Chaeboxi are always encrypted. Wrong passphrase fails closed (no merge).
+- New PUTs from Dango are always encrypted. Wrong passphrase fails closed (no merge).
 
 ## Environment variables
 
@@ -170,7 +170,7 @@ ciphertext plus its encryption metadata.
 > you lose it, the encrypted memory snapshot on the server cannot be decrypted
 > and is unrecoverable. Choose a strong passphrase and store it somewhere safe.
 
-## Chaeboxi app settings
+## Dango app settings
 
 **History sync** — in **Settings -> Sync**:
 

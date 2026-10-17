@@ -703,46 +703,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
-name = "chaeboxi"
-version = "1.7.0"
-dependencies = [
- "anyhow",
- "arboard",
- "base64 0.22.1",
- "ed25519-dalek",
- "fastembed",
- "fix-path-env",
- "futures-util",
- "hostname",
- "http",
- "image",
- "keyring",
- "libc",
- "notify-rust",
- "pdf-extract",
- "rand_core 0.6.4",
- "reqwest 0.12.28",
- "rfd",
- "rmcp",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2",
- "sys-locale",
- "tauri",
- "tauri-build",
- "tauri-plugin-global-shortcut",
- "tauri-plugin-notification",
- "tauri-plugin-opener",
- "tokio",
- "tokio-tungstenite",
- "url",
- "uuid",
- "webbrowser",
- "zip",
-]
-
-[[package]]
 name = "chrono"
 version = "0.4.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1042,6 +1002,46 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
+]
+
+[[package]]
+name = "dango"
+version = "1.7.0"
+dependencies = [
+ "anyhow",
+ "arboard",
+ "base64 0.22.1",
+ "ed25519-dalek",
+ "fastembed",
+ "fix-path-env",
+ "futures-util",
+ "hostname",
+ "http",
+ "image",
+ "keyring",
+ "libc",
+ "notify-rust",
+ "pdf-extract",
+ "rand_core 0.6.4",
+ "reqwest 0.12.28",
+ "rfd",
+ "rmcp",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sys-locale",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-global-shortcut",
+ "tauri-plugin-notification",
+ "tauri-plugin-opener",
+ "tokio",
+ "tokio-tungstenite",
+ "url",
+ "uuid",
+ "webbrowser",
+ "zip",
 ]
 
 [[package]]

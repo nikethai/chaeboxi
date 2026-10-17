@@ -79,7 +79,7 @@ const ImportedConversationView = NiceModal.create(({ source, conversation }: Pro
             {t('Omitted')}: {preview.omittedReasons.join(', ')}
           </Text>
         ) : null}
-        <Button onClick={() => void onContinue()}>{t('Continue in Chaeboxi')}</Button>
+        <Button onClick={() => void onContinue()}>{t('Continue in Dango')}</Button>
         <Button
           color="red"
           variant="light"

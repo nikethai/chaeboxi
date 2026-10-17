@@ -7,6 +7,16 @@ import { resolve } from 'node:path'
 import { act, cleanup, render, screen } from '@testing-library/react'
 import postcss, { type AtRule, type Rule } from 'postcss'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+
+// Identity in English; a test swaps in a dictionary to prove every word goes through t().
+let dictionary: Record<string, string> = {}
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, vars?: Record<string, unknown>) =>
+      (dictionary[key] ?? key).replace(/\{\{(\w+)\}\}/g, (_: string, name: string) => String(vars?.[name] ?? name)),
+  }),
+}))
+
 import { Mascot, type MascotState } from './Mascot'
 
 const BODY = 'M8 38 C 8 21, 19 11, 32 11 C 45 11, 56 21, 56 38 C 56 49, 47 54, 32 54 C 17 54, 8 49, 8 38 Z'
@@ -125,6 +135,18 @@ describe('Mascot', () => {
     expect(container.querySelector('svg.dg-mascot')?.getAttribute('data-pose')).toBe('working')
     expect(container.querySelector('.ring')).not.toBeNull()
     expect(container.querySelector('.dango-mascot__state')).toBeNull()
+  })
+
+  it('state words and the default label are translated', () => {
+    dictionary = { Working: 'Arbeitet', 'Assistant, {{state}}': 'Assistent, {{state}}' }
+    try {
+      stubMatchMedia(true)
+      const { container } = render(<Mascot state="working" size={24} />)
+      expect(container.querySelector('svg.dg-mascot')?.getAttribute('aria-label')).toBe('Assistent, arbeitet')
+      expect(container.querySelector('.dango-mascot__state')?.textContent).toBe('Arbeitet')
+    } finally {
+      dictionary = {}
+    }
   })
 
   it('renders without matchMedia', () => {

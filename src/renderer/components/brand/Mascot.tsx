@@ -1,9 +1,11 @@
 import type { JSX } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
 
 export type MascotState = 'idle' | 'thinking' | 'replying' | 'working' | 'needs-you' | 'done' | 'asleep' | 'stuck'
 export type MascotSize = 16 | 20 | 22 | 24 | 28 | 40 | 56
 
+/** English state words; they are also the translation keys (rendered through t()). */
 export const MASCOT_STATE_LABEL: Record<MascotState, string> = {
   idle: 'Idle',
   thinking: 'Thinking',
@@ -168,14 +170,16 @@ const POSES: Record<MascotState, () => JSX.Element> = {
 }
 
 export function Mascot({ state, size, label }: { state: MascotState; size: MascotSize; label?: string }) {
+  const { t } = useTranslation()
   const reduced = useReducedMotion()
+  const word = t(MASCOT_STATE_LABEL[state])
   const pose: MascotState = reduced ? 'idle' : state
   const Pose = POSES[pose]
   const svg = (
     <svg
       className="dg-mascot"
       role="img"
-      aria-label={label ?? `Assistant, ${MASCOT_STATE_LABEL[state].toLowerCase()}`}
+      aria-label={label ?? t('Assistant, {{state}}', { state: word.toLowerCase() })}
       width={size}
       height={size}
       viewBox="0 0 64 64"
@@ -190,7 +194,7 @@ export function Mascot({ state, size, label }: { state: MascotState; size: Masco
     <>
       {svg}
       <span className="dango-mascot__state" aria-hidden="true">
-        {MASCOT_STATE_LABEL[state]}
+        {word}
       </span>
     </>
   )

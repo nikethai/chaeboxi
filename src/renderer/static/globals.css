@@ -551,8 +551,8 @@
     gap: 0.45rem;
     min-height: 2rem;
     padding: 0.35rem 0.85rem 0.4rem 0.75rem;
-    /* Top of joined dock: outer radius matches composer (1.15rem) */
-    border-radius: 1.15rem 1.15rem 0 0;
+    /* Top of joined dock: outer radius matches composer */
+    border-radius: var(--dango-radius-composer) var(--dango-radius-composer) 0 0;
     border: none;
     background: var(--chatbox-composer-bg, var(--chatbox-background-secondary));
     /* Share composer shadow family — no second floating card */
@@ -3096,7 +3096,7 @@
   .composer-card {
     width: 100%;
     border: 1px solid transparent;
-    border-radius: 1.15rem;
+    border-radius: var(--dango-radius-composer);
     background: var(--chatbox-composer-bg, var(--chatbox-background-secondary));
     overflow: hidden;
     box-shadow: var(--chatbox-composer-shadow);
@@ -3882,6 +3882,8 @@
     min-width: 36px !important;
     min-height: 32px !important;
     border-radius: 0.4375rem !important; /* r 7px */
+    background: var(--chatbox-background-brand-primary);
+    color: var(--chatbox-tint-on-brand);
     transition:
       background-color 160ms var(--chatbox-ease, ease),
       color 160ms var(--chatbox-ease, ease),

@@ -208,6 +208,25 @@ describe('theme mapping onto Dango', () => {
     }
   })
 
+  test('composer surface uses the Dango composer radius and send is green with on-green text', () => {
+    const find = (selector: string) => rootRules(selector).map(declsOf)
+
+    const cards = find('.composer-card').filter((decls) =>
+      decls.get('background')?.startsWith('var(--chatbox-composer-bg')
+    )
+    expect(cards.length).toBeGreaterThan(0)
+    for (const decls of cards) {
+      expect(decls.get('border-radius')).toBe('var(--dango-radius-composer)')
+    }
+
+    const sends = find('.composer-send').filter((decls) => decls.has('background'))
+    expect(sends.length).toBeGreaterThan(0)
+    for (const decls of sends) {
+      expect(decls.get('background')).toBe('var(--chatbox-background-brand-primary)')
+      expect(decls.get('color')).toBe('var(--chatbox-tint-on-brand)')
+    }
+  })
+
   test('MUI follows Dango', () => {
     const light = getThemeDesign('light', 16, 'en')
     expect(light.palette?.primary).toMatchObject({ main: dangoColors.light.green })

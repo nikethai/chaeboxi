@@ -3882,13 +3882,17 @@
     min-width: 36px !important;
     min-height: 32px !important;
     border-radius: 0.4375rem !important; /* r 7px */
-    background: var(--chatbox-background-brand-primary);
-    color: var(--chatbox-tint-on-brand);
     transition:
       background-color 160ms var(--chatbox-ease, ease),
       color 160ms var(--chatbox-ease, ease),
       transform 120ms var(--chatbox-ease, ease),
       box-shadow 160ms var(--chatbox-ease, ease) !important;
+  }
+
+  /* The Mantine theme (color="chatbox-brand") sets the Send fill; this is a scoped fallback that never touches Stop or disabled. */
+  .composer-send:not(.is-stop):not(:disabled) {
+    background: var(--chatbox-background-brand-primary);
+    color: var(--chatbox-tint-on-brand);
   }
 
   .composer-send:active:not(:disabled) {

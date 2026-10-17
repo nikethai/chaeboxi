@@ -219,12 +219,26 @@ describe('theme mapping onto Dango', () => {
       expect(decls.get('border-radius')).toBe('var(--dango-radius-composer)')
     }
 
-    const sends = find('.composer-send').filter((decls) => decls.has('background'))
-    expect(sends.length).toBeGreaterThan(0)
-    for (const decls of sends) {
-      expect(decls.get('background')).toBe('var(--chatbox-background-brand-primary)')
-      expect(decls.get('color')).toBe('var(--chatbox-tint-on-brand)')
+    // plain .composer-send must not set a fill (it would hit Stop and disabled)
+    for (const decls of find('.composer-send')) {
+      expect(decls.has('background')).toBe(false)
+      expect(decls.has('color')).toBe(false)
     }
+
+    const sends = find('.composer-send:not(.is-stop):not(:disabled)')
+    expect(sends.length).toBe(1)
+    expect(sends[0].get('background')).toBe('var(--chatbox-background-brand-primary)')
+    expect(sends[0].get('color')).toBe('var(--chatbox-tint-on-brand)')
+  })
+
+  test('the Send button is green through its Mantine colour prop, Stop is dark', () => {
+    const source = readSource('src/renderer/components/InputBox/InputBox.tsx')
+    const labelAt = source.indexOf('aria-label={isSamplingVideoFrames')
+    expect(labelAt).toBeGreaterThan(-1)
+    const openTag = source.lastIndexOf('<ActionIcon', labelAt)
+    const tag = source.slice(openTag, labelAt)
+    expect(tag).toContain("color={showStop ? 'dark' : 'chatbox-brand'}")
+    expect(tag).toContain("showStop && 'is-stop'")
   })
 
   test('MUI follows Dango', () => {

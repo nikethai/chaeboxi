@@ -75,7 +75,7 @@ describe('settings section labels and badges follow the Dango label style', () =
   })
 })
 
-describe('settings section titles and badges are sentence case in English', () => {
+describe('settings section titles, badges and row titles are sentence case in English', () => {
   // proper nouns, product names and acronyms that keep their capitals
   const PROPER = new Set([
     'Dango',
@@ -89,8 +89,16 @@ describe('settings section titles and badges are sentence case in English', () =
     'Exa',
     'Serper',
     'Tavily',
+    'Google',
+    'Gemini',
+    'Markdown',
+    'LaTeX',
+    'Mermaid',
+    'Whisper',
+    'yt-dlp',
   ])
-  const PROPER_PHRASES = new Set(['Google Custom Search'])
+  // 'Screen Recording' is the macOS privacy permission's own name
+  const PROPER_PHRASES = new Set(['Google Custom Search', 'Screen Recording'])
 
   const tsxFiles: string[] = []
   const walk = (dir: string) => {
@@ -107,13 +115,15 @@ describe('settings section titles and badges are sentence case in English', () =
 
   const en = JSON.parse(read('src/renderer/i18n/locales/en/translation.json')) as Record<string, string>
 
-  // every t('...') inside a title= or badge= of <SettingsSection> / <SettingsCollapsible>
+  // every t('...') inside a title= or badge= of <SettingsSection> / <SettingsCollapsible>, and the row-level title= of
+  // <SettingsPrefRow> (an arrow function's `=>` before the title must not end the tag)
   const labelKeys = () => {
     const keys = new Map<string, string>()
     for (const file of tsxFiles) {
       const source = readFileSync(file, 'utf8')
-      for (const tag of source.matchAll(/<(SettingsSection|SettingsCollapsible)\b([^>]*)>/g)) {
-        for (const attr of tag[2].matchAll(/\b(title|badge)=\{([^}]*)\}/g)) {
+      for (const tag of source.matchAll(/<(SettingsSection|SettingsCollapsible|SettingsPrefRow)\b((?:=>|[^>])*)>/g)) {
+        const attrs = tag[1] === 'SettingsPrefRow' ? /\b(title)=\{([^}]*)\}/g : /\b(title|badge)=\{([^}]*)\}/g
+        for (const attr of tag[2].matchAll(attrs)) {
           for (const call of attr[2].matchAll(/\bt\('([^']+)'\)/g)) {
             keys.set(call[1], file.replace(`${process.cwd()}/`, ''))
           }
@@ -128,7 +138,7 @@ describe('settings section titles and badges are sentence case in English', () =
       return true
     }
     const words = text.split(/\s+/)
-    if (!/^[A-Z]/.test(words[0])) {
+    if (!/^[A-Z]/.test(words[0]) && !PROPER.has(words[0])) {
       return false
     }
     return words.slice(1).every((word) => {
@@ -142,6 +152,8 @@ describe('settings section titles and badges are sentence case in English', () =
     expect(keys.size).toBeGreaterThan(50)
     expect(keys.has('System Notifications')).toBe(true)
     expect(keys.has('Advanced')).toBe(true)
+    expect(keys.has('Default Chat Model')).toBe(true)
+    expect(keys.has('Search Provider')).toBe(true)
   })
 
   test('every English value is sentence case', () => {

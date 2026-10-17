@@ -240,7 +240,7 @@ describe('Sheet', () => {
 describe('popover layering over sheets', () => {
   it('the theme keeps popovers above the sheet layer and above Mantine modals and drawers', () => {
     const c = createDangoMantineTheme().components
-    const z = (name: string) => Number((c[name]?.defaultProps as { zIndex?: number } | undefined)?.zIndex)
+    const z = (name: string) => Number((c?.[name]?.defaultProps as { zIndex?: number } | undefined)?.zIndex)
     const floor = Math.max(sheetLayerZ(), z('Modal'), z('Drawer'))
     for (const name of ['Popover', 'Combobox', 'Tooltip']) {
       expect({ name, above: z(name) > floor }).toEqual({ name, above: true })

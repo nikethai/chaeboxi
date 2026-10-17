@@ -4,7 +4,7 @@ status: draft
 description: "Total redesign brief: structure first, then a new look"
 generated: { by: claude/opus-5.5, at: 2026-10-16T21:40:00+07:00 }
 ---
-# Chaeboxi redesign brief
+# Dango redesign brief
 
 Status: draft. The UX model and the four structure decisions were settled with the maintainer on 2026-10-16; the brief as a whole is not yet accepted. Nothing is built.
 
@@ -31,7 +31,7 @@ Structure comes before look so styling effort goes only to surfaces that survive
 
 ## UX model (maintainer and Claude, 2026-10-16 evening)
 
-**One line.** Chaeboxi tells you what needs you, remembers what you approved, and answers from that. Chat is how you talk to it, not what it is.
+**One line.** Dango tells you what needs you, remembers what you approved, and answers from that. Chat is how you talk to it, not what it is.
 
 **Three jobs, three places.**
 
@@ -41,7 +41,7 @@ Structure comes before look so styling effort goes only to surfaces that survive
 | Review | Home | What needs you, across scopes: proposals, drafts, changes, finished background work. One list, newest first, one key per item. |
 | Browse | Sidebar | Scopes, chats, search. For going somewhere specific. |
 
-**The loop that matters.** Something arrives (a commit, an agent note, a client email, a finished review). Chaeboxi turns it into a Review item with a proposed action. You approve, edit or dismiss in seconds. What you approve becomes knowledge, and the next answer uses it.
+**The loop that matters.** Something arrives (a commit, an agent note, a client email, a finished review). Dango turns it into a Review item with a proposed action. You approve, edit or dismiss in seconds. What you approve becomes knowledge, and the next answer uses it.
 
 **Trust level.** A setting with two positions; default **Auto**. It moves the line between *done* and *waiting*:
 
@@ -51,9 +51,9 @@ Structure comes before look so styling effort goes only to surfaces that survive
 
 This maps onto the pilot design's confidence tiers; the toggle sets the threshold.
 
-**Review item types.** Proposal (knowledge to save) · Draft (a reply written into the user's Gmail thread; Chaeboxi never sends) · Change (something moved in a source) · Done (background work finished) · Needs you (a question the assistant cannot answer alone).
+**Review item types.** Proposal (knowledge to save) · Draft (a reply written into the user's Gmail thread; Dango never sends) · Change (something moved in a source) · Done (background work finished) · Needs you (a question the assistant cannot answer alone).
 
-**The PM's behaviour.** The PM stays in Gmail and Asana. Chaeboxi labels threads and writes drafts into Gmail in the background. They open Chaeboxi to skim Review and to ask Quick Chat questions ("what did we promise Acme about the deadline?"). Chaeboxi is never their inbox.
+**The PM's behaviour.** The PM stays in Gmail and Asana. Dango labels threads and writes drafts into Gmail in the background. They open Dango to skim Review and to ask Quick Chat questions ("what did we promise Acme about the deadline?"). Dango is never their inbox.
 
 **Principles (behaviour, not style).**
 

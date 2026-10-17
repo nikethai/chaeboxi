@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, test } from 'vitest'
+import { composerToolbarButtonClass } from './composerToolbar'
 
 const readSource = (relativePath: string) => readFileSync(resolve(process.cwd(), relativePath), 'utf8')
 
@@ -12,7 +13,9 @@ describe('mobile touch target contract', () => {
     const styles = readSource('src/renderer/static/globals.css')
 
     expect(inputBox).toContain("'mobile-touch-target'")
-    expect(toolsMenu).toContain("'mobile-touch-target'")
+    // the Tools and Dictate buttons share the toolbar class, which carries the target on small screens
+    expect(toolsMenu).toContain('composerToolbarButtonClass(isSmallScreen)')
+    expect(composerToolbarButtonClass(true).split(' ')).toContain('mobile-touch-target')
     expect(actionIconStyles).toContain('w: 44')
     expect(actionIconStyles).toContain('h: 44')
     expect(styles).toContain('.mobile-touch-target')

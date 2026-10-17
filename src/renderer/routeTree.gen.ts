@@ -45,6 +45,7 @@ import { Route as SettingsAgentsImport } from './routes/settings/agents'
 import { Route as SessionSessionIdImport } from './routes/session/$sessionId'
 import { Route as DevStorageImport } from './routes/dev/storage'
 import { Route as DevModelSelectorImport } from './routes/dev/model-selector'
+import { Route as DevDesignSystemImport } from './routes/dev/design-system'
 import { Route as DevCssVarImport } from './routes/dev/css-var'
 import { Route as DevContextGeneratorImport } from './routes/dev/context-generator'
 import { Route as SettingsProviderRouteImport } from './routes/settings/provider/route'
@@ -257,6 +258,12 @@ const DevModelSelectorRoute = DevModelSelectorImport.update({
   getParentRoute: () => DevRouteRoute,
 } as any)
 
+const DevDesignSystemRoute = DevDesignSystemImport.update({
+  id: '/design-system',
+  path: '/design-system',
+  getParentRoute: () => DevRouteRoute,
+} as any)
+
 const DevCssVarRoute = DevCssVarImport.update({
   id: '/css-var',
   path: '/css-var',
@@ -354,6 +361,13 @@ declare module '@tanstack/react-router' {
       path: '/css-var'
       fullPath: '/dev/css-var'
       preLoaderRoute: typeof DevCssVarImport
+      parentRoute: typeof DevRouteImport
+    }
+    '/dev/design-system': {
+      id: '/dev/design-system'
+      path: '/design-system'
+      fullPath: '/dev/design-system'
+      preLoaderRoute: typeof DevDesignSystemImport
       parentRoute: typeof DevRouteImport
     }
     '/dev/model-selector': {
@@ -574,6 +588,7 @@ declare module '@tanstack/react-router' {
 interface DevRouteRouteChildren {
   DevContextGeneratorRoute: typeof DevContextGeneratorRoute
   DevCssVarRoute: typeof DevCssVarRoute
+  DevDesignSystemRoute: typeof DevDesignSystemRoute
   DevModelSelectorRoute: typeof DevModelSelectorRoute
   DevStorageRoute: typeof DevStorageRoute
   DevIndexRoute: typeof DevIndexRoute
@@ -582,6 +597,7 @@ interface DevRouteRouteChildren {
 const DevRouteRouteChildren: DevRouteRouteChildren = {
   DevContextGeneratorRoute: DevContextGeneratorRoute,
   DevCssVarRoute: DevCssVarRoute,
+  DevDesignSystemRoute: DevDesignSystemRoute,
   DevModelSelectorRoute: DevModelSelectorRoute,
   DevStorageRoute: DevStorageRoute,
   DevIndexRoute: DevIndexRoute,
@@ -674,6 +690,7 @@ export interface FileRoutesByFullPath {
   '/settings/provider': typeof SettingsProviderRouteRouteWithChildren
   '/dev/context-generator': typeof DevContextGeneratorRoute
   '/dev/css-var': typeof DevCssVarRoute
+  '/dev/design-system': typeof DevDesignSystemRoute
   '/dev/model-selector': typeof DevModelSelectorRoute
   '/dev/storage': typeof DevStorageRoute
   '/session/$sessionId': typeof SessionSessionIdRoute
@@ -713,6 +730,7 @@ export interface FileRoutesByTo {
   '/quick': typeof QuickRoute
   '/dev/context-generator': typeof DevContextGeneratorRoute
   '/dev/css-var': typeof DevCssVarRoute
+  '/dev/design-system': typeof DevDesignSystemRoute
   '/dev/model-selector': typeof DevModelSelectorRoute
   '/dev/storage': typeof DevStorageRoute
   '/session/$sessionId': typeof SessionSessionIdRoute
@@ -756,6 +774,7 @@ export interface FileRoutesById {
   '/settings/provider': typeof SettingsProviderRouteRouteWithChildren
   '/dev/context-generator': typeof DevContextGeneratorRoute
   '/dev/css-var': typeof DevCssVarRoute
+  '/dev/design-system': typeof DevDesignSystemRoute
   '/dev/model-selector': typeof DevModelSelectorRoute
   '/dev/storage': typeof DevStorageRoute
   '/session/$sessionId': typeof SessionSessionIdRoute
@@ -800,6 +819,7 @@ export interface FileRouteTypes {
     | '/settings/provider'
     | '/dev/context-generator'
     | '/dev/css-var'
+    | '/dev/design-system'
     | '/dev/model-selector'
     | '/dev/storage'
     | '/session/$sessionId'
@@ -838,6 +858,7 @@ export interface FileRouteTypes {
     | '/quick'
     | '/dev/context-generator'
     | '/dev/css-var'
+    | '/dev/design-system'
     | '/dev/model-selector'
     | '/dev/storage'
     | '/session/$sessionId'
@@ -879,6 +900,7 @@ export interface FileRouteTypes {
     | '/settings/provider'
     | '/dev/context-generator'
     | '/dev/css-var'
+    | '/dev/design-system'
     | '/dev/model-selector'
     | '/dev/storage'
     | '/session/$sessionId'
@@ -962,6 +984,7 @@ export const routeTree = rootRoute
       "children": [
         "/dev/context-generator",
         "/dev/css-var",
+        "/dev/design-system",
         "/dev/model-selector",
         "/dev/storage",
         "/dev/"
@@ -1019,6 +1042,10 @@ export const routeTree = rootRoute
     },
     "/dev/css-var": {
       "filePath": "dev/css-var.tsx",
+      "parent": "/dev"
+    },
+    "/dev/design-system": {
+      "filePath": "dev/design-system.tsx",
       "parent": "/dev"
     },
     "/dev/model-selector": {

@@ -3,14 +3,14 @@
 @tailwind utilities;
 
 :root {
-  /* radius — tight studio radii (mock 7/9/11px) */
+  /* radius — Dango radii (6/8/10/12/16px) */
   --chatbox-radius-none: 0rem;
   --chatbox-radius-xs: 0.25rem;
-  --chatbox-radius-sm: 0.4375rem; /* 7px */
-  --chatbox-radius-md: 0.5625rem; /* 9px */
-  --chatbox-radius-lg: 0.6875rem; /* 11px */
-  --chatbox-radius-xl: 0.75rem;
-  --chatbox-radius-xxl: 1rem;
+  --chatbox-radius-sm: var(--dango-radius-sm);
+  --chatbox-radius-md: var(--dango-radius-md);
+  --chatbox-radius-lg: var(--dango-radius-lg);
+  --chatbox-radius-xl: var(--dango-radius-xl);
+  --chatbox-radius-xxl: var(--dango-radius-sheet);
 
   /* spacing */
   --chatbox-spacing-none: 0rem;
@@ -31,9 +31,8 @@
   --chatbox-dock-pad-b: 0.55rem;
   --chatbox-statusline-pad-y: 0.35rem;
   /* composer surface — stronger lift so dock reads separate from void */
-  --chatbox-composer-bg: #ffffff;
-  --chatbox-composer-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08), 0 4px 14px rgba(0, 0, 0, 0.08), 0 18px 44px -12px
-    rgba(0, 0, 0, 0.2);
+  --chatbox-composer-bg: var(--dango-raised);
+  --chatbox-composer-shadow: var(--dango-shadow-composer);
   /* hover: taller ambient, soft cool edge (no neon brand wash) */
   --chatbox-composer-shadow-hover: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 0 0 1px
     color-mix(in srgb, var(--chatbox-tint-brand) 12%, transparent), 0 8px 22px rgba(0, 0, 0, 0.1), 0 24px 52px -12px
@@ -45,8 +44,8 @@
   --chatbox-composer-shadow-drag: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 42%, transparent), 0 6px 16px
     rgba(0, 0, 0, 0.1), 0 20px 48px -12px rgba(0, 0, 0, 0.22);
   --chatbox-ease: cubic-bezier(0.22, 1, 0.36, 1);
-  --chatbox-font-ui: "Satoshi", "Segoe UI", system-ui, sans-serif;
-  --chatbox-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --chatbox-font-ui: var(--dango-font-sans);
+  --chatbox-font-mono: var(--dango-font-mono);
   --chatbox-rail-width: 280px;
   /* window chrome — shared by sidebar rail head + main title bars */
   --chatbox-titlebar-height: 44px;
@@ -55,141 +54,98 @@
   --chatbox-mac-traffic-inset: 80px;
 
   /* light theme (minimal remap) */
-  --chatbox-tint-primary: #1a1a1e;
-  --chatbox-tint-secondary: #4a4a52;
-  --chatbox-tint-tertiary: #6e6e76;
+  --chatbox-tint-primary: var(--dango-ink);
+  --chatbox-tint-secondary: var(--dango-ink-2);
+  --chatbox-tint-tertiary: var(--dango-muted);
 
   --chatbox-tint-white: #ffffff;
   --chatbox-tint-black: #000000;
-  --chatbox-tint-gray: #6e6e76;
+  --chatbox-tint-gray: var(--dango-muted);
 
   --chatbox-tint-disabled: #a8a8ae;
-  --chatbox-tint-brand: #5b63d4;
-  --chatbox-tint-placeholder: #6e6e76;
-  --chatbox-tint-error: #e03131;
+  --chatbox-tint-brand: var(--dango-green);
+  --chatbox-tint-on-brand: var(--dango-on-green);
+  --chatbox-tint-placeholder: var(--dango-muted);
+  --chatbox-tint-error: var(--dango-danger);
   --chatbox-tint-error-disabled: #ff8787;
-  --chatbox-tint-warning: #c9a227;
-  --chatbox-tint-success: #0ca678;
+  --chatbox-tint-warning: var(--dango-amber-text);
+  --chatbox-tint-success: var(--dango-green);
 
-  --chatbox-border-primary: #e4e4e8;
-  --chatbox-border-secondary: #d0d0d6;
-  --chatbox-border-warning: #c9a227;
-  --chatbox-border-error: #e03131;
-  --chatbox-border-success: #0ca678;
-  --chatbox-border-brand: #5b63d4;
+  --chatbox-border-primary: var(--dango-hairline);
+  --chatbox-border-secondary: var(--dango-line);
+  --chatbox-border-warning: var(--dango-amber-text);
+  --chatbox-border-error: var(--dango-danger);
+  --chatbox-border-success: var(--dango-green);
+  --chatbox-border-brand: var(--dango-green);
 
   /* light shell: pure white canvas + rail; soft gray only for lifts/hovers/bubbles */
-  --chatbox-background-primary: #ffffff;
-  --chatbox-background-primary-hover: #f5f5f7;
-  --chatbox-background-rail: #ffffff;
-  --chatbox-background-secondary: #ffffff;
-  --chatbox-background-secondary-hover: #f5f5f7;
-  --chatbox-background-tertiary: #f5f5f7;
-  --chatbox-background-tertiary-hover: #ececf0;
+  --chatbox-background-primary: var(--dango-ground);
+  --chatbox-background-primary-hover: var(--dango-surface);
+  --chatbox-background-rail: var(--dango-surface);
+  --chatbox-background-secondary: var(--dango-raised);
+  --chatbox-background-secondary-hover: var(--dango-surface);
+  --chatbox-background-tertiary: var(--dango-surface);
+  --chatbox-background-tertiary-hover: var(--dango-hairline);
   --chatbox-background-disabled: #f0f0f2;
-  --chatbox-background-lift: #ffffff;
+  --chatbox-background-lift: var(--dango-raised);
 
-  --chatbox-background-brand-primary: #5b63d4;
-  --chatbox-background-brand-primary-hover: #6d75df;
-  --chatbox-background-brand-secondary: rgba(91, 99, 212, 0.1);
-  --chatbox-background-brand-secondary-hover: rgba(91, 99, 212, 0.16);
+  --chatbox-background-brand-primary: var(--dango-green);
+  --chatbox-background-brand-primary-hover: color-mix(in srgb, var(--dango-green) 88%, var(--dango-ink));
+  --chatbox-background-brand-secondary: var(--dango-green-wash);
+  --chatbox-background-brand-secondary-hover: color-mix(in srgb, var(--dango-green-wash) 85%, var(--dango-green));
 
   --chatbox-background-gray-primary: #6e6e76;
   --chatbox-background-gray-primary-hover: #4a4a52;
   --chatbox-background-gray-secondary: rgba(110, 110, 118, 0.1);
   --chatbox-background-gray-secondary-hover: rgba(110, 110, 118, 0.14);
 
-  --chatbox-background-success-primary: #0ca678;
-  --chatbox-background-success-primary-hover: #099268;
-  --chatbox-background-success-secondary: rgb(18, 184, 134, 0.1);
-  --chatbox-background-success-secondary-hover: rgb(18, 184, 134, 0.12);
+  --chatbox-background-success-primary: var(--dango-green);
+  --chatbox-background-success-primary-hover: color-mix(in srgb, var(--dango-green) 88%, var(--dango-ink));
+  --chatbox-background-success-secondary: var(--dango-green-wash);
+  --chatbox-background-success-secondary-hover: color-mix(in srgb, var(--dango-green-wash) 85%, var(--dango-green));
 
-  --chatbox-background-error-primary: #e03131;
-  --chatbox-background-error-primary-hover: #c92a2a;
+  --chatbox-background-error-primary: var(--dango-danger);
+  --chatbox-background-error-primary-hover: color-mix(in srgb, var(--dango-danger) 88%, var(--dango-ink));
   --chatbox-background-error-secondary: rgb(250, 82, 82, 0.1);
   --chatbox-background-error-secondary-hover: rgb(250, 82, 82, 0.12);
 
   --chatbox-background-warning-primary: #c9a227;
   --chatbox-background-warning-primary-hover: #b8921f;
-  --chatbox-background-warning-secondary: rgb(201, 162, 39, 0.1);
+  --chatbox-background-warning-secondary: var(--dango-amber-wash);
   --chatbox-background-warning-secondary-hover: rgb(201, 162, 39, 0.12);
 
-  --chatbox-background-mask-overlay: rgb(26, 26, 30, 0.5);
+  --chatbox-background-mask-overlay: var(--dango-scrim);
   --chatbox-background-mask-lighten: rgb(255, 255, 255, 0.76);
   /* keep user pills slightly lifted so they don't vanish into white canvas */
-  --chatbox-background-user-bubble: #f0f0f2;
+  --chatbox-background-user-bubble: var(--dango-surface);
 }
 
 /* dark-first studio palette */
 :root[data-mantine-color-scheme="dark"] {
-  --chatbox-background-user-bubble: #2c2c34; /* lift-2 — mock user pill */
-  --chatbox-tint-primary: #ececec;
-  --chatbox-tint-secondary: #a8a8ae;
-  --chatbox-tint-tertiary: #6e6e76;
-
   --chatbox-tint-white: #ffffff;
   --chatbox-tint-black: #000000;
-  --chatbox-tint-gray: #6e6e76;
 
   --chatbox-tint-disabled: #4a4a52;
-  --chatbox-tint-brand: #5b63d4;
-  --chatbox-tint-placeholder: #6e6e76;
-  --chatbox-tint-error: #f03e3e;
   --chatbox-tint-error-disabled: rgb(224, 49, 49, 0.5);
-  --chatbox-tint-warning: #c9a227;
-  --chatbox-tint-success: #4fb286;
-
-  --chatbox-border-primary: #2a2a32;
-  --chatbox-border-secondary: #36363f;
-  --chatbox-border-warning: #c9a227;
-  --chatbox-border-error: #f03e3e;
-  --chatbox-border-success: #4fb286;
-  --chatbox-border-brand: #5b63d4;
 
   /* void / rail / panel / lift */
-  --chatbox-background-primary: #121214;
-  --chatbox-background-primary-hover: #16161a;
-  --chatbox-background-rail: #16161a;
-  --chatbox-background-secondary: #1c1c21;
-  --chatbox-background-secondary-hover: #24242b;
-  --chatbox-background-tertiary: #24242b;
-  --chatbox-background-tertiary-hover: #2c2c34;
   --chatbox-background-disabled: #1c1c21;
-  --chatbox-background-lift: #24242b;
-  --chatbox-background-user-bubble: #24242b;
-
-  --chatbox-background-brand-primary: #5b63d4;
-  --chatbox-background-brand-primary-hover: #6d75df;
-  --chatbox-background-brand-secondary: rgba(91, 99, 212, 0.16);
-  --chatbox-background-brand-secondary-hover: rgba(91, 99, 212, 0.28);
 
   --chatbox-background-gray-primary: #2c2c34;
   --chatbox-background-gray-primary-hover: #36363f;
   --chatbox-background-gray-secondary: rgba(110, 110, 118, 0.12);
   --chatbox-background-gray-secondary-hover: rgba(110, 110, 118, 0.18);
 
-  --chatbox-background-success-primary: #0ca678;
-  --chatbox-background-success-primary-hover: #099268;
-  --chatbox-background-success-secondary: rgb(79, 178, 134, 0.15);
-  --chatbox-background-success-secondary-hover: rgb(79, 178, 134, 0.22);
-
-  --chatbox-background-error-primary: #e03131;
-  --chatbox-background-error-primary-hover: #c92a2a;
   --chatbox-background-error-secondary: rgb(250, 82, 82, 0.15);
   --chatbox-background-error-secondary-hover: rgb(250, 82, 82, 0.2);
 
   --chatbox-background-warning-primary: #c9a227;
   --chatbox-background-warning-primary-hover: #b8921f;
-  --chatbox-background-warning-secondary: rgb(201, 162, 39, 0.15);
   --chatbox-background-warning-secondary-hover: rgb(201, 162, 39, 0.22);
 
-  --chatbox-background-mask-overlay: rgb(18, 18, 20, 0.78);
   --chatbox-background-mask-lighten: rgb(110, 110, 118, 0.4);
 
   /* composer surface — deeper ambient on dark void */
-  --chatbox-composer-bg: #222228;
-  --chatbox-composer-shadow: 0 0 0 1px rgba(255, 255, 255, 0.09), 0 6px 18px rgba(0, 0, 0, 0.55), 0 22px 52px -10px
-    rgba(0, 0, 0, 0.72);
   --chatbox-composer-shadow-hover: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 0 0 1px
     color-mix(in srgb, var(--chatbox-tint-brand) 14%, transparent), 0 10px 26px rgba(0, 0, 0, 0.58), 0 28px 60px -10px
     rgba(0, 0, 0, 0.78);
@@ -212,8 +168,8 @@
   --mantine-color-chatbox-brand-outline: var(--chatbox-border-brand);
   --mantine-color-chatbox-brand-outline-hover: color-mix(in srgb, var(--chatbox-border-brand), transparent 95%);
 
-  /* filled brand CTAs — force high-contrast white label */
-  --mantine-color-chatbox-brand-contrast: #ffffff;
+  /* filled brand CTAs — on-brand label (never literal white: dark brand green needs dark text) */
+  --mantine-color-chatbox-brand-contrast: var(--chatbox-tint-on-brand);
 
   /* success */
   --mantine-color-chatbox-success-text: var(--chatbox-tint-success);
@@ -377,7 +333,7 @@
   }
 
   .project-explorer-filter:focus {
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 45%, transparent);
+    box-shadow: inset 0 0 0 2px var(--dango-focus);
   }
 
   .project-explorer-tree {
@@ -589,8 +545,8 @@
     gap: 0.45rem;
     min-height: 2rem;
     padding: 0.35rem 0.85rem 0.4rem 0.75rem;
-    /* Top of joined dock: outer radius matches composer (1.15rem) */
-    border-radius: 1.15rem 1.15rem 0 0;
+    /* Top of joined dock: outer radius matches composer */
+    border-radius: var(--dango-radius-composer) var(--dango-radius-composer) 0 0;
     border: none;
     background: var(--chatbox-composer-bg, var(--chatbox-background-secondary));
     /* Share composer shadow family — no second floating card */
@@ -1050,8 +1006,9 @@
       color 140ms var(--chatbox-ease);
   }
 
+  /* rows sit on the rail (surface): tertiary is the same surface, so they hover with the hairline step */
   .rail-nav-item:hover {
-    background: color-mix(in srgb, var(--chatbox-background-tertiary) 90%, transparent);
+    background: var(--chatbox-background-tertiary-hover);
     color: var(--chatbox-tint-primary);
   }
 
@@ -1063,12 +1020,6 @@
   .rail-nav-item--primary {
     color: var(--chatbox-tint-primary);
     font-weight: 600;
-    background: color-mix(in srgb, var(--chatbox-tint-brand) 8%, transparent);
-  }
-
-  .rail-nav-item--primary:hover {
-    background: color-mix(in srgb, var(--chatbox-tint-brand) 13%, transparent);
-    color: var(--chatbox-tint-primary);
   }
 
   .rail-nav-item > svg {
@@ -1228,11 +1179,9 @@
   }
 
   .rail-section-label {
-    font-size: 0.65rem;
-    font-weight: 650;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: var(--chatbox-tint-tertiary);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--dango-muted);
     transition: color 120ms var(--chatbox-ease);
   }
 
@@ -1310,7 +1259,7 @@
 
   /*
    * Recents / session row — chat-app selection, not sausage pill + stub bar.
-   * Idle: flat. Hover: soft wash. Active: brand-tinted fill + clear title weight.
+   * Idle: flat. Hover: soft wash. Active: green wash + green text, no edge.
    */
   .studio-rail-row {
     position: relative;
@@ -1322,56 +1271,26 @@
   }
 
   .studio-rail-row:hover {
-    background: color-mix(in srgb, var(--chatbox-background-tertiary) 92%, transparent);
+    background: var(--chatbox-background-tertiary-hover);
   }
 
   .studio-rail-row-active {
-    background: color-mix(
-      in srgb,
-      var(--chatbox-tint-brand) 12%,
-      var(--chatbox-background-secondary)
-    ) !important;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 16%, transparent);
-  }
-
-  /* Slim brand edge — full height of the rounded row, not a floating stub */
-  .studio-rail-row-active::before {
-    content: "";
-    position: absolute;
-    inset-inline-start: 0;
-    top: 7px;
-    bottom: 7px;
-    width: 2.5px;
-    border-radius: 0 2px 2px 0;
-    background: var(--chatbox-tint-brand);
-    opacity: 1;
-  }
-
-  :root[data-mantine-color-scheme="dark"] .studio-rail-row-active {
-    background: color-mix(
-      in srgb,
-      var(--chatbox-tint-brand) 18%,
-      var(--chatbox-background-secondary)
-    ) !important;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 24%, transparent);
+    background: var(--dango-green-wash) !important;
+    color: var(--dango-green-text);
   }
 
   .studio-rail-row-active:hover {
-    background: color-mix(
-      in srgb,
-      var(--chatbox-tint-brand) 16%,
-      var(--chatbox-background-secondary)
-    ) !important;
+    background: var(--dango-green-wash) !important;
   }
 
   .studio-rail-row-active .rail-session-title {
-    color: var(--chatbox-tint-primary) !important;
+    color: var(--dango-green-text) !important;
     font-weight: 600 !important;
   }
 
   .studio-rail-row-active .rail-session-time {
     opacity: 0.9;
-    color: var(--chatbox-tint-secondary);
+    color: var(--dango-green-text);
   }
 
   /* Nested under expanded project */
@@ -1408,16 +1327,14 @@
     opacity: 0.5;
   }
 
+  /* day groups inside Recents: the section label's size and colour, one weight lighter so they sit under it */
   .rail-day-header {
     display: flex;
     align-items: center;
     padding: 0.55rem 0.9rem 0.2rem;
-    font-size: 0.625rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--chatbox-tint-tertiary);
-    opacity: 0.75;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--dango-muted);
   }
 
   .rail-empty-hint,
@@ -1755,15 +1672,14 @@
     appearance: none;
   }
 
-  .msg-mention-btn:hover,
-  .msg-mention-btn:focus-visible {
+  .msg-mention-btn:hover {
     filter: brightness(0.97);
     box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent);
   }
 
   .msg-mention-btn:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 45%, transparent);
-    outline-offset: 1px;
+    outline: 2px solid var(--dango-focus);
+    outline-offset: 2px;
   }
 
   .msg-mention-agent,
@@ -2626,8 +2542,8 @@
   }
 
   .tool-step-header:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 45%, transparent);
-    outline-offset: 1px;
+    outline: 2px solid var(--dango-focus);
+    outline-offset: 2px;
   }
 
   .tool-step-header.is-open {
@@ -3172,7 +3088,7 @@
   .composer-card {
     width: 100%;
     border: 1px solid transparent;
-    border-radius: 1.15rem;
+    border-radius: var(--dango-radius-composer);
     background: var(--chatbox-composer-bg, var(--chatbox-background-secondary));
     overflow: hidden;
     box-shadow: var(--chatbox-composer-shadow);
@@ -3538,7 +3454,7 @@
   }
 
   .studio-video-range:focus-visible {
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--chatbox-tint-brand) 45%, transparent);
+    box-shadow: 0 0 0 2px var(--dango-focus);
   }
 
   .studio-video-range::-webkit-slider-thumb {
@@ -3612,8 +3528,8 @@
   }
 
   .studio-video-btn:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 55%, transparent);
-    outline-offset: 1px;
+    outline: 2px solid var(--dango-focus);
+    outline-offset: 2px;
   }
 
   .studio-video-time {
@@ -3694,8 +3610,8 @@
 
   .composer-attach-delete:focus-visible {
     opacity: 1 !important;
-    outline: 1.5px solid rgba(255, 255, 255, 0.85);
-    outline-offset: 1px;
+    outline: 2px solid var(--dango-focus);
+    outline-offset: 2px;
   }
 
   .composer-video-vision-banner {
@@ -3965,6 +3881,12 @@
       box-shadow 160ms var(--chatbox-ease, ease) !important;
   }
 
+  /* The Mantine theme (color="chatbox-brand") sets the Send fill; this is a scoped fallback that never touches Stop or disabled. */
+  .composer-send:not(.is-stop):not(:disabled) {
+    background: var(--chatbox-background-brand-primary);
+    color: var(--chatbox-tint-on-brand);
+  }
+
   .composer-send:active:not(:disabled) {
     transform: scale(0.96);
   }
@@ -4161,8 +4083,8 @@
       padding-inline: 10px;
       font-size: 0.75rem !important;
       font-weight: 500;
-      background: var(--chatbox-background-primary);
-      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 12%, transparent);
+      background: transparent;
+      box-shadow: none;
       border: none;
     }
 
@@ -4661,24 +4583,24 @@ div[data-vaul-drawer] {
 }
 
 :focus-visible {
-  outline: 1.5px solid var(--chatbox-tint-brand);
+  outline: 2px solid var(--dango-focus);
   outline-offset: 2px;
 }
 
-/* Composer is a quiet surface — no brand focus ring inside the dock */
-.composer-card :focus-visible,
-.composer-card :focus {
-  outline: none !important;
+/*
+ * Checked switch thumb on a green track: on-brand, like the design system's switch (Mantine paints it white, 2.44:1
+ * on the dark-mode green). The colour comes from the Switch theme styles in theme/mantineTheme.ts, which set it
+ * only for green tracks; other colours fall back to Mantine's white. Unlayered, like Mantine's own CSS.
+ */
+.mantine-Switch-input:checked:not(:disabled) + * > .mantine-Switch-thumb {
+  --switch-thumb-bg: var(--chatbox-switch-checked-thumb, var(--mantine-color-white));
+  --switch-thumb-bd: var(--chatbox-switch-checked-thumb, var(--mantine-color-white));
 }
 
 /*
- * Filled primary CTAs: white label on brand indigo.
- * chatbox-brand is a flat CSS-var palette so Mantine can't auto-contrast.
+ * Filled brand buttons take --chatbox-tint-on-brand through the Button `vars` resolver in
+ * theme/mantineTheme.ts (chatbox-brand is a flat CSS-var palette, so Mantine can't auto-contrast).
  */
-button.mantine-Button-root[data-variant="filled"]:not([data-disabled="true"]):not(:disabled) {
-  --button-color: #ffffff;
-  color: #ffffff;
-}
 button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   color: inherit;
 }
@@ -5023,8 +4945,8 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
 /* Inputs inside dialogs — solid wells, 1px chrome */
 .mantine-Modal-content .mantine-TextInput-input,
 .mantine-Modal-content .mantine-Input-input {
-  background-color: var(--chatbox-background-primary) !important;
-  border: 1px solid var(--chatbox-border-secondary) !important;
+  background-color: var(--dango-raised) !important;
+  border: 1px solid var(--dango-control-border) !important;
   color: var(--chatbox-tint-primary) !important;
   border-radius: 7px !important;
   min-height: 36px;
@@ -5605,9 +5527,10 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   transition: background-color 120ms var(--chatbox-ease);
 }
 
+/* inset: the dock panel clips (overflow: hidden), so an outset ring would be cut off */
 .todo-dock-chip:focus-visible,
 .todo-dock-completed-toggle:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 55%, transparent);
+  outline: 2px solid var(--dango-focus);
   outline-offset: -2px;
 }
 
@@ -5872,7 +5795,7 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
 }
 
 .settings-chrome-btn:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 55%, transparent);
+  outline: 2px solid var(--dango-focus);
   outline-offset: 2px;
 }
 
@@ -5919,8 +5842,9 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 
+/* the settings nav sits on the rail (surface), so it hovers with the hairline step, not tertiary (also surface) */
 .settings-nav-item:not(.settings-nav-item-on):hover {
-  background: var(--chatbox-background-tertiary);
+  background: var(--chatbox-background-tertiary-hover);
   color: var(--chatbox-tint-primary);
 }
 
@@ -6085,13 +6009,9 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
 .studio-search-field .mantine-TextInput-input:focus,
 .studio-search-field .mantine-TextInput-input:focus-within,
 .studio-search-field[data-focus] .mantine-TextInput-input {
-  border-color: color-mix(in srgb, var(--chatbox-tint-brand) 45%, transparent) !important;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--chatbox-tint-brand) 22%, transparent) !important;
-}
-
-.model-picker-search-field:focus-within {
-  border-color: color-mix(in srgb, var(--chatbox-tint-brand) 40%, transparent) !important;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--chatbox-tint-brand) 18%, transparent) !important;
+  /* 1px border + 1px ring = a 2px --dango-focus edge on the field */
+  border-color: var(--dango-focus) !important;
+  box-shadow: 0 0 0 1px var(--dango-focus) !important;
 }
 
 .model-picker-search {
@@ -6133,9 +6053,9 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
 }
 
 .model-picker-search-field:focus-within {
-  border-color: var(--chatbox-tint-brand);
-  /* single focus ring — no second inset border */
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--chatbox-tint-brand) 28%, transparent) !important;
+  /* single focus ring — 1px border + 1px ring = a 2px --dango-focus edge, no second inset border */
+  border-color: var(--dango-focus);
+  box-shadow: 0 0 0 1px var(--dango-focus) !important;
 }
 
 .model-picker-search-field .tabler-icon,
@@ -6767,25 +6687,28 @@ html[data-quick-chat] .composer-tools-menu .mantine-Menu-item .mantine-Flex-root
   gap: 1px !important;
 }
 
-/* Trigger chip in composer dock */
+/*
+ * Composer toolbar pickers (model trigger, reasoning select): borderless and transparent, like the design
+ * system's `.dg-model` (border: 0; background: transparent; color: ink-2). Hover is the surface tone.
+ */
 .model-picker-trigger {
   height: 32px;
   padding: 0 8px 0 8px;
   gap: 6px;
   border-radius: 7px;
   border: none;
-  background: var(--chatbox-background-primary);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 12%, transparent);
+  background: transparent;
+  box-shadow: none;
+  color: var(--dango-ink-2);
   transition:
-    box-shadow 140ms cubic-bezier(0.2, 0, 0, 1),
     background-color 140ms cubic-bezier(0.2, 0, 0, 1),
     transform 100ms cubic-bezier(0.2, 0, 0, 1);
   -webkit-font-smoothing: antialiased;
 }
 
 .model-picker-trigger:hover {
-  background: var(--chatbox-background-tertiary);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 18%, transparent);
+  background: var(--dango-surface);
+  box-shadow: none;
 }
 
 .model-picker-trigger:active {
@@ -6793,9 +6716,27 @@ html[data-quick-chat] .composer-tools-menu .mantine-Menu-item .mantine-Flex-root
 }
 
 .model-picker-trigger[data-expanded="true"] {
-  box-shadow:
-    inset 0 0 0 1px var(--chatbox-tint-brand),
-    0 0 0 3px color-mix(in srgb, var(--chatbox-tint-brand) 18%, transparent);
+  background: var(--dango-surface);
+  box-shadow: none;
+}
+
+/* Mantine sets the select field inline, hence !important; Settings selects keep the raised field */
+.composer-bar .composer-reasoning-select .mantine-Select-input {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: var(--dango-ink-2) !important;
+}
+
+.composer-bar .composer-reasoning-select .mantine-Select-input:hover {
+  background: var(--dango-surface) !important;
+}
+
+/* Mantine's input sets `outline: none` on :focus; the reasoning select (and the trigger beside it) take the global ring */
+.composer-card .model-picker-trigger:focus-visible,
+.composer-card .composer-reasoning-select .mantine-Select-input:focus-visible {
+  outline: 2px solid var(--dango-focus);
+  outline-offset: 2px;
 }
 
 /* New-chat agent bar — shadow chips + expanded hit targets */
@@ -7436,8 +7377,8 @@ html[data-quick-chat] .composer-tools-menu .mantine-Menu-item .mantine-Flex-root
 }
 
 .session-statusline-action:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 45%, transparent);
-  outline-offset: 1px;
+  outline: 2px solid var(--dango-focus);
+  outline-offset: 2px;
 }
 
 .session-statusline-action.is-muted {
@@ -7539,8 +7480,8 @@ button.session-statusline-plan:hover {
 }
 
 button.session-statusline-plan:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 55%, transparent);
-  outline-offset: 1px;
+  outline: 2px solid var(--dango-focus);
+  outline-offset: 2px;
 }
 
 .session-statusline-plan.is-warn .session-statusline-val {
@@ -8733,7 +8674,7 @@ button.session-statusline-plan:focus-visible {
 
 .picture-dialog-fab.is-primary {
   background: var(--chatbox-tint-brand);
-  color: #fff;
+  color: var(--chatbox-tint-on-brand);
 }
 
 .picture-dialog-fab.is-primary:hover {

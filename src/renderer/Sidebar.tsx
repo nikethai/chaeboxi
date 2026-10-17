@@ -569,8 +569,8 @@ export default function Sidebar() {
               input: {
                 height: 36,
                 fontSize: 14,
-                background: 'var(--chatbox-background-primary)',
-                borderColor: 'var(--chatbox-border-secondary)',
+                background: 'var(--dango-raised)',
+                borderColor: 'var(--dango-control-border)',
               },
             }}
           />
@@ -595,11 +595,11 @@ export default function Sidebar() {
                 height: 32,
                 minWidth: 88,
                 backgroundColor: 'var(--chatbox-background-brand-primary)',
-                /* filled brand — white label (palette has no auto-contrast shades) */
-                color: 'var(--chatbox-tint-white)',
+                /* filled brand — on-brand label (palette has no auto-contrast shades) */
+                color: 'var(--chatbox-tint-on-brand)',
                 '&:hover': {
                   backgroundColor: 'var(--chatbox-background-brand-primary-hover)',
-                  color: 'var(--chatbox-tint-white)',
+                  color: 'var(--chatbox-tint-on-brand)',
                 },
                 '&:disabled': {
                   backgroundColor: 'var(--chatbox-background-tertiary)',

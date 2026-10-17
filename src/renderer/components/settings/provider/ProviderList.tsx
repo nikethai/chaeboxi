@@ -229,7 +229,7 @@ export function ProviderList({ providers, onAddCustomProvider, onImportProvider,
           <Popover.Dropdown className="settings-provider-add-popover p-0 overflow-hidden" p={0}>
             <div className="settings-provider-add-panel">
               <div className="settings-provider-add-header">
-                <Text size="xs" fw={600} c="chatbox-tertiary" className="settings-section-label !normal-case tracking-normal">
+                <Text size="xs" fw={600} c="chatbox-tertiary" className="settings-section-label">
                   {t('Add provider')}
                 </Text>
                 <TextInput
@@ -274,11 +274,7 @@ export function ProviderList({ providers, onAddCustomProvider, onImportProvider,
                   <Text size="sm">{t('Custom provider…')}</Text>
                 </UnstyledButton>
                 {platform.formFactor !== 'mobile' && (
-                  <UnstyledButton
-                    className="settings-provider-add-item"
-                    onClick={handleImport}
-                    disabled={isImporting}
-                  >
+                  <UnstyledButton className="settings-provider-add-item" onClick={handleImport} disabled={isImporting}>
                     <ScalableIcon icon={IconFileImport} size={20} className="text-chatbox-tint-secondary shrink-0" />
                     <Text size="sm">{t('Import from clipboard')}</Text>
                   </UnstyledButton>

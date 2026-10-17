@@ -89,28 +89,20 @@ a,
 html,
 body,
 #root {
-  background-color: var(--chatbox-background-primary, #121214);
-  color: var(--chatbox-tint-primary, #ececec);
-}
-
-html[data-theme='dark'],
-html[data-mantine-color-scheme='dark'],
-html[data-theme='dark'] body,
-html[data-mantine-color-scheme='dark'] body {
-  background-color: #121214 !important;
-  color: #ececec;
+  background-color: var(--chatbox-background-primary);
+  color: var(--chatbox-tint-primary);
 }
 
 body {
   margin: 0;
-  font-family: var(--chatbox-font-ui, 'Satoshi', 'Segoe UI', system-ui, sans-serif);
+  font-family: var(--chatbox-font-ui, 'Segoe UI', system-ui, sans-serif);
   font-size: 16px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior: none;
-  background-color: var(--chatbox-background-primary, #121214);
-  color: var(--chatbox-tint-primary, #ececec);
+  background-color: var(--chatbox-background-primary);
+  color: var(--chatbox-tint-primary);
 }
 
 code {

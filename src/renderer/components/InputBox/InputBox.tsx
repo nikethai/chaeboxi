@@ -150,6 +150,7 @@ import CommandPicker, { buildCommandPickerItems, type CommandPickerItem } from '
 import ComposerRichInput, { type ComposerRichInputHandle } from './ComposerRichInput'
 import ComposerToolsMenu from './ComposerToolsMenu'
 import CredentialPicker, { filterCredentials } from './CredentialPicker'
+import DictateButton from './DictateButton'
 import type { ComposerChipData } from './composer-chip-dom'
 import { ImageUploadInput } from './ImageUploadInput'
 import MemoryMentionPicker from './MemoryMentionPicker'
@@ -170,7 +171,7 @@ import QueuedMessageList from './QueuedMessageList'
 import QuoteChip from './QuoteChip'
 import SkillPicker, { filterSkills } from './SkillPicker'
 import TeamModeSelect from './TeamModeSelect'
-import VoiceHoldButton, { voiceAuthFromSettings } from './VoiceHoldButton'
+import { voiceAuthFromSettings } from './VoiceHoldButton'
 
 export type InputBoxPayload = {
   constructedMessage: Message
@@ -3194,16 +3195,6 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     />
                   )}
                 />
-                {voiceCopilot.enabled && (
-                  <VoiceHoldButton
-                    enabled={voiceCopilot.enabled}
-                    config={voiceCopilot}
-                    shortcut={voiceHoldShortcut}
-                    toolbarButtonClass={toolbarButtonClass}
-                    toolbarIconSize={toolbarIconSize}
-                    onTranscript={onVoiceTranscript}
-                  />
-                )}
               </Flex>
 
               {/* Right Group: Team mode (multi-agent) + Model + Send */}
@@ -3298,6 +3289,15 @@ const InputBox = forwardRef<InputBoxRef, InputBoxProps>(
                     }}
                   />
                 ) : null}
+
+                <DictateButton
+                  enabled={voiceCopilot.enabled}
+                  config={voiceCopilot}
+                  shortcut={voiceHoldShortcut}
+                  toolbarButtonClass={toolbarButtonClass}
+                  toolbarIconSize={toolbarIconSize}
+                  onTranscript={onVoiceTranscript}
+                />
 
                 <Tooltip label={t('Sampling video frames…')} disabled={!isSamplingVideoFrames} withArrow position="top">
                   <ActionIcon

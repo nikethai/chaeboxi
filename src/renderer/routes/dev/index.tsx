@@ -27,6 +27,12 @@ const devPages = [
     tags: ['UI'],
   },
   {
+    path: '/dev/design-system',
+    name: 'Design System',
+    description: 'Dango colour swatches, type styles and Review items for the current theme',
+    tags: ['UI', 'Design'],
+  },
+  {
     path: '/dev/context-generator',
     name: 'Context Generator',
     description: 'Generate fake conversation context for testing context management and token estimation',

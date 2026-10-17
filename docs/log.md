@@ -3,6 +3,8 @@
 Newest first. Add a line when you create, accept, supersede or move a decision, spec or research note.
 
 ## 2026-10-17
+* **Implementation**: [Dango theme, first slice](specs/2026-10-17-dango-theme-first-slice.md) built on `feat/dango-theme` — Dango tokens generated into CSS and TS, app/Mantine/MUI colours, type and radii remapped, sidebar and composer to the design system, ReviewItem and `/dev/design-system`; a light/dark visual check fixed the dark ground, Mantine defaults, indigo hovers, uppercase settings labels, input fields and the focus ring. Plan stays draft until the maintainer accepts.
+* **Proposal**: [Dango theme, first slice](specs/2026-10-17-dango-theme-first-slice.md) (draft plan) — design tokens in the app, existing colours remapped, sidebar and composer to the design system, ReviewItem component and a dev gallery.
 * **Acceptance**: [ADR 0013](adr/0013-everywhere-layer.md) accepted by the maintainer — scope plus Everywhere.
 * **Proposal**: [ADR 0013](adr/0013-everywhere-layer.md) (draft) — knowledge in two layers, each scope plus a built-in Everywhere scope; scope wins on a clash; client scopes opt in to Everywhere documents; per-agent memory folds into agent prompts.
 * **Update**: [UX flows](specs/2026-10-16-ux-flows.md) — flows 17–24 (message actions, managing chats, artifacts, agents, menu bar, window sizes, dark mode, accessibility) and rules for the composer, model errors, cost, plans and empty states; 33 more screens; the product is now called Dango in the specs and on the canvas.

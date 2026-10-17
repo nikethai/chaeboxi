@@ -530,8 +530,8 @@
 .settings-content .mantine-Select-input,
 .settings-content .mantine-InputBase-input {
   border-radius: 9px;
-  border-color: color-mix(in srgb, var(--chatbox-tint-primary) 12%, transparent);
-  background: var(--chatbox-background-primary);
+  border-color: var(--dango-control-border);
+  background: var(--dango-raised);
   min-height: 40px;
 }
 
@@ -540,7 +540,7 @@
 .settings-content .mantine-PasswordInput-input:focus,
 .settings-content .mantine-Select-input:focus,
 .settings-content .mantine-InputBase-input:focus {
-  border-color: color-mix(in srgb, var(--chatbox-tint-brand) 45%, transparent);
+  border-color: var(--dango-focus);
 }
 
 .settings-content .mantine-Input-label,

@@ -329,6 +329,79 @@ describe('theme mapping onto Dango', () => {
     expect(readSource('src/renderer/routes/__root.tsx')).toContain('cssVariablesResolver={dangoCssVariablesResolver}')
   })
 
+  test('no CSS rule gives a Mantine input a non-Dango fill or border', () => {
+    const cssFiles: string[] = []
+    const walkCss = (dir: string) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name)
+        if (entry.isDirectory()) {
+          walkCss(full)
+        } else if (entry.name.endsWith('.css')) {
+          cssFiles.push(full)
+        }
+      }
+    }
+    walkCss(resolve(root, 'src/renderer'))
+
+    const INPUT_SELECTOR = /mantine-(Input|TextInput|Textarea|PasswordInput|Select|InputBase)-input/
+    // bare inputs inside a panel: deliberately borderless and transparent, so they carry no fill or border to check
+    const BARE = /model-picker-search-field/
+    const ALLOWED = [
+      'var(--dango-raised)',
+      'var(--dango-control-border)',
+      'var(--dango-focus)',
+      'var(--dango-danger)',
+      'var(--chatbox-tint-brand)', // focus: maps onto green
+      'var(--chatbox-tint-error)',
+      'var(--chatbox-border-error)',
+      'none',
+      'transparent',
+      '0',
+      'inherit',
+    ]
+    const BORDER_WORDS = /^(\d+(\.\d+)?px|solid|dashed|none)$/
+    const STATE_TOKENS = ALLOWED.filter((ok) => /focus|danger|error|tint-brand/.test(ok))
+    const isAllowed = (value: string) => {
+      const cleaned = value.replace(/\s*!important$/, '').trim()
+      if (cleaned.startsWith('color-mix(')) {
+        // translucent focus / error edges only
+        return STATE_TOKENS.some((ok) => cleaned.includes(ok))
+      }
+      return cleaned
+        .split(/\s+/)
+        .filter((token) => !BORDER_WORDS.test(token))
+        .every((token) => ALLOWED.includes(token))
+    }
+
+    const offenders: string[] = []
+    for (const file of cssFiles) {
+      postcss.parse(readFileSync(file, 'utf8')).walkRules((rule) => {
+        if (!rule.selectors.some((sel) => INPUT_SELECTOR.test(sel) && !BARE.test(sel))) {
+          return
+        }
+        rule.each((node) => {
+          if (
+            node.type === 'decl' &&
+            ['background', 'background-color', 'border', 'border-color'].includes(node.prop)
+          ) {
+            if (!isAllowed(node.value)) {
+              offenders.push(`${file.replace(`${root}/`, '')}:${node.source?.start?.line} ${node.prop}: ${node.value}`)
+            }
+          }
+        })
+      })
+    }
+    expect(offenders).toEqual([])
+  })
+
+  test('the Sidebar folder dialog input uses the raised fill and the control border', () => {
+    const source = readSource('src/renderer/Sidebar.tsx')
+    expect(source).not.toContain("background: 'var(--chatbox-background-primary)'")
+    expect(source).not.toContain("borderColor: 'var(--chatbox-border-secondary)'")
+    expect(source).toContain("background: 'var(--dango-raised)'")
+    expect(source).toContain("borderColor: 'var(--dango-control-border)'")
+  })
+
   test('the global focus ring is 2px solid --dango-focus with a 2px offset', () => {
     const rules = rootRules(':focus-visible')
     expect(rules.length).toBe(1)

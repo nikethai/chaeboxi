@@ -569,8 +569,8 @@ export default function Sidebar() {
               input: {
                 height: 36,
                 fontSize: 14,
-                background: 'var(--chatbox-background-primary)',
-                borderColor: 'var(--chatbox-border-secondary)',
+                background: 'var(--dango-raised)',
+                borderColor: 'var(--dango-control-border)',
               },
             }}
           />

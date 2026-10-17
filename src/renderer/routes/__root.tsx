@@ -242,7 +242,7 @@ export const Route = createRootRoute({
     const scale = fontSize / 14
     const mantineTheme = useMemo(() => createDangoMantineTheme(scale), [scale])
 
-    // Brand accent is locked to design tokens (indigo). Do not apply user accentColor overrides.
+    // Brand accent is locked to the Dango design tokens (green). Do not apply user accentColor overrides.
 
     return (
       <MantineProvider

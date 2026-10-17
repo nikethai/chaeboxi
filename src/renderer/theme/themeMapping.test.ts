@@ -494,7 +494,10 @@ describe('theme mapping onto Dango', () => {
   })
 
   test('the root MantineProvider passes the Dango variables resolver', () => {
-    expect(readSource('src/renderer/routes/__root.tsx')).toContain('cssVariablesResolver={dangoCssVariablesResolver}')
+    const rootSource = readSource('src/renderer/routes/__root.tsx')
+    expect(rootSource).toContain('cssVariablesResolver={dangoCssVariablesResolver}')
+    // the brand is Dango green; no leftover description of the old indigo brand
+    expect(/indigo/i.test(rootSource)).toBe(false)
   })
 
   test('no CSS rule gives a Mantine input a non-Dango fill or border', () => {

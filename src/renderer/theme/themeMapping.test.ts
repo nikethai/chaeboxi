@@ -2,6 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import postcss, { type Rule } from 'postcss'
 import { describe, expect, test } from 'vitest'
+import { contrastRatio } from './contrast'
 import { dangoColors, dangoFonts } from './dangoTokens'
 import { createDangoMantineTheme } from './mantineTheme'
 import { getThemeDesign } from './muiTheme'
@@ -177,12 +178,34 @@ describe('theme mapping onto Dango', () => {
       components.Button.vars(mantineTheme, { variant: 'filled', color: 'chatbox-brand' }).root['--button-color']
     ).toBe(onBrand)
 
-    const error = { variant: 'filled', color: 'chatbox-error' }
-    expect(components.Button.vars(mantineTheme, error).root['--button-color']).toBeUndefined()
-    expect(components.ActionIcon.vars(mantineTheme, error).root['--ai-color']).toBeUndefined()
+    // danger and muted fills take the raised surface colour (see the contrast test below)
+    for (const color of ['chatbox-error', 'chatbox-gray']) {
+      const props = { variant: 'filled', color }
+      expect(components.Button.vars(mantineTheme, props).root['--button-color']).toBe('var(--dango-raised)')
+      expect(components.ActionIcon.vars(mantineTheme, props).root['--ai-color']).toBe('var(--dango-raised)')
+    }
+
+    for (const color of ['chatbox-success', 'blue']) {
+      const props = { variant: 'filled', color }
+      expect(components.Button.vars(mantineTheme, props).root).toEqual({})
+      expect(components.ActionIcon.vars(mantineTheme, props).root).toEqual({})
+    }
     expect(components.Button.vars(mantineTheme, { variant: 'light' }).root['--button-color']).toBeUndefined()
 
     expect(theme.fontFamily).toBe('var(--chatbox-font-ui)')
+  })
+
+  test('raised text on filled danger and muted controls is readable in both themes', () => {
+    for (const mode of ['light', 'dark'] as const) {
+      expect(
+        contrastRatio(dangoColors[mode].raised, dangoColors[mode].danger),
+        `raised on danger, ${mode}`
+      ).toBeGreaterThanOrEqual(4.5)
+      expect(
+        contrastRatio(dangoColors[mode].raised, dangoColors[mode].muted),
+        `raised on muted, ${mode}`
+      ).toBeGreaterThanOrEqual(4.5)
+    }
   })
 
   test('MUI follows Dango', () => {

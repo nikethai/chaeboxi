@@ -24,11 +24,25 @@ import {
 } from '@mantine/core'
 
 const ON_BRAND = 'var(--chatbox-tint-on-brand)'
+// danger and muted fills are light in dark mode, so they take the raised surface colour as text (>= 4.5:1 in both themes)
+const ON_DANGER_OR_MUTED = 'var(--dango-raised)'
 
-/** Mantine's default variant is `filled`; the default colour is the primary colour (`chatbox-brand`). */
-const isFilledBrand = (props: { variant?: string; color?: unknown }) =>
-  (props.variant === undefined || props.variant === 'filled') &&
-  (props.color === undefined || props.color === 'chatbox-brand')
+/**
+ * Text colour for a filled control, or undefined to keep Mantine's default.
+ * Mantine's default variant is `filled`; the default colour is the primary colour (`chatbox-brand`).
+ */
+const filledTextColor = (props: { variant?: string; color?: unknown }): string | undefined => {
+  if (props.variant !== undefined && props.variant !== 'filled') {
+    return undefined
+  }
+  if (props.color === undefined || props.color === 'chatbox-brand') {
+    return ON_BRAND
+  }
+  if (props.color === 'chatbox-error' || props.color === 'chatbox-gray') {
+    return ON_DANGER_OR_MUTED
+  }
+  return undefined
+}
 
 export const createDangoMantineTheme = (scale = 1) =>
   createTheme({
@@ -140,11 +154,17 @@ export const createDangoMantineTheme = (scale = 1) =>
             color: 'inherit',
           },
         }),
-        // flat CSS-var brand palette has no auto-contrast: filled brand buttons take on-brand text
-        vars: (_theme, props) => ({ root: isFilledBrand(props) ? { '--button-color': ON_BRAND } : {} }),
+        // flat CSS-var palettes have no auto-contrast: filled buttons pick their text colour explicitly
+        vars: (_theme, props) => {
+          const color = filledTextColor(props)
+          return { root: color ? { '--button-color': color } : {} }
+        },
       }),
       ActionIcon: ActionIcon.extend({
-        vars: (_theme, props) => ({ root: isFilledBrand(props) ? { '--ai-color': ON_BRAND } : {} }),
+        vars: (_theme, props) => {
+          const color = filledTextColor(props)
+          return { root: color ? { '--ai-color': color } : {} }
+        },
       }),
       Input: Input.extend({
         styles: (_theme, props) => ({

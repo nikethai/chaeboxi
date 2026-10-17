@@ -2,8 +2,12 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { contrastRatio } from './contrast'
-import { type DangoColor, dangoColors } from './dangoTokens'
-import { type DangoTokensJson, renderDangoTokensCss, renderDangoTokensTs } from './renderDangoTokens'
+import {
+  type DangoTokensJson,
+  renderDangoTokensCss,
+  renderDangoTokensTs,
+  resolveDangoColors,
+} from './renderDangoTokens'
 
 const root = process.cwd()
 const tokensPath = resolve(root, 'design/dango/tokens.json')
@@ -11,6 +15,7 @@ const cssPath = resolve(root, 'src/renderer/static/dango-tokens.css')
 const tsPath = resolve(root, 'src/renderer/theme/dangoTokens.ts')
 
 const tokens = JSON.parse(readFileSync(tokensPath, 'utf8')) as DangoTokensJson
+const colors = resolveDangoColors(tokens)
 
 describe('Dango tokens', () => {
   test('generated files match tokens.json', () => {
@@ -40,9 +45,9 @@ describe('Dango tokens', () => {
   })
 
   test('text pairs pass contrast in both themes', () => {
-    const grounds: DangoColor[] = ['ground', 'surface', 'raised']
-    const textOnGrounds: DangoColor[] = ['ink', 'ink-2', 'muted', 'danger']
-    const textPairs: Array<[DangoColor, DangoColor]> = [
+    const grounds: string[] = ['ground', 'surface', 'raised']
+    const textOnGrounds: string[] = ['ink', 'ink-2', 'muted', 'danger']
+    const textPairs: Array<[string, string]> = [
       ['green-text', 'green-wash'],
       ['blue-text', 'blue-wash'],
       ['amber-text', 'amber-wash'],
@@ -51,8 +56,8 @@ describe('Dango tokens', () => {
       ['on-toast', 'toast'],
     ]
     const failures: string[] = []
-    const check = (theme: 'light' | 'dark', fg: DangoColor, bg: DangoColor, min: number) => {
-      const ratio = contrastRatio(dangoColors[theme][fg], dangoColors[theme][bg])
+    const check = (theme: 'light' | 'dark', fg: string, bg: string, min: number) => {
+      const ratio = contrastRatio(colors[theme][fg], colors[theme][bg])
       if (ratio < min) {
         failures.push(`${theme}: ${fg} on ${bg} = ${ratio.toFixed(2)} (< ${min})`)
       }

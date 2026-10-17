@@ -21,7 +21,7 @@ function colorAsCss(value: string): string {
   return alias ? `var(--dango-${alias[1]})` : value
 }
 
-function resolveColors(tokens: DangoTokensJson, theme: Theme): Array<[string, string]> {
+function resolveThemeColors(tokens: DangoTokensJson, theme: Theme): Array<[string, string]> {
   const raw = new Map(tokens.color.tokens.map((token) => [token.name, token.value[theme]]))
   return tokens.color.tokens.map((token) => {
     let value = token.value[theme]
@@ -37,6 +37,14 @@ function resolveColors(tokens: DangoTokensJson, theme: Theme): Array<[string, st
     }
     return [token.name, value]
   })
+}
+
+/** Every colour token per theme, with aliases such as `{green}` resolved to the target's value. */
+export function resolveDangoColors(tokens: DangoTokensJson): Record<Theme, Record<string, string>> {
+  return {
+    light: Object.fromEntries(resolveThemeColors(tokens, 'light')),
+    dark: Object.fromEntries(resolveThemeColors(tokens, 'dark')),
+  }
 }
 
 function declarations(entries: Array<[string, string]>): string[] {
@@ -88,8 +96,9 @@ function tsKey(name: string): string {
 
 export function renderDangoTokensTs(tokens: DangoTokensJson): string {
   const names = tokens.color.tokens.map((token) => token.name)
+  const resolved = resolveDangoColors(tokens)
   const colorBlock = (theme: Theme) =>
-    resolveColors(tokens, theme).map(([name, value]) => `    ${tsKey(name)}: ${tsString(value)},`)
+    Object.entries(resolved[theme]).map(([name, value]) => `    ${tsKey(name)}: ${tsString(value)},`)
 
   return [
     '// generated from design/dango/tokens.json — run pnpm tokens:sync',

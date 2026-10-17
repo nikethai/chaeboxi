@@ -1,15 +1,15 @@
 ---
 id: TASK-9
 title: Rename the app to Dango
-status: Now
+status: Done
 assignee: []
 created_date: '2026-10-16 16:11'
-updated_date: '2026-10-17 00:38'
+updated_date: '2026-10-17 14:39'
 labels:
   - brand
 dependencies: []
 type: spike
-ordinal: 10000
+ordinal: 9000
 ---
 
 ## Description

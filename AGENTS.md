@@ -11,6 +11,7 @@ Dango is a multi-platform AI copilot (desktop/web/mobile) supporting 16+ LLM pro
 Product direction lives in `docs/`; [`docs/index.md`](docs/index.md) maps it and [`docs/log.md`](docs/log.md) records what changed, newest first. Read both before proposing product or architecture changes.
 
 - **Designs and implementation plans** go in `docs/specs/`, as `YYYY-MM-DD-topic.md`. When a skill or tool names its own plans folder (superpowers, claudedocs, a `plans/` or `tasks/` folder), save to `docs/specs/` instead.
+- **Plans in `docs/specs/` (`type: plan`) that are merged to `main` are approved for execution**, even while their frontmatter says `status: draft`. Agents may implement them without waiting for `verified`; the maintainer sets `status: stable` once the work ships. This does not apply to decisions (below).
 - **Research notes** go in `docs/research/`.
 - **Decisions** go in `docs/adr/` as the next number. You write them as proposals: `status: draft` plus `generated: { by: <agent>/<model>, at: <ISO time> }` in the frontmatter. The maintainer accepts a decision by setting `status: stable` and adding `verified`; treat any decision without `verified` as a proposal, even when its text says "accepted".
 - **Ideas and work items** go on the Backlog.md board (`backlog/`, columns Ideas → Proposed → Now → Done). New ideas start in Ideas; the maintainer moves cards into Now. Record decisions as ADRs in `docs/adr/`, not as Backlog decisions.

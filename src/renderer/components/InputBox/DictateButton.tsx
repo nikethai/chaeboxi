@@ -19,6 +19,8 @@ export default function DictateButton(props: VoiceHoldButtonProps) {
   return (
     <ActionIcon
       variant="transparent"
+      // same ink as the "+" Tools button beside it; without this the transparent variant uses the primary green
+      c="var(--chatbox-tint-secondary)"
       className={cn(props.toolbarButtonClass, 'min-h-9 min-w-9 justify-center')}
       aria-label={t('Dictate')}
       title={t('Dictate')}

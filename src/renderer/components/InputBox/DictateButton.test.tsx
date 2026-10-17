@@ -65,6 +65,13 @@ describe('DictateButton', () => {
     expect(screen.queryByRole('button', { name: 'Hold to talk' })).toBeNull()
   })
 
+  it('takes the toolbar icon colour like the Tools button, not the Mantine primary green', () => {
+    renderButton(false)
+
+    const button = screen.getByRole('button', { name: 'Dictate' })
+    expect(button.getAttribute('style')).toContain('color: var(--chatbox-tint-secondary)')
+  })
+
   it('renders the hold-to-talk control, not the fallback, when voice is enabled', () => {
     renderButton(true)
 

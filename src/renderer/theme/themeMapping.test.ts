@@ -765,6 +765,21 @@ describe('theme mapping onto Dango', () => {
     expect(dark.palette?.text).toMatchObject({ primary: dangoColors.dark.ink, secondary: dangoColors.dark['ink-2'] })
     expect(dark.palette?.divider).toBe(dangoColors.dark.hairline)
 
+    for (const mode of ['light', 'dark'] as const) {
+      // biome-ignore lint/suspicious/noExplicitAny: styleOverrides are a loose union in MUI's types
+      const toast = getThemeDesign(mode, 16, 'en').components?.MuiSnackbarContent?.styleOverrides as any
+      expect(toast.root, mode).toMatchObject({
+        backgroundColor: dangoColors[mode].toast,
+        color: dangoColors[mode]['on-toast'],
+        boxShadow: 'var(--dango-shadow-toast)',
+      })
+      expect(toast.action.color, mode).toBe(dangoColors[mode]['toast-action'])
+      expect(contrastRatio(dangoColors[mode]['on-toast'], dangoColors[mode].toast), mode).toBeGreaterThanOrEqual(4.5)
+      expect(contrastRatio(dangoColors[mode]['toast-action'], dangoColors[mode].toast), mode).toBeGreaterThanOrEqual(
+        4.5
+      )
+    }
+
     expect(light.typography).toMatchObject({ fontFamily: dangoFonts.sans, fontSize: 14 })
     expect(getThemeDesign('light', 16, 'ar').typography).toMatchObject({ fontFamily: 'Cairo, Arial, sans-serif' })
     expect(getThemeDesign('light', 20, 'en').typography).toMatchObject({ fontSize: 17.5 })

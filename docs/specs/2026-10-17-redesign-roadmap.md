@@ -108,6 +108,8 @@ Names one slice creates and others import. The owner builds it; nobody else re-c
 
 ## Decisions where the spec disagreed with itself
 
+These are now written into the flows themselves; the UX flows' [Settled while planning](2026-10-16-ux-flows.md#settled-while-planning-2026-10-17) section lists them with the rest of what the plans settled, and is the one source of truth.
+
 - Trust Auto never approves knowledge: ADR 0001 wins over the brief. Auto applies safe actions that are not knowledge (a Gmail label, a draft that is not sent) and shows them as Done with Undo; knowledge proposals always wait.
 - Preferences approved anywhere land in Everywhere (ADR 0013); there is no "Apply to all scopes?" question.
 - Review keys: ↑↓ or J/K move, A approve, E edit, X dismiss, ↵ open, ⌘Z undo. While editing, ⌘↵ approves.

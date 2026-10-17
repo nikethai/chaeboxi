@@ -46,13 +46,13 @@ Structure comes before look so styling effort goes only to surfaces that survive
 
 **Trust level.** A setting with two positions; default **Auto**. It moves the line between *done* and *waiting*:
 
-- Auto: safe, confident actions happen first and appear in Review as done, with Undo (labels, tags, Gmail drafts, low-risk knowledge).
-- Ask: the same items appear as waiting, with Approve.
-- Always asks, whatever the setting: sending anything, deleting, editing files, changing a decision.
+- Auto: safe, confident actions happen first and appear in Review as done, with Undo (labels, tags, Gmail drafts that are not sent). Auto never approves knowledge: proposals always wait (ADR 0001).
+- Ask (labelled "Ask first"): the same items appear as waiting, with Approve.
+- Always asks, whatever the setting: sending anything, deleting, editing files, changing a decision, saving knowledge.
 
 This maps onto the pilot design's confidence tiers; the toggle sets the threshold.
 
-**Review item types.** Proposal (knowledge to save) · Draft (a reply written into the user's Gmail thread; Dango never sends) · Change (something moved in a source) · Done (background work finished) · Needs you (a question the assistant cannot answer alone).
+**Review item types.** Proposal (knowledge to save) · Draft (a reply written into the user's Gmail thread; Dango never sends) · Change (something moved in a source) · Done (background work finished) · Needs you (a question the assistant cannot answer alone) · Conflict (a proposal that contradicts saved knowledge) · Re-check (a draft or change built on knowledge that has since changed).
 
 **The PM's behaviour.** The PM stays in Gmail and Asana. Dango labels threads and writes drafts into Gmail in the background. They open Dango to skim Review and to ask Quick Chat questions ("what did we promise Acme about the deadline?"). Dango is never their inbox.
 
@@ -60,21 +60,21 @@ This maps onto the pilot design's confidence tiers; the toggle sets the threshol
 
 - One primary action per screen: Review → approve, Chat → send, Scope → ask.
 - Progressive disclosure: sources, agent turns, tokens and cost stay behind a click.
-- Sidebar, content, inspector. The inspector holds the current scope's sources and knowledge; it slides in on demand.
+- Sidebar, content, inspector. The inspector holds a chat's artifacts; it slides in on demand. A scope's sources and knowledge are tabs on its page.
 - Sheets, not modals, for approvals and tool permissions; Esc dismisses.
 - Direct manipulation: one key approves; drop a folder on a scope to connect it; drag a chat onto a scope to move it.
 - Undo everything for a few seconds after approve, dismiss, stop.
 - Light by default, dark follows the system. Few lines, more space, short labels.
 
-**Modes removed.** Agent mode on/off (the assistant always may use tools and asks before acting). Project folder as its own concept (it is a source). Team mode choice in the composer (Swarm is one toggle; Discuss and Work are how a Swarm run organises itself).
+**Modes removed.** Agent mode on/off (the assistant always may use tools and asks before acting). Project folder as its own concept (it is a source). Team mode choice in the composer (Swarm is one toggle under Tools; a run plans tasks, works them in rounds and ends in one answer; chats left in the old Discuss or Work modes read as Swarm off).
 
 ## Surfaces
 
 - **Review** (home): the feed above, grouped by day, filterable by scope.
-- **Scope**: one page per project or client: since you last looked, open items, background work, approved knowledge, chats. Sources and knowledge detail live in the inspector.
-- **Chat**: a conversation, optionally in a scope. Composer: attach, scope, Improve writing, Tools (web, browser, computer use, Swarm), send. One answer per turn; a Swarm run collapses behind "Worked with N agents".
+- **Scope**: one page per project or client: since you last looked, open items, background work, approved knowledge, chats. Tabs: Overview · Knowledge · Sources · Files (folder scopes) · Chats · Settings.
+- **Chat**: a conversation, optionally in a scope. Composer: attach, scope, Tools (web, browser, computer use, Swarm), model, dictate, send; Rewrite replaces Improve writing. One answer per turn; a Swarm run collapses behind "Worked with N agents".
 - **Quick Chat**: the overlay; "Continue in Chat" and "Open scope" hand off.
-- **Settings** (5 top level): Models and keys · Sources · Memory and privacy (includes Trust level) · Voice · General. Advanced holds the rest, including Image studio. Nothing removed.
+- **Settings** (5 top level): Models and keys · Sources · Memory and privacy (includes Trust level) · Voice · General. Advanced holds the rest, including Image studio and Agents. Nothing removed: Integrations becomes the Accounts tab of Sources, Knowledge base its Documents tab; Memory and Sync are tabs of Memory and privacy; Keyboard shortcuts a tab of General.
 
 ## Decisions (maintainer, 2026-10-16)
 
@@ -86,3 +86,7 @@ This maps onto the pilot design's confidence tiers; the toggle sets the threshol
 ## Acceptance
 
 The maintainer can name every top-level surface and settings section from memory. A first-time PM reaches "connect Gmail" and "ask about a client" without opening Advanced.
+
+## Updated 2026-10-17
+
+- Synced with the slice plans ([UX flows › Settled while planning](2026-10-16-ux-flows.md#settled-while-planning-2026-10-17)): Trust Auto never approves knowledge and saving knowledge always asks; Ask is labelled "Ask first"; Conflict and Re-check join the Review item types; scope sources and knowledge are scope page tabs, the inspector holds a chat's artifacts; the composer drops Improve writing; Swarm is plan, rounds, one answer; where the old settings pages went.

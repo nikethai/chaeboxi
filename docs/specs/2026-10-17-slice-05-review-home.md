@@ -33,7 +33,7 @@ generated: { by: claude/opus-5.5, at: 2026-10-17T19:00:00+07:00 }
   - toolbar: `All scopes`, `Everywhere`, `Trust: Auto` / `Trust: Ask first`, `New chat`;
   - day headings: `Today`, `Yesterday`, `Earlier`;
   - default actions: `Open`, `Undo`, `Answer` (or `entry.actionLabel`), `Approve`, `Dismiss`;
-  - toast: `Dismissed "<text>"` (clipped to 48 characters plus `…`);
+  - toast: `Dismissed "<text>"` (clipped to 60 characters plus `…`, matching slice 4);
   - RV5: `Nothing needs you`, `Last checked …`;
   - EM2: `Connect a source to get started`, `Dango reads a folder, Gmail or Asana and tells you here what needs you.`, `Connect a source`, `Ask anything`.
 - Out of this slice: the review store, undo, toast, Mascot, `/new` and `startNewChat` (1b); the Trust sheet itself (2); scope storage and the scope pill (3); proposal, conflict and re-check rows, inline edit RV2, Keep both RV7, "Don't suggest this again" (4); sources, jobs, `setLastCheckedAt` calls (7); notifications (8); rail and bottom tabs, the full accessibility pass (9); Gmail draft/label appliers and openers (10).
@@ -105,7 +105,7 @@ Rule (brief, Trust level, as narrowed by the roadmap's Decisions):
   - `formatLastChecked(at: number, now: number): string`.
   - `hasSources(o: { sourceCount?: number; entries: ReviewEntry[]; lastCheckedAt?: number }): boolean`: `sourceCount > 0` when given (slice 7's `listSources().length`); otherwise the stand-in, true when any entry exists or `lastCheckedAt` is set.
   - `nextFocusAfterRemoval(prevIds: string[], nextIds: string[], focusedId: string): string | null`.
-  - `clip(text: string, max = 48): string`.
+  - `clip(text: string, max = 60): string`.
 
 - [ ] **Step 1: Write the failing tests:**
   - With `now = new Date(2026, 9, 17, 9, 0).getTime()`, `groupByDay` puts 08:00 on the 17th in Today, 23:59 on the 16th in Yesterday and the 15th in Earlier, and omits empty groups.
@@ -114,7 +114,7 @@ Rule (brief, Trust level, as narrowed by the roadmap's Decisions):
   - `formatLastChecked` gives `Last checked ${hm}` for today, `Last checked yesterday at ${hm}` for yesterday and `Last checked ${dayMonth}` before that. `hm` and `dayMonth` come from `Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' })` and `{ day: 'numeric', month: 'short' }`.
   - `hasSources({ entries: [] })` is false; it is true with one entry or with a time; `{ sourceCount: 0, entries: [row] }` is false and `{ sourceCount: 2, entries: [] }` is true.
   - `nextFocusAfterRemoval(['a','b','c'], ['a','c'], 'b')` is `'c'`; `(['a','b','c'], ['a','b'], 'c')` is `'b'`; `(['a'], [], 'a')` is `null`.
-  - `clip` of 60 characters is 48 characters plus `…`.
+  - `clip` of 70 characters is 60 characters plus `…`; 60 characters stay whole.
 - [ ] **Step 2: Run** `pnpm test -- src/renderer/components/review/feedSelectors.test.ts`. Expected: FAIL.
 - [ ] **Step 3: Implement.**
 - [ ] **Step 4: Run** it. Expected: PASS.
@@ -142,18 +142,25 @@ Default actions by `displayKind` (the first is primary; Dismiss is ghost):
 | change | `Open` (if `canOpen`) · `Dismiss` |
 | proposal (non-knowledge ref, e.g. a draft under Ask) | `Approve` (if `canApply`) · `Dismiss` |
 
-Any kind: when the entry has `actionLabel` and `canOpen`, the primary action is labelled `actionLabel` and calls `openReviewEntry` (it replaces `Answer` / `Open` / `Approve`; for example slice 7's `Sign in again`, slice 10's draft sheet).
+Any kind with `actionLabel`: the primary action is labelled `actionLabel` (it replaces `Answer` / `Open` / `Approve`). Its handler depends on the applier (flow 3: "Apply writes it into Gmail"):
+- If `getReviewApplier(e.ref.type)` exists (`canApply`), it applies. This is the same path as Trust arrival, but started by the user: slice 10's waiting draft with `actionLabel: 'Apply'`, whether `risk: 'risky'` or under Ask first.
+- Otherwise, if `canOpen`, it calls `openReviewEntry` (slice 7's `Sign in again`).
+- With neither, there is no primary action.
+
+↵ and E always open, never apply.
 | anything else with no registered renderer | `Dismiss` |
 
 Handlers:
 - `Open` / `Answer`: `openReviewEntry(e)`.
 - `Undo`: `undoArrival(e.id)`. `canUndo` is `canUndoArrival(e.id)` and `undoUntil > now`.
-- `Approve`: the applier's `apply`, then `setReviewEntryState({ id }, 'done')` and `pushUndo({ message: 'Done: "<clip(text)>"', undo })`; that `undo` calls the applier's `undo` and reopens the row.
+- `Approve` and an applier-backed primary: the applier's `apply`, then `updateReviewEntry(id, { kind: 'done', state: 'done', undoUntil: now + DEFAULT_UNDO_MS })` and `pushUndo({ message: 'Done: "<clip(text)>"', undo })`; the returned record id goes into Task 1's arrival map, so the Done row's `Undo` (`canUndoArrival`) works the same as after an Auto arrival; that `undo` calls the applier's `undo` and reopens the row.
 - `Dismiss`: `setReviewEntryState({ id }, 'dismissed')`, then `pushUndo({ message: 'Dismissed "<clip(text)>"', undo: reopen })`.
 
 - [ ] **Step 1: Write the failing tests.**
-  - `defaultActions.test.ts`: one assertion per table row, with exact labels and order. A done row with `canOpen: false` and `canUndo: false` gives `[]`. A needs-you row with `actionLabel: 'Sign in again'` and an opener has primary `Sign in again`; a draft proposal with `actionLabel: 'Edit draft'` and an opener has primary `Edit draft` then `Dismiss`.
+  - `defaultActions.test.ts`: one assertion per table row, with exact labels and order. A done row with `canOpen: false` and `canUndo: false` gives `[]`. A needs-you row with `actionLabel: 'Sign in again'` and an opener has primary `Sign in again`; a draft proposal with `actionLabel: 'Apply'` and an applier has primary `Apply` then `Dismiss`, and its handler is `approve`, not `open`; the same draft with no applier but an opener uses `open`.
   - `DefaultReviewRenderer.test.tsx`:
+    - A draft `{ kind: 'proposal', risk: 'risky', actionLabel: 'Apply', ref: { type: 'draft' } }` with a registered applier: clicking `Apply` calls `apply` once, and the row becomes Done with `Undo`. Clicking `Undo` calls the applier's `undo` and the row is an open proposal again.
+    - A needs-you entry with `ref.type: 'job'`, `actionLabel: 'Sign in again'`, an opener and no applier: clicking the primary calls `openReviewEntry`.
     - Dismiss sets the row dismissed and pushes `Dismissed "Which quote is current?"`.
     - Answer calls `openReviewEntry`.
   - `ReviewItem.test.tsx`: a `disabled` action renders a disabled button. The five existing tests still pass.
@@ -178,7 +185,7 @@ Layout: each day group is an `h2` (`Today`, `Yesterday`, `Earlier`) followed by 
 
 Keys act on the focused row and press its own buttons, found by accessible name. A slice that owns a row therefore keeps its own logic and its own undo record, and the feed pushes no second record:
 - ↑ / K and ↓ / J move between rows, clamped at the ends.
-- A clicks the row's enabled `Approve`.
+- A clicks the row's enabled `Approve`; if the row has none, it clicks the row's `.dg-btn--primary`. That applies a draft through its applier, or opens a needs-you row.
 - E clicks `Edit`. If the row has none and `hasReviewOpener(entry)`, it calls `openReviewEntry(entry)` (slice 10 opens its draft edit sheet this way).
 - X clicks `Dismiss`. If the row has none, it calls `dismissFallback`, which sets the row dismissed and pushes `Dismissed "…"`.
 - ↵ clicks the row's `.dg-btn--primary`. On a conflict row it focuses the first `Keep this` instead.
@@ -193,6 +200,9 @@ Keys are ignored when Ctrl, ⌘ or Alt is held, and when `isEditableTarget(event
     - E on a default-rendered row with a registered opener calls `openReviewEntry`.
     - `a`, `x` and `e` dispatched from the fake renderer's textarea click nothing (Review Focus 3).
     - ⌘A clicks nothing.
+    - A on a default-rendered draft row (`actionLabel: 'Apply'`, applier registered) calls `apply`, and the row is left Done with `Undo`.
+    - A on a needs-you `job` row with an opener calls `openReviewEntry`.
+    - ↵ and E on the draft row open it and do not apply.
   - `ReviewFeed.test.tsx`:
     - Rows appear under `Today`, `Yesterday` and `Earlier`.
     - `scopeId` filters the rows.

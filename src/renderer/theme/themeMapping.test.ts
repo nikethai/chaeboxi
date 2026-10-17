@@ -329,6 +329,14 @@ describe('theme mapping onto Dango', () => {
     expect(readSource('src/renderer/routes/__root.tsx')).toContain('cssVariablesResolver={dangoCssVariablesResolver}')
   })
 
+  test('the global focus ring is 2px solid --dango-focus with a 2px offset', () => {
+    const rules = rootRules(':focus-visible')
+    expect(rules.length).toBe(1)
+    const decls = declsOf(rules[0])
+    expect(decls.get('outline')).toBe('2px solid var(--dango-focus)')
+    expect(decls.get('outline-offset')).toBe('2px')
+  })
+
   test('MUI follows Dango', () => {
     const light = getThemeDesign('light', 16, 'en')
     expect(light.palette?.primary).toMatchObject({ main: dangoColors.light.green })

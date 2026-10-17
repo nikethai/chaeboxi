@@ -4586,7 +4586,7 @@ div[data-vaul-drawer] {
 }
 
 :focus-visible {
-  outline: 1.5px solid var(--chatbox-tint-brand);
+  outline: 2px solid var(--dango-focus);
   outline-offset: 2px;
 }
 

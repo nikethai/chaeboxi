@@ -1,7 +1,10 @@
 import { t } from 'i18next'
 import { v4 as uuidv4 } from 'uuid'
 import { createStore } from 'zustand'
+import { getLogger } from '@/lib/utils'
 import * as toastActions from '@/stores/toastActions'
+
+const log = getLogger('undo')
 
 export const DEFAULT_UNDO_MS = 5_000
 
@@ -21,6 +24,7 @@ export type UndoToastState = { id: string; message: string; until: number; extra
 
 type UndoRecord = {
   id: string
+  message: string
   group: UndoGroup
   silent: boolean
   until: number
@@ -61,6 +65,7 @@ export function pushUndo(input: UndoInput): string {
 
   const record: UndoRecord = {
     id: uuidv4(),
+    message: input.message,
     group,
     silent: input.silent ?? false,
     until: now + (input.durationMs ?? DEFAULT_UNDO_MS),
@@ -98,7 +103,8 @@ export async function undoEntry(id: string): Promise<boolean> {
   try {
     await r.undo()
     return true
-  } catch {
+  } catch (error) {
+    log.error(`Undo failed for "${r.message}":`, error)
     toastActions.add(t("Couldn't undo. The change stays."))
     return false
   }

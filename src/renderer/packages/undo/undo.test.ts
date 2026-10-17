@@ -5,12 +5,16 @@ vi.mock('@/stores/toastActions', () => ({ add: (...args: unknown[]) => add(...ar
 
 vi.mock('i18next', () => ({ t: (key: string) => key }))
 
+const logError = vi.fn()
+vi.mock('@/lib/utils', () => ({ getLogger: () => ({ error: (...args: unknown[]) => logError(...args) }) }))
+
 import { canUndo, DEFAULT_UNDO_MS, pushUndo, resetUndoForTests, undoEntry, undoLatest, undoStore } from './undo'
 
 beforeEach(() => {
   vi.useFakeTimers()
   vi.setSystemTime(0)
   add.mockClear()
+  logError.mockClear()
   resetUndoForTests()
 })
 
@@ -47,6 +51,16 @@ describe('undo records', () => {
     const id = pushUndo({ message: 'm', undo: () => Promise.reject(new Error('x')) })
     expect(await undoEntry(id)).toBe(false)
     expect(add).toHaveBeenCalledWith("Couldn't undo. The change stays.")
+  })
+
+  it('a failing undo is logged before the toast', async () => {
+    const error = new Error('disk full')
+    const id = pushUndo({ message: 'Deleted chat', undo: () => Promise.reject(error) })
+    await undoEntry(id)
+    expect(logError).toHaveBeenCalledTimes(1)
+    expect(logError.mock.calls[0]).toContain(error)
+    expect(String(logError.mock.calls[0][0])).toContain('Deleted chat')
+    expect(logError.mock.invocationCallOrder[0]).toBeLessThan(add.mock.invocationCallOrder[0])
   })
 
   it('a synchronous throw also says so', async () => {

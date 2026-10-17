@@ -445,6 +445,13 @@ describe('theme mapping onto Dango', () => {
     expect(indexHtml.includes(`background-color: ${dangoColors.light.ground}`), 'splash light ground').toBe(true)
   })
 
+  test('the page loads no Satoshi font: the UI font is the Dango sans stack', () => {
+    const indexHtml = readSource('src/renderer/index.html')
+    expect(indexHtml).not.toContain('fontshare.com')
+    expect(/satoshi/i.test(indexHtml), 'index.html mentions Satoshi').toBe(false)
+    expect(/satoshi/i.test(readSource('src/renderer/static/index.css')), 'index.css mentions Satoshi').toBe(false)
+  })
+
   test("Mantine's semantic colour variables resolve to Dango in both schemes", () => {
     const resolved = dangoCssVariablesResolver({} as never)
     const expected = {

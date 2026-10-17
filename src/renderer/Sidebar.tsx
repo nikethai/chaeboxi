@@ -26,7 +26,6 @@ import {
 } from '@tabler/icons-react'
 import { useNavigate } from '@tanstack/react-router'
 import clsx from 'clsx'
-import { getDefaultStore } from 'jotai'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import DangoWordmark from './components/brand/DangoWordmark'
@@ -44,10 +43,10 @@ import {
   useSidebarWidth,
 } from './hooks/useScreenChange'
 import useVersion from './hooks/useVersion'
+import { startNewChat } from './lib/startNewChat'
 import { navigateToSettings } from './modals/Settings'
 import { trackingEvent } from './packages/event'
 import appIcon from './static/icon.png'
-import { currentSessionIdAtom } from './stores/atoms'
 import { useLanguage, useSettingsStore } from './stores/settingsStore'
 import { useUIStore } from './stores/uiStore'
 import { CHATBOX_BUILD_PLATFORM } from './variables'
@@ -105,14 +104,13 @@ export default function Sidebar() {
   const displaySubtitle = useMemo(() => t('On this device'), [t])
 
   const handleCreateNewSession = useCallback(() => {
-    getDefaultStore().set(currentSessionIdAtom, null)
-    navigate({ to: `/` })
+    startNewChat()
 
     if (isSmallScreen) {
       setShowSidebar(false)
     }
     trackingEvent('create_new_conversation', { event_category: 'user' })
-  }, [navigate, setShowSidebar, isSmallScreen])
+  }, [setShowSidebar, isSmallScreen])
 
   const handleCreateNewPictureSession = useCallback(() => {
     navigate({ to: '/image-creator' })

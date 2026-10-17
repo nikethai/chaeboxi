@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest'
-import { getSettingsParentPath, resolveSettingsEntryPath, resolveSettingsExitTarget } from './settings-navigation'
+import { describe, expect, it, vi } from 'vitest'
+import {
+  getSettingsParentPath,
+  resolveSettingsEntryPath,
+  resolveSettingsExit,
+  resolveSettingsExitTarget,
+} from './settings-navigation'
 
 describe('getSettingsParentPath', () => {
   it('returns null at settings root', () => {
@@ -33,7 +38,7 @@ describe('resolveSettingsExitTarget', () => {
   })
 
   it('treats the transient new-chat route as home', () => {
-    expect(resolveSettingsExitTarget('new')).toEqual({ to: '/' })
+    expect(resolveSettingsExitTarget('new')).toEqual({ to: '/new' })
   })
 
   it('falls back to home when the cached session no longer exists', () => {
@@ -52,6 +57,23 @@ describe('resolveSettingsExitTarget', () => {
     expect(resolveSettingsExitTarget(null)).toEqual({ to: '/' })
     expect(resolveSettingsExitTarget(undefined)).toEqual({ to: '/' })
     expect(resolveSettingsExitTarget('')).toEqual({ to: '/' })
+  })
+})
+
+describe('resolveSettingsExit', () => {
+  it('returns to /new from a new chat without looking the draft up in storage', async () => {
+    const exists = vi.fn(async () => false)
+    expect(await resolveSettingsExit('new', exists)).toEqual({ to: '/new' })
+    expect(exists).not.toHaveBeenCalled()
+  })
+
+  it('returns to a stored session and falls back to home for a missing one', async () => {
+    expect(await resolveSettingsExit('sess-1', async (id) => id === 'sess-1')).toEqual({
+      to: '/session/$sessionId',
+      params: { sessionId: 'sess-1' },
+    })
+    expect(await resolveSettingsExit('gone', async () => false)).toEqual({ to: '/' })
+    expect(await resolveSettingsExit(null, async () => true)).toEqual({ to: '/' })
   })
 })
 

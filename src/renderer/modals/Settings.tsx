@@ -2,7 +2,7 @@ import { getDefaultStore } from 'jotai'
 import { router } from '@/router'
 import { currentSessionIdAtom } from '@/stores/atoms'
 import { sessionExistsInStorage } from '@/stores/chatStore'
-import { getSettingsParentPath, resolveSettingsEntryPath, resolveSettingsExitTarget } from '@/utils/settings-navigation'
+import { getSettingsParentPath, resolveSettingsEntryPath, resolveSettingsExit } from '@/utils/settings-navigation'
 
 export { getSettingsParentPath }
 
@@ -23,8 +23,7 @@ export function navigateToSettings(path?: string) {
 export async function closeSettings() {
   const store = getDefaultStore()
   const sessionId = store.get(currentSessionIdAtom)
-  const sessionExists = Boolean(sessionId && sessionId !== 'new' && (await sessionExistsInStorage(sessionId)))
-  const target = resolveSettingsExitTarget(sessionId, sessionExists)
+  const target = await resolveSettingsExit(sessionId, sessionExistsInStorage)
   if (target.to === '/session/$sessionId' && target.params) {
     void router.navigate({ to: target.to, params: target.params })
     return
@@ -32,5 +31,5 @@ export async function closeSettings() {
   if (sessionId) {
     store.set(currentSessionIdAtom, null)
   }
-  void router.navigate({ to: '/' })
+  void router.navigate({ to: target.to })
 }

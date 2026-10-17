@@ -20,13 +20,28 @@ export function resolveSettingsExitTarget(
   sessionId: string | null | undefined,
   sessionExists = true
 ): {
-  to: '/session/$sessionId' | '/'
+  to: '/session/$sessionId' | '/' | '/new'
   params?: { sessionId: string }
 } {
   if (sessionId && sessionId !== 'new' && sessionExists) {
     return { to: '/session/$sessionId', params: { sessionId } }
   }
+  if (sessionId === 'new' && sessionExists) {
+    return { to: '/new' }
+  }
   return { to: '/' }
+}
+
+/**
+ * Where leaving settings should land. `'new'` is the open new-chat draft: it is never in storage,
+ * so it counts as existing and returns to `/new`; any other id is checked with `sessionExists`.
+ */
+export async function resolveSettingsExit(
+  sessionId: string | null | undefined,
+  sessionExists: (id: string) => Promise<boolean>
+): Promise<ReturnType<typeof resolveSettingsExitTarget>> {
+  const exists = sessionId === 'new' || Boolean(sessionId && (await sessionExists(sessionId)))
+  return resolveSettingsExitTarget(sessionId, exists)
 }
 
 /** Build the `/settings/*` path for open-settings navigations. */

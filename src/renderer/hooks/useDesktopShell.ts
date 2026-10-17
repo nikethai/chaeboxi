@@ -130,7 +130,7 @@ export function useDesktopShell() {
           if (sid !== 'new') {
             await router.navigate({ to: `/session/${sid}` })
           } else {
-            await router.navigate({ to: '/' })
+            await router.navigate({ to: '/new' })
           }
         }
         await attachScreenshotToComposer(payload)

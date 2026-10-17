@@ -12,6 +12,7 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as QuickImport } from './routes/quick'
+import { Route as NewImport } from './routes/new'
 import { Route as CopilotsImport } from './routes/copilots'
 import { Route as AboutImport } from './routes/about'
 import { Route as SettingsRouteImport } from './routes/settings/route'
@@ -57,6 +58,12 @@ import { Route as SettingsProviderProviderIdImport } from './routes/settings/pro
 const QuickRoute = QuickImport.update({
   id: '/quick',
   path: '/quick',
+  getParentRoute: () => rootRoute,
+} as any)
+
+const NewRoute = NewImport.update({
+  id: '/new',
+  path: '/new',
   getParentRoute: () => rootRoute,
 } as any)
 
@@ -333,6 +340,13 @@ declare module '@tanstack/react-router' {
       path: '/copilots'
       fullPath: '/copilots'
       preLoaderRoute: typeof CopilotsImport
+      parentRoute: typeof rootRoute
+    }
+    '/new': {
+      id: '/new'
+      path: '/new'
+      fullPath: '/new'
+      preLoaderRoute: typeof NewImport
       parentRoute: typeof rootRoute
     }
     '/quick': {
@@ -686,6 +700,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/copilots': typeof CopilotsRoute
+  '/new': typeof NewRoute
   '/quick': typeof QuickRoute
   '/settings/provider': typeof SettingsProviderRouteRouteWithChildren
   '/dev/context-generator': typeof DevContextGeneratorRoute
@@ -727,6 +742,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/copilots': typeof CopilotsRoute
+  '/new': typeof NewRoute
   '/quick': typeof QuickRoute
   '/dev/context-generator': typeof DevContextGeneratorRoute
   '/dev/css-var': typeof DevCssVarRoute
@@ -770,6 +786,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRouteRouteWithChildren
   '/about': typeof AboutRoute
   '/copilots': typeof CopilotsRoute
+  '/new': typeof NewRoute
   '/quick': typeof QuickRoute
   '/settings/provider': typeof SettingsProviderRouteRouteWithChildren
   '/dev/context-generator': typeof DevContextGeneratorRoute
@@ -815,6 +832,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/about'
     | '/copilots'
+    | '/new'
     | '/quick'
     | '/settings/provider'
     | '/dev/context-generator'
@@ -855,6 +873,7 @@ export interface FileRouteTypes {
     | '/'
     | '/about'
     | '/copilots'
+    | '/new'
     | '/quick'
     | '/dev/context-generator'
     | '/dev/css-var'
@@ -896,6 +915,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/about'
     | '/copilots'
+    | '/new'
     | '/quick'
     | '/settings/provider'
     | '/dev/context-generator'
@@ -940,6 +960,7 @@ export interface RootRouteChildren {
   SettingsRouteRoute: typeof SettingsRouteRouteWithChildren
   AboutRoute: typeof AboutRoute
   CopilotsRoute: typeof CopilotsRoute
+  NewRoute: typeof NewRoute
   QuickRoute: typeof QuickRoute
   SessionSessionIdRoute: typeof SessionSessionIdRoute
   ImageCreatorIndexRoute: typeof ImageCreatorIndexRoute
@@ -951,6 +972,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRouteRoute: SettingsRouteRouteWithChildren,
   AboutRoute: AboutRoute,
   CopilotsRoute: CopilotsRoute,
+  NewRoute: NewRoute,
   QuickRoute: QuickRoute,
   SessionSessionIdRoute: SessionSessionIdRoute,
   ImageCreatorIndexRoute: ImageCreatorIndexRoute,
@@ -971,6 +993,7 @@ export const routeTree = rootRoute
         "/settings",
         "/about",
         "/copilots",
+        "/new",
         "/quick",
         "/session/$sessionId",
         "/image-creator/"
@@ -1024,6 +1047,9 @@ export const routeTree = rootRoute
     },
     "/copilots": {
       "filePath": "copilots.tsx"
+    },
+    "/new": {
+      "filePath": "new.tsx"
     },
     "/quick": {
       "filePath": "quick.tsx"

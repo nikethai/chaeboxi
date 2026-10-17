@@ -1,4 +1,6 @@
-export type ReviewKind = 'proposal' | 'done' | 'needs-you' | 'conflict' | 'change' | 're-check'
+import type { ReviewKind } from '@shared/types/review'
+
+export type { ReviewKind } from '@shared/types/review'
 
 export type ReviewAction = { label: string; onClick: () => void; variant?: 'primary' | 'secondary' | 'ghost' }
 

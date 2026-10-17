@@ -38,6 +38,8 @@ export enum StorageKey {
   Integrations = 'integrations',
   /** Device-local imported vendor archives. Never use session: keys. */
   ImportedHistory = 'imported-history',
+  /** Review feed entries (shared by main and Quick Chat windows; IndexedDB). */
+  ReviewEntries = 'review-entries',
 }
 
 export const StorageKeyGenerator = {
@@ -80,6 +82,7 @@ export default class StoreStorage extends BaseStorage {
     StorageKey.UsageBudgetNotify,
     StorageKey.Integrations,
     StorageKey.ImportedHistory,
+    StorageKey.ReviewEntries,
   ])
 
   public async getItem<T>(key: string, initialValue: T): Promise<T> {

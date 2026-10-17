@@ -1,0 +1,174 @@
+import {
+  REVIEW_RETENTION_MS,
+  ReviewEntrySchema,
+  WAITING_KINDS,
+  type ReviewEntry,
+  type ReviewEntryInput,
+  type ReviewRef,
+  type ReviewState,
+} from '@shared/types/review'
+import { v4 as uuidv4 } from 'uuid'
+import { createStore } from 'zustand/vanilla'
+
+const KEY = 'review-entries'
+
+type ReviewStorage = {
+  getItem<T>(key: string, fallback: T): Promise<T>
+  setItemNow(key: string, value: unknown): Promise<void>
+}
+type Doc = { entries: ReviewEntry[]; lastCheckedAt?: number }
+type State = { entries: ReviewEntry[]; lastCheckedAt?: number; loaded: boolean }
+
+export const reviewStore = createStore<State>()(() => ({ entries: [], lastCheckedAt: undefined, loaded: false }))
+
+let override: ReviewStorage | null = null
+export function setReviewStorageForTests(api: ReviewStorage | null) {
+  override = api
+}
+
+async function getStorage(): Promise<ReviewStorage> {
+  if (override) return override
+  // Lazy so importing this module stays cheap and platform-free until first use.
+  const mod = await import('@/storage')
+  return mod.default as ReviewStorage
+}
+
+const LOCK = 'dango:review-entries'
+
+type LockManagerLike = { request<T>(name: string, fn: () => Promise<T>): Promise<T> }
+
+// The Web Lock spans every window of this origin (main and Quick Chat share the IndexedDB row);
+// without it (tests, old runtimes) the in-window queue below is the only guard.
+function withReviewLock<T>(fn: () => Promise<T>): Promise<T> {
+  const locks = (globalThis.navigator as { locks?: LockManagerLike } | undefined)?.locks
+  return locks ? locks.request(LOCK, fn) : fn()
+}
+
+// Every mutation runs here, one at a time, and re-reads storage first so rows
+// written by another window or before load are never overwritten.
+let queue: Promise<unknown> = Promise.resolve()
+function enqueue<T>(fn: () => Promise<T>): Promise<T> {
+  const locked = () => withReviewLock(fn)
+  const run = queue.then(locked, locked)
+  queue = run.catch(() => undefined)
+  return run
+}
+
+async function readDoc(storage: ReviewStorage): Promise<Doc> {
+  const raw = await storage.getItem<Partial<Doc> | null>(KEY, null)
+  const now = Date.now()
+  const entries: ReviewEntry[] = []
+  for (const r of Array.isArray(raw?.entries) ? raw.entries : []) {
+    const parsed = ReviewEntrySchema.safeParse(r)
+    if (!parsed.success) continue
+    const e = parsed.data
+    if (e.state !== 'open' && now - (e.resolvedAt ?? e.createdAt) > REVIEW_RETENTION_MS) continue
+    entries.push(e)
+  }
+  return { entries, lastCheckedAt: typeof raw?.lastCheckedAt === 'number' ? raw.lastCheckedAt : undefined }
+}
+
+async function mutate<T>(fn: (doc: Doc) => T): Promise<T> {
+  return enqueue(async () => {
+    const storage = await getStorage()
+    const doc = await readDoc(storage)
+    const result = fn(doc)
+    await storage.setItemNow(KEY, doc)
+    reviewStore.setState({ entries: doc.entries, lastCheckedAt: doc.lastCheckedAt, loaded: true })
+    return result
+  })
+}
+
+export function loadReviewEntries(): Promise<void> {
+  return enqueue(async () => {
+    const doc = await readDoc(await getStorage())
+    reviewStore.setState({ entries: doc.entries, lastCheckedAt: doc.lastCheckedAt, loaded: true })
+  })
+}
+
+export function addReviewEntry(input: ReviewEntryInput): Promise<ReviewEntry> {
+  return mutate((doc) => {
+    const open = doc.entries.find(
+      (e) => e.state === 'open' && e.ref.type === input.ref.type && e.ref.id === input.ref.id
+    )
+    if (open) {
+      const merged: ReviewEntry = {
+        ...input,
+        id: open.id,
+        createdAt: open.createdAt,
+        state: input.state ?? 'open',
+      }
+      doc.entries = doc.entries.map((e) => (e === open ? merged : e))
+      return merged
+    }
+    const created: ReviewEntry = {
+      ...input,
+      id: input.id ?? uuidv4(),
+      state: input.state ?? 'open',
+      createdAt: input.createdAt ?? Date.now(),
+    }
+    doc.entries = [...doc.entries, created]
+    return created
+  })
+}
+
+export function updateReviewEntry(
+  id: string,
+  patch: Partial<Omit<ReviewEntry, 'id'>>
+): Promise<ReviewEntry | undefined> {
+  return mutate((doc) => {
+    const found = doc.entries.find((e) => e.id === id)
+    if (!found) return undefined
+    const next: ReviewEntry = { ...found, ...patch, id }
+    doc.entries = doc.entries.map((e) => (e === found ? next : e))
+    return next
+  })
+}
+
+export function setReviewEntryState(
+  match: { id: string } | { ref: ReviewRef },
+  state: ReviewState
+): Promise<ReviewEntry | undefined> {
+  return mutate((doc) => {
+    let found: ReviewEntry | undefined
+    if ('id' in match) {
+      found = doc.entries.find((e) => e.id === match.id)
+    } else {
+      for (const e of doc.entries) {
+        if (e.ref.type === match.ref.type && e.ref.id === match.ref.id && (!found || e.createdAt >= found.createdAt)) {
+          found = e
+        }
+      }
+    }
+    if (!found) return undefined
+    const { resolvedAt: _r, undoUntil: _u, ...rest } = found
+    const next: ReviewEntry = state === 'open' ? { ...rest, state } : { ...found, state, resolvedAt: Date.now() }
+    doc.entries = doc.entries.map((e) => (e === found ? next : e))
+    return next
+  })
+}
+
+export function setLastCheckedAt(ts: number): Promise<void> {
+  return mutate((doc) => {
+    doc.lastCheckedAt = ts
+  })
+}
+
+export function listReviewEntries(opts?: { scopeId?: string; states?: ReviewState[] }): ReviewEntry[] {
+  return reviewStore
+    .getState()
+    .entries.filter(
+      (e) => (!opts?.scopeId || e.scopeId === opts.scopeId) && (!opts?.states || opts.states.includes(e.state))
+    )
+    .sort((a, b) => b.createdAt - a.createdAt)
+}
+
+export function subscribeReviewEntries(cb: (entries: ReviewEntry[]) => void): () => void {
+  return reviewStore.subscribe((s, prev) => {
+    if (s.entries !== prev.entries) cb(s.entries)
+  })
+}
+
+export function waitingCount(entries: ReviewEntry[]): number {
+  return entries.filter((e) => e.state === 'open' && WAITING_KINDS.includes(e.kind)).length
+}

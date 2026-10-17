@@ -1292,5 +1292,13 @@
   "Tool Access": "Tool access",
   "Cross-device Chat History": "Cross-device chat history",
   "Self-hosted History Sync": "Self-hosted history sync",
-  "Serper API Key": "Serper API key"
+  "Serper API Key": "Serper API key",
+  "Couldn't undo. The change stays.": "Couldn't undo. The change stays.",
+  "Undo": "Undo",
+  "Assistant, {{state}}": "Assistant, {{state}}",
+  "Idle": "Idle",
+  "Replying": "Replying",
+  "Needs you": "Needs you",
+  "Asleep": "Asleep",
+  "Stuck": "Stuck"
 }

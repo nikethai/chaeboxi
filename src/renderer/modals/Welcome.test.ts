@@ -12,4 +12,13 @@ describe('Welcome onboarding mobile layout', () => {
     expect(welcome).toContain('className="flex flex-col items-stretch"')
     expect(welcome).toContain("classNames={{ item: 'whitespace-normal' }}")
   })
+
+  test('keeps each bullet on the first line of its label when the label wraps', () => {
+    const welcome = readSource('src/renderer/modals/Welcome.tsx')
+    const list = welcome.slice(welcome.indexOf('<List'), welcome.indexOf('<List.Item>'))
+
+    // Mantine's default list-style-position is inside, which puts a wrapping label's inline-flex box under the marker
+    expect(list).toContain("style={{ listStylePosition: 'outside' }}")
+    expect(list).toMatch(/\bwithPadding\b/)
+  })
 })

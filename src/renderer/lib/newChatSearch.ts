@@ -25,3 +25,11 @@ export function seedNewChatSession(session: Session, search: NewChatSearch): Ses
   }
   return next
 }
+
+/**
+ * Whether a `prefill` seen by an already-open `/new` is new and should replace the composer draft
+ * (startNewChat({ prefill }) while `/new` is open). The same prefill again, or none, keeps what the user typed.
+ */
+export function isNewPrefill(previous: string | undefined, next: string | undefined): next is string {
+  return Boolean(next) && next !== previous
+}

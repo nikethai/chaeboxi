@@ -1,7 +1,7 @@
 import { toSessionAgentFieldsFromSelection } from '@shared/new-chat-agents'
 import type { Session } from '@shared/types'
 import { describe, expect, it } from 'vitest'
-import { NewChatSearchSchema, seedNewChatSession } from './newChatSearch'
+import { isNewPrefill, NewChatSearchSchema, seedNewChatSession } from './newChatSearch'
 
 const base = { id: 'new', name: 'Untitled', type: 'chat', messages: [] } as unknown as Session
 
@@ -31,5 +31,19 @@ describe('seedNewChatSession', () => {
 describe('NewChatSearchSchema', () => {
   it('keeps prefill and drops unknown keys', () => {
     expect(NewChatSearchSchema.parse({ prefill: 'x', other: 1 })).toEqual({ prefill: 'x' })
+  })
+})
+
+describe('isNewPrefill', () => {
+  it('a prefill that arrives while /new is open replaces the composer draft', () => {
+    expect(isNewPrefill(undefined, 'Summarise the launch notes')).toBe(true)
+    expect(isNewPrefill('first draft', 'second draft')).toBe(true)
+  })
+
+  it('the same prefill, or none, leaves what the user typed alone', () => {
+    expect(isNewPrefill('same', 'same')).toBe(false)
+    expect(isNewPrefill('typed over', undefined)).toBe(false)
+    expect(isNewPrefill(undefined, undefined)).toBe(false)
+    expect(isNewPrefill(undefined, '')).toBe(false)
   })
 })

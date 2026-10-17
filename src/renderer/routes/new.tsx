@@ -12,7 +12,7 @@ import Page from '@/components/layout/Page'
 import NewChatAgentBar from '@/components/new-chat/NewChatAgentBar'
 import { useMyCopilots, useRemoteCopilots } from '@/hooks/useCopilots'
 import { useProviders } from '@/hooks/useProviders'
-import { type NewChatSearch, NewChatSearchSchema, seedNewChatSession } from '@/lib/newChatSearch'
+import { isNewPrefill, type NewChatSearch, NewChatSearchSchema, seedNewChatSession } from '@/lib/newChatSearch'
 import { createSession as createSessionStore } from '@/stores/chatStore'
 import { submitNewUserMessage, switchCurrentSession } from '@/stores/sessionActions'
 import { initEmptyChatSession } from '@/stores/sessionHelpers'
@@ -138,7 +138,7 @@ function Index() {
   const prefill = (routerState.location.search as NewChatSearch).prefill
   const lastPrefill = useRef<string | undefined>(undefined)
   useEffect(() => {
-    if (prefill && prefill !== lastPrefill.current) {
+    if (isNewPrefill(lastPrefill.current, prefill)) {
       setComposerDraft(prefill)
       setComposerKey((k) => k + 1)
     }

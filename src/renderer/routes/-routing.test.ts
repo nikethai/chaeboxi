@@ -31,6 +31,9 @@ describe('/new wiring', () => {
     expect(t).toContain('seedNewChatSession(')
     expect(t).toContain('projectId: session.projectId')
   })
+  it('new route remounts the composer when a new prefill arrives', () => {
+    expect(src('routes/new.tsx')).toContain('isNewPrefill(lastPrefill.current, prefill)')
+  })
   it('route tree has /new', () => {
     expect(src('routeTree.gen.ts')).toContain("path: '/new'")
   })

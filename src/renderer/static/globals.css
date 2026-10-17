@@ -1025,12 +1025,6 @@
   .rail-nav-item--primary {
     color: var(--chatbox-tint-primary);
     font-weight: 600;
-    background: color-mix(in srgb, var(--chatbox-tint-brand) 8%, transparent);
-  }
-
-  .rail-nav-item--primary:hover {
-    background: color-mix(in srgb, var(--chatbox-tint-brand) 13%, transparent);
-    color: var(--chatbox-tint-primary);
   }
 
   .rail-nav-item > svg {
@@ -1190,11 +1184,9 @@
   }
 
   .rail-section-label {
-    font-size: 0.65rem;
-    font-weight: 650;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: var(--chatbox-tint-tertiary);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--dango-muted);
     transition: color 120ms var(--chatbox-ease);
   }
 
@@ -1272,7 +1264,7 @@
 
   /*
    * Recents / session row — chat-app selection, not sausage pill + stub bar.
-   * Idle: flat. Hover: soft wash. Active: brand-tinted fill + clear title weight.
+   * Idle: flat. Hover: soft wash. Active: green wash + green text, no edge.
    */
   .studio-rail-row {
     position: relative;
@@ -1288,52 +1280,22 @@
   }
 
   .studio-rail-row-active {
-    background: color-mix(
-      in srgb,
-      var(--chatbox-tint-brand) 12%,
-      var(--chatbox-background-secondary)
-    ) !important;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 16%, transparent);
-  }
-
-  /* Slim brand edge — full height of the rounded row, not a floating stub */
-  .studio-rail-row-active::before {
-    content: "";
-    position: absolute;
-    inset-inline-start: 0;
-    top: 7px;
-    bottom: 7px;
-    width: 2.5px;
-    border-radius: 0 2px 2px 0;
-    background: var(--chatbox-tint-brand);
-    opacity: 1;
-  }
-
-  :root[data-mantine-color-scheme="dark"] .studio-rail-row-active {
-    background: color-mix(
-      in srgb,
-      var(--chatbox-tint-brand) 18%,
-      var(--chatbox-background-secondary)
-    ) !important;
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 24%, transparent);
+    background: var(--dango-green-wash) !important;
+    color: var(--dango-green-text);
   }
 
   .studio-rail-row-active:hover {
-    background: color-mix(
-      in srgb,
-      var(--chatbox-tint-brand) 16%,
-      var(--chatbox-background-secondary)
-    ) !important;
+    background: var(--dango-green-wash) !important;
   }
 
   .studio-rail-row-active .rail-session-title {
-    color: var(--chatbox-tint-primary) !important;
+    color: var(--dango-green-text) !important;
     font-weight: 600 !important;
   }
 
   .studio-rail-row-active .rail-session-time {
     opacity: 0.9;
-    color: var(--chatbox-tint-secondary);
+    color: var(--dango-green-text);
   }
 
   /* Nested under expanded project */

@@ -61,18 +61,45 @@ describe('review hooks', () => {
     await waitFor(() => expect(result.current).toHaveLength(1))
   })
 
-  it('useReviewWaitingCount counts open waiting kinds only', () => {
-    reviewStore.setState({
+  it('useReviewWaitingCount loads saved rows by itself and counts open waiting kinds only', async () => {
+    data[KEY] = {
       entries: [
-        row({ id: '1', kind: 'proposal' }),
-        row({ id: '2', kind: 'needs-you' }),
-        row({ id: '3', kind: 'conflict' }),
-        row({ id: '4', kind: 'change' }),
-        row({ id: '5', kind: 'proposal', state: 'done' }),
+        row({ id: '1', kind: 'proposal', ref: { type: 'proposal', id: '1' } }),
+        row({ id: '2', kind: 'needs-you', ref: { type: 'question', id: '2' } }),
+        row({ id: '3', kind: 'conflict', ref: { type: 'conflict', id: '3' } }),
+        row({ id: '4', kind: 'change', ref: { type: 'change', id: '4' } }),
+        row({ id: '5', kind: 'proposal', state: 'done', ref: { type: 'proposal', id: '5' } }),
       ],
-    })
+    }
     const { result } = renderHook(() => useReviewWaitingCount())
-    expect(result.current).toBe(3)
+    await waitFor(() => expect(result.current).toBe(3))
+  })
+
+  it('useLastCheckedAt loads the saved value by itself', async () => {
+    data[KEY] = { entries: [], lastCheckedAt: 77 }
+    const { result } = renderHook(() => useLastCheckedAt())
+    await waitFor(() => expect(result.current).toBe(77))
+  })
+
+  it.each([
+    ['useReviewEntries', useReviewEntries],
+    ['useReviewWaitingCount', useReviewWaitingCount],
+    ['useLastCheckedAt', useLastCheckedAt],
+  ] as const)('%s removes its focus and visibility listeners on unmount', async (_name, hook) => {
+    const winAdd = vi.spyOn(window, 'addEventListener')
+    const winRemove = vi.spyOn(window, 'removeEventListener')
+    const docAdd = vi.spyOn(document, 'addEventListener')
+    const docRemove = vi.spyOn(document, 'removeEventListener')
+    const { unmount } = renderHook(() => hook())
+    await waitFor(() => expect(reviewStore.getState().loaded).toBe(true))
+    const onFocus = winAdd.mock.calls.find(([type]) => type === 'focus')?.[1]
+    const onVisible = docAdd.mock.calls.find(([type]) => type === 'visibilitychange')?.[1]
+    expect(onFocus).toBeTypeOf('function')
+    expect(onVisible).toBeTypeOf('function')
+    unmount()
+    expect(winRemove).toHaveBeenCalledWith('focus', onFocus)
+    expect(docRemove).toHaveBeenCalledWith('visibilitychange', onVisible)
+    vi.restoreAllMocks()
   })
 
   it('useLastCheckedAt follows setLastCheckedAt', async () => {

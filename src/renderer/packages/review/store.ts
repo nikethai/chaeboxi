@@ -33,11 +33,23 @@ async function getStorage(): Promise<ReviewStorage> {
   return mod.default as ReviewStorage
 }
 
+const LOCK = 'dango:review-entries'
+
+type LockManagerLike = { request<T>(name: string, fn: () => Promise<T>): Promise<T> }
+
+// The Web Lock spans every window of this origin (main and Quick Chat share the IndexedDB row);
+// without it (tests, old runtimes) the in-window queue below is the only guard.
+function withReviewLock<T>(fn: () => Promise<T>): Promise<T> {
+  const locks = (globalThis.navigator as { locks?: LockManagerLike } | undefined)?.locks
+  return locks ? locks.request(LOCK, fn) : fn()
+}
+
 // Every mutation runs here, one at a time, and re-reads storage first so rows
 // written by another window or before load are never overwritten.
 let queue: Promise<unknown> = Promise.resolve()
 function enqueue<T>(fn: () => Promise<T>): Promise<T> {
-  const run = queue.then(fn, fn)
+  const locked = () => withReviewLock(fn)
+  const run = queue.then(locked, locked)
   queue = run.catch(() => undefined)
   return run
 }

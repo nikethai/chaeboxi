@@ -5,7 +5,8 @@ import { useStore } from 'zustand'
 import { lookupReviewRenderer, type ReviewRendererProps, reviewRegistryStore } from './registry'
 import { loadReviewEntries, reviewStore, waitingCount } from './store'
 
-export function useReviewEntries(): ReviewEntry[] {
+/** Load review entries on mount, and again whenever this window regains focus or becomes visible. */
+export function useReviewAutoload(): void {
   useEffect(() => {
     const reload = () => void loadReviewEntries().catch(() => undefined)
     const onVisible = () => {
@@ -19,14 +20,20 @@ export function useReviewEntries(): ReviewEntry[] {
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [])
+}
+
+export function useReviewEntries(): ReviewEntry[] {
+  useReviewAutoload()
   return useStore(reviewStore, (s) => s.entries)
 }
 
 export function useReviewWaitingCount(): number {
+  useReviewAutoload()
   return useStore(reviewStore, (s) => waitingCount(s.entries))
 }
 
 export function useLastCheckedAt(): number | undefined {
+  useReviewAutoload()
   return useStore(reviewStore, (s) => s.lastCheckedAt)
 }
 

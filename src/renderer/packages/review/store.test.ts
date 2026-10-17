@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReviewEntry, ReviewEntryInput } from '@shared/types/review'
 import {
   addReviewEntry,
@@ -48,7 +48,48 @@ beforeEach(() => {
   reviewStore.setState({ entries: [], lastCheckedAt: undefined, loaded: false })
 })
 
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
+
 describe('review store', () => {
+  it('mutations run inside the dango:review-entries Web Lock when the browser has one', async () => {
+    const names: string[] = []
+    let held = false
+    vi.stubGlobal('navigator', {
+      locks: {
+        request: async <T>(name: string, fn: () => Promise<T>): Promise<T> => {
+          names.push(name)
+          held = true
+          try {
+            return await fn()
+          } finally {
+            held = false
+          }
+        },
+      },
+    })
+    const heldDuringWrite: boolean[] = []
+    setItemNow.mockImplementation((k: string, v: unknown) => {
+      heldDuringWrite.push(held)
+      data[k] = JSON.parse(JSON.stringify(v))
+      return Promise.resolve()
+    })
+    await addReviewEntry(input())
+    await loadReviewEntries()
+    expect(names).toEqual(['dango:review-entries', 'dango:review-entries'])
+    expect(heldDuringWrite).toEqual([true])
+    expect(stored()).toHaveLength(1)
+  })
+
+  it('a field this window does not know survives its rewrite', async () => {
+    data[KEY] = { entries: [{ ...row(), laterSliceField: { n: 1 } }] }
+    await addReviewEntry(input())
+    expect(stored().find((e) => e.id === 'r1')).toMatchObject({ laterSliceField: { n: 1 } })
+    await updateReviewEntry('r1', { text: 'x' })
+    expect(stored().find((e) => e.id === 'r1')).toMatchObject({ text: 'x', laterSliceField: { n: 1 } })
+  })
+
   it('add before load keeps saved rows', async () => {
     data[KEY] = { entries: [row()] }
     await addReviewEntry(input())

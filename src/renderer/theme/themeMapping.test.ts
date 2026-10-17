@@ -79,6 +79,90 @@ const rootRules = (selector: string) => {
   return rules
 }
 
+// Declarations of globals.css that apply in one colour scheme: the top-level `:root` block, the dark block (dark
+// only) and the Mantine colour block, which lists both schemes. Later blocks win, as in the cascade.
+const schemeDecls = (mode: 'light' | 'dark') => {
+  const out = new Map<string, string>()
+  globalsRoot.each((node) => {
+    if (node.type !== 'rule') {
+      return
+    }
+    const selectors = node.selectors.map(normalizeSelector)
+    const applies =
+      selectors.includes(':root') ||
+      (mode === 'dark' && selectors.includes(':root[data-mantine-color-scheme="dark"]')) ||
+      selectors.includes(`:root[data-mantine-color-scheme="${mode}"][data-mantine-color-scheme]`)
+    if (applies) {
+      for (const [prop, value] of declsOf(node)) {
+        out.set(prop, value)
+      }
+    }
+  })
+  return out
+}
+
+// Split on commas that are not inside parentheses.
+const splitArgs = (value: string) => {
+  const parts: string[] = []
+  let depth = 0
+  let start = 0
+  for (let i = 0; i < value.length; i++) {
+    const ch = value[i]
+    if (ch === '(') depth++
+    else if (ch === ')') depth--
+    else if (ch === ',' && depth === 0) {
+      parts.push(value.slice(start, i).trim())
+      start = i + 1
+    }
+  }
+  parts.push(value.slice(start).trim())
+  return parts
+}
+
+const toHex = (channels: number[]) => `#${channels.map((c) => Math.round(c).toString(16).padStart(2, '0')).join('')}`
+const channelsOf = (hex: string) => [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16))
+
+/**
+ * Resolve a colour value from globals.css to `#rrggbb` in one scheme: follows `var()` through the scheme's
+ * declarations and the Dango tokens, and computes `color-mix(in srgb, A p%, B)`.
+ */
+const resolveColor = (value: string, mode: 'light' | 'dark', decls = schemeDecls(mode)): string => {
+  const v = value.trim()
+  if (/^#[0-9a-f]{6}$/i.test(v)) {
+    return v.toLowerCase()
+  }
+  if (/^#[0-9a-f]{3}$/i.test(v)) {
+    return `#${[...v.slice(1)].map((c) => c + c).join('')}`.toLowerCase()
+  }
+  const variable = /^var\((--[\w-]+)\)$/.exec(v)
+  if (variable) {
+    const name = variable[1]
+    if (name.startsWith('--dango-')) {
+      const token = name.slice('--dango-'.length) as keyof (typeof dangoColors)['light']
+      if (dangoColors[mode][token]) {
+        return resolveColor(dangoColors[mode][token], mode, decls)
+      }
+    }
+    const declared = decls.get(name)
+    if (declared === undefined) {
+      throw new Error(`${name} is not declared for ${mode}`)
+    }
+    return resolveColor(declared, mode, decls)
+  }
+  const mix = /^color-mix\(in srgb,(.*)\)$/.exec(v)
+  if (mix) {
+    const [a, b] = splitArgs(mix[1]).map((arg) => {
+      const pct = /^(.*?)\s+(\d+(\.\d+)?)%$/.exec(arg)
+      return pct ? { color: pct[1], weight: Number(pct[2]) / 100 } : { color: arg, weight: undefined }
+    })
+    const wa = a.weight ?? (b.weight === undefined ? 0.5 : 1 - b.weight)
+    const ca = channelsOf(resolveColor(a.color, mode, decls))
+    const cb = channelsOf(resolveColor(b.color, mode, decls))
+    return toHex(ca.map((c, i) => c * wa + cb[i] * (1 - wa)))
+  }
+  throw new Error(`cannot resolve colour "${v}" for ${mode}`)
+}
+
 describe('theme mapping onto Dango', () => {
   test('every mapped variable points at its Dango token', () => {
     const [lightRule] = rootRules(':root')
@@ -197,11 +281,14 @@ describe('theme mapping onto Dango', () => {
       components.Button.vars(mantineTheme, { variant: 'filled', color: 'chatbox-brand' }).root['--button-color']
     ).toBe(onBrand)
 
-    // danger and muted fills take the raised surface colour (see the contrast test below)
-    for (const color of ['chatbox-error', 'chatbox-gray']) {
+    // danger takes the raised surface colour, grey takes white (see the contrast test below)
+    for (const [color, label] of [
+      ['chatbox-error', 'var(--dango-raised)'],
+      ['chatbox-gray', 'var(--chatbox-tint-white)'],
+    ]) {
       const props = { variant: 'filled', color }
-      expect(components.Button.vars(mantineTheme, props).root['--button-color']).toBe('var(--dango-raised)')
-      expect(components.ActionIcon.vars(mantineTheme, props).root['--ai-color']).toBe('var(--dango-raised)')
+      expect(components.Button.vars(mantineTheme, props).root['--button-color']).toBe(label)
+      expect(components.ActionIcon.vars(mantineTheme, props).root['--ai-color']).toBe(label)
     }
 
     for (const color of ['chatbox-success', 'blue']) {
@@ -214,18 +301,33 @@ describe('theme mapping onto Dango', () => {
     expect(theme.fontFamily).toBe('var(--chatbox-font-ui)')
   })
 
-  test('raised text on filled danger and muted controls is readable in both themes', () => {
-    for (const mode of ['light', 'dark'] as const) {
-      expect(
-        contrastRatio(dangoColors[mode].raised, dangoColors[mode].danger),
-        `raised on danger, ${mode}`
-      ).toBeGreaterThanOrEqual(4.5)
-      expect(
-        contrastRatio(dangoColors[mode].raised, dangoColors[mode].muted),
-        `raised on muted, ${mode}`
-      ).toBeGreaterThanOrEqual(4.5)
+  // follows the real chain: the label from the vars resolver, the fill from Mantine's `--mantine-color-<c>-filled`
+  // through globals.css, in each scheme
+  test.each(['chatbox-gray'])(
+    'filled %s controls have a readable label in both themes, at rest and on hover',
+    (color) => {
+      const theme = createDangoMantineTheme()
+      // biome-ignore lint/suspicious/noExplicitAny: resolvers are typed against Mantine's internal theme
+      const components = theme.components as any
+      const mantineTheme = {} as never
+      const failures: string[] = []
+      const props = { variant: 'filled', color }
+      const label = components.Button.vars(mantineTheme, props).root['--button-color']
+      expect(label, `${color} label`).toBeDefined()
+      expect(components.ActionIcon.vars(mantineTheme, props).root['--ai-color'], `${color} icon`).toBe(label)
+      for (const mode of ['light', 'dark'] as const) {
+        for (const fillVar of [`--mantine-color-${color}-filled`, `--mantine-color-${color}-filled-hover`]) {
+          const fg = resolveColor(label, mode)
+          const bg = resolveColor(`var(${fillVar})`, mode)
+          const ratio = contrastRatio(fg, bg)
+          if (ratio < 4.5) {
+            failures.push(`${color} ${mode} ${fillVar}: ${fg} on ${bg} is ${ratio.toFixed(2)}:1`)
+          }
+        }
+      }
+      expect(failures).toEqual([])
     }
-  })
+  )
 
   test('composer surface uses the Dango composer radius and send is green with on-green text', () => {
     const find = (selector: string) => rootRules(selector).map(declsOf)

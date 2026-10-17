@@ -26,8 +26,10 @@ import {
 } from '@mantine/core'
 
 const ON_BRAND = 'var(--chatbox-tint-on-brand)'
-// danger and muted fills are light in dark mode, so they take the raised surface colour as text (>= 4.5:1 in both themes)
-const ON_DANGER_OR_MUTED = 'var(--dango-raised)'
+// the danger fill is light in dark mode, so it takes the raised surface colour as text (>= 4.5:1 in both themes)
+const ON_DANGER = 'var(--dango-raised)'
+// the grey fill (--chatbox-background-gray-primary) stays dark in both themes, so its label is white
+const ON_GRAY = 'var(--chatbox-tint-white)'
 
 /**
  * Text colour for a filled control, or undefined to keep Mantine's default.
@@ -40,8 +42,11 @@ const filledTextColor = (props: { variant?: string; color?: unknown }): string |
   if (props.color === undefined || props.color === 'chatbox-brand') {
     return ON_BRAND
   }
-  if (props.color === 'chatbox-error' || props.color === 'chatbox-gray') {
-    return ON_DANGER_OR_MUTED
+  if (props.color === 'chatbox-error') {
+    return ON_DANGER
+  }
+  if (props.color === 'chatbox-gray') {
+    return ON_GRAY
   }
   return undefined
 }

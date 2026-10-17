@@ -8,7 +8,8 @@
     />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Dango" />
-    <meta name="theme-color" content="#121214" />
+    <meta name="theme-color" content="#fbfcfb" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121716" media="(prefers-color-scheme: dark)" />
     <meta name="description" content="Dango — multi-platform AI copilot" />
     <link rel="apple-touch-icon" href="./static/logo192.png" />
     <link rel="icon" href="./static/icon.png" type="image/png" />
@@ -24,8 +25,9 @@
       }
     </script>
     <style>
+      /* literals below are Dango ground values (--dango-ground): the splash paints before the CSS bundle loads */
       html[data-theme='dark'] {
-        background-color: #121214;
+        background-color: #121716;
       }
 
       .splash-screen {
@@ -40,11 +42,11 @@
         justify-content: center;
         align-items: center;
         opacity: 1;
-        background-color: #ffffff;
+        background-color: #fbfcfb;
         overflow: hidden;
       }
       html[data-theme='dark'] .splash-screen {
-        background-color: #121214;
+        background-color: #121716;
       }
 
       .splash-screen-top {

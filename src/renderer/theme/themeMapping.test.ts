@@ -241,6 +241,32 @@ describe('theme mapping onto Dango', () => {
     expect(tag).toContain("showStop && 'is-stop'")
   })
 
+  test('the dark ground is Dango, not the old #121214', () => {
+    const indexCss = readSource('src/renderer/static/index.css')
+    const indexHtml = readSource('src/renderer/index.html')
+    expect(/#121214/i.test(indexCss), 'index.css has #121214').toBe(false)
+    expect(/#121214/i.test(indexHtml), 'index.html has #121214').toBe(false)
+
+    // html/body/#root take the ground from the mapped variable, with no dark-only literal override
+    const offenders: string[] = []
+    postcss.parse(indexCss).walkRules((rule) => {
+      const touchesPage = /(^|[\s,])(html|body|#root)(\[[^\]]*\])?(\s+body)?$/.test(rule.selector.trim())
+      if (!touchesPage) {
+        return
+      }
+      for (const [prop, value] of declsOf(rule)) {
+        if (prop.startsWith('background') && !value.includes('var(--chatbox-background-primary')) {
+          offenders.push(`${rule.selector} { ${prop}: ${value} }`)
+        }
+      }
+    })
+    expect(offenders).toEqual([])
+
+    // the splash paints before CSS loads, so it keeps literals: they must be the Dango ground
+    expect(indexHtml.includes(`background-color: ${dangoColors.dark.ground}`), 'splash dark ground').toBe(true)
+    expect(indexHtml.includes(`background-color: ${dangoColors.light.ground}`), 'splash light ground').toBe(true)
+  })
+
   test('MUI follows Dango', () => {
     const light = getThemeDesign('light', 16, 'en')
     expect(light.palette?.primary).toMatchObject({ main: dangoColors.light.green })

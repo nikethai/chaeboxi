@@ -1,10 +1,13 @@
 ---
 type: plan
-status: draft
+status: stable
 description: "First code slice of the redesign: Dango design tokens in the app, existing variables remapped, sidebar and composer brought to the design system, a ReviewItem component and a dev gallery"
 generated: { by: claude/opus-5.5, at: 2026-10-17T12:10:00+07:00 }
+verified: { by: human:nikethai, at: 2026-10-17T14:38:00+07:00 }
 ---
 # Dango Theme, First Slice Implementation Plan
+
+Status: accepted by the maintainer, 2026-10-17; implemented and merged in PR #87.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

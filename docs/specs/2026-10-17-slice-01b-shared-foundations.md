@@ -192,7 +192,7 @@ Text uses `font-family="-apple-system, system-ui, sans-serif"`. CSS (tokens only
 - Produces (`@shared/types/review`):
   ```ts
   export type ReviewKind = 'proposal' | 'done' | 'needs-you' | 'conflict' | 'change' | 're-check'
-  export type ReviewRefType = 'proposal' | 'conflict' | 'change' | 'job' | 'draft' | 'question' | 'setup' | 'chat'
+  export type ReviewRefType = 'proposal' | 'conflict' | 'change' | 'job' | 'draft' | 'question' | 'setup' | 'chat' | 'knowledge'
   export type ReviewRef = { type: ReviewRefType; id: string }
   export type ReviewState = 'open' | 'done' | 'dismissed'
   export type ReviewOption = { id: string; text: string; source?: string }

@@ -14,20 +14,22 @@ generated: { by: claude/opus-5.5, at: 2026-10-17T19:00:00+07:00 }
 
 **Tech Stack:** React 18, Mantine 7, zustand 5 + immer, zod, slice 1b's `@/packages/undo`, `@/packages/review` and `Sheet`, Vitest 4 (+ jsdom, Testing Library), Biome.
 
-**Spec:** `docs/specs/2026-10-17-redesign-roadmap.md` (slice 4 row, Shared types, Contract register, Decisions); `docs/specs/2026-10-16-ux-flows.md` flows 3, 4, 5, 12, 16, "Conflict outcomes (RV6, RV7)", "Knowledge after approval (KN1–KN3)"; ADR 0001, 0002, 0013; `design/dango/README.md` (voice, sheets, toasts).
+**Spec:** `docs/specs/2026-10-17-redesign-roadmap.md` (slice 4 row, Shared types, Contract register, Decisions); `docs/specs/2026-10-16-ux-flows.md` flows 3, 4, 5, 12, 16, "Conflict outcomes (RV6, RV7)", "Knowledge after approval (KN1–KN3)"; ADR 0001, 0002, 0013, `docs/adr/0014-okf-knowledge-document-format.md`; `design/dango/README.md` (voice, sheets, toasts).
 
 ## Global Constraints
 
 - **Needs 1b:** `pushUndo`, `undoEntry` and `DEFAULT_UNDO_MS` from `@/packages/undo` (1b also mounts `<UndoToast />` and `useUndoHotkey()`; this slice adds no toast or hotkey of its own). Also from 1b: `ReviewEntry`, `ReviewKind` from `@shared/types/review`; `addReviewEntry`, `updateReviewEntry`, `setReviewEntryState`, `listReviewEntries`, `registerReviewRenderer`, `ReviewRendererProps`, `openReviewEntry` from `@/packages/review`; and `Sheet` from `@/components/ui/Sheet`.
 - **Needs 3:** `EVERYWHERE_SCOPE_ID`, `ScopeSchema`, `readsEverywhereFor(scope)` and `isEverywhere(id)` from `@shared/types/scope`. Scopes are stored in `myProjectsAtom` (`hooks/useFolders.ts:9`), and a session's scope is read with `getEffectiveProjectId` (`projects/project-context.ts:25`). Slice 3 also provides `moveSessionToScope` and the placeholders this slice fills: `ScopeKnowledgeTab({ scope })` and `useScopeKnowledgeCount` in `src/renderer/components/scope/`, and the `EverywherePage` sections `data-section="preferences" | "facts"`.
-- Register names this slice owns, exactly: `proposeKnowledge(input: Omit<KnowledgeProposal, 'id' | 'createdAt'>)`: adds the Proposal or the Conflict Review entry itself; `approveProposal(id, opts?: { text?: string }): Promise<KnowledgeItem>`; `deferProposal(id)`, `listDontSuggest()`, `allowSuggestAgain(id)`, `markSourceRemoved(sourceId)`; `KnowledgeProposal.origin` adds `'user'`; `KnowledgeSource.sourceId?`; message field `knowledgeIds?: string[]`; the Review renderers for `proposal`, `conflict` and `re-check`. Other roadmap names: `listKnowledge`, `dismissProposal`, `editKnowledge`, `removeKnowledge`, `moveKnowledge`, `resolveConflict`, `knowledgeForTurn`. Further public names: `addKnowledge`, `KnowledgeConflictError`, `listProposals`, `getConflict`, `recordKnowledgeUse`, `listKnowledgeUses`, `moveProposalsForSession`, `ensureKnowledgeLoaded`, `initKnowledge`, `KnowledgeTab`, `EverywhereKnowledge`. Added fields: `KnowledgeItem.overrides?`; `KnowledgeProposal.sessionId?`, `.messageId?`, `.deferred?`, `.overrides?`, `.checkedAt?`.
+- Register names this slice owns, exactly: `proposeKnowledge(input: Omit<KnowledgeProposal, 'id' | 'createdAt'>)`: adds the Proposal or the Conflict Review entry itself; `approveProposal(id, opts?: { text?: string }): Promise<KnowledgeItem>`; `deferProposal(id)`, `listDontSuggest()`, `allowSuggestAgain(id)`, `markSourceRemoved(sourceId)`; `KnowledgeProposal.origin` adds `'user'`; `KnowledgeSource.sourceId?`; message field `knowledgeIds?: string[]`; the Review renderers for `proposal`, `conflict` and `re-check`. Other roadmap names: `listKnowledge`, `dismissProposal`, `editKnowledge`, `removeKnowledge`, `moveKnowledge`, `resolveConflict`, `knowledgeForTurn`. Further public names: `addKnowledge`, `KnowledgeConflictError`, `listProposals`, `getConflict`, `recordKnowledgeUse`, `listKnowledgeUses`, `moveProposalsForSession`, `ensureKnowledgeLoaded`, `initKnowledge`, `KnowledgeTab`, `EverywhereKnowledge`. OKF-ready types (roadmap Shared types): `KnowledgeSource.id`, `KnowledgeSourceInput`, `KnowledgeRevision`, `KnowledgeItem.revisions`, `.approvedRevisionId`, `.staleAfter?`; and `reapproveKnowledge(id)`. Added fields: `KnowledgeItem.overrides?`, `.healthNotice?`; `KnowledgeProposal.sessionId?`, `.messageId?`, `.deferred?`, `.overrides?`, `.checkedAt?`.
 - **Undo contract:** every user-facing knowledge mutator (approve, add, dismiss, edit, remove, move, resolve) pushes its own undo record: `pushUndo({ group: 'knowledge', message, undo })`, where `message` is the toast copy below. Callers, including slice 5's feed keys, must not push a second record. Background writes (`proposeKnowledge`, `recordKnowledgeUse`, `markSourceRemoved`) push nothing.
 - ADR 0001 (roadmap Decision): Trust Auto never approves knowledge; proposals always wait, and pending proposals never enter answer context. ADR 0013 (Decision): a preference approved anywhere is saved in Everywhere, with no question asked. Preferences apply in every scope. Everywhere facts and decisions apply when `readsEverywhereFor(scope).facts`. A scope item wins over the Everywhere items it `overrides`. "Never send email" is a built-in Everywhere preference (id `builtin:never-send-email`) that cannot be edited, removed or moved.
+- ADR 0014: Records are OKF-ready (stable item, revision and source ids; approval bound to a content hash; staleAfter). No OKF parsing, import or export in this slice; that is a later plan. Only a user action (approve, add, edit, Keep this, Keep both, re-approve, the migration sheet's Move) writes a revision with `approval`; chat, background review and later imports only ever create proposals. `text` and `condition` on an item mirror its approved revision. Superseded and removed items keep all revisions.
 - Values: dismiss-repeat window `DONT_SUGGEST_WINDOW_MS = 30 * 24 * 60 * 60 * 1000`. Chat proposal cadence is `memorySettings.retainEveryNTurns` (default 3), gated by `isSessionMemoryAutoSaveAllowed` (`packages/memory/session-policy.ts:10`). While a proposal is being edited, ⌘↵ / Ctrl+↵ approves.
 - Storage (dango-storage-migration skill): new keys `knowledge` and `knowledge-migration`, both in `immediateKeys`, stored in IndexedDB on desktop. No `CurrentVersion` bump: nothing existing changes shape, and this slice never writes or deletes the memory keys. `MessageSchema` gains `knowledgeIds: z.array(z.string()).optional()`.
 - Copy: sentence case and no emoji. Undo messages are in the past tense. Quoted text is cut to 60 characters with `…`.
   - Undo messages: `Approved "{text}" for {scope}` · `Added "{text}" to {scope}` · `Saved the new wording` · `Removed "{text}"` · `Moved "{text}" to {scope}` · `Kept "{text}"` · `Kept both, with a condition` · `Dismissed "{text}"`
   - A repeat dismiss carries `extra: { label: "Don't suggest this again" }`.
+  - Item re-check entries (ref `{ type: 'knowledge', id: itemId }`): past `staleAfter` → `text: 'Due for review: {text}'`; hash mismatch → `text: "Can't verify: {text}"`, `sub: 'It changed outside Dango, so answers leave it out until you approve it again.'`. Actions `Approve again` and `Open`.
   - When an approve or add hits a contradiction: `toastActions.add('Waiting in Review: it contradicts "{old}"')`.
   - Re-check entry: `text` is the use's label. `sub` is `It used "{text}", which was replaced.`, `It used "{text}", which you edited.` or `It used "{text}", which you removed.` Actions: `Open` and `Dismiss`.
   - Proposal entry actions: `Approve`, `Edit`, `Dismiss`. While editing: `Approve` and `Cancel`.
@@ -56,7 +58,7 @@ generated: { by: claude/opus-5.5, at: 2026-10-17T19:00:00+07:00 }
 
 **Interfaces:**
 - Produces, in `knowledge.ts`:
-  - The roadmap's types: `KnowledgeKind`; `KnowledgeSource` (+ `sourceId?: string`); `KnowledgeEvent`; `KnowledgeItem` (+ `overrides?: string[]`); `KnowledgeProposal` (+ `sessionId?`, `messageId?`, `deferred?: boolean`, `overrides?: string[]`, `checkedAt?: number`, and origin `'chat' | 'background-review' | 'user'`).
+  - The roadmap's types: `KnowledgeKind`; `KnowledgeSource` (with `id` and `sourceId?: string`) and `KnowledgeSourceInput`; `KnowledgeEvent`; `KnowledgeRevision`; `KnowledgeItem` (with `revisions`, `approvedRevisionId`, `staleAfter?`, plus `overrides?: string[]` and `healthNotice?: { reason: 'stale' | 'unverified'; key: string }`, the last notice filed, so it is filed once per `staleAfter` value or revision id); `KnowledgeProposal` (`sources: KnowledgeSourceInput[]`, + `sessionId?`, `messageId?`, `deferred?: boolean`, `overrides?: string[]`, `checkedAt?: number`, and origin `'chat' | 'background-review' | 'user'`).
   - The new types and functions below. `KnowledgeStateSchema` gives every array `.catch([])` and drops bad records one at a time, not the whole document.
   ```ts
   export type KnowledgeConflict = { id: string; scopeId: string; proposalId: string; itemIds: string[]; state: 'open' | 'resolved' | 'dismissed'; createdAt: number; resolvedAt?: number }
@@ -70,6 +72,9 @@ generated: { by: claude/opus-5.5, at: 2026-10-17T19:00:00+07:00 }
 - Produces, in `text.ts`:
   - `knowledgeTextKey(text: string): string`: NFC, trim, collapse whitespace, lower case, strip trailing `.!?`.
   - `quote(text: string): string`: cut to 60 characters with `…`.
+  - `contentHash(kind: KnowledgeKind, text: string, condition?: string): Promise<string>`: `sha256hex(kind + '\n' + text + '\n' + (condition ?? ''))` with `crypto.subtle`.
+  - `parseStaleAfter(v?: string): number | undefined`: epoch ms for ISO 8601 with `Z` or `±hh:mm`; anything else is `undefined` (unknown), and the stored string is kept.
+  - `assignSourceIds(existing: KnowledgeSource[], inputs: KnowledgeSourceInput[]): KnowledgeSource[]`: gives each input without an id the next `s{n}` after the highest number on the item (ids are never reused); `newRevision(item, fields, approvedBy?: 'user'): Promise<KnowledgeRevision>`: id `r{n}` the same way, `parentId` = the current approved revision, `approval` with the hash when `approvedBy` is set.
 - Produces, in `store.ts`:
   - `knowledgeStore`: zustand, `{ state: KnowledgeState; migration: 'unknown' | 'pending' | 'done' }`.
   - `ensureKnowledgeLoaded(opts?: { fresh?: boolean }): Promise<void>`.
@@ -87,6 +92,9 @@ generated: { by: claude/opus-5.5, at: 2026-10-17T19:00:00+07:00 }
   - `revert restores only that commit's records`: commit A sets an item's status to `removed`; commit B pushes a proposal; after `A.revert()` the item is `approved` and the proposal is still there.
   - `pushKnowledgeUndo uses the knowledge group`: `pushUndo` is called with `group: 'knowledge'` and the message, and calling its `undo` runs `revert` and then `onUndo`.
   - `knowledgeTextKey('  Launch is 6  Nov. ')` returns `'launch is 6 nov'`.
+  - `contentHash('fact', 'Launch is 6 Nov')` returns `'cd4b81810969209bd30e8b44ec0353f8e48d7666e2ad476f937f422dc69b0535'`.
+  - `parseStaleAfter('2026-11-01T09:00:00+07:00')` is a number; `'2026-11-01T09:00:00'` and `'soon'` are `undefined`.
+  - `source ids are never reused`: an item with `s1`, `s3` gets `s4` for a new input; an input with its own `id` keeps it.
 - [ ] **Step 2: Run** `pnpm test -- src/renderer/packages/knowledge/store.test.ts`. Expected: FAIL, modules not found.
 - [ ] **Step 3: Implement** the types, schema, `text.ts`, `store.ts`, `undo.ts` and the two storage keys. `index.ts` re-exports only the public names.
 - [ ] **Step 4: Run** the test, then `pnpm check`. Expected: PASS, no new tsc errors.
@@ -187,7 +195,7 @@ generated: { by: claude/opus-5.5, at: 2026-10-17T19:00:00+07:00 }
   ```
 - `approveProposal` throws `Error('missing')` for an unknown id, and `KnowledgeConflictError` when the proposal already has an open conflict. It runs `checkAgainstLayers` again only in three cases: the text was edited, `checkedAt` is unset, or an approved item in the target scope or in Everywhere has `updatedAt > checkedAt`.
   - If the check finds a new same-scope contradiction, the proposal (with any edited text) stays open with a new open conflict, the call throws `KnowledgeConflictError`, and the caller shows `Waiting in Review: it contradicts "{old}"`.
-  - Otherwise it saves `{ status: 'approved', scopeId: target, overrides, sources, history: [{ action: 'proposed', by: origin === 'background-review' ? 'background-review' : origin === 'chat' ? 'chat' : 'user', note: original text when edited }, { action: 'approved', by: 'user' }] }`, removes the proposal and pushes `Approved "{text}" for {scope}`.
+  - Otherwise it saves an item with `revisions: [r1]` (the proposal's text, `by` = origin as below, approved by `'user'` with its hash) or, when the text was edited, `[r1 unapproved, r2 = edited text, parentId r1, by 'user', approved]`, `approvedRevisionId` = the approved one, sources via `assignSourceIds`, and `{ status: 'approved', scopeId: target, overrides, history: [{ action: 'proposed', by: origin === 'background-review' ? 'background-review' : origin === 'chat' ? 'chat' : 'user', note: original text when edited }, { action: 'approved', by: 'user' }] }`, removes the proposal and pushes `Approved "{text}" for {scope}`.
 - `addKnowledge` runs `proposeKnowledge({ origin: 'user', sources: [{ kind: 'user', label: 'You' }], … })` and then approves the result. The undo message is `Added "{text}" to {scope}`. A conflict throws `KnowledgeConflictError`; the Conflict entry is already in Review. A text that is already known throws `Error('duplicate')`.
 
 - [ ] **Step 1: Write the failing tests**:
@@ -199,7 +207,8 @@ generated: { by: claude/opus-5.5, at: 2026-10-17T19:00:00+07:00 }
   - `approve without a model saves`: the checker throws; the item is approved.
   - `no re-check when nothing changed`: the checker spy is not called when `checkedAt` is set, the text is unedited and no item is newer.
   - `approve pushes the knowledge undo and undo brings the proposal back`.
-  - `addKnowledge saves as the user`: source `{ kind: 'user', label: 'You' }`.
+  - `addKnowledge saves as the user`: source `{ kind: 'user', label: 'You', id: 's1' }`.
+  - `approval is bound to the content`: the approved revision's `approval.contentHash` equals `await contentHash(kind, text)`; an edited approve has two revisions, only `r2` approved.
 - [ ] **Step 2: Run** `pnpm test -- src/renderer/packages/knowledge/approve.test.ts`. Expected: FAIL.
 - [ ] **Step 3: Implement**.
 - [ ] **Step 4: Run** the test. Expected: PASS.
@@ -215,7 +224,7 @@ generated: { by: claude/opus-5.5, at: 2026-10-17T19:00:00+07:00 }
 - Consumes: Tasks 1–4; 1b's `addReviewEntry` and `setReviewEntryState`.
 - Produces:
   ```ts
-  export const NEVER_SEND_EMAIL: KnowledgeItem // id 'builtin:never-send-email', EVERYWHERE, preference, 'Never send email', source { kind: 'user', label: 'Built in' }, approved, history []
+  export const NEVER_SEND_EMAIL: KnowledgeItem // id 'builtin:never-send-email', EVERYWHERE, preference, 'Never send email', source { kind: 'user', label: 'Built in', id: 's1' }, one revision r1, approved, history []; exempt from hash checks
   export function listKnowledge(scopeId: string, opts?: { status?: KnowledgeItem['status'][]; kind?: KnowledgeKind[]; query?: string }): KnowledgeItem[]
   export function editKnowledge(id: string, text: string): Promise<KnowledgeItem>
   export function removeKnowledge(id: string): Promise<void>
@@ -224,6 +233,7 @@ generated: { by: claude/opus-5.5, at: 2026-10-17T19:00:00+07:00 }
   export function resolveConflict(conflictId: string, choice: { keep: string } | { keepBoth: string }): Promise<void>
   export function recordKnowledgeUse(itemIds: string[], ref: KnowledgeUseRef): Promise<void> // newest 50 per item; the same item+ref updates `at`
   export function listKnowledgeUses(itemId: string): KnowledgeUse[]
+  export function reapproveKnowledge(id: string): Promise<KnowledgeItem> // new approved revision of the same content, clears staleAfter and healthNotice, closes the item's re-check entry
   ```
 - `listKnowledge`:
   - The default status is `['approved']`.
@@ -231,20 +241,20 @@ generated: { by: claude/opus-5.5, at: 2026-10-17T19:00:00+07:00 }
   - `query` matches case- and accent-insensitively (NFD, marks stripped).
   - Results are newest `updatedAt` first.
   - The Superseded chip passes `['superseded', 'removed']`.
-- `editKnowledge` replaces the text and adds an `edited` event with `note` = the previous text.
+- `editKnowledge` adds a revision (`parentId` = the approved one, `by: 'user'`, approved by the same action), moves `approvedRevisionId` to it, mirrors the text, and adds an `edited` event with `note` = the previous text. Undo restores the previous `approvedRevisionId` (the commit's pre-image).
 - `removeKnowledge` sets `status: 'removed'` and adds a `removed` event.
 - `moveKnowledge` changes `scopeId`, adds a `moved` event with `note: 'from {old scope name}'` and clears `overrides`.
 - Each of the three pushes its undo message. Each refuses the built-in id (`Error('built-in')`), a missing id (`Error('missing')`) and blank text (`Error('empty')`).
 - Keep this (`keep` = the proposal id, or one of `itemIds`):
   - The kept statement is approved; a kept proposal becomes an item as in Task 4.
   - Each loser gets `status: 'superseded'`, `supersededBy` = the winner's id, and a `superseded` event.
-  - A losing proposal is stored as a superseded item with the events `proposed` and `superseded`, so its history stays visible.
+  - A losing proposal is stored as a superseded item with one unapproved revision (`approvedRevisionId` names it; only `approved` items are ever verified) and the events `proposed` and `superseded`. Superseded and removed items keep every revision.
   - The conflict becomes `resolved`. The undo message is `Kept "{text}"`.
-- Keep both: the condition is trimmed; an empty one throws `Error('condition-required')` and changes nothing. Otherwise the proposal is approved, and every involved item gets `condition` and a `kept-both` event with `note` = the condition. The undo message is `Kept both, with a condition`.
+- Keep both: the condition is trimmed; an empty one throws `Error('condition-required')` and changes nothing. Otherwise the proposal is approved, and every involved item gets a new approved revision carrying the condition (mirrored to `condition`) and a `kept-both` event with `note` = the condition. The undo message is `Kept both, with a condition`.
 - Re-check: after an edit, a remove or a superseding, every use of the affected item with `ref.type` `draft` or `change` gets an `addReviewEntry({ kind: 're-check', scopeId, text: use.ref.label, sub, ref: use.ref })` with the copy from Global Constraints. Those entry ids are dismissed in the action's `onUndo`.
 
 - [ ] **Step 1: Write the failing tests**:
-  - `lifecycle.test.ts`: `edit keeps the old wording in history`. `remove, then the pushed undo restores approved`. `removed shows under Superseded`. `move to Everywhere and back records two moved events`. `built-in item is listed first in Everywhere and cannot be edited, removed or moved`. `search ignores accents`: `'cafe'` finds `'Café opens at 8'`. `markSourceRemoved marks matching sources only`. `edit of an item a draft used adds one re-check with sub 'It used "Launch is 4 Nov", which you edited.'`.
+  - `lifecycle.test.ts`: `edit keeps the old wording in history`. `remove, then the pushed undo restores approved`. `removed shows under Superseded`. `move to Everywhere and back records two moved events`. `built-in item is listed first in Everywhere and cannot be edited, removed or moved`. `search ignores accents`: `'cafe'` finds `'Café opens at 8'`. `markSourceRemoved marks matching sources only`. `edit adds an approved revision r2 with parentId r1, undo puts approvedRevisionId back to r1`. `reapproveKnowledge clears staleAfter and adds an approved revision`. `edit of an item a draft used adds one re-check with sub 'It used "Launch is 4 Nov", which you edited.'`.
   - `conflicts.test.ts`: `keep the new one supersedes the old and re-checks its draft`: the old item was used by `{ type: 'draft', id: 'd1', label: 'Reply to Acme' }` and by a chat. There is exactly one `re-check`, with `text: 'Reply to Acme'` and `sub: 'It used "Launch is 4 Nov", which was replaced.'`. `keep the old one stores the proposal as superseded history`. `keep both writes the condition on both`. `blank condition throws and changes nothing`. `undo of keep this dismisses the re-check and reopens the conflict`. `uses are capped at 50 per item`.
 - [ ] **Step 2: Run** `pnpm test -- src/renderer/packages/knowledge/lifecycle.test.ts src/renderer/packages/knowledge/conflicts.test.ts`. Expected: FAIL.
 - [ ] **Step 3: Implement**.
@@ -271,12 +281,14 @@ generated: { by: claude/opus-5.5, at: 2026-10-17T19:00:00+07:00 }
   export function knowledgeForTurn(scopeId: string): KnowledgeItem[]
   export function formatKnowledgeSection(scopeId: string, items: KnowledgeItem[]): string
   export function isLegacyMemoryActive(): boolean // memoryStore settings.enabled && knowledgeStore migration !== 'done'
+  export function checkKnowledgeHealth(now?: number): Promise<void> // run by ensureKnowledgeLoaded after every load
   ```
+- Health: for each approved item (the built-in excepted), verify that the approved revision's `approval.contentHash` equals `contentHash(kind, rev.text, rev.condition)` and that `text`/`condition` mirror it. Failures go into the store's `unverified: Set<string>` (hashes are cached by revision id). A failure, or `parseStaleAfter(staleAfter) <= now`, files one `re-check` entry (copy in Global Constraints) unless `healthNotice` already holds that reason and key (the revision id, or the `staleAfter` string); then `healthNotice` is set in a commit without undo. A stale item stays in use; an unverified one does not.
 - Order:
   1. The scope's approved items, newest first.
   2. Everywhere preferences, always, `NEVER_SEND_EMAIL` included.
   3. Everywhere facts and decisions, when `getScopeReads(scopeId).facts`.
-  - Leave out any Everywhere item listed in an included scope item's `overrides`.
+  - Leave out any item in `unverified`, and any Everywhere item listed in an included scope item's `overrides`.
   - For Everywhere itself: only its own approved items.
   - Proposals never appear.
 - Section text:
@@ -291,6 +303,8 @@ generated: { by: claude/opus-5.5, at: 2026-10-17T19:00:00+07:00 }
   - `client scope without readsEverywhere reads facts`.
   - `overridden Everywhere item is left out`.
   - `pending proposals and superseded items are never included`.
+  - `tampered item is left out and re-checked`: change an approved item's `text` in mock storage; after `ensureKnowledgeLoaded({ fresh: true })` it is not in `knowledgeForTurn`, and one `re-check` with `Can't verify: …` was added; a second load adds none.
+  - `due item stays in use and is filed once`: `staleAfter: '2026-01-01T00:00:00Z'`, now later: the item is returned, one `Due for review: …` entry is added, a second load adds none, and changing `staleAfter` to another past date files one more.
   - `fresh read before a turn`: write an item straight into mock storage, then after `await ensureKnowledgeLoaded({ fresh: true })`, `knowledgeForTurn` contains it.
   - In `message-utils.test.ts`: `knowledge section is in the system prompt and memory section is not once migration is done`.
 - [ ] **Step 2: Run** `pnpm test -- src/renderer/packages/knowledge/for-turn.test.ts src/renderer/packages/model-calls/message-utils.test.ts`. Expected: FAIL.
@@ -318,13 +332,13 @@ generated: { by: claude/opus-5.5, at: 2026-10-17T19:00:00+07:00 }
   - Both statements are shown, each with its first source label, its date (`D MMM`) and its own `Keep this`, which calls `resolveConflict(ref.id, { keep: id })`.
   - The footer has `Keep both, with a condition…` and `Dismiss` (`dismissProposal(conflict.proposalId)`).
   - The `Keep both, with a condition…` button opens `KeepBothSheet`: first focus on the field (`data-autofocus`), primary button disabled while the field is blank.
-- Re-check: `ReviewItem` of kind `re-check` with `Open` (`openReviewEntry(entry)`) and `Dismiss` (`setReviewEntryState({ id }, 'dismissed')`).
+- Re-check: `ReviewItem` of kind `re-check` with `Open` (`openReviewEntry(entry)`) and `Dismiss` (`setReviewEntryState({ id }, 'dismissed')`); for `ref.type === 'knowledge'` the actions are `Approve again` (`reapproveKnowledge(ref.id)`) and `Open`, and `register.ts` also calls `registerReviewOpener('knowledge', e => navigate to /scope/{e.scopeId}?tab=knowledge)`.
 
 - [ ] **Step 1: Write the failing tests** (jsdom; `@/packages/knowledge` functions and `@/packages/review` mocked):
   - Proposal: `Edit`, then change the text, then ⌘↵ calls `approveProposal(id, { text: 'Launch is 7 Nov' })`. `Approve` with a rejected `KnowledgeConflictError` calls `toastActions.add('Waiting in Review: it contradicts "Launch is 4 Nov"')`.
   - Conflict: shows both texts and two `Keep this` buttons; the second calls `resolveConflict(c, { keep: oldId })`.
   - The sheet's `Keep both` is disabled for `'   '`, and calls `resolveConflict(c, { keepBoth: 'for the EU launch' })` for a real condition.
-  - Re-check: `Open` calls `openReviewEntry`.
+  - Re-check: `Open` calls `openReviewEntry`; a `knowledge` ref shows `Approve again`, which calls `reapproveKnowledge(itemId)`.
   - `registerKnowledgeRenderers` makes exactly those three calls, with those options; and against 1b's real registry, `getReviewRenderer` for a `proposal` entry with `ref.type: 'draft'` returns no slice-4 renderer.
 - [ ] **Step 2: Run** `pnpm test -- src/renderer/packages/knowledge/review/renderers.test.tsx`. Expected: FAIL.
 - [ ] **Step 3: Implement**.
@@ -424,7 +438,7 @@ generated: { by: claude/opus-5.5, at: 2026-10-17T19:00:00+07:00 }
   - Agent entries default to `agent-prompt` when the agent is editable (a local agent in `myCopilotsAtom` without `builtIn`), otherwise to `everywhere`.
   - Kind is `preference` for the tags `preference` or `pref`, `decision` for `decision`, and `fact` otherwise.
 - Apply:
-  - Everywhere rows become approved items in Everywhere. The source is `{ kind: 'chat', label: 'Earlier chat', ref: sourceSessionId }` when the session is known, else `{ kind: 'user', label: 'Saved earlier' }`. The event is `{ by: 'migration', action: 'approved', note: 'From saved notes' }`. Text keys already present are skipped.
+  - Everywhere rows become approved items in Everywhere. The source is `{ kind: 'chat', label: 'Earlier chat', ref: sourceSessionId }` when the session is known, else `{ kind: 'user', label: 'Saved earlier' }`. Each item has one revision `r1` with `by: 'migration'` and `approval: { by: 'user', … }` (the user confirmed it in the sheet), and the event `{ by: 'migration', action: 'approved', note: 'From saved notes' }`. Text keys already present are skipped.
   - Agent-prompt rows append `- {text}` under a `Standing notes:` block at the end of that agent's `prompt`, skipping lines already there. A non-editable agent never gets prompt text; its row falls back to Everywhere.
   - Write the items and prompts first. Then write `{ state: 'done', at, counts }` to `knowledge-migration` and set the store's `migration` to `'done'`.
   - Leave the memory keys untouched. Push no undo: this step is final, and the old banks stay as they were.
@@ -435,7 +449,7 @@ generated: { by: claude/opus-5.5, at: 2026-10-17T19:00:00+07:00 }
   - `Later` closes the sheet until the next launch.
 
 - [ ] **Step 1: Write the failing tests**:
-  - `migration.test.ts`: `defaults per group and kind from tags`. `deleted entries are skipped, disabled ones default to leave out`. `built-in agent falls back to Everywhere`. `applying twice adds nothing the second time`: items and prompts are unchanged. `state is written after the items`: check the order of the `setItemNow` keys. `empty banks mean done without a sheet`. `memory keys are never written`.
+  - `migration.test.ts`: `defaults per group and kind from tags`. `deleted entries are skipped, disabled ones default to leave out`. `built-in agent falls back to Everywhere`. `applying twice adds nothing the second time`: items and prompts are unchanged. `state is written after the items`: check the order of the `setItemNow` keys. `empty banks mean done without a sheet`. `each moved note has one approved revision by migration whose hash verifies`. `memory keys are never written`.
   - `MemoryMigrationSheet.test.tsx`: Two global rows and one agent row render under `Saved for every chat` and `Saved for Planner`. Switching one row to `Leave out` changes the button to `Move 2 notes`. `Later` closes the sheet without calling `applyMemoryMigration`.
 - [ ] **Step 2: Run** `pnpm test -- src/renderer/packages/knowledge/migration.test.ts src/renderer/components/knowledge/MemoryMigrationSheet.test.tsx`. Expected: FAIL.
 - [ ] **Step 3: Implement** the move and the sheet, then mount the sheet.

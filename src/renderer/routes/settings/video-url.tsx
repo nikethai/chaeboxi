@@ -101,50 +101,53 @@ export function RouteComponent() {
     })
   }
 
-  const refreshYtDlp = useCallback(async (opts?: { silent?: boolean; fillPath?: boolean }) => {
-    if (platform.type !== 'desktop' || !platform.executeCommand) {
-      setYtDetect({
-        installed: false,
-        installer: 'none',
-        installerAvailable: false,
-        error: 'Desktop only',
-      })
-      return
-    }
-    setYtDetecting(true)
-    if (!opts?.silent) setYtInstallLog(null)
-    try {
-      const currentPath =
-        (settingsStore.getState().extension?.videoUrl as Partial<VideoUrlSettings> | undefined)
-          ?.desktopExtractorPath ||
-        videoUrl.desktopExtractorPath ||
-        ''
-      const result = await detectYtDlp({ customPath: currentPath })
-      setYtDetect(result)
-      if (opts?.fillPath && result.installed && result.path && !String(currentPath).trim()) {
-        setSettings((state) => {
-          const prev = (state.extension?.videoUrl || {}) as Partial<VideoUrlSettings>
-          state.extension = {
-            ...state.extension,
-            videoUrl: {
-              ...defaultVideoUrl,
-              ...prev,
-              desktopExtractorPath: result.path,
-            },
-          }
+  const refreshYtDlp = useCallback(
+    async (opts?: { silent?: boolean; fillPath?: boolean }) => {
+      if (platform.type !== 'desktop' || !platform.executeCommand) {
+        setYtDetect({
+          installed: false,
+          installer: 'none',
+          installerAvailable: false,
+          error: 'Desktop only',
         })
+        return
       }
-    } catch (err) {
-      setYtDetect({
-        installed: false,
-        installer: 'none',
-        installerAvailable: false,
-        error: err instanceof Error ? err.message : String(err),
-      })
-    } finally {
-      setYtDetecting(false)
-    }
-  }, [setSettings, videoUrl.desktopExtractorPath])
+      setYtDetecting(true)
+      if (!opts?.silent) setYtInstallLog(null)
+      try {
+        const currentPath =
+          (settingsStore.getState().extension?.videoUrl as Partial<VideoUrlSettings> | undefined)
+            ?.desktopExtractorPath ||
+          videoUrl.desktopExtractorPath ||
+          ''
+        const result = await detectYtDlp({ customPath: currentPath })
+        setYtDetect(result)
+        if (opts?.fillPath && result.installed && result.path && !String(currentPath).trim()) {
+          setSettings((state) => {
+            const prev = (state.extension?.videoUrl || {}) as Partial<VideoUrlSettings>
+            state.extension = {
+              ...state.extension,
+              videoUrl: {
+                ...defaultVideoUrl,
+                ...prev,
+                desktopExtractorPath: result.path,
+              },
+            }
+          })
+        }
+      } catch (err) {
+        setYtDetect({
+          installed: false,
+          installer: 'none',
+          installerAvailable: false,
+          error: err instanceof Error ? err.message : String(err),
+        })
+      } finally {
+        setYtDetecting(false)
+      }
+    },
+    [setSettings, videoUrl.desktopExtractorPath]
+  )
 
   // Auto-detect when the desktop extractor section is enabled.
   useEffect(() => {
@@ -614,7 +617,7 @@ export function RouteComponent() {
             </Text>
             <Text size="xs" c="dimmed">
               {t(
-                'Public URLs only. You are responsible for having rights to process the linked content. Chaeboxi does not bypass logins or DRM.'
+                'Public URLs only. You are responsible for having rights to process the linked content. Dango does not bypass logins or DRM.'
               )}
             </Text>
           </Stack>

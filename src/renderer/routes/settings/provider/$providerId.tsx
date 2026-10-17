@@ -271,8 +271,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
     ModelProviderEnum.OpenClaw,
     ModelProviderEnum.ComfyUI,
   ].includes(baseInfo?.id as ModelProviderEnum)
-  const isXaiOAuthMode =
-    baseInfo?.id === ModelProviderEnum.XAI && resolveXaiAuthMode(providerSettings) === 'oauth'
+  const isXaiOAuthMode = baseInfo?.id === ModelProviderEnum.XAI && resolveXaiAuthMode(providerSettings) === 'oauth'
   const isOpenAICodexOAuthMode =
     baseInfo?.id === ModelProviderEnum.OpenAI && resolveOpenAIAuthMode(providerSettings) === 'oauth'
   const isGeminiAntigravityOAuthMode =
@@ -360,8 +359,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
   }
 
   const resetModels = () => {
-    const qwenPresetModels =
-      baseInfo?.id === ModelProviderEnum.Qwen ? getQwenPresetModels(providerSettings) : undefined
+    const qwenPresetModels = baseInfo?.id === ModelProviderEnum.Qwen ? getQwenPresetModels(providerSettings) : undefined
     setProviderSettings({
       models: qwenPresetModels || baseInfo?.defaultSettings?.models,
     })
@@ -402,7 +400,9 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         setFetchedModels(result.models)
       } else if (result.models.length) {
         setFetchedModels(result.models)
-        addToast(t('Model refresh used fallback list') + (result.ok ? '' : `: ${'error' in result ? result.error : ''}`))
+        addToast(
+          t('Model refresh used fallback list') + (result.ok ? '' : `: ${'error' in result ? result.error : ''}`)
+        )
       } else {
         addToast(t('Failed to fetch models') + ('error' in result && result.error ? `: ${result.error}` : ''))
       }
@@ -514,7 +514,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
         title={t(baseInfo.name)}
         description={
           baseInfo.isCustom ? (
-            <a href="https://github.com/nikethai/chaeboxi" target="_blank" rel="noopener">
+            <a href="https://github.com/nikethai/dango" target="_blank" rel="noopener">
               {t('Setup guide')}
             </a>
           ) : undefined
@@ -617,12 +617,12 @@ function ProviderSettings({ providerId }: { providerId: string }) {
           baseInfo.id !== ModelProviderEnum.XAI &&
           baseInfo.id !== ModelProviderEnum.OpenAI &&
           baseInfo.id !== ModelProviderEnum.Gemini && (
-          <Stack gap="xxs">
-            <Text span size="xs" c="chatbox-tertiary">
-              {t(baseInfo.description)}
-            </Text>
-          </Stack>
-        )}
+            <Stack gap="xxs">
+              <Text span size="xs" c="chatbox-tertiary">
+                {t(baseInfo.description)}
+              </Text>
+            </Stack>
+          )}
 
         <SettingsSection title={t('Connection')}>
           <SettingsCard>
@@ -634,10 +634,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
 
               {/* OpenAI dual auth: ChatGPT subscription (Codex) or Platform API key */}
               {baseInfo.id === ModelProviderEnum.OpenAI && (
-                <OpenAICodexAuthSection
-                  providerSettings={providerSettings}
-                  setProviderSettings={setProviderSettings}
-                />
+                <OpenAICodexAuthSection providerSettings={providerSettings} setProviderSettings={setProviderSettings} />
               )}
 
               {/* Gemini dual auth: Antigravity Google OAuth or AI Studio API key */}
@@ -949,7 +946,7 @@ function ProviderSettings({ providerId }: { providerId: string }) {
                 <Flex align="center" gap={4}>
                   <ScalableIcon icon={IconDiscount2} size={14} color="var(--chatbox-tint-tertiary)" />
                   <Text span size="xs" c="chatbox-tertiary">
-                    {t('AIHubMix integration in Chaeboxi offers 10% discount')}
+                    {t('AIHubMix integration in Dango offers 10% discount')}
                   </Text>
                 </Flex>
               )}

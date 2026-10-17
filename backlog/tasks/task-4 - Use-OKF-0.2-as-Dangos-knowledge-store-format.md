@@ -1,6 +1,6 @@
 ---
 id: TASK-4
-title: Use OKF 0.2 as Chaeboxi's knowledge store format
+title: Use OKF 0.2 as Dango's knowledge store format
 status: Ideas
 assignee: []
 created_date: '2026-10-15 04:30'

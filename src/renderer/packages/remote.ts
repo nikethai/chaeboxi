@@ -21,7 +21,7 @@ import { getOS } from './navigator'
 
 const log = getLogger('remote-api')
 
-/** Chaeboxi hosted cloud off by default; local API env still works for dev. */
+/** Dango hosted cloud off by default; local API env still works for dev. */
 function isChatboxCloudAllowed() {
   return (
     CHATBOX_CLOUD_ENABLED ||
@@ -34,7 +34,7 @@ function isChatboxCloudAllowed() {
 
 function cloudDisabledError(feature: string): Error {
   return new Error(
-    `${feature} requires Chaeboxi hosted services, which are disabled in ${PRODUCT.name}. Use your own provider API keys.`,
+    `${feature} requires Dango hosted services, which are disabled in ${PRODUCT.name}. Use your own provider API keys.`
   )
 }
 
@@ -143,7 +143,7 @@ const getChatboxHeaders = async () => {
 
 export async function checkNeedUpdate(version: string, os: string, config: Config, settings: Settings) {
   if (!isChatboxCloudAllowed()) {
-    // Chaeboxi: no Chaeboxi update probe; use GitHub Releases via About.
+    // Dango: no Dango update probe; use GitHub Releases via About.
     return false
   }
   type Response = {
@@ -650,7 +650,7 @@ export async function getModelManifest(params: { aiProvider: ModelProvider; lice
 
 export async function reportContent(params: { id: string; type: string; details: string }) {
   if (!isChatboxCloudAllowed()) {
-    log.info('reportContent skipped (Chaeboxi cloud disabled)', params.id)
+    log.info('reportContent skipped (Dango cloud disabled)', params.id)
     return
   }
   const afetch = await getAfetch()
@@ -695,7 +695,7 @@ export async function getProviderModelsInfo(params: { modelIds: string[] }) {
 
 export async function requestLoginTicketId() {
   if (!isChatboxCloudAllowed()) {
-    throw cloudDisabledError('Chaeboxi account login')
+    throw cloudDisabledError('Dango account login')
   }
   type Response = {
     data: {

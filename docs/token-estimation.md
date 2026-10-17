@@ -1,6 +1,6 @@
 # Token Estimation
 
-How Chaeboxi estimates tokens for context management and budget UI.
+How Dango estimates tokens for context management and budget UI.
 
 ## Purpose
 

@@ -235,14 +235,14 @@ export function RouteComponent() {
       <SettingsPageHeader
         title={t('Sync')}
         description={t(
-          "Chats only, on your server, locked with your passphrase. No Chaeboxi account. The server stores an opaque blob and never sees plaintext."
+          'Chats only, on your server, locked with your passphrase. No Dango account. The server stores an opaque blob and never sees plaintext.'
         )}
       />
 
       <SettingsSection
         title={t('Self-hosted History Sync')}
         description={t(
-          'Connect Chaeboxi to a sync server you run (Docker or one command). Same session id keeps the newer chat. Merge never wipes. Soft-reload, no relaunch.'
+          'Connect Dango to a sync server you run (Docker or one command). Same session id keeps the newer chat. Merge never wipes. Soft-reload, no relaunch.'
         )}
       >
         <SettingsCard>

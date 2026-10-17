@@ -1,6 +1,6 @@
-# Chaeboxi Personal Assistant
+# Dango Personal Assistant
 
-Chaeboxi is a personal assistant for quick conversations, information, brainstorming, sketches, and finding the user's knowledge and past work.
+Dango is a personal assistant for quick conversations, information, brainstorming, sketches, and finding the user's knowledge and past work.
 
 ## Language
 
@@ -10,14 +10,14 @@ _Avoid_: Coding agent, development environment
 
 **Specialist agent**:
 An external assistant, such as Codex or Pi, used for dedicated work such as implementing and testing code.
-_Avoid_: Chaeboxi coding mode
+_Avoid_: Dango coding mode
 
 **Quick Chat**:
 A readily accessible conversation for a question, an idea, or a small creative request.
 _Avoid_: Coding session
 
 **Authoritative knowledge**:
-Knowledge explicitly approved by the user as the accepted reference in Chaeboxi.
+Knowledge explicitly approved by the user as the accepted reference in Dango.
 _Avoid_: Automatically trusted agent memory
 
 **Reference material**:

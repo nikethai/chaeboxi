@@ -23,5 +23,5 @@ How new chats / sessions are created and initialized.
 
 ## Rules
 
-- Default provider must never be legacy cloud service in Chaeboxi builds.
+- Default provider must never be legacy cloud service in Dango builds.
 - Session IDs and storage keys remain stable across migrations.

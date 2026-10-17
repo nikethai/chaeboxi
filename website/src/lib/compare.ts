@@ -1,4 +1,4 @@
-export const COMPARE_COLUMNS = ['Chaeboxi', 'Chatbox AI', 'Hosted ChatGPT'] as const
+export const COMPARE_COLUMNS = ['Dango', 'Chatbox AI', 'Hosted ChatGPT'] as const
 
 export const COMPARE_ROWS: { label: string; values: [string, string, string] }[] = [
   {
@@ -19,7 +19,7 @@ export const COMPARE_ROWS: { label: string; values: [string, string, string] }[]
   },
   {
     label: 'Desktop MCP, computer use, local KB',
-    values: ['Yes, on desktop', 'Not Chaeboxi', 'Not Chaeboxi'],
+    values: ['Yes, on desktop', 'Not Dango', 'Not Dango'],
   },
   {
     label: 'License',

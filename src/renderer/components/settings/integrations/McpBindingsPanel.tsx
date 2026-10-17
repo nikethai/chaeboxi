@@ -56,7 +56,7 @@ export function McpBindingsPanel() {
     <Stack gap="sm">
       <Text size="sm" c="dimmed">
         {t(
-          'When an MCP server starts, Chaeboxi injects the linked account’s credentials into env/headers at runtime. Tokens are never written into saved MCP settings.'
+          'When an MCP server starts, Dango injects the linked account’s credentials into env/headers at runtime. Tokens are never written into saved MCP settings.'
         )}
       </Text>
       {mcpServers.map((server) => {

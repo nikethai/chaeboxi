@@ -1,12 +1,12 @@
 [package]
-description = "Tauri runtime for Chaeboxi"
+description = "Tauri runtime for Dango"
 edition = "2021"
-name = "chaeboxi"
+name = "dango"
 rust-version = "1.88"
 version = "1.7.0"
 
 [lib]
-name = "chaeboxi_lib"
+name = "dango_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]

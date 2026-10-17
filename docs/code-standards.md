@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Product** | Chaeboxi 1.6.0 |
+| **Product** | Dango 1.6.0 |
 | **Last updated** | 2026-08-11 |
 
 Standards for contributors editing TypeScript, Rust (Tauri), tests, and docs. Prefer existing patterns over new abstractions (YAGNI, KISS, DRY — in that order).

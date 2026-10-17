@@ -1,11 +1,5 @@
 import { Anchor, Box, Button, Container, Divider, Flex, Image, Stack, Text, Title } from '@mantine/core'
-import {
-  IconChevronRight,
-  IconFileText,
-  IconHome,
-  IconMessage2,
-  IconPencil,
-} from '@tabler/icons-react'
+import { IconChevronRight, IconFileText, IconHome, IconMessage2, IconPencil } from '@tabler/icons-react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Fragment, type ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -68,7 +62,7 @@ function RouteComponent() {
               icon={<BrandGithub className="w-full h-full" />}
               title={t('Github')}
               link={PRODUCT.githubRepo}
-              value="nikethai/chaeboxi"
+              value="nikethai/dango"
             />
           </List>
 
@@ -77,7 +71,7 @@ function RouteComponent() {
               icon={<IconHome className="w-full h-full" />}
               title={t('Homepage')}
               link={PRODUCT.homepage}
-              value="nikethai.github.io/chaeboxi"
+              value="nikethai.github.io/dango"
             />
             <ListItem
               icon={<IconPencil className="w-full h-full" />}
@@ -89,11 +83,7 @@ function RouteComponent() {
               title={t('Changelog')}
               link={PRODUCT.changelogUrl}
             />
-            <ListItem
-              icon={<IconMessage2 className="w-full h-full" />}
-              title={t('FAQs')}
-              link={PRODUCT.githubRepo}
-            />
+            <ListItem icon={<IconMessage2 className="w-full h-full" />} title={t('FAQs')} link={PRODUCT.githubRepo} />
           </List>
         </Stack>
       </Container>

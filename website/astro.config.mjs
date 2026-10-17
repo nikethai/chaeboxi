@@ -2,7 +2,7 @@ import { defineConfig } from 'astro/config'
 
 export default defineConfig({
   site: 'https://nikethai.github.io',
-  base: '/chaeboxi',
+  base: '/dango',
   output: 'static',
   trailingSlash: 'always',
 })

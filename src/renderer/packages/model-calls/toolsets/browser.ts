@@ -192,9 +192,9 @@ async function ensureSnapshotAttached(
 
 export function browserToolSetDescription(): string {
   return `
-# Chaeboxi Browser (isolated)
+# Dango Browser (isolated)
 
-Use these tools to drive a **Chaeboxi-managed isolated browser** (not the user's personal Chrome profile).
+Use these tools to drive a **Dango-managed isolated browser** (not the user's personal Chrome profile).
 
 ## When to use
 1. Prefer \`web_search\` / \`parse_link\` for simple Q&A.
@@ -220,7 +220,7 @@ export function createBrowserToolSet(opts: BrowserAgentToolOptions): { descripti
 
   const browser_navigate = tool({
     description:
-      'Navigate the isolated Chaeboxi browser to an http(s) URL. Returns a fresh accessibility snapshot with refs.',
+      'Navigate the isolated Dango browser to an http(s) URL. Returns a fresh accessibility snapshot with refs.',
     inputSchema: z.object({
       url: z.string().describe('http(s) URL to open'),
     }),
@@ -252,7 +252,8 @@ export function createBrowserToolSet(opts: BrowserAgentToolOptions): { descripti
   })
 
   const browser_snapshot = tool({
-    description: 'Capture accessibility/ref snapshot of the current page. Usually unnecessary right after navigate/click/type (those auto-snapshot).',
+    description:
+      'Capture accessibility/ref snapshot of the current page. Usually unnecessary right after navigate/click/type (those auto-snapshot).',
     inputSchema: z.object({
       interestingOnly: z.boolean().optional().describe('Focus interactive/heading elements. Default true.'),
     }),

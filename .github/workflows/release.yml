@@ -110,9 +110,9 @@ jobs:
         with:
           # Tag push → github.ref_name; dispatch with input → that tag; else v__VERSION__ from app config.
           tagName: ${{ (github.event_name == 'workflow_dispatch' && inputs.tag) || (github.ref_type == 'tag' && github.ref_name) || 'v__VERSION__' }}
-          releaseName: Chaeboxi ${{ (github.event_name == 'workflow_dispatch' && inputs.tag) || (github.ref_type == 'tag' && github.ref_name) || 'v__VERSION__' }}
+          releaseName: Dango ${{ (github.event_name == 'workflow_dispatch' && inputs.tag) || (github.ref_type == 'tag' && github.ref_name) || 'v__VERSION__' }}
           releaseBody: |
-            Desktop installers for Chaeboxi.
+            Desktop installers for Dango.
 
             | Platform | Asset |
             | --- | --- |
@@ -122,9 +122,9 @@ jobs:
             | Linux | `*.AppImage`, `*.deb` |
 
             **macOS (unsigned / ad-hoc builds):** if Gatekeeper blocks open, run:
-            `xattr -cr /Applications/Chaeboxi.app` then open the app.
+            `xattr -cr /Applications/Dango.app` then open the app.
 
-            Source: https://github.com/nikethai/chaeboxi
+            Source: https://github.com/nikethai/dango
           releaseDraft: true
           prerelease: false
           tauriScript: pnpm tauri

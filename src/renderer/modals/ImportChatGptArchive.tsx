@@ -45,7 +45,7 @@ const ImportChatGptArchive = NiceModal.create(() => {
   return (
     <AdaptiveModal opened={modal.visible} onClose={() => modal.hide()} centered title={t('Import ChatGPT archive')}>
       <Stack gap="md">
-        <Text size="sm">{t('Chaeboxi cannot download ChatGPT history. OpenAI emails you a ZIP.')}</Text>
+        <Text size="sm">{t('Dango cannot download ChatGPT history. OpenAI emails you a ZIP.')}</Text>
         <List type="ordered" size="sm" spacing="xs" classNames={{ item: 'whitespace-normal' }}>
           <List.Item>{t('Open ChatGPT → profile → Settings → Data controls → Export → Confirm.')}</List.Item>
           <List.Item>{t('Wait for email or SMS (minutes, sometimes longer; help says up to 7 days).')}</List.Item>

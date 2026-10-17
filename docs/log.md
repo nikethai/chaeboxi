@@ -7,6 +7,8 @@ Newest first. Add a line when you create, accept, supersede or move a decision, 
 * **Proposal**: [ADR 0013](adr/0013-everywhere-layer.md) (draft) — knowledge in two layers, each scope plus a built-in Everywhere scope; scope wins on a clash; client scopes opt in to Everywhere documents; per-agent memory folds into agent prompts.
 * **Update**: [UX flows](specs/2026-10-16-ux-flows.md) — flows 17–24 (message actions, managing chats, artifacts, agents, menu bar, window sizes, dark mode, accessibility) and rules for the composer, model errors, cost, plans and empty states; 33 more screens; the product is now called Dango in the specs and on the canvas.
 * **Update**: [UX flows](specs/2026-10-16-ux-flows.md) — screen-level wireframes for all 16 flows added to the canvas (Screens page); mascot and Thread colours applied to the wireframes.
+* **Acceptance**: [ADR 0012](adr/0012-rename-to-dango.md) accepted by the maintainer — the app is Dango, ID `io.github.nikethai.dango`.
+* **Proposal**: [ADR 0012](adr/0012-rename-to-dango.md) (draft) — the app is renamed from Chaeboxi to Dango, identifiers included (`io.github.nikethai.dango`), with a one-time move of app data, keychain items and the knowledge-base file. Earlier entries use the old name.
 
 ## 2026-10-16
 * **Proposal**: [UX flows](specs/2026-10-16-ux-flows.md) (draft) — 16 journeys: first run, Ask, Review, knowledge, chat, sources, permissions, Swarm, background work, PM email, what changed, conflicts, Trust, search, errors, undo.

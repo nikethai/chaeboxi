@@ -367,9 +367,9 @@ Thanks to @xiaoxiaowesley, @chaoliu719, @Jesse205, @trrahul for their contributi
 
 1. Introduced Web Browsing capability. legacy cloud service Models and Gemini 2.0 flash(API) can now be enabled to access real-time internet information, providing responses with cited sources
 2. Added first-token latency display for message generation, toggleable in settings
-3. Enhanced image preprocessing capabilities. You can now send images in more formats (e.g., svg, gif) - Chaeboxi automatically converts them to model-compatible formats and adjusts dimensions to meet model requirements
+3. Enhanced image preprocessing capabilities. You can now send images in more formats (e.g., svg, gif) - Dango automatically converts them to model-compatible formats and adjusts dimensions to meet model requirements
 4. Double-click thread title to quickly access the thread list
-5. Improved compatibility for custom model provider configurations - Chaeboxi now automatically corrects and handles common configuration errors
+5. Improved compatibility for custom model provider configurations - Dango now automatically corrects and handles common configuration errors
 6. Increased maximum temperature range to 2.0
 7. Added confirmation for all delete actions 
 8. Updated model list, removing deprecated models
@@ -397,8 +397,8 @@ Thanks to @xiaoxiaowesley, @chaoliu719, @Jesse205, @trrahul for their contributi
 
 ### v1.6.0 - 2024.11.03
 
-1. Now you can send web links. Chaeboxi will automatically fetch webpage content and include it in the chat context. Works with all models.
-2. Now you can send text files to any models. Chaeboxi will parse file content locally and include it in the chat context.
+1. Now you can send web links. Dango will automatically fetch webpage content and include it in the chat context. Works with all models.
+2. Now you can send text files to any models. Dango will parse file content locally and include it in the chat context.
 3. Added collapsible code blocks. Long code blocks in chat history are automatically collapsed (can be disabled in settings).
 4. Redesigned image preview window.
 5. Redesigned SVG image preview and save functionality.
@@ -529,7 +529,7 @@ Thanks to @xiaoxiaowesley, @chaoliu719, @Jesse205, @trrahul for their contributi
 
 **Miscellaneous:**
 - After switching between historical topics, the message list now automatically scrolls to the bottom.
-- Enabled access to local Ollama services within the Chaeboxi web version.
+- Enabled access to local Ollama services within the Dango web version.
 
 
 ### v1.3.5
@@ -580,7 +580,7 @@ Thanks to @xiaoxiaowesley, @chaoliu719, @Jesse205, @trrahul for their contributi
 
 1. You can now use the ⬆️⬇️ arrow keys in the input field to select and quickly enter previous messages.
 2. Fixed the spell check feature, which can now be turned off in settings.
-3. Text copied from Chaeboxi will be copied to the clipboard as plain text without background color — a longstanding minor bug that has finally been resolved.
+3. Text copied from Dango will be copied to the clipboard as plain text without background color — a longstanding minor bug that has finally been resolved.
 
 ### v1.2.2
 
@@ -600,7 +600,7 @@ Thanks to @xiaoxiaowesley, @chaoliu719, @Jesse205, @trrahul for their contributi
 
 ### v1.2.0
 
-- Added an image generation feature (Image Creator); you can now generate images within Chaeboxi, powered by the Dall-E-3 model.
+- Added an image generation feature (Image Creator); you can now generate images within Dango, powered by the Dall-E-3 model.
 - Improved some usability issues.
 
 ### v1.1.4

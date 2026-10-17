@@ -1,4 +1,4 @@
-package com.chaeboxi
+package io.github.nikethai.dango
 
 import android.os.Bundle
 import android.view.View

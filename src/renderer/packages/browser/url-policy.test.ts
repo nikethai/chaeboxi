@@ -32,8 +32,6 @@ describe('workspaceBrowserDownloadsDir', () => {
   })
 
   it('joins under workspace', () => {
-    expect(workspaceBrowserDownloadsDir('/Users/me/proj')).toBe(
-      '/Users/me/proj/.chaeboxi-browser-downloads'
-    )
+    expect(workspaceBrowserDownloadsDir('/Users/me/proj')).toBe('/Users/me/proj/.dango-browser-downloads')
   })
 })

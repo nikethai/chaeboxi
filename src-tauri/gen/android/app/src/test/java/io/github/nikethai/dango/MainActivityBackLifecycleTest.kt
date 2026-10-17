@@ -1,4 +1,4 @@
-package com.chaeboxi
+package io.github.nikethai.dango
 
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.OnBackPressedDispatcher
@@ -21,7 +21,7 @@ class MainActivityBackLifecycleTest {
 
   @Test
   fun `root Back backgrounds the activity instead of calling unsafe native teardown`() {
-    val activity = File("src/main/java/com/chaeboxi/MainActivity.kt").readText()
+    val activity = File("src/main/java/io/github/nikethai/dango/MainActivity.kt").readText()
 
     assertTrue("MainActivity must move the root task to background", activity.contains("moveTaskToBack(true)"))
   }

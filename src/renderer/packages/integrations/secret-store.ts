@@ -12,15 +12,20 @@ import platform from '@/platform'
 
 const STORAGE_PREFIX = 'integration-secret:'
 
+/** Keychain service for integration secrets. */
+export const KEYCHAIN_SERVICE = 'dango.integrations'
+/** Service used before the rename to Dango; read once, then moved. */
+export const LEGACY_KEYCHAIN_SERVICE = 'chaeboxi.integrations'
+
 function storageKey(accountId: string): string {
   return `${STORAGE_PREFIX}${accountId}`
 }
 
-async function keychainSet(accountId: string, payload: string): Promise<boolean> {
+async function keychainSet(service: string, accountId: string, payload: string): Promise<boolean> {
   if (!isTauriRuntime() || typeof window.desktopAPI?.invoke !== 'function') return false
   try {
     await window.desktopAPI.invoke('secrets:set', {
-      service: 'chaeboxi.integrations',
+      service,
       account: accountId,
       secret: payload,
     })
@@ -30,11 +35,11 @@ async function keychainSet(accountId: string, payload: string): Promise<boolean>
   }
 }
 
-async function keychainGet(accountId: string): Promise<string | null> {
+async function keychainGet(service: string, accountId: string): Promise<string | null> {
   if (!isTauriRuntime() || typeof window.desktopAPI?.invoke !== 'function') return null
   try {
     const result = (await window.desktopAPI.invoke('secrets:get', {
-      service: 'chaeboxi.integrations',
+      service,
       account: accountId,
     })) as { secret?: string | null } | string | null
     if (result == null) return null
@@ -45,11 +50,11 @@ async function keychainGet(accountId: string): Promise<string | null> {
   }
 }
 
-async function keychainDelete(accountId: string): Promise<boolean> {
+async function keychainDelete(service: string, accountId: string): Promise<boolean> {
   if (!isTauriRuntime() || typeof window.desktopAPI?.invoke !== 'function') return false
   try {
     await window.desktopAPI.invoke('secrets:delete', {
-      service: 'chaeboxi.integrations',
+      service,
       account: accountId,
     })
     return true
@@ -61,7 +66,7 @@ async function keychainDelete(accountId: string): Promise<boolean> {
 export async function setIntegrationSecret(secret: IntegrationSecret): Promise<void> {
   const parsed = IntegrationSecretSchema.parse(secret)
   const payload = JSON.stringify(parsed)
-  const usedKeychain = await keychainSet(parsed.accountId, payload)
+  const usedKeychain = await keychainSet(KEYCHAIN_SERVICE, parsed.accountId, payload)
   if (!usedKeychain) {
     await platform.setStoreValue(storageKey(parsed.accountId), payload)
   } else {
@@ -75,7 +80,7 @@ export async function setIntegrationSecret(secret: IntegrationSecret): Promise<v
 }
 
 export async function getIntegrationSecret(accountId: string): Promise<IntegrationSecret | null> {
-  const fromKeychain = await keychainGet(accountId)
+  const fromKeychain = (await keychainGet(KEYCHAIN_SERVICE, accountId)) ?? (await moveLegacyKeychainSecret(accountId))
   const raw = fromKeychain ?? (await platform.getStoreValue(storageKey(accountId)))
   if (raw == null || raw === '') return null
   try {
@@ -86,8 +91,23 @@ export async function getIntegrationSecret(accountId: string): Promise<Integrati
   }
 }
 
+/**
+ * Secrets saved before the rename live under the old keychain service. Copy
+ * one to the new service the first time it is read, then remove the old item.
+ * The old item is kept if the copy fails, so nothing is lost.
+ */
+async function moveLegacyKeychainSecret(accountId: string): Promise<string | null> {
+  const legacy = await keychainGet(LEGACY_KEYCHAIN_SERVICE, accountId)
+  if (legacy == null) return null
+  if (await keychainSet(KEYCHAIN_SERVICE, accountId, legacy)) {
+    await keychainDelete(LEGACY_KEYCHAIN_SERVICE, accountId)
+  }
+  return legacy
+}
+
 export async function deleteIntegrationSecret(accountId: string): Promise<void> {
-  await keychainDelete(accountId)
+  await keychainDelete(KEYCHAIN_SERVICE, accountId)
+  await keychainDelete(LEGACY_KEYCHAIN_SERVICE, accountId)
   try {
     await platform.delStoreValue(storageKey(accountId))
   } catch {

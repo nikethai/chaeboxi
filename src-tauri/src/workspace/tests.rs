@@ -12,7 +12,7 @@ static TEST_DIR_SEQ: AtomicU64 = AtomicU64::new(0);
 
 fn test_dir() -> PathBuf {
     let n = TEST_DIR_SEQ.fetch_add(1, Ordering::SeqCst);
-    let dir = std::env::temp_dir().join(format!("chaeboxi-ws-{}-{n}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("dango-ws-{}-{n}", std::process::id()));
     let _ = fs::remove_dir_all(&dir);
     fs::create_dir_all(&dir).unwrap();
     dir

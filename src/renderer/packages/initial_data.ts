@@ -97,13 +97,13 @@ export const defaultSessionsForEN: Session[] = [
       },
       {
         id: 'e99f80e0-b5a4-4a4d-954e-9ad20c8465e7',
-        content: 'Tweet out to let everyone know: The latest version of Chaeboxi has been released',
+        content: 'Tweet out to let everyone know: The latest version of Dango has been released',
         role: 'user' as const,
       },
       {
         id: 'eb6218ad-439d-4e15-847b-0382f844f96e',
         content:
-          '"Exciting news! The latest version of Chaeboxi has just been released. Get ready to experience amazing features and seamless AI conversations. Upgrade now and unleash your productivity potential! #Chaeboxi #AI #Upgrade"',
+          '"Exciting news! The latest version of Dango has just been released. Get ready to experience amazing features and seamless AI conversations. Upgrade now and unleash your productivity potential! #Dango #AI #Upgrade"',
         role: 'assistant' as const,
         model: 'unknown',
         generating: false,
@@ -207,7 +207,6 @@ export const defaultSessionsForEN: Session[] = [
   },
 ]
 
-
 /** Session IDs of retired Chinese-only demo seeds (kept for migration cleanup). */
 export const retiredChineseDemoSessionIds: string[] = [
   '81cfc426-48b4-4a13-ad42-bfcfc4544299',
@@ -234,7 +233,7 @@ export const imageCreatorSessionForEN: Session = {
     {
       id: 'chatbox-chat-demo-image-creator-message-id-1',
       role: 'system' as const,
-      content: `Hi! I'm Chaeboxi Image Creator, your artistic AI companion dedicated to converting your words into striking visuals. If you can dream it, I can create it—from enchanting landscapes, dynamic characters, app icons to the abstract and beyond.
+      content: `Hi! I'm Dango Image Creator, your artistic AI companion dedicated to converting your words into striking visuals. If you can dream it, I can create it—from enchanting landscapes, dynamic characters, app icons to the abstract and beyond.
 
 I'm a quiet robot, just **simply tell me the description of the image you have in mind**, and I'll focus all my pixels into crafting your vision.
 

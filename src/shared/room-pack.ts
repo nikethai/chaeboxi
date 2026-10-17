@@ -1,8 +1,8 @@
 /**
  * Shareable room pack (v1).
  *
- * File: `*.chaeboxi-room.json`
- * Magic: `__type: "chaeboxi-room-pack"`
+ * File: `*.dango-room.json`
+ * Magic: `__type: "dango-room-pack"`
  *
  * Include: room name, mode, lead, agent personas (name/prompt/avatar ref),
  * pinned skill ids + names.
@@ -10,9 +10,11 @@
  * Import always mints new UUIDs so a pack cannot clobber a local room.
  */
 
-export const ROOM_PACK_MAGIC = 'chaeboxi-room-pack'
+export const ROOM_PACK_MAGIC = 'dango-room-pack'
+/** Packs exported before the rename to Dango still import. */
+export const LEGACY_ROOM_PACK_MAGIC = 'chaeboxi-room-pack'
 export const ROOM_PACK_VERSION = 1
-export const ROOM_PACK_EXT = '.chaeboxi-room.json'
+export const ROOM_PACK_EXT = '.dango-room.json'
 
 export type RoomPackMode = 'discuss' | 'work' | 'swarm'
 
@@ -151,8 +153,8 @@ export function parseRoomPack(value: unknown): RoomPack {
     throw new Error('Invalid room pack')
   }
   const raw = value as Record<string, unknown>
-  if (raw.__type !== ROOM_PACK_MAGIC) {
-    throw new Error('Not a Chaeboxi room pack')
+  if (raw.__type !== ROOM_PACK_MAGIC && raw.__type !== LEGACY_ROOM_PACK_MAGIC) {
+    throw new Error('Not a Dango room pack')
   }
   if (raw.__version !== ROOM_PACK_VERSION) {
     throw new Error('Unsupported room pack version')
@@ -189,7 +191,8 @@ export function parseRoomPack(value: unknown): RoomPack {
         .filter((skill) => skill.id)
     : []
 
-  const mode: RoomPackMode = raw.mode === 'work' || raw.mode === 'swarm' || raw.mode === 'discuss' ? raw.mode : 'discuss'
+  const mode: RoomPackMode =
+    raw.mode === 'work' || raw.mode === 'swarm' || raw.mode === 'discuss' ? raw.mode : 'discuss'
   const leadPackId = sanitizeString(raw.leadPackId)
   return {
     __type: ROOM_PACK_MAGIC,
@@ -255,7 +258,9 @@ export function assertPackHasNoSecrets(value: unknown): void {
   if (SECRET_KEY.test(json) && /sk-|Bearer |apiKey|mcpEnv|workspaceRoot|credentialIds/i.test(json)) {
     throw new Error('Room pack must not contain secrets or local paths')
   }
-  if (/"workspaceRoot"|"credentialIds"|"apiKey"|"mcp"|"capabilityId"|"rootGeneration"|"filesystemIdentity"/i.test(json)) {
+  if (
+    /"workspaceRoot"|"credentialIds"|"apiKey"|"mcp"|"capabilityId"|"rootGeneration"|"filesystemIdentity"/i.test(json)
+  ) {
     throw new Error('Room pack must not contain secrets or local paths')
   }
 }

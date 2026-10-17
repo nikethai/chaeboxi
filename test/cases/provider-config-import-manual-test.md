@@ -1,11 +1,11 @@
 # Provider Config Import - Manual Test Cases
 
-This document contains test configurations for manually verifying the provider config import functionality in Chaeboxi.
+This document contains test configurations for manually verifying the provider config import functionality in Dango.
 
 ## How to Test
 
 1. Copy any of the JSON configurations below
-2. In Chaeboxi, navigate to Settings → Providers
+2. In Dango, navigate to Settings → Providers
 3. Click "Import from Clipboard" button
 4. Verify the import results match the expected behavior
 
@@ -187,7 +187,7 @@ chatbox://provider/import?config=eyJpZCI6Im1pbmltYWwtcHJvdmlkZXIiLCJuYW1lIjoiTWl
 ```
 
 **Expected Result:**
-- ✅ Deep link opens Chaeboxi
+- ✅ Deep link opens Dango
 - Import dialog shows with decoded config
 - Same result as manual clipboard import
 

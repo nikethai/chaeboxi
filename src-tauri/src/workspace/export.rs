@@ -241,7 +241,7 @@ impl WorkspaceRuntime {
             return Err(enospc());
         }
         let tmp = dest.with_file_name(format!(
-            ".{}.chaeboxi-export-tmp",
+            ".{}.dango-export-tmp",
             dest.file_name().and_then(|n| n.to_str()).unwrap_or("export")
         ));
         let write_res = self.stream_export(&manifest, &tmp);

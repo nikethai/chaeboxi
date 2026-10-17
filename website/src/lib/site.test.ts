@@ -8,10 +8,10 @@ import { assetUrl, DEFAULT_DESCRIPTION, pageUrl, SITE_HOME } from './site.ts'
 
 describe('site urls', () => {
   it('builds pages under the project Pages origin', () => {
-    assert.equal(pageUrl('/chaeboxi/'), SITE_HOME)
-    assert.equal(pageUrl('/chaeboxi/download/'), `${SITE_HOME}download/`)
-    assert.equal(pageUrl('/chaeboxi/why/'), `${SITE_HOME}why/`)
-    assert.equal(assetUrl('/chaeboxi/', 'og.png'), `${SITE_HOME}og.png`)
+    assert.equal(pageUrl('/dango/'), SITE_HOME)
+    assert.equal(pageUrl('/dango/download/'), `${SITE_HOME}download/`)
+    assert.equal(pageUrl('/dango/why/'), `${SITE_HOME}why/`)
+    assert.equal(assetUrl('/dango/', 'og.png'), `${SITE_HOME}og.png`)
   })
 
   it('keeps a citable default description', () => {
@@ -40,7 +40,7 @@ describe('faq and compare copy', () => {
   })
 
   it('does not invent Chatbox feature claims', () => {
-    assert.deepEqual(COMPARE_COLUMNS, ['Chaeboxi', 'Chatbox AI', 'Hosted ChatGPT'])
+    assert.deepEqual(COMPARE_COLUMNS, ['Dango', 'Chatbox AI', 'Hosted ChatGPT'])
     assert.equal(COMPARE_ROWS.length, 6)
     const chatboxCells = COMPARE_ROWS.map((row) => row.values[1]).join(' ')
     assert.doesNotMatch(chatboxCells, /MCP|computer use|keychain/i)

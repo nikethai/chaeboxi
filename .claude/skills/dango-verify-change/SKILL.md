@@ -1,13 +1,13 @@
 ---
-name: chaeboxi-verify-change
-description: This skill should be used when validating, reviewing, finishing, or preparing a Chaeboxi code change for handoff, merge, or release.
+name: dango-verify-change
+description: This skill should be used when validating, reviewing, finishing, or preparing a Dango code change for handoff, merge, or release.
 ---
 
-# Chaeboxi Verify Change
+# Dango Verify Change
 
 ## Scope
 
-This skill handles validation planning, quality gates, and honest handoff reporting for Chaeboxi code changes.
+This skill handles validation planning, quality gates, and honest handoff reporting for Dango code changes.
 
 Does NOT handle: implementing features, rewriting architecture docs, product marketing, or claiming CI coverage that does not exist.
 

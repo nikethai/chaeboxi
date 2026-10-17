@@ -321,7 +321,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
                       }}
                     >
                       <Flex direction="column" gap={2}>
-                        <Text size="sm">{t('Chaeboxi Browser')}</Text>
+                        <Text size="sm">{t('Dango Browser')}</Text>
                         <Text size="xs" c="dimmed">
                           {browserMasterEnabled
                             ? t('Isolated browser (not your personal Chrome)')

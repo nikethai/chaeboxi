@@ -1,0 +1,83 @@
+import { type RefObject, useEffect, useRef } from 'react'
+
+const TABBABLE = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+  '[contenteditable="true"]',
+].join(', ')
+
+// Open sheets, oldest first. Only the last one reacts to keys.
+const openSheets: HTMLElement[] = []
+
+const tabbableIn = (el: HTMLElement) => Array.from(el.querySelectorAll<HTMLElement>(TABBABLE))
+
+/** Focus handling for a mounted modal sheet: first focus, Tab wrap, Esc, and focus return. */
+export function useSheetFocus(ref: RefObject<HTMLElement | null>, opts: { onClose: () => void }): void {
+  const onCloseRef = useRef(opts.onClose)
+  onCloseRef.current = opts.onClose
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const opener = document.activeElement as HTMLElement | null
+    openSheets.push(el)
+
+    const first =
+      el.querySelector<HTMLElement>('[data-autofocus]') ??
+      el.querySelector<HTMLElement>('.dg-btn--primary') ??
+      tabbableIn(el)[0]
+    if (first) {
+      first.focus()
+    } else {
+      el.tabIndex = -1
+      el.focus()
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (openSheets[openSheets.length - 1] !== el) return
+      if (event.key === 'Escape') {
+        if (event.defaultPrevented) return
+        event.preventDefault()
+        event.stopPropagation()
+        onCloseRef.current()
+        return
+      }
+      if (event.key !== 'Tab') return
+      const items = tabbableIn(el)
+      if (items.length === 0) {
+        event.preventDefault()
+        el.focus()
+        return
+      }
+      const firstItem = items[0]
+      const lastItem = items[items.length - 1]
+      const active = document.activeElement
+      if (!active || !el.contains(active)) {
+        event.preventDefault()
+        ;(event.shiftKey ? lastItem : firstItem).focus()
+      } else if (event.shiftKey && (active === firstItem || active === el)) {
+        event.preventDefault()
+        lastItem.focus()
+      } else if (!event.shiftKey && active === lastItem) {
+        event.preventDefault()
+        firstItem.focus()
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      const index = openSheets.lastIndexOf(el)
+      if (index !== -1) openSheets.splice(index, 1)
+      if (opener?.isConnected) {
+        opener.focus()
+      } else {
+        document.getElementById('main')?.focus()
+      }
+    }
+  }, [ref])
+}

@@ -1,6 +1,10 @@
 import { Container, Stack, Text, Title } from '@mantine/core'
 import { createFileRoute } from '@tanstack/react-router'
+import { useState } from 'react'
+import { Mascot, MASCOT_STATE_LABEL, type MascotState } from '@/components/brand/Mascot'
 import { ReviewItem, type ReviewItemProps } from '@/components/review'
+import { Sheet } from '@/components/ui/Sheet'
+import { pushUndo } from '@/packages/undo'
 import { useUIStore } from '@/stores/uiStore'
 import tokens from '../../../../design/dango/tokens.json'
 import { type DangoColor, dangoColors } from '../../theme/dangoTokens'
@@ -22,6 +26,8 @@ type TypeGroup = { name: string; family: 'sans' | 'mono'; styles: TypeStyle[] }
 
 const typeGroups = tokens.type.groups as TypeGroup[]
 const noop = () => {}
+
+const mascotStates = Object.keys(MASCOT_STATE_LABEL) as MascotState[]
 
 const reviewItems: ReviewItemProps[] = [
   {
@@ -85,6 +91,8 @@ const reviewItems: ReviewItemProps[] = [
 function RouteComponent() {
   const realTheme = useUIStore((state) => state.realTheme)
   const colors = dangoColors[realTheme]
+  const [sheet, setSheet] = useState<'bottom' | 'right' | null>(null)
+  const closeSheet = () => setSheet(null)
 
   return (
     <Container size="lg" py="xl">
@@ -182,6 +190,84 @@ function RouteComponent() {
               <ReviewItem key={item.kind} {...item} />
             ))}
           </Stack>
+        </section>
+
+        <section>
+          <Title order={3} mb="md">
+            Mascot
+          </Title>
+          <Stack gap="md">
+            {[56, 24].map((size) => (
+              <div
+                key={size}
+                data-mascot-row={size}
+                style={{ display: 'flex', flexWrap: 'wrap', gap: 24, color: 'var(--dango-ink)' }}
+              >
+                {mascotStates.map((state) => (
+                  <div
+                    key={state}
+                    style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, minWidth: 72 }}
+                  >
+                    <Mascot state={state} size={size as 56 | 24} />
+                    <Text size="xs" c="dimmed">
+                      {MASCOT_STATE_LABEL[state]}
+                    </Text>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </Stack>
+        </section>
+
+        <section>
+          <Title order={3} mb="md">
+            Sheet
+          </Title>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <button type="button" className="dg-btn" onClick={() => setSheet('bottom')}>
+              Open sheet from the bottom
+            </button>
+            <button type="button" className="dg-btn" onClick={() => setSheet('right')}>
+              Open sheet from the right
+            </button>
+          </div>
+          <Sheet
+            opened={sheet !== null}
+            onClose={closeSheet}
+            side={sheet === 'right' ? 'right' : 'bottom'}
+            title="Dango wants to edit 3 files"
+            hint="Esc closes"
+            actions={
+              <>
+                <button type="button" className="dg-btn dg-btn--ghost" onClick={closeSheet}>
+                  Not now
+                </button>
+                <button type="button" className="dg-btn" onClick={closeSheet}>
+                  Always in this scope
+                </button>
+                <button type="button" className="dg-btn dg-btn--primary" onClick={closeSheet}>
+                  Allow once
+                </button>
+              </>
+            }
+          >
+            <p>
+              Why: move plans/ into docs/specs and fix the links. Touches README.md, AGENTS.md, docs/log.md in Dango.
+            </p>
+          </Sheet>
+        </section>
+
+        <section>
+          <Title order={3} mb="md">
+            Undo
+          </Title>
+          <button
+            type="button"
+            className="dg-btn"
+            onClick={() => pushUndo({ message: 'Approved "Launch is 6 Nov" for Acme Co', undo: () => {} })}
+          >
+            Push an undo
+          </button>
         </section>
       </Stack>
     </Container>

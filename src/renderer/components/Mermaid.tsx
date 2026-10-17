@@ -17,6 +17,7 @@ import { cn } from '@/lib/utils'
 import { copyToClipboard } from '@/packages/navigator'
 import * as picUtils from '@/packages/pic_utils'
 import platform from '@/platform'
+import { mermaidThemeVariables } from '@/theme/mermaidTheme'
 import * as toastActions from '../stores/toastActions'
 // picUtils/platform still used by SVGPreview export
 
@@ -409,47 +410,12 @@ export function normalizeMermaidSvg(svg: string, id: string): string {
 
 /** Shared Mermaid → SVG render used by chat card and workspace panel. */
 export async function mermaidCodeToSvgCode(source: string, theme: 'light' | 'dark') {
-  const isDark = theme === 'dark'
   mermaid.initialize({
-    theme: isDark ? 'dark' : 'base',
+    theme: theme === 'dark' ? 'dark' : 'base',
     startOnLoad: false,
     securityLevel: 'loose',
     fontFamily: 'var(--chatbox-font-ui, ui-sans-serif, system-ui, sans-serif)',
-    themeVariables: isDark
-      ? {
-          fontSize: '14px',
-          fontFamily: 'var(--chatbox-font-ui, ui-sans-serif, system-ui, sans-serif)',
-          primaryColor: '#3d3d8f',
-          primaryTextColor: '#ececec',
-          primaryBorderColor: '#5b63d4',
-          lineColor: '#6e6e76',
-          secondaryColor: '#24242b',
-          tertiaryColor: '#1c1c21',
-          background: 'transparent',
-          mainBkg: '#2a2a4a',
-          nodeBorder: '#5b63d4',
-          clusterBkg: '#16161a',
-          clusterBorder: '#2a2a32',
-          titleColor: '#a8a8ae',
-          edgeLabelBackground: '#1c1c21',
-        }
-      : {
-          fontSize: '14px',
-          fontFamily: 'var(--chatbox-font-ui, ui-sans-serif, system-ui, sans-serif)',
-          primaryColor: '#e8eafc',
-          primaryTextColor: '#1a1a22',
-          primaryBorderColor: '#5b63d4',
-          lineColor: '#6e6e76',
-          secondaryColor: '#f4f4f6',
-          tertiaryColor: '#ffffff',
-          background: 'transparent',
-          mainBkg: '#e8eafc',
-          nodeBorder: '#5b63d4',
-          clusterBkg: '#f7f7f9',
-          clusterBorder: '#e2e2e8',
-          titleColor: '#6e6e76',
-          edgeLabelBackground: '#ffffff',
-        },
+    themeVariables: mermaidThemeVariables(theme),
     flowchart: {
       htmlLabels: true,
       curve: 'basis',

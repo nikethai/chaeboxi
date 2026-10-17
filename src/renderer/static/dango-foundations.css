@@ -119,6 +119,6 @@
 @media (prefers-reduced-motion: reduce) {
   .dg-mascot,
   .dg-mascot * {
-    animation: none;
+    animation: none !important;
   }
 }

@@ -143,7 +143,8 @@ describe('dango-foundations.css mascot rules', () => {
       at.walkRules((rule: Rule) => {
         if (!rule.selector.includes('.dg-mascot *')) return
         rule.walkDecls('animation', (d) => {
-          if (d.value === 'none') found = true
+          // `.dg-mascot[data-pose='idle'] .eyes` is more specific than `.dg-mascot *`, so only !important wins.
+          if (d.value === 'none' && d.important) found = true
         })
       })
     })

@@ -75,6 +75,19 @@ describe('sidebar rules follow the Dango design system', () => {
     expect(valuesOf(rules, 'color').map((d) => d.value)).toEqual(['var(--dango-muted)'])
   })
 
+  test('day group labels (Today, Yesterday, ...) are sentence case and quieter than the section labels', () => {
+    const rules = rulesWhere((s) => s.endsWith('.rail-day-header'))
+    expect(rules.length).toBeGreaterThan(0)
+    expect(valuesOf(rules, 'text-transform')).toEqual([])
+    expect(valuesOf(rules, 'letter-spacing')).toEqual([])
+    // opacity would pull muted text below 4.5:1
+    expect(valuesOf(rules, 'opacity')).toEqual([])
+    expect(valuesOf(rules, 'font-size').map((d) => d.value)).toEqual(['12px'])
+    // 400, one step lighter than the 600 section label above the groups
+    expect(valuesOf(rules, 'font-weight').map((d) => d.value)).toEqual(['400'])
+    expect(valuesOf(rules, 'color').map((d) => d.value)).toEqual(['var(--dango-muted)'])
+  })
+
   test('rows on the rail show a hover background that differs from the rail in both themes', () => {
     // top-level :root variables (the dark block does not redeclare the mapped ones)
     const rootVars = new Map<string, string>()

@@ -1327,16 +1327,14 @@
     opacity: 0.5;
   }
 
+  /* day groups inside Recents: the section label's size and colour, one weight lighter so they sit under it */
   .rail-day-header {
     display: flex;
     align-items: center;
     padding: 0.55rem 0.9rem 0.2rem;
-    font-size: 0.625rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: var(--chatbox-tint-tertiary);
-    opacity: 0.75;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--dango-muted);
   }
 
   .rail-empty-hint,

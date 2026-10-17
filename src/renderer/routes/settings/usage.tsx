@@ -22,18 +22,10 @@ export const Route = createFileRoute('/settings/usage')({
   component: UsageSettingsPage,
 })
 
-function SpendSummary({
-  label,
-  tokens,
-  cost,
-}: {
-  label: string
-  tokens: number
-  cost: number
-}) {
+function SpendSummary({ label, tokens, cost }: { label: string; tokens: number; cost: number }) {
   return (
     <div>
-      <Text size="xs" c="dimmed" tt="uppercase">
+      <Text size="xs" c="dimmed">
         {label}
       </Text>
       <Text className="font-mono" fw={600}>
@@ -51,8 +43,7 @@ function SpendSummary({
 export function UsageSettingsPage() {
   const { t } = useTranslation()
   const [period, setPeriod] = useState<UsagePeriod>('calendar-month')
-  const { statuses, loading, error, refresh, rebackfill, backfillProgress } =
-    useAllProviderUsage(period)
+  const { statuses, loading, error, refresh, rebackfill, backfillProgress } = useAllProviderUsage(period)
   const { snapshot, byProviderModel } = useLocalSpend(period)
   const today = useLocalSpend('today')
   const month = useLocalSpend('calendar-month')
@@ -75,7 +66,11 @@ export function UsageSettingsPage() {
       />
 
       <SettingsSection title={t('This device')}>
-        <Flex gap="lg" wrap="wrap" className="settings-card p-4 rounded-lg border border-[var(--chatbox-border-primary)]">
+        <Flex
+          gap="lg"
+          wrap="wrap"
+          className="settings-card p-4 rounded-lg border border-[var(--chatbox-border-primary)]"
+        >
           <SpendSummary
             label={t('Today')}
             tokens={today.snapshot.inputTokens + today.snapshot.outputTokens}
@@ -87,7 +82,7 @@ export function UsageSettingsPage() {
             cost={month.snapshot.estimatedCostUsd}
           />
           <div>
-            <Text size="xs" c="dimmed" tt="uppercase">
+            <Text size="xs" c="dimmed">
               {t('Budget')}
             </Text>
             {budgetEval.level === 'ok' ? (
@@ -158,7 +153,7 @@ export function UsageSettingsPage() {
             <div className="settings-card p-4 rounded-lg border border-[var(--chatbox-border-primary)]">
               <Flex gap="lg" wrap="wrap" mb="sm">
                 <div>
-                  <Text size="xs" c="dimmed" tt="uppercase">
+                  <Text size="xs" c="dimmed">
                     {t('Tokens')}
                   </Text>
                   <Text className="font-mono" fw={600}>
@@ -166,13 +161,11 @@ export function UsageSettingsPage() {
                   </Text>
                 </div>
                 <div>
-                  <Text size="xs" c="dimmed" tt="uppercase">
+                  <Text size="xs" c="dimmed">
                     {t('Est. cost')}
                   </Text>
                   <Text className="font-mono" fw={600}>
-                    {snapshot.estimatedCostUsd > 0
-                      ? formatCost(snapshot.estimatedCostUsd)
-                      : t('Tokens only')}
+                    {snapshot.estimatedCostUsd > 0 ? formatCost(snapshot.estimatedCostUsd) : t('Tokens only')}
                   </Text>
                 </div>
               </Flex>

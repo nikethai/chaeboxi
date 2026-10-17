@@ -155,3 +155,17 @@ describe('settings section titles and badges are sentence case in English', () =
     expect(offenders).toEqual([])
   })
 })
+
+describe('settings usage stat labels', () => {
+  test('are not uppercased', () => {
+    const source = read('src/renderer/routes/settings/usage.tsx')
+    expect(source).not.toMatch(/tt=["']uppercase["']/)
+  })
+})
+
+describe('provider add panel header', () => {
+  test('relies on the label rule, with no case or tracking overrides', () => {
+    const source = read('src/renderer/components/settings/provider/ProviderList.tsx')
+    expect(source).not.toMatch(/!normal-case|tracking-normal/)
+  })
+})

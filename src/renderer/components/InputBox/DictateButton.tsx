@@ -1,9 +1,10 @@
 import { UnstyledButton } from '@mantine/core'
 import { Mic } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import { navigateToSettings } from '@/modals/Settings'
-import { COMPOSER_TOOLBAR_BUTTON_CLASS, COMPOSER_TOOLBAR_ICON_CLASS } from './composerToolbar'
+import { COMPOSER_TOOLBAR_ICON_CLASS, composerToolbarButtonClass } from './composerToolbar'
 import VoiceHoldButton, { type VoiceHoldButtonProps } from './VoiceHoldButton'
 
 /**
@@ -12,6 +13,7 @@ import VoiceHoldButton, { type VoiceHoldButtonProps } from './VoiceHoldButton'
  */
 export default function DictateButton(props: VoiceHoldButtonProps) {
   const { t } = useTranslation()
+  const isSmallScreen = useIsSmallScreen()
 
   if (props.enabled) {
     return <VoiceHoldButton {...props} />
@@ -20,7 +22,7 @@ export default function DictateButton(props: VoiceHoldButtonProps) {
   // same button and icon classes as the "+" Tools button beside it
   return (
     <UnstyledButton
-      className={cn(props.toolbarButtonClass, COMPOSER_TOOLBAR_BUTTON_CLASS)}
+      className={cn(props.toolbarButtonClass, composerToolbarButtonClass(isSmallScreen))}
       aria-label={t('Dictate')}
       title={t('Dictate')}
       onClick={() => navigateToSettings('/voice')}

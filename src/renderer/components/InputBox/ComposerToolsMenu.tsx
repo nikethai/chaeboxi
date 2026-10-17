@@ -38,7 +38,7 @@ import { useMcpSettings } from '@/stores/settingsStore'
 import { featureFlags } from '@/utils/feature-flags'
 import { ScalableIcon } from '../common/ScalableIcon'
 import MCPStatus from '../mcp/MCPStatus'
-import { COMPOSER_TOOLBAR_BUTTON_CLASS, COMPOSER_TOOLBAR_ICON_CLASS } from './composerToolbar'
+import { COMPOSER_TOOLBAR_ICON_CLASS, composerToolbarButtonClass } from './composerToolbar'
 
 export type ComposerToolsMenuProps = {
   isOpenClawModel: boolean
@@ -177,7 +177,7 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
 
   const plusButton = (
     <UnstyledButton
-      className={cn(toolbarButtonClass, COMPOSER_TOOLBAR_BUTTON_CLASS, isSmallScreen && 'mobile-touch-target')}
+      className={cn(toolbarButtonClass, composerToolbarButtonClass(isSmallScreen))}
       aria-label={t('Tools and attachments')}
       aria-expanded={opened}
     >

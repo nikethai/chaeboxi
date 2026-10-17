@@ -7,7 +7,7 @@ import { resolve } from 'node:path'
 import { MantineProvider } from '@mantine/core'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { COMPOSER_TOOLBAR_BUTTON_CLASS, COMPOSER_TOOLBAR_ICON_CLASS } from './composerToolbar'
+import { COMPOSER_TOOLBAR_ICON_CLASS, composerToolbarButtonClass } from './composerToolbar'
 import DictateButton from './DictateButton'
 import type { VoiceHoldButtonProps } from './VoiceHoldButton'
 
@@ -21,10 +21,13 @@ vi.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }))
 
+// small screen or not, for the media queries behind useIsSmallScreen
+let smallScreen = false
+
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
   value: vi.fn().mockImplementation((query: string) => ({
-    matches: false,
+    matches: smallScreen,
     media: query,
     onchange: null,
     addListener: vi.fn(),
@@ -53,6 +56,7 @@ const renderButton = (enabled: boolean) =>
 
 beforeEach(() => {
   navigateToSettings.mockClear()
+  smallScreen = false
 })
 
 describe('DictateButton', () => {
@@ -70,7 +74,7 @@ describe('DictateButton', () => {
     renderButton(false)
 
     const button = screen.getByRole('button', { name: 'Dictate' })
-    for (const name of COMPOSER_TOOLBAR_BUTTON_CLASS.split(' ')) {
+    for (const name of composerToolbarButtonClass(false).split(' ')) {
       expect(button.classList.contains(name), name).toBe(true)
     }
     expect(button.classList.contains('toolbar-button')).toBe(true)
@@ -78,8 +82,21 @@ describe('DictateButton', () => {
     expect(icon?.getAttribute('class') ?? '').toContain(COMPOSER_TOOLBAR_ICON_CLASS)
 
     const tools = readFileSync(resolve(process.cwd(), 'src/renderer/components/InputBox/ComposerToolsMenu.tsx'), 'utf8')
-    expect(tools).toContain('COMPOSER_TOOLBAR_BUTTON_CLASS')
+    expect(tools).toContain('composerToolbarButtonClass(isSmallScreen)')
     expect(tools).toContain('COMPOSER_TOOLBAR_ICON_CLASS')
+  })
+
+  it('gets the 44px mobile touch target on small screens, like the Tools button', () => {
+    smallScreen = true
+    renderButton(false)
+
+    const button = screen.getByRole('button', { name: 'Dictate' })
+    for (const name of ['mobile-touch-target', 'min-w-11', 'min-h-11']) {
+      expect(button.classList.contains(name), name).toBe(true)
+    }
+    // the desktop 36px minimums are utilities and would beat .mobile-touch-target (a components-layer class)
+    expect(button.classList.contains('min-w-9')).toBe(false)
+    expect(button.classList.contains('min-h-9')).toBe(false)
   })
 
   it('renders the hold-to-talk control, not the fallback, when voice is enabled', () => {

@@ -2,6 +2,7 @@ import { UnstyledButton } from '@mantine/core'
 import { IconLoader2, IconMicrophone } from '@tabler/icons-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useIsSmallScreen } from '@/hooks/useScreenChange'
 import { cn } from '@/lib/utils'
 import { navigateToSettings } from '@/modals/Settings'
 import { settingsStore } from '@/stores/settingsStore'
@@ -13,6 +14,7 @@ import {
   type VoiceAuth,
   type VoiceCopilotConfig,
 } from '../../../shared/voice-copilot'
+import { composerToolbarButtonClass } from './composerToolbar'
 
 export function voiceAuthFromSettings(): VoiceAuth {
   const providers = settingsStore.getState().providers
@@ -85,6 +87,7 @@ export default function VoiceHoldButton({
   onTranscript,
 }: VoiceHoldButtonProps) {
   const { t } = useTranslation()
+  const isSmallScreen = useIsSmallScreen()
   const [holding, setHolding] = useState(false)
   const [busy, setBusy] = useState(false)
   const recorderRef = useRef<MediaRecorder | null>(null)
@@ -228,7 +231,7 @@ export default function VoiceHoldButton({
     <UnstyledButton
       className={cn(
         toolbarButtonClass,
-        'min-h-9 min-w-9 active:scale-[0.96] transition-transform',
+        composerToolbarButtonClass(isSmallScreen),
         (holding || busy) && 'text-[var(--chatbox-tint-error,#e03131)]'
       )}
       aria-label={label}

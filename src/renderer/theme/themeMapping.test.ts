@@ -197,6 +197,7 @@ describe('theme mapping onto Dango', () => {
       ['background-success-primary-hover', greenHover],
       ['background-brand-secondary-hover', washHover],
       ['background-success-secondary-hover', washHover],
+      ['background-error-primary-hover', 'color-mix(in srgb, var(--dango-danger) 88%, var(--dango-ink))'],
     ]
     const wrongHovers: string[] = []
     for (const [name, value] of hovers) {
@@ -303,7 +304,7 @@ describe('theme mapping onto Dango', () => {
 
   // follows the real chain: the label from the vars resolver, the fill from Mantine's `--mantine-color-<c>-filled`
   // through globals.css, in each scheme
-  test.each(['chatbox-gray'])(
+  test.each(['chatbox-gray', 'chatbox-error'])(
     'filled %s controls have a readable label in both themes, at rest and on hover',
     (color) => {
       const theme = createDangoMantineTheme()

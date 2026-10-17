@@ -105,7 +105,7 @@
   --chatbox-background-success-secondary-hover: color-mix(in srgb, var(--dango-green-wash) 85%, var(--dango-green));
 
   --chatbox-background-error-primary: var(--dango-danger);
-  --chatbox-background-error-primary-hover: #c92a2a;
+  --chatbox-background-error-primary-hover: color-mix(in srgb, var(--dango-danger) 88%, var(--dango-ink));
   --chatbox-background-error-secondary: rgb(250, 82, 82, 0.1);
   --chatbox-background-error-secondary-hover: rgb(250, 82, 82, 0.12);
 
@@ -136,7 +136,6 @@
   --chatbox-background-gray-secondary: rgba(110, 110, 118, 0.12);
   --chatbox-background-gray-secondary-hover: rgba(110, 110, 118, 0.18);
 
-  --chatbox-background-error-primary-hover: #c92a2a;
   --chatbox-background-error-secondary: rgb(250, 82, 82, 0.15);
   --chatbox-background-error-secondary-hover: rgb(250, 82, 82, 0.2);
 

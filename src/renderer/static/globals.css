@@ -4086,8 +4086,8 @@
       padding-inline: 10px;
       font-size: 0.75rem !important;
       font-weight: 500;
-      background: var(--dango-raised);
-      box-shadow: inset 0 0 0 1px var(--dango-control-border);
+      background: transparent;
+      box-shadow: none;
       border: none;
     }
 
@@ -6688,25 +6688,28 @@ html[data-quick-chat] .composer-tools-menu .mantine-Menu-item .mantine-Flex-root
   gap: 1px !important;
 }
 
-/* Trigger chip in composer dock */
+/*
+ * Composer toolbar pickers (model trigger, reasoning select): borderless and transparent, like the design
+ * system's `.dg-model` (border: 0; background: transparent; color: ink-2). Hover is the surface tone.
+ */
 .model-picker-trigger {
   height: 32px;
   padding: 0 8px 0 8px;
   gap: 6px;
   border-radius: 7px;
   border: none;
-  background: var(--chatbox-background-primary);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 12%, transparent);
+  background: transparent;
+  box-shadow: none;
+  color: var(--dango-ink-2);
   transition:
-    box-shadow 140ms cubic-bezier(0.2, 0, 0, 1),
     background-color 140ms cubic-bezier(0.2, 0, 0, 1),
     transform 100ms cubic-bezier(0.2, 0, 0, 1);
   -webkit-font-smoothing: antialiased;
 }
 
 .model-picker-trigger:hover {
-  background: var(--chatbox-background-tertiary);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 18%, transparent);
+  background: var(--dango-surface);
+  box-shadow: none;
 }
 
 .model-picker-trigger:active {
@@ -6714,9 +6717,27 @@ html[data-quick-chat] .composer-tools-menu .mantine-Menu-item .mantine-Flex-root
 }
 
 .model-picker-trigger[data-expanded="true"] {
-  box-shadow:
-    inset 0 0 0 1px var(--chatbox-tint-brand),
-    0 0 0 3px color-mix(in srgb, var(--chatbox-tint-brand) 18%, transparent);
+  background: var(--dango-surface);
+  box-shadow: none;
+}
+
+/* Mantine sets the select field inline, hence !important; Settings selects keep the raised field */
+.composer-bar .composer-reasoning-select .mantine-Select-input {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: var(--dango-ink-2) !important;
+}
+
+.composer-bar .composer-reasoning-select .mantine-Select-input:hover {
+  background: var(--dango-surface) !important;
+}
+
+/* the dock silences focus rings (.composer-card :focus-visible); the pickers bring the global ring back */
+.composer-card .model-picker-trigger:focus-visible,
+.composer-card .composer-reasoning-select .mantine-Select-input:focus-visible {
+  outline: 2px solid var(--dango-focus) !important;
+  outline-offset: 2px;
 }
 
 /* New-chat agent bar — shadow chips + expanded hit targets */

@@ -57,6 +57,8 @@ const VARIABLE_MAP: Array<[string, string]> = [
   ['radius-xxl', 'radius-sheet'],
 ]
 
+const normalizeSelector = (selector: string) => selector.replace(/\s+/g, ' ').trim()
+
 const declsOf = (rule: Rule) => {
   const out = new Map<string, string>()
   rule.each((node) => {
@@ -345,7 +347,9 @@ describe('theme mapping onto Dango', () => {
 
     const INPUT_SELECTOR = /mantine-(Input|TextInput|Textarea|PasswordInput|Select|InputBase)-input/
     // bare inputs inside a panel: deliberately borderless and transparent, so they carry no fill or border to check
-    const BARE = /model-picker-search-field/
+    // composer toolbar pickers (reasoning select, model trigger): borderless and transparent like the design
+    // system's `.dg-model` (border: 0; background: transparent), asserted separately below
+    const BARE = /model-picker-search-field|composer-reasoning-select|model-picker-trigger/
     const ALLOWED = [
       'var(--dango-raised)',
       'var(--dango-control-border)',
@@ -392,6 +396,77 @@ describe('theme mapping onto Dango', () => {
       })
     }
     expect(offenders).toEqual([])
+  })
+
+  test('composer toolbar pickers are borderless and transparent (design system .dg-model)', () => {
+    const PICKER = /(^|[^(])\.model-picker-trigger|composer-reasoning-select .*mantine-(Select|Input)-input/
+    const all: Rule[] = []
+    globalsRoot.walkRules((rule) => {
+      if (rule.selectors.some((sel) => PICKER.test(normalizeSelector(sel)))) {
+        all.push(rule)
+      }
+    })
+    const strip = (value: string) => value.replace(/\s*!important$/, '').trim()
+    const offenders: string[] = []
+    for (const rule of all) {
+      for (const [prop, value] of declsOf(rule)) {
+        const v = strip(value)
+        if (['background', 'background-color'].includes(prop) && !['transparent', 'var(--dango-surface)'].includes(v)) {
+          offenders.push(`${rule.selector} { ${prop}: ${v} }`)
+        }
+        if (prop === 'border' && !['none', '0'].includes(v)) {
+          offenders.push(`${rule.selector} { ${prop}: ${v} }`)
+        }
+        if (prop === 'box-shadow' && v !== 'none') {
+          offenders.push(`${rule.selector} { ${prop}: ${v} }`)
+        }
+      }
+    }
+    expect(offenders).toEqual([])
+
+    const find = (selector: string) => rootRules(selector).map(declsOf)
+    const trigger = find('.model-picker-trigger')[0]
+    expect(trigger.get('background')).toBe('transparent')
+    expect(trigger.get('border')).toBe('none')
+    expect(trigger.get('box-shadow')).toBe('none')
+    expect(find('.model-picker-trigger:hover')[0].get('background')).toBe('var(--dango-surface)')
+
+    // desktop select: inline Mantine styles need !important to lose
+    const select = find('.composer-bar .composer-reasoning-select .mantine-Select-input')[0]
+    const importantProps = (selector: string) => {
+      const props: string[] = []
+      for (const rule of rootRules(selector)) {
+        rule.each((node) => {
+          if (node.type === 'decl' && node.important) {
+            props.push(node.prop)
+          }
+        })
+      }
+      return props
+    }
+    const selectSelector = '.composer-bar .composer-reasoning-select .mantine-Select-input'
+    expect(select.get('background')).toBe('transparent')
+    expect(select.get('border')).toBe('0')
+    expect(select.get('box-shadow')).toBe('none')
+    expect(select.get('color')).toBe('var(--dango-ink-2)')
+    expect(importantProps(selectSelector)).toEqual(['background', 'border', 'box-shadow', 'color'])
+    expect(find(`${selectSelector}:hover`)[0].get('background')).toBe('var(--dango-surface)')
+
+    // the dock silences focus rings; the pickers bring the global one back
+    for (const selector of [
+      '.composer-card .model-picker-trigger:focus-visible',
+      '.composer-card .composer-reasoning-select .mantine-Select-input:focus-visible',
+    ]) {
+      let decls: Map<string, string> | undefined
+      globalsRoot.walkRules((rule) => {
+        if (rule.selectors.some((sel) => normalizeSelector(sel) === selector)) {
+          decls = declsOf(rule)
+        }
+      })
+      expect(decls?.get('outline'), selector).toBe('2px solid var(--dango-focus)')
+      expect(globalsCss.includes('outline: 2px solid var(--dango-focus) !important;'), selector).toBe(true)
+      expect(decls?.get('outline-offset'), selector).toBe('2px')
+    }
   })
 
   test('the Sidebar folder dialog input uses the raised fill and the control border', () => {

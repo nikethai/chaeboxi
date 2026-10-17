@@ -8,7 +8,15 @@ interface QueuedMessageListProps {
   sessionId: string
 }
 
-function QueuedMessageItem({ entry, index, sessionId }: { entry: QueuedMessageEntry; index: number; sessionId: string }) {
+function QueuedMessageItem({
+  entry,
+  index,
+  sessionId,
+}: {
+  entry: QueuedMessageEntry
+  index: number
+  sessionId: string
+}) {
   const { t } = useTranslation()
   const text = getMessageText(entry.message, false, false)
   const preview = text.length > 80 ? text.slice(0, 80) + '…' : text
@@ -30,7 +38,7 @@ function QueuedMessageItem({ entry, index, sessionId }: { entry: QueuedMessageEn
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--chatbox-background-secondary)] animate-in fade-in slide-in-from-bottom-1 duration-200">
       <div className="shrink-0 w-5 h-5 rounded-full bg-[var(--chatbox-tint-brand)] flex items-center justify-center">
-        <Text size="xs" fw={700} c="white" lh={1}>
+        <Text size="xs" fw={700} c="var(--chatbox-tint-on-brand)" lh={1}>
           {index + 1}
         </Text>
       </div>
@@ -73,12 +81,7 @@ export default function QueuedMessageList({ sessionId }: QueuedMessageListProps)
         <Text size="xs" c="chatbox-tertiary" className="opacity-90">
           {t('Waiting for current reply ({{count}} queued)', { count: queuedMessages.length })}
         </Text>
-        <Text
-          size="xs"
-          c="chatbox-error"
-          className="cursor-pointer hover:underline shrink-0"
-          onClick={handleClearAll}
-        >
+        <Text size="xs" c="chatbox-error" className="cursor-pointer hover:underline shrink-0" onClick={handleClearAll}>
           {t('Clear queue')}
         </Text>
       </div>
@@ -92,12 +95,7 @@ export default function QueuedMessageList({ sessionId }: QueuedMessageListProps)
           {t('Queued messages ({{count}})', { count: queuedMessages.length })}
         </Text>
         {queuedMessages.length > 1 && (
-          <Text
-            size="xs"
-            c="chatbox-error"
-            className="cursor-pointer hover:underline"
-            onClick={handleClearAll}
-          >
+          <Text size="xs" c="chatbox-error" className="cursor-pointer hover:underline" onClick={handleClearAll}>
             {t('Clear all')}
           </Text>
         )}

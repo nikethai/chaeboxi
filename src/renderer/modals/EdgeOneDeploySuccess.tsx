@@ -49,7 +49,7 @@ const EdgeOneDeploySuccess = NiceModal.create(({ url }: EdgeOneDeploySuccessProp
             target="_blank"
             rel="noopener noreferrer"
             leftSection={<ScalableIcon icon={IconExternalLink} size={16} />}
-            c="white"
+            c="var(--chatbox-tint-on-brand)"
           >
             {t('Open')}
           </Button>

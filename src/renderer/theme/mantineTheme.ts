@@ -15,6 +15,7 @@ import {
   Modal,
   NativeSelect,
   Popover,
+  Radio,
   rem,
   Select,
   Slider,
@@ -31,15 +32,19 @@ const ON_DANGER = 'var(--dango-raised)'
 // the grey fill (--chatbox-background-gray-primary) stays dark in both themes, so its label is white
 const ON_GRAY = 'var(--chatbox-tint-white)'
 
+// Brand (the primary colour, used when no colour is given) and success both fill with --dango-green.
+const isGreen = (color: unknown) => color === undefined || color === 'chatbox-brand' || color === 'chatbox-success'
+// Mantine's default variant is `filled`.
+const isFilled = (variant?: string) => variant === undefined || variant === 'filled'
+
 /**
  * Text colour for a filled control, or undefined to keep Mantine's default.
- * Mantine's default variant is `filled`; the default colour is the primary colour (`chatbox-brand`).
  */
 const filledTextColor = (props: { variant?: string; color?: unknown }): string | undefined => {
-  if (props.variant !== undefined && props.variant !== 'filled') {
+  if (!isFilled(props.variant)) {
     return undefined
   }
-  if (props.color === undefined || props.color === 'chatbox-brand') {
+  if (isGreen(props.color)) {
     return ON_BRAND
   }
   if (props.color === 'chatbox-error') {
@@ -50,6 +55,13 @@ const filledTextColor = (props: { variant?: string; color?: unknown }): string |
   }
   return undefined
 }
+
+/**
+ * Tick / dot colour for a checked Checkbox or Radio: Mantine paints it white, which fails on the dark-mode green.
+ * An explicit `iconColor` and the outline variant (whose icon is the control colour) keep Mantine's own.
+ */
+const greenIconColor = (props: { variant?: string; color?: unknown; iconColor?: unknown }) =>
+  props.iconColor === undefined && isFilled(props.variant) && isGreen(props.color) ? ON_BRAND : undefined
 
 /**
  * Mantine's semantic colour variables, mapped onto Dango. The Dango variables flip with the colour scheme on their
@@ -327,8 +339,11 @@ export const createDangoMantineTheme = (scale = 1) =>
         defaultProps: {
           size: 'sm',
         },
+        // Mantine's thumb is white whether or not it is checked, and --switch-thumb-bg is not state-aware: the root
+        // hands the checked colour to the `.mantine-Switch-input:checked` rule in globals.css
         styles: (_theme, props) => {
           return {
+            root: isGreen(props.color) ? { '--chatbox-switch-checked-thumb': ON_BRAND } : {},
             label: {
               color: props.checked ? 'var(--chatbox-tint-primary)' : 'var(--chatbox-tint-tertiary)',
             },
@@ -344,6 +359,16 @@ export const createDangoMantineTheme = (scale = 1) =>
             color: props.checked ? 'var(--chatbox-tint-primary)' : 'var(--chatbox-tint-tertiary)',
           },
         }),
+        vars: (_theme, props) => {
+          const color = greenIconColor(props)
+          return { root: color ? { '--checkbox-icon-color': color } : {} }
+        },
+      }),
+      Radio: Radio.extend({
+        vars: (_theme, props) => {
+          const color = greenIconColor(props)
+          return { root: color ? { '--radio-icon-color': color } : {} }
+        },
       }),
       Modal: Modal.extend({
         defaultProps: {

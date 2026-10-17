@@ -4596,6 +4596,16 @@ div[data-vaul-drawer] {
 }
 
 /*
+ * Checked switch thumb on a green track: on-brand, like the design system's switch (Mantine paints it white, 2.44:1
+ * on the dark-mode green). The colour comes from the Switch theme styles in theme/mantineTheme.ts, which set it
+ * only for green tracks; other colours fall back to Mantine's white. Unlayered, like Mantine's own CSS.
+ */
+.mantine-Switch-input:checked:not(:disabled) + * > .mantine-Switch-thumb {
+  --switch-thumb-bg: var(--chatbox-switch-checked-thumb, var(--mantine-color-white));
+  --switch-thumb-bd: var(--chatbox-switch-checked-thumb, var(--mantine-color-white));
+}
+
+/*
  * Filled brand buttons take --chatbox-tint-on-brand through the Button `vars` resolver in
  * theme/mantineTheme.ts (chatbox-brand is a flat CSS-var palette, so Mantine can't auto-contrast).
  */

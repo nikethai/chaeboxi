@@ -292,11 +292,14 @@ describe('theme mapping onto Dango', () => {
       expect(components.ActionIcon.vars(mantineTheme, props).root['--ai-color']).toBe(label)
     }
 
-    for (const color of ['chatbox-success', 'blue']) {
-      const props = { variant: 'filled', color }
-      expect(components.Button.vars(mantineTheme, props).root).toEqual({})
-      expect(components.ActionIcon.vars(mantineTheme, props).root).toEqual({})
-    }
+    // success is the same green fill as brand
+    const success = { variant: 'filled', color: 'chatbox-success' }
+    expect(components.Button.vars(mantineTheme, success).root['--button-color']).toBe(onBrand)
+    expect(components.ActionIcon.vars(mantineTheme, success).root['--ai-color']).toBe(onBrand)
+
+    const blue = { variant: 'filled', color: 'blue' }
+    expect(components.Button.vars(mantineTheme, blue).root).toEqual({})
+    expect(components.ActionIcon.vars(mantineTheme, blue).root).toEqual({})
     expect(components.Button.vars(mantineTheme, { variant: 'light' }).root['--button-color']).toBeUndefined()
 
     expect(theme.fontFamily).toBe('var(--chatbox-font-ui)')
@@ -304,7 +307,7 @@ describe('theme mapping onto Dango', () => {
 
   // follows the real chain: the label from the vars resolver, the fill from Mantine's `--mantine-color-<c>-filled`
   // through globals.css, in each scheme
-  test.each(['chatbox-gray', 'chatbox-error'])(
+  test.each(['chatbox-brand', 'chatbox-success', 'chatbox-gray', 'chatbox-error'])(
     'filled %s controls have a readable label in both themes, at rest and on hover',
     (color) => {
       const theme = createDangoMantineTheme()
@@ -329,6 +332,59 @@ describe('theme mapping onto Dango', () => {
       expect(failures).toEqual([])
     }
   )
+
+  test('checked Checkbox ticks and Radio dots on a green fill use on-brand, readable in both themes', () => {
+    const theme = createDangoMantineTheme()
+    // biome-ignore lint/suspicious/noExplicitAny: resolvers are typed against Mantine's internal theme
+    const components = theme.components as any
+    const mantineTheme = {} as never
+    const onBrand = 'var(--chatbox-tint-on-brand)'
+
+    for (const [name, iconVar] of [
+      ['Checkbox', '--checkbox-icon-color'],
+      ['Radio', '--radio-icon-color'],
+    ]) {
+      for (const props of [{}, { color: 'chatbox-brand' }, { color: 'chatbox-success' }, { variant: 'filled' }]) {
+        expect(components[name].vars(mantineTheme, props).root[iconVar], `${name} ${JSON.stringify(props)}`).toBe(
+          onBrand
+        )
+      }
+      // other colours, the outline variant and an explicit iconColor keep Mantine's own icon colour
+      for (const props of [{ color: 'blue' }, { variant: 'outline' }, { iconColor: 'red' }]) {
+        expect(components[name].vars(mantineTheme, props).root, `${name} ${JSON.stringify(props)}`).toEqual({})
+      }
+    }
+
+    for (const mode of ['light', 'dark'] as const) {
+      const ratio = contrastRatio(resolveColor(onBrand, mode), resolveColor('var(--chatbox-tint-brand)', mode))
+      expect(ratio, `on-brand on green, ${mode}`).toBeGreaterThanOrEqual(4.5)
+    }
+  })
+
+  test('the checked Switch thumb on a green track is on-brand', () => {
+    const theme = createDangoMantineTheme()
+    // biome-ignore lint/suspicious/noExplicitAny: resolvers are typed against Mantine's internal theme
+    const components = theme.components as any
+    const mantineTheme = {} as never
+
+    // the thumb colour is handed to CSS on the root; the checked-state rule below picks it up
+    for (const props of [{}, { color: 'chatbox-brand' }, { color: 'chatbox-success' }]) {
+      expect(components.Switch.styles(mantineTheme, props).root['--chatbox-switch-checked-thumb']).toBe(
+        'var(--chatbox-tint-on-brand)'
+      )
+    }
+    expect(components.Switch.styles(mantineTheme, { color: 'blue' }).root).toEqual({})
+
+    // Mantine's own CSS is unlayered, so the rule must be too
+    const selector = '.mantine-Switch-input:checked:not(:disabled) + * > .mantine-Switch-thumb'
+    const rules = rootRules(selector)
+    expect(rules.length).toBe(1)
+    expect(rules[0].parent?.type).toBe('root')
+    const decls = declsOf(rules[0])
+    const thumb = 'var(--chatbox-switch-checked-thumb, var(--mantine-color-white))'
+    expect(decls.get('--switch-thumb-bg')).toBe(thumb)
+    expect(decls.get('--switch-thumb-bd')).toBe(thumb)
+  })
 
   test('composer surface uses the Dango composer radius and send is green with on-green text', () => {
     const find = (selector: string) => rootRules(selector).map(declsOf)

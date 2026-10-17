@@ -65,3 +65,60 @@
   align-items: center;
   gap: var(--dango-space-2);
 }
+
+@keyframes dango-blink {
+  0%,
+  96%,
+  100% {
+    transform: scaleY(1);
+  }
+  97%,
+  99% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes dango-pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.4;
+  }
+}
+
+@keyframes dango-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.dg-mascot[data-pose='idle'] .eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: dango-blink 4s infinite;
+}
+
+.dg-mascot[data-pose='thinking'] .dots,
+.dg-mascot[data-pose='replying'] .dots {
+  animation: dango-pulse 1.2s ease-in-out infinite alternate;
+}
+
+.dg-mascot[data-pose='working'] .ring {
+  transform-box: view-box;
+  transform-origin: 32px 33px;
+  animation: dango-spin 1.6s linear infinite;
+}
+
+.dango-mascot__state {
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--dango-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dg-mascot,
+  .dg-mascot * {
+    animation: none;
+  }
+}

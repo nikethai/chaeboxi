@@ -37,10 +37,9 @@
   --chatbox-composer-shadow-hover: 0 0 0 1px rgba(0, 0, 0, 0.1), 0 0 0 1px
     color-mix(in srgb, var(--chatbox-tint-brand) 12%, transparent), 0 8px 22px rgba(0, 0, 0, 0.1), 0 24px 52px -12px
     rgba(0, 0, 0, 0.22);
-  /* focus: slightly stronger edge + depth, brand mix ≤ ~18% */
-  --chatbox-composer-shadow-focus: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 18%, rgba(0, 0, 0, 0.1)), 0 0
-    24px -4px color-mix(in srgb, var(--chatbox-tint-brand) 14%, transparent), 0 10px 26px rgba(0, 0, 0, 0.1), 0 28px
-    56px -12px rgba(0, 0, 0, 0.24);
+  /* focus: the text field has no ring, so the card carries the 2px focus ring (3:1 on ground) plus depth */
+  --chatbox-composer-shadow-focus: 0 0 0 2px var(--dango-focus), 0 10px 26px rgba(0, 0, 0, 0.1), 0 28px 56px -12px
+    rgba(0, 0, 0, 0.24);
   --chatbox-composer-shadow-drag: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 42%, transparent), 0 6px 16px
     rgba(0, 0, 0, 0.1), 0 20px 48px -12px rgba(0, 0, 0, 0.22);
   --chatbox-ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -149,9 +148,8 @@
   --chatbox-composer-shadow-hover: 0 0 0 1px rgba(255, 255, 255, 0.12), 0 0 0 1px
     color-mix(in srgb, var(--chatbox-tint-brand) 14%, transparent), 0 10px 26px rgba(0, 0, 0, 0.58), 0 28px 60px -10px
     rgba(0, 0, 0, 0.78);
-  --chatbox-composer-shadow-focus: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 20%, rgba(255, 255, 255, 0.1)),
-    0 0 28px -2px color-mix(in srgb, var(--chatbox-tint-brand) 16%, transparent), 0 12px 30px rgba(0, 0, 0, 0.58), 0
-    30px 64px -10px rgba(0, 0, 0, 0.8);
+  --chatbox-composer-shadow-focus: 0 0 0 2px var(--dango-focus), 0 12px 30px rgba(0, 0, 0, 0.58), 0 30px 64px -10px
+    rgba(0, 0, 0, 0.8);
   --chatbox-composer-shadow-drag: 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 48%, transparent), 0 8px 20px
     rgba(0, 0, 0, 0.55), 0 24px 56px -10px rgba(0, 0, 0, 0.75);
 }
@@ -742,10 +740,14 @@
       0 0 0 1px color-mix(in srgb, var(--chatbox-tint-primary) 8%, transparent),
       0 3px 8px rgba(0, 0, 0, 0.24);
   }
-  .quick-chat-shell .composer-card:focus-within:not(.composer-card-drag-active),
   .quick-chat-shell .composer-card:hover:not(.composer-card-drag-active) {
     box-shadow:
       0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 18%, transparent),
+      0 4px 10px rgba(0, 0, 0, 0.28) !important;
+  }
+  .quick-chat-shell .composer-card:focus-within:not(.composer-card-drag-active) {
+    box-shadow:
+      0 0 0 2px var(--dango-focus),
       0 4px 10px rgba(0, 0, 0, 0.28) !important;
   }
   .quick-chat-shell .composer-card.composer-card-drag-active,
@@ -3202,7 +3204,7 @@
     box-shadow: none !important;
   }
 
-  /* Focus-within: stronger elevation + soft cool edge */
+  /* Focus-within: 2px focus ring + stronger elevation (the field inside is ring-less) */
   .composer-card:focus-within:not(.composer-card-drag-active) {
     outline: none !important;
     border: 1px solid transparent !important;

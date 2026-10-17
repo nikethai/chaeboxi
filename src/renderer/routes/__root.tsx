@@ -21,6 +21,7 @@ import { useSetAtom } from 'jotai'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { navigateToSettings } from '@/modals/Settings'
 import { getOS } from '@/packages/navigator'
+import { UndoToast, useUndoHotkey } from '@/packages/undo'
 import PictureDialog from '@/pages/PictureDialog'
 import RemoteDialogWindow from '@/pages/RemoteDialogWindow'
 import SearchDialog from '@/pages/SearchDialog'
@@ -227,6 +228,7 @@ function Root() {
       {/* Welcome when no model configured */}
       {/* <WelcomeDialog /> */}
       <Toasts /> {/* mui */}
+      <UndoToast />
     </Box>
   )
 }
@@ -236,6 +238,7 @@ export const Route = createRootRoute({
     useI18nEffect()
     useSystemLanguageWhenInit()
     useShortcut()
+    useUndoHotkey()
     const theme = useAppTheme()
     const _theme = useTheme()
     const fontSize = useSettingsStore((state) => state.fontSize)

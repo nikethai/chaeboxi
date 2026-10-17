@@ -99,11 +99,9 @@
 }
 
 .settings-collapsible-badge {
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--chatbox-tint-tertiary);
+  color: var(--dango-muted);
   padding: 0.18rem 0.45rem;
   border-radius: 999px;
   background: color-mix(in srgb, var(--chatbox-tint-primary) 6%, transparent);
@@ -174,7 +172,6 @@
 
 .settings-collapsible-stack .settings-section-label {
   margin-top: 0.1rem;
-  font-size: 0.68rem;
 }
 
 .settings-collapsible-stack .settings-section-desc {
@@ -280,12 +277,10 @@
 
 .settings-section-label {
   margin: 0;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   line-height: 1.35;
-  color: var(--chatbox-tint-tertiary);
+  color: var(--dango-muted);
 }
 
 .settings-section-desc {
@@ -297,12 +292,10 @@
 }
 
 .settings-section-title {
-  /* legacy class — map to micro label if still referenced */
-  font-size: 0.72rem !important;
+  /* legacy class — same label style as .settings-section-label */
+  font-size: 0.75rem !important;
   font-weight: 600 !important;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--chatbox-tint-tertiary);
+  color: var(--dango-muted);
 }
 
 /* ── Card surface ── */

@@ -3,6 +3,7 @@
 Newest first. Add a line when you create, accept, supersede or move a decision, spec or research note.
 
 ## 2026-10-17
+* **Acceptance**: [ADR 0012](adr/0012-rename-to-dango.md) accepted by the maintainer — the app is Dango, ID `io.github.nikethai.dango`.
 * **Proposal**: [ADR 0012](adr/0012-rename-to-dango.md) (draft) — the app is renamed from Chaeboxi to Dango, identifiers included (`io.github.nikethai.dango`), with a one-time move of app data, keychain items and the knowledge-base file. Earlier entries use the old name.
 
 ## 2026-10-16

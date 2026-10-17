@@ -1,12 +1,13 @@
 ---
 type: decision
-status: draft
+status: stable
 description: "Rename the app from Chaeboxi to Dango, including internal identifiers, with a one-time data move"
 generated: { by: claude/opus-5.5, at: 2026-10-17T07:40:00+07:00 }
+verified: { by: human:nikethai, at: 2026-10-17T11:19:00+07:00 }
 ---
 # ADR 0012: Rename to Dango
 
-Status: proposed 2026-10-17, decided by the maintainer in conversation; waiting for `verified`.
+Status: accepted by the maintainer, 2026-10-17.
 
 ## Context
 

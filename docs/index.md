@@ -19,6 +19,7 @@ Start here. [log.md](log.md) lists what changed, newest first. Work items and id
 * [0010-pm-pilot-first-user](adr/0010-pm-pilot-first-user.md) - Small-agency PM as first external user (stable)
 * [0011-maintainer-first-shared-core](adr/0011-maintainer-first-shared-core.md) - Maintainer first on a shared knowledge core; PM pilot as the next source (stable)
 * [0012-rename-to-dango](adr/0012-rename-to-dango.md) - Rename the app from Chaeboxi to Dango, including internal identifiers, with a one-time data move (stable)
+* [0013-everywhere-layer](adr/0013-everywhere-layer.md) - Knowledge in two layers: each scope plus a built-in Everywhere scope (stable)
 * [continuity/](adr/continuity/) - Continuity import ADRs 001–005 from the August growth discovery
 
 # Specs
@@ -28,6 +29,8 @@ Start here. [log.md](log.md) lists what changed, newest first. Work items and id
 * [2026-10-05-personal-assistant-design](specs/2026-10-05-personal-assistant-design.md) - Dango personal assistant design (draft)
 * [2026-10-13-pm-pilot-design](specs/2026-10-13-pm-pilot-design.md) - Dango PM pilot design (stable)
 * [2026-10-14-pm-pilot-phase-1-client-memory](specs/2026-10-14-pm-pilot-phase-1-client-memory.md) - PM Pilot Phase 1: Client Memory Implementation Plan (draft)
+* [2026-10-16-redesign-brief](specs/2026-10-16-redesign-brief.md) - Total redesign brief: structure first, then a new look (draft)
+* [2026-10-16-ux-flows](specs/2026-10-16-ux-flows.md) - UX flows for the redesign: trigger, steps, states and exits for every user journey (draft)
 * [260905-daily-copilot/](specs/260905-daily-copilot/) - Daily copilot roadmap, phases and evaluation
 
 # Research

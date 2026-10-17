@@ -1,10 +1,10 @@
 ---
 id: TASK-1
 title: Shared knowledge core + repo source ("what changed" for the maintainer)
-status: Now
+status: Proposed
 assignee: []
 created_date: '2026-10-15 04:30'
-updated_date: '2026-10-16 14:15'
+updated_date: '2026-10-16 14:22'
 labels:
   - direction
 dependencies: []
@@ -21,3 +21,9 @@ ordinal: 1000
 <!-- SECTION:DESCRIPTION:BEGIN -->
 Generalise the phase-1 client-memory core from 'client' to 'scope' (client or project). First source: this repo (commits, ADRs, specs, uncommitted work, board changes) so the maintainer can ask what changed while away. See ADR 0011 (draft).
 <!-- SECTION:DESCRIPTION:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-10-16: moved back to Proposed; maintainer chose to redesign first. Scope pages in the redesign are this card's UI.
+<!-- SECTION:NOTES:END -->

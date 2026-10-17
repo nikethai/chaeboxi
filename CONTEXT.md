@@ -41,8 +41,12 @@ Knowledge whose applicability is limited to a particular project, such as its re
 _Avoid_: Global preference
 
 **Personal preference**:
-A user-approved preference that can apply across projects, such as a preferred response style.
+A user-approved preference that can apply across projects, such as a preferred response style. Lives in Everywhere.
 _Avoid_: Project guideline
+
+**Everywhere**:
+The built-in scope whose knowledge and documents every other scope also reads. A scope's own knowledge wins over Everywhere inside that scope. Client scopes read Everywhere documents only when turned on.
+_Avoid_: Global memory, default scope
 
 **Knowledge conflict**:
 A potential contradiction between saved knowledge and new information within the same scope, awaiting user review.

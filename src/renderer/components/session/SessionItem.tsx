@@ -191,7 +191,7 @@ function SessionItem(props: Props) {
           selected && 'studio-rail-row-active'
         )}
         mx={6}
-        pl={selected ? 12 : 10}
+        pl={10}
         pr={6}
         py={6}
         gap={6}

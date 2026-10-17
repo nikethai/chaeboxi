@@ -73,4 +73,9 @@ describe('sidebar rules follow the Dango design system', () => {
     expect(valuesOf(rules, 'font-weight').map((d) => d.value)).toEqual(['600'])
     expect(valuesOf(rules, 'color').map((d) => d.value)).toEqual(['var(--dango-muted)'])
   })
+
+  test('selected rows keep the same left padding as idle rows', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/renderer/components/session/SessionItem.tsx'), 'utf8')
+    expect(source).not.toMatch(/pl=\{selected\s*\?/)
+  })
 })

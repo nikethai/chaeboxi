@@ -147,3 +147,5 @@ Goal for the second session, started after 1b is merged:
 > Execute slices 02, 06a, 08, 06b, 06c from docs/specs/2026-10-17-redesign-roadmap.md, in that order, starting each only when the slices in its Needs column are merged. Follow the roadmap's "Running the plans" rules. One PR per slice.
 
 Slice 09 starts after every other slice is merged.
+
+**Relicensing comes after.** The clean-room relicensing plan (`2026-10-17-clean-room-relicense.md`) starts only once every slice here has merged (maintainer decision, 2026-10-17). The slices edit existing files where their plans say so; the clean-room rule and the provenance gate do not apply to them. The relicensing plan then measures what upstream-derived code is left and cleans it.

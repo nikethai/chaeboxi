@@ -103,9 +103,26 @@ describe('theme mapping onto Dango', () => {
     }
     expect(wrong).toEqual([])
 
-    expect(light.get('--chatbox-background-brand-primary-hover')).toBe(
-      'color-mix(in srgb, var(--dango-green) 88%, var(--dango-ink))'
-    )
+    // hovers are expressions over Dango tokens, in light only (the tokens flip for dark)
+    const greenHover = 'color-mix(in srgb, var(--dango-green) 88%, var(--dango-ink))'
+    const washHover = 'color-mix(in srgb, var(--dango-green-wash) 85%, var(--dango-green))'
+    const hovers: Array<[string, string]> = [
+      ['background-brand-primary-hover', greenHover],
+      ['background-success-primary-hover', greenHover],
+      ['background-brand-secondary-hover', washHover],
+      ['background-success-secondary-hover', washHover],
+    ]
+    const wrongHovers: string[] = []
+    for (const [name, value] of hovers) {
+      const prop = `--chatbox-${name}`
+      if (light.get(prop) !== value) {
+        wrongHovers.push(`${prop}: light is ${light.get(prop)}, want ${value}`)
+      }
+      if (dark.has(prop)) {
+        wrongHovers.push(`${prop}: still redeclared in the dark block`)
+      }
+    }
+    expect(wrongHovers).toEqual([])
   })
 
   test('brand fills never carry white text in CSS', () => {

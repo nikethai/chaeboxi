@@ -92,7 +92,7 @@
   --chatbox-background-brand-primary: var(--dango-green);
   --chatbox-background-brand-primary-hover: color-mix(in srgb, var(--dango-green) 88%, var(--dango-ink));
   --chatbox-background-brand-secondary: var(--dango-green-wash);
-  --chatbox-background-brand-secondary-hover: rgba(91, 99, 212, 0.16);
+  --chatbox-background-brand-secondary-hover: color-mix(in srgb, var(--dango-green-wash) 85%, var(--dango-green));
 
   --chatbox-background-gray-primary: #6e6e76;
   --chatbox-background-gray-primary-hover: #4a4a52;
@@ -100,9 +100,9 @@
   --chatbox-background-gray-secondary-hover: rgba(110, 110, 118, 0.14);
 
   --chatbox-background-success-primary: var(--dango-green);
-  --chatbox-background-success-primary-hover: #099268;
+  --chatbox-background-success-primary-hover: color-mix(in srgb, var(--dango-green) 88%, var(--dango-ink));
   --chatbox-background-success-secondary: var(--dango-green-wash);
-  --chatbox-background-success-secondary-hover: rgb(18, 184, 134, 0.12);
+  --chatbox-background-success-secondary-hover: color-mix(in srgb, var(--dango-green-wash) 85%, var(--dango-green));
 
   --chatbox-background-error-primary: var(--dango-danger);
   --chatbox-background-error-primary-hover: #c92a2a;
@@ -131,15 +131,10 @@
   /* void / rail / panel / lift */
   --chatbox-background-disabled: #1c1c21;
 
-  --chatbox-background-brand-secondary-hover: rgba(91, 99, 212, 0.28);
-
   --chatbox-background-gray-primary: #2c2c34;
   --chatbox-background-gray-primary-hover: #36363f;
   --chatbox-background-gray-secondary: rgba(110, 110, 118, 0.12);
   --chatbox-background-gray-secondary-hover: rgba(110, 110, 118, 0.18);
-
-  --chatbox-background-success-primary-hover: #099268;
-  --chatbox-background-success-secondary-hover: rgb(79, 178, 134, 0.22);
 
   --chatbox-background-error-primary-hover: #c92a2a;
   --chatbox-background-error-secondary: rgb(250, 82, 82, 0.15);

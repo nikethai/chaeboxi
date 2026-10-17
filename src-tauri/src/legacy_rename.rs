@@ -3,12 +3,12 @@
 //! The app was called Chaeboxi with the bundle identifier `com.chaeboxi`. The
 //! OS keys every per-app folder by that identifier (app data, config, caches,
 //! logs, and the webview's own storage), so after the rename to Dango
-//! (`com.dango`) a first launch would otherwise look empty.
+//! (`io.github.nikethai.dango`) a first launch would otherwise look empty.
 //!
 //! This runs at the very start of `run()`, before Tauri creates any window,
 //! because the webview opens its storage as soon as the first window exists.
 //! For each per-app base folder it renames `<base>/com.chaeboxi` to
-//! `<base>/com.dango` when the old one exists and the new one does not. A
+//! `<base>/io.github.nikethai.dango` when the old one exists and the new one does not. A
 //! rename on the same volume is atomic and needs no extra disk space. When the
 //! new folder already exists (the user has run Dango before), nothing is
 //! touched, so this never overwrites anything.
@@ -23,7 +23,7 @@
 use std::path::{Path, PathBuf};
 
 pub const LEGACY_IDENTIFIER: &str = "com.chaeboxi";
-pub const IDENTIFIER: &str = "com.dango";
+pub const IDENTIFIER: &str = "io.github.nikethai.dango";
 pub const LEGACY_KB_FILENAME: &str = "chaeboxi_kb.db";
 
 /// Per-app base folders on this OS. Each one holds a folder named after the

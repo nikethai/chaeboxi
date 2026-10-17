@@ -21,9 +21,7 @@ Rename everything, internal identifiers included, and move existing data on firs
 | What | Before | After |
 |---|---|---|
 | Product name, window title, copy in every locale | Chaeboxi | Dango |
-| Desktop bundle identifier | `com.chaeboxi` | `com.dango` |
-| iOS bundle identifier (Capacitor) | `com.chaeboxi.app` | `com.dango.app` |
-| Android package | `com.chaeboxi` | `com.dango` |
+| App identifier: desktop, iOS, Android | `com.chaeboxi`, `com.chaeboxi.app`, `com.chaeboxi` | `io.github.nikethai.dango` on all three |
 | Crate, binary, npm package | `chaeboxi`, `chaeboxi_lib` | `dango`, `dango_lib` |
 | Keychain service | `chaeboxi.integrations` | `dango.integrations` |
 | Knowledge-base file | `chaeboxi_kb.db` | `dango_kb.db` |
@@ -34,7 +32,7 @@ Rename everything, internal identifiers included, and move existing data on firs
 
 How existing data comes across:
 
-- **Per-app folders** (`src-tauri/src/legacy_rename.rs`). At the very start of `run()`, before any window or webview exists, each `<base>/com.chaeboxi` is renamed to `<base>/com.dango` when the old folder exists and the new one does not. Bases: macOS `~/Library/{Application Support, Caches, Logs, WebKit, HTTPStorages}`; Windows `%APPDATA%`, `%LOCALAPPDATA%`; Linux XDG data, config and cache. A rename is atomic on the same volume. If the new folder already exists, nothing is touched.
+- **Per-app folders** (`src-tauri/src/legacy_rename.rs`). At the very start of `run()`, before any window or webview exists, each `<base>/com.chaeboxi` is renamed to `<base>/io.github.nikethai.dango` when the old folder exists and the new one does not. Bases: macOS `~/Library/{Application Support, Caches, Logs, WebKit, HTTPStorages}`; Windows `%APPDATA%`, `%LOCALAPPDATA%`; Linux XDG data, config and cache. A rename is atomic on the same volume. If the new folder already exists, nothing is touched.
 - **Knowledge base.** Inside the moved data folder, `chaeboxi_kb.db` and its `-wal`/`-shm` files are renamed to `dango_kb.db`.
 - **Keychain** (`secret-store.ts`). On the first read of an integration secret, the old service is checked, the item is copied to the new service, and the old item is removed only after the copy succeeds. Deleting an account removes both.
 - **Room packs.** Packs tagged `chaeboxi-room-pack` still import; the file picker accepts both extensions.
@@ -48,7 +46,8 @@ Kept as they were:
 
 - **Rollback.** An older Chaeboxi build opened after Dango has run will start empty, because its folder has moved. Downgrades are not supported; this is acceptable before 1.0.
 - **macOS keychain prompt.** The first time Dango reads a token saved by Chaeboxi, macOS may ask whether Dango can use that item, because the old item's access list names the old app. Allowing it once completes the move.
-- **iOS and Android.** Phone storage is sandboxed per bundle ID and cannot be moved by the app. A new bundle ID is a new app: a TestFlight or store listing under `com.chaeboxi.app` does not carry over, and phone data starts fresh. `com.dango.app` must also be free in the Apple developer portal; if it is taken, pick another before the first mobile build.
+- **iOS and Android.** Phone storage is sandboxed per bundle ID and cannot be moved by the app. A new bundle ID is a new app: a TestFlight or store listing under `com.chaeboxi.app` does not carry over, and phone data starts fresh.
+- **Why `io.github.nikethai.dango`.** Reverse-DNS IDs should sit on a domain you control. Nobody here owns dango.com, and Apple bundle IDs are unique across all developers, so `com.dango.app` might already be registered. The GitHub Pages domain is the maintainer's, so the ID cannot collide. If Dango gets its own domain later, keep this ID anyway: changing it again means another migration.
 - **GitHub.** The maintainer renames the repository to `dango`. GitHub redirects old repo, clone and issue URLs. Pages does not redirect: `nikethai.github.io/chaeboxi` stops working when the repository is renamed.
 - **Name clearance.** A web search on 2026-10-17 found earlier software called Dango, including an emoji-prediction keyboard from 2016. This is not a trademark search. Check the USPTO and WIPO databases before a store listing.
 - **Not checked here.** A full desktop build: `cargo check` could not complete in the agent's Linux sandbox because the ONNX Runtime download is blocked. The migration module was tested on its own (6 unit tests plus a run against a fake home folder). Run `pnpm dev` once on the Mac to confirm.

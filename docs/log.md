@@ -3,7 +3,7 @@
 Newest first. Add a line when you create, accept, supersede or move a decision, spec or research note.
 
 ## 2026-10-17
-* **Proposal**: [ADR 0012](adr/0012-rename-to-dango.md) (draft) — the app is renamed from Chaeboxi to Dango, identifiers included (`com.dango`), with a one-time move of app data, keychain items and the knowledge-base file. Earlier entries use the old name.
+* **Proposal**: [ADR 0012](adr/0012-rename-to-dango.md) (draft) — the app is renamed from Chaeboxi to Dango, identifiers included (`io.github.nikethai.dango`), with a one-time move of app data, keychain items and the knowledge-base file. Earlier entries use the old name.
 
 ## 2026-10-16
 * **Acceptance**: [ADR 0011](adr/0011-maintainer-first-shared-core.md) accepted by the maintainer — shared knowledge core grouped by scope; this repo is the first source; Gmail + Asana follow once the PM pilot's prerequisites are met.

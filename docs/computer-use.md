@@ -33,7 +33,7 @@ macOS Screen Recording is keyed to **code identity** (signing team + identifier)
 
 Mitigations in this repo:
 
-- `pnpm dev` / `pnpm tauri:dev` wraps Tauri with `scripts/tauri-dev-macos.mjs`, which re-signs the debug binary after rebuilds (`scripts/macos-sign-dev-binary.sh`) using your Apple Development identity and fixed identifier `com.dango`.
+- `pnpm dev` / `pnpm tauri:dev` wraps Tauri with `scripts/tauri-dev-macos.mjs`, which re-signs the debug binary after rebuilds (`scripts/macos-sign-dev-binary.sh`) using your Apple Development identity and fixed identifier `io.github.nikethai.dango`.
 - Manual: `pnpm dev:sign` after a rebuild if needed.
 - After **first** enabling Screen Recording for the signed binary: **fully quit** the app and start `pnpm dev` again (macOS often applies Screen Recording only after relaunch).
 - If multiple “dango” rows exist, remove old ones, keep the entry for the currently running binary (use **Reveal** in settings), toggle on, relaunch.

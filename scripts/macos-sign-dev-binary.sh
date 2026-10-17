@@ -5,7 +5,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BIN="${DANGO_DEV_BIN:-$ROOT/src-tauri/target/debug/dango}"
-IDENTIFIER="${DANGO_CODE_IDENTIFIER:-com.dango}"
+IDENTIFIER="${DANGO_CODE_IDENTIFIER:-io.github.nikethai.dango}"
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
   echo "macos-sign-dev-binary: skip (not macOS)"

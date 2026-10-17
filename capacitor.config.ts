@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
-  appId: 'com.dango.app',
+  appId: 'io.github.nikethai.dango',
   appName: 'Dango',
   webDir: 'release/app/dist/renderer',
 }

@@ -333,7 +333,7 @@
   }
 
   .project-explorer-filter:focus {
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chatbox-tint-brand) 45%, transparent);
+    box-shadow: inset 0 0 0 2px var(--dango-focus);
   }
 
   .project-explorer-tree {
@@ -1674,15 +1674,14 @@
     appearance: none;
   }
 
-  .msg-mention-btn:hover,
-  .msg-mention-btn:focus-visible {
+  .msg-mention-btn:hover {
     filter: brightness(0.97);
     box-shadow: 0 0 0 1px color-mix(in srgb, currentColor 22%, transparent);
   }
 
   .msg-mention-btn:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 45%, transparent);
-    outline-offset: 1px;
+    outline: 2px solid var(--dango-focus);
+    outline-offset: 2px;
   }
 
   .msg-mention-agent,
@@ -2545,8 +2544,8 @@
   }
 
   .tool-step-header:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 45%, transparent);
-    outline-offset: 1px;
+    outline: 2px solid var(--dango-focus);
+    outline-offset: 2px;
   }
 
   .tool-step-header.is-open {
@@ -3457,7 +3456,7 @@
   }
 
   .studio-video-range:focus-visible {
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--chatbox-tint-brand) 45%, transparent);
+    box-shadow: 0 0 0 2px var(--dango-focus);
   }
 
   .studio-video-range::-webkit-slider-thumb {
@@ -3531,8 +3530,8 @@
   }
 
   .studio-video-btn:focus-visible {
-    outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 55%, transparent);
-    outline-offset: 1px;
+    outline: 2px solid var(--dango-focus);
+    outline-offset: 2px;
   }
 
   .studio-video-time {
@@ -3613,8 +3612,8 @@
 
   .composer-attach-delete:focus-visible {
     opacity: 1 !important;
-    outline: 1.5px solid rgba(255, 255, 255, 0.85);
-    outline-offset: 1px;
+    outline: 2px solid var(--dango-focus);
+    outline-offset: 2px;
   }
 
   .composer-video-vision-banner {
@@ -5530,9 +5529,10 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   transition: background-color 120ms var(--chatbox-ease);
 }
 
+/* inset: the dock panel clips (overflow: hidden), so an outset ring would be cut off */
 .todo-dock-chip:focus-visible,
 .todo-dock-completed-toggle:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 55%, transparent);
+  outline: 2px solid var(--dango-focus);
   outline-offset: -2px;
 }
 
@@ -5797,7 +5797,7 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
 }
 
 .settings-chrome-btn:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 55%, transparent);
+  outline: 2px solid var(--dango-focus);
   outline-offset: 2px;
 }
 
@@ -6011,13 +6011,9 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
 .studio-search-field .mantine-TextInput-input:focus,
 .studio-search-field .mantine-TextInput-input:focus-within,
 .studio-search-field[data-focus] .mantine-TextInput-input {
-  border-color: color-mix(in srgb, var(--chatbox-tint-brand) 45%, transparent) !important;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--chatbox-tint-brand) 22%, transparent) !important;
-}
-
-.model-picker-search-field:focus-within {
-  border-color: color-mix(in srgb, var(--chatbox-tint-brand) 40%, transparent) !important;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--chatbox-tint-brand) 18%, transparent) !important;
+  /* 1px border + 1px ring = a 2px --dango-focus edge on the field */
+  border-color: var(--dango-focus) !important;
+  box-shadow: 0 0 0 1px var(--dango-focus) !important;
 }
 
 .model-picker-search {
@@ -6059,9 +6055,9 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
 }
 
 .model-picker-search-field:focus-within {
-  border-color: var(--chatbox-tint-brand);
-  /* single focus ring — no second inset border */
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--chatbox-tint-brand) 28%, transparent) !important;
+  /* single focus ring — 1px border + 1px ring = a 2px --dango-focus edge, no second inset border */
+  border-color: var(--dango-focus);
+  box-shadow: 0 0 0 1px var(--dango-focus) !important;
 }
 
 .model-picker-search-field .tabler-icon,
@@ -7383,8 +7379,8 @@ html[data-quick-chat] .composer-tools-menu .mantine-Menu-item .mantine-Flex-root
 }
 
 .session-statusline-action:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 45%, transparent);
-  outline-offset: 1px;
+  outline: 2px solid var(--dango-focus);
+  outline-offset: 2px;
 }
 
 .session-statusline-action.is-muted {
@@ -7486,8 +7482,8 @@ button.session-statusline-plan:hover {
 }
 
 button.session-statusline-plan:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--chatbox-tint-brand) 55%, transparent);
-  outline-offset: 1px;
+  outline: 2px solid var(--dango-focus);
+  outline-offset: 2px;
 }
 
 .session-statusline-plan.is-warn .session-statusline-val {

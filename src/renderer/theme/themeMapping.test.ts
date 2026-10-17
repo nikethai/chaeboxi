@@ -666,6 +666,58 @@ describe('theme mapping onto Dango', () => {
     expect(decls.get('outline-offset')).toBe('2px')
   })
 
+  test('every focus ring is drawn with --dango-focus', () => {
+    const files = ['src/renderer/static/globals.css', 'src/renderer/static/dango-components.css']
+    // where a ring is deliberately off: the composer text field, the flush search-dialog input and its cmdk list
+    // (focus stays in the input; the list shows the active item with aria-selected), and the model-picker search
+    // field's inner input (the field shell draws the ring on :focus-within)
+    const SILENCED = [
+      '.composer-card .composer-textarea:focus-visible',
+      '.composer-card .composer-rich-input:focus-visible',
+      '.composer-rich-input:focus-visible',
+      '.search-dialog-input:focus-visible',
+      '.search-dialog-content :focus-visible',
+      '.model-picker-search-field *:focus-visible',
+    ]
+    // composer card elevation on :focus-within (the field inside is ring-less); not a control's focus ring
+    const ELEVATION = ['.quick-chat-shell .composer-card:focus-within:not(.composer-card-drag-active)']
+    const RING_PROPS = ['outline', 'box-shadow']
+    const FOCUS = /:focus(-visible|-within)?(?![-\w])|\[data-focus\]/
+    const TRANSLUCENT_BRAND = /color-mix\([^;]*--chatbox-tint-brand/
+
+    const offenders: string[] = []
+    for (const file of files) {
+      postcss.parse(readSource(file)).walkRules((rule) => {
+        const selectors = rule.selectors.map(normalizeSelector)
+        const visible = selectors.filter((sel) => sel.includes(':focus-visible'))
+        const focus = selectors.filter((sel) => FOCUS.test(sel) && !ELEVATION.includes(sel))
+        rule.each((node) => {
+          if (node.type !== 'decl') {
+            return
+          }
+          const value = node.value.trim()
+          const where = `${file}:${node.source?.start?.line} ${rule.selector.replace(/\s+/g, ' ')} { ${node.prop}: ${value} }`
+          if (visible.length > 0 && RING_PROPS.includes(node.prop) && !value.includes('var(--dango-focus)')) {
+            const off = /^(none|0)$/.test(value)
+            if (!off || visible.some((sel) => !SILENCED.includes(sel))) {
+              offenders.push(where)
+              return
+            }
+          }
+          // no translucent brand ring or edge on any focus state
+          if (
+            focus.length > 0 &&
+            [...RING_PROPS, 'border-color'].includes(node.prop) &&
+            TRANSLUCENT_BRAND.test(value)
+          ) {
+            offenders.push(where)
+          }
+        })
+      })
+    }
+    expect(offenders).toEqual([])
+  })
+
   test('MUI follows Dango', () => {
     const light = getThemeDesign('light', 16, 'en')
     expect(light.palette?.primary).toMatchObject({ main: dangoColors.light.green })

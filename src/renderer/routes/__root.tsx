@@ -31,7 +31,7 @@ import * as atoms from '@/stores/atoms'
 import * as settingActions from '@/stores/settingActions'
 import { settingsStore, useLanguage, useSettingsStore, useTheme } from '@/stores/settingsStore'
 import { useUIStore } from '@/stores/uiStore'
-import { createDangoMantineTheme } from '@/theme/mantineTheme'
+import { createDangoMantineTheme, dangoCssVariablesResolver } from '@/theme/mantineTheme'
 
 function Root() {
   const location = useLocation()
@@ -247,6 +247,7 @@ export const Route = createRootRoute({
     return (
       <MantineProvider
         theme={mantineTheme}
+        cssVariablesResolver={dangoCssVariablesResolver}
         defaultColorScheme={_theme === Theme.Dark ? 'dark' : _theme === Theme.Light ? 'light' : 'auto'}
       >
         <ThemeProvider theme={theme}>

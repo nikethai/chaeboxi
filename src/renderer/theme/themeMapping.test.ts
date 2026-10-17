@@ -4,7 +4,7 @@ import postcss, { type Rule } from 'postcss'
 import { describe, expect, test } from 'vitest'
 import { contrastRatio } from './contrast'
 import { dangoColors, dangoFonts } from './dangoTokens'
-import { createDangoMantineTheme } from './mantineTheme'
+import { createDangoMantineTheme, dangoCssVariablesResolver } from './mantineTheme'
 import { getThemeDesign } from './muiTheme'
 
 const root = process.cwd()
@@ -265,6 +265,51 @@ describe('theme mapping onto Dango', () => {
     // the splash paints before CSS loads, so it keeps literals: they must be the Dango ground
     expect(indexHtml.includes(`background-color: ${dangoColors.dark.ground}`), 'splash dark ground').toBe(true)
     expect(indexHtml.includes(`background-color: ${dangoColors.light.ground}`), 'splash light ground').toBe(true)
+  })
+
+  test("Mantine's semantic colour variables resolve to Dango in both schemes", () => {
+    const resolved = dangoCssVariablesResolver({} as never)
+    const expected = {
+      '--mantine-color-body': 'var(--dango-ground)',
+      '--mantine-color-text': 'var(--dango-ink)',
+      '--mantine-color-dimmed': 'var(--dango-muted)',
+      '--mantine-color-placeholder': 'var(--dango-muted)',
+      '--mantine-color-default-border': 'var(--dango-line)',
+      '--mantine-color-default': 'var(--dango-raised)',
+      '--mantine-color-default-hover': 'var(--dango-surface)',
+      '--mantine-color-default-color': 'var(--dango-ink)',
+    }
+    expect(resolved.light).toMatchObject(expected)
+    expect(resolved.dark).toMatchObject(expected)
+  })
+
+  test('Mantine inputs use the raised fill and the control border; the chevron is muted', () => {
+    const theme = createDangoMantineTheme()
+    // biome-ignore lint/suspicious/noExplicitAny: style resolvers are typed against Mantine's internal theme
+    const components = theme.components as any
+    const mantineTheme = {} as never
+
+    const wrapper = components.Input.styles(mantineTheme, {}).wrapper
+    expect(wrapper['--input-bg']).toBe('var(--dango-raised)')
+    expect(wrapper['--input-bd']).toBe('var(--dango-control-border)')
+    expect(wrapper['--input-color']).toBe('var(--dango-ink)')
+    expect(wrapper['--input-placeholder-color']).toBe('var(--dango-muted)')
+
+    for (const name of ['Input', 'TextInput', 'Textarea', 'Select', 'NativeSelect']) {
+      const input = components[name].styles(mantineTheme, {}).input
+      expect(input.backgroundColor, `${name} fill`).toBe('var(--dango-raised)')
+      expect(input.borderColor, `${name} border`).toBe('var(--dango-control-border)')
+      expect(input.color, `${name} text`).toBe('var(--dango-ink)')
+    }
+
+    expect(components.ComboboxChevron.vars(mantineTheme, {}).chevron['--combobox-chevron-color']).toBe(
+      'var(--dango-muted)'
+    )
+    expect(components.ComboboxChevron.vars(mantineTheme, { error: 'bad' }).chevron).toEqual({})
+  })
+
+  test('the root MantineProvider passes the Dango variables resolver', () => {
+    expect(readSource('src/renderer/routes/__root.tsx')).toContain('cssVariablesResolver={dangoCssVariablesResolver}')
   })
 
   test('MUI follows Dango', () => {

@@ -4,6 +4,8 @@ import {
   Button,
   Checkbox,
   Combobox,
+  ComboboxChevron,
+  type CSSVariablesResolver,
   colorsTuple,
   createTheme,
   type DefaultMantineColor,
@@ -43,6 +45,34 @@ const filledTextColor = (props: { variant?: string; color?: unknown }): string |
   }
   return undefined
 }
+
+/**
+ * Mantine's semantic colour variables, mapped onto Dango. The Dango variables flip with the colour scheme on their
+ * own (see dango-tokens.css), so light and dark carry the same values. They go under `light`/`dark` rather than
+ * `variables` because Mantine declares its defaults at that specificity.
+ */
+export const DANGO_MANTINE_SEMANTIC_VARIABLES = {
+  '--mantine-color-body': 'var(--dango-ground)',
+  '--mantine-color-text': 'var(--dango-ink)',
+  '--mantine-color-dimmed': 'var(--dango-muted)',
+  '--mantine-color-placeholder': 'var(--dango-muted)',
+  '--mantine-color-default-border': 'var(--dango-line)',
+  '--mantine-color-default': 'var(--dango-raised)',
+  '--mantine-color-default-hover': 'var(--dango-surface)',
+  '--mantine-color-default-color': 'var(--dango-ink)',
+} as const
+
+export const dangoCssVariablesResolver: CSSVariablesResolver = () => ({
+  variables: {},
+  light: { ...DANGO_MANTINE_SEMANTIC_VARIABLES },
+  dark: { ...DANGO_MANTINE_SEMANTIC_VARIABLES },
+})
+
+// fields must be seen: the control border is the 3:1 one, the fill is the raised surface
+const INPUT_BG = 'var(--dango-raised)'
+const INPUT_BORDER = 'var(--dango-control-border)'
+const INPUT_COLOR = 'var(--dango-ink)'
+const INPUT_PLACEHOLDER = 'var(--dango-muted)'
 
 export const createDangoMantineTheme = (scale = 1) =>
   createTheme({
@@ -170,10 +200,10 @@ export const createDangoMantineTheme = (scale = 1) =>
         styles: (_theme, props) => ({
           wrapper: {
             '--input-height-sm': rem('36px'),
-            '--input-bd': 'var(--chatbox-border-primary)',
-            '--input-bg': 'var(--chatbox-background-primary)',
-            '--input-color': 'var(--chatbox-tint-primary)',
-            '--input-placeholder-color': 'var(--chatbox-tint-tertiary)',
+            '--input-bd': INPUT_BORDER,
+            '--input-bg': INPUT_BG,
+            '--input-color': INPUT_COLOR,
+            '--input-placeholder-color': INPUT_PLACEHOLDER,
             ...(props.error
               ? {
                   '--input-color': 'var(--chatbox-tint-error)',
@@ -182,9 +212,9 @@ export const createDangoMantineTheme = (scale = 1) =>
               : {}),
           },
           input: {
-            backgroundColor: 'var(--chatbox-background-primary)',
-            borderColor: 'var(--chatbox-border-primary)',
-            color: 'var(--chatbox-tint-primary)',
+            backgroundColor: INPUT_BG,
+            borderColor: INPUT_BORDER,
+            color: INPUT_COLOR,
             borderRadius: 'var(--chatbox-radius-md)',
             fontSize: '0.875rem',
             transition: 'border-color 140ms var(--chatbox-ease), background-color 140ms var(--chatbox-ease)',
@@ -192,7 +222,7 @@ export const createDangoMantineTheme = (scale = 1) =>
               borderColor: 'var(--chatbox-tint-brand)',
             },
             '&::placeholder': {
-              color: 'var(--chatbox-tint-tertiary)',
+              color: INPUT_PLACEHOLDER,
             },
           },
         }),
@@ -213,9 +243,9 @@ export const createDangoMantineTheme = (scale = 1) =>
             color: 'var(--chatbox-tint-tertiary)',
           },
           input: {
-            backgroundColor: 'var(--chatbox-background-primary)',
-            borderColor: 'var(--chatbox-border-secondary)',
-            color: 'var(--chatbox-tint-primary)',
+            backgroundColor: INPUT_BG,
+            borderColor: INPUT_BORDER,
+            color: INPUT_COLOR,
             borderRadius: 'var(--chatbox-radius-md)',
           },
         }),
@@ -233,9 +263,9 @@ export const createDangoMantineTheme = (scale = 1) =>
             fontSize: '0.8125rem',
           },
           input: {
-            backgroundColor: 'var(--chatbox-background-primary)',
-            borderColor: 'var(--chatbox-border-secondary)',
-            color: 'var(--chatbox-tint-primary)',
+            backgroundColor: INPUT_BG,
+            borderColor: INPUT_BORDER,
+            color: INPUT_COLOR,
             borderRadius: 'var(--chatbox-radius-md)',
           },
         }),
@@ -254,9 +284,9 @@ export const createDangoMantineTheme = (scale = 1) =>
             fontSize: '0.8125rem',
           },
           input: {
-            backgroundColor: 'var(--chatbox-background-primary)',
-            borderColor: 'var(--chatbox-border-secondary)',
-            color: 'var(--chatbox-tint-primary)',
+            backgroundColor: INPUT_BG,
+            borderColor: INPUT_BORDER,
+            color: INPUT_COLOR,
             borderRadius: 'var(--chatbox-radius-md)',
           },
           dropdown: {
@@ -281,9 +311,9 @@ export const createDangoMantineTheme = (scale = 1) =>
             fontSize: '0.8125rem',
           },
           input: {
-            backgroundColor: 'var(--chatbox-background-primary)',
-            borderColor: 'var(--chatbox-border-secondary)',
-            color: 'var(--chatbox-tint-primary)',
+            backgroundColor: INPUT_BG,
+            borderColor: INPUT_BORDER,
+            color: INPUT_COLOR,
             borderRadius: 'var(--chatbox-radius-md)',
           },
         }),
@@ -399,6 +429,13 @@ export const createDangoMantineTheme = (scale = 1) =>
           shadow: 'md',
           zIndex: 2100,
         },
+      }),
+      // Mantine tints the chevron with dark-3 / gray-6; it is an icon, so it takes the muted text colour
+      // (the error state keeps Mantine's own error colour)
+      ComboboxChevron: ComboboxChevron.extend({
+        vars: (_theme, props) => ({
+          chevron: props.error ? {} : { '--combobox-chevron-color': 'var(--dango-muted)' },
+        }),
       }),
       Avatar: Avatar.extend({
         styles: () => ({

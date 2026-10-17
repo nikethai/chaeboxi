@@ -90,7 +90,7 @@ async function ensureAndroidChannel() {
   try {
     const { LocalNotifications } = await import('@capacitor/local-notifications')
     await LocalNotifications.createChannel({
-      id: 'chaeboxi-chat',
+      id: 'dango-chat',
       name: 'Chat',
       description: 'Generation and team-room alerts',
       importance: 4,
@@ -120,7 +120,7 @@ export async function showWebOrCapacitorNotification(
             id,
             title: payload.title,
             body: payload.body ?? '',
-            channelId: 'chaeboxi-chat',
+            channelId: 'dango-chat',
             extra: {
               sessionId: payload.data?.sessionId,
               kind: payload.data?.kind,
@@ -144,9 +144,7 @@ export async function showWebOrCapacitorNotification(
   const n = new Notification(payload.title, {
     body: payload.body,
     data: payload.data,
-    tag: payload.data?.sessionId
-      ? `chaeboxi-${payload.data.kind ?? 'event'}-${payload.data.sessionId}`
-      : undefined,
+    tag: payload.data?.sessionId ? `dango-${payload.data.kind ?? 'event'}-${payload.data.sessionId}` : undefined,
   })
   n.onclick = () => {
     window.focus()
@@ -170,10 +168,7 @@ function dispatchClick(payload: SystemNotificationClickPayload) {
 }
 
 /** Register click/action listener; returns unsubscribe. */
-export function onWebOrCapacitorNotificationClick(
-  callback: ClickHandler,
-  preferCapacitor: boolean
-): () => void {
+export function onWebOrCapacitorNotificationClick(callback: ClickHandler, preferCapacitor: boolean): () => void {
   clickHandlers.add(callback)
 
   if ((preferCapacitor || isCapacitorNativeRuntime()) && !capacitorClickWired) {

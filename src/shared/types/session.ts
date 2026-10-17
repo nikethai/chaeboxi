@@ -511,7 +511,7 @@ export const SessionSchema = z.object({
    * @deprecated Native picker binding is the only authorization path.
    */
   workspaceRoot: z.string().optional(),
-  /** Arm Chaeboxi isolated browser tools for this chat (desktop). */
+  /** Arm Dango isolated browser tools for this chat (desktop). */
   browserArmed: z.boolean().optional().catch(undefined),
   /** Arm computer use (observe/act) for this chat (desktop). */
   computerArmed: z.boolean().optional().catch(undefined),

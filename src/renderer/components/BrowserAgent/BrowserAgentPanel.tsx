@@ -13,7 +13,7 @@ export type BrowserAgentPanelProps = {
 }
 
 /**
- * Collapsible live status for Chaeboxi isolated browser.
+ * Collapsible live status for Dango isolated browser.
  * Shows URL, last tool, errors; Stop aborts generation + browser session.
  */
 const BrowserAgentPanel: FC<BrowserAgentPanelProps> = ({ sessionId, armed, generating }) => {
@@ -44,7 +44,7 @@ const BrowserAgentPanel: FC<BrowserAgentPanelProps> = ({ sessionId, armed, gener
         <Flex align="center" gap={8} className="min-w-0">
           <IconBrowser size={16} stroke={1.5} className="text-[var(--chatbox-tint-brand)] shrink-0" />
           <Text size="sm" fw={600} className="truncate">
-            {t('Chaeboxi Browser (isolated)')}
+            {t('Dango Browser (isolated)')}
           </Text>
           {status.running && (
             <Badge size="xs" color="green" variant="light">

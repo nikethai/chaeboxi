@@ -1,6 +1,6 @@
 # Commands and Hooks
 
-Chaeboxi extensibility beyond Skills. Clear separation of triggers and behavior.
+Dango extensibility beyond Skills. Clear separation of triggers and behavior.
 
 ## Product matrix
 

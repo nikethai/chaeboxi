@@ -12,7 +12,7 @@ export function organizationNode() {
     name: SITE_NAME,
     url: SITE_HOME,
     logo: `${SITE_HOME}favicon.png`,
-    sameAs: ['https://github.com/nikethai/chaeboxi'],
+    sameAs: ['https://github.com/nikethai/dango'],
   }
 }
 

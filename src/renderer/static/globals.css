@@ -1021,7 +1021,7 @@
     border-radius: 11px;
   }
 
-  .rail-head .chaeboxi-wordmark {
+  .rail-head .dango-wordmark {
     justify-content: flex-start;
     margin-inline: 0;
     width: auto;
@@ -7927,12 +7927,12 @@ button.session-statusline-plan:focus-visible {
 }
 
 /* Brand mark outline — pure black/white, not palette-tinted */
-.chaeboxi-wordmark-mark {
+.dango-wordmark-mark {
   outline: 1px solid rgba(0, 0, 0, 0.1);
   outline-offset: -1px;
 }
 
-:root[data-mantine-color-scheme="dark"] .chaeboxi-wordmark-mark {
+:root[data-mantine-color-scheme="dark"] .dango-wordmark-mark {
   outline-color: rgba(255, 255, 255, 0.1);
 }
 

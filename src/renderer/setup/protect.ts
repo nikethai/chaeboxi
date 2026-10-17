@@ -1,4 +1,4 @@
-// Legacy domain-guard for upstream web hosting — disabled for Chaeboxi independence.
+// Legacy domain-guard for upstream web hosting — disabled for Dango independence.
 // Kept as a no-op module so existing imports do not break.
 
 import { CHATBOX_BUILD_TARGET } from '../variables'

@@ -82,7 +82,7 @@ function RouteComponent() {
           platform: os.toLowerCase(),
         }
         setPerm(fallback)
-        toast.error(t('Could not recheck permissions. Restart Chaeboxi and try again.'))
+        toast.error(t('Could not recheck permissions. Restart Dango and try again.'))
         return fallback
       } finally {
         setChecking(false)
@@ -109,15 +109,11 @@ function RouteComponent() {
       if (status.isDevBinary) {
         toast.error(
           t(
-            'Still blocked for this process. In Screen Recording enable the entry for this binary, fully quit Chaeboxi, restart `pnpm dev`, then Recheck. (macOS only applies Screen Recording after relaunch.)'
+            'Still blocked for this process. In Screen Recording enable the entry for this binary, fully quit Dango, restart `pnpm dev`, then Recheck. (macOS only applies Screen Recording after relaunch.)'
           )
         )
       } else {
-        toast.error(
-          t(
-            'Still blocked. Enable Chaeboxi in Screen Recording, then quit and reopen the app once.'
-          )
-        )
+        toast.error(t('Still blocked. Enable Dango in Screen Recording, then quit and reopen the app once.'))
       }
       return
     }
@@ -131,9 +127,7 @@ function RouteComponent() {
     }
     try {
       const result = await platform.computerRevealExecutable()
-      toast.message(
-        t('Finder highlighted the running binary. Use + in Screen Recording and select it if missing.')
-      )
+      toast.message(t('Finder highlighted the running binary. Use + in Screen Recording and select it if missing.'))
       if (result?.executablePath) {
         console.info('[computer-use] executable', result.executablePath)
       }
@@ -185,19 +179,19 @@ function RouteComponent() {
   const showRestartHint = screenStatus === 'denied'
   const canOpenPrivacy = desktop && os !== 'Linux'
   const isDevBinary = Boolean(perm?.isDevBinary)
-  const processName = perm?.processName || 'chaeboxi'
+  const processName = perm?.processName || 'dango'
   const executablePath = perm?.executablePath
 
   const screenDescription = (() => {
     if (screenStatus === 'granted') return t('Screenshots allowed.')
     if (screenStatus === 'denied' && isDevBinary) {
       return t(
-        'Dev binary uses a separate TCC identity. Enable “{{name}}” (or “Chaeboxi”) in Screen Recording, then fully quit and restart `pnpm dev` once. Rebuilds without stable signing can drop the grant.',
+        'Dev binary uses a separate TCC identity. Enable “{{name}}” (or “Dango”) in Screen Recording, then fully quit and restart `pnpm dev` once. Rebuilds without stable signing can drop the grant.',
         { name: processName }
       )
     }
     if (screenStatus === 'denied') {
-      return t('Blocked. Enable Chaeboxi in System Settings, then recheck. Restart may be required once.')
+      return t('Blocked. Enable Dango in System Settings, then recheck. Restart may be required once.')
     }
     return t('Needed for observe. Opens: {{path}}', {
       path: privacySettingsPathLabel(os, 'screen-recording'),
@@ -206,7 +200,7 @@ function RouteComponent() {
 
   const accessDescription = (() => {
     if (accessStatus === 'granted') return t('Click, type, and AX focus/press allowed.')
-    if (accessStatus === 'denied') return t('Blocked. Enable Chaeboxi under Accessibility, then recheck.')
+    if (accessStatus === 'denied') return t('Blocked. Enable Dango under Accessibility, then recheck.')
     return t('Needed for act. Status updates after the first click/type prompt. Opens: {{path}}', {
       path: privacySettingsPathLabel(os, 'accessibility'),
     })
@@ -282,7 +276,7 @@ function RouteComponent() {
 
       <SettingsSection
         title={t('Permissions')}
-        description={t('macOS manages these switches. Open Settings, enable Chaeboxi, then recheck.')}
+        description={t('macOS manages these switches. Open Settings, enable Dango, then recheck.')}
       >
         <SettingsCard divided>
           <SettingsPrefRow
@@ -329,7 +323,7 @@ function RouteComponent() {
               description={
                 <span>
                   <Text size="xs" c="dimmed">
-                    {t('macOS lists this path, not “Chaeboxi.app”. If missing, use + and pick the revealed file.')}
+                    {t('macOS lists this path, not “Dango.app”. If missing, use + and pick the revealed file.')}
                   </Text>
                   <Code block mt={6} style={{ fontSize: 11, wordBreak: 'break-all' }}>
                     {executablePath}
@@ -378,7 +372,7 @@ function RouteComponent() {
             title={t('Verify')}
             description={
               showRestartHint
-                ? t('If still blocked after enabling, quit and reopen Chaeboxi once.')
+                ? t('If still blocked after enabling, quit and reopen Dango once.')
                 : t('Refresh status after changing System Settings.')
             }
             control={
@@ -416,7 +410,7 @@ function RouteComponent() {
                 w={220}
                 disabled={!desktop || !computerUse.enabled}
                 value={(computerUse.appAllowlist || []).join('\n')}
-                placeholder={"WhatsApp\nCalculator"}
+                placeholder={'WhatsApp\nCalculator'}
                 onChange={(e) => {
                   const lines = e.currentTarget.value
                     .split('\n')

@@ -25,7 +25,7 @@ export function resolveQuickSessionId(
 
   return snapshot.sessionId
 }
-export const QUICK_SESSION_STORAGE_KEY = 'chaeboxi.quick-session'
+export const QUICK_SESSION_STORAGE_KEY = 'dango.quick-session'
 
 export function readQuickSessionSnapshot(): QuickSessionSnapshot | null {
   if (typeof localStorage === 'undefined') {

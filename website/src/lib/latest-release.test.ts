@@ -3,18 +3,18 @@ import { describe, it } from 'node:test'
 import { FALLBACK_RELEASE_URL, mapReleaseAssets, matchAsset } from './latest-release.ts'
 
 const v170 = [
-  { name: 'Chaeboxi_1.7.0_aarch64.dmg', browser_download_url: 'https://example.com/arm.dmg' },
-  { name: 'Chaeboxi_1.7.0_x64.dmg', browser_download_url: 'https://example.com/intel.dmg' },
-  { name: 'Chaeboxi_1.7.0_x64-setup.exe', browser_download_url: 'https://example.com/win.exe' },
-  { name: 'Chaeboxi_1.7.0_amd64.AppImage', browser_download_url: 'https://example.com/appimage' },
-  { name: 'Chaeboxi_1.7.0_amd64.deb', browser_download_url: 'https://example.com/deb' },
+  { name: 'Dango_1.7.0_aarch64.dmg', browser_download_url: 'https://example.com/arm.dmg' },
+  { name: 'Dango_1.7.0_x64.dmg', browser_download_url: 'https://example.com/intel.dmg' },
+  { name: 'Dango_1.7.0_x64-setup.exe', browser_download_url: 'https://example.com/win.exe' },
+  { name: 'Dango_1.7.0_amd64.AppImage', browser_download_url: 'https://example.com/appimage' },
+  { name: 'Dango_1.7.0_amd64.deb', browser_download_url: 'https://example.com/deb' },
 ]
 
 describe('matchAsset', () => {
   it('does not treat aarch64 dmg as intel', () => {
-    assert.equal(matchAsset('mac-arm', 'Chaeboxi_1.7.0_aarch64.dmg'), true)
-    assert.equal(matchAsset('mac-intel', 'Chaeboxi_1.7.0_aarch64.dmg'), false)
-    assert.equal(matchAsset('mac-intel', 'Chaeboxi_1.7.0_x64.dmg'), true)
+    assert.equal(matchAsset('mac-arm', 'Dango_1.7.0_aarch64.dmg'), true)
+    assert.equal(matchAsset('mac-intel', 'Dango_1.7.0_aarch64.dmg'), false)
+    assert.equal(matchAsset('mac-intel', 'Dango_1.7.0_x64.dmg'), true)
   })
 })
 

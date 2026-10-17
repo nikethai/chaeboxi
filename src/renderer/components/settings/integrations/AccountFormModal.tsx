@@ -79,11 +79,7 @@ export function AccountFormModal({ opened, onClose, account }: Props) {
     return {
       connectorId,
       label: label.trim() || `${connector?.name ?? 'Account'}`,
-      accountHint:
-        nextConfig.email?.trim() ||
-        nextConfig.login?.trim() ||
-        account?.accountHint ||
-        undefined,
+      accountHint: nextConfig.email?.trim() || nextConfig.login?.trim() || account?.accountHint || undefined,
       authType: 'api_token',
       isDefault,
       config: nextConfig,
@@ -331,7 +327,7 @@ export function AccountFormModal({ opened, onClose, account }: Props) {
           <Stack gap="sm">
             <Text size="sm" c="dimmed">
               {t(
-                'Desktop OAuth uses your own app client id (no Chaeboxi cloud broker). After browser sign-in, paste the full redirect URL.'
+                'Desktop OAuth uses your own app client id (no Dango cloud broker). After browser sign-in, paste the full redirect URL.'
               )}
             </Text>
             <TextInput

@@ -1,9 +1,9 @@
 ---
-name: chaeboxi-cross-platform-change
-description: This skill should be used when changing Chaeboxi platform capabilities, Tauri IPC, native APIs, web/mobile fallbacks, or desktop-only behavior.
+name: dango-cross-platform-change
+description: This skill should be used when changing Dango platform capabilities, Tauri IPC, native APIs, web/mobile fallbacks, or desktop-only behavior.
 ---
 
-# Chaeboxi Cross-Platform Change
+# Dango Cross-Platform Change
 
 ## Scope
 

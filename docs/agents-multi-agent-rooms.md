@@ -4,7 +4,7 @@
 
 **Agents** (formerly Copilots) are persona packages: prompt, avatar, model overrides, tools, and hooks.
 
-Chat sessions can host a **room** of up to **3** agent members. Users `@`-mention agents in the chat dock (same interaction class as `$skills`). With **2+** speakers, Chaeboxi runs a **Team room**:
+Chat sessions can host a **room** of up to **3** agent members. Users `@`-mention agents in the chat dock (same interaction class as `$skills`). With **2+** speakers, Dango runs a **Team room**:
 
 | Mode | Default | Behavior |
 |------|---------|----------|

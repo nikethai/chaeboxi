@@ -6,7 +6,7 @@ Track **provider subscription / plan usage** and **in-app usage** for BYOK and O
 
 | Label | Meaning |
 |---|---|
-| **In this app** | Tokens / estimated cost measured from assistant messages with `usage` in Chaeboxi. Always available after chat turns (and after session backfill). |
+| **In this app** | Tokens / estimated cost measured from assistant messages with `usage` in Dango. Always available after chat turns (and after session backfill). |
 | **Provider plan** | Best-effort plan identity + remaining quota when a provider exposes it. Often `unknown` or `unsupported` — never invent a remaining %. |
 
 Progress bars render only when `quota.state === 'known'`.
@@ -54,7 +54,7 @@ To add a provider:
 
 ## Non-goals
 
-- Chaeboxi / legacy cloud service license billing UI (CE strips paid license features).
+- Dango / legacy cloud service license billing UI (CE strips paid license features).
 - Scraping undocumented high-frequency provider billing endpoints.
 - Fake hard-coded subscription meters (e.g. “Plus = 40 messages”).
 

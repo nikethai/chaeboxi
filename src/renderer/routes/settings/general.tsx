@@ -36,7 +36,7 @@ export function RouteComponent() {
     <SettingsPage>
       <SettingsPageHeader
         title={t('General Settings')}
-        description={t('Language, theme, data, and system preferences for Chaeboxi.')}
+        description={t('Language, theme, data, and system preferences for Dango.')}
       />
 
       <SettingsSection title={t('Display')}>
@@ -175,7 +175,7 @@ export function RouteComponent() {
       <SettingsSection
         title={t('Error Reporting')}
         description={t(
-          'Chaeboxi respects your privacy and only uploads anonymous error data and events when necessary. You can change your preferences at any time in the settings.'
+          'Dango respects your privacy and only uploads anonymous error data and events when necessary. You can change your preferences at any time in the settings.'
         )}
       >
         <SettingsCard divided>
@@ -198,7 +198,7 @@ export function RouteComponent() {
             <SettingsPrefRow
               title={t('Keep running in menu bar / system tray')}
               description={t(
-                'When enabled, closing the window hides Chaeboxi instead of quitting. Use the menu bar icon or hotkey to reopen.'
+                'When enabled, closing the window hides Dango instead of quitting. Use the menu bar icon or hotkey to reopen.'
               )}
               control={
                 <Switch
@@ -263,7 +263,10 @@ function SystemNotificationsSection() {
   const [permissionBusy, setPermissionBusy] = useState(false)
 
   useEffect(() => {
-    void platform.getSystemNotificationPermission().then(setPermission).catch(() => setPermission('unsupported'))
+    void platform
+      .getSystemNotificationPermission()
+      .then(setPermission)
+      .catch(() => setPermission('unsupported'))
   }, [])
 
   const patchNotifications = (patch: {
@@ -318,7 +321,7 @@ function SystemNotificationsSection() {
     <SettingsCard divided>
       <SettingsPrefRow
         title={t('Enable system notifications')}
-        description={t('Show an OS notification when generation finishes while Chaeboxi is unfocused.')}
+        description={t('Show an OS notification when generation finishes while Dango is unfocused.')}
         control={
           <Switch
             checked={enabled}
@@ -638,7 +641,6 @@ const ImportExportDataSection = () => {
     reader.readAsText(file)
   }
 
-
   const onImportRoomPack = (file: File | null) => {
     if (!file) return
     setIsRoomPackPending(true)
@@ -731,7 +733,6 @@ const ImportExportDataSection = () => {
         </SettingsCard>
       </SettingsSection>
 
-
       <SettingsSection
         title={t('Room packs')}
         description={t('Share a room as a file. Import creates a new room with new ids. Keys never go in the file.')}
@@ -750,7 +751,10 @@ const ImportExportDataSection = () => {
               </Alert>
             )}
             <div className="settings-actions">
-              <FileButton accept=".json,.chaeboxi-room.json,application/json" onChange={onImportRoomPack}>
+              <FileButton
+                accept=".json,.dango-room.json,.chaeboxi-room.json,application/json"
+                onChange={onImportRoomPack}
+              >
                 {(props) => (
                   <Button {...props} loading={isRoomPackPending}>
                     {t('Import room pack')}

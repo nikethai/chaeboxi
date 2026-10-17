@@ -18,7 +18,7 @@ const Welcome = NiceModal.create(() => {
     <AdaptiveModal
       opened={modal.visible}
       onClose={onClose}
-      ariaLabel={t('Welcome to Chaeboxi')}
+      ariaLabel={t('Welcome to Dango')}
       withCloseButton={false}
       centered={true}
       radius="lg"
@@ -31,7 +31,7 @@ const Welcome = NiceModal.create(() => {
           <Stack gap="sm" align="center">
             <Image src={icon} w={86} h={86} />
             <Stack gap="3xs" align="center">
-              <Title order={3}>Chaeboxi</Title>
+              <Title order={3}>Dango</Title>
               <Text size="md">{t('An easy-to-use AI client app')}</Text>
             </Stack>
           </Stack>

@@ -1,6 +1,6 @@
-# Adding a New Provider to Chaeboxi
+# Adding a New Provider to Dango
 
-This guide documents all the steps and files that need to be modified when adding a new AI provider to the Chaeboxi application.
+This guide documents all the steps and files that need to be modified when adding a new AI provider to the Dango application.
 
 ## Overview
 

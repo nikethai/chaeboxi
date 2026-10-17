@@ -42,7 +42,7 @@ export function RouteComponent() {
             'X-API-KEY': extension.webSearch.serperApiKey.trim(),
           },
           body: {
-            q: 'Chaeboxi',
+            q: 'Dango',
             num: 1,
           },
         })
@@ -63,7 +63,7 @@ export function RouteComponent() {
         await ofetch('https://customsearch.googleapis.com/customsearch/v1', {
           method: 'GET',
           query: {
-            q: 'Chaeboxi',
+            q: 'Dango',
             key: extension.webSearch.googleApiKey.trim(),
             cx: extension.webSearch.googleCseId.trim(),
             num: 1,
@@ -90,7 +90,7 @@ export function RouteComponent() {
             Authorization: `Bearer ${extension.webSearch.tavilyApiKey.trim()}`,
           },
           body: {
-            query: 'Chaeboxi',
+            query: 'Dango',
             search_depth: 'basic',
             include_domains: [],
             exclude_domains: [],
@@ -117,7 +117,7 @@ export function RouteComponent() {
             'x-api-key': extension.webSearch.exaApiKey.trim(),
           },
           body: {
-            query: 'Chaeboxi',
+            query: 'Dango',
             type: 'neural',
             useAutoprompt: true,
             numResults: 1,

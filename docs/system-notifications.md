@@ -1,6 +1,6 @@
 # System Notifications
 
-Local OS notifications when Chaeboxi finishes work while the app is unfocused or in the tray. This is **not** remote push (no FCM/APNs server, no device tokens, no cloud).
+Local OS notifications when Dango finishes work while the app is unfocused or in the tray. This is **not** remote push (no FCM/APNs server, no device tokens, no cloud).
 
 ## Privacy
 
@@ -14,7 +14,7 @@ Local OS notifications when Chaeboxi finishes work while the app is unfocused or
 |----------|----------------|
 | Desktop (Tauri) | `tauri-plugin-notification` |
 | Web | Browser `Notification` API (secure context) |
-| Capacitor iOS/Android | `@capacitor/local-notifications` (channel `chaeboxi-chat` on Android) |
+| Capacitor iOS/Android | `@capacitor/local-notifications` (channel `dango-chat` on Android) |
 | Tauri Android | Same Tauri notification plugin as desktop |
 
 ### Mobile detection

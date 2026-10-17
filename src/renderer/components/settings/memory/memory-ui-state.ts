@@ -46,12 +46,12 @@ export function filterMemoryEntries(
       return { e, score }
     })
     .filter((x) => x.score > 0)
-    .sort((a, b) => b.score - a.score || (b.e.updatedAt - a.e.updatedAt))
+    .sort((a, b) => b.score - a.score || b.e.updatedAt - a.e.updatedAt)
 
   return scored.map((x) => x.e)
 }
 
-/** Soft panel surface matching Chaeboxi settings redesign. */
+/** Soft panel surface matching Dango settings redesign. */
 export const memoryPanelStyle: CSSProperties = {
   borderRadius: 11,
   background: 'var(--chatbox-background-secondary)',

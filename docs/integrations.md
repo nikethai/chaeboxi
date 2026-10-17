@@ -30,7 +30,7 @@ Product identity layer for third-party services. AI tools use the **right accoun
 1. Configure an MCP server under **Settings → MCP** (command/args without secrets if possible).
 2. Return to **Integrations → MCP server bindings**.
 3. Link the server to a connected account.
-4. On MCP start, Chaeboxi injects env/headers from the vault **at runtime** (vault wins over static env). Tokens are **not** written into saved MCP settings JSON.
+4. On MCP start, Dango injects env/headers from the vault **at runtime** (vault wins over static env). Tokens are **not** written into saved MCP settings JSON.
 
 ### Secrets
 
@@ -47,7 +47,7 @@ Secrets are **never**:
 
 ### OAuth (desktop)
 
-- No hosted Chaeboxi OAuth broker.
+- No hosted Dango OAuth broker.
 - Connectors that support OAuth use **your** OAuth app client id (Advanced / form field).
 - Flow: open browser → authorize → paste full redirect URL → exchange code (PKCE when required).
 - Refresh tokens are stored in the secret backend; `ensureFresh` refreshes before expiry with a per-account mutex.

@@ -103,7 +103,7 @@ export default class ComfyUI implements ModelInterface {
     let referenceImageName: string | undefined
     const firstReference = params.images?.find((image) => Boolean(image.imageUrl))?.imageUrl
     if (firstReference) {
-      referenceImageName = await this.client.uploadImage(firstReference, `chaeboxi-ref-${Date.now()}.png`)
+      referenceImageName = await this.client.uploadImage(firstReference, `dango-ref-${Date.now()}.png`)
     }
 
     for (let i = 0; i < params.num; i++) {

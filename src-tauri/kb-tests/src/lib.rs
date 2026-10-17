@@ -16,7 +16,7 @@ mod session {
     fn temp_dir() -> std::path::PathBuf {
         static SEQ: AtomicU64 = AtomicU64::new(0);
         let dir = std::env::temp_dir().join(format!(
-            "chaeboxi-kb-session-{}-{}-{}",
+            "dango-kb-session-{}-{}-{}",
             std::process::id(),
             now_ms(),
             SEQ.fetch_add(1, Ordering::Relaxed)
@@ -32,7 +32,7 @@ mod session {
         let notes = dir.join("notes.md");
         std::fs::write(
             &notes,
-            "Chaeboxi stores private docs on this machine.\n\nMèo ngồi trên tấm thảm trong phòng khách.\n",
+            "Dango stores private docs on this machine.\n\nMèo ngồi trên tấm thảm trong phòng khách.\n",
         )
         .unwrap();
         let pdf = dir.join("scan.pdf");
@@ -101,7 +101,7 @@ mod session {
             .collect::<Vec<_>>()
             .join(" ");
         assert!(
-            hay.to_ascii_lowercase().contains("private") || hay.contains("Chaeboxi"),
+            hay.to_ascii_lowercase().contains("private") || hay.contains("Dango"),
             "expected keyword hit, got {rows:?}"
         );
         let _ = std::fs::remove_dir_all(&dir);

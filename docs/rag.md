@@ -4,11 +4,11 @@ Retrieval-augmented generation for private documents. **Desktop v1 is local-firs
 
 ## What v1 actually does
 
-On **macOS / Linux / Windows**, the Tauri backend (`src-tauri/src/kb/`) persists knowledge bases in SQLite at app data `chaeboxi_kb.db` and searches with a **keyword + vector hybrid** (RRF, top 20).
+On **macOS / Linux / Windows**, the Tauri backend (`src-tauri/src/kb/`) persists knowledge bases in SQLite at app data `dango_kb.db` and searches with a **keyword + vector hybrid** (RRF, top 20).
 
 | Piece | Reality |
 | --- | --- |
-| Metadata, files, chunks, embeddings | SQLite `chaeboxi_kb.db` (AUTOINCREMENT ids — survive quit) |
+| Metadata, files, chunks, embeddings | SQLite `dango_kb.db` (AUTOINCREMENT ids — survive quit) |
 | Default embedder | `local:multilingual-e5-small` (intfloat E5, 384-d, ONNX via fastembed). **Linked on desktop** (macOS / Linux / Windows). |
 | Model file | First desktop run downloads **once** (~180MB) into app data `models/` (fastembed cache + `multilingual-e5-small/.ready`). **Not** bundled in the installer. After that, airplane mode works. |
 | Chunking | 1200 characters / 150 overlap. Prefix `passage:` on docs and `query:` on search. |
@@ -46,7 +46,7 @@ After the first successful download of `multilingual-e5-small` into app data, lo
 
 ## Notes
 
-- Chaeboxi hosted document-parser cloud is **disabled** (`CHATBOX_CLOUD_ENABLED = false`).
+- Dango hosted document-parser cloud is **disabled** (`CHATBOX_CLOUD_ENABLED = false`).
 - Prefer the on-device model for privacy.
 
 ## Tests

@@ -1,6 +1,6 @@
 # Long-term Memory
 
-Cross-session, cross-model memory for Chaeboxi (community edition).
+Cross-session, cross-model memory for Dango (community edition).
 
 ## What it is
 

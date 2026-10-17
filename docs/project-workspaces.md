@@ -1,6 +1,6 @@
 # Project Workspaces
 
-Chaeboxi Projects group chats and, on desktop, may bind to one user-authorized directory.
+Dango Projects group chats and, on desktop, may bind to one user-authorized directory.
 
 ## Authority
 

@@ -85,10 +85,7 @@ export function GeminiAntigravityAuthSection({
 
       const { code, state } = parseGeminiAntigravityRedirectUrl(redirectUrl)
       if (state && state !== session.state) {
-        throw new GeminiAntigravityOAuthError(
-          'OAuth state mismatch. Cancel and start sign-in again.',
-          'state_mismatch'
-        )
+        throw new GeminiAntigravityOAuthError('OAuth state mismatch. Cancel and start sign-in again.', 'state_mismatch')
       }
       if (signal.aborted) return
 
@@ -151,9 +148,7 @@ export function GeminiAntigravityAuthSection({
 
   const handleStartSignIn = async () => {
     if (!riskChecked && !riskAccepted) {
-      setErrorMessage(
-        t('You must acknowledge the experimental risk notice before signing in with Google.')
-      )
+      setErrorMessage(t('You must acknowledge the experimental risk notice before signing in with Google.'))
       setPhase('error')
       return
     }
@@ -290,8 +285,11 @@ export function GeminiAntigravityAuthSection({
     setRefreshingModels(true)
     try {
       // Refresh expired Google tokens before catalog fetch.
-      const { bearer, projectId: ensuredProjectId, settingsPatch } =
-        await ensureGeminiAntigravityBearer(providerSettings)
+      const {
+        bearer,
+        projectId: ensuredProjectId,
+        settingsPatch,
+      } = await ensureGeminiAntigravityBearer(providerSettings)
       if (settingsPatch) {
         setProviderSettings(settingsPatch)
       }
@@ -333,10 +331,7 @@ export function GeminiAntigravityAuthSection({
   }
 
   const showPasteUi =
-    phase === 'waiting' ||
-    phase === 'exchanging' ||
-    phase === 'starting' ||
-    (phase === 'error' && forcePasteMode)
+    phase === 'waiting' || phase === 'exchanging' || phase === 'starting' || (phase === 'error' && forcePasteMode)
 
   const signedInLabel = signedIn
     ? email
@@ -356,14 +351,12 @@ export function GeminiAntigravityAuthSection({
           authMode === 'oauth'
             ? desktopCallback
               ? t(
-                  'Google OAuth (PKCE). Approve in the browser — Chaeboxi finishes via localhost. Quota is separate from AI Studio API keys.'
+                  'Google OAuth (PKCE). Approve in the browser — Dango finishes via localhost. Quota is separate from AI Studio API keys.'
                 )
               : t(
                   'Google OAuth (PKCE). After the browser opens, paste the full redirect URL from the address bar. Quota is separate from AI Studio API keys.'
                 )
-            : t(
-                'API keys from Google AI Studio are billed separately from Google AI / Antigravity quotas.'
-              )
+            : t('API keys from Google AI Studio are billed separately from Google AI / Antigravity quotas.')
         }
         align="start"
         control={

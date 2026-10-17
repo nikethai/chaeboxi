@@ -1,16 +1,16 @@
-# Chaeboxi — Project Overview & Product Development Requirements
+# Dango — Project Overview & Product Development Requirements
 
 | | |
 | --- | --- |
-| **Product** | Chaeboxi |
+| **Product** | Dango |
 | **Version** | 1.7.0 |
 | **License** | [GNU GPLv3](../LICENSE) |
-| **Repo** | [github.com/nikethai/chaeboxi](https://github.com/nikethai/chaeboxi) |
+| **Repo** | [github.com/nikethai/dango](https://github.com/nikethai/dango) |
 | **Last updated** | 2026-08-11 |
 
 ## Vision
 
-Chaeboxi is a **local-first, multi-platform AI copilot**. Users bring their own API keys (BYOK), keep chats and settings on-device, and use the same product surface on **Windows, macOS, Linux, web, iOS, and Android**.
+Dango is a **local-first, multi-platform AI copilot**. Users bring their own API keys (BYOK), keep chats and settings on-device, and use the same product surface on **Windows, macOS, Linux, web, iOS, and Android**.
 
 It is an independent GPLv3 product (derived from an earlier open-source client; see [NOTICE](../NOTICE)). It is **not** a commercial SaaS client and does **not** sell a first-party hosted LLM subscription.
 
@@ -20,7 +20,7 @@ It is an independent GPLv3 product (derived from an earlier open-source client; 
 2. **BYOK only** — no bundled paid AI plan; users configure providers they already have (or run local models via Ollama / LM Studio).
 3. **Independence** — first-party hosted cloud and paid-cloud upsell paths stay off:
    - `CHATBOX_CLOUD_ENABLED = false` (`src/shared/product.ts`)
-   - `TELEMETRY_ENABLED = false` (analytics/Sentry off until Chaeboxi-owned accounts exist)
+   - `TELEMETRY_ENABLED = false` (analytics/Sentry off until Dango-owned accounts exist)
 4. **Multi-platform from one codebase** — Tauri 2 desktop + React 18 / TypeScript renderer; web and mobile targets share the same frontend.
 5. **English for product docs and default UI** — repository docs, code comments, and default product copy are English; optional UI locales remain for end-user preference; first-run language is English.
 
@@ -48,7 +48,7 @@ It is an independent GPLv3 product (derived from an earlier open-source client; 
 | **Skills / commands / hooks** | Extensible skill packs, slash commands, lifecycle hooks | [skills.md](./skills.md), [hooks-and-commands.md](./hooks-and-commands.md) |
 | **MCP** | Model Context Protocol client (stdio on desktop, HTTP); IPC to Rust backend | (see [system-architecture.md](./system-architecture.md)) |
 | **Memory** | Personal / session memory | [memory.md](./memory.md) |
-| **Knowledge base / RAG** | Desktop v1: SQLite `chaeboxi_kb.db`, local E5 embeddings, hybrid RRF search. Mobile: keyword/in-memory. | [rag.md](./rag.md) |
+| **Knowledge base / RAG** | Desktop v1: SQLite `dango_kb.db`, local E5 embeddings, hybrid RRF search. Mobile: keyword/in-memory. | [rag.md](./rag.md) |
 | **Video URL reader** | Public video URL tool (YouTube/Vimeo/TikTok/Facebook) — `read_video_url` | [video-url-reader.md](./video-url-reader.md) |
 | **Browser agent** | Desktop isolated browser tools (`browser_*`) | [browser-agent.md](./browser-agent.md) |
 | **Computer use** | Desktop screen observe/act (`computer_*`) | [computer-use.md](./computer-use.md) |

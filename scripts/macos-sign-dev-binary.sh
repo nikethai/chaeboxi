@@ -4,8 +4,8 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-BIN="${CHAEBOXI_DEV_BIN:-$ROOT/src-tauri/target/debug/chaeboxi}"
-IDENTIFIER="${CHAEBOXI_CODE_IDENTIFIER:-com.chaeboxi}"
+BIN="${DANGO_DEV_BIN:-$ROOT/src-tauri/target/debug/dango}"
+IDENTIFIER="${DANGO_CODE_IDENTIFIER:-com.dango}"
 
 if [[ "$(uname -s)" != "Darwin" ]]; then
   echo "macos-sign-dev-binary: skip (not macOS)"
@@ -18,7 +18,7 @@ if [[ ! -x "$BIN" ]]; then
 fi
 
 # Prefer a real Apple Development cert (TeamID-stable). Fall back to ad-hoc with fixed -i.
-IDENTITY="${CHAEBOXI_CODESIGN_IDENTITY:-}"
+IDENTITY="${DANGO_CODESIGN_IDENTITY:-}"
 if [[ -z "$IDENTITY" ]]; then
   IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null | awk -F'\"' '/Apple Development|Developer ID Application|Mac Developer/{print $2; exit}')"
 fi

@@ -2,7 +2,7 @@
 
 | | |
 | --- | --- |
-| **Product** | Chaeboxi 1.7.0 |
+| **Product** | Dango 1.7.0 |
 | **Last updated** | 2026-08-22 |
 
 High-level map of the monorepo for onboarding and navigation. Prefer feature docs (linked below) for subsystem detail.
@@ -10,7 +10,7 @@ High-level map of the monorepo for onboarding and navigation. Prefer feature doc
 ## Repository layout
 
 ```text
-chaeboxi/
+dango/
 ├── src/
 │   ├── renderer/     # React 18 UI, routes, stores, packages, platform
 │   └── shared/       # Providers, models, types, pure agent/room logic
@@ -103,7 +103,7 @@ IPC is **multiplexed**: one Tauri command `ipc_invoke(channel, args)` dispatches
 - **OAuth** — local callback helper
 - **OpenClaw** — `openclaw:*` WebSocket invoke / stream / cancel
 - **MCP** — `mcp:server:create|start|list-tools|call-tool|close|list|status` (stdio + HTTP; connect-per-operation in Rust)
-- **Knowledge base** — `kb:*`, `kb:file:*`, `kb:search`, `kb:embed:status` (`src-tauri/src/kb/`; desktop SQLite `chaeboxi_kb.db` + hybrid RRF; mobile keyword/in-memory)
+- **Knowledge base** — `kb:*`, `kb:file:*`, `kb:search`, `kb:embed:status` (`src-tauri/src/kb/`; desktop SQLite `dango_kb.db` + hybrid RRF; mobile keyword/in-memory)
 - **Project workspace** — `workspace:*` picker/capability APIs plus export, read-only SCM, and staged change sets (`src-tauri/src/workspace/`); Quick Local Run and managed worktrees stay unavailable; `fs:*` / `execute_command` rejected
 - **Narrow brokers** — `codex:read-auth-config`, `video:yt-dlp`
 - **Skills / commands / hooks scan** — filesystem discovery helpers

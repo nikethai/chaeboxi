@@ -1,4 +1,4 @@
-# Chaeboxi marketing site — design contract
+# Dango marketing site — design contract
 
 Source: `docs/archive/plans/260815-1439-marketing-site-github-pages/phase-01-design-contract-and-tokens.md`
 Updated: 2026-08-17 cinematic impression pass

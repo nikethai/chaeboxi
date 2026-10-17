@@ -307,10 +307,10 @@ async fn list_displays() -> Result<Value, String> {
     }))
 }
 
-/// macOS TCC probes + full-display capture for *this process* (Chaeboxi).
+/// macOS TCC probes + full-display capture for *this process* (Dango).
 /// Never use the `screencapture` CLI for computer-use: it has a different TCC identity
 /// than the app binary, so Settings can show Allowed while tool capture still fails.
-/// Dev (`target/debug/chaeboxi`) is ad-hoc signed and only appears in Privacy lists after
+/// Dev (`target/debug/dango`) is ad-hoc signed and only appears in Privacy lists after
 /// this process calls CGRequestScreenCaptureAccess (often needs main thread).
 #[cfg(target_os = "macos")]
 mod macos_privacy {
@@ -402,7 +402,7 @@ mod macos_privacy {
             let image = CGDisplayCreateImage(CGMainDisplayID());
             if image.is_null() {
                 return Err(
-                    "PERMISSION_DENIED: Screen Recording not granted for this Chaeboxi process. \
+                    "PERMISSION_DENIED: Screen Recording not granted for this Dango process. \
 Open Settings → Computer Use → Request Access / enable the running binary, then quit and relaunch."
                         .into(),
                 );
@@ -638,7 +638,7 @@ async fn capture_display(display_id: Option<&str>, max_width: u32) -> Result<Val
     #[cfg(not(target_os = "macos"))]
     let bytes = {
         let tmp = std::env::temp_dir().join(format!(
-            "chaeboxi-display-{}-{}.png",
+            "dango-display-{}-{}.png",
             std::process::id(),
             id
         ));

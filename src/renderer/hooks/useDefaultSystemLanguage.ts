@@ -9,7 +9,7 @@ export function useSystemLanguageWhenInit() {
       ;(async () => {
         const { languageInited } = settingsStore.getState()
         if (!languageInited) {
-          // Chaeboxi ships English-first. Users can change language in Settings.
+          // Dango ships English-first. Users can change language in Settings.
           // Do not auto-switch to Chinese (or other OS locales) on first run.
           settingsStore.setState({
             language: 'en',

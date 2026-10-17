@@ -20,7 +20,7 @@ static SEQ: AtomicU64 = AtomicU64::new(0);
 fn test_dir() -> PathBuf {
     let n = SEQ.fetch_add(1, Ordering::SeqCst);
     let dir = std::env::temp_dir().join(format!(
-        "chaeboxi-suite-{}-{}-{n}",
+        "dango-suite-{}-{}-{n}",
         std::process::id(),
         SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_nanos()
     ));

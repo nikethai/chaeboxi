@@ -1,4 +1,4 @@
-package com.chaeboxi
+package com.dango
 
 import android.os.Bundle
 import android.view.View

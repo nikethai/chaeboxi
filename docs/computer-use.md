@@ -12,8 +12,8 @@ Settings → **Computer Use → Permissions** follows the same pattern as Raycas
 
 1. Explain **why** (observe vs act).
 2. **Open Settings** deep-links to the OS privacy pane (macOS `Privacy_ScreenCapture` / `Privacy_Accessibility`).
-3. User enables **Chaeboxi** in the list (apps cannot flip the switch for you).
-4. **Recheck** status in Chaeboxi (first Screen Recording grant may need app restart on macOS).
+3. User enables **Dango** in the list (apps cannot flip the switch for you).
+4. **Recheck** status in Dango (first Screen Recording grant may need app restart on macOS).
 5. Arm Computer Use per chat; use a vision model for screenshots.
 
 ### Steps
@@ -27,17 +27,17 @@ Settings → **Computer Use → Permissions** follows the same pattern as Raycas
 
 ### Dev builds (`pnpm dev`) on macOS
 
-`tauri dev` runs `src-tauri/target/debug/chaeboxi` — **not** a packaged `Chaeboxi.app`.
+`tauri dev` runs `src-tauri/target/debug/dango` — **not** a packaged `Dango.app`.
 
 macOS Screen Recording is keyed to **code identity** (signing team + identifier), not just the path. Linker **ad-hoc** signatures change CDHash on every rebuild, so a grant can look “on” in Settings while the *current* process still fails `CGPreflight` / capture.
 
 Mitigations in this repo:
 
-- `pnpm dev` / `pnpm tauri:dev` wraps Tauri with `scripts/tauri-dev-macos.mjs`, which re-signs the debug binary after rebuilds (`scripts/macos-sign-dev-binary.sh`) using your Apple Development identity and fixed identifier `com.chaeboxi`.
+- `pnpm dev` / `pnpm tauri:dev` wraps Tauri with `scripts/tauri-dev-macos.mjs`, which re-signs the debug binary after rebuilds (`scripts/macos-sign-dev-binary.sh`) using your Apple Development identity and fixed identifier `com.dango`.
 - Manual: `pnpm dev:sign` after a rebuild if needed.
 - After **first** enabling Screen Recording for the signed binary: **fully quit** the app and start `pnpm dev` again (macOS often applies Screen Recording only after relaunch).
-- If multiple “chaeboxi” rows exist, remove old ones, keep the entry for the currently running binary (use **Reveal** in settings), toggle on, relaunch.
-- **Recheck / screenshots both use in-process CoreGraphics.** Do not expect the `screencapture` CLI (or Terminal) to share the same TCC grant as Chaeboxi.
+- If multiple “dango” rows exist, remove old ones, keep the entry for the currently running binary (use **Reveal** in settings), toggle on, relaunch.
+- **Recheck / screenshots both use in-process CoreGraphics.** Do not expect the `screencapture` CLI (or Terminal) to share the same TCC grant as Dango.
 
 ## Tools
 
@@ -146,7 +146,7 @@ Full remaining roadmap (measure → ship): `docs/archive/plans/2026-08-11-comput
 
 ## Ship / binary identity
 
-- App Store Chaeboxi ≠ `pnpm dev` debug binary for TCC.
+- App Store Dango ≠ `pnpm dev` debug binary for TCC.
 - After enabling Screen Recording / Accessibility for the **running** executable, fully quit and relaunch.
 - Settings shows path + Reveal; use Recheck after changes.
 - New harness features require a **new build** for store users.
@@ -161,7 +161,7 @@ Full remaining roadmap (measure → ship): `docs/archive/plans/2026-08-11-comput
 
 ### App Store / packaged macOS
 
-Screen Recording and Accessibility must list **Chaeboxi** (the installed app). If Settings shows Allowed but screenshots fail: toggle Chaeboxi off/on in System Settings → Privacy & Security → Screen Recording, fully quit Chaeboxi, relaunch, Recheck. Dev binaries (`target/debug/chaeboxi`) are a different TCC identity from the App Store app — grants do not transfer.
+Screen Recording and Accessibility must list **Dango** (the installed app). If Settings shows Allowed but screenshots fail: toggle Dango off/on in System Settings → Privacy & Security → Screen Recording, fully quit Dango, relaunch, Recheck. Dev binaries (`target/debug/dango`) are a different TCC identity from the App Store app — grants do not transfer.
 
 ## OS matrix
 

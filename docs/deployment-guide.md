@@ -1,12 +1,12 @@
 # Deployment Guide
 
-How Chaeboxi ships desktop installers to users.
+How Dango ships desktop installers to users.
 
 ## Channels
 
 | Channel | Status | Notes |
 | --- | --- | --- |
-| **GitHub Releases** | Primary | Users download from [releases](https://github.com/nikethai/chaeboxi/releases) |
+| **GitHub Releases** | Primary | Users download from [releases](https://github.com/nikethai/dango/releases) |
 | In-app About → Check update | Link only | Opens `PRODUCT.releasesUrl` — no auto-updater yet |
 | Web / mobile | Separate | Not part of the desktop release pipeline |
 
@@ -38,7 +38,7 @@ Keep these in sync before tagging:
 | Windows x64 | NSIS installer |
 | Linux x64 | `.AppImage` + `.deb` |
 | Android | `.apk` (all ABIs) + `.aab` — job artifact of **Mobile Build** |
-| iOS | `Chaeboxi-simulator.app` (smoke) or `Chaeboxi.ipa` (beta lane) — job artifact of **Mobile Build** |
+| iOS | `Dango-simulator.app` (smoke) or `Dango.ipa` (beta lane) — job artifact of **Mobile Build** |
 
 `bundle.targets` in `tauri.conf.json` is limited to `dmg`, `nsis`, `appimage`, `deb` (not `"all"`).
 
@@ -57,7 +57,7 @@ The browser-host script (`sidecars/browser-host/index.mjs` + `package.json`) is 
 5. Open the **draft** release on GitHub, download each asset, smoke-test:
    - Install / open app
    - Create a chat (BYOK)
-   - About → releases link points at `nikethai/chaeboxi`
+   - About → releases link points at `nikethai/dango`
 6. Edit release notes if needed → **Publish release**.
 
 Manual re-run without a new tag: Actions → **Release** → Run workflow (optional tag input).
@@ -107,7 +107,7 @@ Manual re-run without a new tag: Actions → **Release** → Run workflow (optio
 Unsigned or ad-hoc Apple Silicon builds often show “app is damaged”. Workaround for testers:
 
 ```bash
-xattr -cr /Applications/Chaeboxi.app
+xattr -cr /Applications/Dango.app
 ```
 
 For real distribution, enroll in Apple Developer Program and add repo secrets:
@@ -137,7 +137,7 @@ Workflow already forwards these env vars when set; omit them for unsigned CI bui
 
 The brochure lives in `website/` (Astro static). Workflow: `.github/workflows/pages.yml`.
 
-Origin: `https://nikethai.github.io/chaeboxi/`. Do **not** publish `pnpm build:web` there.
+Origin: `https://nikethai.github.io/dango/`. Do **not** publish `pnpm build:web` there.
 
 Crawl surfaces live under that prefix: `robots.txt`, `sitemap.xml`, `llms.txt`. Submit the sitemap as a Search Console URL-prefix property. Stay on this origin unless a later change adds redirects.
 

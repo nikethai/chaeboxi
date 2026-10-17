@@ -179,7 +179,7 @@ fn git_executable() -> Option<PathBuf> {
 }
 
 fn isolated_home() -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("chaeboxi-git-home-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("dango-git-home-{}", std::process::id()));
     let _ = fs::create_dir_all(&dir);
     dir
 }

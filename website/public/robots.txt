@@ -13,4 +13,4 @@ Allow: /
 User-agent: Google-Extended
 Allow: /
 
-Sitemap: https://nikethai.github.io/chaeboxi/sitemap.xml
+Sitemap: https://nikethai.github.io/dango/sitemap.xml

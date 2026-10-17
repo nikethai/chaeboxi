@@ -1,9 +1,9 @@
 ---
-name: chaeboxi-provider-change
-description: This skill should be used when adding or changing Chaeboxi providers, models, OAuth, capabilities, quota adapters, streaming, or AI SDK integration.
+name: dango-provider-change
+description: This skill should be used when adding or changing Dango providers, models, OAuth, capabilities, quota adapters, streaming, or AI SDK integration.
 ---
 
-# Chaeboxi Provider Change
+# Dango Provider Change
 
 ## Scope
 

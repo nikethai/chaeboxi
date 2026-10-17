@@ -136,7 +136,7 @@ function prepareAntigravityInnerRequest(
 
   // sessionId helps multi-turn on some gateways
   if (typeof request.sessionId !== 'string') {
-    request.sessionId = `chaeboxi-${Date.now()}`
+    request.sessionId = `dango-${Date.now()}`
   }
 
   return request
@@ -202,12 +202,7 @@ export function createAntigravityFetch(options: {
       rawBody = rawBody.request as Record<string, unknown>
     }
 
-    const innerRequest = prepareAntigravityInnerRequest(
-      rawBody,
-      chatModelId,
-      sourceModelId,
-      options.thinkingLevel
-    )
+    const innerRequest = prepareAntigravityInnerRequest(rawBody, chatModelId, sourceModelId, options.thinkingLevel)
 
     const envelope = {
       project: projectId,
@@ -215,7 +210,7 @@ export function createAntigravityFetch(options: {
       request: innerRequest,
       requestType: 'agent',
       userAgent: 'antigravity',
-      requestId: `chaeboxi-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+      requestId: `dango-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
     }
 
     const headerRecord: Record<string, string> = {
@@ -399,10 +394,7 @@ export default class GeminiAntigravity extends AbstractAISDKModel {
       endpointFallbacks: GEMINI_ANTIGRAVITY_ENDPOINT_FALLBACKS,
       apiBase: undefined,
       innerFetch: proxyFetch,
-      thinkingLevel: resolveSessionAntigravityThinkingLevel(
-        this.options.model.modelId,
-        options.providerOptions
-      ),
+      thinkingLevel: resolveSessionAntigravityThinkingLevel(this.options.model.modelId, options.providerOptions),
     })
   }
 

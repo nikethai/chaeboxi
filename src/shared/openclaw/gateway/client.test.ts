@@ -37,7 +37,7 @@ describe('OpenClawGatewayClient', () => {
       'pi-agent',
       { role: 'user', content: 'hello' },
       {
-        sessionKey: 'chaeboxi:session-1',
+        sessionKey: 'dango:session-1',
       }
     )
     const nextEvent = stream.next()
@@ -48,7 +48,7 @@ describe('OpenClawGatewayClient', () => {
       agentId: 'pi-agent',
       message: 'hello',
       sessionId: undefined,
-      sessionKey: 'chaeboxi:session-1',
+      sessionKey: 'dango:session-1',
       extraSystemPrompt: undefined,
       idempotencyKey: '11111111-1111-1111-1111-111111111111',
     })
@@ -96,7 +96,8 @@ describe('OpenClawGatewayClient', () => {
 
     await waitForPendingStreamWaiter(client)
 
-    const handlers = (client as unknown as { eventHandlers: Array<(event: string, data: unknown) => void> }).eventHandlers
+    const handlers = (client as unknown as { eventHandlers: Array<(event: string, data: unknown) => void> })
+      .eventHandlers
     handlers[0]?.('agent', {
       stream: 'assistant',
       runId: 'server-run-id',
@@ -133,7 +134,8 @@ describe('OpenClawGatewayClient', () => {
 
     await waitForPendingStreamWaiter(client)
 
-    const handlers = (client as unknown as { eventHandlers: Array<(event: string, data: unknown) => void> }).eventHandlers
+    const handlers = (client as unknown as { eventHandlers: Array<(event: string, data: unknown) => void> })
+      .eventHandlers
     handlers[0]?.('agent', {
       type: 'chunk',
       invocationId: 'legacy-invocation-id',
@@ -168,7 +170,8 @@ describe('OpenClawGatewayClient', () => {
 
     await waitForPendingStreamWaiter(client)
 
-    const handlers = (client as unknown as { eventHandlers: Array<(event: string, data: unknown) => void> }).eventHandlers
+    const handlers = (client as unknown as { eventHandlers: Array<(event: string, data: unknown) => void> })
+      .eventHandlers
     handlers[0]?.('session.tool', {
       type: 'tool',
       runId: 'server-run-id',

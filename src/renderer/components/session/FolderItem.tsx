@@ -100,7 +100,7 @@ function FolderItem({
       py={5}
       className={clsx(
         'group/folder-item project-folder-row',
-        !implicit && 'hover:bg-[var(--chatbox-background-tertiary)] cursor-pointer'
+        !implicit && 'hover:bg-[var(--chatbox-background-tertiary-hover)] cursor-pointer'
       )}
       onClick={onToggle}
     >

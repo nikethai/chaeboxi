@@ -660,6 +660,31 @@ describe('theme mapping onto Dango', () => {
     expect(offenders).toEqual([])
   })
 
+  test('the composer card shows a 2px --dango-focus ring while focus is inside it', () => {
+    // the text field is ring-less, so the card's :focus-within shadow is the only focus cue while typing
+    const RING = '0 0 0 2px var(--dango-focus)'
+    for (const selector of [':root', ':root[data-mantine-color-scheme="dark"]']) {
+      const value = declsOf(rootRules(selector)[0]).get('--chatbox-composer-shadow-focus')
+      expect(value?.replace(/\s+/g, ' ').startsWith(RING), selector).toBe(true)
+      expect(value, selector).not.toContain('color-mix')
+    }
+    const card = rootRules('.composer-card:focus-within:not(.composer-card-drag-active)').map(declsOf)
+    expect(card.length).toBe(1)
+    expect(card[0].get('box-shadow')).toBe('var(--chatbox-composer-shadow-focus)')
+    const quick = rootRules('.quick-chat-shell .composer-card:focus-within:not(.composer-card-drag-active)').map(
+      declsOf
+    )
+    expect(quick.length).toBe(1)
+    expect(quick[0].get('box-shadow')?.replace(/\s+/g, ' ').startsWith(RING)).toBe(true)
+
+    // non-text contrast against what sits around the card
+    for (const mode of ['light', 'dark'] as const) {
+      for (const bg of ['ground', 'surface', 'raised'] as const) {
+        expect(contrastRatio(dangoColors[mode].focus, dangoColors[mode][bg]), `${mode} ${bg}`).toBeGreaterThanOrEqual(3)
+      }
+    }
+  })
+
   test('the Sidebar folder dialog input uses the raised fill and the control border', () => {
     const source = readSource('src/renderer/Sidebar.tsx')
     expect(source).not.toContain("background: 'var(--chatbox-background-primary)'")
@@ -689,8 +714,6 @@ describe('theme mapping onto Dango', () => {
       '.search-dialog-content :focus-visible',
       '.model-picker-search-field *:focus-visible',
     ]
-    // composer card elevation on :focus-within (the field inside is ring-less); not a control's focus ring
-    const ELEVATION = ['.quick-chat-shell .composer-card:focus-within:not(.composer-card-drag-active)']
     const RING_PROPS = ['outline', 'box-shadow']
     const FOCUS = /:focus(-visible|-within)?(?![-\w])|\[data-focus\]/
     const TRANSLUCENT_BRAND = /color-mix\([^;]*--chatbox-tint-brand/
@@ -700,7 +723,7 @@ describe('theme mapping onto Dango', () => {
       postcss.parse(readSource(file)).walkRules((rule) => {
         const selectors = rule.selectors.map(normalizeSelector)
         const visible = selectors.filter((sel) => sel.includes(':focus-visible'))
-        const focus = selectors.filter((sel) => FOCUS.test(sel) && !ELEVATION.includes(sel))
+        const focus = selectors.filter((sel) => FOCUS.test(sel))
         rule.each((node) => {
           if (node.type !== 'decl') {
             return
@@ -741,6 +764,21 @@ describe('theme mapping onto Dango', () => {
     })
     expect(dark.palette?.text).toMatchObject({ primary: dangoColors.dark.ink, secondary: dangoColors.dark['ink-2'] })
     expect(dark.palette?.divider).toBe(dangoColors.dark.hairline)
+
+    for (const mode of ['light', 'dark'] as const) {
+      // biome-ignore lint/suspicious/noExplicitAny: styleOverrides are a loose union in MUI's types
+      const toast = getThemeDesign(mode, 16, 'en').components?.MuiSnackbarContent?.styleOverrides as any
+      expect(toast.root, mode).toMatchObject({
+        backgroundColor: dangoColors[mode].toast,
+        color: dangoColors[mode]['on-toast'],
+        boxShadow: 'var(--dango-shadow-toast)',
+      })
+      expect(toast.action.color, mode).toBe(dangoColors[mode]['toast-action'])
+      expect(contrastRatio(dangoColors[mode]['on-toast'], dangoColors[mode].toast), mode).toBeGreaterThanOrEqual(4.5)
+      expect(contrastRatio(dangoColors[mode]['toast-action'], dangoColors[mode].toast), mode).toBeGreaterThanOrEqual(
+        4.5
+      )
+    }
 
     expect(light.typography).toMatchObject({ fontFamily: dangoFonts.sans, fontSize: 14 })
     expect(getThemeDesign('light', 16, 'ar').typography).toMatchObject({ fontFamily: 'Cairo, Arial, sans-serif' })

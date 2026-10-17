@@ -41,11 +41,19 @@ export function getThemeDesign(realTheme: 'light' | 'dark', fontSize: number, la
           },
         },
       },
+      // toasts (common/Toasts.tsx) follow the Dango toast: dark pill, light text, mint action
       MuiSnackbarContent: {
         styleOverrides: {
           root: {
-            backgroundColor: realTheme === 'dark' ? c.raised : undefined,
-            color: realTheme === 'dark' ? c.ink : undefined,
+            backgroundColor: c.toast,
+            color: c['on-toast'],
+            borderRadius: 'var(--dango-radius-lg)',
+            boxShadow: 'var(--dango-shadow-toast)',
+            fontSize: 13,
+            lineHeight: '18px',
+          },
+          action: {
+            color: c['toast-action'],
           },
         },
       },

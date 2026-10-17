@@ -36,9 +36,12 @@ const Welcome = NiceModal.create(() => {
             </Stack>
           </Stack>
 
+          {/* Mantine draws the bullet inside the item, so a wrapping label drops below it; keep it outside */}
           <List
             size="sm"
             c="chatbox-secondary"
+            withPadding
+            style={{ listStylePosition: 'outside' }}
             className="flex flex-col items-stretch"
             classNames={{ item: 'whitespace-normal' }}
           >

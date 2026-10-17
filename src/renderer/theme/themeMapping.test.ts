@@ -611,7 +611,8 @@ describe('theme mapping onto Dango', () => {
     expect(importantProps(selectSelector)).toEqual(['background', 'border', 'box-shadow', 'color'])
     expect(find(`${selectSelector}:hover`)[0].get('background')).toBe('var(--dango-surface)')
 
-    // the dock silences focus rings; the pickers bring the global one back
+    // Mantine's input sets `outline: none` on :focus, so the reasoning select brings the ring back (the trigger is a
+    // plain button and would get the global one, but keeps the explicit rule beside it)
     for (const selector of [
       '.composer-card .model-picker-trigger:focus-visible',
       '.composer-card .composer-reasoning-select .mantine-Select-input:focus-visible',
@@ -623,9 +624,30 @@ describe('theme mapping onto Dango', () => {
         }
       })
       expect(decls?.get('outline'), selector).toBe('2px solid var(--dango-focus)')
-      expect(globalsCss.includes('outline: 2px solid var(--dango-focus) !important;'), selector).toBe(true)
       expect(decls?.get('outline-offset'), selector).toBe('2px')
     }
+  })
+
+  test('nothing in the composer silences the focus ring except the text field', () => {
+    // :focus and :focus-visible on something inside the card (the card's own :focus-within elevation is fine)
+    const FOCUS = /:focus(-visible)?(?![-\w])/
+    const TEXT_FIELD = /\.composer-(textarea|rich-input)(:|$)/
+    const offenders: string[] = []
+    globalsRoot.walkRules((rule) => {
+      const silences = rule.nodes.some(
+        (node) => node.type === 'decl' && node.prop === 'outline' && /^(none|0)$/.test(node.value.trim())
+      )
+      if (!silences) {
+        return
+      }
+      for (const raw of rule.selectors) {
+        const sel = normalizeSelector(raw)
+        if (sel.startsWith('.composer-card') && FOCUS.test(sel) && !TEXT_FIELD.test(sel)) {
+          offenders.push(`${sel} (line ${rule.source?.start?.line})`)
+        }
+      }
+    })
+    expect(offenders).toEqual([])
   })
 
   test('the Sidebar folder dialog input uses the raised fill and the control border', () => {

@@ -9,6 +9,8 @@
   "private": true,
   "description": "Dango — multi-platform AI copilot (GPLv3, BYOK multi-provider client)",
   "scripts": {
+    "backlog:browser": "node ./scripts/backlog-browser.mjs",
+    "whats-changed": "tsx scripts/whats-changed.ts",
     "build": "pnpm tauri:build",
     "build:renderer": "vite build --config vite.renderer.config.mts",
     "build:web": "cross-env CHATBOX_BUILD_PLATFORM=web vite build --config vite.renderer.config.mts && pnpm run delete-sourcemaps",
@@ -261,6 +263,7 @@
     "terser-webpack-plugin": "^5.3.9",
     "ts-loader": "^9.4.3",
     "ts-node": "^10.9.1",
+    "tsx": "^4.19.2",
     "tsconfig-paths-webpack-plugin": "^4.0.1",
     "typescript": "^5.8.3",
     "unist-util-visit": "^5.0.0",

@@ -3,10 +3,13 @@
 Newest first. Add a line when you create, accept, supersede or move a decision, spec or research note.
 
 ## 2026-10-17
+* **Acceptance**: [ADR 0014](adr/0014-okf-knowledge-document-format.md) accepted by the maintainer — OKF 0.2 document format with SQLite-backed storage for curated knowledge; approval, scope and revision controls remain Dango-owned. TASK-4 format-selection spike complete; implementation unscheduled.
 * **Acceptance**: [redesign brief](specs/2026-10-16-redesign-brief.md) accepted by the maintainer — structure first, then the look (palette Thread, mascot, app icon, design system v2).
 * **Acceptance**: [UX flows](specs/2026-10-16-ux-flows.md) accepted by the maintainer — the journeys and screen rules for the redesign.
 * **Acceptance**: [Dango theme, first slice](specs/2026-10-17-dango-theme-first-slice.md) accepted by the maintainer — implemented and merged in PR #87.
 * **Implementation**: [Dango theme, first slice](specs/2026-10-17-dango-theme-first-slice.md) built on `feat/dango-theme` — Dango tokens generated into CSS and TS, app/Mantine/MUI colours, type and radii remapped, sidebar and composer to the design system, ReviewItem and `/dev/design-system`; a light/dark visual check fixed the dark ground, Mantine defaults, indigo hovers, uppercase settings labels, input fields and the focus ring. Plan stays draft until the maintainer accepts.
+* **Proposal**: [clean-room rewrite and relicensing plan](specs/2026-10-17-clean-room-relicense.md) (draft plan) — provenance scanner and PR gate, delete dead upstream code, rebuild 16 work packages from specs (UI inside the redesign), dependency license gate, then a relicense ADR.
+* **Creation**: [upstream provenance audit](research/2026-10-17-upstream-provenance.md) — 799 files (~80k lines) still upstream-derived; Rust backend clean; i18n, tests and the chat UI hold the most.
 * **Proposal**: [Dango theme, first slice](specs/2026-10-17-dango-theme-first-slice.md) (draft plan) — design tokens in the app, existing colours remapped, sidebar and composer to the design system, ReviewItem component and a dev gallery.
 * **Acceptance**: [ADR 0013](adr/0013-everywhere-layer.md) accepted by the maintainer — scope plus Everywhere.
 * **Proposal**: [ADR 0013](adr/0013-everywhere-layer.md) (draft) — knowledge in two layers, each scope plus a built-in Everywhere scope; scope wins on a clash; client scopes opt in to Everywhere documents; per-agent memory folds into agent prompts.

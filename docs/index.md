@@ -20,6 +20,7 @@ Start here. [log.md](log.md) lists what changed, newest first. Work items and id
 * [0011-maintainer-first-shared-core](adr/0011-maintainer-first-shared-core.md) - Maintainer first on a shared knowledge core; PM pilot as the next source (stable)
 * [0012-rename-to-dango](adr/0012-rename-to-dango.md) - Rename the app from Chaeboxi to Dango, including internal identifiers, with a one-time data move (stable)
 * [0013-everywhere-layer](adr/0013-everywhere-layer.md) - Knowledge in two layers: each scope plus a built-in Everywhere scope (stable)
+* [0014-okf-knowledge-document-format](adr/0014-okf-knowledge-document-format.md) - OKF for curated knowledge documents, with Dango-owned approval, scope and revision controls (stable)
 * [continuity/](adr/continuity/) - Continuity import ADRs 001–005 from the August growth discovery
 
 # Specs

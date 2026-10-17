@@ -1,12 +1,13 @@
 ---
 type: spec
-status: draft
+status: stable
 description: "Total redesign brief: structure first, then a new look"
 generated: { by: claude/opus-5.5, at: 2026-10-16T21:40:00+07:00 }
+verified: { by: human:nikethai, at: 2026-10-17T14:38:00+07:00 }
 ---
 # Dango redesign brief
 
-Status: draft. The UX model and the four structure decisions were settled with the maintainer on 2026-10-16; the brief as a whole is not yet accepted. Nothing is built.
+Status: accepted by the maintainer, 2026-10-17. The UX model and the four structure decisions were settled on 2026-10-16; the look (palette Thread, mascot, app icon, design system v2) was chosen on 2026-10-17 and its first slice is merged (PR #87).
 
 ## Why
 

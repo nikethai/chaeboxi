@@ -1006,8 +1006,9 @@
       color 140ms var(--chatbox-ease);
   }
 
+  /* rows sit on the rail (surface): tertiary is the same surface, so they hover with the hairline step */
   .rail-nav-item:hover {
-    background: color-mix(in srgb, var(--chatbox-background-tertiary) 90%, transparent);
+    background: var(--chatbox-background-tertiary-hover);
     color: var(--chatbox-tint-primary);
   }
 
@@ -1270,7 +1271,7 @@
   }
 
   .studio-rail-row:hover {
-    background: color-mix(in srgb, var(--chatbox-background-tertiary) 92%, transparent);
+    background: var(--chatbox-background-tertiary-hover);
   }
 
   .studio-rail-row-active {
@@ -5849,8 +5850,9 @@ button.mantine-Button-root[data-variant="filled"] .mantine-Button-label {
   transition-timing-function: cubic-bezier(0.2, 0, 0, 1);
 }
 
+/* the settings nav sits on the rail (surface), so it hovers with the hairline step, not tertiary (also surface) */
 .settings-nav-item:not(.settings-nav-item-on):hover {
-  background: var(--chatbox-background-tertiary);
+  background: var(--chatbox-background-tertiary-hover);
   color: var(--chatbox-tint-primary);
 }
 

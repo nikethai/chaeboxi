@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import postcss, { type Rule } from 'postcss'
 import { describe, expect, test } from 'vitest'
+import { dangoColors } from './dangoTokens'
 
 const globalsRoot = postcss.parse(readFileSync(resolve(process.cwd(), 'src/renderer/static/globals.css'), 'utf8'))
 
@@ -72,6 +73,50 @@ describe('sidebar rules follow the Dango design system', () => {
     expect(valuesOf(rules, 'font-size').map((d) => d.value)).toEqual(['12px'])
     expect(valuesOf(rules, 'font-weight').map((d) => d.value)).toEqual(['600'])
     expect(valuesOf(rules, 'color').map((d) => d.value)).toEqual(['var(--dango-muted)'])
+  })
+
+  test('rows on the rail show a hover background that differs from the rail in both themes', () => {
+    // top-level :root variables (the dark block does not redeclare the mapped ones)
+    const rootVars = new Map<string, string>()
+    for (const rule of rulesWhere((s) => s === ':root')) {
+      if (rule.parent?.type === 'root') {
+        for (const d of declsOf([rule])) {
+          rootVars.set(d.prop, d.value)
+        }
+      }
+    }
+    // follow var() chains down to a Dango colour, or fail on anything else (a color-mix over the rail is not allowed)
+    const resolve = (value: string, mode: 'light' | 'dark'): string => {
+      const v = value.replace(/\s*!important$/, '').trim()
+      const match = /^var\((--[\w-]+)\)$/.exec(v)
+      if (!match) {
+        throw new Error(`hover background must be a plain variable, got ${v}`)
+      }
+      if (match[1].startsWith('--dango-')) {
+        return dangoColors[mode][match[1].slice('--dango-'.length) as keyof (typeof dangoColors)['light']]
+      }
+      const next = rootVars.get(match[1])
+      if (!next) {
+        throw new Error(`${match[1]} is not declared on :root`)
+      }
+      return resolve(next, mode)
+    }
+
+    for (const selector of [
+      '.studio-rail-row:hover',
+      '.rail-nav-item:hover',
+      '.settings-nav-item:not(.settings-nav-item-on):hover',
+    ]) {
+      const rules = rulesWhere((s) => s === selector)
+      const backgrounds = valuesOf(rules, 'background')
+      expect(backgrounds.length, selector).toBe(1)
+      expect(backgrounds[0].value, selector).toBe('var(--chatbox-background-tertiary-hover)')
+      for (const mode of ['light', 'dark'] as const) {
+        expect(resolve(backgrounds[0].value, mode), `${selector} ${mode}`).not.toBe(
+          resolve('var(--chatbox-background-rail)', mode)
+        )
+      }
+    }
   })
 
   test('selected rows keep the same left padding as idle rows', () => {

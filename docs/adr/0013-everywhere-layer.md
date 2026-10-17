@@ -1,12 +1,13 @@
 ---
 type: decision
-status: draft
+status: stable
 description: "Two layers of knowledge: each scope, plus a built-in Everywhere scope that every scope reads; scope wins on a clash"
 generated: { by: claude/opus-5.5, at: 2026-10-17T11:05:00+07:00 }
+verified: { by: human:nikethai, at: 2026-10-17T11:19:00+07:00 }
 ---
 # ADR 0013: Scope plus Everywhere
 
-Status: proposed 2026-10-17, agreed by the maintainer in conversation; waiting for `verified`. Builds on ADR 0001 and 0002 (authoritative knowledge per scope) and ADR 0011 (shared core grouped by scope).
+Status: accepted by the maintainer, 2026-10-17. Builds on ADR 0001 and 0002 (authoritative knowledge per scope) and ADR 0011 (shared core grouped by scope).
 
 ## Context
 

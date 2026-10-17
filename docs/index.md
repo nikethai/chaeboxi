@@ -18,7 +18,7 @@ Start here. [log.md](log.md) lists what changed, newest first. Work items and id
 * [0009-user-held-sync-recovery-key](adr/0009-user-held-sync-recovery-key.md) - User-held recovery key for encrypted sync (stable)
 * [0010-pm-pilot-first-user](adr/0010-pm-pilot-first-user.md) - Small-agency PM as first external user (stable)
 * [0011-maintainer-first-shared-core](adr/0011-maintainer-first-shared-core.md) - Maintainer first on a shared knowledge core; PM pilot as the next source (stable)
-* [0013-everywhere-layer](adr/0013-everywhere-layer.md) - Knowledge in two layers: each scope plus a built-in Everywhere scope (draft)
+* [0013-everywhere-layer](adr/0013-everywhere-layer.md) - Knowledge in two layers: each scope plus a built-in Everywhere scope (stable)
 * [continuity/](adr/continuity/) - Continuity import ADRs 001–005 from the August growth discovery
 
 # Specs

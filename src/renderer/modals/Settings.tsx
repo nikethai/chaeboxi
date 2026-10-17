@@ -32,5 +32,5 @@ export async function closeSettings() {
   if (sessionId) {
     store.set(currentSessionIdAtom, null)
   }
-  void router.navigate({ to: '/' })
+  void router.navigate({ to: target.to })
 }

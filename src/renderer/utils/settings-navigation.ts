@@ -20,11 +20,14 @@ export function resolveSettingsExitTarget(
   sessionId: string | null | undefined,
   sessionExists = true
 ): {
-  to: '/session/$sessionId' | '/'
+  to: '/session/$sessionId' | '/' | '/new'
   params?: { sessionId: string }
 } {
   if (sessionId && sessionId !== 'new' && sessionExists) {
     return { to: '/session/$sessionId', params: { sessionId } }
+  }
+  if (sessionId === 'new' && sessionExists) {
+    return { to: '/new' }
   }
   return { to: '/' }
 }

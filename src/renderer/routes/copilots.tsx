@@ -100,7 +100,7 @@ export function CopilotsContent() {
     store.addOrUpdate(newDetail)
 
     navigate({
-      to: '/',
+      to: '/new',
       search: {
         copilotId: detail.id,
       },

@@ -1,5 +1,6 @@
 import { getDefaultStore } from 'jotai'
 import { useEffect } from 'react'
+import { startNewChat } from '@/lib/startNewChat'
 import { navigateToSettings } from '@/modals/Settings'
 import { router } from '@/router'
 import { uiStore } from '@/stores/uiStore'
@@ -56,10 +57,7 @@ export default function useShortcut() {
     // Create a genuinely new conversation; do not let Settings restore the previous session.
     // CmdOrCtrl + N
     if (e.key === 'n' && ctrlKey && !shift) {
-      getDefaultStore().set(currentSessionIdAtom, null)
-      router.navigate({
-        to: '/',
-      })
+      startNewChat()
       return
     }
     // CmdOrCtrl + Shift + N

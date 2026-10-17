@@ -33,7 +33,7 @@ describe('resolveSettingsExitTarget', () => {
   })
 
   it('treats the transient new-chat route as home', () => {
-    expect(resolveSettingsExitTarget('new')).toEqual({ to: '/' })
+    expect(resolveSettingsExitTarget('new')).toEqual({ to: '/new' })
   })
 
   it('falls back to home when the cached session no longer exists', () => {

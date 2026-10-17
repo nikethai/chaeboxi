@@ -1,6 +1,6 @@
 ---
 type: plan
-status: draft
+status: deprecated
 description: "PM Pilot Phase 1: Client Memory Implementation Plan"
 ---
 # PM Pilot Phase 1: Client Memory Implementation Plan

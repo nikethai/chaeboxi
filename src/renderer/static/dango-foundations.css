@@ -6,6 +6,11 @@
   z-index: 400;
 }
 
+.dg-sheet:not(.dango-sheet--right) {
+  max-height: calc(100vh - var(--dango-space-6));
+  overflow: auto;
+}
+
 .dango-sheet--right {
   left: auto;
   right: 0;

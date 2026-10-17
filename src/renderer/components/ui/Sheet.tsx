@@ -2,6 +2,8 @@ import { type ReactNode, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useSheetFocus } from './useSheetFocus'
 
+export { useSheetFocus } from './useSheetFocus'
+
 export type SheetProps = {
   opened: boolean
   onClose: () => void

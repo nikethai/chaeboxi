@@ -10,6 +10,15 @@ const TABBABLE = [
   '[contenteditable="true"]',
 ].join(', ')
 
+// A popup control that is open handles its own Esc (Mantine closes a Select or Menu without preventDefault).
+// ARIA marks it with aria-expanded on a combobox or popup trigger, Mantine with data-mantine-stop-propagation.
+// A plain disclosure (an expanded accordion) has no popup, so Esc there still closes the sheet.
+const OPEN_CONTROL = [
+  '[role="combobox"][aria-expanded="true"]',
+  '[aria-haspopup]:not([aria-haspopup="false"])[aria-expanded="true"]',
+  '[data-mantine-stop-propagation="true"]',
+].join(', ')
+
 // Open sheets, oldest first. Only the last one reacts to keys.
 const openSheets: HTMLElement[] = []
 
@@ -41,6 +50,7 @@ export function useSheetFocus(ref: RefObject<HTMLElement | null>, opts: { onClos
       if (openSheets[openSheets.length - 1] !== el) return
       if (event.key === 'Escape') {
         if (event.defaultPrevented) return
+        if (event.target instanceof Element && event.target.closest(OPEN_CONTROL)) return
         event.preventDefault()
         event.stopPropagation()
         onCloseRef.current()

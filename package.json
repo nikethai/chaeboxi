@@ -38,6 +38,7 @@
     "lint": "biome lint src test biome.json vite.renderer.config.mts vitest.config.mts",
     "lint:fix": "biome lint src test biome.json vite.renderer.config.mts vitest.config.mts --write",
     "check": "npx tsc --noEmit",
+    "tokens:sync": "UPDATE_DANGO_TOKENS=1 vitest run src/renderer/theme/dangoTokens.test.ts",
     "format": "biome format --write src test biome.json vite.renderer.config.mts vitest.config.mts",
     "check:biome": "biome check src test biome.json vite.renderer.config.mts vitest.config.mts",
     "check:ci": "biome ci src test biome.json vite.renderer.config.mts vitest.config.mts",

@@ -7,6 +7,7 @@ import { resolve } from 'node:path'
 import { MantineProvider } from '@mantine/core'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { COMPOSER_TOOLBAR_BUTTON_CLASS, COMPOSER_TOOLBAR_ICON_CLASS } from './composerToolbar'
 import DictateButton from './DictateButton'
 import type { VoiceHoldButtonProps } from './VoiceHoldButton'
 
@@ -65,11 +66,20 @@ describe('DictateButton', () => {
     expect(screen.queryByRole('button', { name: 'Hold to talk' })).toBeNull()
   })
 
-  it('takes the toolbar icon colour like the Tools button, not the Mantine primary green', () => {
+  it('uses the same button and icon classes as the Tools button, from one shared constant', () => {
     renderButton(false)
 
     const button = screen.getByRole('button', { name: 'Dictate' })
-    expect(button.getAttribute('style')).toContain('color: var(--chatbox-tint-secondary)')
+    for (const name of COMPOSER_TOOLBAR_BUTTON_CLASS.split(' ')) {
+      expect(button.classList.contains(name), name).toBe(true)
+    }
+    expect(button.classList.contains('toolbar-button')).toBe(true)
+    const icon = button.querySelector('svg')
+    expect(icon?.getAttribute('class') ?? '').toContain(COMPOSER_TOOLBAR_ICON_CLASS)
+
+    const tools = readFileSync(resolve(process.cwd(), 'src/renderer/components/InputBox/ComposerToolsMenu.tsx'), 'utf8')
+    expect(tools).toContain('COMPOSER_TOOLBAR_BUTTON_CLASS')
+    expect(tools).toContain('COMPOSER_TOOLBAR_ICON_CLASS')
   })
 
   it('renders the hold-to-talk control, not the fallback, when voice is enabled', () => {

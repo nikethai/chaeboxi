@@ -1,8 +1,9 @@
-import { ActionIcon } from '@mantine/core'
+import { UnstyledButton } from '@mantine/core'
 import { Mic } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
 import { navigateToSettings } from '@/modals/Settings'
+import { COMPOSER_TOOLBAR_BUTTON_CLASS, COMPOSER_TOOLBAR_ICON_CLASS } from './composerToolbar'
 import VoiceHoldButton, { type VoiceHoldButtonProps } from './VoiceHoldButton'
 
 /**
@@ -16,17 +17,15 @@ export default function DictateButton(props: VoiceHoldButtonProps) {
     return <VoiceHoldButton {...props} />
   }
 
+  // same button and icon classes as the "+" Tools button beside it
   return (
-    <ActionIcon
-      variant="transparent"
-      // same ink as the "+" Tools button beside it; without this the transparent variant uses the primary green
-      c="var(--chatbox-tint-secondary)"
-      className={cn(props.toolbarButtonClass, 'min-h-9 min-w-9 justify-center')}
+    <UnstyledButton
+      className={cn(props.toolbarButtonClass, COMPOSER_TOOLBAR_BUTTON_CLASS)}
       aria-label={t('Dictate')}
       title={t('Dictate')}
       onClick={() => navigateToSettings('/voice')}
     >
-      <Mic size={16} strokeWidth={1.8} />
-    </ActionIcon>
+      <Mic size={props.toolbarIconSize} strokeWidth={1.8} className={COMPOSER_TOOLBAR_ICON_CLASS} />
+    </UnstyledButton>
   )
 }

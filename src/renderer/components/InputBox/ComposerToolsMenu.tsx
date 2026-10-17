@@ -38,6 +38,7 @@ import { useMcpSettings } from '@/stores/settingsStore'
 import { featureFlags } from '@/utils/feature-flags'
 import { ScalableIcon } from '../common/ScalableIcon'
 import MCPStatus from '../mcp/MCPStatus'
+import { COMPOSER_TOOLBAR_BUTTON_CLASS, COMPOSER_TOOLBAR_ICON_CLASS } from './composerToolbar'
 
 export type ComposerToolsMenuProps = {
   isOpenClawModel: boolean
@@ -176,18 +177,14 @@ const ComposerToolsMenu: FC<ComposerToolsMenuProps> = ({
 
   const plusButton = (
     <UnstyledButton
-      className={cn(
-        toolbarButtonClass,
-        'relative min-w-9 min-h-9 active:scale-[0.96] transition-transform',
-        isSmallScreen && 'mobile-touch-target'
-      )}
+      className={cn(toolbarButtonClass, COMPOSER_TOOLBAR_BUTTON_CLASS, isSmallScreen && 'mobile-touch-target')}
       aria-label={t('Tools and attachments')}
       aria-expanded={opened}
     >
       <IconPlus
         size={toolbarIconSize}
         strokeWidth={1.8}
-        className={badgeActive ? 'text-[var(--chatbox-tint-brand)]' : 'text-[var(--chatbox-tint-secondary)]'}
+        className={badgeActive ? 'text-[var(--chatbox-tint-brand)]' : COMPOSER_TOOLBAR_ICON_CLASS}
       />
       {badgeActive && (
         <span
